@@ -1,6 +1,7 @@
 ---
+import { SEOMetadata } from "astro-seo-metadata";
 interface Props {
-	title: string;
+  title: string;
 }
 
 const { title } = Astro.props;
@@ -8,44 +9,30 @@ const { title } = Astro.props;
 
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="description" content="Astro description" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="generator" content={Astro.generator} />
-		<title>{title}</title>
-	</head>
-	<body>
-		<slot />
-	</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Astro description" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+
+    <SEOMetadata
+      siteName={"El Camino Skate Shop"}
+      title={"El Camino Skate Shop"}
+      description={"El Camino Skate Shop is a skater owned and operated skateboard shop, located in Eau Claire, WI"}
+      image={"http://example.com/the_image_url-preferably_absolute.jpg"}
+      favicon={"/favicon.svg"}
+      author="Travis Hall"
+      copyright="ISC"
+      astroSitemap={true}
+      canonicalUrl={Astro.url.toString()}
+      type={"website"}
+      astroGenerator={true}
+    />
+  </head>
+  <body class="bg-beeswax-50 dark:bg-fig-leaf-900">
+    <slot />
+    <style is:global></style>
+  </body>
 </html>
-<style is:global>
-	:root {
-		--accent: 136, 58, 234;
-		--accent-light: 224, 204, 250;
-		--accent-dark: 49, 10, 101;
-		--accent-gradient: linear-gradient(
-			45deg,
-			rgb(var(--accent)),
-			rgb(var(--accent-light)) 30%,
-			white 60%
-		);
-	}
-	html {
-		font-family: system-ui, sans-serif;
-		background: #13151a;
-		background-size: 224px;
-	}
-	code {
-		font-family:
-			Menlo,
-			Monaco,
-			Lucida Console,
-			Liberation Mono,
-			DejaVu Sans Mono,
-			Bitstream Vera Sans Mono,
-			Courier New,
-			monospace;
-	}
-</style>
