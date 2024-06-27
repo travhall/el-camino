@@ -5,6 +5,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        black: "#0D0F0F",
         beeswax: {
           50: "#FBFAF8",
           100: "#F5F4F0",
@@ -65,6 +66,11 @@ export default {
           800: "#604326",
           900: "#49331D",
         },
+      },
+      fontFamily: {
+        display: ["Alumni", "serif"],
+        "display-italic": ["Alumni Italic", "serif"],
+        sans: ["Cabin", "sans-serif"],
       },
     },
   },
