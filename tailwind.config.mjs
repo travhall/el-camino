@@ -54,7 +54,7 @@ export default {
           800: "#7B6F4B",
           900: "#5E5539",
         },
-        "sweat-tea": {
+        "sweet-tea": {
           50: "#F7F2EC",
           100: "#E6D5C5",
           200: "#DAC1A9",
