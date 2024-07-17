@@ -1,5 +1,7 @@
 ---
 import { SEOMetadata } from "astro-seo-metadata";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
 interface Props {
   title: string;
 }
@@ -31,8 +33,12 @@ const { title } = Astro.props;
       astroGenerator={true}
     />
   </head>
-  <body class="bg-beeswax-50 dark:bg-fig-leaf-900 text-black dark:text-white">
+  <body
+    class="bg-beeswax-50 dark:bg-fig-leaf-900 text-fig-leaf-900 dark:text-beeswax-50"
+  >
+    <Header />
     <slot />
+    <Footer />
     <style is:global>
       @font-face {
         font-family: "Alumni";
@@ -61,6 +67,18 @@ const { title } = Astro.props;
         font-weight: 400 600;
         font-display: swap;
         src: url(/fonts/Cabin-Italic.woff2) format("woff2");
+      }
+
+      * {
+        text-wrap: pretty;
+      }
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        text-wrap: balance;
       }
     </style>
   </body>

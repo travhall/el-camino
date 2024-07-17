@@ -1,0 +1,59 @@
+---
+import Button from "./Button.astro";
+
+interface CardInfo {
+  src: string;
+  title: string;
+  pretitle: string;
+  description: string;
+  label: string;
+  url: string;
+  banner: boolean;
+}
+
+const {
+  src = "/images/placeholder.png",
+  title = "Card Title",
+  pretitle = "Card Pretitle",
+  description = "Use description for the body text of the Promo Card.",
+  label = "Button Label",
+  url = "",
+  banner,
+} = Astro.props;
+---
+
+<div
+  class="card relative flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4"
+>
+  <img
+    src={src}
+    alt={title}
+    class:list={[
+      "card-img object-cover -z-10 w-full h-full",
+      banner || "opacity-10",
+    ]}
+  />
+  <div
+    class:list={[
+      "card-content flex flex-col gap-6 p-6 xl:p-12 absolute bottom-0 w-full",
+      !banner ||
+        "bg-beeswax-100/90 dark:bg-fig-leaf-800/90 md:bg-beeswax-100 md:dark:bg-fig-leaf-800 md:w-2/3 right-0",
+    ]}
+  >
+    <span
+      class="card-preheading font-display font-semibold text-base tracking-wide uppercase -mb-4"
+      >{pretitle}</span
+    >
+    <h1
+      class="card-heading font-display font-black tracking-wide text-5xl leading-[0.8] xl:text-6xl xl:leading-[0.8] 2xl:text-7xl 2xl:leading-[0.8]"
+    >
+      {title}
+    </h1>
+    <p
+      class="description text-sm leading-snug md:text-base md:leading-snug 2xl:text-lg 2xl:leading-snug"
+    >
+      {description}
+    </p>
+    <Button classes="card-btn self-start">{label}</Button>
+  </div>
+</div>
