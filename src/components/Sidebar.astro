@@ -1,59 +1,56 @@
 ---
+const {
+  category = "Product Category",
+  src = "/images/placeholder.png",
+  url = "http://www.travishall.design",
+} = Astro.props;
 
+const prodCats = [
+  {
+    category: "Skateboarding",
+    src: "/images/category-skateboarding.png",
+    url: "http://www.travishall.design",
+  },
+  {
+    category: "Footwear",
+    src: "/images/category-footwear.png",
+    url: "http://www.travishall.design",
+  },
+  {
+    category: "Apparel",
+    src: "/images/category-apparel.png",
+    url: "http://www.travishall.design",
+  },
+  {
+    category: "Accessories",
+    src: "/images/category-accessories.png",
+    url: "http://www.travishall.design",
+  },
+];
 ---
 
 <aside
-  class="sidebar col-span-full md:col-span-2 md:col-start-1 md:row-span-12 md:row-start-5 flex flex-col gap-1 p-12 sm:p-32 md:p-24 lg:p-16 xl:p-24"
+  class="sidebar col-span-full md:col-span-2 md:col-start-1 md:row-span-12 md:row-start-5 flex flex-col gap-1 px-8 lg:px-4"
 >
-  <h3 class="font-display py-8 px-2 border-b-4 border-fig-leaf-500">
+  <h3 class="font-display text-3xl py-8 px-2 border-b-4 border-fig-leaf-500">
     Shop by Category
   </h3>
-  <a href="#0" class="category-link block relative">
-    <img
-      src="/images/category-skateboarding.png"
-      alt=""
-      class="category-img object-cover w-full h-auto"
-    />
-    <h4
-      class="category-title font-display absolute bottom-0 p-8 w-3/4 border-b-4 border-fig-leaf-500"
-    >
-      Skateboarding
-    </h4>
-  </a>
-  <a href="#0" class="category-link block relative">
-    <img
-      src="/images/category-footwear.png"
-      alt=""
-      class="category-img object-cover w-full h-auto"
-    />
-    <h4
-      class="category-title font-display absolute bottom-0 p-8 w-3/4 border-b-4 border-fig-leaf-500"
-    >
-      Footwear
-    </h4>
-  </a>
-  <a href="#0" class="category-link block relative">
-    <img
-      src="/images/category-apparel.png"
-      alt=""
-      class="category-img object-cover w-full h-auto"
-    />
-    <h4
-      class="category-title font-display absolute bottom-0 p-8 w-3/4 border-b-4 border-fig-leaf-500"
-    >
-      Apparel
-    </h4>
-  </a>
-  <a href="#0" class="category-link block relative">
-    <img
-      src="/images/category-accessories.png"
-      alt=""
-      class="category-img object-cover w-full h-auto"
-    />
-    <h4
-      class="category-title font-display absolute bottom-0 p-8 w-3/4 border-b-4 border-fig-leaf-500"
-    >
-      Accessories
-    </h4>
-  </a>
+
+  {
+    prodCats.map((e) => (
+      <a
+        href={e.url}
+        class="category-link block relative hover:opacity-100 transition-all"
+      >
+        <img
+          src={e.src}
+          alt={e.category}
+          class="category-img object-cover w-full h-auto aspect-video opacity-50"
+        />
+        <h4 class="category-title font-display text-2xl lg:text-4xl absolute bottom-0 p-8 w-3/4 border-b-4 border-fig-leaf-500 dark:border-sweet-tea-500 bg-beeswax-100 dark:bg-fig-leaf-900">
+          {e.category}
+        </h4>
+      </a>
+    ))
+  }
 </aside>
