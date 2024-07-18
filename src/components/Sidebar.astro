@@ -1,10 +1,4 @@
 ---
-const {
-  category = "Product Category",
-  src = "/images/placeholder.png",
-  url = "http://www.travishall.design",
-} = Astro.props;
-
 const prodCats = [
   {
     category: "Skateboarding",
@@ -30,27 +24,35 @@ const prodCats = [
 ---
 
 <aside
-  class="sidebar col-span-full md:col-span-2 md:col-start-1 md:row-span-12 md:row-start-5 flex flex-col gap-1 px-8 lg:px-4"
+  class="sidebar col-span-full md:col-span-2 md:col-start-1 md:row-span-12 md:row-start-5 flex flex-col gap-4 py-8 px-8 lg:px-4"
 >
-  <h3 class="font-display text-3xl py-8 px-2 border-b-4 border-fig-leaf-500">
+  <h3
+    class="font-display text-3xl py-8 px-2 border-b-4 border-b-fig-leaf-500 dark:border-b-sweet-tea-500"
+  >
     Shop by Category
   </h3>
 
   {
     prodCats.map((e) => (
-      <a
-        href={e.url}
-        class="category-link block relative hover:opacity-100 transition-all"
-      >
+      <a href={e.url} class="category-link block relative">
         <img
           src={e.src}
           alt={e.category}
-          class="category-img object-cover w-full h-auto aspect-video opacity-50"
+          class="category-img object-cover w-full h-auto aspect-video opacity-50 transition-all"
         />
-        <h4 class="category-title font-display text-2xl lg:text-4xl absolute bottom-0 p-8 w-3/4 border-b-4 border-fig-leaf-500 dark:border-sweet-tea-500 bg-beeswax-100 dark:bg-fig-leaf-900">
+        <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-beeswax-100 dark:border-fig-leaf-900 border-b-fig-leaf-500 dark:border-b-sweet-tea-500 bg-beeswax-200 dark:bg-fig-leaf-800 transition-all">
           {e.category}
         </h4>
       </a>
     ))
   }
 </aside>
+
+<style>
+  .category-link:hover img {
+    opacity: 1;
+  }
+  .category-link:hover h4 {
+    font-weight: bold;
+  }
+</style>
