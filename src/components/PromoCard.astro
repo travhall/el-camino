@@ -8,18 +8,21 @@ const {
   description = "Use description for the body text of the Promo Card.",
   label = "Button Label",
   url = "http://www.travishall.design",
-  banner,
+  banner = false,
 } = Astro.props;
 ---
 
 <div
-  class="card relative flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3"
+  class:list={[
+    "card relative flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3",
+    banner ? "banner-card" : "promo-card",
+  ]}
 >
   <img
     src={src}
     alt={title}
     class:list={[
-      "card-img object-cover -z-10 w-full h-full",
+      "card-img object-cover -z-10 w-full h-full transition-all",
       banner || "opacity-10",
     ]}
   />
@@ -39,7 +42,7 @@ const {
     }
     {
       title.length > 1 && (
-        <h1 class="card-heading font-display font-black tracking-wide text-6xl leading-[0.8] md:text-5xl md:leading-[0.8] xl:text-6xl xl:leading-[0.8] 2xl:text-7xl 2xl:leading-[0.8]">
+        <h1 class="card-heading font-display font-black tracking-wide text-6xl leading-[0.8] md:text-5xl md:leading-[0.8] xl:text-6xl xl:leading-[0.8] 3xl:text-7xl 3xl:leading-[0.8]">
           {title}
         </h1>
       )
@@ -53,8 +56,72 @@ const {
     }
     {
       url.length > 1 && label.length > 1 && (
-        <Button classes="card-btn self-start">{label}</Button>
+        <Button classes="card-btn self-start" data-url={url}>
+          {label}
+        </Button>
       )
     }
   </div>
 </div>
+
+<script>
+  function applyHoverEffects() {
+    const cardBtns = document.querySelectorAll<HTMLButtonElement>(
+      ".promo-card .card-btn"
+    );
+    const cardImgs = document.querySelectorAll<HTMLImageElement>(
+      ".promo-card .card-img"
+    );
+
+    // Remove existing event listeners
+    cardBtns.forEach((cardBtn) => {
+      cardBtn.removeEventListener("mouseover", handleMouseOver);
+      cardBtn.removeEventListener("mouseout", handleMouseOut);
+    });
+
+    if (window.innerWidth >= 1024) {
+      cardBtns.forEach((cardBtn, index) => {
+        const cardImg = cardImgs[index];
+
+        if (cardImg) {
+          cardBtn.addEventListener("mouseover", handleMouseOver);
+          cardBtn.addEventListener("mouseout", handleMouseOut);
+        }
+      });
+    }
+  }
+
+  function handleMouseOver(this: HTMLButtonElement) {
+    const cardImg = (
+      this.closest(".promo-card") as HTMLElement
+    )?.querySelector<HTMLImageElement>(".card-img");
+    if (cardImg) {
+      cardImg.style.opacity = "0.6";
+    }
+  }
+
+  function handleMouseOut(this: HTMLButtonElement) {
+    const cardImg = (
+      this.closest(".promo-card") as HTMLElement
+    )?.querySelector<HTMLImageElement>(".card-img");
+    if (cardImg) {
+      cardImg.style.opacity = "0.1";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    applyHoverEffects();
+    window.addEventListener("resize", applyHoverEffects);
+  });
+
+  const routerLinks = document.querySelectorAll<HTMLButtonElement>(".card-btn");
+
+  routerLinks.forEach((routerLink) => {
+    routerLink.addEventListener("click", () => {
+      const url = routerLink.getAttribute("data-url");
+      if (url) {
+        window.location.href = url;
+      }
+    });
+  });
+</script>
