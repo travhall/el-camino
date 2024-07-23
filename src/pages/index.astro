@@ -79,10 +79,49 @@ const cardData = [
           />
         ))
       }
-      <PromoCard />
-      <PromoCard />
+      <!-- <PromoCard />
+      <PromoCard /> -->
       <!-- SIDEBAR -->
       <Sidebar />
     </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const cardGrid = document.querySelector(".card-grid");
+        const sidebar = document.querySelector(".sidebar") as HTMLElement;
+
+        function adjustSidebar() {
+          // Only adjust sidebar for md breakpoint and larger
+          if (
+            window.matchMedia("(min-width: 768px)").matches &&
+            cardGrid &&
+            sidebar
+          ) {
+            // Reset the sidebar's gridRowEnd before recalculating
+            sidebar.style.gridRowEnd = "";
+
+            // Get the computed styles of the card grid
+            const computedStyle = getComputedStyle(cardGrid);
+            // Get the height of one row
+            const rowHeight = parseFloat(
+              computedStyle.getPropertyValue("grid-auto-rows")
+            );
+            // Calculate the number of rows in the grid
+            const gridHeight = cardGrid.scrollHeight;
+            const rows = Math.ceil(gridHeight / rowHeight);
+            // Set the sidebar to end at the last row
+            sidebar.style.gridRowEnd = `${rows + 1}`;
+          } else if (sidebar) {
+            // Reset the grid-row-end if not in the md breakpoint
+            sidebar.style.gridRowEnd = "";
+          }
+        }
+
+        // Initial adjustment
+        adjustSidebar();
+
+        // Adjust on window resize
+        window.addEventListener("resize", adjustSidebar);
+      });
+    </script>
   </main>
 </Layout>

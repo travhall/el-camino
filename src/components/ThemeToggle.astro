@@ -1,18 +1,15 @@
 ---
 import { Icon } from "astro-icon/components";
 import { ThemeSwitch } from "astro-color-scheme";
+
+const { classes, ...rest } = Astro.props;
 ---
 
 <ThemeSwitch strategy="button">
-  <button
-    class="flex flex-row content-center rounded-[4px] focus-within:ring outline-0 focus-within:ring-black-pearl-900 focus-within:dark:ring-beeswax-100 focus-within:ring-offset-2 focus-within:ring-offset-sweet-tea-50 focus-within:dark:ring-offset-fig-leaf-900"
-  >
+  <button class:list={["inline-flex flex-row", classes]} {...rest}>
     <Icon class="block dark:hidden h-5 w-5 my-1" name="uil:sun" />
     <Icon class="hidden dark:block h-5 w-5 my-1" name="uil:moon" />
-    <span class="sr-only">Toggle Theme</span>
-    <span class="font-sans dark:hidden font-light text-sm p-1">Light Mode</span>
-    <span class="font-sans hidden dark:block font-light text-sm p-1"
-      >Dark Mode</span
-    >
+    <span class="font-sans dark:hidden text-sm p-1">Light Mode</span>
+    <span class="font-sans hidden dark:block text-sm p-1">Dark Mode</span>
   </button>
 </ThemeSwitch>
