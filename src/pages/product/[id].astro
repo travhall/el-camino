@@ -1,0 +1,113 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { squareClient, type Product } from "../../lib/square-client";
+
+const { id } = Astro.params;
+
+let product: Product | null = null;
+
+function getImageUrl(item: any): string {
+  if (item.imageData && item.imageData.url) {
+    return item.imageData.url;
+  }
+  return "/images/placeholder.png";
+}
+
+if (squareClient && id) {
+  try {
+    const { result } = await squareClient.catalogApi.retrieveCatalogObject(id);
+    if (
+      result.object &&
+      result.object.type === "ITEM" &&
+      result.object.itemData
+    ) {
+      const item = result.object;
+      const variation =
+        item.itemData?.variations && item.itemData.variations[0];
+      const amountInCents = variation?.itemVariationData?.priceMoney?.amount;
+      product = {
+        id: item.id,
+        title: item.itemData?.name || "Unnamed Product",
+        description: item.itemData?.description || "",
+        image: getImageUrl(item),
+        price: amountInCents ? Number(amountInCents) / 100 : 0,
+        url: `/product/${item.id}`,
+      };
+    }
+  } catch (error) {
+    console.error("Error fetching product:", error);
+  }
+}
+---
+
+<Layout title={product ? product.title : "Product Not Found"}>
+  {
+    product ? (
+      <div class="product-detail">
+        <img src={product.image} alt={product.title} class="product-image" />
+        <h1>{product.title}</h1>
+        <p class="description">{product.description}</p>
+        <p class="price">${product.price.toFixed(2)}</p>
+        <button
+          class="add-to-cart-button"
+          data-product={JSON.stringify(product)}
+        >
+          Add to Cart
+        </button>
+      </div>
+    ) : (
+      <p>Product not found</p>
+    )
+  }
+</Layout>
+
+<script>
+  import { addToCart } from "../../lib/cart";
+
+  document
+    .querySelector(".add-to-cart-button")
+    ?.addEventListener("click", (e) => {
+      const button = e.target as HTMLButtonElement;
+      const product = JSON.parse(button.dataset.product || "{}");
+      addToCart({
+        id: product.id,
+        title: product.title,
+        price: product.price,
+        quantity: 1,
+      });
+      alert("Product added to cart!");
+    });
+</script>
+
+<style>
+  .product-detail {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  .product-image {
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 1rem;
+  }
+  .description {
+    margin-bottom: 1rem;
+  }
+  .price {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+  }
+  .add-to-cart-button {
+    background-color: #4caf50;
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+  }
+</style>

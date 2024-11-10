@@ -2,6 +2,8 @@
 import Layout from "../layouts/Layout.astro";
 import PromoCard from "../components/PromoCard.astro";
 import Sidebar from "../components/Sidebar.astro";
+import { fetchProducts } from "../lib/square-client"; // Use await to fetch products
+const products = await fetchProducts();
 
 const cardData = [
   {
@@ -81,6 +83,25 @@ const cardData = [
       }
       <Sidebar />
     </div>
+
+    <div
+      class="card-grid grid justify-center grid-cols-6 2xl:grid-cols-8 md:auto-rows-[10vw] max-w-[120rem] mx-auto gap-1 p-1"
+    >
+      {
+        products.map((product) => (
+          <PromoCard
+            title={product.title}
+            pretitle={product.price.toFixed(2)}
+            description={""}
+            src={product.image}
+            label="Shop Now"
+            url={`/product/${product.id}`}
+            banner={false}
+          />
+        ))
+      }
+    </div>
+
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         const cardGrid = document.querySelector(".card-grid");

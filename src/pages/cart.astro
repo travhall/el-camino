@@ -1,0 +1,192 @@
+---
+import Layout from "../layouts/Layout.astro";
+import {
+  getCart,
+  removeFromCart,
+  updateQuantity,
+  addToCart,
+} from "../lib/cart";
+
+const locationId = import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
+---
+
+<Layout title="Shopping Cart">
+  <div class="cart-page">
+    <h1>Your Shopping Cart</h1>
+    <div id="cart-items">Loading cart...</div>
+    <div id="cart-total"></div>
+    <button id="checkout-button" class="checkout-button" style="display: none;">
+      Proceed to Checkout
+    </button>
+  </div>
+</Layout>
+
+<script define:vars={{ locationId }}>
+  function getCart() {
+    const cart = localStorage.getItem("cart");
+    return cart ? JSON.parse(cart) : [];
+  }
+
+  function removeFromCart(id) {
+    const cart = getCart();
+    const updatedCart = cart.filter((item) => item.id !== id);
+    localStorage.setItem("cart", JSON.stringify(updatedCart));
+  }
+
+  function updateQuantity(id, quantity) {
+    const cart = getCart();
+    const updatedCart = cart.map((item) =>
+      item.id === id
+        ? { ...item, quantity: parseInt(quantity.toString()) }
+        : item
+    );
+    localStorage.setItem("cart", JSON.stringify(updatedCart));
+  }
+
+  function renderCart() {
+    const cartItems = getCart();
+    const cartItemsElement = document.getElementById("cart-items");
+    const cartTotalElement = document.getElementById("cart-total");
+    const checkoutButton = document.getElementById("checkout-button");
+
+    if (cartItemsElement && cartTotalElement && checkoutButton) {
+      if (cartItems.length === 0) {
+        cartItemsElement.innerHTML = "<p>Your cart is empty.</p>";
+        cartTotalElement.textContent = "";
+        checkoutButton.style.display = "none";
+      } else {
+        cartItemsElement.innerHTML = cartItems
+          .map(
+            (item) => `
+          <div class="cart-item">
+            <span>${item.title}</span>
+            <span>$${item.price.toFixed(2)}</span>
+            <input type="number" min="1" value="${item.quantity}" data-id="${item.id}" class="quantity-input">
+            <button class="remove-button" data-id="${item.id}">Remove</button>
+          </div>
+        `
+          )
+          .join("");
+
+        const total = cartItems.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0
+        );
+        cartTotalElement.textContent = `Total: $${total.toFixed(2)}`;
+        checkoutButton.style.display = "block";
+
+        // Add event listeners for remove buttons
+        document.querySelectorAll(".remove-button").forEach((button) => {
+          button.addEventListener("click", (e) => {
+            const target = e.currentTarget;
+            if (target instanceof HTMLElement) {
+              const id = target.getAttribute("data-id");
+              if (id) {
+                console.log("Removing item with id:", id);
+                removeFromCart(id);
+                renderCart();
+              }
+            }
+          });
+        });
+
+        // Add event listeners for quantity inputs
+        document.querySelectorAll(".quantity-input").forEach((input) => {
+          input.addEventListener("change", (e) => {
+            const target = e.currentTarget;
+            if (target instanceof HTMLInputElement) {
+              const id = target.getAttribute("data-id");
+              const quantity = parseInt(target.value);
+              if (id && !isNaN(quantity)) {
+                updateQuantity(id, quantity);
+                renderCart();
+              }
+            }
+          });
+        });
+      }
+    }
+  }
+
+  renderCart();
+
+  // Square Checkout
+  const checkoutButton = document.getElementById("checkout-button");
+  if (checkoutButton) {
+    checkoutButton.addEventListener("click", async () => {
+      const cartItems = getCart();
+
+      try {
+        console.log("Sending request to /api/create-checkout");
+        const response = await fetch("/api/create-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cartItems, locationId }),
+        });
+
+        console.log("Response status:", response.status);
+        console.log("Response OK:", response.ok);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("Server response:", errorData);
+          throw new Error(
+            errorData.details || `HTTP error! status: ${response.status}`
+          );
+        }
+
+        const data = await response.json();
+        console.log("Response data:", data);
+
+        if (data.checkoutUrl) {
+          console.log("Redirecting to:", data.checkoutUrl);
+          window.location.href = data.checkoutUrl;
+        } else {
+          throw new Error("Checkout URL not found in response");
+        }
+      } catch (error) {
+        console.error("Error creating checkout:", error);
+        alert("There was an error processing your checkout. Please try again.");
+      }
+    });
+  }
+</script>
+
+<style>
+  .cart-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  .cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  .quantity-input {
+    width: 50px;
+  }
+  .remove-button,
+  .checkout-button {
+    background-color: #4caf50;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  .checkout-button {
+    display: block;
+    width: 100%;
+    margin-top: 2rem;
+  }
+</style>
