@@ -5,8 +5,8 @@ const isBrowser = typeof window !== 'undefined';
 export const squareClient = !isBrowser
     ? new Client({
         accessToken: import.meta.env.SQUARE_ACCESS_TOKEN,
-        environment: Environment.Production,
-        squareVersion: '2023-10-18',
+        environment: Environment.Sandbox,
+        squareVersion: '2024-10-17',
     })
     : null;
 

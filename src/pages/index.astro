@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import PromoCard from "../components/PromoCard.astro";
+import ProductCard from "../components/ProductCard.astro";
 import Sidebar from "../components/Sidebar.astro";
 import { fetchProducts } from "../lib/square-client"; // Use await to fetch products
 const products = await fetchProducts();
@@ -89,14 +90,14 @@ const cardData = [
     >
       {
         products.map((product) => (
-          <PromoCard
+          <ProductCard
             title={product.title}
-            pretitle={product.price.toFixed(2)}
-            description={""}
+            price={product.price.toFixed(2)}
+            description={product.description}
             src={product.image}
             label="Shop Now"
             url={`/product/${product.id}`}
-            banner={false}
+            id={product.id}
           />
         ))
       }
