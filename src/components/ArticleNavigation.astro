@@ -1,0 +1,68 @@
+---
+import type { Article } from "@/lib/types";
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  currentSlug: string;
+  articles: Article[];
+}
+
+const { currentSlug, articles } = Astro.props;
+
+// Sort articles by publish date
+const sortedArticles = [...articles].sort(
+  (a, b) =>
+    new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+);
+
+// Find current article index
+const currentIndex = sortedArticles.findIndex(
+  (article) => article.slug === currentSlug
+);
+
+// Get prev/next articles
+const previousArticle =
+  currentIndex < sortedArticles.length - 1
+    ? sortedArticles[currentIndex + 1]
+    : null;
+const nextArticle = currentIndex > 0 ? sortedArticles[currentIndex - 1] : null;
+---
+
+<nav
+  class="border-t border-gray-200 mt-12 pt-8"
+  aria-label="Article navigation"
+>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    {
+      previousArticle && (
+        <a
+          href={`/article/${previousArticle.slug}`}
+          class="group flex flex-col space-y-3 hover:text-indigo-600"
+        >
+          <div class="flex items-center text-sm text-gray-500 group-hover:text-indigo-600">
+            <Icon name="uil:arrow-left" class="w-4 h-4 mr-2" />
+            <span>Previous Article</span>
+          </div>
+          <p class="font-semibold line-clamp-2">{previousArticle.title}</p>
+        </a>
+      )
+    }
+
+    {
+      nextArticle && (
+        <a
+          href={`/article/${nextArticle.slug}`}
+          class={`group flex flex-col space-y-3 hover:text-indigo-600 ${!previousArticle ? "md:col-start-2" : ""}`}
+        >
+          <div class="flex items-center justify-end text-sm text-gray-500 group-hover:text-indigo-600">
+            <span>Next Article</span>
+            <Icon name="uil:arrow-right" class="w-4 h-4 ml-2" />
+          </div>
+          <p class="font-semibold text-right line-clamp-2">
+            {nextArticle.title}
+          </p>
+        </a>
+      )
+    }
+  </div>
+</nav>

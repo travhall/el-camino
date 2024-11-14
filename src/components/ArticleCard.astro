@@ -1,0 +1,88 @@
+---
+// src/components/ArticleCard.astro
+import { formatDate } from "../utils/dates";
+import type { Article } from "../lib/types";
+
+interface Props {
+  article: Article;
+  featured?: boolean;
+}
+
+const { article, featured = false } = Astro.props;
+const { title, description, slug, publishedAt, cover, author, category } =
+  article;
+
+// Helper function to get full image URL
+function getImageUrl(path: string): string {
+  const baseUrl = import.meta.env.STRAPI_URL;
+  // If the path is already a full URL, return it as is
+  if (path.startsWith("http")) {
+    return path;
+  }
+  // Otherwise, join it with the base URL
+  return `${baseUrl}${path}`;
+}
+---
+
+<article
+  class={`overflow-hidden rounded-lg shadow-lg bg-white transition-transform hover:scale-102 ${featured ? "md:col-span-2 lg:col-span-3" : ""}`}
+>
+  <a href={`/article/${slug}`} class="block h-full">
+    {
+      cover?.url && (
+        <div class="relative aspect-video overflow-hidden">
+          <img
+            src={getImageUrl(cover.url)}
+            alt={cover.alternativeText || title}
+            class="object-cover w-full h-full transition-transform hover:scale-105"
+            loading="lazy"
+          />
+        </div>
+      )
+    }
+    <div class="p-4 sm:p-6">
+      {
+        category && (
+          <span class="inline-block px-3 py-1 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-full mb-2">
+            {category.name}
+          </span>
+        )
+      }
+      <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+        {title}
+      </h2>
+      {
+        description && (
+          <p class="text-gray-600 mb-4 line-clamp-2">{description}</p>
+        )
+      }
+      <div class="flex items-center text-sm text-gray-500">
+        {
+          author?.avatar?.url && (
+            <img
+              src={getImageUrl(author.avatar.url)}
+              alt={author.name}
+              class="w-8 h-8 rounded-full mr-2"
+            />
+          )
+        }
+        <div>
+          {author?.name && <span class="font-medium">{author.name}</span>}
+          <time datetime={publishedAt} class="block text-xs">
+            {formatDate(publishedAt)}
+          </time>
+        </div>
+      </div>
+    </div>
+  </a>
+</article>
+
+<script>
+  // Optional: Log image URLs for debugging
+  document.addEventListener("DOMContentLoaded", () => {
+    const images = document.querySelectorAll("img");
+    images.forEach((img) => {
+      console.log("Image URL:", img.src);
+    });
+  });
+</script>

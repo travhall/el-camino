@@ -1,0 +1,132 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import ArticleNavigation from "@/components/ArticleNavigation.astro";
+import { fetchGraphQL } from "@/lib/graphql";
+import { GET_ARTICLE_BY_SLUG, GET_ALL_ARTICLES } from "@/lib/queries";
+import type { ArticlesResponse } from "@/lib/types";
+import { formatDate } from "@/utils/dates";
+
+const { slug } = Astro.params;
+
+// Fetch current article
+const articleResponse = await fetchGraphQL<ArticlesResponse>(
+  GET_ARTICLE_BY_SLUG,
+  { slug }
+);
+
+const article = articleResponse.articles[0];
+
+if (!article) {
+  return new Response(null, {
+    status: 404,
+    statusText: "Not found",
+  });
+}
+
+// Fetch all articles for navigation
+const allArticlesResponse = await fetchGraphQL<ArticlesResponse>(
+  GET_ALL_ARTICLES,
+  {
+    page: 1,
+    pageSize: 100, // Adjust based on your needs
+    sort: ["publishedAt:desc"],
+  }
+);
+
+function getImageUrl(path: string): string {
+  if (!path) return "";
+  const baseUrl = import.meta.env.STRAPI_URL;
+  return path.startsWith("http") ? path : `${baseUrl}${path}`;
+}
+---
+
+<Layout title={article.title}>
+  <main class="container mx-auto px-4 py-8">
+    <article class="max-w-4xl mx-auto">
+      <header class="mb-8">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">
+          {article.title}
+        </h1>
+
+        <div class="flex items-center gap-4 text-gray-600 mb-6">
+          {
+            article.author && (
+              <div class="flex items-center">
+                {article.author.avatar?.url && (
+                  <img
+                    src={getImageUrl(article.author.avatar.url)}
+                    alt={article.author.name}
+                    class="w-10 h-10 rounded-full mr-3"
+                  />
+                )}
+                <div>
+                  <p class="font-medium">{article.author.name}</p>
+                  <time datetime={article.publishedAt} class="text-sm">
+                    {formatDate(article.publishedAt)}
+                  </time>
+                </div>
+              </div>
+            )
+          }
+        </div>
+
+        {
+          article.cover?.url && (
+            <img
+              src={getImageUrl(article.cover.url)}
+              alt={article.cover.alternativeText || article.title}
+              class="w-full h-auto rounded-lg shadow-lg mb-8"
+            />
+          )
+        }
+      </header>
+
+      <div class="prose prose-lg max-w-none">
+        {
+          article.blocks?.map((block) => {
+            switch (block.__typename) {
+              case "ComponentSharedRichText":
+                return <Fragment set:html={block.body} />;
+              case "ComponentSharedMedia":
+                return (
+                  block.file && (
+                    <img
+                      src={getImageUrl(block.file.url)}
+                      alt={block.file.alternativeText || ""}
+                      class="w-full h-auto rounded-lg"
+                    />
+                  )
+                );
+              case "ComponentSharedQuote":
+                return (
+                  <blockquote class="border-l-4 border-indigo-500 pl-4 italic">
+                    {block.title && <p class="font-bold">{block.title}</p>}
+                    <p>{block.body}</p>
+                  </blockquote>
+                );
+              case "ComponentSharedSlider":
+                return (
+                  <div class="flex flex-col gap-4">
+                    {block.files.map((file) => (
+                      <img
+                        src={getImageUrl(file.url)}
+                        alt={file.alternativeText || ""}
+                        class="w-full h-auto rounded-lg"
+                      />
+                    ))}
+                  </div>
+                );
+              default:
+                return null;
+            }
+          })
+        }
+      </div>
+
+      <ArticleNavigation
+        currentSlug={article.slug}
+        articles={allArticlesResponse.articles}
+      />
+    </article>
+  </main>
+</Layout>

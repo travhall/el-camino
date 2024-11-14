@@ -6,6 +6,18 @@ import Sidebar from "../components/Sidebar.astro";
 import { fetchProducts } from "../lib/square-client"; // Use await to fetch products
 const products = await fetchProducts();
 
+import ArticleGrid from "@/components/ArticleGrid.astro";
+import { fetchGraphQL } from "@/lib/graphql";
+import { GET_RECENT_ARTICLES } from "@/lib/queries";
+import type { ArticlesResponse } from "@/lib/types";
+
+// Fetch 6 most recent articles
+const response = await fetchGraphQL<ArticlesResponse>(GET_RECENT_ARTICLES, {
+  limit: 6,
+});
+
+const recentArticles = response.articles;
+
 const cardData = [
   {
     title: "Polar Skate Co",
@@ -84,6 +96,9 @@ const cardData = [
       }
       <Sidebar />
     </div>
+
+    <!-- <ArticleCard /> -->
+    <ArticleGrid articles={recentArticles} featured={true} />
 
     <div
       class="card-grid grid justify-center grid-cols-6 2xl:grid-cols-8 md:auto-rows-[10vw] max-w-[120rem] mx-auto gap-1 p-1"

@@ -1,0 +1,20 @@
+---
+// src/components/ArticleGrid.astro
+import ArticleCard from "./ArticleCard.astro";
+import type { Article } from "../lib/types";
+
+interface Props {
+  articles: Article[];
+  featured?: boolean; // If true, first article will be featured (larger)
+}
+
+const { articles, featured = false } = Astro.props;
+---
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  {
+    articles.map((article, index) => (
+      <ArticleCard article={article} featured={featured && index === 0} />
+    ))
+  }
+</div>
