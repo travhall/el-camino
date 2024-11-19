@@ -1,153 +1,126 @@
 ---
-import Button from "./Button.astro";
+import Button from "@/components/Button.astro";
+import type { Product } from "@/lib/types";
 
-const {
-  title = "Card Title",
-  description = "Use description for the body text of the Promo Card.",
-  category = "Category",
-  price = "Price",
-  brand = "Brand",
-  color = "Color",
-  size = "Size",
-  image = "/images/placeholder.png",
-  url = "http://www.travishall.design",
-  label = "Button Label",
-  id,
-} = Astro.props;
+interface Props {
+  product: Product;
+}
+
+const { product } = Astro.props;
+
+// Debug log the product data
+console.log("ProductCard rendering:", {
+  id: product.id,
+  title: product.title,
+  price: product.price,
+  hasImage: product.image !== "/images/placeholder.png",
+});
 ---
 
 <div
-  class:list={[
-    "card relative flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:col-span-2 md:row-span-5 2xl:row-span-4",
-  ]}
+  class="card relative flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:col-span-2 md:row-span-5 2xl:row-span-4"
 >
   <img
-    src={image}
-    alt={title}
-    class:list={[
-      "card-img object-cover -z-10 w-full h-full transition-all opacity-10",
-    ]}
+    src={product.image}
+    alt={product.title}
+    class="card-img object-cover -z-10 w-full h-full transition-all opacity-10"
+    onerror="console.error('Failed to load product image:', this.src)"
   />
   <div
-    class:list={[
-      "card-content flex flex-col gap-4 lg:gap-6 px-6 py-12 xl:p-12 absolute bottom-0 w-full",
-    ]}
+    class="card-content flex flex-col gap-4 lg:gap-6 px-6 py-12 xl:p-12 absolute bottom-0 w-full"
   >
+    <h1 class="card-heading font-display font-black tracking-wide">
+      {product.title}
+    </h1>
+    <span class="card-price font-display font-semibold text-base tracking-wide">
+      ${product.price.toFixed(2)}
+    </span>
     {
-      title.length > 1 && (
-        <h1 class="card-heading font-display font-black tracking-wide">
-          {title}
-        </h1>
-      )
-    }
-    {
-      category.length > 1 && (
-        <span class="card-category font-display font-semibold text-base tracking-wide uppercase -mb-4">
-          {category}
-        </span>
-      )
-    }
-    {
-      price.length > 1 && (
-        <span class="card-price font-display font-semibold text-base tracking-wide">
-          {price}
-        </span>
-      )
-    }
-    {
-      brand.length > 1 && (
-        <span class="card-brand font-display font-semibold text-base tracking-wide">
-          {brand}
-        </span>
-      )
-    }
-    {
-      color.length > 1 && (
-        <span class="card-color font-display font-semibold text-base tracking-wide">
-          {color}
-        </span>
-      )
-    }
-    {
-      size.length > 1 && (
-        <span class="card-size font-display font-semibold text-base tracking-wide">
-          {size}
-        </span>
-      )
-    }
-    {
-      description.length > 1 && (
+      product.description && (
         <p class="description text-sm leading-snug md:text-base md:leading-snug 2xl:text-lg 2xl:leading-snug">
-          {description}
+          {product.description}
         </p>
       )
     }
-    {
-      url.length > 1 && label.length > 1 && (
-        <Button classes="card-btn self-start" data-url={url}>
-          {label}
-        </Button>
-      )
-    }
+    <div class="flex gap-2">
+      <Button
+        type="button"
+        variant="primary"
+        size="md"
+        classes="add-to-cart-btn"
+        data-product={JSON.stringify({
+          id: product.id,
+          catalogObjectId: product.catalogObjectId,
+          variationId: product.variationId,
+          title: product.title,
+          price: product.price,
+          image: product.image,
+        })}
+      >
+        Add to Cart
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="md"
+        classes="view-details-btn"
+        onclick={`window.location.href='${product.url}'`}
+      >
+        View Details
+      </Button>
+    </div>
   </div>
 </div>
 
 <script>
-  function applyHoverEffects() {
-    const cardBtns =
-      document.querySelectorAll<HTMLButtonElement>(".card .card-btn");
-    const cardImgs =
-      document.querySelectorAll<HTMLImageElement>(".card .card-img");
+  import { cart } from "@/lib/cart";
 
-    // Remove existing event listeners
-    cardBtns.forEach((cardBtn) => {
-      cardBtn.removeEventListener("mouseover", handleMouseOver);
-      cardBtn.removeEventListener("mouseout", handleMouseOut);
-    });
+  // Add to cart functionality
+  document
+    .querySelectorAll<HTMLButtonElement>(".add-to-cart-btn")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        try {
+          // Get product data from button attribute
+          const productData = button.dataset.product;
+          if (!productData) {
+            throw new Error("No product data found");
+          }
 
-    if (window.innerWidth >= 1024) {
-      cardBtns.forEach((cardBtn, index) => {
-        const cardImg = cardImgs[index];
+          // Parse the product data
+          const product = JSON.parse(productData);
+          console.log("Adding to cart:", product);
 
-        if (cardImg) {
-          cardBtn.addEventListener("mouseover", handleMouseOver);
-          cardBtn.addEventListener("mouseout", handleMouseOut);
+          // Add to cart
+          cart.addItem({
+            ...product,
+            quantity: 1,
+          });
+
+          // Show success message
+          const successMessage = document.createElement("div");
+          successMessage.className =
+            "fixed top-4 right-4 bg-fig-leaf-500 dark:bg-sweet-tea-300 text-beeswax-50 dark:text-fig-leaf-900 px-4 py-2 rounded-lg shadow-lg z-50";
+          successMessage.textContent = "Added to cart";
+          document.body.appendChild(successMessage);
+
+          setTimeout(() => {
+            successMessage.remove();
+          }, 2000);
+        } catch (error) {
+          console.error("Error adding to cart:", error);
+
+          // Show error message
+          const errorMessage = document.createElement("div");
+          errorMessage.className =
+            "fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50";
+          errorMessage.textContent = "Failed to add item to cart";
+          document.body.appendChild(errorMessage);
+
+          setTimeout(() => {
+            errorMessage.remove();
+          }, 2000);
         }
       });
-    }
-  }
-
-  function handleMouseOver(this: HTMLButtonElement) {
-    const cardImg = (
-      this.closest(".card") as HTMLElement
-    )?.querySelector<HTMLImageElement>(".card-img");
-    if (cardImg) {
-      cardImg.style.opacity = "0.6";
-    }
-  }
-
-  function handleMouseOut(this: HTMLButtonElement) {
-    const cardImg = (
-      this.closest(".card") as HTMLElement
-    )?.querySelector<HTMLImageElement>(".card-img");
-    if (cardImg) {
-      cardImg.style.opacity = "0.1";
-    }
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    applyHoverEffects();
-    window.addEventListener("resize", applyHoverEffects);
-  });
-
-  const routerLinks = document.querySelectorAll<HTMLButtonElement>(".card-btn");
-
-  routerLinks.forEach((routerLink) => {
-    routerLink.addEventListener("click", () => {
-      const url = routerLink.getAttribute("data-url");
-      if (url) {
-        window.location.href = url;
-      }
     });
-  });
 </script>

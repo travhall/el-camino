@@ -1,8 +1,61 @@
+// src/lib/types.ts
+import type { Money, Order, OrderLineItem, CreateOrderRequest, CreateCheckoutRequest } from 'square';
+
+// Square-related types
+export interface ExtendedOrder extends Omit<Order, 'lineItems'> {
+  totalMoney?: Money;
+  lineItems?: OrderLineItem[];
+}
+
+// CartItem represents items in our local cart
 export interface CartItem {
   id: string;
+  catalogObjectId: string;
+  variationId: string;
   title: string;
   price: number;
   quantity: number;
+  image?: string;
+}
+
+// Square API related interfaces
+export interface OrderRequest {
+  idempotencyKey: string;
+  order: {
+    lineItems: Array<{
+      quantity: string;
+      catalogObjectId: string;
+      itemType: string;
+      itemVariationId?: string;
+      basePriceMoney?: Money;
+    }>;
+    locationId: string;
+    state?: 'DRAFT' | 'OPEN' | 'COMPLETED' | 'CANCELED';
+  };
+}
+
+export interface CheckoutRequest extends CreateCheckoutRequest {
+  locationId: string;
+}
+
+export interface CheckoutSession {
+  id: string;
+  paymentLinkUrl: string;
+  orderId: string;
+  status: 'pending' | 'completed' | 'failed';
+  error?: string;
+}
+
+// Product represents our internal product model
+export interface Product {
+  id: string;
+  catalogObjectId: string;
+  variationId: string;
+  title: string;
+  description: string;
+  image: string;
+  price: number;
+  url: string;
 }
 
 export interface PaymentResult {
@@ -18,8 +71,23 @@ export interface CheckoutFormData {
   phone?: string;
 }
 
-// src/lib/types.ts
+// Money handling types
+export interface MoneyObject {
+  amount: bigint;
+  currency: string;
+}
 
+// API Response types
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: {
+    message: string;
+    details?: any;
+  };
+}
+
+// Content types
 export interface UploadFile {
   url: string;
   alternativeText: string | null;
@@ -82,16 +150,7 @@ export interface PaginationInfo {
   pageCount: number;
 }
 
-export interface ArticlesResponse {
-  articles: Article[];
-}
-
-export interface Pagination {
-  total: number;
-  pageSize: number;
-  page: number;
-  pageCount: number;
-}
+export interface Pagination extends PaginationInfo { }
 
 export interface ArticlesResponse {
   articles: Article[];

@@ -10,6 +10,7 @@ export default defineConfig({
   output: "server",
   adapter: netlify(),
   vite: {
+    envPrefix: ["PUBLIC_", "SQUARE_", "STRAPI_"],
     define: {
       "import.meta.env.SQUARE_ACCESS_TOKEN": JSON.stringify(
         process.env.SQUARE_ACCESS_TOKEN

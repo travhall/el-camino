@@ -1,15 +1,23 @@
 ---
-import Layout from "../layouts/Layout.astro";
-import PromoCard from "../components/PromoCard.astro";
-import ProductCard from "../components/ProductCard.astro";
-import Sidebar from "../components/Sidebar.astro";
-import { fetchProducts } from "../lib/square-client"; // Use await to fetch products
-const products = await fetchProducts();
-
+import Layout from "@/layouts/Layout.astro";
+import PromoCard from "@/components/PromoCard.astro";
+import ProductCard from "@/components/ProductCard.astro";
+import Sidebar from "@/components/Sidebar.astro";
+import { fetchProducts } from "@/lib/square-client";
+import type { ArticlesResponse, Product } from "@/lib/types";
 import ArticleGrid from "@/components/ArticleGrid.astro";
 import { fetchGraphQL } from "@/lib/graphql";
 import { GET_RECENT_ARTICLES } from "@/lib/queries";
-import type { ArticlesResponse } from "@/lib/types";
+
+// Fetch products with error handling and proper typing
+let products: Product[] = [];
+try {
+  console.log("Fetching Square products...");
+  products = await fetchProducts();
+  console.log("Products fetched successfully:", products.length);
+} catch (error) {
+  console.error("Error fetching products:", error);
+}
 
 // Fetch 6 most recent articles
 const response = await fetchGraphQL<ArticlesResponse>(GET_RECENT_ARTICLES, {
@@ -97,26 +105,18 @@ const cardData = [
       <Sidebar />
     </div>
 
-    <!-- <ArticleCard /> -->
     <ArticleGrid articles={recentArticles} featured={true} />
 
-    <div
-      class="card-grid grid justify-center grid-cols-6 2xl:grid-cols-8 md:auto-rows-[10vw] max-w-[120rem] mx-auto gap-1 p-1"
-    >
-      {
-        products.map((product) => (
-          <ProductCard
-            title={product.title}
-            price={product.price.toFixed(2)}
-            description={product.description}
-            src={product.image}
-            label="Shop Now"
-            url={`/product/${product.id}`}
-            id={product.id}
-          />
-        ))
-      }
-    </div>
+    {/* Only render products section if we have products */}
+    {
+      products.length > 0 && (
+        <div class="card-grid grid justify-center grid-cols-6 2xl:grid-cols-8 md:auto-rows-[10vw] max-w-[120rem] mx-auto gap-1 p-1">
+          {products.map((product) => (
+            <ProductCard product={product} />
+          ))}
+        </div>
+      )
+    }
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
@@ -124,36 +124,25 @@ const cardData = [
         const sidebar = document.querySelector(".sidebar") as HTMLElement;
 
         function adjustSidebar() {
-          // Only adjust sidebar for md breakpoint and larger
           if (
             window.matchMedia("(min-width: 768px)").matches &&
             cardGrid &&
             sidebar
           ) {
-            // Reset the sidebar's gridRowEnd before recalculating
             sidebar.style.gridRowEnd = "";
-
-            // Get the computed styles of the card grid
             const computedStyle = getComputedStyle(cardGrid);
-            // Get the height of one row
             const rowHeight = parseFloat(
               computedStyle.getPropertyValue("grid-auto-rows")
             );
-            // Calculate the number of rows in the grid
             const gridHeight = cardGrid.scrollHeight;
             const rows = Math.ceil(gridHeight / rowHeight);
-            // Set the sidebar to end at the last row
             sidebar.style.gridRowEnd = `${rows + 1}`;
           } else if (sidebar) {
-            // Reset the grid-row-end if not in the md breakpoint
             sidebar.style.gridRowEnd = "";
           }
         }
 
-        // Initial adjustment
         adjustSidebar();
-
-        // Adjust on window resize
         window.addEventListener("resize", adjustSidebar);
       });
     </script>

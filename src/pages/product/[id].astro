@@ -1,114 +1,105 @@
 ---
-import Layout from "../../layouts/Layout.astro";
-import Button from "../../components/Button.astro";
-import { squareClient, type Product } from "../../lib/square-client";
+import Layout from "@/layouts/Layout.astro";
+import Button from "@/components/Button.astro";
+import { fetchProduct } from "@/lib/square-client";
+import { cart } from "@/lib/cart";
 
 const { id } = Astro.params;
+const product = id ? await fetchProduct(id) : null;
 
-let product: Product | null = null;
-
-function getImageUrl(item: any): string {
-  if (item.imageData && item.imageData.url) {
-    return item.imageData.url;
-  }
-  return "/images/placeholder.png";
-}
-
-if (squareClient && id) {
-  try {
-    const { result } = await squareClient.catalogApi.retrieveCatalogObject(id);
-    if (
-      result.object &&
-      result.object.type === "ITEM" &&
-      result.object.itemData
-    ) {
-      const item = result.object;
-      const variation =
-        item.itemData?.variations && item.itemData.variations[0];
-      const amountInCents = variation?.itemVariationData?.priceMoney?.amount;
-      product = {
-        id: item.id,
-        title: item.itemData?.name || "Unnamed Product",
-        description: item.itemData?.description || "",
-        image: getImageUrl(item),
-        price: amountInCents ? Number(amountInCents) / 100 : 0,
-        url: `/product/${item.id}`,
-      };
-    }
-  } catch (error) {
-    console.error("Error fetching product:", error);
-  }
+if (!product) {
+  return Astro.redirect("/404");
 }
 ---
 
-<Layout title={product ? product.title : "Product Not Found"}>
-  {
-    product ? (
-      <div class="product-detail">
-        <img src={product.image} alt={product.title} class="product-image" />
-        <h1>{product.title}</h1>
-        <p class="description">{product.description}</p>
-        <p class="price">${product.price.toFixed(2)}</p>
-        <button
-          class="add-to-cart-button"
-          data-product={JSON.stringify(product)}
-        >
-          Add to Cart
-        </button>
+<Layout title={product.title}>
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="grid md:grid-cols-2 gap-8">
+      <div
+        class="aspect-square bg-beeswax-50 dark:bg-black-pearl-800 rounded-lg overflow-hidden"
+      >
+        <img
+          src={product.image}
+          alt={product.title}
+          class="w-full h-full object-cover"
+        />
       </div>
-    ) : (
-      <p>Product not found</p>
-    )
-  }
+
+      <div class="space-y-6">
+        <h1 class="font-display font-black text-3xl md:text-4xl tracking-wide">
+          {product.title}
+        </h1>
+
+        <p class="font-display text-2xl">
+          ${product.price.toFixed(2)}
+        </p>
+
+        {
+          product.description && (
+            <div class="prose dark:prose-invert">
+              <p>{product.description}</p>
+            </div>
+          )
+        }
+
+        <div class="pt-4">
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            classes="w-full md:w-auto"
+            data-product-id={product.id}
+            data-catalog-id={product.catalogObjectId}
+            data-variation-id={product.variationId}
+          >
+            Add to Cart
+          </Button>
+        </div>
+      </div>
+    </div>
+  </div>
 </Layout>
 
 <script>
-  import { addToCart } from "../../lib/cart";
+  import { cart } from "@/lib/cart";
 
   document
-    .querySelector(".add-to-cart-button")
+    .querySelector("[data-product-id]")
     ?.addEventListener("click", (e) => {
       const button = e.target as HTMLButtonElement;
-      const product = JSON.parse(button.dataset.product || "{}");
-      addToCart({
-        id: product.id,
-        title: product.title,
-        price: product.price,
-        quantity: 1,
-      });
-      alert("Product added to cart!");
+      const productId = button.dataset.productId;
+      const catalogId = button.dataset.catalogId;
+      const variationId = button.dataset.variationId;
+
+      if (productId && catalogId && variationId) {
+        const title = document.querySelector("h1")?.textContent?.trim() || "";
+        const priceText =
+          document
+            .querySelector(".font-display.text-2xl")
+            ?.textContent?.trim() || "";
+        const price = parseFloat(priceText.replace("$", "")) || 0;
+        const image = document.querySelector("img")?.getAttribute("src") || "";
+
+        cart.addItem({
+          id: productId,
+          catalogObjectId: catalogId,
+          variationId: variationId,
+          title: title,
+          price: price,
+          quantity: 1,
+          image: image,
+        });
+
+        // Show success message
+        const successMessage = document.createElement("div");
+        successMessage.className =
+          "fixed top-4 right-4 bg-fig-leaf-500 dark:bg-sweet-tea-300 text-beeswax-50 dark:text-fig-leaf-900 px-4 py-2 rounded-lg shadow-lg";
+        successMessage.textContent = "Added to cart";
+        document.body.appendChild(successMessage);
+
+        setTimeout(() => {
+          successMessage.remove();
+        }, 2000);
+      }
     });
 </script>
-
-<style>
-  .product-detail {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-  .product-image {
-    max-width: 100%;
-    height: auto;
-    margin-bottom: 1rem;
-  }
-  .description {
-    margin-bottom: 1rem;
-  }
-  .price {
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin-bottom: 1rem;
-  }
-  .add-to-cart-button {
-    background-color: #4caf50;
-    border: none;
-    color: white;
-    padding: 15px 32px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin: 4px 2px;
-    cursor: pointer;
-  }
-</style>

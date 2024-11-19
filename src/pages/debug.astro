@@ -1,0 +1,40 @@
+---
+import Layout from "@/layouts/Layout.astro";
+---
+
+<Layout title="Square Debug">
+  <div class="max-w-2xl mx-auto p-8">
+    <h1 class="text-2xl font-bold mb-4">Square Debug Tools</h1>
+
+    <div class="space-y-4">
+      <button
+        id="testConnection"
+        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+      >
+        Test Square Connection
+      </button>
+
+      <pre
+        id="result"
+        class="p-4 bg-gray-100 rounded mt-4 whitespace-pre-wrap">Click button to test connection</pre>
+    </div>
+  </div>
+
+  <script>
+    const resultEl = document.getElementById("result");
+    document
+      .getElementById("testConnection")
+      ?.addEventListener("click", async () => {
+        if (resultEl) {
+          try {
+            resultEl.textContent = "Testing connection...";
+            const locationResponse = await fetch("/api/list-catalog");
+            const data = await locationResponse.json();
+            resultEl.textContent = JSON.stringify(data, null, 2);
+          } catch (error) {
+            resultEl.textContent = `Error: ${error instanceof Error ? error.message : String(error)}`;
+          }
+        }
+      });
+  </script>
+</Layout>

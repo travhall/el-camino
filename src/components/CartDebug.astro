@@ -1,0 +1,341 @@
+---
+// src/components/CartDebug.astro
+---
+
+<div
+  id="cart-debug-panel"
+  class="fixed bottom-0 left-0 right-0 bg-black-pearl-900/90 text-beeswax-50 shadow-lg z-50 backdrop-blur-sm border-t border-black-pearl-700"
+>
+  <!-- Header Bar -->
+  <div
+    class="flex items-center justify-between px-4 py-2 border-b border-black-pearl-700"
+  >
+    <h3 class="text-lg font-bold flex items-center gap-2">
+      <span>Cart Debug Panel</span>
+      <span class="text-xs bg-black-pearl-700 px-2 py-1 rounded">
+        Updates: <span id="update-count">0</span>
+      </span>
+    </h3>
+    <button
+      id="minimize-debug"
+      class="text-sm px-3 py-1 bg-black-pearl-700 hover:bg-black-pearl-600 rounded"
+    >
+      Toggle Panel
+    </button>
+  </div>
+
+  <!-- Debug Content -->
+  <div id="debug-content" class="p-4 overflow-x-auto">
+    <div
+      class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 max-w-[2000px] mx-auto"
+    >
+      <!-- Storage Section -->
+      <div class="space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-semibold">localStorage</span>
+          <button
+            id="show-storage"
+            class="text-xs px-2 py-1 bg-black-pearl-700 hover:bg-black-pearl-600 rounded"
+          >
+            Refresh
+          </button>
+        </div>
+        <pre
+          id="storage-data"
+          class="text-xs bg-black-pearl-800 p-2 rounded overflow-auto h-48 font-mono">
+        </pre>
+      </div>
+
+      <!-- DOM Status -->
+      <div class="space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-semibold">DOM Elements</span>
+        </div>
+        <pre
+          id="dom-status"
+          class="text-xs bg-black-pearl-800 p-2 rounded overflow-auto h-48 font-mono">
+        </pre>
+      </div>
+
+      <!-- Cart Manager State -->
+      <div class="space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-semibold">Cart Manager State</span>
+          <button
+            id="show-cart"
+            class="text-xs px-2 py-1 bg-black-pearl-700 hover:bg-black-pearl-600 rounded"
+          >
+            Refresh
+          </button>
+        </div>
+        <pre
+          id="cart-data"
+          class="text-xs bg-black-pearl-800 p-2 rounded overflow-auto h-48 font-mono">
+        </pre>
+      </div>
+
+      <!-- Square Catalog & Actions -->
+      <div class="space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-semibold">Square Catalog</span>
+          <button
+            id="list-catalog"
+            class="text-xs px-2 py-1 bg-black-pearl-700 hover:bg-black-pearl-600 rounded"
+          >
+            List Items
+          </button>
+        </div>
+        <pre
+          id="catalog-data"
+          class="text-xs bg-black-pearl-800 p-2 rounded overflow-auto h-32 font-mono mb-4">
+        </pre>
+
+        <!-- Test Actions -->
+        <div class="flex gap-2">
+          <button
+            id="add-test"
+            class="flex-1 text-sm px-3 py-1.5 bg-fig-leaf-600 hover:bg-fig-leaf-500 text-white rounded"
+          >
+            Add Test Item
+          </button>
+          <button
+            id="clear-cart"
+            class="flex-1 text-sm px-3 py-1.5 bg-sweet-tea-600 hover:bg-sweet-tea-500 text-black-pearl-900 rounded"
+          >
+            Clear Cart
+          </button>
+          <button
+            id="test-checkout"
+            class="flex-1 text-sm px-3 py-1.5 bg-black-pearl-600 hover:bg-black-pearl-500 text-white rounded"
+          >
+            Test Checkout
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { cart } from "@/lib/cart";
+
+  let updateCount = 0;
+
+  const testProduct = {
+    id: "TEST_ID_1",
+    catalogObjectId: "TEST_CAT_1",
+    variationId: "TEST_VAR_1",
+    title: "Test Product",
+    price: 50.0,
+    quantity: 1,
+    image: "/images/placeholder.png",
+  };
+
+  const testCheckoutProduct = {
+    id: "TEST_CHECKOUT_1",
+    catalogObjectId: "YL5SQK7PLL4KVDQWGBKRQQZ4", // Example catalog item ID from Square
+    variationId: "W6ZIJJWJKYBWXNYXFV2M2WOQ", // Same as catalogObjectId for simple items
+    title: "Polar 8.0 Nick Boserio Fruit Lady Deck Test",
+    price: 50.0,
+    quantity: 1,
+    image: "/images/placeholder.png",
+  };
+
+  function setLoading(show: boolean) {
+    const overlay = document.getElementById("loading-overlay");
+    if (overlay) {
+      if (show) {
+        overlay.classList.remove("hidden");
+        overlay.classList.add("flex");
+      } else {
+        overlay.classList.remove("flex");
+        overlay.classList.add("hidden");
+      }
+    }
+  }
+
+  function updateStorageDisplay() {
+    const display = document.getElementById("storage-data");
+    const cartData = localStorage.getItem("cart");
+    if (display) {
+      try {
+        display.textContent = JSON.stringify(
+          JSON.parse(cartData || "null"),
+          null,
+          2
+        );
+      } catch (e) {
+        display.textContent = "Error parsing cart data";
+      }
+    }
+  }
+
+  function updateDOMStatus() {
+    const display = document.getElementById("dom-status");
+    if (display) {
+      const status = {
+        cartContainer: !!document.getElementById("cart-container"),
+        cartContent: !!document.getElementById("cart-content"),
+        cartItems: !!document.getElementById("cart-items"),
+        emptyCart: !!document.getElementById("empty-cart"),
+        itemContainers: document.querySelectorAll("[data-item-container]")
+          .length,
+      };
+      display.textContent = JSON.stringify(status, null, 2);
+    }
+  }
+
+  function updateCartDisplay() {
+    const display = document.getElementById("cart-data");
+    if (display) {
+      const state = {
+        items: cart.getItems(),
+        total: cart.getTotal(),
+        itemCount: cart.getItemCount(),
+      };
+      display.textContent = JSON.stringify(state, null, 2);
+    }
+  }
+
+  async function updateCatalogDisplay() {
+    const display = document.getElementById("catalog-data");
+    if (!display) return;
+
+    try {
+      display.textContent = "Loading catalog...";
+      const response = await fetch("/api/list-catalog");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch catalog");
+      }
+
+      display.textContent = JSON.stringify(data.items, null, 2);
+    } catch (error) {
+      display.textContent = `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
+    }
+  }
+
+  // Update the testSquareCheckout function in CartDebug.astro
+  async function testSquareCheckout() {
+    try {
+      setLoading(true);
+      cart.clear();
+      cart.addItem(testCheckoutProduct);
+
+      const items = cart.getItems();
+      console.log("Starting checkout with items:", items);
+
+      const response = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ items }),
+      });
+
+      const data = await response.json();
+      console.log("Checkout response:", data);
+
+      if (!response.ok) {
+        throw new Error(
+          data.error?.message || `Checkout failed: ${response.status}`
+        );
+      }
+
+      if (!data.checkoutUrl) {
+        throw new Error("No checkout URL returned");
+      }
+
+      const infoMessage = document.createElement("div");
+      infoMessage.className =
+        "fixed top-4 right-4 bg-fig-leaf-500 text-white px-4 py-2 rounded-lg shadow-lg z-50";
+      infoMessage.textContent = "Redirecting to Square Checkout...";
+      document.body.appendChild(infoMessage);
+
+      setTimeout(() => {
+        window.location.href = data.checkoutUrl;
+      }, 1500);
+    } catch (error) {
+      console.error("Test checkout error:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      const errorMessage = document.createElement("div");
+      errorMessage.className =
+        "fixed top-4 right-4 bg-sweet-tea-500 text-white px-4 py-2 rounded-lg shadow-lg z-50";
+      errorMessage.textContent =
+        error instanceof Error ? error.message : "Test checkout failed";
+      document.body.appendChild(errorMessage);
+
+      setTimeout(() => {
+        errorMessage.remove();
+      }, 3000);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function updateDebugDisplay() {
+    updateStorageDisplay();
+    updateDOMStatus();
+    updateCartDisplay();
+
+    // Update counter
+    updateCount++;
+    const counter = document.getElementById("update-count");
+    if (counter) {
+      counter.textContent = updateCount.toString();
+    }
+  }
+
+  // Show cart data
+  document
+    .getElementById("show-cart")
+    ?.addEventListener("click", updateCartDisplay);
+
+  // Show storage data
+  document
+    .getElementById("show-storage")
+    ?.addEventListener("click", updateStorageDisplay);
+
+  // Add test item
+  document.getElementById("add-test")?.addEventListener("click", () => {
+    cart.addItem(testProduct);
+    console.log("Added test item");
+    updateDebugDisplay();
+  });
+
+  // Clear cart
+  document.getElementById("clear-cart")?.addEventListener("click", () => {
+    cart.clear();
+    console.log("Cart cleared");
+    updateDebugDisplay();
+  });
+
+  // Test Square checkout
+  document
+    .getElementById("test-checkout")
+    ?.addEventListener("click", testSquareCheckout);
+
+  // Toggle debug panel
+  document.getElementById("minimize-debug")?.addEventListener("click", () => {
+    const content = document.getElementById("debug-content");
+    if (content) {
+      content.classList.toggle("hidden");
+    }
+  });
+
+  // Listen for cart updates
+  window.addEventListener("cartUpdated", () => {
+    console.log("Cart updated event received");
+    updateDebugDisplay();
+  });
+
+  // Initial display
+  document.addEventListener("DOMContentLoaded", updateDebugDisplay);
+  document
+    .getElementById("list-catalog")
+    ?.addEventListener("click", updateCatalogDisplay);
+</script>

@@ -1,181 +1,329 @@
 ---
-import Layout from "../layouts/Layout.astro";
-import Button from "../components/Button.astro";
-import {
-  getCart,
-  removeFromCart,
-  updateQuantity,
-  addToCart,
-} from "../lib/cart";
-
-const locationId = import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
+import Layout from "@/layouts/Layout.astro";
 ---
 
 <Layout title="Shopping Cart">
-  <div class="cart-page">
-    <h1>Your Shopping Cart</h1>
-    <div id="cart-items">Loading cart...</div>
-    <div id="cart-total"></div>
-    <Button id="checkout-button" class="checkout-button" style="display: none;"
-      >Proceed to Checkout</Button
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <h1 class="font-display font-black text-3xl md:text-4xl tracking-wide mb-8">
+      Shopping Cart
+    </h1>
+
+    <!-- Loading State -->
+    <div id="cart-loading" class="text-center py-12">
+      <p class="text-lg animate-pulse">Loading cart...</p>
+    </div>
+
+    <!-- Cart Content - Initially Empty -->
+    <div id="cart-container" class="hidden"></div>
+
+    <!-- Loading Indicator -->
+    <div
+      id="loading-overlay"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50"
     >
+      <div class="bg-white dark:bg-black-pearl-800 p-4 rounded-lg shadow-lg">
+        <p class="text-lg">Processing...</p>
+      </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2">
+    </div>
   </div>
 </Layout>
 
-<script define:vars={{ locationId }}>
-  function getCart() {
-    const cart = localStorage.getItem("cart");
-    return cart ? JSON.parse(cart) : [];
-  }
+<script>
+  import { cart } from "@/lib/cart";
 
-  function removeFromCart(id) {
-    const cart = getCart();
-    const updatedCart = cart.filter((item) => item.id !== id);
-    localStorage.setItem("cart", JSON.stringify(updatedCart));
-  }
-
-  function updateQuantity(id, quantity) {
-    const cart = getCart();
-    const updatedCart = cart.map((item) =>
-      item.id === id
-        ? { ...item, quantity: parseInt(quantity.toString()) }
-        : item
-    );
-    localStorage.setItem("cart", JSON.stringify(updatedCart));
-  }
-
-  function renderCart() {
-    const cartItems = getCart();
-    const cartItemsElement = document.getElementById("cart-items");
-    const cartTotalElement = document.getElementById("cart-total");
-    const checkoutButton = document.getElementById("checkout-button");
-
-    if (cartItemsElement && cartTotalElement && checkoutButton) {
-      if (cartItems.length === 0) {
-        cartItemsElement.innerHTML = "<p>Your cart is empty.</p>";
-        cartTotalElement.textContent = "";
-        checkoutButton.style.display = "none";
-      } else {
-        cartItemsElement.innerHTML = cartItems
-          .map(
-            (item) => `
-          <div class="cart-item">
-            <span>${item.title}</span>
-            <span>$${item.price.toFixed(2)}</span>
-            <input type="number" min="1" value="${item.quantity}" data-id="${item.id}" class="quantity-input">
-            <button class="remove-button" data-id="${item.id}">Remove</button>
-          </div>
-        `
-          )
-          .join("");
-
-        const total = cartItems.reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0
-        );
-        cartTotalElement.textContent = `Total: $${total.toFixed(2)}`;
-        checkoutButton.style.display = "block";
-
-        // Add event listeners for remove buttons
-        document.querySelectorAll(".remove-button").forEach((button) => {
-          button.addEventListener("click", (e) => {
-            const target = e.currentTarget;
-            if (target instanceof HTMLElement) {
-              const id = target.getAttribute("data-id");
-              if (id) {
-                console.log("Removing item with id:", id);
-                removeFromCart(id);
-                renderCart();
-              }
-            }
-          });
-        });
-
-        // Add event listeners for quantity inputs
-        document.querySelectorAll(".quantity-input").forEach((input) => {
-          input.addEventListener("change", (e) => {
-            const target = e.currentTarget;
-            if (target instanceof HTMLInputElement) {
-              const id = target.getAttribute("data-id");
-              const quantity = parseInt(target.value);
-              if (id && !isNaN(quantity)) {
-                updateQuantity(id, quantity);
-                renderCart();
-              }
-            }
-          });
-        });
-      }
+  function setLoading(show: boolean) {
+    const overlay = document.getElementById("loading-overlay");
+    if (overlay) {
+      overlay.classList.toggle("hidden", !show);
     }
   }
 
-  renderCart();
+  function showNotification(
+    message: string,
+    type: "success" | "error" = "success"
+  ) {
+    const container = document.getElementById("notification-container");
+    if (!container) return;
 
-  // Square Checkout
-  const checkoutButton = document.getElementById("checkout-button");
-  if (checkoutButton) {
-    checkoutButton.addEventListener("click", async () => {
-      const cartItems = getCart();
+    const notification = document.createElement("div");
+    notification.className = `px-4 py-2 rounded-lg shadow-lg transition-all duration-300 ${
+      type === "success"
+        ? "bg-fig-leaf-500 dark:bg-sweet-tea-300 text-beeswax-50 dark:text-fig-leaf-900"
+        : "bg-sweet-tea-500 text-white"
+    }`;
+    notification.textContent = message;
 
-      try {
-        console.log("Sending request to /api/create-checkout");
-        const response = await fetch("/api/create-checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cartItems, locationId }),
-        });
+    container.appendChild(notification);
 
-        console.log("Response status:", response.status);
-        console.log("Response OK:", response.ok);
+    // Remove after delay
+    setTimeout(() => {
+      notification.style.opacity = "0";
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error("Server response:", errorData);
-          throw new Error(
-            errorData.details || `HTTP error! status: ${response.status}`
-          );
+  function createEmptyCart() {
+    return `
+      <div class="text-center py-12" id="empty-cart">
+        <svg class="w-16 h-16 mx-auto mb-4 text-fig-leaf-900/50 dark:text-honey-cream-50/50">
+        </svg>
+        <p class="text-lg mb-6">Your cart is empty</p>
+        <a
+          href="/"
+          class="inline-block font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-beeswax-50 dark:text-fig-leaf-900 bg-fig-leaf-500 dark:bg-sweet-tea-300 hover:bg-fig-leaf-500/75 hover:dark:bg-sweet-tea-300/75 border-fig-leaf-500 dark:border-sweet-tea-300 focus-visible:ring-fig-leaf-500 dark:focus-visible:ring-sweet-tea-300 focus-visible:ring-offset-sweet-tea-50 dark:focus-visible:ring-offset-fig-leaf-900 text-lg py-2 px-4 lg:text-xl lg:py-3 lg:px-5"
+        >
+          Continue Shopping
+        </a>
+      </div>
+    `;
+  }
+
+  function createCartItem(item: any) {
+    return `
+      <div
+        class="bg-beeswax-50 dark:bg-black-pearl-800 rounded-lg p-4 flex gap-4"
+        data-item-container="${item.id}"
+      >
+        ${
+          item.image
+            ? `
+          <img
+            src="${item.image}"
+            alt="${item.title}"
+            class="w-24 h-24 object-cover rounded-md"
+          />
+        `
+            : ""
         }
+        <div class="flex-grow">
+          <h3 class="font-display text-lg mb-2">${item.title}</h3>
+          <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2">
+              <button
+                class="quantity-btn decrease p-1 hover:bg-black-pearl-100 dark:hover:bg-black-pearl-700 rounded"
+                data-id="${item.id}"
+                aria-label="Decrease quantity"
+              >
+                <svg class="w-4 h-4 text-fig-leaf-900 dark:text-beeswax-50">
+                  <use href="#icon-minus"></use>
+                </svg>
+              </button>
+              <span
+                class="quantity-display w-8 text-center"
+                data-quantity-display="${item.id}"
+              >
+                ${item.quantity}
+              </span>
+              <button
+                class="quantity-btn increase p-1 hover:bg-black-pearl-100 dark:hover:bg-black-pearl-700 rounded"
+                data-id="${item.id}"
+                aria-label="Increase quantity"
+              >
+                <svg class="w-4 h-4 text-fig-leaf-900 dark:text-beeswax-50">
+                  <use href="#icon-plus"></use>
+                </svg>
+              </button>
+            </div>
+            <span
+              class="font-display item-price"
+              data-price-display="${item.id}"
+            >
+              $${(item.price * item.quantity).toFixed(2)}
+            </span>
+            <button
+              class="remove-btn p-1 hover:bg-black-pearl-100 dark:hover:bg-black-pearl-700 rounded"
+              data-id="${item.id}"
+              aria-label="Remove item"
+            >
+              <svg class="w-5 h-5 text-black-pearl-400 hover:text-fig-leaf-500 dark:text-beeswax-400 dark:hover:text-sweet-tea-300">
+                <use href="#icon-x"></use>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
 
-        const data = await response.json();
-        console.log("Response data:", data);
+  function updateDisplay() {
+    console.log("Updating cart display");
+    const items = cart.getItems();
+    const total = cart.getTotal();
+    console.log("Cart state:", { items, total });
 
-        if (data.checkoutUrl) {
-          console.log("Redirecting to:", data.checkoutUrl);
-          window.location.href = data.checkoutUrl;
-        } else {
-          throw new Error("Checkout URL not found in response");
-        }
-      } catch (error) {
-        console.error("Error creating checkout:", error);
-        alert("There was an error processing your checkout. Please try again.");
+    const cartLoading = document.getElementById("cart-loading");
+    const cartContainer = document.getElementById("cart-container");
+
+    if (!cartContainer) {
+      console.error("Cart container not found");
+      return;
+    }
+
+    // Hide loading state and show cart container
+    if (cartLoading) cartLoading.classList.add("hidden");
+    cartContainer.classList.remove("hidden");
+
+    if (items.length === 0) {
+      cartContainer.innerHTML = createEmptyCart();
+      return;
+    }
+
+    cartContainer.innerHTML = `
+      <div class="grid md:grid-cols-3 gap-8" id="cart-content">
+        <div class="md:col-span-2 space-y-4" id="cart-items">
+          ${items.map((item) => createCartItem(item)).join("")}
+        </div>
+        <div class="md:col-span-1">
+          <div class="bg-beeswax-50 dark:bg-black-pearl-800 rounded-lg p-6 sticky top-4">
+            <h2 class="font-display text-xl mb-4">Order Summary</h2>
+            <div class="space-y-2 mb-4">
+              <div class="flex justify-between">
+                <span>Subtotal</span>
+                <span id="subtotal">$${total.toFixed(2)}</span>
+              </div>
+              <div class="flex justify-between font-bold pt-2 border-t border-black-pearl-200 dark:border-black-pearl-600">
+                <span>Total</span>
+                <span id="total">$${total.toFixed(2)}</span>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <button
+                type="button"
+                id="checkout-button"
+                class="w-full font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-beeswax-50 dark:text-fig-leaf-900 bg-fig-leaf-500 dark:bg-sweet-tea-300 hover:bg-fig-leaf-500/75 hover:dark:bg-sweet-tea-300/75 border-fig-leaf-500 dark:border-sweet-tea-300 focus-visible:ring-fig-leaf-500 dark:focus-visible:ring-sweet-tea-300 focus-visible:ring-offset-sweet-tea-50 dark:focus-visible:ring-offset-fig-leaf-900 text-lg py-2 px-4 lg:text-xl lg:py-3 lg:px-5"
+              >
+                Proceed to Checkout
+              </button>
+              <a
+                href="/"
+                class="block w-full text-center font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 bg-transparent hover:bg-black-pearl-50 hover:dark:bg-black-pearl-800 border-fig-leaf-500 dark:border-sweet-tea-300 text-fig-leaf-500 dark:text-sweet-tea-300 focus-visible:ring-fig-leaf-500 dark:focus-visible:ring-sweet-tea-300 focus-visible:ring-offset-sweet-tea-50 dark:focus-visible:ring-offset-fig-leaf-900 py-1 px-3 lg:py-2 lg:px-4"
+              >
+                Continue Shopping
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    attachEventListeners();
+  }
+
+  // Update this function in cart.astro
+  async function handleCheckout() {
+    try {
+      const items = cart.getItems();
+      if (items.length === 0) {
+        showNotification("Your cart is empty", "error");
+        return;
       }
-    });
-  }
-</script>
 
-<style>
-  .cart-page {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
+      setLoading(true);
+      console.log("Starting checkout with items:", items);
+
+      const response = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ items }),
+      });
+
+      const data = await response.json();
+      console.log("Checkout response:", data);
+      console.log("Environment check:", {
+        locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
+        hasAccessToken: !!import.meta.env.SQUARE_ACCESS_TOKEN,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          data.error?.message ||
+            `Checkout failed with status: ${response.status}`
+        );
+      }
+
+      if (!data.checkoutUrl) {
+        throw new Error("No checkout URL returned");
+      }
+
+      showNotification("Redirecting to checkout...", "success");
+
+      // Short delay before redirect to allow notification to be seen
+      setTimeout(() => {
+        window.location.href = data.checkoutUrl;
+      }, 1000);
+    } catch (error) {
+      console.error("Checkout error:", error);
+      showNotification(
+        error instanceof Error
+          ? error.message
+          : "Checkout failed. Please try again.",
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
   }
-  .cart-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding: 1rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+
+  function attachEventListeners() {
+    // Quantity buttons
+    document
+      .querySelectorAll<HTMLButtonElement>(".quantity-btn")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          const id = button.dataset.id;
+          if (!id) return;
+
+          const currentQuantity =
+            cart.getItems().find((item) => item.id === id)?.quantity || 0;
+          const newQuantity = button.classList.contains("decrease")
+            ? Math.max(0, currentQuantity - 1)
+            : currentQuantity + 1;
+
+          if (newQuantity === 0) {
+            cart.removeItem(id);
+          } else {
+            cart.updateQuantity(id, newQuantity);
+          }
+        });
+      });
+
+    // Remove buttons
+    document
+      .querySelectorAll<HTMLButtonElement>(".remove-btn")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          const id = button.dataset.id;
+          if (!id) return;
+          cart.removeItem(id);
+        });
+      });
+
+    // Checkout button
+    document
+      .getElementById("checkout-button")
+      ?.addEventListener("click", handleCheckout);
   }
-  .quantity-input {
-    width: 50px;
-  }
-  .remove-button,
-  .checkout-button {
-    border: none;
-  }
-  .checkout-button {
-    display: block;
-  }
-</style>
+
+  // Initial setup
+  document.addEventListener("DOMContentLoaded", () => {
+    console.log("DOM Content Loaded - Setting up cart");
+
+    // Force a cart refresh
+    cart.forceRefresh();
+
+    // Initial display update
+    updateDisplay();
+
+    // Listen for cart updates
+    window.addEventListener("cartUpdated", () => {
+      console.log("Cart updated event received");
+      updateDisplay();
+    });
+  });
+</script>
