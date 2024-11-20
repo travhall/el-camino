@@ -1,3 +1,4 @@
+// /src/lib/square/client.ts
 import { Client, Environment } from 'square';
 import type { Product } from './types';
 
@@ -15,13 +16,25 @@ export const squareClient = new Client({
     squareVersion: '2024-02-28'
 });
 
-// Add to src/lib/square/client.ts
 export const jsonStringifyReplacer = (_key: string, value: any) => {
     if (typeof value === 'bigint') {
         return value.toString();
     }
     return value;
 };
+
+async function getImageUrl(imageId: string): Promise<string | null> {
+    try {
+        const { result } = await squareClient.catalogApi.retrieveCatalogObject(imageId);
+        if (result.object?.type === 'IMAGE') {
+            return result.object.imageData?.url || null;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching image:', error);
+        return null;
+    }
+}
 
 export async function fetchProducts(): Promise<Product[]> {
     const { result } = await squareClient.catalogApi.listCatalog(undefined, 'ITEM');
@@ -30,23 +43,36 @@ export async function fetchProducts(): Promise<Product[]> {
         return [];
     }
 
-    return result.objects
-        .filter(item => item.type === 'ITEM')
-        .map(item => {
-            const variation = item.itemData?.variations?.[0];
-            const priceMoney = variation?.itemVariationData?.priceMoney;
+    const products = await Promise.all(
+        result.objects
+            .filter(item => item.type === 'ITEM')
+            .map(async item => {
+                const variation = item.itemData?.variations?.[0];
+                const priceMoney = variation?.itemVariationData?.priceMoney;
 
-            return {
-                id: item.id,
-                catalogObjectId: item.id,
-                variationId: variation?.id || item.id,
-                title: item.itemData?.name || '',
-                description: item.itemData?.description || '',
-                image: '/images/placeholder.png', // or handle image from Square
-                price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
-                url: `/product/${item.id}`
-            };
-        });
+                // Handle image
+                let imageUrl = '/images/placeholder.png';
+                if (item.itemData?.imageIds?.[0]) {
+                    const fetchedUrl = await getImageUrl(item.itemData.imageIds[0]);
+                    if (fetchedUrl) {
+                        imageUrl = fetchedUrl;
+                    }
+                }
+
+                return {
+                    id: item.id,
+                    catalogObjectId: item.id,
+                    variationId: variation?.id || item.id,
+                    title: item.itemData?.name || '',
+                    description: item.itemData?.description || '',
+                    image: imageUrl,
+                    price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
+                    url: `/product/${item.id}`
+                };
+            })
+    );
+
+    return products;
 }
 
 export async function fetchProduct(id: string): Promise<Product | null> {
@@ -60,13 +86,22 @@ export async function fetchProduct(id: string): Promise<Product | null> {
 
         if (!variation || !priceMoney) return null;
 
+        // Handle image
+        let imageUrl = '/images/placeholder.png';
+        if (item.itemData?.imageIds?.[0]) {
+            const fetchedUrl = await getImageUrl(item.itemData.imageIds[0]);
+            if (fetchedUrl) {
+                imageUrl = fetchedUrl;
+            }
+        }
+
         return {
             id: item.id,
             catalogObjectId: item.id,
             variationId: variation.id,
             title: item.itemData?.name || '',
             description: item.itemData?.description || '',
-            image: '/images/placeholder.png',
+            image: imageUrl,
             price: Number(priceMoney.amount) / 100,
             url: `/product/${item.id}`
         };

@@ -1,3 +1,4 @@
+// src/lib/square/testing.ts
 import type { CartItem } from '../cart/types';
 import type { Money } from './types';
 import { MoneyUtils } from './money';

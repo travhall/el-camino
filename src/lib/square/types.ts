@@ -1,4 +1,5 @@
-import type { Money as SquareMoney } from 'square';
+// /src/lib/square/types.ts
+import type { Money as SquareMoney } from 'square'; // 'SquareMoney' is declared but its value is never read.ts(6133)
 
 export interface Money {
     amount: number;  // Always in cents

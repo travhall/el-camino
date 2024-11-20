@@ -1,4 +1,5 @@
-import type { Money } from '../square/types';
+// /src/lib/cart/types.ts
+import type { Money } from '../square/types'; // 'Money' is declared but its value is never read.ts(6133)
 
 export interface CartItem {
     id: string;

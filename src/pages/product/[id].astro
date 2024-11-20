@@ -12,64 +12,94 @@ if (!product) {
   return Astro.redirect("/404");
 }
 
-const formattedPrice = product.price.toFixed(2); // Using number directly
+const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 ---
 
 <Layout title={product.title}>
-  <!-- Rest of the template stays the same -->
-  <div class="pt-4">
-    <Button
-      type="button"
-      variant="primary"
-      size="lg"
-      classes="w-full md:w-auto"
-      data-product-id={product.id}
-      data-catalog-id={product.catalogObjectId}
-      data-variation-id={product.variationId}
-      data-price={product.price}
-    >
-      Add to Cart
-    </Button>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="lg:grid lg:grid-cols-2 lg:gap-x-8">
+      {/* Product Image */}
+      <div class="aspect-w-4 aspect-h-3 rounded-lg overflow-hidden bg-gray-100">
+        <img
+          src={product.image}
+          alt={product.title}
+          class="w-full h-full object-cover"
+          onerror="this.src='/images/placeholder.png'"
+        />
+      </div>
+
+      {/* Product Details */}
+      <div class="mt-10 lg:mt-0">
+        <h1 class="text-3xl font-display mb-4">
+          {product.title}
+        </h1>
+
+        <div class="mt-3">
+          <p class="text-2xl font-display">{formattedPrice}</p>
+        </div>
+
+        {
+          product.description && (
+            <div class="mt-6">
+              <p class="text-base text-gray-700 dark:text-beeswax-300">
+                {product.description}
+              </p>
+            </div>
+          )
+        }
+
+        <div class="mt-8">
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            classes="w-full md:w-auto"
+            data-product={JSON.stringify({
+              id: product.id,
+              catalogObjectId: product.catalogObjectId,
+              variationId: product.variationId,
+              title: product.title,
+              price: product.price,
+              image: product.image,
+            })}
+          >
+            Add to Cart
+          </Button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
     import { cart } from "@/lib/cart";
 
-    document
-      .querySelector("[data-product-id]")
-      ?.addEventListener("click", (e) => {
-        const button = e.target as HTMLButtonElement;
-        const productId = button.dataset.productId;
-        const catalogId = button.dataset.catalogId;
-        const variationId = button.dataset.variationId;
-        const price = parseFloat(button.dataset.price || "0");
-
-        if (productId && catalogId && variationId) {
-          const title = document.querySelector("h1")?.textContent?.trim() || "";
-          const image =
-            document.querySelector("img")?.getAttribute("src") || "";
-
-          cart.addItem({
-            id: productId,
-            catalogObjectId: catalogId,
-            variationId: variationId,
-            title: title,
-            price: price, // Keep as number for now
-            quantity: 1,
-            image: image,
-          });
-
-          // Show success message
-          const successMessage = document.createElement("div");
-          successMessage.className =
-            "fixed top-4 right-4 bg-fig-leaf-500 dark:bg-sweet-tea-300 text-beeswax-50 dark:text-fig-leaf-900 px-4 py-2 rounded-lg shadow-lg";
-          successMessage.textContent = "Added to cart";
-          document.body.appendChild(successMessage);
-
-          setTimeout(() => {
-            successMessage.remove();
-          }, 2000);
+    document.querySelector("[data-product]")?.addEventListener("click", (e) => {
+      try {
+        const button = e.currentTarget as HTMLButtonElement;
+        const productData = button.dataset.product;
+        if (!productData) {
+          throw new Error("No product data found");
         }
-      });
-  </script></Layout
->
+
+        const product = JSON.parse(productData);
+        cart.addItem({
+          ...product,
+          quantity: 1,
+        });
+
+        // Show success message
+        const successMessage = document.createElement("div");
+        successMessage.className =
+          "fixed top-4 right-4 bg-fig-leaf-500 dark:bg-sweet-tea-300 text-beeswax-50 dark:text-fig-leaf-900 px-4 py-2 rounded-lg shadow-lg z-50";
+        successMessage.textContent = "Added to cart";
+        document.body.appendChild(successMessage);
+
+        setTimeout(() => {
+          successMessage.remove();
+        }, 2000);
+      } catch (error) {
+        console.error("Error adding to cart:", error);
+      }
+    });
+  </script>
+</Layout>

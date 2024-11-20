@@ -1,3 +1,4 @@
+// src/lib/square/money.ts
 import type { Money } from './types';
 import type { Money as SquareMoney } from 'square';
 

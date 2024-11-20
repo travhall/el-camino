@@ -1,3 +1,4 @@
+// /src/lib/types/index.ts
 export type {
     Money,
     OrderDetails,
