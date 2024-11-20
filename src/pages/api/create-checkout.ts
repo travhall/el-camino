@@ -1,85 +1,94 @@
 import type { APIRoute } from 'astro';
-import type { CartItem } from '@/lib/types';
-import { squareClient, jsonStringifyReplacer } from '@/lib/square-client';
-import { ValidationError } from '@/lib/errors';
-import type { CreatePaymentLinkRequest, Money } from 'square';
+import { Client, Environment } from 'square';
 
-interface RequestBody {
-    items: CartItem[];
-    email?: string;
-}
-
-function createMoney(amount: number): Money {
-    return {
-        amount: BigInt(Math.round(amount * 100)),
-        currency: 'USD'
-    };
-}
+const squareClient = new Client({
+    accessToken: import.meta.env.SQUARE_ACCESS_TOKEN || '',
+    environment: Environment.Sandbox,
+    squareVersion: '2024-02-28'
+});
 
 export const POST: APIRoute = async ({ request }) => {
     try {
-        const body = await request.json() as RequestBody;
-        console.log('Starting checkout process with items:', body.items);
+        const { items } = await request.json();
 
-        if (!body.items?.length) {
-            throw new ValidationError('No items provided');
+        if (!items?.length) {
+            return new Response(
+                JSON.stringify({ error: 'No items provided' }),
+                { status: 400 }
+            );
         }
 
-        const locationId = import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
+        console.log('Creating order with items:', items);
 
-        // Calculate total price
-        const totalAmount = body.items.reduce((total, item) =>
-            total + (item.price * item.quantity), 0);
+        // Calculate total amount
+        const totalAmount = items.reduce(
+            (sum: number, item: any) => sum + (item.price * item.quantity),
+            0
+        );
 
-        // Create payment link with proper typing
-        const paymentLinkRequest: CreatePaymentLinkRequest = {
+        // Create the order first
+        const orderResponse = await squareClient.ordersApi.createOrder({
             idempotencyKey: crypto.randomUUID(),
-            quickPay: {
-                name: 'El Camino Shop Order',
-                priceMoney: createMoney(totalAmount),
-                locationId
+            order: {
+                locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
+                lineItems: items.map((item: any) => ({
+                    quantity: String(item.quantity),
+                    catalogObjectId: item.variationId, // Use variationId instead of catalogObjectId
+                    itemType: 'ITEM'
+                }))
+            }
+        });
+
+        if (!orderResponse.result.order?.id) {
+            throw new Error('Failed to create order');
+        }
+
+        console.log('Order created:', orderResponse.result.order.id);
+
+        // Create payment link with the order
+        const linkResponse = await squareClient.checkoutApi.createPaymentLink({
+            idempotencyKey: crypto.randomUUID(),
+            order: {
+                locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
+                lineItems: items.map((item: any) => ({
+                    quantity: String(item.quantity),
+                    catalogObjectId: item.variationId,
+                    itemType: 'ITEM'
+                }))
             },
             checkoutOptions: {
-                allowTipping: false,
-                redirectUrl: `${new URL(request.url).origin}/order-confirmation`,
-                merchantSupportEmail: 'support@example.com'
+                redirectUrl: new URL('/order-confirmation', request.url).toString(),
+                askForShippingAddress: true
             }
-        };
+        });
 
-        console.log('Creating payment link...', JSON.stringify(paymentLinkRequest, jsonStringifyReplacer, 2));
-        const paymentResponse = await squareClient.checkoutApi.createPaymentLink(paymentLinkRequest);
-        console.log('Payment link response:', JSON.stringify(paymentResponse.result, jsonStringifyReplacer, 2));
-
-        if (!paymentResponse.result?.paymentLink?.url) {
+        if (!linkResponse.result.paymentLink?.url) {
             throw new Error('Failed to create payment link');
         }
 
-        return new Response(JSON.stringify({
-            success: true,
-            checkoutUrl: paymentResponse.result.paymentLink.url,
-            paymentLinkId: paymentResponse.result.paymentLink.id,
-            amount: totalAmount,
-            items: body.items.length
-        }, jsonStringifyReplacer), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-        });
+        console.log('Payment link created:', linkResponse.result.paymentLink.url);
 
+        return new Response(
+            JSON.stringify({
+                success: true,
+                checkoutUrl: linkResponse.result.paymentLink.url,
+                orderId: orderResponse.result.order.id
+            }),
+            { status: 200 }
+        );
     } catch (error) {
         console.error('Checkout error:', {
-            message: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined
+            message: error instanceof Error ? error.message : 'Unknown error',
+            details: error
         });
 
-        return new Response(JSON.stringify({
-            success: false,
-            error: {
-                message: error instanceof Error ? error.message : 'Checkout failed',
-                details: error instanceof Error ? error.stack : undefined
-            }
-        }, jsonStringifyReplacer), {
-            status: error instanceof ValidationError ? 400 : 500,
-            headers: { 'Content-Type': 'application/json' }
-        });
+        return new Response(
+            JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : 'Checkout creation failed',
+                details: error
+            }),
+            { status: 500 }
+        );
     }
 };
