@@ -3,7 +3,7 @@ import Layout from "@/layouts/Layout.astro";
 import ArticleNavigation from "@/components/ArticleNavigation.astro";
 import { fetchGraphQL } from "@/lib/graphql";
 import { GET_ARTICLE_BY_SLUG, GET_ALL_ARTICLES } from "@/lib/queries";
-import type { ArticlesResponse } from "@/lib/types";
+import type { ArticlesResponse } from "@/lib/types/content";
 import { formatDate } from "@/utils/dates";
 
 const { slug } = Astro.params;
@@ -105,7 +105,7 @@ function getImageUrl(path: string): string {
                   </blockquote>
                 );
               case "ComponentSharedSlider":
-                return (
+                return block.files ? (
                   <div class="flex flex-col gap-4">
                     {block.files.map((file) => (
                       <img
@@ -115,9 +115,7 @@ function getImageUrl(path: string): string {
                       />
                     ))}
                   </div>
-                );
-              default:
-                return null;
+                ) : null;
             }
           })
         }

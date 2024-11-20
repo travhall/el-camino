@@ -1,23 +1,24 @@
 import type { Money } from './types';
+import type { Money as SquareMoney } from 'square';
 
 export class MoneyUtils {
     static readonly DEFAULT_CURRENCY = 'USD';
 
-    /**
-     * Format money amount for display
-     */
-    static format(money: Money): string {
+    static format(money: Money | SquareMoney): string {
+        if (!money?.amount) {
+            return `$0.00`;
+        }
+
+        const amount = typeof money.amount === 'bigint'
+            ? Number(money.amount)
+            : money.amount;
+
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
-            currency: money.currency || MoneyUtils.DEFAULT_CURRENCY,
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(money.amount / 100);
+            currency: money.currency || MoneyUtils.DEFAULT_CURRENCY
+        }).format(amount / 100);
     }
 
-    /**
-     * Convert a regular number (dollars) to money object (cents)
-     */
     static fromFloat(amount: number, currency: string = MoneyUtils.DEFAULT_CURRENCY): Money {
         return {
             amount: Math.round(amount * 100),
@@ -25,16 +26,32 @@ export class MoneyUtils {
         };
     }
 
-    /**
-     * Convert money object (cents) to regular number (dollars)
-     */
     static toFloat(money: Money): number {
         return money.amount / 100;
     }
 
-    /**
-     * Add two money objects
-     */
+    static fromSquareMoney(squareMoney: SquareMoney | null | undefined): Money {
+        if (!squareMoney || !squareMoney.amount) {
+            return { amount: 0, currency: MoneyUtils.DEFAULT_CURRENCY };
+        }
+
+        return {
+            amount: typeof squareMoney.amount === 'string'
+                ? parseInt(squareMoney.amount, 10)
+                : typeof squareMoney.amount === 'bigint'
+                    ? Number(squareMoney.amount)
+                    : squareMoney.amount,
+            currency: squareMoney.currency || MoneyUtils.DEFAULT_CURRENCY
+        };
+    }
+
+    static toSquareMoney(money: Money): SquareMoney {
+        return {
+            amount: BigInt(money.amount),
+            currency: money.currency || MoneyUtils.DEFAULT_CURRENCY
+        };
+    }
+
     static add(a: Money, b: Money): Money {
         if (a.currency !== b.currency) {
             throw new Error('Cannot add money with different currencies');
@@ -45,9 +62,6 @@ export class MoneyUtils {
         };
     }
 
-    /**
-     * Subtract two money objects
-     */
     static subtract(a: Money, b: Money): Money {
         if (a.currency !== b.currency) {
             throw new Error('Cannot subtract money with different currencies');
@@ -58,9 +72,6 @@ export class MoneyUtils {
         };
     }
 
-    /**
-     * Multiply money by a number
-     */
     static multiply(money: Money, multiplier: number): Money {
         return {
             amount: Math.round(money.amount * multiplier),
@@ -68,39 +79,18 @@ export class MoneyUtils {
         };
     }
 
-    /**
-     * Convert from Square Money type
-     */
-    static fromSquareMoney(squareMoney: { amount?: string | number | bigint, currency?: string } | null | undefined): Money {
-        if (!squareMoney || !squareMoney.amount) {
-            return { amount: 0, currency: MoneyUtils.DEFAULT_CURRENCY };
-        }
-
-        const amount = typeof squareMoney.amount === 'string'
-            ? parseInt(squareMoney.amount, 10)
-            : typeof squareMoney.amount === 'bigint'
-                ? Number(squareMoney.amount)
-                : squareMoney.amount;
-
-        return {
-            amount,
-            currency: squareMoney.currency || MoneyUtils.DEFAULT_CURRENCY
-        };
+    static isZero(money: Money): boolean {
+        return money.amount === 0;
     }
 
-    /**
-     * Convert to Square Money type
-     */
-    static toSquareMoney(money: Money): { amount: string, currency: string } {
-        return {
-            amount: money.amount.toString(),
-            currency: money.currency || MoneyUtils.DEFAULT_CURRENCY
-        };
+    static isPositive(money: Money): boolean {
+        return money.amount > 0;
     }
 
-    /**
-     * Validate a money object
-     */
+    static isNegative(money: Money): boolean {
+        return money.amount < 0;
+    }
+
     static validate(money: Money): boolean {
         return (
             typeof money.amount === 'number' &&
@@ -110,9 +100,6 @@ export class MoneyUtils {
         );
     }
 
-    /**
-     * Zero money value
-     */
     static zero(currency: string = MoneyUtils.DEFAULT_CURRENCY): Money {
         return { amount: 0, currency };
     }

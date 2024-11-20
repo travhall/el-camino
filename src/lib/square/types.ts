@@ -5,6 +5,22 @@ export interface Money {
     currency: string;
 }
 
+export interface Product {
+    id: string;
+    catalogObjectId: string;
+    variationId: string;
+    title: string;
+    description?: string;
+    image: string;
+    price: number;  // For backward compatibility
+    url: string;
+}
+
+export interface Money {
+    amount: number;  // Always in cents
+    currency: string;
+}
+
 export type SquareMoneyObject = {
     amount?: string | number | bigint;
     currency?: string;

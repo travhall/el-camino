@@ -1,8 +1,8 @@
 ---
 // src/pages/order-confirmation.astro
 import Layout from "@/layouts/Layout.astro";
-import { squareClient } from "@/lib/square-client";
-import { formatMoney } from "@/lib/money-utils";
+import { squareClient } from "@/lib/square/client";
+import { MoneyUtils } from "@/lib/square/money";
 import type { OrderLineItem } from "square";
 import { cart } from "@/lib/cart";
 
@@ -62,14 +62,22 @@ if (orderId) {
                     {item.name} × {item.quantity}
                   </span>
                   <span class="font-display">
-                    ${formatMoney(item.totalMoney)}
+                    $
+                    {item.totalMoney
+                      ? MoneyUtils.format(item.totalMoney)
+                      : "$0.00"}
                   </span>
                 </div>
               ))}
               <div class="border-t border-black-pearl-200 dark:border-black-pearl-700 pt-4 mt-4">
                 <div class="flex justify-between font-bold">
                   <span>Total</span>
-                  <span>${formatMoney(orderDetails.totalMoney)}</span>
+                  <span>
+                    $
+                    {orderDetails.totalMoney
+                      ? MoneyUtils.format(orderDetails.totalMoney)
+                      : "$0.00"}
+                  </span>
                 </div>
               </div>
             </div>
