@@ -1,8 +1,6 @@
 ---
 import Layout from "@/layouts/Layout.astro";
-import PromoCard from "@/components/PromoCard.astro";
 import ProductCard from "@/components/ProductCard.astro";
-import Sidebar from "@/components/Sidebar.astro";
 import type { ArticlesResponse } from "@/lib/types/content";
 import type { Product } from "@/lib/square/types";
 import { fetchProducts } from "@/lib/square/client";
@@ -24,91 +22,12 @@ try {
 const response = await fetchGraphQL<ArticlesResponse>(GET_RECENT_ARTICLES, {
   limit: 6,
 });
-
 const recentArticles = response.articles;
-
-const cardData = [
-  {
-    title: "Polar Skate Co",
-    pretitle: "Just in",
-    description: "New boards, apparel, and more from our friends at Polar.",
-    img: "/images/promo-img-01.png",
-    button: "Shop Polar",
-    link: "https://usa.polarskateco.com",
-    banner: true,
-  },
-  {
-    title: "Dickies Skateboarding Guy Mariano Collection",
-    pretitle: "Introducing",
-    description: "Now available in store and online.",
-    img: "/images/promo-img-02.png",
-    button: "Shop The Collection",
-    link: "https://www.dickies.com/guy-mariano",
-    banner: false,
-  },
-  {
-    title: "GX1000",
-    pretitle: "Bomb hills not countries",
-    description: "New boards from GX1000 now in stock!",
-    img: "/images/promo-img-03.png",
-    button: "Shop GX1000",
-    link: "https://gx1000.com/",
-    banner: false,
-  },
-  {
-    title: "Vans Skate AVE 2.0",
-    pretitle: "",
-    description: "",
-    img: "/images/promo-img-04.png",
-    button: "Shop Vans AVE",
-    link: "https://www.vans.com/en-us/shoes-c00081/ave-20-shoe-pvn0a2z3hmgr",
-    banner: false,
-  },
-  {
-    title: "New Balance 480s",
-    pretitle: "Now in stock",
-    description: "",
-    img: "/images/promo-img-05.png",
-    button: "Shop New Balance",
-    link: "https://www.newbalance.com/pd/nb-numeric-480-high/NM480HV1-45867.html",
-    banner: false,
-  },
-  {
-    title: "Tyshawn II",
-    pretitle: "Adidas",
-    description: "",
-    img: "/images/promo-img-06.png",
-    button: "Shop Tyshawn II",
-    link: "https://www.adidas.com/us/tyshawn-ii-shoes/IF9712.html",
-    banner: false,
-  },
-];
 ---
 
 <Layout title="El Camino Skate Shop">
   <main>
-    <div
-      class="card-grid grid justify-center grid-cols-6 2xl:grid-cols-8 md:auto-rows-[10vw] max-w-[120rem] mx-auto gap-1 p-1"
-    >
-      {
-        cardData.map((e) => (
-          <PromoCard
-            title={e.title}
-            pretitle={e.pretitle}
-            description={e.description}
-            src={e.img}
-            label={e.button}
-            url={e.link}
-            banner={e.banner}
-          />
-        ))
-      }
-      <Sidebar />
-    </div>
-
     <ArticleGrid articles={recentArticles} featured={true} />
-
-    {/* Only render products section if we have products */}
     {
       products.length > 0 && (
         <div class="card-grid grid justify-center grid-cols-6 2xl:grid-cols-8 md:auto-rows-[10vw] max-w-[120rem] mx-auto gap-1 p-1">
@@ -118,34 +37,5 @@ const cardData = [
         </div>
       )
     }
-
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const cardGrid = document.querySelector(".card-grid");
-        const sidebar = document.querySelector(".sidebar") as HTMLElement;
-
-        function adjustSidebar() {
-          if (
-            window.matchMedia("(min-width: 768px)").matches &&
-            cardGrid &&
-            sidebar
-          ) {
-            sidebar.style.gridRowEnd = "";
-            const computedStyle = getComputedStyle(cardGrid);
-            const rowHeight = parseFloat(
-              computedStyle.getPropertyValue("grid-auto-rows")
-            );
-            const gridHeight = cardGrid.scrollHeight;
-            const rows = Math.ceil(gridHeight / rowHeight);
-            sidebar.style.gridRowEnd = `${rows + 1}`;
-          } else if (sidebar) {
-            sidebar.style.gridRowEnd = "";
-          }
-        }
-
-        adjustSidebar();
-        window.addEventListener("resize", adjustSidebar);
-      });
-    </script>
   </main>
 </Layout>

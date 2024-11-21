@@ -1,7 +1,7 @@
 ---
-// src/components/ArticleCard.astro
 import { formatDate } from "@/utils/dates";
 import type { Article } from "@/lib/types/content";
+import Button from "./Button.astro";
 
 interface Props {
   article: Article;
@@ -12,51 +12,63 @@ const { article, featured = false } = Astro.props;
 const { title, description, slug, publishedAt, cover, author, category } =
   article;
 
-// Helper function to get full image URL
 function getImageUrl(path: string): string {
   const baseUrl = import.meta.env.STRAPI_URL;
-  // If the path is already a full URL, return it as is
-  if (path.startsWith("http")) {
-    return path;
-  }
-  // Otherwise, join it with the base URL
-  return `${baseUrl}${path}`;
+  return path?.startsWith("http") ? path : `${baseUrl}${path}`;
 }
 ---
 
 <article
-  class={`overflow-hidden rounded-lg shadow-lg bg-white transition-transform hover:scale-102 ${featured ? "md:col-span-2 lg:col-span-3" : ""}`}
+  class:list={[
+    "card relative overflow-hidden flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3",
+    featured ? "banner-card" : "article-card",
+  ]}
 >
-  <a href={`/article/${slug}`} class="block h-full">
+  {
+    cover?.url && (
+      <img
+        src={getImageUrl(cover.url)}
+        alt={cover.alternativeText || title}
+        class:list={[
+          "card-img object-cover -z-10 w-full h-full transition-all duration-300",
+          featured || "opacity-10",
+        ]}
+        loading="lazy"
+      />
+    )
+  }
+
+  <div
+    class:list={[
+      "card-content flex flex-col gap-4 lg:gap-6 px-6 py-12 xl:p-12 absolute bottom-0 w-full",
+      featured &&
+        "bg-beeswax-200/90 dark:bg-fig-leaf-800/90 md:bg-beeswax-200 md:dark:bg-fig-leaf-800 md:border-t-4 md:border-t-beeswax-100 md:dark:border-t-fig-leaf-900 md:border-l-4 md:border-l-beeswax-100 md:dark:border-l-fig-leaf-900 md:w-2/3 right-0",
+    ]}
+  >
     {
-      cover?.url && (
-        <div class="relative aspect-video overflow-hidden">
-          <img
-            src={getImageUrl(cover.url)}
-            alt={cover.alternativeText || title}
-            class="object-cover w-full h-full transition-transform hover:scale-105"
-            loading="lazy"
-          />
-        </div>
+      category && (
+        <span class="card-preheading font-display font-semibold text-base tracking-wide uppercase -mb-4">
+          {category.name}
+        </span>
       )
     }
-    <div class="p-4 sm:p-6">
-      {
-        category && (
-          <span class="inline-block px-3 py-1 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-full mb-2">
-            {category.name}
-          </span>
-        )
-      }
-      <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-        {title}
-      </h2>
-      {
-        description && (
-          <p class="text-gray-600 mb-4 line-clamp-2">{description}</p>
-        )
-      }
-      <div class="flex items-center text-sm text-gray-500">
+
+    <h2
+      class="card-heading font-display font-black tracking-wide text-6xl leading-[0.8] md:text-5xl md:leading-[0.8] xl:text-6xl xl:leading-[0.8] 3xl:text-7xl 3xl:leading-[0.8]"
+    >
+      {title}
+    </h2>
+
+    {
+      description && (
+        <p class="description text-sm leading-snug md:text-base md:leading-snug 2xl:text-lg 2xl:leading-snug">
+          {description}
+        </p>
+      )
+    }
+
+    <div class="mt-auto flex flex-col gap-4">
+      <div class="flex items-center text-sm">
         {
           author?.avatar?.url && (
             <img
@@ -73,16 +85,48 @@ function getImageUrl(path: string): string {
           </time>
         </div>
       </div>
+
+      <a href={`/article/${slug}`} class="self-start card-link">
+        <Button type="button" variant="primary" size="md" class="card-btn">
+          Read Article
+        </Button>
+      </a>
     </div>
-  </a>
+  </div>
 </article>
 
 <script>
-  // Optional: Log image URLs for debugging
-  document.addEventListener("DOMContentLoaded", () => {
-    const images = document.querySelectorAll("img");
-    images.forEach((img) => {
-      console.log("Image URL:", img.src);
+  function applyHoverEffects() {
+    const cards = document.querySelectorAll(".article-card");
+
+    cards.forEach((card) => {
+      const img = card.querySelector(".card-img") as HTMLImageElement;
+      const link = card.querySelector(".card-link");
+
+      if (!img || !link) return;
+
+      const handleHover = () => {
+        if (window.innerWidth >= 1024) {
+          img.style.opacity = ".5";
+          img.style.scale = "1.05";
+        }
+      };
+
+      const handleLeave = () => {
+        if (window.innerWidth >= 1024) {
+          img.style.opacity = "0.1";
+          img.style.scale = "1";
+        }
+      };
+
+      // Add hover effect for the link
+      link.addEventListener("mouseover", handleHover);
+      link.addEventListener("mouseout", handleLeave);
     });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    applyHoverEffects();
+    window.addEventListener("resize", applyHoverEffects);
   });
 </script>
