@@ -8,7 +8,10 @@ import path from "path";
 export default defineConfig({
   integrations: [tailwind(), icon({ iconDir: "src/assets/icons" }), react()],
   output: "server",
-  adapter: netlify(),
+  adapter: netlify({
+    dist: new URL("./dist/", import.meta.url),
+    binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
+  }),
   vite: {
     envPrefix: ["PUBLIC_", "SQUARE_", "STRAPI_"],
     define: {
@@ -33,6 +36,9 @@ export default defineConfig({
         "@": path.resolve("./src"),
         "~": path.resolve("."),
       },
+    },
+    ssr: {
+      noExternal: ["@astrojs/netlify"],
     },
   },
 });
