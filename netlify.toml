@@ -1,25 +1,21 @@
 [build]
-command = "npm run build"
+command = "npm run build:only"
 publish = "dist"
-functions = ".netlify/edge-functions"
 
 [build.environment]
 NODE_VERSION = "18.20.5"
+NODE_OPTIONS = "--max-old-space-size=8192"
 
 [[redirects]]
-force = true
 from = "/*"
+to = "/.netlify/functions/entry.mjs"
 status = 200
-to = "/.netlify/functions/entry-server"
-
-[functions]
-included_files = ["dist/**/*"]
+force = true
 
 [[headers]]
 for = "/_astro/*"
 [headers.values]
 Cache-Control = "public, max-age=31536000, immutable"
 
-[dev]
-framework = "astro"
-targetPort = 4321
+[functions]
+node_bundler = "esbuild"
