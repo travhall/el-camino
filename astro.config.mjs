@@ -9,10 +9,8 @@ export default defineConfig({
   integrations: [tailwind(), icon({ iconDir: "src/assets/icons" }), react()],
   output: "server",
   adapter: netlify({
-    dist: new URL("./dist/", import.meta.url),
     builders: true,
     binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
-    edgeMiddleware: true,
   }),
   vite: {
     envPrefix: ["PUBLIC_", "SQUARE_", "STRAPI_"],

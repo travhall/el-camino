@@ -1,17 +1,10 @@
 [build]
 command = "npm run build:only"
 publish = "dist"
-functions = ".netlify/functions"
 
 [build.environment]
 NODE_VERSION = "18.20.5"
 NODE_OPTIONS = "--max-old-space-size=8192"
-
-[[redirects]]
-from = "/*"
-to = "/.netlify/functions/ssr/ssr"
-status = 200
-force = true
 
 [[headers]]
 for = "/_astro/*"
@@ -20,3 +13,4 @@ Cache-Control = "public, max-age=31536000, immutable"
 
 [functions]
 node_bundler = "esbuild"
+directory = ".netlify/functions-internal"
