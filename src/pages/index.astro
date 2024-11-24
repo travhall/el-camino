@@ -9,6 +9,8 @@ import { fetchGraphQL } from "@/lib/graphql";
 import { GET_RECENT_ARTICLES } from "@/lib/queries";
 
 let products: Product[] = [];
+let recentArticles: ArticlesResponse['articles'] = [];
+
 try {
   console.log("Fetching Square products...");
   products = await fetchProducts();
@@ -17,10 +19,14 @@ try {
   console.error("Error fetching products:", error);
 }
 
-const response = await fetchGraphQL<ArticlesResponse>(GET_RECENT_ARTICLES, {
-  limit: 6,
-});
-const recentArticles = response.articles;
+try {
+  const response = await fetchGraphQL<ArticlesResponse>(GET_RECENT_ARTICLES, {
+    limit: 6,
+  });
+  recentArticles = response.articles;
+} catch (error) {
+  console.error("Error fetching articles:", error);
+}
 ---
 
 <Layout title="El Camino Skate Shop">
