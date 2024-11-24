@@ -16,10 +16,11 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 ---
 
 <Layout title={product.title}>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <div class="lg:grid lg:grid-cols-2 lg:gap-x-8">
-      {/* Product Image */}
-      <div class="aspect-w-4 aspect-h-3 rounded-lg overflow-hidden bg-gray-100">
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="lg:grid lg:grid-cols-2 lg:gap-x-8 items-center">
+      <div
+        class="aspect-w-4 aspect-h-3 border-4 border-surface-secondary overflow-hidden bg-surface-secondary rounded-sm"
+      >
         <img
           src={product.image}
           alt={product.title}
@@ -28,22 +29,21 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
         />
       </div>
 
-      {/* Product Details */}
       <div class="mt-10 lg:mt-0">
-        <h1 class="text-3xl font-display mb-4">
+        <h1 class="text-3xl font-display mb-4 text-content-heading">
           {product.title}
         </h1>
 
         <div class="mt-3">
-          <p class="text-2xl font-display">{formattedPrice}</p>
+          <p class="text-2xl font-display text-content-emphasis">
+            {formattedPrice}
+          </p>
         </div>
 
         {
           product.description && (
             <div class="mt-6">
-              <p class="text-base text-gray-700 dark:text-beeswax-300">
-                {product.description}
-              </p>
+              <p class="text-base text-content-body">{product.description}</p>
             </div>
           )
         }
@@ -68,7 +68,7 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
   <script>
     import { cart } from "@/lib/cart";
@@ -87,10 +87,9 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
           quantity: 1,
         });
 
-        // Show success message
         const successMessage = document.createElement("div");
         successMessage.className =
-          "fixed top-4 right-4 bg-fig-leaf-500 dark:bg-sweet-tea-300 text-beeswax-50 dark:text-fig-leaf-900 px-4 py-2 rounded-lg shadow-lg z-50";
+          "fixed top-4 right-4 bg-state-success-surface text-state-success-text px-4 py-2 rounded-lg shadow-lg z-50";
         successMessage.textContent = "Added to cart";
         document.body.appendChild(successMessage);
 

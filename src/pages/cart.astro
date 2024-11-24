@@ -1,16 +1,20 @@
 ---
 import Layout from "@/layouts/Layout.astro";
+import { Icon } from "astro-icon/components";
+import Button from "@/components/Button.astro";
 ---
 
 <Layout title="Shopping Cart">
-  <div class="max-w-7xl mx-auto px-4 py-8">
-    <h1 class="font-display font-black text-3xl md:text-4xl tracking-wide mb-8">
+  <section class="max-w-7xl mx-auto px-4 py-8">
+    <h1
+      class="font-display font-black text-5xl lg:text-6xl 2xl:text-7xl leading-[0.8] mb-8 text-content-heading"
+    >
       Shopping Cart
     </h1>
 
     <!-- Loading State -->
     <div id="cart-loading" class="text-center py-12">
-      <p class="text-lg animate-pulse">Loading cart...</p>
+      <p class="text-lg animate-pulse text-content-body">Loading cart...</p>
     </div>
 
     <!-- Cart Content - Initially Empty -->
@@ -19,17 +23,17 @@ import Layout from "@/layouts/Layout.astro";
     <!-- Loading Indicator -->
     <div
       id="loading-overlay"
-      class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center hidden z-50"
+      class="fixed inset-0 bg-surface-primary/50 items-center justify-center hidden z-50"
     >
-      <div class="bg-white dark:bg-black-pearl-800 p-4 rounded-lg shadow-lg">
-        <p class="text-lg">Processing...</p>
+      <div class="bg-surface-secondary p-4 rounded-lg shadow-lg">
+        <p class="text-lg text-content-body">Processing...</p>
       </div>
     </div>
 
     <!-- Notification Container -->
     <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2">
     </div>
-  </div>
+  </section>
 </Layout>
 
 <script>
@@ -53,14 +57,13 @@ import Layout from "@/layouts/Layout.astro";
     const notification = document.createElement("div");
     notification.className = `px-4 py-2 rounded-lg shadow-lg transition-all duration-300 ${
       type === "success"
-        ? "bg-fig-leaf-500 dark:bg-sweet-tea-300 text-beeswax-50 dark:text-fig-leaf-900"
-        : "bg-sweet-tea-500 text-white"
+        ? "bg-state-success-surface text-state-success-text"
+        : "bg-state-error-surface text-state-error-text"
     }`;
     notification.textContent = message;
 
     container.appendChild(notification);
 
-    // Remove after delay
     setTimeout(() => {
       notification.style.opacity = "0";
       setTimeout(() => notification.remove(), 300);
@@ -69,14 +72,9 @@ import Layout from "@/layouts/Layout.astro";
 
   function createEmptyCart() {
     return `
-      <div class="text-center py-12" id="empty-cart">
-        <svg class="w-16 h-16 mx-auto mb-4 text-fig-leaf-900/50 dark:text-honey-cream-50/50">
-        </svg>
-        <p class="text-lg mb-6">Your cart is empty</p>
-        <a
-          href="/"
-          class="inline-block font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-beeswax-50 dark:text-fig-leaf-900 bg-fig-leaf-500 dark:bg-sweet-tea-300 hover:bg-fig-leaf-500/75 hover:dark:bg-sweet-tea-300/75 border-fig-leaf-500 dark:border-sweet-tea-300 focus-visible:ring-fig-leaf-500 dark:focus-visible:ring-sweet-tea-300 focus-visible:ring-offset-sweet-tea-50 dark:focus-visible:ring-offset-fig-leaf-900 text-lg py-2 px-4 lg:text-xl lg:py-3 lg:px-5"
-        >
+      <div class="flex flex-col items-center" id="empty-cart">
+        <p class="text-lg mb-6 text-content-body">Your cart is empty</p>
+        <a href="/" class="inline-block bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4 lg:text-xl lg:py-3 lg:px-5">
           Continue Shopping
         </a>
       </div>
@@ -85,8 +83,15 @@ import Layout from "@/layouts/Layout.astro";
 
   function createCartItem(item: any) {
     return `
+    <button
+      type="button"
+      id="clear-cart-button"
+      class="w-full mb-4 bg-transparent hover:bg-state-error-surface/10 border-state-error-text text-state-error-text font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4"
+    >
+      Clear Cart
+    </button>
       <div
-        class="bg-beeswax-50 dark:bg-black-pearl-800 rounded-lg p-4 flex gap-4"
+        class="bg-surface-secondary rounded-lg p-4 flex gap-4"
         data-item-container="${item.id}"
       >
         ${
@@ -95,54 +100,48 @@ import Layout from "@/layouts/Layout.astro";
           <img
             src="${item.image}"
             alt="${item.title}"
-            class="w-24 h-24 object-cover rounded-md"
+            class="w-24 h-24 object-cover rounded-sm"
           />
         `
             : ""
         }
         <div class="flex-grow">
-          <h3 class="font-display text-lg mb-2">${item.title}</h3>
+          <h3 class="font-display text-lg mb-2 text-content-heading">${item.title}</h3>
           <div class="flex justify-between items-center">
             <div class="flex items-center gap-2">
               <button
-                class="quantity-btn decrease p-1 hover:bg-black-pearl-100 dark:hover:bg-black-pearl-700 rounded"
+                class="quantity-btn decrease p-1 bg-transparent hover:bg-ui-button-surface/10 border-ui-button-text rounded font-sans font-semibold transition-all duration-300 border-2"
                 data-id="${item.id}"
                 aria-label="Decrease quantity"
               >
-                <svg class="w-4 h-4 text-fig-leaf-900 dark:text-beeswax-50">
-                  <use href="#icon-minus"></use>
-                </svg>
+                <Icon class="h-5 w-5 m-1 inline-block text-content-body" name="uil:minus" />
               </button>
               <span
-                class="quantity-display w-8 text-center"
+                class="quantity-display w-8 text-center text-content-body"
                 data-quantity-display="${item.id}"
               >
                 ${item.quantity}
               </span>
               <button
-                class="quantity-btn increase p-1 hover:bg-black-pearl-100 dark:hover:bg-black-pearl-700 rounded"
+                class="quantity-btn increase p-1 bg-transparent hover:bg-ui-button-surface/10 border-ui-button-text rounded font-sans font-semibold transition-all duration-300 border-2"
                 data-id="${item.id}"
                 aria-label="Increase quantity"
               >
-                <svg class="w-4 h-4 text-fig-leaf-900 dark:text-beeswax-50">
-                  <use href="#icon-plus"></use>
-                </svg>
+                <Icon class="h-5 w-5 m-1 inline-block text-content-body" name="uil:plus" />
               </button>
             </div>
             <span
-              class="font-display item-price"
+              class="font-display item-price text-content-emphasis"
               data-price-display="${item.id}"
             >
-              $${(item.price * item.quantity).toFixed(2)}
+              ${(item.price * item.quantity).toFixed(2)}
             </span>
             <button
-              class="remove-btn p-1 hover:bg-black-pearl-100 dark:hover:bg-black-pearl-700 rounded"
+              class="remove-btn p-2 bg-transparent hover:bg-state-error-surface/10 border-ui-button-text rounded font-sans font-semibold transition-all duration-300 border-2 text-state-error-text"
               data-id="${item.id}"
               aria-label="Remove item"
             >
-              <svg class="w-5 h-5 text-black-pearl-400 hover:text-fig-leaf-500 dark:text-beeswax-400 dark:hover:text-sweet-tea-300">
-                <use href="#icon-x"></use>
-              </svg>
+              Remove Item
             </button>
           </div>
         </div>
@@ -164,7 +163,6 @@ import Layout from "@/layouts/Layout.astro";
       return;
     }
 
-    // Hide loading state and show cart container
     if (cartLoading) cartLoading.classList.add("hidden");
     cartContainer.classList.remove("hidden");
 
@@ -179,14 +177,14 @@ import Layout from "@/layouts/Layout.astro";
           ${items.map((item) => createCartItem(item)).join("")}
         </div>
         <div class="md:col-span-1">
-          <div class="bg-beeswax-50 dark:bg-black-pearl-800 rounded-lg p-6 sticky top-4">
-            <h2 class="font-display text-xl mb-4">Order Summary</h2>
+          <div class="bg-surface-secondary rounded-lg p-6 sticky top-4">
+            <h2 class="font-display text-xl mb-4 text-content-heading">Order Summary</h2>
             <div class="space-y-2 mb-4">
-              <div class="flex justify-between">
+              <div class="flex justify-between text-content-body">
                 <span>Subtotal</span>
                 <span id="subtotal">$${total.toFixed(2)}</span>
               </div>
-              <div class="flex justify-between font-bold pt-2 border-t border-black-pearl-200 dark:border-black-pearl-600">
+              <div class="flex justify-between font-bold pt-2 border-t border-surface-secondary text-content-emphasis">
                 <span>Total</span>
                 <span id="total">$${total.toFixed(2)}</span>
               </div>
@@ -195,13 +193,13 @@ import Layout from "@/layouts/Layout.astro";
               <button
                 type="button"
                 id="checkout-button"
-                class="w-full font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-beeswax-50 dark:text-fig-leaf-900 bg-fig-leaf-500 dark:bg-sweet-tea-300 hover:bg-fig-leaf-500/75 hover:dark:bg-sweet-tea-300/75 border-fig-leaf-500 dark:border-sweet-tea-300 focus-visible:ring-fig-leaf-500 dark:focus-visible:ring-sweet-tea-300 focus-visible:ring-offset-sweet-tea-50 dark:focus-visible:ring-offset-fig-leaf-900 text-lg py-2 px-4 lg:text-xl lg:py-3 lg:px-5"
+                class="w-full bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4 lg:text-xl lg:py-3 lg:px-5"
               >
                 Proceed to Checkout
               </button>
               <a
                 href="/"
-                class="block w-full text-center font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 bg-transparent hover:bg-black-pearl-50 hover:dark:bg-black-pearl-800 border-fig-leaf-500 dark:border-sweet-tea-300 text-fig-leaf-500 dark:text-sweet-tea-300 focus-visible:ring-fig-leaf-500 dark:focus-visible:ring-sweet-tea-300 focus-visible:ring-offset-sweet-tea-50 dark:focus-visible:ring-offset-fig-leaf-900 py-1 px-3 lg:py-2 lg:px-4"
+                class="block w-full text-center bg-transparent hover:bg-ui-button-surface/10 border-ui-button-text font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-1 px-3 lg:py-2 lg:px-4"
               >
                 Continue Shopping
               </a>
@@ -214,7 +212,6 @@ import Layout from "@/layouts/Layout.astro";
     attachEventListeners();
   }
 
-  // Update this function in cart.astro
   async function handleCheckout() {
     try {
       const items = cart.getItems();
@@ -236,10 +233,6 @@ import Layout from "@/layouts/Layout.astro";
 
       const data = await response.json();
       console.log("Checkout response:", data);
-      console.log("Environment check:", {
-        locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
-        hasAccessToken: !!import.meta.env.SQUARE_ACCESS_TOKEN,
-      });
 
       if (!response.ok) {
         throw new Error(
@@ -254,7 +247,6 @@ import Layout from "@/layouts/Layout.astro";
 
       showNotification("Redirecting to checkout...", "success");
 
-      // Short delay before redirect to allow notification to be seen
       setTimeout(() => {
         window.location.href = data.checkoutUrl;
       }, 1000);
@@ -272,7 +264,6 @@ import Layout from "@/layouts/Layout.astro";
   }
 
   function attachEventListeners() {
-    // Quantity buttons
     document
       .querySelectorAll<HTMLButtonElement>(".quantity-btn")
       .forEach((button) => {
@@ -294,7 +285,6 @@ import Layout from "@/layouts/Layout.astro";
         });
       });
 
-    // Remove buttons
     document
       .querySelectorAll<HTMLButtonElement>(".remove-btn")
       .forEach((button) => {
@@ -305,25 +295,26 @@ import Layout from "@/layouts/Layout.astro";
         });
       });
 
-    // Checkout button
     document
       .getElementById("checkout-button")
       ?.addEventListener("click", handleCheckout);
+    document
+      .getElementById("clear-cart-button")
+      ?.addEventListener("click", () => {
+        if (confirm("Are you sure you want to clear your cart?")) {
+          cart.clear();
+          showNotification("Cart cleared successfully");
+        }
+      });
   }
 
-  // Initial setup
   document.addEventListener("DOMContentLoaded", () => {
     console.log("DOM Content Loaded - Setting up cart");
-
-    // Force a cart refresh
     cart.forceRefresh();
-
-    // Initial display update
     updateDisplay();
 
-    // Listen for cart updates
     window.addEventListener("cartUpdated", () => {
-      console.log("Cart updated event received");
+      console.log("Cart update event received");
       updateDisplay();
     });
   });

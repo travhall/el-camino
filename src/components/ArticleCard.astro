@@ -20,7 +20,7 @@ function getImageUrl(path: string): string {
 
 <article
   class:list={[
-    "card relative overflow-hidden flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3",
+    "card relative overflow-hidden bg-ui-card-surface text-ui-card-text border-ui-card-border hover:bg-ui-card-hover flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 transition-all",
     featured ? "banner-card" : "article-card",
   ]}
 >
@@ -30,7 +30,7 @@ function getImageUrl(path: string): string {
         src={getImageUrl(cover.url)}
         alt={cover.alternativeText || title}
         class:list={[
-          "card-img object-cover -z-10 w-full h-full transition-all duration-300",
+          "card-img object-cover w-full h-full transition-all duration-300",
           featured || "opacity-10",
         ]}
         loading="lazy"
@@ -42,50 +42,32 @@ function getImageUrl(path: string): string {
     class:list={[
       "card-content flex flex-col gap-4 lg:gap-6 px-6 py-12 xl:p-12 absolute bottom-0 w-full",
       featured &&
-        "bg-beeswax-200/90 dark:bg-fig-leaf-800/90 md:bg-beeswax-200 md:dark:bg-fig-leaf-800 md:border-t-4 md:border-t-beeswax-100 md:dark:border-t-fig-leaf-900 md:border-l-4 md:border-l-beeswax-100 md:dark:border-l-fig-leaf-900 md:w-2/3 right-0",
+        "bg-ui-card-surface/90 md:bg-ui-card-surface md:border-t-4 md:border-l-4 md:border-ui-card-border md:w-2/3 right-0",
     ]}
   >
     {
       category && (
-        <span class="card-preheading font-display font-semibold text-base tracking-wide uppercase -mb-4">
+        <span class="card-category font-display font-semibold text-base tracking-wide uppercase -mb-4 text-content-meta">
           {category.name}
         </span>
       )
     }
 
     <h2
-      class="card-heading font-display font-black tracking-wide text-6xl leading-[0.8] md:text-5xl md:leading-[0.8] xl:text-6xl xl:leading-[0.8] 3xl:text-7xl 3xl:leading-[0.8]"
+      class="card-heading font-display font-black text-6xl md:text-5xl xl:text-6xl 3xl:text-7xl leading-[0.8] text-content-heading"
     >
       {title}
     </h2>
 
     {
       description && (
-        <p class="description text-sm leading-snug md:text-base md:leading-snug 2xl:text-lg 2xl:leading-snug">
+        <p class="description text-sm md:text-base 2xl:text-lg leading-snug line-clamp-2 text-content-body">
           {description}
         </p>
       )
     }
 
     <div class="mt-auto flex flex-col gap-4">
-      <div class="flex items-center text-sm">
-        {
-          author?.avatar?.url && (
-            <img
-              src={getImageUrl(author.avatar.url)}
-              alt={author.name}
-              class="w-8 h-8 rounded-full mr-2"
-            />
-          )
-        }
-        <div>
-          {author?.name && <span class="font-medium">{author.name}</span>}
-          <time datetime={publishedAt} class="block text-xs">
-            {formatDate(publishedAt)}
-          </time>
-        </div>
-      </div>
-
       <a href={`/article/${slug}`} class="self-start card-link">
         <Button type="button" variant="primary" size="md" class="card-btn">
           Read Article
@@ -119,7 +101,6 @@ function getImageUrl(path: string): string {
         }
       };
 
-      // Add hover effect for the link
       link.addEventListener("mouseover", handleHover);
       link.addEventListener("mouseout", handleLeave);
     });

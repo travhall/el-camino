@@ -1,76 +1,25 @@
 ---
 import Nav from "@/components/Nav.astro";
-import ThemeToggle from "@/components/ThemeToggle.astro";
 import { Icon } from "astro-icon/components";
-import { cart } from "@/lib/cart";
-const cartCount = cart.getItemCount();
+import CartButton from "./CartButton.astro";
+import ThemeToggle from "@/components/ThemeToggle.astro";
 ---
 
 <header
-  class="flex flex-col sticky top-0 z-50 place-items-center lg:flex-row pt-8 lg:pt-2 lg:p-2 gap-4 -mb-1 border-b-4 border-b-beeswax-100 dark:border-b-fig-leaf-900 bg-beeswax-200 dark:bg-fig-leaf-800"
+  class="flex flex-col lg:flex-row p-4 gap-4 lg:p-2 -mb-1 sticky top-0 z-50 border-4 border-border-secondary bg-surface-secondary"
 >
-  <a href="/" aria-label="Home Link">
+  <a href="/" class="flex" aria-label="Home Link">
     <Icon
       name="Logo"
-      class="w-56 h-auto p-2 text-fig-leaf-900 dark:text-honey-cream-50"
+      class="w-56 h-auto p-2 text-content-body"
       title="Go Home to El Camino"
     />
   </a>
 
   <Nav />
 
-  <div class="utility-menu flex gap-2">
-    <a href="/cart" class="relative p-2" aria-label="Shopping Cart">
-      <Icon
-        class="h-5 w-5 m-1 inline-block text-fig-leaf-900 dark:text-honey-cream-50"
-        name="uil:shopping-cart"
-      />
-      <span
-        id="cart-count"
-        class:list={[
-          "absolute top-0.5 right-0.5 bg-fig-leaf-500 dark:bg-sweet-tea-300 text-beeswax-50 dark:text-fig-leaf-900 text-xs rounded-full w-4 h-4 flex items-center justify-center",
-          { hidden: cartCount === 0 },
-        ]}
-      >
-        {cartCount}
-      </span>
-    </a>
+  <div class="utility-menu flex gap-2 content-end">
+    <CartButton />
     <ThemeToggle />
   </div>
 </header>
-
-<script>
-  import { cart } from "@/lib/cart";
-
-  function updateCartCount() {
-    const countElement = document.getElementById("cart-count");
-    if (!countElement) return;
-
-    const count = cart.getItemCount();
-    console.log("Updating cart count:", count);
-
-    countElement.textContent = count.toString();
-    countElement.classList.toggle("hidden", count === 0);
-  }
-
-  // Update on both storage and cart events
-  window.addEventListener("storage", (e) => {
-    if (e.key === "cart") {
-      console.log("Cart storage updated");
-      cart.forceRefresh(); // Force a refresh from storage
-      updateCartCount();
-    }
-  });
-
-  window.addEventListener("cartUpdated", () => {
-    console.log("Cart update event received");
-    updateCartCount();
-  });
-
-  // Initial update
-  document.addEventListener("DOMContentLoaded", () => {
-    console.log("Nav: DOM Content Loaded");
-    cart.forceRefresh(); // Force initial refresh
-    updateCartCount();
-  });
-</script>

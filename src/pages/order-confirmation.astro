@@ -1,5 +1,4 @@
 ---
-// src/pages/order-confirmation.astro
 import Layout from "@/layouts/Layout.astro";
 import { squareClient } from "@/lib/square/client";
 import { MoneyUtils } from "@/lib/square/money";
@@ -17,7 +16,6 @@ if (orderId) {
     const { result } = await squareClient.ordersApi.retrieveOrder(orderId);
     orderDetails = result.order;
 
-    // Clear the cart after successful order retrieval
     if (orderDetails) {
       cart.clear();
     }
@@ -29,15 +27,17 @@ if (orderId) {
 ---
 
 <Layout title="Order Confirmation">
-  <div class="max-w-2xl mx-auto px-4 py-16">
+  <section class="max-w-2xl mx-auto px-4 py-16">
     {
       error ? (
         <div class="text-center">
-          <h1 class="text-3xl font-display mb-4">Oops! Something went wrong</h1>
-          <p class="text-black-pearl-600 dark:text-beeswax-300 mb-8">{error}</p>
+          <h1 class="text-3xl font-display mb-4 text-content-heading">
+            Oops! Something went wrong
+          </h1>
+          <p class="text-content-body mb-8">{error}</p>
           <a
             href="/"
-            class="inline-block font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-beeswax-50 dark:text-fig-leaf-900 bg-fig-leaf-500 dark:bg-sweet-tea-300 hover:bg-fig-leaf-500/75 hover:dark:bg-sweet-tea-300/75 border-fig-leaf-500 dark:border-sweet-tea-300 focus-visible:ring-fig-leaf-500 dark:focus-visible:ring-sweet-tea-300 focus-visible:ring-offset-sweet-tea-50 dark:focus-visible:ring-offset-fig-leaf-900 text-lg py-2 px-4"
+            class="inline-block bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4"
           >
             Return to Home
           </a>
@@ -45,19 +45,21 @@ if (orderId) {
       ) : orderDetails ? (
         <div>
           <div class="text-center mb-8">
-            <h1 class="text-3xl font-display mb-4">
+            <h1 class="text-3xl font-display mb-4 text-content-heading">
               Thank You for Your Order!
             </h1>
-            <p class="text-black-pearl-600 dark:text-beeswax-300">
+            <p class="text-content-body">
               Your order has been confirmed and will be shipped soon.
             </p>
           </div>
 
-          <div class="bg-beeswax-50 dark:bg-black-pearl-800 rounded-lg p-6">
-            <h2 class="font-display text-xl mb-4">Order Summary</h2>
+          <div class="bg-surface-secondary rounded-lg p-6">
+            <h2 class="font-display text-xl mb-4 text-content-heading">
+              Order Summary
+            </h2>
             <div class="space-y-4">
               {orderDetails.lineItems?.map((item: OrderLineItem) => (
-                <div class="flex justify-between">
+                <div class="flex justify-between text-content-body">
                   <span>
                     {item.name} × {item.quantity}
                   </span>
@@ -69,8 +71,8 @@ if (orderId) {
                   </span>
                 </div>
               ))}
-              <div class="border-t border-black-pearl-200 dark:border-black-pearl-700 pt-4 mt-4">
-                <div class="flex justify-between font-bold">
+              <div class="border-t border-surface-secondary pt-4 mt-4">
+                <div class="flex justify-between font-bold text-content-emphasis">
                   <span>Total</span>
                   <span>
                     $
@@ -84,12 +86,10 @@ if (orderId) {
           </div>
 
           <div class="mt-8 text-center">
-            <p class="text-sm text-black-pearl-500 dark:text-beeswax-400 mb-4">
-              Order ID: {orderId}
-            </p>
+            <p class="text-sm text-content-meta mb-4">Order ID: {orderId}</p>
             <a
               href="/"
-              class="inline-block font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-beeswax-50 dark:text-fig-leaf-900 bg-fig-leaf-500 dark:bg-sweet-tea-300 hover:bg-fig-leaf-500/75 hover:dark:bg-sweet-tea-300/75 border-fig-leaf-500 dark:border-sweet-tea-300 focus-visible:ring-fig-leaf-500 dark:focus-visible:ring-sweet-tea-300 focus-visible:ring-offset-sweet-tea-50 dark:focus-visible:ring-offset-fig-leaf-900 text-lg py-2 px-4"
+              class="inline-block bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4"
             >
               Continue Shopping
             </a>
@@ -97,18 +97,20 @@ if (orderId) {
         </div>
       ) : (
         <div class="text-center">
-          <h1 class="text-3xl font-display mb-4">Order Not Found</h1>
-          <p class="text-black-pearl-600 dark:text-beeswax-300 mb-8">
+          <h1 class="text-3xl font-display mb-4 text-content-heading">
+            Order Not Found
+          </h1>
+          <p class="text-content-body mb-8">
             We couldn't find the order you're looking for.
           </p>
           <a
             href="/"
-            class="inline-block font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-beeswax-50 dark:text-fig-leaf-900 bg-fig-leaf-500 dark:bg-sweet-tea-300 hover:bg-fig-leaf-500/75 hover:dark:bg-sweet-tea-300/75 border-fig-leaf-500 dark:border-sweet-tea-300 focus-visible:ring-fig-leaf-500 dark:focus-visible:ring-sweet-tea-300 focus-visible:ring-offset-sweet-tea-50 dark:focus-visible:ring-offset-fig-leaf-900 text-lg py-2 px-4"
+            class="inline-block bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4"
           >
             Return to Home
           </a>
         </div>
       )
     }
-  </div>
+  </section>
 </Layout>

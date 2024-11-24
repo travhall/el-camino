@@ -8,7 +8,6 @@ import ArticleGrid from "@/components/ArticleGrid.astro";
 import { fetchGraphQL } from "@/lib/graphql";
 import { GET_RECENT_ARTICLES } from "@/lib/queries";
 
-// Fetch products with error handling and proper typing
 let products: Product[] = [];
 try {
   console.log("Fetching Square products...");
@@ -18,7 +17,6 @@ try {
   console.error("Error fetching products:", error);
 }
 
-// Fetch 6 most recent articles
 const response = await fetchGraphQL<ArticlesResponse>(GET_RECENT_ARTICLES, {
   limit: 6,
 });
@@ -26,10 +24,15 @@ const recentArticles = response.articles;
 ---
 
 <Layout title="El Camino Skate Shop">
-  <main>
+  <section>
     <ArticleGrid articles={recentArticles} featured={true} />
     {
       products.length > 0 && (
+        <div class="flex flex-col md:flex-row p-4 md:p-8 lg:pt-12 xl:pt-16">
+          <h2 class="align-bottom font-display font-black text-6xl md:text-5xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-content-heading">
+            Products
+          </h2>
+        </div>
         <div class="card-grid grid justify-center grid-cols-6 2xl:grid-cols-8 md:auto-rows-[10vw] max-w-[120rem] mx-auto gap-1 p-1">
           {products.map((product) => (
             <ProductCard product={product} />
@@ -37,5 +40,5 @@ const recentArticles = response.articles;
         </div>
       )
     }
-  </main>
+  </section>
 </Layout>

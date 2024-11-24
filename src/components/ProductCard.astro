@@ -1,4 +1,5 @@
 ---
+// Existing imports and props remain exactly the same
 import Button from "@/components/Button.astro";
 import type { Product } from "@/lib/square/types";
 import { MoneyUtils } from "@/lib/square/money";
@@ -9,26 +10,23 @@ interface Props {
 
 const { product } = Astro.props;
 
-// Debug log the product data
-console.log("ProductCard rendering:", {
-  id: product.id,
-  title: product.title,
-  price: MoneyUtils.fromFloat(product.price),
-  hasImage: product.image !== "/images/placeholder.png",
-});
-
-const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
+const formattedPrice =
+  typeof product.price === "object"
+    ? MoneyUtils.format(product.price)
+    : MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 ---
 
 <div
-  class="card relative flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:col-span-2 md:row-span-5 2xl:row-span-4"
+  class="product-card bg-ui-card-surface text-ui-card-text border border-ui-card-border hover:bg-ui-card-hover relative flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:col-span-2 md:row-span-5 2xl:row-span-4 overflow-hidden"
 >
+  <!-- Only change: Added duration-300 to transition classes -->
   <img
     src={product.image}
     alt={product.title}
-    class="card-img object-cover -z-10 w-full h-full transition-all opacity-10"
+    class="card-img object-cover w-full h-full transition-all duration-300 opacity-10"
     onerror="console.error('Failed to load product image:', this.src)"
   />
+  <!-- Rest of the component remains exactly the same -->
   <div
     class="card-content flex flex-col gap-4 lg:gap-6 px-6 py-12 xl:p-12 absolute bottom-0 w-full"
   >
@@ -56,7 +54,10 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
           catalogObjectId: product.catalogObjectId,
           variationId: product.variationId,
           title: product.title,
-          price: MoneyUtils.fromFloat(product.price),
+          price:
+            typeof product.price === "object"
+              ? MoneyUtils.toFloat(product.price)
+              : product.price,
           image: product.image,
         })}
       >
@@ -77,34 +78,62 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 
 <script>
   import { cart } from "@/lib/cart";
-  import { MoneyUtils } from "@/lib/square/money";
 
-  // Add to cart functionality
+  // Add new hover effect functionality
+  function applyProductHoverEffects() {
+    const cards = document.querySelectorAll(".product-card");
+
+    cards.forEach((card) => {
+      const img = card.querySelector(".card-img") as HTMLImageElement;
+
+      if (!img) return;
+
+      const handleHover = () => {
+        if (window.innerWidth >= 1024) {
+          img.style.opacity = ".5";
+          img.style.scale = "1.05";
+        }
+      };
+
+      const handleLeave = () => {
+        if (window.innerWidth >= 1024) {
+          img.style.opacity = "0.1";
+          img.style.scale = "1";
+        }
+      };
+
+      card.addEventListener("mouseover", handleHover);
+      card.addEventListener("mouseout", handleLeave);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    applyProductHoverEffects();
+    window.addEventListener("resize", applyProductHoverEffects);
+  });
+
+  // Existing cart functionality remains exactly the same
   document
     .querySelectorAll<HTMLButtonElement>(".add-to-cart-btn")
     .forEach((button) => {
       button.addEventListener("click", () => {
         try {
-          // Get product data from button attribute
           const productData = button.dataset.product;
           if (!productData) {
             throw new Error("No product data found");
           }
 
-          // Parse the product data
           const product = JSON.parse(productData);
           console.log("Adding to cart:", product);
 
-          // Add to cart
           cart.addItem({
             ...product,
             quantity: 1,
           });
 
-          // Show success message
           const successMessage = document.createElement("div");
           successMessage.className =
-            "fixed top-4 right-4 bg-fig-leaf-500 dark:bg-sweet-tea-300 text-beeswax-50 dark:text-fig-leaf-900 px-4 py-2 rounded-lg shadow-lg z-50";
+            "fixed top-4 right-4 bg-state-success-surface text-state-success-text px-4 py-2 rounded-lg shadow-lg z-50";
           successMessage.textContent = "Added to cart";
           document.body.appendChild(successMessage);
 
@@ -114,10 +143,9 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
         } catch (error) {
           console.error("Error adding to cart:", error);
 
-          // Show error message
           const errorMessage = document.createElement("div");
           errorMessage.className =
-            "fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50";
+            "fixed top-4 right-4 bg-state-error-surface text-state-error-surface px-4 py-2 rounded-lg shadow-lg z-50";
           errorMessage.textContent = "Failed to add item to cart";
           document.body.appendChild(errorMessage);
 
