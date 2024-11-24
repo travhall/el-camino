@@ -13,12 +13,6 @@ export default defineConfig({
     builders: true,
     binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
     edgeMiddleware: true,
-    redirects: {
-      "/*": {
-        status: 200,
-        destination: "/.netlify/functions/ssr/ssr.mjs",
-      },
-    },
   }),
   vite: {
     envPrefix: ["PUBLIC_", "SQUARE_", "STRAPI_"],
@@ -46,7 +40,7 @@ export default defineConfig({
       },
     },
     ssr: {
-      noExternal: ["@astrojs/netlify", "square"],
+      noExternal: ["@astrojs/netlify", "square", "@astrojs/react"],
     },
   },
 });
