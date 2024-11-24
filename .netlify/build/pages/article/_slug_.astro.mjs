@@ -1,8 +1,8 @@
 /* empty css                                     */
 import { c as createComponent, r as renderTemplate, d as renderComponent, b as createAstro, m as maybeRenderHead, a as addAttribute, F as Fragment, u as unescapeHTML } from '../../chunks/astro/server_wNtMDreN.mjs';
 import 'kleur/colors';
-import { $ as $$Layout } from '../../chunks/Layout_C4R5laYf.mjs';
-import { f as formatDate, $ as $$ArticleNavigation } from '../../chunks/dates_CumxCKtx.mjs';
+import { $ as $$Layout } from '../../chunks/Layout_Bo8seM6q.mjs';
+import { f as formatDate, $ as $$ArticleNavigation } from '../../chunks/dates_BXX-X0G7.mjs';
 import { f as fetchGraphQL, G as GET_ARTICLE_BY_SLUG, a as GET_ALL_ARTICLES } from '../../chunks/queries_BMxZ0Hog.mjs';
 export { renderers } from '../../renderers.mjs';
 

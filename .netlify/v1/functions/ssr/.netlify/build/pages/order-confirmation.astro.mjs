@@ -1,7 +1,7 @@
 /* empty css                                  */
 import { c as createComponent, r as renderTemplate, d as renderComponent, b as createAstro, m as maybeRenderHead } from '../chunks/astro/server_wNtMDreN.mjs';
 import 'kleur/colors';
-import { $ as $$Layout } from '../chunks/Layout_C4R5laYf.mjs';
+import { $ as $$Layout } from '../chunks/Layout_Bo8seM6q.mjs';
 import { s as squareClient } from '../chunks/client_DxUFhajx.mjs';
 import { M as MoneyUtils } from '../chunks/money_BhdmIw14.mjs';
 import { c as cart } from '../chunks/index_Gtao9X5f.mjs';

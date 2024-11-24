@@ -1,6 +1,6 @@
 import { renderers } from './renderers.mjs';
 import { c as createExports, s as serverEntrypointModule } from './chunks/_@astrojs-ssr-adapter_BUvNToH9.mjs';
-import { manifest } from './manifest_D2AWy4zq.mjs';
+import { manifest } from './manifest_BZ8SL8ad.mjs';
 
 const _page0 = () => import('./pages/_image.astro.mjs');
 const _page1 = () => import('./pages/api/cart-actions.astro.mjs');
@@ -44,7 +44,7 @@ const _manifest = Object.assign(manifest, {
     middleware: undefined
 });
 const _args = {
-    "middlewareSecret": "0f793919-ac17-4c2d-ae89-32048220dc90"
+    "middlewareSecret": "ae8b6fd5-44c7-4f58-b3eb-25677974b1da"
 };
 const _exports = createExports(_manifest, _args);
 const __astrojsSsrVirtualEntry = _exports.default;

@@ -13,6 +13,7 @@ export default defineConfig({
     builders: true,
     binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
     edgeMiddleware: true,
+    functionPerRoute: false, // Force single SSR function
   }),
   vite: {
     envPrefix: ["PUBLIC_", "SQUARE_", "STRAPI_"],
