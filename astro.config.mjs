@@ -9,7 +9,9 @@ export default defineConfig({
   integrations: [tailwind(), icon({ iconDir: "src/assets/icons" }), react()],
   output: "server",
   adapter: netlify({
+    functionName: "entry-server",
     dist: new URL("./dist/", import.meta.url),
+    builders: true,
     binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
   }),
   vite: {
@@ -38,7 +40,7 @@ export default defineConfig({
       },
     },
     ssr: {
-      noExternal: ["@astrojs/netlify"],
+      noExternal: ["@astrojs/netlify", "square"],
     },
   },
 });
