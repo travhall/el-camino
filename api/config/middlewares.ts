@@ -21,7 +21,6 @@ export default [
   {
     name: 'strapi::cors',
     config: {
-      enabled: true,
       headers: '*',
       origin: ['*']  // In production, you should list specific domains
     },
