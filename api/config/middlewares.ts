@@ -5,14 +5,15 @@ export default [
     name: 'strapi::security',
     config: {
       contentSecurityPolicy: {
+        useDefaults: true,
         directives: {
-          'default-src': ["'self'"],
-          'img-src': ["'self'", 'data:', 'blob:', '*.githubusercontent.com', '*.netlify.app', '*.github.io'],
-          'media-src': ["'self'", 'data:', 'blob:'],
-          'connect-src': ["'self'", 'https:'],
+          'connect-src': ["'self'", 'https:', 'http:'],
+          'img-src': ["'self'", 'data:', 'blob:', 'https:', 'http:'],
+          'media-src': ["'self'", 'data:', 'blob:', 'https:', 'http:'],
           'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
           'style-src': ["'self'", "'unsafe-inline'"],
-          'frame-src': ["'self'"],
+          'frame-src': ["'self'", 'https:', 'http:'],
+          upgradeInsecureRequests: null,
         },
       },
     },
@@ -21,16 +22,9 @@ export default [
     name: 'strapi::cors',
     config: {
       enabled: true,
-      origin: [
-        'http://localhost:3000',
-        'http://localhost:4321',
-        'https://*.netlify.app',
-        'https://*.github.io'
-      ],
-      headers: ['*'],
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
-      credentials: true,
-    }
+      headers: '*',
+      origin: ['*']  // In production, you should list specific domains
+    },
   },
   'strapi::poweredBy',
   'strapi::query',

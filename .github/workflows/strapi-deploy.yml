@@ -37,54 +37,28 @@ jobs:
           export default ({ env }) => ({
             host: env('HOST', '0.0.0.0'),
             port: env.int('PORT', 1337),
-            url: env('PUBLIC_URL'),
+            url: 'https://travhall.github.io',
             prefix: '/el-camino/api',
             app: {
               keys: env.array('APP_KEYS'),
             },
+            admin: {
+              path: '/admin',
+              build: {
+                backend: 'https://travhall.github.io/el-camino/api'
+              }
+            }
           });
           EOL
 
-      # Also create middlewares configuration for production
-      - name: Create production middlewares config
+      - name: Create static config
         run: |
-          cat > config/env/production/middlewares.ts << EOL
-          export default [
-            'strapi::logger',
-            'strapi::errors',
-            {
-              name: 'strapi::security',
-              config: {
-                contentSecurityPolicy: {
-                  directives: {
-                    'default-src': ["'self'"],
-                    'img-src': ["'self'", 'data:', 'blob:', '*.githubusercontent.com', '*.netlify.app', '*.github.io'],
-                    'media-src': ["'self'", 'data:', 'blob:'],
-                    'connect-src': ["'self'", 'https:'],
-                    'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-                    'style-src': ["'self'", "'unsafe-inline'"],
-                    'frame-src': ["'self'"],
-                  },
-                },
-              },
-            },
-            {
-              name: 'strapi::cors',
-              config: {
-                enabled: true,
-                origin: ['https://*.netlify.app', 'https://*.github.io'],
-                headers: ['*'],
-                methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
-                credentials: true,
-              }
-            },
-            'strapi::poweredBy',
-            'strapi::query',
-            'strapi::body',
-            'strapi::session',
-            'strapi::favicon',
-            'strapi::public',
-          ];
+          cat > config/env/production/static.ts << EOL
+          export default {
+            enabled: true,
+            maxAge: 31536000,
+            defaultIndex: true
+          };
           EOL
 
       - name: Build Strapi
@@ -100,11 +74,70 @@ jobs:
           TRANSFER_TOKEN_SALT: ${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }}
           DATABASE_CLIENT: "sqlite"
           DATABASE_FILENAME: ".tmp/data.db"
-          PUBLIC_URL: ${{ secrets.STRAPI_PUBLIC_URL }}
+          PUBLIC_URL: "https://travhall.github.io/el-camino/api"
+
+      # Debug step to check build output
+      - name: Debug Build Output
+        run: |
+          echo "Checking build directory structure:"
+          ls -la build/
+          echo "Checking for index file:"
+          ls -la build/index.html || echo "No index.html found"
+          echo "Checking admin directory:"
+          ls -la build/admin || echo "No admin directory found"
+
+      # Create a 404.html that redirects to index.html
+      - name: Create 404 Page
+        run: |
+          cat > build/404.html << EOL
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>Redirecting...</title>
+              <script type="text/javascript">
+                // Single Page Apps for GitHub Pages
+                // https://github.com/rafgraph/spa-github-pages
+                (function(l) {
+                  if (l.search[1] === '/' ) {
+                    var decoded = l.search.slice(1).split('&').map(function(s) { 
+                      return s.replace(/~and~/g, '&')
+                    }).join('?');
+                    window.history.replaceState(null, null,
+                        l.pathname.slice(0, -1) + decoded + l.hash
+                    );
+                  }
+                }(window.location))
+              </script>
+            </head>
+            <body>
+              Redirecting...
+            </body>
+          </html>
+          EOL
+
+      # Create an index.html if it doesn't exist
+      - name: Create Index Page
+        run: |
+          if [ ! -f build/index.html ]; then
+            cat > build/index.html << EOL
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta charset="utf-8">
+                <title>El Camino API</title>
+                <meta http-equiv="refresh" content="0;url=/el-camino/api/admin">
+              </head>
+              <body>
+                Redirecting to admin panel...
+              </body>
+            </html>
+            EOL
+          fi
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./api/build
-          enable_jekyll: false
+          folder: api/build
+          branch: gh-pages
+          clean: true
