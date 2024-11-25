@@ -17,15 +17,32 @@ jobs:
         working-directory: ./api
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "./api/package.json"
 
       - name: Install dependencies
         run: npm install
+
+      # Add configuration file generation
+      - name: Create production config
+        run: |
+          cat > config/env/production/server.js << EOL
+          module.exports = ({ env }) => ({
+            host: env('HOST', '0.0.0.0'),
+            port: env.int('PORT', 1337),
+            url: env('PUBLIC_URL'),
+            prefix: '/el-camino/api',
+            app: {
+              keys: env.array('APP_KEYS'),
+            },
+          });
+          EOL
 
       - name: Build Strapi
         run: npm run build
@@ -47,3 +64,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./api/build
+          enable_jekyll: false
+          cname: ${{ secrets.STRAPI_PUBLIC_URL }}

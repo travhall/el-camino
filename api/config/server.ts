@@ -8,4 +8,6 @@ export default ({ env }) => ({
   webhooks: {
     populateRelations: env.bool('WEBHOOKS_POPULATE_RELATIONS', false),
   },
+  // Add base path configuration for GitHub Pages
+  prefix: env('PUBLIC_URL', '').includes('github.io') ? '/el-camino/api' : '',
 });
