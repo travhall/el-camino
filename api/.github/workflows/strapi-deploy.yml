@@ -1,0 +1,47 @@
+name: Deploy Strapi
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./api
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Strapi
+        run: npm run build
+        env:
+          NODE_ENV: production
+          HOST: "0.0.0.0"
+          PORT: 1337
+          APP_KEYS: ${{ secrets.STRAPI_APP_KEYS }}
+          API_TOKEN_SALT: ${{ secrets.STRAPI_API_TOKEN_SALT }}
+          ADMIN_JWT_SECRET: ${{ secrets.STRAPI_ADMIN_JWT_SECRET }}
+          JWT_SECRET: ${{ secrets.STRAPI_JWT_SECRET }}
+          TRANSFER_TOKEN_SALT: ${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }}
+          DATABASE_CLIENT: "sqlite"
+          DATABASE_FILENAME: ".tmp/data.db"
+          PUBLIC_URL: ${{ secrets.STRAPI_PUBLIC_URL }}
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./api/build

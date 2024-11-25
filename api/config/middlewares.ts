@@ -1,0 +1,35 @@
+export default [
+  'strapi::logger',
+  'strapi::errors',
+  {
+    name: 'strapi::security',
+    config: {
+      contentSecurityPolicy: {
+        directives: {
+          'default-src': ["'self'"],
+          'img-src': ["'self'", 'data:', 'blob:', '*.githubusercontent.com', '*.netlify.app'],
+          'media-src': ["'self'", 'data:', 'blob:'],
+          'connect-src': ["'self'", 'https:'],
+          'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          'style-src': ["'self'", "'unsafe-inline'"],
+          'frame-src': ["'self'"],
+        },
+      },
+    },
+  },
+  {
+    name: 'strapi::cors',
+    config: {
+      enabled: true,
+      origin: ['http://localhost:3000', 'http://localhost:4321', 'https://*.netlify.app'],
+      headers: ['*'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
+    }
+  },
+  'strapi::poweredBy',
+  'strapi::query',
+  'strapi::body',
+  'strapi::session',
+  'strapi::favicon',
+  'strapi::public',
+];
