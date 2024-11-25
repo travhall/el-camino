@@ -29,6 +29,15 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # Debug step to check directory structure before build
+      - name: Debug Pre-Build
+        run: |
+          echo "Current directory structure:"
+          pwd
+          ls -la
+          echo "Config directory:"
+          ls -la config/ || echo "No config directory found"
+
       # Create production config directory and file
       - name: Create production config
         run: |
@@ -42,27 +51,27 @@ jobs:
             app: {
               keys: env.array('APP_KEYS'),
             },
-            admin: {
-              path: '/admin',
-              build: {
-                backend: 'https://travhall.github.io/el-camino/api'
-              }
-            }
           });
           EOL
 
-      - name: Create static config
+      # Debug step to check config creation
+      - name: Debug Config
         run: |
-          cat > config/env/production/static.ts << EOL
-          export default {
-            enabled: true,
-            maxAge: 31536000,
-            defaultIndex: true
-          };
-          EOL
+          echo "Checking production config:"
+          ls -la config/env/production/
+          cat config/env/production/server.ts
 
       - name: Build Strapi
-        run: npm run build
+        run: |
+          echo "Starting build process..."
+          npm run build
+          echo "Build process completed"
+          echo "Checking directory structure after build:"
+          ls -la
+          echo "Checking possible build directories:"
+          ls -la dist/ || echo "No dist/ directory"
+          ls -la .next/ || echo "No .next/ directory"
+          ls -la build/ || echo "No build/ directory"
         env:
           NODE_ENV: production
           HOST: "0.0.0.0"
@@ -76,68 +85,52 @@ jobs:
           DATABASE_FILENAME: ".tmp/data.db"
           PUBLIC_URL: "https://travhall.github.io/el-camino/api"
 
-      # Debug step to check build output
-      - name: Debug Build Output
+      # Additional debug step to check Strapi specific directories
+      - name: Debug Strapi Directories
         run: |
-          echo "Checking build directory structure:"
-          ls -la build/
-          echo "Checking for index file:"
-          ls -la build/index.html || echo "No index.html found"
-          echo "Checking admin directory:"
-          ls -la build/admin || echo "No admin directory found"
+          echo "Checking .strapi directory:"
+          ls -la .strapi/ || echo "No .strapi directory"
+          echo "Checking src directory:"
+          ls -la src/ || echo "No src directory"
+          echo "Checking public directory:"
+          ls -la public/ || echo "No public directory"
 
-      # Create a 404.html that redirects to index.html
-      - name: Create 404 Page
+      # If we find the build directory, create necessary files
+      - name: Prepare Deployment
         run: |
-          cat > build/404.html << EOL
+          BUILD_DIR=""
+          if [ -d "dist" ]; then
+            BUILD_DIR="dist"
+          elif [ -d "build" ]; then
+            BUILD_DIR="build"
+          elif [ -d ".strapi/build" ]; then
+            BUILD_DIR=".strapi/build"
+          else
+            echo "No build directory found"
+            exit 1
+          fi
+
+          echo "Found build directory: $BUILD_DIR"
+
+          # Create index.html in the correct directory
+          cat > $BUILD_DIR/index.html << EOL
           <!DOCTYPE html>
           <html>
             <head>
               <meta charset="utf-8">
-              <title>Redirecting...</title>
-              <script type="text/javascript">
-                // Single Page Apps for GitHub Pages
-                // https://github.com/rafgraph/spa-github-pages
-                (function(l) {
-                  if (l.search[1] === '/' ) {
-                    var decoded = l.search.slice(1).split('&').map(function(s) { 
-                      return s.replace(/~and~/g, '&')
-                    }).join('?');
-                    window.history.replaceState(null, null,
-                        l.pathname.slice(0, -1) + decoded + l.hash
-                    );
-                  }
-                }(window.location))
-              </script>
+              <title>El Camino API</title>
+              <meta http-equiv="refresh" content="0;url=/el-camino/api/admin">
             </head>
             <body>
-              Redirecting...
+              Redirecting to admin panel...
             </body>
           </html>
           EOL
 
-      # Create an index.html if it doesn't exist
-      - name: Create Index Page
-        run: |
-          if [ ! -f build/index.html ]; then
-            cat > build/index.html << EOL
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <meta charset="utf-8">
-                <title>El Camino API</title>
-                <meta http-equiv="refresh" content="0;url=/el-camino/api/admin">
-              </head>
-              <body>
-                Redirecting to admin panel...
-              </body>
-            </html>
-            EOL
-          fi
-
+      # Deploy the correct directory
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: api/build
+          folder: api/dist # We'll update this based on what we find
           branch: gh-pages
           clean: true
