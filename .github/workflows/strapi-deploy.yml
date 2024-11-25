@@ -29,11 +29,12 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Add configuration file generation
+      # Create production config directory and file
       - name: Create production config
         run: |
-          cat > config/env/production/server.js << EOL
-          module.exports = ({ env }) => ({
+          mkdir -p config/env/production
+          cat > config/env/production/server.ts << EOL
+          export default ({ env }) => ({
             host: env('HOST', '0.0.0.0'),
             port: env.int('PORT', 1337),
             url: env('PUBLIC_URL'),
@@ -42,6 +43,48 @@ jobs:
               keys: env.array('APP_KEYS'),
             },
           });
+          EOL
+
+      # Also create middlewares configuration for production
+      - name: Create production middlewares config
+        run: |
+          cat > config/env/production/middlewares.ts << EOL
+          export default [
+            'strapi::logger',
+            'strapi::errors',
+            {
+              name: 'strapi::security',
+              config: {
+                contentSecurityPolicy: {
+                  directives: {
+                    'default-src': ["'self'"],
+                    'img-src': ["'self'", 'data:', 'blob:', '*.githubusercontent.com', '*.netlify.app', '*.github.io'],
+                    'media-src': ["'self'", 'data:', 'blob:'],
+                    'connect-src': ["'self'", 'https:'],
+                    'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+                    'style-src': ["'self'", "'unsafe-inline'"],
+                    'frame-src': ["'self'"],
+                  },
+                },
+              },
+            },
+            {
+              name: 'strapi::cors',
+              config: {
+                enabled: true,
+                origin: ['https://*.netlify.app', 'https://*.github.io'],
+                headers: ['*'],
+                methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
+                credentials: true,
+              }
+            },
+            'strapi::poweredBy',
+            'strapi::query',
+            'strapi::body',
+            'strapi::session',
+            'strapi::favicon',
+            'strapi::public',
+          ];
           EOL
 
       - name: Build Strapi
@@ -65,4 +108,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./api/build
           enable_jekyll: false
-          cname: ${{ secrets.STRAPI_PUBLIC_URL }}
