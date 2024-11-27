@@ -1,6 +1,4 @@
 ---
-// Existing imports and props remain exactly the same
-import Button from "@/components/Button.astro";
 import type { Product } from "@/lib/square/types";
 import { MoneyUtils } from "@/lib/square/money";
 
@@ -16,143 +14,100 @@ const formattedPrice =
     : MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 ---
 
-<div
-  class="product-card bg-ui-card-surface text-ui-card-text border border-ui-card-border hover:bg-ui-card-hover relative flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:col-span-2 md:row-span-5 2xl:row-span-4 overflow-hidden"
+<a
+  href={product.url}
+  class="group flex flex-col p-4 col-span-full md:col-span-2 bg-ui-card-surface text-ui-card-text border-ui-card-border hover:bg-ui-card-hover"
+  itemscope
+  itemtype="http://schema.org/Product"
 >
-  <!-- Only change: Added duration-300 to transition classes -->
-  <img
-    src={product.image}
-    alt={product.title}
-    class="card-img object-cover w-full h-full transition-all duration-300 opacity-10"
-    onerror="console.error('Failed to load product image:', this.src)"
-  />
-  <!-- Rest of the component remains exactly the same -->
-  <div
-    class="card-content flex flex-col gap-4 lg:gap-6 px-6 py-12 xl:p-12 absolute bottom-0 w-full"
-  >
-    <h1 class="card-heading font-display font-black tracking-wide">
-      {product.title}
-    </h1>
-    <span class="card-price font-display font-semibold text-base tracking-wide">
-      {formattedPrice}
-    </span>
-    {
-      product.description && (
-        <p class="description text-sm leading-snug md:text-base md:leading-snug 2xl:text-lg 2xl:leading-snug">
-          {product.description}
-        </p>
-      )
-    }
-    <div class="flex gap-2">
-      <Button
-        type="button"
-        variant="primary"
-        size="md"
-        classes="add-to-cart-btn"
-        data-product={JSON.stringify({
-          id: product.id,
-          catalogObjectId: product.catalogObjectId,
-          variationId: product.variationId,
-          title: product.title,
-          price:
-            typeof product.price === "object"
-              ? MoneyUtils.toFloat(product.price)
-              : product.price,
-          image: product.image,
-        })}
-      >
-        Add to Cart
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="md"
-        classes="view-details-btn"
-        onclick={`window.location.href='${product.url}'`}
-      >
-        View Details
-      </Button>
-    </div>
-  </div>
-</div>
+  <!-- Schema.org metadata -->
+  <meta itemprop="productID" content={product.catalogObjectId} />
+  <meta itemprop="sku" content={product.variationId} />
+  {
+    product.description && (
+      <meta itemprop="description" content={product.description} />
+    )
+  }
+  <meta itemprop="url" content={product.url} />
+  <link itemprop="image" href={product.image} />
+  <meta itemprop="availability" content="https://schema.org/InStock" />
 
-<script>
-  import { cart } from "@/lib/cart";
-
-  // Add new hover effect functionality
-  function applyProductHoverEffects() {
-    const cards = document.querySelectorAll(".product-card");
-
-    cards.forEach((card) => {
-      const img = card.querySelector(".card-img") as HTMLImageElement;
-
-      if (!img) return;
-
-      const handleHover = () => {
-        if (window.innerWidth >= 1024) {
-          img.style.opacity = ".5";
-          img.style.scale = "1.05";
-        }
-      };
-
-      const handleLeave = () => {
-        if (window.innerWidth >= 1024) {
-          img.style.opacity = "0.1";
-          img.style.scale = "1";
-        }
-      };
-
-      card.addEventListener("mouseover", handleHover);
-      card.addEventListener("mouseout", handleLeave);
-    });
+  <!-- OpenGraph metadata -->
+  <meta property="og:title" content={product.title} />
+  <meta property="og:type" content="product" />
+  <meta property="og:url" content={product.url} />
+  <meta property="og:image" content={product.image} />
+  {
+    product.description && (
+      <meta property="og:description" content={product.description} />
+    )
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    applyProductHoverEffects();
-    window.addEventListener("resize", applyProductHoverEffects);
-  });
+  <!-- Product Image Container -->
+  <div class="relative aspect-square overflow-hidden mb-2">
+    <img
+      src={product.image}
+      alt={product.title}
+      itemprop="image"
+      class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+      loading="lazy"
+      onerror="this.src='/images/placeholder.png'"
+    />
 
-  // Existing cart functionality remains exactly the same
-  document
-    .querySelectorAll<HTMLButtonElement>(".add-to-cart-btn")
-    .forEach((button) => {
-      button.addEventListener("click", () => {
-        try {
-          const productData = button.dataset.product;
-          if (!productData) {
-            throw new Error("No product data found");
-          }
+    <!-- Hover Overlay -->
+    <div
+      class="absolute inset-0 bg-ui-card-surface/0 group-hover:bg-ui-card-surface/80 flex items-center justify-center transition-all duration-300"
+    >
+      <span
+        class="font-display text-product-heading text-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+      >
+        View Details
+      </span>
+    </div>
+  </div>
 
-          const product = JSON.parse(productData);
-          console.log("Adding to cart:", product);
+  <!-- Product Info -->
+  <div class="flex justify-between items-start gap-4">
+    <h2
+      itemprop="name"
+      class="font-display text-product-heading text-lg leading-tight line-clamp-2"
+    >
+      {product.title}
+    </h2>
 
-          cart.addItem({
-            ...product,
-            quantity: 1,
-          });
+    <div
+      itemprop="offers"
+      itemscope
+      itemtype="http://schema.org/Offer"
+      class="flex-shrink-0"
+    >
+      <meta itemprop="priceCurrency" content="USD" />
+      <meta
+        itemprop="price"
+        content={typeof product.price === "object"
+          ? MoneyUtils.toFloat(product.price).toString()
+          : product.price.toString()}
+      />
+      <span class="font-display text-product-price text-base whitespace-nowrap">
+        {formattedPrice}
+      </span>
+    </div>
+  </div>
+</a>
 
-          const successMessage = document.createElement("div");
-          successMessage.className =
-            "fixed top-4 right-4 bg-state-success-surface text-state-success-text px-4 py-2 rounded-lg shadow-lg z-50";
-          successMessage.textContent = "Added to cart";
-          document.body.appendChild(successMessage);
+<style>
+  /* Fallback for browsers without :has() support */
+  @supports not (selector(:has(*))) {
+    a:hover img {
+      transform: scale(1.05);
+    }
 
-          setTimeout(() => {
-            successMessage.remove();
-          }, 2000);
-        } catch (error) {
-          console.error("Error adding to cart:", error);
+    a:hover .absolute {
+      background-color: rgb(var(--ui-card-surface) / 0.8);
+    }
 
-          const errorMessage = document.createElement("div");
-          errorMessage.className =
-            "fixed top-4 right-4 bg-state-error-surface text-state-error-surface px-4 py-2 rounded-lg shadow-lg z-50";
-          errorMessage.textContent = "Failed to add item to cart";
-          document.body.appendChild(errorMessage);
-
-          setTimeout(() => {
-            errorMessage.remove();
-          }, 2000);
-        }
-      });
-    });
-</script>
+    a:hover span {
+      opacity: 1;
+    }
+  }
+</style>
