@@ -13,7 +13,7 @@ export default defineConfig({
     binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
   }),
   vite: {
-    envPrefix: ["PUBLIC_", "SQUARE_", "STRAPI_"],
+    envPrefix: ["PUBLIC_", "SQUARE_", "STRAPI_", "PAYLOAD_"],
     define: {
       "import.meta.env.SQUARE_ACCESS_TOKEN": JSON.stringify(
         process.env.SQUARE_ACCESS_TOKEN
@@ -29,6 +29,9 @@ export default defineConfig({
       ),
       "import.meta.env.STRAPI_API_TOKEN": JSON.stringify(
         process.env.STRAPI_API_TOKEN
+      ),
+      "import.meta.env.PUBLIC_PAYLOAD_URL": JSON.stringify(
+        process.env.PUBLIC_PAYLOAD_URL || "http://localhost:3000"
       ),
     },
     resolve: {

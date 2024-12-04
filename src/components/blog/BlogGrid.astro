@@ -1,0 +1,19 @@
+---
+import type { BlogPost } from '@/lib/payload/types'
+import BlogCard from './BlogCard.astro'
+
+export interface Props {
+  posts: BlogPost[]
+  featured?: boolean
+}
+
+const { posts, featured = false } = Astro.props
+---
+
+<div
+  class="card-grid grid justify-center grid-cols-6 2xl:grid-cols-8 md:auto-rows-[10vw] w-full gap-1 p-1"
+>
+  {posts.map((post, index) => (
+    <BlogCard post={post} featured={featured && index === 0} />
+  ))}
+</div>

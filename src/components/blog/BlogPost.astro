@@ -1,0 +1,90 @@
+---
+import type { BlogPost } from '@/lib/payload/types'
+import { getMediaUrl, lexicalToHtml } from '@/lib/payload/utils'
+
+export interface Props {
+  post: BlogPost
+}
+
+const { post } = Astro.props
+const htmlContent = await lexicalToHtml(post.content)
+const publishedDate = new Date(post.publishedDate).toLocaleDateString('en-US', { 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric' 
+})
+const imageUrl = getMediaUrl(post.featuredImage.url)
+---
+
+<article class="max-w-4xl mx-auto">
+  <header class="mb-8">
+    <div class="flex gap-2 items-center text-content-meta mb-4">
+      <span>{publishedDate}</span>
+      <span>•</span>
+      <a href={`/news/category/${post.category.slug}`} class="hover:text-content-emphasis transition-colors">
+        {post.category.name}
+      </a>
+      {post.updatedAt && post.updatedAt !== post.publishedDate && (
+        <>
+          <span>•</span>
+          <span>Updated {new Date(post.updatedAt).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })}</span>
+        </>
+      )}
+    </div>
+    
+    <h1 class="font-display text-display-2xl text-content-heading mb-4">
+      {post.title}
+    </h1>
+    
+    <p class="text-body-lg text-content-body mb-6">
+      {post.excerpt}
+    </p>
+
+    <div class="flex items-center gap-4 text-content-meta">
+      <span class="font-medium">{post.author.name}</span>
+      {post.tags && post.tags.length > 0 && (
+        <div class="flex gap-2">
+          {post.tags.map((tag) => (
+            <a
+              href={`/news/tag/${tag.slug}`}
+              class="text-sm px-2 py-1 bg-surface-secondary rounded-full hover:bg-surface-tertiary transition-colors"
+            >
+              {tag.name}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  </header>
+
+  <div class="mb-8 aspect-video rounded-lg overflow-hidden bg-surface-secondary">
+    <img
+      src={imageUrl}
+      alt={post.featuredImage.alt || post.title}
+      class="w-full h-full object-cover"
+      loading="eager"
+    />
+  </div>
+
+  <div class="content">
+    <Fragment set:html={htmlContent} />
+  </div>
+</article>
+
+<style>
+  .content :global(.content-block) {
+    @apply mb-8;
+  }
+  
+  .content :global(.content-block.emphasis) {
+    @apply bg-surface-secondary p-6 rounded-lg;
+  }
+  
+  .content :global(.content-block.meta) {
+    @apply text-content-meta;
+  }
+</style>

@@ -1,43 +1,68 @@
 ---
 import { SEOMetadata } from "astro-seo-metadata";
+import type { SEOData } from "@/lib/payload/seo";
+import { generateWebPageSchema, generateOrganizationSchema } from "@/lib/payload/structured-data";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import "@/styles/globals.css";
-// import CartDebug from "@/components/CartDebug.astro";
 
 interface Props {
-  title: string;
+  seo?: SEOData;
+  structuredData?: object;
 }
 
-const { title } = Astro.props;
+const { seo, structuredData } = Astro.props;
+
+const DEFAULT_SEO = {
+  title: "El Camino Skate Shop",
+  description: "El Camino Skate Shop is a skater owned and operated skateboard shop, located in Eau Claire, WI",
+  image: "/default-og-image.jpg", // You'll need to add a default image
+};
+
+const seoData = {
+  ...DEFAULT_SEO,
+  ...seo,
+};
+
+const orgSchema = generateOrganizationSchema({
+  name: "El Camino Skate Shop",
+  logo: "/logo.png", // Update with real logo path
+  address: "1901 Brackett Ave #1, Eau Claire, WI 54701"
+});
 ---
 
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="description" content="Astro description" />
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-    <link rel="preconnect" href="/" crossorigin />
-    <title>{title}</title>
-
-    <script async src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
 
     <SEOMetadata
-      siteName={"El Camino Skate Shop"}
-      title={"El Camino Skate Shop"}
-      description={"El Camino Skate Shop is a skater owned and operated skateboard shop, located in Eau Claire, WI"}
-      image={"http://example.com/the_image_url-preferably_absolute.jpg"}
-      favicon={"/favicon.svg"}
+      siteName="El Camino Skate Shop"
+      title={seoData.title}
+      description={seoData.description}
+      image={seoData.image}
+      favicon="/favicon.svg"
       author="Travis Hall"
       copyright="ISC"
       astroSitemap={true}
       canonicalUrl={Astro.url.toString()}
-      type={"website"}
+      type="website"
       astroGenerator={true}
     />
+
+    {seoData.noIndex && (
+      <meta name="robots" content="noindex" />
+    )}
+
+    <script type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
+    {structuredData && (
+      <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+    )}
+
+    <script async src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
   </head>
   <body
     class="bg-surface-primary text-content-body grid grid-rows-[auto_1fr_auto] min-h-screen"
@@ -47,6 +72,5 @@ const { title } = Astro.props;
       <slot />
     </main>
     <Footer />
-    <!-- <CartDebug /> -->
   </body>
 </html>

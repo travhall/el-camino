@@ -1,15 +1,10 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import ProductCard from "@/components/ProductCard.astro";
-import type { ArticlesResponse } from "@/lib/types/content";
 import type { Product } from "@/lib/square/types";
 import { fetchProducts } from "@/lib/square/client";
-import ArticleGrid from "@/components/ArticleGrid.astro";
-import { fetchGraphQL } from "@/lib/graphql";
-import { GET_RECENT_ARTICLES } from "@/lib/queries";
 
 let products: Product[] = [];
-let recentArticles: ArticlesResponse['articles'] = [];
 
 try {
   console.log("Fetching Square products...");
@@ -18,20 +13,10 @@ try {
 } catch (error) {
   console.error("Error fetching products:", error);
 }
-
-try {
-  const response = await fetchGraphQL<ArticlesResponse>(GET_RECENT_ARTICLES, {
-    limit: 6,
-  });
-  recentArticles = response.articles;
-} catch (error) {
-  console.error("Error fetching articles:", error);
-}
 ---
 
-<Layout title="El Camino Skate Shop">
+<Layout>
   <section>
-    <ArticleGrid articles={recentArticles} featured={true} />
     {
       products.length > 0 && (
         <div class="flex flex-col md:flex-row p-4 md:p-8 lg:pt-12 xl:pt-16">

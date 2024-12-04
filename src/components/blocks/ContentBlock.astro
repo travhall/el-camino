@@ -1,0 +1,25 @@
+---
+import type { ContentBlock } from '@/lib/payload/types';
+import { lexicalToHtml } from '@/lib/payload/utils';
+
+interface Props {
+  block: ContentBlock;
+}
+
+const { block } = Astro.props;
+
+const textClasses = {
+  normal: 'content',
+  emphasis: 'content text-content-emphasis',
+  meta: 'content text-content-meta'
+} as const;
+
+const htmlContent = await lexicalToHtml(block.content);
+---
+
+<div class:list={[
+  'prose max-w-none mb-8',
+  textClasses[block.appearance],
+]}>
+  <Fragment set:html={htmlContent} />
+</div>

@@ -1,0 +1,32 @@
+---
+import Layout from '@/layouts/Layout.astro'
+import BlogGrid from '@/components/blog/BlogGrid.astro'
+import { getBlogPostsByTag, getBlogTags } from '@/lib/payload'
+import type { BlogTag } from '@/lib/payload/types'
+
+const { slug } = Astro.params
+
+// Get tag details
+const tags = await getBlogTags()
+const tag = tags.find((t: BlogTag) => t.slug === slug)
+
+if (!tag) {
+  return Astro.redirect('/404')
+}
+
+const { docs: posts } = await getBlogPostsByTag(slug as string)
+
+const seoData = {
+  title: `${tag.name} Posts | El Camino Skate Shop`,
+  description: `Posts tagged with ${tag.name.toLowerCase()} from El Camino Skate Shop`,
+  type: 'website',
+  canonicalUrl: `https://elcaminoskateshop.com/news/tag/${slug}`
+} as const
+---
+
+<Layout seo={seoData}>
+  <div class="w-full max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+    <h1 class="text-4xl font-display text-content-heading mb-8">Posts Tagged: {tag.name}</h1>
+    <BlogGrid posts={posts} />
+  </div>
+</Layout>
