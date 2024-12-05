@@ -61,7 +61,7 @@ export const Blog: CollectionConfig = {
     defaultColumns: ['title', 'category', 'status', 'publishedDate'],
     description: 'Blog posts for El Camino Skate Shop',
     preview: (doc) => {
-      return `https://elcaminoskateshop.com/blog/${doc.slug}`
+      return `/news/${doc.slug}`
     },
   },
   access: {
@@ -235,6 +235,23 @@ export const Blog: CollectionConfig = {
     },
   ],
   timestamps: true,
+}
+
+// Add the getBlogPost function
+export async function getBlogPost(slug: string) {
+  const response = await fetch(`${import.meta.env.PUBLIC_PAYLOAD_URL}/api/blog-posts?where[slug][equals]=${slug}&depth=2`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch blog post: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  if (!data.docs || data.docs.length === 0) {
+    return null;
+  }
+
+  return data.docs[0];
 }
 
 export const BlogCategories: CollectionConfig = {
