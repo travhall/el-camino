@@ -1,42 +1,50 @@
 ---
-import type { BlogPost } from '@/lib/payload/types'
-import { getMediaUrl, lexicalToHtml } from '@/lib/payload/utils'
+import type { BlogPost } from '@/lib/types'
+import { Icon } from 'astro-icon'
 
-export interface Props {
+type Props = {
   post: BlogPost
 }
 
 const { post } = Astro.props
-const htmlContent = await lexicalToHtml(post.content)
-const publishedDate = new Date(post.publishedDate).toLocaleDateString('en-US', { 
-  year: 'numeric', 
-  month: 'long', 
-  day: 'numeric' 
+
+const publishedDate = new Date(post.publishedDate).toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric'
 })
-const imageUrl = getMediaUrl(post.featuredImage.url)
+
+const updateDate = post.updatedAt ? new Date(post.updatedAt).toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric'
+}) : null
 ---
 
 <article class="max-w-4xl mx-auto">
   <header class="mb-8">
-    <div class="flex gap-2 items-center text-content-meta mb-4">
-      <span>{publishedDate}</span>
-      <span>•</span>
-      <a href={`/news/category/${post.category.slug}`} class="hover:text-content-emphasis transition-colors">
-        {post.category.name}
-      </a>
-      {post.updatedAt && post.updatedAt !== post.publishedDate && (
-        <>
-          <span>•</span>
-          <span>Updated {new Date(post.updatedAt).toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}</span>
-        </>
+    <div class="flex flex-wrap gap-4 text-content-meta mb-4">
+      <div class="flex items-center gap-2">
+        <Icon name="calendar" class="w-4 h-4" />
+        <time datetime={post.publishedDate}>{publishedDate}</time>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <Icon name="folder" class="w-4 h-4" />
+        <a href={`/news/category/${post.category.slug}`} class="hover:underline">
+          {post.category.name}
+        </a>
+      </div>
+
+      {updateDate && updateDate !== publishedDate && (
+        <div class="flex items-center gap-2">
+          <Icon name="edit" class="w-4 h-4" />
+          <span>Updated {updateDate}</span>
+        </div>
       )}
     </div>
     
-    <h1 class="font-display text-display-2xl text-content-heading mb-4">
+    <h1 class="text-display-xl md:text-display-2xl text-content-heading mb-4">
       {post.title}
     </h1>
     
@@ -45,13 +53,17 @@ const imageUrl = getMediaUrl(post.featuredImage.url)
     </p>
 
     <div class="flex items-center gap-4 text-content-meta">
-      <span class="font-medium">{post.author.name}</span>
+      <div class="flex items-center gap-2">
+        <Icon name="user" class="w-4 h-4" />
+        <span>{post.author.name}</span>
+      </div>
+      
       {post.tags && post.tags.length > 0 && (
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           {post.tags.map((tag) => (
             <a
               href={`/news/tag/${tag.slug}`}
-              class="text-sm px-2 py-1 bg-surface-secondary rounded-full hover:bg-surface-tertiary transition-colors"
+              class="px-3 py-1 bg-surface-secondary text-content-meta rounded-full hover:bg-surface-tertiary transition-colors"
             >
               {tag.name}
             </a>
@@ -61,30 +73,64 @@ const imageUrl = getMediaUrl(post.featuredImage.url)
     </div>
   </header>
 
-  <div class="mb-8 aspect-video rounded-lg overflow-hidden bg-surface-secondary">
-    <img
-      src={imageUrl}
-      alt={post.featuredImage.alt || post.title}
-      class="w-full h-full object-cover"
-      loading="eager"
-    />
-  </div>
+  {post.featuredImage && (
+    <figure class="mb-8">
+      <img
+        src={post.featuredImage.url}
+        alt={post.featuredImage.altText || post.title}
+        class="w-full rounded-lg"
+      />
+      {post.featuredImage.caption && (
+        <figcaption class="mt-2 text-content-caption text-center">
+          {post.featuredImage.caption}
+        </figcaption>
+      )}
+    </figure>
+  )}
 
   <div class="content">
-    <Fragment set:html={htmlContent} />
+    <Fragment set:html={post.content} />
   </div>
 </article>
 
 <style>
-  .content :global(.content-block) {
-    @apply mb-8;
+  .content :global(h2) {
+    @apply text-display-lg text-content-heading mt-8 mb-4;
   }
   
-  .content :global(.content-block.emphasis) {
-    @apply bg-surface-secondary p-6 rounded-lg;
+  .content :global(h3) {
+    @apply text-display-base text-content-heading mt-6 mb-3;
   }
   
-  .content :global(.content-block.meta) {
-    @apply text-content-meta;
+  .content :global(p) {
+    @apply text-body-lg text-content-body mb-4;
+  }
+  
+  .content :global(ul), .content :global(ol) {
+    @apply mb-4 pl-6;
+  }
+  
+  .content :global(ul) {
+    @apply list-disc;
+  }
+  
+  .content :global(ol) {
+    @apply list-decimal;
+  }
+  
+  .content :global(li) {
+    @apply text-body-lg text-content-body mb-2;
+  }
+  
+  .content :global(blockquote) {
+    @apply pl-4 border-l-4 border-content-meta italic my-6;
+  }
+  
+  .content :global(a) {
+    @apply text-content-emphasis hover:underline;
+  }
+  
+  .content :global(img) {
+    @apply rounded-lg my-6;
   }
 </style>
