@@ -4,7 +4,7 @@ import BlogPost from '@/components/blog/BlogPost.astro'
 import { getBlogPost } from '@/lib/payload/blog'
 import { getSEODataFromBlogPost } from '@/lib/payload/seo'
 import { generateBlogPostSchema } from '@/lib/payload/structured-data'
-import type { BlogPost as BlogPostType } from '@/lib/types'
+import type { BlogPost as BlogPostType } from '@/lib/payload/types'
 
 const { slug } = Astro.params
 
@@ -20,7 +20,17 @@ try {
   return Astro.redirect('/500');
 }
 
-let seoData = { title: post.title };
+let seoData = { 
+  title: post.title,
+  description: post.excerpt || post.title,
+  openGraph: {
+    basic: {
+      title: post.title,
+      type: 'article',
+      image: post.featuredImage.url
+    }
+  }
+};
 let structuredData = {};
 
 try {
