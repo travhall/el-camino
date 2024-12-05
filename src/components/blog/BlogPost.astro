@@ -1,90 +1,145 @@
 ---
-import type { BlogPost } from '@/lib/payload/types'
-import { getMediaUrl, lexicalToHtml } from '@/lib/payload/utils'
+import { Icon } from 'astro-icon'
+import type { Block } from '@/lib/types'
 
-export interface Props {
-  post: BlogPost
+interface Props {
+  post: {
+    title: string
+    excerpt: string
+    featuredImage: any
+    layout: Block[]
+    author: {
+      name: string
+    }
+    category: {
+      name: string
+      slug: string
+    }
+    tags?: Array<{
+      name: string
+      slug: string
+    }>
+    publishedDate: string
+  }
 }
 
 const { post } = Astro.props
-const htmlContent = await lexicalToHtml(post.content)
-const publishedDate = new Date(post.publishedDate).toLocaleDateString('en-US', { 
-  year: 'numeric', 
-  month: 'long', 
-  day: 'numeric' 
-})
-const imageUrl = getMediaUrl(post.featuredImage.url)
 ---
 
 <article class="max-w-4xl mx-auto">
   <header class="mb-8">
-    <div class="flex gap-2 items-center text-content-meta mb-4">
-      <span>{publishedDate}</span>
-      <span>•</span>
-      <a href={`/news/category/${post.category.slug}`} class="hover:text-content-emphasis transition-colors">
-        {post.category.name}
-      </a>
-      {post.updatedAt && post.updatedAt !== post.publishedDate && (
-        <>
-          <span>•</span>
-          <span>Updated {new Date(post.updatedAt).toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}</span>
-        </>
-      )}
-    </div>
-    
-    <h1 class="font-display text-display-2xl text-content-heading mb-4">
+    <h1 class="text-display-xl md:text-display-2xl text-content-heading mb-4">
       {post.title}
     </h1>
     
-    <p class="text-body-lg text-content-body mb-6">
-      {post.excerpt}
-    </p>
-
-    <div class="flex items-center gap-4 text-content-meta">
-      <span class="font-medium">{post.author.name}</span>
-      {post.tags && post.tags.length > 0 && (
-        <div class="flex gap-2">
-          {post.tags.map((tag) => (
-            <a
-              href={`/news/tag/${tag.slug}`}
-              class="text-sm px-2 py-1 bg-surface-secondary rounded-full hover:bg-surface-tertiary transition-colors"
-            >
-              {tag.name}
-            </a>
-          ))}
-        </div>
-      )}
+    <div class="flex flex-wrap gap-4 text-content-meta mb-4">
+      <div class="flex items-center gap-2">
+        <Icon name="user" class="w-4 h-4" />
+        <span>{post.author.name}</span>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <Icon name="calendar" class="w-4 h-4" />
+        <time datetime={post.publishedDate}>
+          {new Date(post.publishedDate).toLocaleDateString()}
+        </time>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <Icon name="folder" class="w-4 h-4" />
+        <a href={`/news/category/${post.category.slug}`} class="hover:underline">
+          {post.category.name}
+        </a>
+      </div>
     </div>
+    
+    {post.tags && post.tags.length > 0 && (
+      <div class="flex flex-wrap gap-2">
+        {post.tags.map((tag) => (
+          <a
+            href={`/news/tag/${tag.slug}`}
+            class="px-3 py-1 bg-surface-secondary text-content-meta rounded-full hover:bg-surface-tertiary transition-colors"
+          >
+            {tag.name}
+          </a>
+        ))}
+      </div>
+    )}
   </header>
 
-  <div class="mb-8 aspect-video rounded-lg overflow-hidden bg-surface-secondary">
-    <img
-      src={imageUrl}
-      alt={post.featuredImage.alt || post.title}
-      class="w-full h-full object-cover"
-      loading="eager"
-    />
-  </div>
+  {post.featuredImage && (
+    <figure class="mb-8">
+      <img
+        src={post.featuredImage.url}
+        alt={post.featuredImage.altText || post.title}
+        class="w-full rounded-lg"
+      />
+      {post.featuredImage.caption && (
+        <figcaption class="mt-2 text-content-caption text-center">
+          {post.featuredImage.caption}
+        </figcaption>
+      )}
+    </figure>
+  )}
 
   <div class="content">
-    <Fragment set:html={htmlContent} />
+    {post.layout?.map((block) => {
+      switch (block.blockType) {
+        case 'content':
+          return (
+            <div class={`content-block ${block.appearance || 'normal'}`}>
+              <Fragment set:html={block.content} />
+            </div>
+          )
+        case 'imageGallery':
+          return (
+            <div class={`grid grid-cols-${block.columns || '3'} gap-4 my-8`}>
+              {block.images?.map((image) => (
+                <figure>
+                  <img
+                    src={image.image.url}
+                    alt={image.image.altText || ''}
+                    class="w-full h-auto rounded-lg"
+                  />
+                  {image.caption && (
+                    <figcaption class="mt-2 text-content-caption text-center">
+                      {image.caption}
+                    </figcaption>
+                  )}
+                </figure>
+              ))}
+            </div>
+          )
+        case 'video':
+          return (
+            <div class="my-8">
+              <div class="aspect-w-16 aspect-h-9">
+                <iframe
+                  src={block.url}
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                  class="w-full h-full rounded-lg"
+                />
+              </div>
+              {block.caption && (
+                <p class="mt-2 text-content-caption text-center">
+                  {block.caption}
+                </p>
+              )}
+              {block.transcript && (
+                <details class="mt-4">
+                  <summary class="cursor-pointer text-content-meta">View Transcript</summary>
+                  <div class="mt-2 p-4 bg-surface-secondary rounded-lg">
+                    {block.transcript}
+                  </div>
+                </details>
+              )}
+            </div>
+          )
+        default:
+          return null
+      }
+    })}
   </div>
 </article>
-
-<style>
-  .content :global(.content-block) {
-    @apply mb-8;
-  }
-  
-  .content :global(.content-block.emphasis) {
-    @apply bg-surface-secondary p-6 rounded-lg;
-  }
-  
-  .content :global(.content-block.meta) {
-    @apply text-content-meta;
-  }
-</style>
