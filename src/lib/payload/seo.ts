@@ -46,7 +46,7 @@ export function getSEODataFromBlogPost(post: BlogPost): SEOData {
         ? getMediaUrl(post.featuredImage.url) 
         : undefined,
     noIndex: post.seo?.noIndex || false,
-    canonicalUrl: `https://elcaminoskateshop.com/blog/${post.slug}`,
+    canonicalUrl: `https://elcaminoskateshop.com/news/${post.slug}`,
     publishedDate: post.publishedDate,
     modifiedDate: post.updatedAt,
     type: 'article',

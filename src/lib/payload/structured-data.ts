@@ -52,7 +52,7 @@ export function generateBlogPostSchema(post: BlogPost) {
     },
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `https://elcaminoskateshop.com/blog/${post.slug}`
+      '@id': `https://elcaminoskateshop.com/news/${post.slug}`
     }
   };
 }
