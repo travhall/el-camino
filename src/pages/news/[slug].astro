@@ -1,26 +1,34 @@
 ---
 import Layout from '@/layouts/Layout.astro'
 import BlogPost from '@/components/blog/BlogPost.astro'
-import { getBlogPost } from '@/lib/payload'
+import { getBlogPost } from '@/lib/payload/blog'
 import { getSEODataFromBlogPost } from '@/lib/payload/seo'
 import { generateBlogPostSchema } from '@/lib/payload/structured-data'
+import type { BlogPost as BlogPostType } from '@/lib/types'
 
 const { slug } = Astro.params
 
-let post;
+let post: BlogPostType | null = null;
+
 try {
   post = await getBlogPost(slug as string);
-  console.log('Found post:', post);
+  if (!post || post.status !== 'published') {
+    return Astro.redirect('/404');
+  }
 } catch (error: any) {
   console.error('Error fetching post:', error);
+  return Astro.redirect('/500');
 }
 
-if (!post) {
-  return Astro.redirect('/404');
-}
+let seoData = { title: post.title };
+let structuredData = {};
 
-const seoData = await getSEODataFromBlogPost(post);
-const structuredData = generateBlogPostSchema(post);
+try {
+  seoData = await getSEODataFromBlogPost(post);
+  structuredData = generateBlogPostSchema(post);
+} catch (error: any) {
+  console.error('Error generating metadata:', error);
+}
 ---
 
 <Layout seo={seoData} structuredData={structuredData}>
