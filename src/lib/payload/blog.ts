@@ -61,7 +61,7 @@ export const Blog: CollectionConfig = {
     defaultColumns: ['title', 'category', 'status', 'publishedDate'],
     description: 'Blog posts for El Camino Skate Shop',
     preview: (doc) => {
-      return `https://elcaminoskateshop.com/news/${doc.slug}`
+      return `/news/${doc.slug}`
     },
   },
   access: {
@@ -92,7 +92,7 @@ export const Blog: CollectionConfig = {
               return data.title
                 .toLowerCase()
                 .replace(/ /g, '-')
-                .replace(/[^\\w-]+/g, '')
+                .replace(/[^\w-]+/g, '')
             }
             return value
           },
@@ -287,7 +287,7 @@ export const BlogCategories: CollectionConfig = {
               return data.name
                 .toLowerCase()
                 .replace(/ /g, '-')
-                .replace(/[^\\w-]+/g, '')
+                .replace(/[^\w-]+/g, '')
             }
             return value
           },
@@ -331,7 +331,7 @@ export const BlogTags: CollectionConfig = {
               return data.name
                 .toLowerCase()
                 .replace(/ /g, '-')
-                .replace(/[^\\w-]+/g, '')
+                .replace(/[^\w-]+/g, '')
             }
             return value
           },
