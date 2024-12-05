@@ -1,66 +1,40 @@
-export interface UploadFile {
-    url: string;
-    alternativeText?: string | null;
+// src/lib/types/content.ts
+
+export interface MediaFile {
+  url: string
+  altText?: string
+  caption?: string
 }
 
-export interface Author {
-    name: string;
-    avatar?: UploadFile;
+export interface PostData {
+  title: string
+  excerpt: string
+  slug: string
+  featuredImage: MediaFile
+  content: any // Rich text content from Payload
+  author: {
+    name: string
+  }
+  category: {
+    name: string
+    slug: string
+  }
+  tags?: Array<{
+    name: string
+    slug: string
+  }>
+  status: 'draft' | 'published'
+  publishedDate: string
+  seo?: {
+    title?: string
+    description?: string
+    image?: MediaFile
+    noIndex?: boolean
+  }
 }
 
-export interface Category {
-    name: string;
-    slug: string;
-}
-
-export interface Article {
-    documentId: string;
-    title: string;
-    description?: string;
-    slug: string;
-    publishedAt: string;
-    cover?: UploadFile;
-    author?: Author;
-    category?: Category;
-}
-
-export interface ArticlesResponse {
-    articles: Article[];
-    meta: {
-        pagination: {
-            page: number;
-            pageSize: number;
-            total: number;
-            pageCount: number;
-        };
-    };
-}
-
-export interface ContentBlock {
-    __typename: string;
-    id?: string;
-    body?: string;
-    file?: UploadFile;
-    title?: string;
-    files?: UploadFile[];
-}
-
-export interface Article {
-    documentId: string;
-    title: string;
-    description?: string;
-    slug: string;
-    publishedAt: string;
-    cover?: UploadFile;
-    author?: Author;
-    category?: Category;
-    blocks?: ContentBlock[];
-}
-
-export interface ContentBlock {
-    __typename: string;
-    id?: string;
-    body?: string;
-    file?: UploadFile;
-    title?: string;
+export interface BlogPost extends PostData {
+  id: string
+  createdAt: string
+  updatedAt: string
 }
