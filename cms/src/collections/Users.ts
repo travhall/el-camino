@@ -25,13 +25,14 @@ export const Users: CollectionConfig = {
   slug: 'users',
   auth: {
     useAPIKey: true,
-    verify: true,
+    verify: false,
     maxLoginAttempts: 5,
     lockTime: 600000,
   },
   admin: {
     useAsTitle: 'name',
     defaultColumns: ['name', 'email', 'role', 'updatedAt'],
+    group: 'Admin',
   },
   access: {
     read: () => true,
@@ -60,13 +61,11 @@ export const Users: CollectionConfig = {
       },
     },
     {
-      name: 'avatar',
-      type: 'upload',
-      relationTo: 'media',
-    },
-    {
       name: 'bio',
       type: 'textarea',
+      admin: {
+        description: 'Brief user biography'
+      }
     },
     {
       name: 'social',
@@ -97,4 +96,4 @@ export const Users: CollectionConfig = {
       },
     ],
   },
-};
+}

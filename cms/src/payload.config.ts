@@ -4,7 +4,6 @@ import { payloadCloudPlugin } from '@payloadcms/payload-cloud'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import sharp from 'sharp'
 
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
@@ -47,7 +46,7 @@ const config = buildConfig({
     limits: {
       fileSize: 5000000 // 5MB
     }
-  },
+  }
 })
 
 export default config
