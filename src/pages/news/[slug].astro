@@ -1,26 +1,53 @@
 ---
 import Layout from '@/layouts/Layout.astro'
 import BlogPost from '@/components/blog/BlogPost.astro'
-import { getBlogPost } from '@/lib/payload'
+import { getBlogPost } from '@/lib/payload/blog'
 import { getSEODataFromBlogPost } from '@/lib/payload/seo'
 import { generateBlogPostSchema } from '@/lib/payload/structured-data'
+import type { BlogPost as BlogPostType } from '@/lib/types'
 
 const { slug } = Astro.params
 
-let post;
+let post: BlogPostType | null = null;
+
 try {
   post = await getBlogPost(slug as string);
-  console.log('Found post:', post);
+  if (!post) {
+    console.log('Post not found:', slug);
+    return Astro.redirect('/404');
+  }
+  
+  if (post.status !== 'published') {
+    console.log('Post not published:', slug);
+    return Astro.redirect('/404');
+  }
 } catch (error: any) {
   console.error('Error fetching post:', error);
+  return Astro.redirect('/500');
 }
 
-if (!post) {
-  return Astro.redirect('/404');
-}
+let seoData;
+let structuredData;
 
-const seoData = await getSEODataFromBlogPost(post);
-const structuredData = generateBlogPostSchema(post);
+try {
+  seoData = await getSEODataFromBlogPost(post);
+  structuredData = generateBlogPostSchema(post);
+} catch (error: any) {
+  console.error('Error generating metadata:', error);
+  // Fallback to basic metadata
+  seoData = { 
+    title: post.title,
+    description: post.excerpt,
+    openGraph: {
+      basic: {
+        title: post.title,
+        type: 'article',
+        image: post.featuredImage.url,
+      }
+    }
+  };
+  structuredData = {};
+}
 ---
 
 <Layout seo={seoData} structuredData={structuredData}>
