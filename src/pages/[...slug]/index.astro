@@ -1,25 +1,25 @@
 ---
-import { getPage } from '@/lib/payload';
-import { getSEODataFromPage } from '@/lib/payload/seo';
-import { generateWebPageSchema } from '@/lib/payload/structured-data';
-import Layout from '@/layouts/Layout.astro';
-import ContentBlock from '@/components/blocks/ContentBlock.astro';
-import ImageGallery from '@/components/blocks/ImageGallery.astro';
-import VideoPlayer from '@/components/blocks/VideoPlayer.astro';
+import { getPage } from "@/lib/payload";
+import { getSEODataFromPage } from "@/lib/payload/seo";
+import { generateWebPageSchema } from "@/lib/payload/structured-data";
+import Layout from "@/layouts/Layout.astro";
+import ContentBlock from "@/components/blocks/ContentBlock.astro";
+import ImageGallery from "@/components/blocks/ImageGallery.astro";
+import VideoPlayer from "@/components/blocks/VideoPlayer.astro";
 
 const { slug } = Astro.params;
-console.log('Requested slug:', slug);
+console.log("Requested slug:", slug);
 
 let page;
 try {
   page = await getPage(slug as string);
-  console.log('Found page:', page);
+  console.log("Found page:", page);
 } catch (error) {
-  console.error('Error fetching page:', error);
+  console.error("Error fetching page:", error);
 }
 
 if (!page) {
-  return Astro.redirect('/404');
+  return Astro.redirect("/404");
 }
 
 const { title, layout } = page;
@@ -31,17 +31,19 @@ const structuredData = generateWebPageSchema(page);
   <div class="w-full max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
     <h1 class="text-4xl font-display text-content-heading mb-8">{title}</h1>
 
-    {layout.map((block) => {
-      switch (block.blockType) {
-        case 'content':
-          return <ContentBlock block={block} />;
-        case 'imageGallery':
-          return <ImageGallery block={block} />;
-        case 'video':
-          return <VideoPlayer block={block} />;
-        default:
-          return null;
-      }
-    })}
+    {
+      layout.map((block) => {
+        switch (block.blockType) {
+          case "content":
+            return <ContentBlock block={block} />;
+          case "imageGallery":
+            return <ImageGallery block={block} />;
+          case "video":
+            return <VideoPlayer block={block} />;
+          default:
+            return null;
+        }
+      })
+    }
   </div>
 </Layout>

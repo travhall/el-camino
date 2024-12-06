@@ -12,6 +12,13 @@ export interface SEO {
   noIndex?: boolean;
   canonicalUrl?: string;
   type?: 'article' | 'website' | 'product';
+  openGraph?: {
+    basic: {
+      title: string;
+      type: string;
+      image: string;
+    };
+  };
 }
 
 interface BaseBlock {
@@ -77,7 +84,8 @@ export interface BlogPost {
   slug: string;
   featuredImage: Media;
   excerpt: string;
-  content: any;
+  content?: any; // Keeping this for backwards compatibility if needed
+  layout: Block[]; // Adding the layout field
   category: BlogCategory;
   tags?: BlogTag[];
   author: BlogAuthor;
