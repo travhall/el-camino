@@ -1,4 +1,4 @@
-import type { BlogPost, Page, SEO } from './types'
+import type { BlogPost, SEO, Page } from './types'
 
 export function getSEO(
   content: BlogPost | Page | { title: string; description?: string; image?: string },
@@ -19,7 +19,7 @@ export function getSEO(
   // Handle direct content
   return {
     title: overrides.title || content.title,
-    description: overrides.description || ('description' in content ? content.description : ''),
+    description: overrides.description || '',
     image: overrides.image || ('image' in content ? content.image : undefined),
     noIndex: overrides.noIndex ?? false,
     canonicalUrl: overrides.canonicalUrl,
@@ -27,6 +27,6 @@ export function getSEO(
   }
 }
 
-// Maintain backward compatibility
+// Keep these for backward compatibility
 export const getSEODataFromPage = getSEO;
 export const getSEODataFromBlogPost = getSEO;
