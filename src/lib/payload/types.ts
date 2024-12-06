@@ -8,10 +8,12 @@ export interface Media {
 }
 
 export interface SEO {
-  metaTitle?: string;
-  metaDescription?: string;
-  ogImage?: Media;
+  title: string;
+  description: string;
+  image?: string;
   noIndex?: boolean;
+  canonicalUrl?: string;
+  type?: 'website' | 'article' | 'product';
 }
 
 interface BaseBlock {
@@ -47,7 +49,7 @@ export interface Page {
   id: string;
   title: string;
   slug: string;
-  seo: SEO;
+  seo?: SEO;
   layout: Block[];
   createdAt: string;
   updatedAt: string;
@@ -71,20 +73,19 @@ export interface BlogAuthor {
   name: string;
 }
 
-// Blog Types
 export interface BlogPost {
   id: string;
   title: string;
   slug: string;
   featuredImage: Media;
   excerpt: string;
-  content: any; // Lexical editor content
+  content: any;
   category: BlogCategory;
   tags?: BlogTag[];
   author: BlogAuthor;
   status: 'draft' | 'published';
   publishedDate: string;
-  seo: SEO;
+  seo?: SEO;
   createdAt: string;
   updatedAt: string;
 }
