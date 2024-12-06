@@ -38,6 +38,9 @@ const basicEditor = lexicalEditor({})
 
 export const Blog: CollectionConfig = {
   slug: 'blog-posts',
+  access: {
+    read: () => true,  // Add this to allow public read access
+  },
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['title', 'category', 'status', 'publishedDate'],
@@ -260,6 +263,9 @@ export const Blog: CollectionConfig = {
 
 export const BlogCategories: CollectionConfig = {
   slug: 'blog-categories',
+  access: {
+    read: () => true,
+  },
   admin: {
     useAsTitle: 'name'
   },
@@ -295,6 +301,9 @@ export const BlogCategories: CollectionConfig = {
 
 export const BlogTags: CollectionConfig = {
   slug: 'blog-tags',
+  access: {
+    read: () => true,
+  },
   admin: {
     useAsTitle: 'name'
   },
