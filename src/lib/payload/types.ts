@@ -11,7 +11,7 @@ export interface SEO {
   image?: string;
   noIndex?: boolean;
   canonicalUrl?: string;
-  type?: 'website' | 'article' | 'product';
+  type?: 'article' | 'website' | 'product';
 }
 
 interface BaseBlock {
