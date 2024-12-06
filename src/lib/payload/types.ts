@@ -1,5 +1,3 @@
-// src/lib/payload/types.ts
-
 export interface Media {
   id: string;
   url: string;
