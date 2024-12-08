@@ -9,7 +9,8 @@ export * from './queries'
 export * from './seo'
 export * from './structured-data'
 
-export const PAYLOAD_URL = import.meta.env.PUBLIC_PAYLOAD_URL || 'http://localhost:3000'
+// export const PAYLOAD_URL = import.meta.env.PUBLIC_PAYLOAD_URL || 'http://localhost:3000'
+export const PAYLOAD_URL = import.meta.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3000'
 
 export async function getPage(slug: string): Promise<Page | null> {
   try {

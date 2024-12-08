@@ -1,26 +1,31 @@
 import type { Handler, HandlerEvent, HandlerContext, HandlerResponse } from '@netlify/functions'
 import express from 'express'
-import serverless from 'serverless-http'
 import payload from 'payload'
-import { resolve } from 'path'
-import config from '../../cms/src/payload.config'
+import path from 'path'
+import serverless from 'serverless-http'
 
 let payloadInstance: any = null
 
 const initializePayload = async () => {
   if (!payloadInstance) {
     const app = express()
-    payloadInstance = await payload.init({
+    
+    const instance = await payload.init({
       express: app,
       secret: process.env.PAYLOAD_SECRET || '',
       db: {
-        ...config.db,
         url: process.env.DATABASE_URI || 'file:/var/data/cms.db',
       },
       admin: {
         disabled: true
       }
     })
+
+    app.use(instance.authenticate)
+    app.use('/api', instance.router)
+    app.use('/media', express.static('/var/data/media'))
+    
+    payloadInstance = { app, payload: instance }
   }
   return payloadInstance
 }
@@ -28,7 +33,8 @@ const initializePayload = async () => {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Content-Type': 'application/json'
 }
 
 export const handler: Handler = async (
@@ -44,28 +50,30 @@ export const handler: Handler = async (
   }
 
   try {
-    const app = express()
-    const payload = await initializePayload()
+    const { app } = await initializePayload()
+    
+    // Remove '/.netlify/functions/payload' from path
+    if (event.path) {
+      event.path = event.path.replace('/.netlify/functions/payload', '')
+    }
+    
     const serverlessHandler = serverless(app)
-
     const response = await serverlessHandler(event, context)
+    
     return {
-      statusCode: 200,
+      statusCode: response.statusCode,
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/json'
+        ...response.headers
       },
-      body: JSON.stringify(response)
+      body: response.body
     }
 
   } catch (error) {
     console.error('Payload Error:', error)
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         error: 'Internal Server Error',
         message: error instanceof Error ? error.message : 'Unknown error occurred'
