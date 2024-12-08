@@ -34,12 +34,7 @@ declare module '@payloadcms/db-sqlite' {
 }
 
 declare module 'serverless-http' {
-  interface ServerlessResponse {
-    statusCode: number;
-    headers: Record<string, string>;
-    body: string;
-  }
-  
-  function serverless(app: any): (event: any, context: any) => Promise<ServerlessResponse>;
+  import { Handler } from '@netlify/functions';
+  function serverless(app: any): Handler;
   export default serverless;
 }
