@@ -7,11 +7,6 @@ NODE_VERSION = "18.20.5"
 NODE_OPTIONS = "--max-old-space-size=8192"
 DATABASE_PATH = "/var/data"
 
-[[headers]]
-for = "/_astro/*"
-[headers.values]
-Cache-Control = "public, max-age=31536000, immutable"
-
 [[redirects]]
 from = "/api/*"
 to = "/netlify/functions/payload/:splat"
@@ -25,10 +20,16 @@ status = 200
 [functions]
 node_bundler = "esbuild"
 directory = "netlify/functions"
-included_files = ["dist/**/*", "cms/**/*"]
-
-[functions.ssr]
-external_node_modules = ["@astrojs/netlify", "square"]
+included_files = [
+  "cms/src/collections/**/*",
+  "cms/src/payload.config.ts",
+  "src/lib/payload/module.d.ts"
+]
 
 [functions.payload]
-external_node_modules = ["@payloadcms/db-sqlite", "better-sqlite3", "payload", "express"]
+external_node_modules = [
+  "@payloadcms/db-sqlite",
+  "better-sqlite3",
+  "payload",
+  "express"
+]

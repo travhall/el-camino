@@ -1,16 +1,29 @@
-// src/lib/payload/module.d.ts
 declare module 'payload' {
-    import type { Payload } from '../../../cms/node_modules/payload/dist/payload'
-    export * from '../../../cms/node_modules/payload/dist/payload'
-    export default Payload
+  interface PayloadConfig {
+    express: any
+    secret: string
+    db: any
+    admin?: { disabled: boolean }
   }
-  
-  declare module 'express' {
-    import express from '../../../cms/node_modules/express'
-    export = express
+
+  interface PayloadInstance {
+    authenticate: any
+    router: any
   }
-  
-  declare module '@payloadcms/db-sqlite' {
-    import { sqliteAdapter } from '../../../cms/node_modules/@payloadcms/db-sqlite'
-    export { sqliteAdapter }
+
+  const payload: {
+    init(config: PayloadConfig): Promise<PayloadInstance>
   }
+
+  export default payload
+}
+
+declare module 'express' {
+  import express from '../../../cms/node_modules/express'
+  export = express
+}
+
+declare module '@payloadcms/db-sqlite' {
+  import { sqliteAdapter } from '../../../cms/node_modules/@payloadcms/db-sqlite'
+  export { sqliteAdapter }
+}
