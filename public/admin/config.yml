@@ -1,0 +1,53 @@
+# public/admin/config.yml
+backend:
+  name: git-gateway
+  branch: main
+
+media_folder: "public/media"
+public_folder: "/media"
+
+collections:
+  - name: "blog"
+    label: "Blog"
+    folder: "src/content/blog"
+    create: true
+    slug: "{{slug}}"
+    fields:
+      - {label: "Title", name: "title", widget: "string"}
+      - {label: "Excerpt", name: "excerpt", widget: "text"}
+      - {label: "Featured Image", name: "featuredImage", widget: "object", fields: [
+          {label: "Source", name: "src", widget: "image"},
+          {label: "Alt Text", name: "alt", widget: "string", required: false},
+          {label: "Caption", name: "caption", widget: "string", required: false}
+        ]}
+      - {label: "Category", name: "category", widget: "string"}
+      - {label: "Tags", name: "tags", widget: "list", required: false}
+      - {label: "Published Date", name: "publishedDate", widget: "datetime"}
+      - {label: "Status", name: "status", widget: "select", options: ["draft", "published"]}
+      - {label: "Content", name: "content", widget: "markdown"}
+      - {label: "Author", name: "author", widget: "string"}
+      - label: "SEO"
+        name: "seo"
+        widget: "object"
+        required: false
+        fields:
+          - {label: "Title", name: "title", widget: "string", required: false}
+          - {label: "Description", name: "description", widget: "text", required: false}
+          - {label: "Image", name: "image", widget: "image", required: false}
+
+  - name: "pages"
+    label: "Pages"
+    folder: "src/content/pages"
+    create: true
+    slug: "{{slug}}"
+    fields:
+      - {label: "Title", name: "title", widget: "string"}
+      - {label: "Content", name: "content", widget: "markdown"}
+      - label: "SEO"
+        name: "seo"
+        widget: "object"
+        required: false
+        fields:
+          - {label: "Title", name: "title", widget: "string", required: false}
+          - {label: "Description", name: "description", widget: "text", required: false}
+          - {label: "Image", name: "image", widget: "image", required: false}
