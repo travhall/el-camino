@@ -1,22 +1,30 @@
-# public/admin/config.yml
 backend:
   name: git-gateway
   branch: main
+  identity_url: "https://elcaminoskateshop.netlify.app/.netlify/identity"
+  gateway_url: "https://elcaminoskateshop.netlify.app/.netlify/git/github"
 
 site_url: https://elcaminoskateshop.netlify.app
 display_url: https://elcaminoskateshop.netlify.app
 logo_url: https://elcaminoskateshop.netlify.app/logo.svg
 
+local_backend: false
+
 publish_mode: editorial_workflow
 media_folder: "public/media"
 public_folder: "/media"
+
+slug:
+  encoding: "ascii"
+  clean_accents: true
+  sanitize_replacement: "-"
 
 collections:
   - name: "blog"
     label: "Blog"
     folder: "src/content/blog"
     create: true
-    slug: "{{slug}}"
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
     fields:
       - {label: "Title", name: "title", widget: "string"}
       - {label: "Excerpt", name: "excerpt", widget: "text"}
@@ -27,7 +35,7 @@ collections:
         ]}
       - {label: "Category", name: "category", widget: "string"}
       - {label: "Tags", name: "tags", widget: "list", required: false}
-      - {label: "Published Date", name: "publishedDate", widget: "datetime"}
+      - {label: "Published Date", name: "publishedDate", widget: "datetime", format: "YYYY-MM-DD HH:mm:ss"}
       - {label: "Status", name: "status", widget: "select", options: ["draft", "published"]}
       - {label: "Content", name: "content", widget: "markdown"}
       - {label: "Author", name: "author", widget: "string"}
