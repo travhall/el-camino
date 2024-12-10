@@ -1,13 +1,13 @@
 ---
 import { SEOMetadata } from "astro-seo-metadata";
-import type { SEOData } from "@/lib/payload/seo";
-import { generateWebPageSchema, generateOrganizationSchema } from "@/lib/payload/structured-data";
+import type { SEO } from "@/lib/types/content";
+import { generateWebPageSchema, generateOrganizationSchema } from "@/lib/cms/structured-data";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import "@/styles/globals.css";
 
 interface Props {
-  seo?: SEOData;
+  seo?: SEO;
   structuredData?: object;
 }
 
@@ -16,7 +16,7 @@ const { seo, structuredData } = Astro.props;
 const DEFAULT_SEO = {
   title: "El Camino Skate Shop",
   description: "El Camino Skate Shop is a skater owned and operated skateboard shop, located in Eau Claire, WI",
-  image: "/default-og-image.jpg", // You'll need to add a default image
+  image: "/default-og-image.jpg",
 };
 
 const seoData = {
@@ -26,7 +26,7 @@ const seoData = {
 
 const orgSchema = generateOrganizationSchema({
   name: "El Camino Skate Shop",
-  logo: "/logo.png", // Update with real logo path
+  logo: "/logo.png",
   address: "1901 Brackett Ave #1, Eau Claire, WI 54701"
 });
 ---

@@ -2,7 +2,15 @@
 backend:
   name: git-gateway
   branch: main
+  commit_messages:
+    create: 'Create {{collection}} "{{slug}}"'
+    update: 'Update {{collection}} "{{slug}}"'
+    delete: 'Delete {{collection}} "{{slug}}"'
+    uploadMedia: '[skip ci] Upload "{{path}}"'
+    deleteMedia: '[skip ci] Delete "{{path}}"'
 
+publish_mode: editorial_workflow
+local_backend: true
 media_folder: "public/media"
 public_folder: "/media"
 
@@ -34,6 +42,7 @@ collections:
           - {label: "Title", name: "title", widget: "string", required: false}
           - {label: "Description", name: "description", widget: "text", required: false}
           - {label: "Image", name: "image", widget: "image", required: false}
+          - {label: "No Index", name: "noIndex", widget: "boolean", required: false}
 
   - name: "pages"
     label: "Pages"
@@ -43,6 +52,30 @@ collections:
     fields:
       - {label: "Title", name: "title", widget: "string"}
       - {label: "Content", name: "content", widget: "markdown"}
+      - label: "Layout"
+        name: "layout"
+        widget: "list"
+        types:
+          - label: "Content Block"
+            name: "content"
+            widget: "object"
+            fields:
+              - {label: "Block Type", name: "blockType", widget: "hidden", default: "content"}
+              - {label: "Content", name: "content", widget: "markdown"}
+              - {label: "Appearance", name: "appearance", widget: "select", options: ["normal", "emphasis", "meta"], default: "normal"}
+          - label: "Image Gallery"
+            name: "imageGallery"
+            widget: "object"
+            fields:
+              - {label: "Block Type", name: "blockType", widget: "hidden", default: "imageGallery"}
+              - label: "Images"
+                name: "images"
+                widget: "list"
+                fields:
+                  - {label: "Image", name: "src", widget: "image"}
+                  - {label: "Alt Text", name: "alt", widget: "string", required: false}
+                  - {label: "Caption", name: "caption", widget: "string", required: false}
+              - {label: "Columns", name: "columns", widget: "select", options: ["2", "3", "4"], default: "2"}
       - label: "SEO"
         name: "seo"
         widget: "object"
@@ -51,3 +84,4 @@ collections:
           - {label: "Title", name: "title", widget: "string", required: false}
           - {label: "Description", name: "description", widget: "text", required: false}
           - {label: "Image", name: "image", widget: "image", required: false}
+          - {label: "No Index", name: "noIndex", widget: "boolean", required: false}

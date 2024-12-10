@@ -1,0 +1,21 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import yaml from "js-yaml";
+import config from "../../../public/admin/config.yml?raw";
+
+const parsedConfig = yaml.load(config);
+---
+
+<AdminLayout>
+  <script define:vars={{ config: parsedConfig }}>
+    window.CMS_MANUAL_INIT = true;
+    window.CMS_CONFIG = config;
+  </script>
+  <script is:inline src="https://unpkg.com/js-yaml/dist/js-yaml.min.js"
+  ></script>
+  <script is:inline src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"
+  ></script>
+  <script is:inline>
+    CMS.init();
+  </script>
+</AdminLayout>

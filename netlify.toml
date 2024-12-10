@@ -1,17 +1,32 @@
 [build]
-  command = "npm run build"
-  publish = "dist"
-  functions = "netlify/functions"
+command = "npm run build"
+publish = "dist"
+functions = "netlify/functions"
 
 [[redirects]]
-  from = "/admin/*"
-  to = "/admin/index.html"
-  status = 200
-
-[build.environment]
-  NODE_VERSION = "18.20.5"
+from = "/admin/*"
+to = "/admin/index.html"
+status = 200
 
 [[headers]]
-  for = "/_astro/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+for = "/*"
+[headers.values]
+X-Frame-Options = "DENY"
+X-XSS-Protection = "1; mode=block"
+Content-Security-Policy = "frame-ancestors 'none'"
+
+[[headers]]
+for = "/admin/*"
+[headers.values]
+X-Frame-Options = "SAMEORIGIN"
+Content-Security-Policy = "frame-ancestors 'self'"
+
+[dev]
+command = "npm run dev"
+targetPort = 4321
+port = 8888
+framework = "astro"
+
+[build.environment]
+NODE_VERSION = "18.20.5"
+NETLIFY_IDENTITY_ENABLED = "true"
