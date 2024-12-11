@@ -25,7 +25,15 @@ Content-Security-Policy = "frame-ancestors 'none'"
 for = "/admin/*"
 [headers.values]
 X-Frame-Options = "SAMEORIGIN"
-Content-Security-Policy = "frame-ancestors 'self'"
+Content-Security-Policy = """
+  frame-ancestors 'self';
+  default-src 'self' https://identity.netlify.com;
+  script-src 'self' 'unsafe-inline' https://identity.netlify.com https://unpkg.com;
+  style-src 'self' 'unsafe-inline' https://unpkg.com;
+  img-src 'self' data: blob:;
+  frame-src 'self' https://identity.netlify.com;
+  connect-src 'self' https://identity.netlify.com https://*.netlify.app/.netlify/;
+"""
 
 [dev]
 command = "npm run dev"
