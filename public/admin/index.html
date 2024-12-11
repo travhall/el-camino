@@ -1,22 +1,50 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>El Camino Content Manager</title>
-</head>
-<body>
-  <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
-  <script>
-    if (window.netlifyIdentity) {
-      window.netlifyIdentity.on("init", user => {
-        if (!user) {
-          window.netlifyIdentity.on("login", () => {
-            document.location.href = "/admin/";
-          });
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Content Manager</title>
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  </head>
+  <body>
+    <script>
+      window.CMS_MANUAL_INIT = true;
+
+      // Initialize Netlify Identity
+      if (window.netlifyIdentity) {
+        window.netlifyIdentity.on("init", user => {
+          if (!user) {
+            window.netlifyIdentity.on("login", () => {
+              document.location.href = "/admin/";
+            });
+          }
+        });
+      }
+
+      // Configure CMS
+      const config = {
+        backend: {
+          name: "git-gateway",
+          branch: "main",
+          identity_url: "https://elcaminoskateshop.netlify.app/.netlify/identity",
+          gateway_url: "https://elcaminoskateshop.netlify.app/.netlify/git/github",
+        },
+        load_config_file: true,
+        media_folder: "public/media",
+        public_folder: "/media",
+        site_url: "https://elcaminoskateshop.netlify.app",
+        display_url: "https://elcaminoskateshop.netlify.app",
+        logo_url: "https://elcaminoskateshop.netlify.app/logo.svg"
+      };
+
+      // Wait for both Identity and CMS to load
+      window.addEventListener('load', function() {
+        // Load Decap CMS
+        if (window.CMS) {
+          CMS.init({ config });
         }
       });
-    }
-  </script>
-</body>
+    </script>
+    <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+  </body>
 </html>
