@@ -9,6 +9,10 @@
   <body>
     <script>
       window.CMS_MANUAL_INIT = true;
+      
+      // Check if we're in development
+      const isDev = window.location.hostname === 'localhost' || 
+                   window.location.hostname === '127.0.0.1';
 
       // Initialize Netlify Identity
       if (window.netlifyIdentity) {
@@ -24,17 +28,18 @@
       // Configure CMS
       const config = {
         backend: {
-          name: "git-gateway",
+          name: isDev ? "test-repo" : "git-gateway",
           branch: "master",
           repo: "travhall/el-camino",
           api_root: "https://elcaminoskateshop.netlify.app/.netlify/git/github"
         },
+        local_backend: isDev,
         load_config_file: true,
         media_folder: "public/media",
         public_folder: "/media",
-        site_url: "https://elcaminoskateshop.netlify.app",
-        display_url: "https://elcaminoskateshop.netlify.app",
-        logo_url: "https://elcaminoskateshop.netlify.app/logo.svg"
+        site_url: isDev ? "http://localhost:4321" : "https://elcaminoskateshop.netlify.app",
+        display_url: isDev ? "http://localhost:4321" : "https://elcaminoskateshop.netlify.app",
+        logo_url: isDev ? "/logo.svg" : "https://elcaminoskateshop.netlify.app/logo.svg"
       };
 
       // Wait for both Identity and CMS to load

@@ -1,26 +1,30 @@
 ---
 // src/pages/admin/index.astro
+const isDev = import.meta.env.DEV;
 ---
 
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Content Manager</title>
-  </head>
-  <body>
     <script
       is:inline
       src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  </head>
+  <body>
     <script is:inline>
       window.CMS_MANUAL_INIT = true;
       window.CMS_CONFIG = {
         backend: {
-          name: "git-gateway",
-          branch: "main",
+          name:
+            window.location.hostname === "localhost"
+              ? "test-repo"
+              : "git-gateway",
+          branch: "master",
         },
-        load_config_file: false,
+        load_config_file: true,
         media_folder: "public/media",
         collections: [],
       };
