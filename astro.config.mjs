@@ -30,9 +30,6 @@ export default defineConfig({
       "import.meta.env.STRAPI_API_TOKEN": JSON.stringify(
         process.env.STRAPI_API_TOKEN
       ),
-      "import.meta.env.PUBLIC_PAYLOAD_URL": JSON.stringify(
-        process.env.PUBLIC_PAYLOAD_URL || "http://localhost:3000"
-      ),
     },
     resolve: {
       alias: {
