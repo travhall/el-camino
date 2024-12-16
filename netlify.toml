@@ -4,13 +4,7 @@ publish = "dist"
 functions = "netlify/functions"
 
 [[redirects]]
-from = "/#confirmation_token=*"
-to = "/admin/confirm"
-status = 302
-force = true
-
-[[redirects]]
-from = "/admin/*"
+from = "/admin/*" 
 to = "/admin/index.html"
 status = 200
 
@@ -26,21 +20,19 @@ for = "/admin/*"
 [headers.values]
 X-Frame-Options = "SAMEORIGIN"
 Content-Security-Policy = """
-  frame-ancestors 'self';
-  default-src 'self' https://identity.netlify.com https://unpkg.com;
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://identity.netlify.com https://unpkg.com;
-  style-src 'self' 'unsafe-inline' https://unpkg.com;
-  img-src 'self' data: blob:;
-  frame-src 'self' https://identity.netlify.com;
-  connect-src 'self' https://identity.netlify.com https://*.netlify.app/.netlify/;
+ frame-ancestors 'self';
+ default-src 'self' https://identity.netlify.com https://unpkg.com;
+ script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*;
+ style-src 'self' 'unsafe-inline';
+ img-src 'self' data: blob:;
+ connect-src 'self' http://localhost:* ws://localhost:*;
 """
+
+[build.environment]
+NODE_VERSION = "18"
 
 [dev]
 command = "pnpm run dev"
 targetPort = 4321
 port = 8888
 framework = "astro"
-
-[build.environment]
-NODE_VERSION = "18.20.5"
-NETLIFY_IDENTITY_ENABLED = "true"

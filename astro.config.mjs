@@ -1,3 +1,4 @@
+// El Camino Astro Config
 import { defineConfig } from "astro/config";
 import tailwind from "@astrojs/tailwind";
 import icon from "astro-icon";
@@ -10,10 +11,11 @@ export default defineConfig({
   output: "server",
   adapter: netlify({
     builders: true,
+    functionPerRoute: true,
     binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
   }),
   vite: {
-    envPrefix: ["PUBLIC_", "SQUARE_", "STRAPI_", "PAYLOAD_"],
+    envPrefix: ["PUBLIC_", "SQUARE_", "NEXT_PUBLIC_", "TINA_"],
     define: {
       "import.meta.env.SQUARE_ACCESS_TOKEN": JSON.stringify(
         process.env.SQUARE_ACCESS_TOKEN
@@ -23,12 +25,6 @@ export default defineConfig({
       ),
       "import.meta.env.PUBLIC_SQUARE_LOCATION_ID": JSON.stringify(
         process.env.PUBLIC_SQUARE_LOCATION_ID
-      ),
-      "import.meta.env.STRAPI_URL": JSON.stringify(
-        process.env.STRAPI_URL || "http://localhost:1337"
-      ),
-      "import.meta.env.STRAPI_API_TOKEN": JSON.stringify(
-        process.env.STRAPI_API_TOKEN
       ),
     },
     resolve: {
