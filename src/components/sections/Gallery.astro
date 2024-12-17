@@ -1,0 +1,33 @@
+---
+interface Image {
+  src: string;
+  caption?: string;
+}
+
+interface Props {
+  images: Image[];
+}
+
+const { images } = Astro.props;
+---
+
+<section class="py-12 bg-surface-secondary">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {images.map((image) => (
+        <figure class="relative aspect-square bg-surface-tertiary">
+          <img
+            src={image.src}
+            alt={image.caption || ""}
+            class="w-full h-full object-cover"
+          />
+          {image.caption && (
+            <figcaption class="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2 text-body-sm">
+              {image.caption}
+            </figcaption>
+          )}
+        </figure>
+      ))}
+    </div>
+  </div>
+</section>

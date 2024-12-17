@@ -1,0 +1,46 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Hero from "@/components/sections/Hero.astro";
+import Content from "@/components/sections/Content.astro";
+import Gallery from "@/components/sections/Gallery.astro";
+import { generateWebPageSchema } from "@/lib/cms/structured-data";
+import { fetchPage } from "@/lib/tina/client";
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  return [{ params: { slug: "about" } }];
+}
+
+const { slug } = Astro.params;
+const page = await fetchPage(slug as string);
+
+if (!page) {
+  return Astro.redirect("/404");
+}
+
+const structuredData = generateWebPageSchema({
+  title: page.title,
+  seo: page.seo,
+});
+
+function omitTemplate(section: any) {
+  const { _template, ...rest } = section;
+  return rest;
+}
+---
+
+<Layout seo={page.seo} structuredData={structuredData}>
+  {page.sections?.map((section) => {
+    switch (section._template) {
+      case 'hero':
+        return <Hero {...omitTemplate(section)} />;
+      case 'content':
+        return <Content {...omitTemplate(section)} />;
+      case 'gallery':
+        return <Gallery {...omitTemplate(section)} />;
+      default:
+        return null;
+    }
+  })}
+</Layout>

@@ -1,4 +1,3 @@
-// El Camino Astro Config
 import { defineConfig } from "astro/config";
 import tailwind from "@astrojs/tailwind";
 import icon from "astro-icon";
@@ -7,7 +6,7 @@ import react from "@astrojs/react";
 import path from "path";
 
 export default defineConfig({
-  integrations: [tailwind(), icon({ iconDir: "src/assets/icons" }), react()],
+  integrations: [react(), tailwind(), icon({ iconDir: "src/assets/icons" })],
   output: "server",
   adapter: netlify({
     builders: true,
@@ -31,10 +30,11 @@ export default defineConfig({
       alias: {
         "@": path.resolve("./src"),
         "~": path.resolve("."),
+        "react-dom": path.resolve("./node_modules/react-dom/index.js"),
       },
     },
-    ssr: {
-      noExternal: ["@astrojs/netlify", "square", "@astrojs/react"],
+    optimizeDeps: {
+      include: ["tinacms", "react-dom"],
     },
   },
 });

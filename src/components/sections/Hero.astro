@@ -1,0 +1,29 @@
+---
+interface Props {
+  heading: string;
+  subheading?: string;
+  backgroundImage?: string;
+}
+
+const { heading, subheading, backgroundImage } = Astro.props;
+---
+
+<section class="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+  {backgroundImage && (
+    <img
+      src={backgroundImage}
+      alt={heading}
+      class="absolute inset-0 w-full h-full object-cover"
+    />
+  )}
+  <div class="relative z-10 container mx-auto px-4 text-center">
+    <h1 class="text-display-2xl font-display text-content-heading mb-4">
+      {heading}
+    </h1>
+    {subheading && (
+      <p class="text-body-xl font-sans text-content-body">
+        {subheading}
+      </p>
+    )}
+  </div>
+</section>
