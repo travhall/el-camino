@@ -3,30 +3,12 @@ command = "pnpm run build"
 publish = "dist"
 functions = "netlify/functions"
 
-[[redirects]]
-from = "/admin/*" 
-to = "/admin/index.html"
-status = 200
-
 [[headers]]
 for = "/*"
 [headers.values]
 X-Frame-Options = "DENY"
 X-XSS-Protection = "1; mode=block"
 Content-Security-Policy = "frame-ancestors 'none'"
-
-[[headers]]
-for = "/admin/*"
-[headers.values]
-X-Frame-Options = "SAMEORIGIN"
-Content-Security-Policy = """
- frame-ancestors 'self';
- default-src 'self' https://identity.netlify.com https://unpkg.com;
- script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*;
- style-src 'self' 'unsafe-inline';
- img-src 'self' data: blob:;
- connect-src 'self' http://localhost:* ws://localhost:*;
-"""
 
 [build.environment]
 NODE_VERSION = "18"
