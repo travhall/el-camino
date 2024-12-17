@@ -14,7 +14,7 @@ export default defineConfig({
     binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
   }),
   vite: {
-    envPrefix: ["PUBLIC_", "SQUARE_", "NEXT_PUBLIC_", "TINA_"],
+    envPrefix: ["PUBLIC_", "SQUARE_", "NEXT_PUBLIC_"],
     define: {
       "import.meta.env.SQUARE_ACCESS_TOKEN": JSON.stringify(
         process.env.SQUARE_ACCESS_TOKEN
@@ -30,11 +30,7 @@ export default defineConfig({
       alias: {
         "@": path.resolve("./src"),
         "~": path.resolve("."),
-        "react-dom": path.resolve("./node_modules/react-dom/index.js"),
       },
-    },
-    optimizeDeps: {
-      include: ["tinacms", "react-dom"],
     },
   },
 });
