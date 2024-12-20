@@ -1,0 +1,26 @@
+---
+// src/components/blocks/MediaBlock.astro
+import type { DynamicZoneComponent } from '@/lib/types/strapi';
+
+type Props = {
+  block: Extract<DynamicZoneComponent, { __component: 'shared.media' }>;
+};
+
+const { block } = Astro.props;
+const baseUrl = import.meta.env.STRAPI_URL || '';
+
+if (!block.file.data) return null;
+
+const url = block.file.data.attributes.url.startsWith('http')
+  ? block.file.data.attributes.url
+  : `${baseUrl}${block.file.data.attributes.url}`;
+---
+{block.file.data && (
+  <div class="my-8">
+    <img
+      src={url}
+      alt={block.file.data.attributes.alternativeText || ''}
+      class="w-full h-auto rounded-lg"
+    />
+  </div>
+)}

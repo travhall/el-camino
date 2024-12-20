@@ -1,0 +1,11 @@
+---
+// src/components/blocks/RichTextBlock.astro
+import type { DynamicZoneComponent } from '@/lib/types/strapi';
+
+type Props = {
+  block: Extract<DynamicZoneComponent, { __component: 'shared.rich-text' }>;
+};
+
+const { block } = Astro.props;
+---
+<div class="prose prose-lg max-w-none my-8" set:html={block.body} />

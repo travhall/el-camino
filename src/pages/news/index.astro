@@ -1,0 +1,85 @@
+---
+// src/pages/news/index.astro
+import Layout from "@/layouts/Layout.astro";
+import ArticleGrid from "@/components/ArticleGrid.astro";
+import { getAllArticles } from '@/lib/strapi/api';
+import type { Article } from '@/lib/types/strapi';
+
+const currentPage = Number(Astro.url.searchParams.get("page")) || 1;
+const pageSize = 12;
+const sortDirection = Astro.url.searchParams.get("sort") || "desc";
+const categorySlug = Astro.url.searchParams.get("category");
+
+let articles: Article[] = [];
+let error: string | null = null;
+
+try {
+  const response = await getAllArticles({
+    'pagination[page]': currentPage.toString(),
+    'pagination[pageSize]': pageSize.toString(),
+    'sort[0]': `publishedAt:${sortDirection}`,
+    ...(categorySlug && { 'filters[category][slug][$eq]': categorySlug }),
+  });
+  articles = response;
+} catch (e) {
+  error = e instanceof Error ? e.message : 'An error occurred loading articles';
+}
+
+const hasArticles = articles.length > 0;
+---
+
+<Layout>
+  <section class="p-4">
+    {error ? (
+      <p class="text-state-error-text bg-state-error-surface p-4 rounded">
+        {error}
+      </p>
+    ) : (
+      <>
+        <div class="my-8 flex flex-col md:flex-row md:justify-between items-baseline">
+          <h2 class="align-bottom font-display font-black text-6xl md:text-5xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-content-heading">
+            The Latest News
+          </h2>
+
+          <div class="flex justify-end mb-6">
+            <select
+              class="bg-transparent border border-ui-input-border rounded-md px-4 py-2"
+              onchange="window.location.href = this.value"
+            >
+              <option value="?sort=desc" selected={sortDirection === "desc"}>Most Recent</option>
+              <option value="?sort=asc" selected={sortDirection === "asc"}>Oldest First</option>
+            </select>
+          </div>
+        </div>
+
+        {hasArticles ? (
+          <ArticleGrid articles={articles} />
+        ) : (
+          <p class="text-content-body text-center py-12">No articles found.</p>
+        )}
+
+        {hasArticles && (
+          <nav class="mt-8 flex justify-center gap-2" aria-label="Pagination">
+            {currentPage > 1 && (
+              <a
+                href={`?page=${currentPage - 1}&sort=${sortDirection}`}
+                class="px-4 py-2 text-sm border rounded-md hover:bg-gray-50"
+              >
+                Previous
+              </a>
+            )}
+
+            {articles.length === pageSize && (
+              <a
+                href={`?page=${currentPage + 1}&sort=${sortDirection}`}
+                class="px-4 py-2 text-sm border rounded-md hover:bg-gray-50"
+              >
+                Next
+              </a>
+            )}
+          </nav>
+        )}
+      </>
+    )}
+  </section>
+</Layout>

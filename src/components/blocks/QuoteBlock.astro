@@ -1,0 +1,14 @@
+---
+// src/components/blocks/QuoteBlock.astro
+import type { DynamicZoneComponent } from '@/lib/types/strapi';
+
+type Props = {
+  block: Extract<DynamicZoneComponent, { __component: 'shared.quote' }>;
+};
+
+const { block } = Astro.props;
+---
+<blockquote class="my-8 pl-4 border-l-4 border-ui-card-border">
+  {block.title && <h3 class="text-xl font-bold mb-2">{block.title}</h3>}
+  <p class="text-lg italic">{block.body}</p>
+</blockquote>

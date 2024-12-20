@@ -1,0 +1,27 @@
+---
+// src/components/blocks/SliderBlock.astro
+import type { DynamicZoneComponent } from '@/lib/types/strapi';
+
+type Props = {
+  block: Extract<DynamicZoneComponent, { __component: 'shared.slider' }>;
+};
+
+const { block } = Astro.props;
+const baseUrl = import.meta.env.STRAPI_URL || '';
+---
+<div class="my-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {block.files.map((file) => {
+    if (!file.data) return null;
+    const url = file.data.attributes.url.startsWith('http')
+      ? file.data.attributes.url
+      : `${baseUrl}${file.data.attributes.url}`;
+
+    return (
+      <img
+        src={url}
+        alt={file.data.attributes.alternativeText || ''}
+        class="w-full h-auto rounded-lg"
+      />
+    );
+  })}
+</div>
