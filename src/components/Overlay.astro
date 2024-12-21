@@ -1,0 +1,67 @@
+---
+// src/components/Overlay.astro
+interface Props {
+  id: string;
+  imgSrc: string;
+  imgAlt: string;
+  imgWidth: number;
+  imgHeight: number;
+  caption?: string;
+}
+
+const { id, imgSrc, imgAlt, imgWidth, imgHeight, caption } = Astro.props;
+---
+
+<div
+  id={id}
+  class="hidden fixed inset-0 z-[500] bg-black/90 backdrop-blur-sm"
+  onclick={`
+    this.classList.add('hidden');
+    document.body.style.overflow = 'auto';
+  `}
+  data-portal-overlay
+>
+  <div class="absolute top-4 right-4 z-10">
+    <button
+      onclick={`
+        document.getElementById('${id}').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+      `}
+      class="p-2 text-white hover:text-content-emphasis transition-colors"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <img
+      src={imgSrc}
+      alt={imgAlt}
+      width={imgWidth}
+      height={imgHeight}
+      class="max-w-full max-h-[90vh] object-contain"
+    />
+    {
+      caption && (
+        <div class="absolute bottom-4 left-0 right-0 text-center">
+          <p class="text-white bg-black/50 inline-block px-4 py-2 rounded">
+            {caption}
+          </p>
+        </div>
+      )
+    }
+  </div>
+</div>

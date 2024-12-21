@@ -42,6 +42,9 @@ export async function getArticleBySlug(slug: string) {
       "populate[0]": "cover",
       "populate[1]": "author.avatar",
       "populate[2]": "category",
+      "populate[3]": "blocks",
+      "populate[4]": "blocks.file",
+      "populate[5]": "blocks.files",
     },
   });
   const articles = Array.isArray(response.data) ? response.data : [];

@@ -1,6 +1,6 @@
 ---
 // src/components/blocks/MediaBlock.astro
-import type { DynamicZoneComponent } from '@/lib/types/strapi';
+import type { DynamicZoneComponent, StrapiMedia } from '@/lib/types/strapi';
 
 type Props = {
   block: Extract<DynamicZoneComponent, { __component: 'shared.media' }>;
@@ -9,18 +9,43 @@ type Props = {
 const { block } = Astro.props;
 const baseUrl = import.meta.env.STRAPI_URL || '';
 
-if (!block.file.data) return null;
+if (!block.file || !block.file.url) return null;
 
-const url = block.file.data.attributes.url.startsWith('http')
-  ? block.file.data.attributes.url
-  : `${baseUrl}${block.file.data.attributes.url}`;
+// Use medium format if available, otherwise use original
+const imageData = block.file.formats?.medium || block.file;
+const url = imageData.url.startsWith('http')
+  ? imageData.url
+  : `${baseUrl}${imageData.url}`;
+
+const imageProps = {
+  src: url,
+  alt: block.file.alternativeText || block.file.name || '',
+  width: imageData.width,
+  height: imageData.height,
+  loading: "lazy" as const,
+};
 ---
-{block.file.data && (
-  <div class="my-8">
-    <img
-      src={url}
-      alt={block.file.data.attributes.alternativeText || ''}
-      class="w-full h-auto rounded-lg"
+<figure class="my-8">
+  <div class="relative aspect-video overflow-hidden rounded-sm">
+    <img 
+      {...imageProps}
+      class="w-full h-full object-cover object-center transition-transform duration-300 hover:scale-105"
     />
   </div>
-)}
+  {block.file.caption && (
+    <figcaption class="mt-2 text-sm text-content-meta text-center">
+      {block.file.caption}
+    </figcaption>
+  )}
+</figure>
+
+<style>
+  img {
+    @apply opacity-0 animate-[fade-in_0.5s_ease-in-out_forwards];
+  }
+  
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+</style>

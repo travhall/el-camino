@@ -49,7 +49,7 @@ const orgSchema = generateOrganizationSchema({
       description={seoData.description}
       image={seoData.image}
       favicon="/favicon.svg"
-      author="Travis Hall"
+      author="El Camino"
       copyright="ISC"
       astroSitemap={true}
       canonicalUrl={Astro.url.toString()}
@@ -69,15 +69,46 @@ const orgSchema = generateOrganizationSchema({
       )
     }
 
-    <script is:inline async src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
+    <script is:inline async src="https://sandbox.web.squarecdn.com/v1/square.js"
+    ></script>
   </head>
   <body
     class="bg-surface-primary text-content-body grid grid-rows-[auto_1fr_auto] min-h-screen"
   >
     <Header />
-    <main class="bg-surface-primary text-content-body z-10 relative">
+    <main class="bg-surface-primary text-content-body z-0 relative">
       <slot />
     </main>
     <Footer />
+    <div id="portal-root"></div>
   </body>
 </html>
+<script>
+  // Move overlays to portal container
+  const portalRoot = document.getElementById("portal-root");
+  if (portalRoot) {
+    document
+      .querySelectorAll("[data-portal-overlays]")
+      .forEach((overlayGroup) => {
+        const clone = overlayGroup.cloneNode(true);
+        portalRoot.appendChild(clone);
+        overlayGroup.remove();
+      });
+  }
+</script>
+
+<style is:global>
+  #portal-root {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    pointer-events: none;
+    z-index: 500;
+  }
+
+  #portal-root [data-portal-overlay] {
+    pointer-events: auto;
+  }
+</style>

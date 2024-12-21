@@ -1,12 +1,18 @@
 import { defineConfig } from "astro/config";
 import tailwind from "@astrojs/tailwind";
 import icon from "astro-icon";
+import mdx from "@astrojs/mdx";
 import netlify from "@astrojs/netlify";
 import react from "@astrojs/react";
 import path from "path";
 
 export default defineConfig({
-  integrations: [react(), tailwind(), icon({ iconDir: "src/assets/icons" })],
+  integrations: [
+    react(),
+    tailwind(),
+    mdx(),
+    icon({ iconDir: "src/assets/icons" }),
+  ],
   output: "server",
   adapter: netlify({
     builders: true,
