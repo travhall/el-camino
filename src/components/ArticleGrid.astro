@@ -1,7 +1,7 @@
 ---
 // src/components/ArticleGrid.astro
 import ArticleCard from "./ArticleCard.astro";
-import type { Article } from '@/lib/types/strapi';
+import type { Article } from "@/lib/types/strapi";
 
 interface Props {
   articles: Article[];
@@ -11,11 +11,12 @@ interface Props {
 const { articles, featured = false } = Astro.props;
 ---
 
-<div class="card-grid grid justify-center grid-cols-6 2xl:grid-cols-8 md:auto-rows-[10vw] w-full gap-1 p-1">
-  {articles.map((article, index) => (
-    <ArticleCard 
-      article={article} 
-      featured={featured && index === 0} 
-    />
-  ))}
+<div
+  class="grid justify-center grid-cols-6 2xl:grid-cols-8 md:auto-rows-[9.5vw] xl:auto-rows-[9vw] 2xl:auto-rows-[8.5vw] max-w-[120rem] mx-auto gap-1 p-1"
+>
+  {
+    articles.map((article, index) => (
+      <ArticleCard article={article} featured={featured && index === 0} />
+    ))
+  }
 </div>

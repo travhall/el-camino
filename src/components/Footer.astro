@@ -1,6 +1,10 @@
 ---
 import { Icon } from "astro-icon/components";
+import { getFooterPages } from "@/lib/strapi/api";
+
 const currentYear = new Date().getFullYear();
+const footerPages = await getFooterPages();
+console.log(JSON.stringify(footerPages, null, 2));
 ---
 
 <footer
@@ -69,38 +73,19 @@ const currentYear = new Date().getFullYear();
     class="copyright flex flex-col gap-2 md:flex-row justify-between md:items-end xl:items-center"
   >
     <ul class="flex flex-col md:flex-row gap-2 lg:gap-6 mb-8 md:mb-0">
-      <li>
-        <a
-          href="/styleguide"
-          class="text-sm hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
-        >
-          Privacy Policy
-        </a>
-      </li>
-      <li>
-        <a
-          href="/styleguide"
-          class="text-sm hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
-        >
-          Terms &amp; Conditions
-        </a>
-      </li>
-      <li>
-        <a
-          href="/styleguide"
-          class="text-sm hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
-        >
-          Return Policy
-        </a>
-      </li>
-      <li>
-        <a
-          href="/styleguide"
-          class="text-sm hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
-        >
-          Shipping Policy
-        </a>
-      </li>
+      {
+        footerPages?.length > 0 &&
+          footerPages.map((page) => (
+            <li>
+              <a
+                href={`/${page.slug}`}
+                class="text-sm hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
+              >
+                {page.title}
+              </a>
+            </li>
+          ))
+      }
     </ul>
     <small class="md:text-right text-content-body">
       &copy;{currentYear} El Camino Skateboard Shop, all rights reserved

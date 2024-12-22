@@ -7,6 +7,7 @@ import type {
   Global,
   StrapiResponse,
   StrapiData,
+  Page,
 } from "../types/strapi";
 
 export async function getGlobalData() {
@@ -69,4 +70,14 @@ export async function getCategoryBySlug(slug: string) {
 export async function getAuthorById(id: number) {
   const response = await fetchAPI<StrapiData<Author>>(`authors/${id}`);
   return response.data;
+}
+
+export async function getFooterPages() {
+  const response = await fetchAPI<StrapiResponse<Page[]>>("pages", {
+    params: {
+      "filters[menuLocation][$eq]": "footer",
+      "populate[0]": "blocks",
+    },
+  });
+  return Array.isArray(response.data) ? response.data : [];
 }

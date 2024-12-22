@@ -1,5 +1,9 @@
 ---
-const navItems = [
+import { fetchAPI } from "@/lib/strapi/client";
+import type { StrapiResponse, Page } from "@/lib/types/strapi";
+
+// Static catalog categories
+const catalogItems = [
   {
     label: "Skateboarding",
     url: "/styleguide",
@@ -12,10 +16,22 @@ const navItems = [
     label: "Apparel",
     url: "/styleguide",
   },
-  {
-    label: "About El Camino",
-    url: "/about",
+];
+
+const response = await fetchAPI<StrapiResponse<Page[]>>("pages", {
+  params: {
+    "filters[menuLocation][$eq]": "header",
   },
+});
+
+const headerPages = Array.isArray(response.data) ? response.data : [];
+
+const navItems = [
+  ...catalogItems,
+  ...headerPages.map((page) => ({
+    label: page.title,
+    url: `/${page.slug}`,
+  })),
   {
     label: "News",
     url: "/news",
@@ -23,14 +39,16 @@ const navItems = [
 ];
 ---
 
-<nav class="flex flex-col md:flex-row w-full gap-2 justify-center border-border-secondary bg-surface-secondary absolute md:relative top-16 md:top-auto">
+<nav
+  class="flex flex-col md:flex-row w-full gap-2 justify-center border-border-secondary bg-surface-secondary absolute md:relative top-16 md:top-auto"
+>
   {
-    navItems.map((e) => (
+    navItems.map((item) => (
       <a
-        href={e.url}
+        href={item.url}
         class="nav-item text-xl md:text-base self-start md:self-center leading-[1] p-4 text-ui-nav-text hover:text-ui-nav-hover hover:bg-surface-tertiary transition-colors"
       >
-        {e.label}
+        {item.label}
       </a>
     ))
   }

@@ -176,6 +176,22 @@ interface Global {
   defaultSeo: SharedSEO;
 }
 
+interface Page {
+  id: number;
+  documentId: string;
+  title: string;
+  slug: string;
+  description: string;
+  menuLocation: "header" | "footer" | "none";
+  menuOrder: number;
+  blocks: DynamicZoneComponent[];
+  isExternalLink: boolean;
+  externalUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+}
+
 export type {
   StrapiResponse,
   StrapiData,
@@ -186,6 +202,7 @@ export type {
   Category,
   About,
   Global,
+  Page,
   ComponentSharedMedia,
   ComponentSharedQuote,
   ComponentSharedRichText,
