@@ -1,4 +1,10 @@
 ---
+// src/components/Sidebar.astro
+interface Props {
+  class?: string;
+}
+
+const { class: additionalClasses = "" } = Astro.props;
 const prodCats = [
   {
     category: "Skateboarding",
@@ -24,28 +30,40 @@ const prodCats = [
 ---
 
 <aside
-  class="sidebar col-span-full md:col-span-2 md:col-start-1 md:row-start-5 2xl:row-start-4 flex flex-col gap-4 py-8 px-8 lg:px-4"
+  class:list={[
+    "sidebar col-span-full md:col-span-2 md:col-start-1 md:row-start-5 2xl:row-start-4 p-1",
+    additionalClasses,
+  ]}
 >
   <h3
     class="font-display text-3xl py-8 px-2 border-b-4 border-ui-button-surface text-content-heading"
   >
     Shop by Category
   </h3>
-
-  {
-    prodCats.map((e) => (
-      <a href={e.url} class="category-link block relative">
-        <img
-          src={e.src}
-          alt={e.category}
-          class="category-img object-cover w-full h-auto aspect-video opacity-50 transition-all"
-        />
-        <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-border-secondary bg-surface-secondary text-content-heading transition-all">
-          {e.category}
-        </h4>
-      </a>
-    ))
-  }
+  <div class="flex flex-col gap-2">
+    {
+      prodCats.map((e) => (
+        <a href={e.url} class="category-link block relative">
+          <img
+            src={e.src}
+            alt={e.category}
+            class="category-img object-cover w-full h-auto aspect-video opacity-50 transition-all"
+          />
+          {/* <img
+            src={e.src}
+            alt={e.category}
+            class:list={[
+              "object-cover w-full h-full transition-all duration-300 opacity-10 [.category-link:has(button:hover)_&]:opacity-50 [.category-link:has(button:hover)_&]:scale-105",
+            ]}
+            loading="lazy"
+          /> */}
+          <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-border-secondary bg-surface-secondary text-content-heading transition-all">
+            {e.category}
+          </h4>
+        </a>
+      ))
+    }
+  </div>
 </aside>
 
 <style>
