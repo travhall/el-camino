@@ -3,8 +3,8 @@ import type {
   Article,
   Author,
   Category,
-  About,
   Global,
+  ComponentSharedVideo,
   StrapiResponse,
   StrapiData,
   Page,
@@ -12,11 +12,6 @@ import type {
 
 export async function getGlobalData() {
   const response = await fetchAPI<StrapiData<Global>>("global");
-  return response.data;
-}
-
-export async function getAboutData() {
-  const response = await fetchAPI<StrapiData<About>>("about");
   return response.data;
 }
 
@@ -46,6 +41,7 @@ export async function getArticleBySlug(slug: string) {
       "populate[3]": "blocks",
       "populate[4]": "blocks.file",
       "populate[5]": "blocks.files",
+      "populate[6]": "video", // Add this line
     },
   });
   const articles = Array.isArray(response.data) ? response.data : [];
@@ -77,6 +73,7 @@ export async function getFooterPages() {
     params: {
       "filters[menuLocation][$eq]": "footer",
       "populate[0]": "blocks",
+      "populate[1]": "cover",
     },
   });
   return Array.isArray(response.data) ? response.data : [];

@@ -5,10 +5,12 @@ import ArticleNavigation from "@/components/ArticleNavigation.astro";
 import { getArticleBySlug, getAllArticles } from "@/lib/strapi/api";
 import { formatDate } from "@/utils/dates";
 import type { Article } from "@/lib/types/strapi";
+import VideoPlayer from "@/components/blocks/VideoPlayer.astro";
 import MediaBlock from "@/components/blocks/MediaBlock.astro";
 import QuoteBlock from "@/components/blocks/QuoteBlock.astro";
 import RichTextBlock from "@/components/blocks/RichTextBlock.astro";
 import SliderBlock from "@/components/blocks/SliderBlock.astro";
+import VideoBlock from "@/components/blocks/VideoBlock.astro";
 
 const { slug } = Astro.params;
 
@@ -25,7 +27,6 @@ let error: string | null = null;
 
 try {
   article = await getArticleBySlug(slug);
-  console.log("Article Data:", JSON.stringify(article, null, 2));
   if (!article) {
     return new Response(null, {
       status: 404,
@@ -44,6 +45,12 @@ function getImageUrl(path?: string): string {
   const baseUrl = import.meta.env.STRAPI_URL;
   return path.startsWith("http") ? path : `${baseUrl}${path}`;
 }
+
+// Debug log for video data
+console.log("Article Data:", {
+  headerType: article.headerType,
+  video: article.video,
+});
 ---
 
 <Layout>
@@ -64,7 +71,7 @@ function getImageUrl(path?: string): string {
                   <img
                     src={getImageUrl(article.author.avatar.url)}
                     alt={article.author.name}
-                    class="w-10 h-10 rounded-full mr-3"
+                    class="w-10 h-10 rounded-full mr-3 object-cover"
                   />
                 )}
                 <div>
@@ -81,12 +88,16 @@ function getImageUrl(path?: string): string {
         </div>
 
         {
-          article.cover?.url && (
-            <img
-              src={getImageUrl(article.cover.url)}
-              alt={article.cover.alternativeText || article.title}
-              class="w-full h-auto rounded-sm shadow-lg mb-8"
-            />
+          article.headerType === "video" && article.video ? (
+            <VideoPlayer url={article.video.url} title={article.video.title} />
+          ) : (
+            article.cover?.url && (
+              <img
+                src={getImageUrl(article.cover.url)}
+                alt={article.cover.alternativeText || article.title}
+                class="w-full h-auto rounded-sm shadow-lg mb-8"
+              />
+            )
           )
         }
       </header>
@@ -106,6 +117,8 @@ function getImageUrl(path?: string): string {
               return <RichTextBlock block={block} />;
             case "shared.slider":
               return <SliderBlock block={block} />;
+            case "shared.video":
+              return <VideoBlock block={block} />;
             default:
               return null;
           }

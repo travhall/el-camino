@@ -75,13 +75,17 @@ type DynamicZoneComponent =
   | ComponentSharedMedia
   | ComponentSharedQuote
   | ComponentSharedRichText
-  | ComponentSharedSlider;
+  | ComponentSharedSlider
+  | ComponentSharedVideo;
 
 interface Article {
   documentId: string;
   title: string;
   description: string;
   slug: string;
+  buttonLabel?: string;
+  headerType: "image" | "video";
+  video: ComponentSharedVideo;
   blocks: DynamicZoneComponent[];
   cover?: {
     id: number;
@@ -161,12 +165,12 @@ interface Category {
   };
 }
 
-interface About {
+interface ComponentSharedVideo {
+  __component: "shared.video";
+  id: number;
+  url: string;
   title: string;
-  blocks: Array<{
-    __component: string;
-    [key: string]: any;
-  }>;
+  description?: string;
 }
 
 interface Global {
@@ -182,6 +186,29 @@ interface Page {
   title: string;
   slug: string;
   description: string;
+  cover?: {
+    id: number;
+    documentId: string;
+    name: string;
+    alternativeText: string;
+    caption: string;
+    width: number;
+    height: number;
+    formats: {
+      thumbnail: ImageFormat;
+      small: ImageFormat;
+      medium: ImageFormat;
+      large?: ImageFormat;
+    };
+    hash: string;
+    ext: string;
+    mime: string;
+    size: number;
+    url: string;
+    previewUrl: string | null;
+    provider: string;
+    provider_metadata: any;
+  };
   menuLocation: "header" | "footer" | "none";
   menuOrder: number;
   blocks: DynamicZoneComponent[];
@@ -200,9 +227,9 @@ export type {
   Article,
   Author,
   Category,
-  About,
   Global,
   Page,
+  ComponentSharedVideo,
   ComponentSharedMedia,
   ComponentSharedQuote,
   ComponentSharedRichText,

@@ -10,6 +10,7 @@ import MediaBlock from "@/components/blocks/MediaBlock.astro";
 import QuoteBlock from "@/components/blocks/QuoteBlock.astro";
 import RichTextBlock from "@/components/blocks/RichTextBlock.astro";
 import SliderBlock from "@/components/blocks/SliderBlock.astro";
+import VideoBlock from "@/components/blocks/VideoBlock.astro";
 
 const { slug } = Astro.params;
 
@@ -29,6 +30,7 @@ try {
       "populate[0]": "blocks",
       "populate[1]": "blocks.file",
       "populate[2]": "blocks.files",
+      "populate[3]": "cover",
     },
   });
 
@@ -53,7 +55,13 @@ if (!page) {
   });
 }
 
-const { title, blocks = [] } = page;
+function getImageUrl(path?: string): string {
+  if (!path) return "";
+  const baseUrl = import.meta.env.STRAPI_URL;
+  return path.startsWith("http") ? path : `${baseUrl}${path}`;
+}
+
+const { title, blocks = [], cover } = page;
 ---
 
 <Layout>
@@ -65,6 +73,16 @@ const { title, blocks = [] } = page;
         >
           {title}
         </h1>
+
+        {
+          cover?.url && (
+            <img
+              src={getImageUrl(cover.url)}
+              alt={cover.alternativeText || title}
+              class="w-full h-auto rounded-sm shadow-lg mb-8"
+            />
+          )
+        }
       </header>
 
       <div class="prose prose-lg max-w-none text-content-body">
@@ -79,6 +97,8 @@ const { title, blocks = [] } = page;
                 return <RichTextBlock block={block} />;
               case "shared.slider":
                 return <SliderBlock block={block} />;
+              case "shared.video":
+                return <VideoBlock block={block} />;
               default:
                 return null;
             }

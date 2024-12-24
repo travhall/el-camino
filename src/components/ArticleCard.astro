@@ -10,7 +10,7 @@ interface Props {
 }
 
 const { article, featured = false } = Astro.props;
-const { title, description, slug, publishedAt, cover, author, category } =
+const { title, description, slug, buttonLabel, cover, author, category } =
   article;
 
 function getImageUrl(path?: string): string {
@@ -22,6 +22,9 @@ function getImageUrl(path?: string): string {
 const articleUrl = `/news/${slug}`;
 const coverUrl = cover?.formats?.medium?.url || cover?.url;
 const authorAvatarUrl = author?.avatar?.url;
+// Add this after destructuring
+const finalButtonLabel =
+  buttonLabel || buttonLabel === "" ? buttonLabel : "Read Article";
 ---
 
 <article
@@ -36,10 +39,10 @@ const authorAvatarUrl = author?.avatar?.url;
         src={getImageUrl(coverUrl)}
         alt={cover?.alternativeText || title}
         class:list={[
-          "object-cover w-full h-full transition-all duration-300",
+          "object-cover w-full h-full transition-all duration-300 [.article-card:has(button:hover)_&]:scale-105",
           featured
             ? ""
-            : "opacity-10 [.article-card:has(button:hover)_&]:opacity-50 [.article-card:has(button:hover)_&]:scale-105",
+            : "opacity-10 [.article-card:has(button:hover)_&]:opacity-50",
         ]}
         loading="lazy"
       />
@@ -55,7 +58,7 @@ const authorAvatarUrl = author?.avatar?.url;
   >
     {
       category?.name && (
-        <span class="font-display font-semibold text-base tracking-wide uppercase -mb-4 text-content-meta">
+        <span class="font-display font-semibold text-base tracking-wide uppercase -mb-5 text-content-meta">
           {category.name}
         </span>
       )
@@ -79,10 +82,14 @@ const authorAvatarUrl = author?.avatar?.url;
       <a
         href={articleUrl}
         class="self-start focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-button-ring"
-        aria-label={`Read full article: ${title}`}
       >
-        <Button type="button" variant="primary" size="md">
-          Read Article
+        <Button
+          type="button"
+          variant="primary"
+          size="md"
+          aria-label={finalButtonLabel}
+        >
+          {finalButtonLabel}
         </Button>
       </a>
     </div>
