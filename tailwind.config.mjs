@@ -155,19 +155,34 @@ export default {
       },
       fontSize: {
         // Display font sizes (Alumni)
-        'display-xs': ['1.25rem', { lineHeight: '1.5', letterSpacing: '-0.01em' }],      // 20px
-        'display-sm': ['1.5rem', { lineHeight: '1.4', letterSpacing: '-0.01em' }],       // 24px
-        'display-base': ['2rem', { lineHeight: '1.3', letterSpacing: '-0.02em' }],       // 32px
-        'display-lg': ['2.5rem', { lineHeight: '1.2', letterSpacing: '-0.02em' }],       // 40px
-        'display-xl': ['3rem', { lineHeight: '1.1', letterSpacing: '-0.02em' }],         // 48px
-        'display-2xl': ['3.75rem', { lineHeight: '1.1', letterSpacing: '-0.02em' }],     // 60px
+        "display-xs": [
+          "1.25rem",
+          { lineHeight: "1.5", letterSpacing: "-0.01em" },
+        ], // 20px
+        "display-sm": [
+          "1.5rem",
+          { lineHeight: "1.4", letterSpacing: "-0.01em" },
+        ], // 24px
+        "display-base": [
+          "2rem",
+          { lineHeight: "1.3", letterSpacing: "-0.02em" },
+        ], // 32px
+        "display-lg": [
+          "2.5rem",
+          { lineHeight: "1.2", letterSpacing: "-0.02em" },
+        ], // 40px
+        "display-xl": ["3rem", { lineHeight: "1.1", letterSpacing: "-0.02em" }], // 48px
+        "display-2xl": [
+          "3.75rem",
+          { lineHeight: "1.1", letterSpacing: "-0.02em" },
+        ], // 60px
 
         // Body font sizes (Cabin)
-        'body-xs': ['0.875rem', { lineHeight: '1.5' }],    // 14px
-        'body-sm': ['1rem', { lineHeight: '1.5' }],        // 16px
-        'body-base': ['1.125rem', { lineHeight: '1.5' }],  // 18px
-        'body-lg': ['1.25rem', { lineHeight: '1.5' }],     // 20px
-        'body-xl': ['1.5rem', { lineHeight: '1.4' }],      // 24px
+        "body-xs": ["0.75rem", { lineHeight: "1.5" }], // 12px
+        "body-sm": ["0.875rem", { lineHeight: "1.5" }], // 14px
+        "body-base": ["1rem", { lineHeight: "1.5" }], // 16px
+        "body-lg": ["1.25rem", { lineHeight: "1.5" }], // 20px
+        "body-xl": ["1.5rem", { lineHeight: "1.4" }], // 24px
       },
     },
   },

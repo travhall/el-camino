@@ -206,7 +206,6 @@ Feel free to check [our documentation](https://docs.astro.build) or jump into ou
             └── styleguide.astro
         └── 📁styles
             └── globals.css
-            └── print.css
         └── 📁utils
             └── dates.ts
             └── urls.ts

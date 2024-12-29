@@ -6,8 +6,68 @@ const { classes, ...rest } = Astro.props;
 ---
 
 <ThemeSwitch strategy="button">
-  <button class:list={["flex flex-row p-1", classes]} {...rest}>
+  <button
+    class:list={["flex flex-row p-1", classes]}
+    {...rest}
+    data-theme-toggle
+  >
     <Icon class="block dark:hidden h-5 w-5 m-1" name="uil:sun" />
     <Icon class="hidden dark:block h-5 w-5 m-1" name="uil:moon" />
   </button>
 </ThemeSwitch>
+
+<script>
+  // Theme initialization
+  const initTheme = () => {
+    // Check localStorage and system preference
+    const storedTheme = localStorage.getItem("theme");
+    const systemDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
+
+    if (storedTheme === "dark" || (!storedTheme && systemDark)) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
+
+  // Initialize theme
+  initTheme();
+
+  // Toggle handling
+  const toggles = document.querySelectorAll("[data-theme-toggle]");
+  toggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      const isDark = document.documentElement.classList.contains("dark");
+
+      // Remove both classes first
+      document.documentElement.classList.remove("light", "dark");
+
+      // Add appropriate class
+      const newTheme = isDark ? "light" : "dark";
+      document.documentElement.classList.add(newTheme);
+
+      // Store preference
+      localStorage.setItem("theme", newTheme);
+
+      // Update data attribute for consistency
+      document.documentElement.setAttribute("data-theme", newTheme);
+    });
+  });
+
+  // Handle system theme changes
+  window
+    .matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", (e) => {
+      if (!localStorage.getItem("theme")) {
+        // Only react to system changes if no manual preference is set
+        const newTheme = e.matches ? "dark" : "light";
+        document.documentElement.classList.remove("light", "dark");
+        document.documentElement.classList.add(newTheme);
+      }
+    });
+
+  // Handle page transitions
+  document.addEventListener("astro:page-load", initTheme);
+</script>

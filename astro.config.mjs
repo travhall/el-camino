@@ -19,6 +19,9 @@ export default defineConfig({
     functionPerRoute: true,
     binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
   }),
+  experimental: {
+    clientPrerender: true,
+  },
   vite: {
     envPrefix: ["PUBLIC_", "SQUARE_", "NEXT_PUBLIC_"],
     define: {
