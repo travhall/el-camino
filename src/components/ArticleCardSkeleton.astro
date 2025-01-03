@@ -1,0 +1,41 @@
+---
+// src/components/ArticleCardSkeleton.astro
+interface Props {
+  featured?: boolean;
+}
+
+const { featured = false } = Astro.props;
+---
+
+<article
+  class:list={[
+    "relative overflow-hidden bg-ui-card-surface text-ui-card-text border-ui-card-border flex flex-col sm:aspect-[3_/_4] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 transition-all duration-300",
+    featured ? "banner-card" : "article-card",
+  ]}
+>
+  <div class="animate-pulse h-full bg-surface-secondary">
+    <div
+      class="absolute bottom-0 w-full flex flex-col gap-4 lg:gap-6 px-6 py-12 xl:p-12"
+    >
+      {/* Category skeleton */}
+      <div class="h-4 bg-surface-tertiary rounded w-24"></div>
+
+      {/* Title skeleton with the same text sizing as ArticleCard */}
+      <div class="space-y-3">
+        <div class="h-10 bg-surface-tertiary rounded"></div>
+        {featured && <div class="h-10 bg-surface-tertiary rounded w-3/4" />}
+      </div>
+
+      {/* Description skeleton matching ArticleCard text size */}
+      <div class="space-y-2">
+        <div class="h-4 bg-surface-tertiary rounded"></div>
+        <div class="h-4 bg-surface-tertiary rounded w-5/6"></div>
+      </div>
+
+      {/* Button skeleton */}
+      <div class="mt-auto">
+        <div class="h-10 bg-surface-tertiary rounded w-32"></div>
+      </div>
+    </div>
+  </div>
+</article>

@@ -1,85 +1,60 @@
 ---
 // src/components/ArticleGrid.astro
 import ArticleCard from "./ArticleCard.astro";
+import ArticleCardSkeleton from "./ArticleCardSkeleton.astro";
 import Sidebar from "./Sidebar.astro";
 import type { Article } from "@/lib/types/strapi";
 
 interface Props {
   articles: Article[];
+  error?: string | null;
+  isLoading?: boolean;
   featured?: boolean;
   showSidebar?: boolean;
 }
 
-const { articles, featured = false, showSidebar = false } = Astro.props;
+const {
+  articles,
+  error = null,
+  isLoading = !articles.length,
+  featured = false,
+  showSidebar = false,
+} = Astro.props;
+
+// If sidebar is shown, limit to 6 articles for homepage layout
+const displayArticles = showSidebar ? articles.slice(0, 6) : articles;
+
+// Loading skeleton count
+const skeletonCount = showSidebar ? 6 : 12;
 ---
 
+{
+  error && (
+    <div class="text-state-error-text bg-state-error-surface p-4 rounded">
+      {error}
+    </div>
+  )
+}
+
 <div
-  class="article-grid grid justify-center grid-cols-6 2xl:grid-cols-8 md:auto-rows-[10vw] max-w-[120rem] mx-auto gap-1 p-1"
+  class="article-grid flex flex-col sm:grid sm:justify-center sm:grid-cols-6 2xl:grid-cols-8 sm:auto-rows-auto md:auto-rows-[10vw] max-w-[120rem] mx-auto gap-1 p-1"
 >
   {
-    articles.map((article, index) => (
-      <ArticleCard
-        article={article}
-        featured={featured && index === 0}
-      />
-    ))
+    isLoading ? (
+      Array(skeletonCount)
+        .fill(null)
+        .map((_, i) => <ArticleCardSkeleton featured={featured && i === 0} />)
+    ) : displayArticles.length > 0 ? (
+      <>
+        {displayArticles.map((article, index) => (
+          <ArticleCard article={article} featured={featured && index === 0} />
+        ))}
+        {showSidebar && <Sidebar />}
+      </>
+    ) : (
+      <p class="text-content-body text-center py-12 col-span-full">
+        No articles found.
+      </p>
+    )
   }
-  {showSidebar && (
-    <Sidebar />
-  )}
 </div>
-
-{showSidebar && (
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    function getElements() {
-      const grid = document.querySelector(".article-grid");
-      const sidebar = document.querySelector(".sidebar");
-      return { 
-        grid: grid instanceof HTMLElement ? grid : null,
-        sidebar: sidebar instanceof HTMLElement ? sidebar : null 
-      };
-    }
-
-    function adjustSidebar() {
-      const elements = getElements();
-      if (!elements.grid || !elements.sidebar) {
-        console.log("Required elements not found");
-        return;
-      }
-
-      if (!window.matchMedia("(min-width: 768px)").matches) {
-        elements.sidebar.style.removeProperty("grid-row-end");
-        return;
-      }
-
-      // Calculate row height and total rows
-      const style = window.getComputedStyle(elements.grid);
-      const rowHeight = parseFloat(style.getPropertyValue("grid-auto-rows"));
-      const totalHeight = elements.grid.scrollHeight;
-      const totalRows = Math.ceil(totalHeight / rowHeight);
-
-      // Set the grid-row-end property
-      elements.sidebar.style.setProperty("grid-row-end", String(totalRows));
-    }
-
-    // Run initial adjustment
-    adjustSidebar();
-
-    // Add event listeners
-    window.addEventListener("resize", adjustSidebar);
-    window.addEventListener("load", adjustSidebar);
-
-    // Handle image loads
-    // document.querySelectorAll<HTMLImageElement>(".article-grid img").forEach(function(img) {
-    //   if (img instanceof HTMLImageElement) {
-    //     if (img.complete) {
-    //       adjustSidebar();
-    //     } else {
-    //       img.addEventListener("load", adjustSidebar);
-    //     }
-    //   }
-    // });
-  });
-</script>
-)}

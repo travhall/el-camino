@@ -6,26 +6,89 @@ import ThemeToggle from "@/components/ThemeToggle.astro";
 ---
 
 <header
-  class="flex flex-col lg:flex-row items-center justify-between p-4 gap-4 md:p-2 -mb-1 sticky top-0 z-50 border-4 border-border-secondary bg-surface-secondary"
+  class="flex flex-row items-center justify-between gap-2 -mb-1 sticky top-0 z-50 border-4 border-border-secondary bg-surface-secondary"
 >
-  <a
-    href="/"
-    class="flex self-start md:self-center md:justify-start"
-    aria-label="Home Link"
-  >
+  <a href="/" class="flex self-center justify-start" aria-label="Home Link">
     <Icon
       name="Logo"
-      class="w-44 md:w-56 h-auto p-2 text-content-body"
+      class="w-44 lg:w-56 h-auto p-2 text-content-body"
       title="Go Home to El Camino"
     />
   </a>
 
   <Nav />
 
-  <div
-    class="utility-menu absolute lg:relative top-2 lg:top-auto right-2 lg:right-auto flex gap-1"
-  >
+  <div class="utility-menu self-center flex gap-1">
     <CartButton />
-    <ThemeToggle />
+    <ThemeToggle classes="hidden md:block" />
+    <button
+      id="mobile-menu-toggle"
+      class="p-2 md:hidden text-content-body"
+      aria-label="Toggle mobile menu"
+      aria-expanded="false"
+    >
+      <Icon name="uil:bars" class="w-6 h-6" id="menu-icon" />
+      <Icon name="uil:times" class="w-6 h-6 hidden" id="close-icon" />
+    </button>
   </div>
 </header>
+
+<script>
+  // Handle menu toggle functionality
+  function setupMobileMenu() {
+    const toggleButton = document.getElementById(
+      "mobile-menu-toggle"
+    ) as HTMLButtonElement;
+    const menuIcon = document.getElementById("menu-icon") as HTMLElement;
+    const closeIcon = document.getElementById("close-icon") as HTMLElement;
+    const nav = document.querySelector("nav") as HTMLElement;
+
+    // Early return if elements don't exist
+    if (!toggleButton || !menuIcon || !closeIcon || !nav) return;
+
+    function handleToggle(e: MouseEvent) {
+      e.stopPropagation();
+      const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
+
+      toggleButton.setAttribute("aria-expanded", (!isExpanded).toString());
+      menuIcon.classList.toggle("hidden");
+      closeIcon.classList.toggle("hidden");
+      nav.classList.toggle("nav-open");
+      document.body.style.overflow = isExpanded ? "unset" : "hidden";
+    }
+
+    // Remove existing event listener if any
+    toggleButton.removeEventListener("click", handleToggle);
+    // Add new event listener
+    toggleButton.addEventListener("click", handleToggle);
+
+    // Close menu when clicking outside
+    document.addEventListener("click", (e: MouseEvent) => {
+      const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
+      const clickTarget = e.target as Node;
+      if (
+        isExpanded &&
+        !nav.contains(clickTarget) &&
+        !toggleButton.contains(clickTarget)
+      ) {
+        toggleButton.click();
+      }
+    });
+
+    // Close menu on escape key
+    document.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (
+        e.key === "Escape" &&
+        toggleButton.getAttribute("aria-expanded") === "true"
+      ) {
+        toggleButton.click();
+      }
+    });
+  }
+
+  // Initialize menu
+  setupMobileMenu();
+
+  // Handle view transitions and page loads
+  document.addEventListener("astro:after-swap", setupMobileMenu);
+</script>

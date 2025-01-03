@@ -1,6 +1,5 @@
 ---
 // src/components/ArticleCard.astro
-import { formatDate } from "@/utils/dates";
 import type { Article } from "@/lib/types/strapi";
 import Button from "./Button.astro";
 
@@ -22,14 +21,13 @@ function getImageUrl(path?: string): string {
 const articleUrl = `/news/${slug}`;
 const coverUrl = cover?.formats?.medium?.url || cover?.url;
 const authorAvatarUrl = author?.avatar?.url;
-// Add this after destructuring
 const finalButtonLabel =
   buttonLabel || buttonLabel === "" ? buttonLabel : "Read Article";
 ---
 
 <article
   class:list={[
-    "relative overflow-hidden bg-ui-card-surface text-ui-card-text border-ui-card-border hover:bg-ui-card-hover flex flex-col aspect-[3_/_4] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 transition-all duration-300",
+    "relative overflow-hidden bg-ui-card-surface text-ui-card-text border-ui-card-border hover:bg-ui-card-hover flex flex-col aspect-square md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 transition-all duration-300",
     featured ? "banner-card" : "article-card",
   ]}
 >
@@ -53,7 +51,7 @@ const finalButtonLabel =
     class:list={[
       "flex flex-col gap-4 lg:gap-6 px-6 py-12 xl:p-12 absolute bottom-0 w-full",
       featured &&
-        "bg-ui-card-surface/90 md:bg-ui-card-surface md:border-t-4 md:border-l-4 md:border-ui-card-border md:w-2/3 right-0",
+        "bg-ui-card-surface/90 md:bg-ui-card-surface md:border-t-4 md:border-l-4 md:border-ui-card-border md:w-5/6 lg:w-2/3 right-0",
     ]}
   >
     {
@@ -65,7 +63,7 @@ const finalButtonLabel =
     }
 
     <h2
-      class="font-display font-black text-6xl md:text-5xl xl:text-6xl 3xl:text-7xl leading-[0.8] text-content-heading"
+      class="font-display font-black text-6xl md:text-4xl xl:text-6xl 3xl:text-7xl leading-[0.8] text-content-heading"
     >
       {title}
     </h2>

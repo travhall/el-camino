@@ -1,6 +1,7 @@
 ---
 import { fetchAPI } from "@/lib/strapi/client";
 import type { StrapiResponse, Page } from "@/lib/types/strapi";
+import ThemeToggle from "./ThemeToggle.astro";
 
 // Static catalog categories
 const catalogItems = [
@@ -40,16 +41,90 @@ const navItems = [
 ---
 
 <nav
-  class="flex flex-col md:flex-row w-full gap-2 justify-center border-border-secondary bg-surface-secondary absolute md:relative top-16 md:top-auto"
+  class="flex flex-col md:flex-row w-full gap-2 justify-center border-4 border-border-secondary md:border-0 bg-surface-secondary md:relative md:top-auto fixed -translate-x-full md:translate-x-0 transition-transform duration-400 ease-in-out inset-0 top-[3rem] z-40 [&.nav-open]:translate-x-0"
 >
   {
-    navItems.map((item) => (
+    navItems.map((item, index) => (
       <a
         href={item.url}
-        class="nav-item text-xl md:text-base self-start md:self-center leading-[1] p-4 text-ui-nav-text hover:text-ui-nav-hover hover:bg-surface-tertiary transition-colors"
+        class="nav-item text-5xl md:text-lg lg:text-xl font-semibold font-display self-start md:self-center leading-[1] p-4 text-ui-nav-text transition-all duration-300 ease-in-out relative md:hover:text-ui-nav-hover before:absolute before:bottom-0 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out md:hover:before:scale-x-100 md:hover:before:origin-left nav-link"
+        style={`--item-index: ${index};`}
       >
         {item.label}
       </a>
     ))
   }
+  <div
+    class="flex flex-row items-center md:hidden p-2 mt-8 nav-link"
+    style="--item-index: 6;"
+  >
+    <ThemeToggle />
+    <span class="hidden dark:block">Light Mode</span>
+    <span class="block dark:hidden">Dark Mode</span>
+  </div>
 </nav>
+
+<style>
+  nav {
+    view-transition-name: nav;
+  }
+
+  @media (max-width: 768px) {
+    .nav-link {
+      opacity: 0;
+      transform: translateX(2rem);
+    }
+
+    nav.nav-open .nav-link {
+      animation: slideIn 0.5s ease forwards;
+      animation-delay: calc(var(--item-index) * 0.1s);
+    }
+
+    @keyframes slideIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+  }
+</style>
+
+<script>
+  function resetNavItems() {
+    const navLinks = document.querySelectorAll(".nav-link");
+    navLinks.forEach((link) => {
+      const element = link as HTMLElement;
+      element.style.opacity = "";
+      element.style.transform = "";
+    });
+  }
+
+  // Reset animations when menu closes
+  const nav = document.querySelector("nav");
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.attributeName === "class") {
+        if (!nav?.classList.contains("nav-open")) {
+          setTimeout(resetNavItems, 300); // Wait for slide out transition
+        }
+      }
+    });
+  });
+
+  if (nav) {
+    observer.observe(nav, { attributes: true });
+  }
+
+  // Clean up observer on page transitions
+  document.addEventListener("astro:before-swap", () => {
+    observer.disconnect();
+  });
+
+  // Reinitialize on new page
+  document.addEventListener("astro:after-swap", () => {
+    const newNav = document.querySelector("nav");
+    if (newNav) {
+      observer.observe(newNav, { attributes: true });
+    }
+  });
+</script>

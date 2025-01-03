@@ -1,60 +1,31 @@
 ---
+// src/pages/index.astro
 import Layout from "@/layouts/Layout.astro";
-import ProductCard from "@/components/ProductCard.astro";
 import ArticleGrid from "@/components/ArticleGrid.astro";
-import type { Product } from "@/lib/square/types";
-import { fetchProducts } from "@/lib/square/client";
 import { getAllArticles } from "@/lib/strapi/api";
+import type { Article } from "@/lib/types/strapi";
 
-let products: Product[] = [];
-let articles = [];
+let articles: Article[] = [];
+let error: string | null = null;
 
 try {
-  // Fetch products and articles in parallel
-  const [productsResponse, articlesResponse] = await Promise.all([
-    fetchProducts(),
-    getAllArticles({
-      "pagination[page]": "1",
-      "pagination[pageSize]": "6",
-      "sort[0]": "publishedAt:desc",
-    }),
-  ]);
-
-  products = productsResponse;
-  articles = articlesResponse;
-} catch (error) {
-  console.error("Error fetching content:", error);
+  articles = await getAllArticles({
+    page: 1,
+    pageSize: 6,
+    sort: "desc",
+  });
+} catch (e) {
+  error = e instanceof Error ? e.message : "An error occurred loading articles";
 }
 ---
 
 <Layout>
-  {
-    articles.length > 0 && (
-      <section>
-        <ArticleGrid articles={articles} featured={true} showSidebar={true} />
-      </section>
-    )
-  }
-
-  {
-    /* Products Section
   <section>
-    {
-      products.length > 0 && (
-        <>
-          <div class="flex flex-col md:flex-row p-4">
-            <h2 class="align-bottom font-display font-black text-6xl md:text-5xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-content-heading">
-              Products
-            </h2>
-          </div>
-          <div class="card-grid grid justify-center grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 max-w-[120rem] mx-auto gap-1 p-1">
-            {products.map((product) => (
-              <ProductCard product={product} />
-            ))}
-          </div>
-        </>
-      )
-    }
-  </section> */
-  }
+    <ArticleGrid
+      articles={articles}
+      error={error}
+      featured={true}
+      showSidebar={true}
+    />
+  </section>
 </Layout>

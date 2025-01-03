@@ -1,13 +1,17 @@
 // src/lib/types/strapi.ts
+
+// Base Strapi Types
+interface StrapiPagination {
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  total: number;
+}
+
 interface StrapiResponse<T> {
   data: T;
   meta: {
-    pagination?: {
-      page: number;
-      pageSize: number;
-      pageCount: number;
-      total: number;
-    };
+    pagination: StrapiPagination;
   };
 }
 
@@ -43,6 +47,20 @@ interface StrapiMedia {
   publishedAt: string;
 }
 
+interface ImageFormat {
+  name: string;
+  hash: string;
+  ext: string;
+  mime: string;
+  path: string | null;
+  width: number;
+  height: number;
+  size: number;
+  sizeInBytes: number;
+  url: string;
+}
+
+// Shared Components
 interface SharedSEO {
   metaTitle: string;
   metaDescription: string;
@@ -71,6 +89,14 @@ interface ComponentSharedSlider {
   files: StrapiMedia[];
 }
 
+interface ComponentSharedVideo {
+  __component: "shared.video";
+  id: number;
+  url: string;
+  title: string;
+  description?: string;
+}
+
 type DynamicZoneComponent =
   | ComponentSharedMedia
   | ComponentSharedQuote
@@ -78,6 +104,7 @@ type DynamicZoneComponent =
   | ComponentSharedSlider
   | ComponentSharedVideo;
 
+// Content Types
 interface Article {
   documentId: string;
   title: string;
@@ -134,19 +161,6 @@ interface Article {
   publishedAt: string;
 }
 
-interface ImageFormat {
-  name: string;
-  hash: string;
-  ext: string;
-  mime: string;
-  path: string | null;
-  width: number;
-  height: number;
-  size: number;
-  sizeInBytes: number;
-  url: string;
-}
-
 interface Author {
   name: string;
   email: string;
@@ -163,14 +177,6 @@ interface Category {
   articles: {
     data: Array<StrapiData<Article>>;
   };
-}
-
-interface ComponentSharedVideo {
-  __component: "shared.video";
-  id: number;
-  url: string;
-  title: string;
-  description?: string;
 }
 
 interface Global {
@@ -219,21 +225,32 @@ interface Page {
   publishedAt: string;
 }
 
+// API Types
+interface ArticleQueryParams {
+  page?: number;
+  pageSize?: number;
+  sort?: "asc" | "desc";
+  categorySlug?: string;
+}
+
+// Export all types
 export type {
+  StrapiPagination,
   StrapiResponse,
   StrapiData,
   StrapiMedia,
+  ImageFormat,
   SharedSEO,
+  ComponentSharedMedia,
+  ComponentSharedQuote,
+  ComponentSharedRichText,
+  ComponentSharedSlider,
+  ComponentSharedVideo,
+  DynamicZoneComponent,
   Article,
   Author,
   Category,
   Global,
   Page,
-  ComponentSharedVideo,
-  ComponentSharedMedia,
-  ComponentSharedQuote,
-  ComponentSharedRichText,
-  ComponentSharedSlider,
-  DynamicZoneComponent,
-  ImageFormat,
+  ArticleQueryParams,
 };

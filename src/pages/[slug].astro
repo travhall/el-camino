@@ -65,27 +65,30 @@ const { title, blocks = [], cover } = page;
 ---
 
 <Layout>
-  <section class="py-16">
-    <article class="px-4">
-      <header class="mb-8">
-        <h1
-          class="font-display font-black text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl leading-[0.8] mb-4 text-content-heading"
-        >
-          {title}
-        </h1>
-
+  <section class="p-2 pb-0">
+    <article class="flex flex-col">
+      <header class="my-8 lg:mt-0 lg:mb-2 flex flex-col lg:flex-row">
+        <div class="flex-1 text-balance">
+          <h1
+            class="font-display font-medium text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] mb-4 text-content-heading"
+          >
+            {title}
+          </h1>
+        </div>
         {
           cover?.url && (
             <img
               src={getImageUrl(cover.url)}
               alt={cover.alternativeText || title}
-              class="w-full h-auto rounded-sm mb-8"
+              class="w-full lg:max-w-[50vw] xl:max-w-[60vw] 2xl:max-w-[70vw] aspect-video"
             />
           )
         }
       </header>
 
-      <div class="max-w-none text-content-body">
+      <div
+        class="w-full self-center lg:max-w-[70vw] xl:max-w-[60vw] 2xl:max-w-[50vw] text-content-body text-balance pb-2"
+      >
         {
           blocks.map((block: DynamicZoneComponent) => {
             switch (block.__component) {
