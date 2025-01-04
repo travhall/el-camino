@@ -38,19 +38,60 @@ import Button from "@/components/Button.astro";
 
 <script>
   import { cart } from "@/lib/cart";
+  import type { CartItem } from "@/lib/cart/types";
+  import type { Money } from "@/lib/square/types";
+  import { MoneyUtils } from "@/lib/square/money";
 
-  function setLoading(show: boolean) {
-    const overlay = document.getElementById("loading-overlay");
-    if (overlay) {
-      overlay.classList.toggle("hidden", !show);
-      overlay.classList.toggle("flex", show);
+  async function handleCheckout(): Promise<void> {
+    try {
+      const items = cart.getItems();
+      if (items.length === 0) {
+        showNotification("Your cart is empty", "error");
+        return;
+      }
+
+      setLoading(true);
+
+      const response = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ items }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error?.message ||
+            `Checkout failed with status: ${response.status}`
+        );
+      }
+
+      if (!data.checkoutUrl) {
+        throw new Error("No checkout URL returned");
+      }
+
+      showNotification("Redirecting to checkout...", "success");
+      window.location.href = data.checkoutUrl;
+    } catch (error) {
+      console.error("Checkout error:", error);
+      showNotification(
+        error instanceof Error
+          ? error.message
+          : "Checkout failed. Please try again.",
+        "error"
+      );
+    } finally {
+      setLoading(false);
     }
   }
 
   function showNotification(
     message: string,
     type: "success" | "error" = "success"
-  ) {
+  ): void {
     const container = document.getElementById("notification-container");
     if (!container) return;
 
@@ -70,7 +111,17 @@ import Button from "@/components/Button.astro";
     }, 3000);
   }
 
-  function createEmptyCart() {
+  function setLoading(show: boolean): void {
+    const overlay = document.getElementById("loading-overlay");
+    if (overlay) {
+      overlay.classList.toggle("hidden", !show);
+      overlay.classList.toggle("flex", show);
+    }
+  }
+
+  let isUpdating = false;
+
+  function createEmptyCart(): string {
     return `
       <div class="flex flex-col items-center" id="empty-cart">
         <p class="text-lg mb-6 text-content-body">Your cart is empty</p>
@@ -81,28 +132,12 @@ import Button from "@/components/Button.astro";
     `;
   }
 
-  function createCartItem(item: any) {
+  function createCartItem(item: CartItem): string {
     return `
-    <button
-      type="button"
-      id="clear-cart-button"
-      class="w-full mb-4 bg-transparent hover:bg-state-error-surface/10 border-state-error-text text-state-error-text font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4"
-    >
-      Clear Cart
-    </button>
-      <div
-        class="bg-surface-secondary rounded-lg p-4 flex gap-4"
-        data-item-container="${item.id}"
-      >
+      <div class="bg-surface-secondary rounded-lg p-4 flex gap-4" data-item-container="${item.id}">
         ${
           item.image
-            ? `
-          <img
-            src="${item.image}"
-            alt="${item.title}"
-            class="w-24 h-24 object-cover rounded-sm"
-          />
-        `
+            ? `<img src="${item.image}" alt="${item.title}" class="w-24 h-24 object-cover rounded-sm" />`
             : ""
         }
         <div class="flex-grow">
@@ -114,12 +149,11 @@ import Button from "@/components/Button.astro";
                 data-id="${item.id}"
                 aria-label="Decrease quantity"
               >
-                <Icon class="h-5 w-5 m-1 inline-block text-content-body" name="uil:minus" />
+                <span class="h-5 w-5 m-1 inline-block text-content-body">-</span>
               </button>
-              <span
-                class="quantity-display w-8 text-center text-content-body"
-                data-quantity-display="${item.id}"
-              >
+              <span class="quantity-display w-8 text-center text-content-body" data-quantity-display="${
+                item.id
+              }">
                 ${item.quantity}
               </span>
               <button
@@ -127,14 +161,13 @@ import Button from "@/components/Button.astro";
                 data-id="${item.id}"
                 aria-label="Increase quantity"
               >
-                <Icon class="h-5 w-5 m-1 inline-block text-content-body" name="uil:plus" />
+                <span class="h-5 w-5 m-1 inline-block text-content-body">+</span>
               </button>
             </div>
-            <span
-              class="font-display item-price text-content-emphasis"
-              data-price-display="${item.id}"
-            >
-              ${(item.price * item.quantity).toFixed(2)}
+            <span class="font-display item-price text-content-emphasis" data-price-display="${
+              item.id
+            }">
+              ${MoneyUtils.format(MoneyUtils.fromFloat(item.price * item.quantity))}
             </span>
             <button
               class="remove-btn p-2 bg-transparent hover:bg-state-error-surface/10 border-ui-button-text rounded font-sans font-semibold transition-all duration-300 border-2 text-state-error-text"
@@ -149,121 +182,42 @@ import Button from "@/components/Button.astro";
     `;
   }
 
-  function updateDisplay() {
-    console.log("Updating cart display");
-    const items = cart.getItems();
-    const total = cart.getTotal();
-    console.log("Cart state:", { items, total });
-
-    const cartLoading = document.getElementById("cart-loading");
-    const cartContainer = document.getElementById("cart-container");
-
-    if (!cartContainer) {
-      console.error("Cart container not found");
-      return;
-    }
-
-    if (cartLoading) cartLoading.classList.add("hidden");
-    cartContainer.classList.remove("hidden");
-
-    if (items.length === 0) {
-      cartContainer.innerHTML = createEmptyCart();
-      return;
-    }
-
-    cartContainer.innerHTML = `
-      <div class="grid md:grid-cols-3 gap-8" id="cart-content">
-        <div class="md:col-span-2 space-y-4" id="cart-items">
-          ${items.map((item) => createCartItem(item)).join("")}
-        </div>
-        <div class="md:col-span-1">
-          <div class="bg-surface-secondary rounded-lg p-6 sticky top-4">
-            <h2 class="font-display text-xl mb-4 text-content-heading">Order Summary</h2>
-            <div class="space-y-2 mb-4">
-              <div class="flex justify-between text-content-body">
-                <span>Subtotal</span>
-                <span id="subtotal">$${total.toFixed(2)}</span>
-              </div>
-              <div class="flex justify-between font-bold pt-2 border-t border-surface-secondary text-content-emphasis">
-                <span>Total</span>
-                <span id="total">$${total.toFixed(2)}</span>
-              </div>
+  function createOrderSummary(total: number): string {
+    return `
+      <div class="md:col-span-1">
+        <div class="bg-surface-secondary rounded-lg p-6 sticky top-4">
+          <h2 class="font-display text-xl mb-4 text-content-heading">Order Summary</h2>
+          <div class="space-y-2 mb-4">
+            <div class="flex justify-between text-content-body">
+              <span>Subtotal</span>
+              <span id="subtotal">${MoneyUtils.format(MoneyUtils.fromFloat(total))}</span>
             </div>
-            <div class="space-y-3">
-              <button
-                type="button"
-                id="checkout-button"
-                class="w-full bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4 lg:text-xl lg:py-3 lg:px-5"
-              >
-                Proceed to Checkout
-              </button>
-              <a
-                href="/"
-                class="block w-full text-center bg-transparent hover:bg-ui-button-surface/10 border-ui-button-text font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-1 px-3 lg:py-2 lg:px-4"
-              >
-                Continue Shopping
-              </a>
+            <div class="flex justify-between font-bold pt-2 border-t border-surface-secondary text-content-emphasis">
+              <span>Total</span>
+              <span id="total">${MoneyUtils.format(MoneyUtils.fromFloat(total))}</span>
             </div>
+          </div>
+          <div class="space-y-3">
+            <button
+              type="button"
+              id="checkout-button"
+              class="w-full bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4 lg:text-xl lg:py-3 lg:px-5"
+            >
+              Proceed to Checkout
+            </button>
+            <a
+              href="/"
+              class="block w-full text-center bg-transparent hover:bg-ui-button-surface/10 border-ui-button-text font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-1 px-3 lg:py-2 lg:px-4"
+            >
+              Continue Shopping
+            </a>
           </div>
         </div>
       </div>
     `;
-
-    attachEventListeners();
   }
 
-  async function handleCheckout() {
-    try {
-      const items = cart.getItems();
-      if (items.length === 0) {
-        showNotification("Your cart is empty", "error");
-        return;
-      }
-
-      setLoading(true);
-      console.log("Starting checkout with items:", items);
-
-      const response = await fetch("/api/create-checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ items }),
-      });
-
-      const data = await response.json();
-      console.log("Checkout response:", data);
-
-      if (!response.ok) {
-        throw new Error(
-          data.error?.message ||
-            `Checkout failed with status: ${response.status}`
-        );
-      }
-
-      if (!data.checkoutUrl) {
-        throw new Error("No checkout URL returned");
-      }
-
-      showNotification("Redirecting to checkout...", "success");
-
-      setTimeout(() => {
-        window.location.href = data.checkoutUrl;
-      }, 1000);
-    } catch (error) {
-      console.error("Checkout error:", error);
-      showNotification(
-        error instanceof Error
-          ? error.message
-          : "Checkout failed. Please try again.",
-        "error"
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function attachEventListeners() {
+  function attachEventListeners(): void {
     document
       .querySelectorAll<HTMLButtonElement>(".quantity-btn")
       .forEach((button) => {
@@ -308,14 +262,54 @@ import Button from "@/components/Button.astro";
       });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    console.log("DOM Content Loaded - Setting up cart");
-    cart.forceRefresh();
-    updateDisplay();
+  function updateDisplay(): void {
+    if (isUpdating) return;
+    isUpdating = true;
 
-    window.addEventListener("cartUpdated", () => {
-      console.log("Cart update event received");
-      updateDisplay();
-    });
+    const items = cart.getItems();
+    const total = cart.getTotal();
+
+    const cartLoading = document.getElementById("cart-loading");
+    const cartContainer = document.getElementById("cart-container");
+
+    if (!cartContainer) {
+      console.error("Cart container not found");
+      isUpdating = false;
+      return;
+    }
+
+    if (cartLoading) cartLoading.classList.add("hidden");
+    cartContainer.classList.remove("hidden");
+
+    cartContainer.innerHTML =
+      items.length === 0
+        ? createEmptyCart()
+        : `
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="md:col-span-2 space-y-4">
+            <button
+              type="button"
+              id="clear-cart-button"
+              class="w-full mb-4 bg-transparent hover:bg-state-error-surface/10 border-state-error-text text-state-error-text font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4"
+            >
+              Clear Cart
+            </button>
+            ${items.map(createCartItem).join("")}
+          </div>
+          ${createOrderSummary(total)}
+        </div>
+      `;
+
+    attachEventListeners();
+    isUpdating = false;
+  }
+
+  // Event Handlers
+  document.addEventListener("astro:page-load", () => {
+    updateDisplay();
+  });
+
+  window.addEventListener("cartUpdated", () => {
+    updateDisplay();
   });
 </script>

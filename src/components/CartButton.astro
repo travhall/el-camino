@@ -20,33 +20,33 @@ const cartCount = cart.getItemCount();
 <script>
   import { cart } from "@/lib/cart";
 
+  let isUpdating = false;
+
   function updateCartCount() {
+    if (isUpdating) return;
+    isUpdating = true;
+
     const countElement = document.getElementById("cart-count");
-    if (!countElement) return;
+    if (!countElement) {
+      isUpdating = false;
+      return;
+    }
 
     const count = cart.getItemCount();
-    console.log("Updating cart count:", count);
-
     countElement.textContent = count.toString();
     countElement.classList.toggle("hidden", count === 0);
+
+    isUpdating = false;
   }
 
-  window.addEventListener("storage", (e) => {
-    if (e.key === "cart") {
-      console.log("Cart storage updated");
-      cart.forceRefresh();
-      updateCartCount();
-    }
-  });
-
+  // Event Listeners
   window.addEventListener("cartUpdated", () => {
-    console.log("Cart update event received");
+    console.log("Cart update event received in button");
     updateCartCount();
   });
 
-  document.addEventListener("DOMContentLoaded", () => {
-    console.log("Nav: DOM Content Loaded");
-    cart.forceRefresh();
+  document.addEventListener("astro:page-load", () => {
+    console.log("Cart button: Page loaded");
     updateCartCount();
   });
 </script>

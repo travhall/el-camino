@@ -2,27 +2,37 @@
 import Layout from "@/layouts/Layout.astro";
 import { squareClient } from "@/lib/square/client";
 import { MoneyUtils } from "@/lib/square/money";
-import type { OrderLineItem } from "square";
+import type { OrderLineItem, Order } from "square";
 import { cart } from "@/lib/cart";
 
-const { searchParams } = Astro.url;
-const orderId = searchParams.get("orderId");
+const orderId = Astro.url.searchParams.get("orderId");
+console.log("Processing order confirmation:", orderId);
 
-let orderDetails = null;
-let error = null;
+let orderDetails: Order | null = null;
+let error: string | null = null;
 
-if (orderId) {
+if (!orderId) {
+  error = "Order ID not provided";
+  console.error("Missing orderId in URL");
+} else {
   try {
     const { result } = await squareClient.ordersApi.retrieveOrder(orderId);
-    orderDetails = result.order;
 
-    if (orderDetails) {
-      cart.clear();
+    if (!result.order) {
+      throw new Error("Order not found in Square response");
     }
+
+    orderDetails = result.order;
+    console.log("Order retrieved successfully:", orderDetails.id);
   } catch (e) {
     error = e instanceof Error ? e.message : "Failed to load order";
-    console.error("Order retrieval error:", e);
+    console.error("Order retrieval error:", { error: e, orderId });
   }
+}
+
+function formatMoney(money: OrderLineItem["totalMoney"]): string {
+  if (!money) return "$0.00";
+  return MoneyUtils.format(money);
 }
 ---
 
@@ -42,15 +52,22 @@ if (orderId) {
             Return to Home
           </a>
         </div>
-      ) : orderDetails ? (
-        <div>
+      ) : !orderDetails ? (
+        <div class="text-center">
+          <h1 class="text-3xl font-display mb-4 text-content-heading">
+            Processing Order...
+          </h1>
+          <p class="text-content-body mb-8">
+            Please wait while we confirm your order details.
+          </p>
+        </div>
+      ) : (
+        <div data-order-id={orderDetails.id}>
           <div class="text-center mb-8">
             <h1 class="text-3xl font-display mb-4 text-content-heading">
               Thank You for Your Order!
             </h1>
-            <p class="text-content-body">
-              Your order has been confirmed and will be shipped soon.
-            </p>
+            <p class="text-content-body">Your order has been confirmed.</p>
           </div>
 
           <div class="bg-surface-secondary rounded-lg p-6">
@@ -58,35 +75,30 @@ if (orderId) {
               Order Summary
             </h2>
             <div class="space-y-4">
-              {orderDetails.lineItems?.map((item: OrderLineItem) => (
+              {orderDetails.lineItems?.map((item) => (
                 <div class="flex justify-between text-content-body">
                   <span>
                     {item.name} × {item.quantity}
                   </span>
                   <span class="font-display">
-                    $
-                    {item.totalMoney
-                      ? MoneyUtils.format(item.totalMoney)
-                      : "$0.00"}
+                    {formatMoney(item.totalMoney)}
                   </span>
                 </div>
               ))}
-              <div class="border-t border-surface-secondary pt-4 mt-4">
+
+              <div class="border-t border-surface-secondary pt-4">
                 <div class="flex justify-between font-bold text-content-emphasis">
                   <span>Total</span>
-                  <span>
-                    $
-                    {orderDetails.totalMoney
-                      ? MoneyUtils.format(orderDetails.totalMoney)
-                      : "$0.00"}
-                  </span>
+                  <span>{formatMoney(orderDetails.totalMoney)}</span>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="mt-8 text-center">
-            <p class="text-sm text-content-meta mb-4">Order ID: {orderId}</p>
+            <p class="text-sm text-content-meta mb-4">
+              Order ID: {orderDetails.id}
+            </p>
             <a
               href="/"
               class="inline-block bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4"
@@ -95,22 +107,20 @@ if (orderId) {
             </a>
           </div>
         </div>
-      ) : (
-        <div class="text-center">
-          <h1 class="text-3xl font-display mb-4 text-content-heading">
-            Order Not Found
-          </h1>
-          <p class="text-content-body mb-8">
-            We couldn't find the order you're looking for.
-          </p>
-          <a
-            href="/"
-            class="inline-block bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4"
-          >
-            Return to Home
-          </a>
-        </div>
       )
     }
   </section>
 </Layout>
+
+<script>
+  import { cart } from "@/lib/cart";
+
+  // Clear cart when order is confirmed
+  document.addEventListener("astro:page-load", () => {
+    const orderElement = document.querySelector("[data-order-id]");
+    if (orderElement) {
+      console.log("Clearing cart for confirmed order");
+      cart.clear();
+    }
+  });
+</script>
