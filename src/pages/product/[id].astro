@@ -62,6 +62,7 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
               price: product.price,
               image: product.image,
             })}
+            id="add-to-cart-button"
           >
             Add to Cart
           </Button>
@@ -69,11 +70,32 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
       </div>
     </div>
   </section>
+</Layout>
 
-  <script>
-    import { cart } from "@/lib/cart";
+<script>
+  import { cart } from "@/lib/cart";
 
-    document.querySelector("[data-product]")?.addEventListener("click", (e) => {
+  let isProcessing = false;
+  let addToCartTimeout: number | null = null;
+
+  function setupAddToCartHandler() {
+    const button = document.getElementById("add-to-cart-button");
+    if (!button) {
+      console.debug("Add to cart button not found");
+      return;
+    }
+
+    // Remove existing listener if any
+    button.replaceWith(button.cloneNode(true));
+
+    // Get fresh reference after cloning
+    const newButton = document.getElementById("add-to-cart-button");
+    if (!newButton) return;
+
+    newButton.addEventListener("click", async (e) => {
+      if (isProcessing) return;
+      isProcessing = true;
+
       try {
         const button = e.currentTarget as HTMLButtonElement;
         const productData = button.dataset.product;
@@ -87,18 +109,57 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
           quantity: 1,
         });
 
-        const successMessage = document.createElement("div");
-        successMessage.className =
-          "fixed top-4 right-4 bg-state-success-surface text-state-success-text px-4 py-2 rounded-lg z-50";
-        successMessage.textContent = "Added to cart";
-        document.body.appendChild(successMessage);
-
-        setTimeout(() => {
-          successMessage.remove();
-        }, 2000);
+        showNotification("Added to cart");
       } catch (error) {
         console.error("Error adding to cart:", error);
+        showNotification("Failed to add to cart", "error");
+      } finally {
+        isProcessing = false;
       }
     });
-  </script>
-</Layout>
+  }
+
+  function showNotification(
+    message: string,
+    type: "success" | "error" = "success"
+  ) {
+    if (addToCartTimeout) {
+      clearTimeout(addToCartTimeout);
+    }
+
+    const existingNotification = document.querySelector(".cart-notification");
+    if (existingNotification) {
+      existingNotification.remove();
+    }
+
+    const notification = document.createElement("div");
+    notification.className = `cart-notification fixed top-4 right-4 px-4 py-2 rounded-lg z-50 transition-opacity duration-300 ${
+      type === "success"
+        ? "bg-state-success-surface text-state-success-text"
+        : "bg-state-error-surface text-state-error-text"
+    }`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    // Fade out and remove
+    addToCartTimeout = window.setTimeout(() => {
+      notification.style.opacity = "0";
+      setTimeout(() => notification.remove(), 300);
+    }, 2000);
+  }
+
+  // Event Listeners
+  document.addEventListener("astro:page-load", () => {
+    console.debug("Product page: Setting up add to cart handler");
+    setupAddToCartHandler();
+  });
+
+  // Cleanup on HMR
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      if (addToCartTimeout) {
+        clearTimeout(addToCartTimeout);
+      }
+    });
+  }
+</script>

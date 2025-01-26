@@ -1,4 +1,4 @@
-// /src/lib/cart/index.ts
+// src/lib/cart/index.ts
 import type { CartItem, CartEvent, CartState } from "./types";
 import type { OrderRequest } from "../square/types";
 import { Client, Environment } from "square";
@@ -6,6 +6,7 @@ import { Client, Environment } from "square";
 const CART_STORAGE_KEY = "cart";
 const VIEW_TRANSITION_EVENT = "astro:after-swap";
 const PAGE_LOAD_EVENT = "astro:page-load";
+const DOM_READY_DELAY = 50;
 
 const squareClient = new Client({
   accessToken: import.meta.env.SQUARE_ACCESS_TOKEN || "",
@@ -31,50 +32,19 @@ class CartManager implements ICartManager {
   private items: Map<string, CartItem>;
   private storage: Storage | null;
   private initialized: boolean;
-  private navigationHandler: (() => void) | null;
-  private pageLoadHandler: (() => void) | null;
+  private updateQueue: Array<() => void>;
+  private isProcessing: boolean;
 
   private constructor() {
     this.items = new Map();
     this.storage = typeof window !== "undefined" ? window.localStorage : null;
     this.initialized = false;
-    this.navigationHandler = null;
-    this.pageLoadHandler = null;
+    this.updateQueue = [];
+    this.isProcessing = false;
 
     if (typeof window !== "undefined") {
       this.init();
       this.setupEventHandlers();
-    }
-  }
-
-  private init(): void {
-    if (this.initialized) return;
-    this.loadCart();
-    this.initialized = true;
-    this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
-  }
-
-  private setupEventHandlers(): void {
-    this.navigationHandler = () => this.forceRefresh();
-    this.pageLoadHandler = () => this.forceRefresh();
-
-    if (typeof window !== "undefined") {
-      window.addEventListener(VIEW_TRANSITION_EVENT, this.navigationHandler);
-      window.addEventListener(PAGE_LOAD_EVENT, this.pageLoadHandler);
-    }
-  }
-
-  public cleanupHandlers(): void {
-    if (typeof window !== "undefined") {
-      if (this.navigationHandler) {
-        window.removeEventListener(
-          VIEW_TRANSITION_EVENT,
-          this.navigationHandler
-        );
-      }
-      if (this.pageLoadHandler) {
-        window.removeEventListener(PAGE_LOAD_EVENT, this.pageLoadHandler);
-      }
     }
   }
 
@@ -83,6 +53,61 @@ class CartManager implements ICartManager {
       CartManager.instance = new CartManager();
     }
     return CartManager.instance;
+  }
+
+  private init(): void {
+    if (this.initialized) return;
+    this.loadCart();
+    this.initialized = true;
+    this.queueUpdate(() =>
+      this.dispatchCartEvent("cartUpdated", { cartState: this.getState() })
+    );
+  }
+
+  private queueUpdate(update: () => void): void {
+    this.updateQueue.push(update);
+    this.processUpdateQueue();
+  }
+
+  private async processUpdateQueue(): Promise<void> {
+    if (this.isProcessing || this.updateQueue.length === 0) return;
+
+    this.isProcessing = true;
+    await new Promise((resolve) => setTimeout(resolve, DOM_READY_DELAY));
+
+    while (this.updateQueue.length > 0) {
+      const update = this.updateQueue.shift();
+      if (update) {
+        try {
+          update();
+        } catch (error) {
+          console.error("Error processing update:", error);
+        }
+      }
+    }
+
+    this.isProcessing = false;
+  }
+
+  private setupEventHandlers(): void {
+    if (typeof window === "undefined") return;
+
+    const handleStateUpdate = () => {
+      this.queueUpdate(() => {
+        this.loadCart();
+        this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+      });
+    };
+
+    window.addEventListener(VIEW_TRANSITION_EVENT, handleStateUpdate);
+    window.addEventListener(PAGE_LOAD_EVENT, handleStateUpdate);
+
+    if (import.meta.hot) {
+      import.meta.hot.dispose(() => {
+        window.removeEventListener(VIEW_TRANSITION_EVENT, handleStateUpdate);
+        window.removeEventListener(PAGE_LOAD_EVENT, handleStateUpdate);
+      });
+    }
   }
 
   private loadCart(): void {
@@ -166,16 +191,20 @@ class CartManager implements ICartManager {
       this.items.set(item.id, item);
     }
 
-    this.dispatchCartEvent("itemAdded", { item });
-    this.saveCart();
+    this.queueUpdate(() => {
+      this.saveCart();
+      this.dispatchCartEvent("itemAdded", { item });
+    });
   }
 
   public removeItem(id: string): void {
     const item = this.items.get(id);
     if (item) {
       this.items.delete(id);
-      this.dispatchCartEvent("itemRemoved", { item });
-      this.saveCart();
+      this.queueUpdate(() => {
+        this.saveCart();
+        this.dispatchCartEvent("itemRemoved", { item });
+      });
     }
   }
 
@@ -184,14 +213,16 @@ class CartManager implements ICartManager {
     if (item) {
       item.quantity = quantity;
       this.items.set(id, item);
-      this.saveCart();
+      this.queueUpdate(() => this.saveCart());
     }
   }
 
   public clear(): void {
     this.items.clear();
-    this.dispatchCartEvent("cartCleared");
-    this.saveCart();
+    this.queueUpdate(() => {
+      this.dispatchCartEvent("cartCleared");
+      this.saveCart();
+    });
   }
 
   public async createOrder(): Promise<string> {
@@ -228,16 +259,17 @@ class CartManager implements ICartManager {
   }
 
   public forceRefresh(): void {
-    this.loadCart();
-    this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+    this.queueUpdate(() => {
+      this.loadCart();
+      this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+    });
   }
 }
 
 export const cart = CartManager.getInstance();
 
-// Handle cleanup on HMR
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
-    CartManager.getInstance().cleanupHandlers();
+    CartManager.getInstance().forceRefresh();
   });
 }

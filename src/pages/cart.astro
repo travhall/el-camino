@@ -17,7 +17,7 @@ import Button from "@/components/Button.astro";
       <p class="text-lg animate-pulse text-content-body">Loading cart...</p>
     </div>
 
-    <!-- Cart Content - Initially Empty -->
+    <!-- Cart Content -->
     <div id="cart-container" class="hidden"></div>
 
     <!-- Loading Indicator -->
@@ -41,6 +41,9 @@ import Button from "@/components/Button.astro";
   import type { CartItem } from "@/lib/cart/types";
   import type { Money } from "@/lib/square/types";
   import { MoneyUtils } from "@/lib/square/money";
+
+  let updateDisplayTimeout: number | null = null;
+  let isUpdating = false;
 
   async function handleCheckout(): Promise<void> {
     try {
@@ -119,8 +122,6 @@ import Button from "@/components/Button.astro";
     }
   }
 
-  let isUpdating = false;
-
   function createEmptyCart(): string {
     return `
       <div class="flex flex-col items-center" id="empty-cart">
@@ -190,11 +191,15 @@ import Button from "@/components/Button.astro";
           <div class="space-y-2 mb-4">
             <div class="flex justify-between text-content-body">
               <span>Subtotal</span>
-              <span id="subtotal">${MoneyUtils.format(MoneyUtils.fromFloat(total))}</span>
+              <span id="subtotal">${MoneyUtils.format(
+                MoneyUtils.fromFloat(total)
+              )}</span>
             </div>
             <div class="flex justify-between font-bold pt-2 border-t border-surface-secondary text-content-emphasis">
               <span>Total</span>
-              <span id="total">${MoneyUtils.format(MoneyUtils.fromFloat(total))}</span>
+              <span id="total">${MoneyUtils.format(
+                MoneyUtils.fromFloat(total)
+              )}</span>
             </div>
           </div>
           <div class="space-y-3">
@@ -266,50 +271,78 @@ import Button from "@/components/Button.astro";
     if (isUpdating) return;
     isUpdating = true;
 
-    const items = cart.getItems();
-    const total = cart.getTotal();
-
-    const cartLoading = document.getElementById("cart-loading");
-    const cartContainer = document.getElementById("cart-container");
-
-    if (!cartContainer) {
-      console.error("Cart container not found");
-      isUpdating = false;
-      return;
+    if (updateDisplayTimeout) {
+      window.clearTimeout(updateDisplayTimeout);
     }
 
-    if (cartLoading) cartLoading.classList.add("hidden");
-    cartContainer.classList.remove("hidden");
+    updateDisplayTimeout = window.setTimeout(() => {
+      try {
+        const items = cart.getItems();
+        const total = cart.getTotal();
 
-    cartContainer.innerHTML =
-      items.length === 0
-        ? createEmptyCart()
-        : `
-        <div class="grid md:grid-cols-3 gap-8">
-          <div class="md:col-span-2 space-y-4">
-            <button
-              type="button"
-              id="clear-cart-button"
-              class="w-full mb-4 bg-transparent hover:bg-state-error-surface/10 border-state-error-text text-state-error-text font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4"
-            >
-              Clear Cart
-            </button>
-            ${items.map(createCartItem).join("")}
-          </div>
-          ${createOrderSummary(total)}
-        </div>
-      `;
+        const cartLoading = document.getElementById("cart-loading");
+        const cartContainer = document.getElementById("cart-container");
 
-    attachEventListeners();
-    isUpdating = false;
+        if (!cartContainer) {
+          console.debug("Cart container not found, waiting for DOM");
+          return;
+        }
+
+        if (cartLoading) cartLoading.classList.add("hidden");
+        cartContainer.classList.remove("hidden");
+
+        cartContainer.innerHTML =
+          items.length === 0
+            ? createEmptyCart()
+            : `
+            <div class="grid md:grid-cols-3 gap-8">
+              <div class="md:col-span-2 space-y-4">
+                <button
+                  type="button"
+                  id="clear-cart-button"
+                  class="w-full mb-4 bg-transparent hover:bg-state-error-surface/10 border-state-error-text text-state-error-text font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4"
+                >
+                  Clear Cart
+                </button>
+                ${items.map(createCartItem).join("")}
+              </div>
+              ${createOrderSummary(total)}
+            </div>
+          `;
+
+        attachEventListeners();
+      } catch (error) {
+        console.error("Error updating cart display:", error);
+      } finally {
+        isUpdating = false;
+        updateDisplayTimeout = null;
+      }
+    }, 50);
   }
 
   // Event Handlers
-  document.addEventListener("astro:page-load", () => {
+  let pageLoadHandler = () => {
+    console.debug("Cart page: Page loaded");
     updateDisplay();
-  });
+  };
 
-  window.addEventListener("cartUpdated", () => {
+  let cartUpdateHandler = () => {
+    console.debug("Cart updated event received");
     updateDisplay();
-  });
+  };
+
+  // Add event listeners
+  document.addEventListener("astro:page-load", pageLoadHandler);
+  window.addEventListener("cartUpdated", cartUpdateHandler);
+
+  // Cleanup
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      if (updateDisplayTimeout) {
+        window.clearTimeout(updateDisplayTimeout);
+      }
+      document.removeEventListener("astro:page-load", pageLoadHandler);
+      window.removeEventListener("cartUpdated", cartUpdateHandler);
+    });
+  }
 </script>

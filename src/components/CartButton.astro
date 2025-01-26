@@ -20,33 +20,54 @@ const cartCount = cart.getItemCount();
 <script>
   import { cart } from "@/lib/cart";
 
+  let updateTimeout: number | null = null;
   let isUpdating = false;
 
   function updateCartCount() {
     if (isUpdating) return;
     isUpdating = true;
 
-    const countElement = document.getElementById("cart-count");
-    if (!countElement) {
-      isUpdating = false;
-      return;
+    if (updateTimeout) {
+      window.clearTimeout(updateTimeout);
     }
 
-    const count = cart.getItemCount();
-    countElement.textContent = count.toString();
-    countElement.classList.toggle("hidden", count === 0);
+    updateTimeout = window.setTimeout(() => {
+      const countElement = document.getElementById("cart-count");
+      if (!countElement) {
+        console.debug("Cart count element not found, waiting for DOM");
+        return;
+      }
 
-    isUpdating = false;
+      try {
+        const count = cart.getItemCount();
+        countElement.textContent = count.toString();
+        countElement.classList.toggle("hidden", count === 0);
+      } catch (error) {
+        console.error("Error updating cart count:", error);
+      } finally {
+        isUpdating = false;
+        updateTimeout = null;
+      }
+    }, 50);
   }
 
   // Event Listeners
   window.addEventListener("cartUpdated", () => {
-    console.log("Cart update event received in button");
+    console.debug("Cart update event received in button");
     updateCartCount();
   });
 
   document.addEventListener("astro:page-load", () => {
-    console.log("Cart button: Page loaded");
+    console.debug("Cart button: Page loaded");
     updateCartCount();
   });
+
+  // Cleanup
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      if (updateTimeout) {
+        window.clearTimeout(updateTimeout);
+      }
+    });
+  }
 </script>
