@@ -1,16 +1,16 @@
 ---
 // src/pages/news/[slug].astro
 import Layout from "@/layouts/Layout.astro";
-import ArticleNavigation from "@/components/ArticleNavigation.astro";
-import { getArticleBySlug, getAllArticles } from "@/lib/strapi/api";
+import { getPost, getPosts } from "@/lib/wordpress/api";
 import { formatDate } from "@/utils/dates";
-import type { Article } from "@/lib/types/strapi";
-import VideoPlayer from "@/components/blocks/VideoPlayer.astro";
-import MediaBlock from "@/components/blocks/MediaBlock.astro";
-import QuoteBlock from "@/components/blocks/QuoteBlock.astro";
-import RichTextBlock from "@/components/blocks/RichTextBlock.astro";
-import SliderBlock from "@/components/blocks/SliderBlock.astro";
-import VideoBlock from "@/components/blocks/VideoBlock.astro";
+import type { WordPressPost } from "@/lib/types/wordpress";
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post) => ({
+    params: { slug: post.slug },
+  }));
+}
 
 const { slug } = Astro.params;
 
@@ -21,111 +21,78 @@ if (!slug) {
   });
 }
 
-let article: Article | null = null;
-let articles: Article[] = [];
+let post: WordPressPost | null = null;
 let error: string | null = null;
 
 try {
-  article = await getArticleBySlug(slug);
-  if (!article) {
+  post = await getPost(slug);
+  if (!post) {
     return new Response(null, {
       status: 404,
-      statusText: "Article not found",
+      statusText: "Post not found",
     });
   }
-  articles = await getAllArticles();
 } catch (e) {
-  error =
-    e instanceof Error ? e.message : "An error occurred loading the article";
+  error = e instanceof Error ? e.message : "An error occurred loading the post";
   return new Response(error, { status: 500 });
 }
 
-function getImageUrl(path?: string): string {
-  if (!path) return "";
-  const baseUrl = import.meta.env.STRAPI_URL;
-  return path.startsWith("http") ? path : `${baseUrl}${path}`;
-}
+const category = post._embedded?.["wp:term"]?.[0]?.[0];
+const featuredMedia = post._embedded?.["wp:featuredmedia"]?.[0];
+const author = post._embedded?.author?.[0];
 
-// Debug log for video data
-console.log("Article Data:", {
-  headerType: article.headerType,
-  video: article.video,
-});
+const imageUrl = featuredMedia?.source_url;
 ---
 
 <Layout>
-  <section class="py-16">
-    <article class="max-w-6xl mx-auto px-4">
-      <header class="mb-8">
-        <h1
-          class="font-display font-black text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl leading-[0.8] mb-4 text-content-heading"
-        >
-          {article.title}
-        </h1>
-
-        <div class="flex items-center gap-4 text-content-meta mb-6">
-          {
-            article.author && (
-              <div class="flex items-center">
-                {article.author.avatar?.url && (
-                  <img
-                    src={getImageUrl(article.author.avatar.url)}
-                    alt={article.author.name}
-                    class="w-10 h-10 rounded-full mr-3 object-cover"
-                  />
-                )}
-                <div>
-                  <p class="font-medium text-content-body">
-                    {article.author.name}
-                  </p>
-                  <time datetime={article.publishedAt} class="text-sm">
-                    {formatDate(article.publishedAt)}
-                  </time>
-                </div>
-              </div>
-            )
-          }
-        </div>
-
-        {
-          article.headerType === "video" && article.video ? (
-            <VideoPlayer url={article.video.url} title={article.video.title} />
-          ) : (
-            article.cover?.url && (
-              <img
-                src={getImageUrl(article.cover.url)}
-                alt={article.cover.alternativeText || article.title}
-                class="w-full h-auto aspect-video object-cover rounded-sm mb-8"
-              />
-            )
-          )
-        }
-      </header>
-
-      <div class="max-w-none text-content-body mb-8">
-        <p>{article.description}</p>
-      </div>
-
+  <article class="max-w-4xl mx-auto px-4 py-16">
+    <header class="mb-8">
       {
-        article.blocks?.map((block) => {
-          switch (block.__component) {
-            case "shared.media":
-              return <MediaBlock block={block} />;
-            case "shared.quote":
-              return <QuoteBlock block={block} />;
-            case "shared.rich-text":
-              return <RichTextBlock block={block} />;
-            case "shared.slider":
-              return <SliderBlock block={block} />;
-            case "shared.video":
-              return <VideoBlock block={block} />;
-            default:
-              return null;
-          }
-        })
+        category?.name && (
+          <span class="font-display text-lg text-content-meta mb-4 block">
+            {category.name}
+          </span>
+        )
       }
 
-      <ArticleNavigation currentSlug={article.slug} articles={articles} />
-    </article>
-  </section>
+      <h1
+        class="font-display font-black text-5xl lg:text-6xl xl:text-7xl leading-[0.8] mb-6 text-content-heading"
+        set:html={post.title.rendered}
+      />
+
+      {
+        author && (
+          <div class="flex items-center gap-4 text-content-meta mb-6">
+            {author.avatar_urls?.["96"] && (
+              <img
+                src={author.avatar_urls["96"]}
+                alt={author.name}
+                class="w-12 h-12 rounded-full"
+              />
+            )}
+            <div>
+              <span class="font-medium text-content-body block">
+                {author.name}
+              </span>
+              <time datetime={post.date} class="text-sm">
+                {formatDate(post.date)}
+              </time>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        imageUrl && (
+          <img
+            src={imageUrl}
+            alt={featuredMedia?.alt_text || post.title.rendered}
+            class="w-full h-auto aspect-video object-cover rounded-sm"
+          />
+        )
+      }
+    </header>
+
+    <div class="prose prose-lg max-w-none" set:html={post.content.rendered} />
+  </article>
 </Layout>

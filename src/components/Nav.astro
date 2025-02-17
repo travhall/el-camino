@@ -1,6 +1,4 @@
 ---
-import { fetchAPI } from "@/lib/strapi/client";
-import type { StrapiResponse, Page } from "@/lib/types/strapi";
 import ThemeToggle from "./ThemeToggle.astro";
 
 // Static catalog categories
@@ -17,22 +15,6 @@ const catalogItems = [
     label: "Accessories",
     url: "/styleguide",
   },
-];
-
-const response = await fetchAPI<StrapiResponse<Page[]>>("pages", {
-  params: {
-    "filters[menuLocation][$eq]": "header",
-  },
-});
-
-const headerPages = Array.isArray(response.data) ? response.data : [];
-
-const navItems = [
-  ...catalogItems,
-  ...headerPages.map((page) => ({
-    label: page.title,
-    url: `/${page.slug}`,
-  })),
   {
     label: "News",
     url: "/news",
@@ -44,7 +26,7 @@ const navItems = [
   class="flex flex-col md:flex-row w-full gap-2 justify-center border-4 border-border-secondary md:border-0 bg-surface-secondary md:relative md:top-auto fixed -translate-x-full md:translate-x-0 transition-transform duration-400 ease-in-out inset-0 top-[3rem] z-40 [&.nav-open]:translate-x-0"
 >
   {
-    navItems.map((item, index) => (
+    catalogItems.map((item, index) => (
       <a
         href={item.url}
         class="nav-item text-5xl md:text-lg lg:text-xl font-semibold font-display self-start md:self-center leading-[1] p-4 text-ui-nav-text transition-all duration-300 ease-in-out relative md:hover:text-ui-nav-hover before:absolute before:bottom-0 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out md:hover:before:scale-x-100 md:hover:before:origin-left nav-link"

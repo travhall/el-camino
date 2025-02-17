@@ -2,30 +2,21 @@
 // src/pages/index.astro
 import Layout from "@/layouts/Layout.astro";
 import ArticleGrid from "@/components/ArticleGrid.astro";
-import { getAllArticles } from "@/lib/strapi/api";
-import type { Article } from "@/lib/types/strapi";
+import { getPosts } from "@/lib/wordpress/api";
+import type { WordPressPost } from "@/lib/types/wordpress";
 
-let articles: Article[] = [];
+let posts: WordPressPost[] = [];
 let error: string | null = null;
 
 try {
-  articles = await getAllArticles({
-    page: 1,
-    pageSize: 6,
-    sort: "desc",
-  });
+  posts = await getPosts();
 } catch (e) {
-  error = e instanceof Error ? e.message : "An error occurred loading articles";
+  error = e instanceof Error ? e.message : "An error occurred loading posts";
 }
 ---
 
 <Layout>
   <section>
-    <ArticleGrid
-      articles={articles}
-      error={error}
-      featured={true}
-      showSidebar={true}
-    />
+    <ArticleGrid posts={posts} error={error} showSidebar={true} />
   </section>
 </Layout>

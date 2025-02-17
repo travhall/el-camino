@@ -2,31 +2,38 @@
 // src/pages/news/index.astro
 import Layout from "@/layouts/Layout.astro";
 import ArticleGrid from "@/components/ArticleGrid.astro";
-import { getAllArticles } from "@/lib/strapi/api";
-import type { Article } from "@/lib/types/strapi";
+import { getPosts } from "@/lib/wordpress/api";
+import type { WordPressPost } from "@/lib/types/wordpress";
 
 const PAGE_SIZE = 12;
 const currentPage = Number(Astro.url.searchParams.get("page")) || 1;
 const sortDirection = (Astro.url.searchParams.get("sort") || "desc") as
   | "asc"
   | "desc";
-const categorySlug = Astro.url.searchParams.get("category");
 
-let articles: Article[] = [];
+let posts: WordPressPost[] = [];
 let error: string | null = null;
 
 try {
-  articles = await getAllArticles({
-    page: currentPage,
-    pageSize: PAGE_SIZE,
-    sort: sortDirection,
-    categorySlug: categorySlug || undefined,
-  });
+  posts = await getPosts();
 } catch (e) {
-  error = e instanceof Error ? e.message : "An error occurred loading articles";
+  error = e instanceof Error ? e.message : "An error occurred loading posts";
 }
 
-const hasArticles = articles.length > 0;
+const hasPosts = posts.length > 0;
+
+// Sort posts based on date
+if (sortDirection === "asc") {
+  posts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+} else {
+  posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+// Paginate posts
+const paginatedPosts = posts.slice(
+  (currentPage - 1) * PAGE_SIZE,
+  currentPage * PAGE_SIZE
+);
 ---
 
 <Layout>
@@ -53,10 +60,10 @@ const hasArticles = articles.length > 0;
       </div>
     </div>
 
-    <ArticleGrid articles={articles} error={error} />
+    <ArticleGrid posts={paginatedPosts} error={error} />
 
     {
-      hasArticles && (
+      hasPosts && (
         <nav class="mt-8 flex justify-center gap-2" aria-label="Pagination">
           {currentPage > 1 && (
             <a
@@ -67,7 +74,7 @@ const hasArticles = articles.length > 0;
             </a>
           )}
 
-          {articles.length === PAGE_SIZE && (
+          {posts.length > currentPage * PAGE_SIZE && (
             <a
               href={`?page=${currentPage + 1}&sort=${sortDirection}`}
               class="px-4 py-2 text-sm border rounded-sm hover:bg-gray-50"

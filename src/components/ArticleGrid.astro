@@ -3,26 +3,24 @@
 import ArticleCard from "./ArticleCard.astro";
 import ArticleCardSkeleton from "./ArticleCardSkeleton.astro";
 import Sidebar from "./Sidebar.astro";
-import type { Article } from "@/lib/types/strapi";
+import type { WordPressPost } from "@/lib/types/wordpress";
 
 interface Props {
-  articles: Article[];
+  posts: WordPressPost[];
   error?: string | null;
   isLoading?: boolean;
-  featured?: boolean;
   showSidebar?: boolean;
 }
 
 const {
-  articles,
+  posts,
   error = null,
-  isLoading = !articles.length,
-  featured = false,
+  isLoading = !posts.length,
   showSidebar = false,
 } = Astro.props;
 
-// If sidebar is shown, limit to 6 articles for homepage layout
-const displayArticles = showSidebar ? articles.slice(0, 6) : articles;
+// If sidebar is shown, limit to 6 posts for homepage layout
+const displayPosts = showSidebar ? posts.slice(0, 6) : posts;
 
 // Loading skeleton count
 const skeletonCount = showSidebar ? 6 : 12;
@@ -43,17 +41,17 @@ const skeletonCount = showSidebar ? 6 : 12;
     isLoading ? (
       Array(skeletonCount)
         .fill(null)
-        .map((_, i) => <ArticleCardSkeleton featured={featured && i === 0} />)
-    ) : displayArticles.length > 0 ? (
+        .map((_, i) => <ArticleCardSkeleton featured={i === 0} />)
+    ) : displayPosts.length > 0 ? (
       <>
-        {displayArticles.map((article, index) => (
-          <ArticleCard article={article} featured={featured && index === 0} />
+        {displayPosts.map((post, index) => (
+          <ArticleCard post={post} featured={index === 0} />
         ))}
         {showSidebar && <Sidebar />}
       </>
     ) : (
       <p class="text-content-body text-center py-12 col-span-full">
-        No articles found.
+        No posts found.
       </p>
     )
   }

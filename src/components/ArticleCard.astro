@@ -1,28 +1,21 @@
 ---
 // src/components/ArticleCard.astro
-import type { Article } from "@/lib/types/strapi";
+import type { WordPressPost } from "@/lib/types/wordpress";
 import Button from "./Button.astro";
+import { formatDate } from "@/utils/dates";
 
 interface Props {
-  article: Article;
+  post: WordPressPost;
   featured?: boolean;
 }
 
-const { article, featured = false } = Astro.props;
-const { title, description, slug, buttonLabel, cover, author, category } =
-  article;
+const { post, featured = false } = Astro.props;
 
-function getImageUrl(path?: string): string {
-  if (!path) return "";
-  const baseUrl = import.meta.env.STRAPI_URL;
-  return path.startsWith("http") ? path : `${baseUrl}${path}`;
-}
+const category = post._embedded?.["wp:term"]?.[0]?.[0];
+const featuredMedia = post._embedded?.["wp:featuredmedia"]?.[0];
+const author = post._embedded?.author?.[0];
 
-const articleUrl = `/news/${slug}`;
-const coverUrl = cover?.formats?.medium?.url || cover?.url;
-const authorAvatarUrl = author?.avatar?.url;
-const finalButtonLabel =
-  buttonLabel || buttonLabel === "" ? buttonLabel : "Read Article";
+const imageUrl = featuredMedia?.source_url;
 ---
 
 <article
@@ -32,15 +25,15 @@ const finalButtonLabel =
   ]}
 >
   {
-    coverUrl && (
+    imageUrl && (
       <img
-        src={getImageUrl(coverUrl)}
-        alt={cover?.alternativeText || title}
+        src={imageUrl}
+        alt={featuredMedia?.alt_text || post.title.rendered}
         class:list={[
-          "object-cover w-full h-full transition-all duration-300 [.article-card:has(button:hover)_&]:scale-105",
+          "object-cover w-full h-full transition-all duration-300",
           featured
             ? ""
-            : "opacity-10 [.article-card:has(button:hover)_&]:opacity-50",
+            : "opacity-10 [.article-card:has(button:hover)_&]:scale-105 [.article-card:has(button:hover)_&]:opacity-50",
         ]}
         loading="lazy"
       />
@@ -64,31 +57,37 @@ const finalButtonLabel =
 
     <h2
       class="font-display font-black text-6xl md:text-4xl xl:text-6xl 3xl:text-7xl leading-[0.8] text-content-heading"
-    >
-      {title}
-    </h2>
+      set:html={post.title.rendered}
+    />
 
-    {
-      description && (
-        <p class="text-sm md:text-base 2xl:text-lg leading-snug line-clamp-2 text-content-body">
-          {description}
-        </p>
-      )
-    }
+    <div
+      class="text-sm md:text-base 2xl:text-lg leading-snug line-clamp-2 text-content-body"
+      set:html={post.excerpt.rendered}
+    />
 
     <div class="mt-auto flex flex-col gap-4">
+      {
+        author && (
+          <div class="flex items-center text-content-meta">
+            {author.avatar_urls?.["96"] && (
+              <img
+                src={author.avatar_urls["96"]}
+                alt={author.name}
+                class="w-8 h-8 rounded-full mr-2"
+              />
+            )}
+            <span>{author.name}</span>
+            <span class="mx-2">•</span>
+            <time datetime={post.date}>{formatDate(post.date)}</time>
+          </div>
+        )
+      }
+
       <a
-        href={articleUrl}
+        href={`/news/${post.slug}`}
         class="self-start focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-button-ring"
       >
-        <Button
-          type="button"
-          variant="primary"
-          size="md"
-          aria-label={finalButtonLabel}
-        >
-          {finalButtonLabel}
-        </Button>
+        <Button type="button" variant="primary" size="md"> Read More </Button>
       </a>
     </div>
   </div>
