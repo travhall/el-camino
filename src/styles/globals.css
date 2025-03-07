@@ -1,193 +1,330 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@custom-variant dark (&:where(.dark, .dark *));
+@layer base {
+  * {
+    @apply border-border-primary;
+  }
+  body {
+    @apply bg-surface-primary text-content-body;
+  }
+  :root {
+    /* Brand Colors */
+    --elco-black: 180 4% 5%;
 
-@theme inline {
-  /* El Camino Brand Colors - OKLCH Conversion */
-  /* Beeswax */
-  --elco-beeswax-50: oklch(97.31% 0.013 70);
-  --elco-beeswax-100: oklch(94.49% 0.009 70);
-  --elco-beeswax-200: oklch(89.74% 0.012 70);
-  --elco-beeswax-300: oklch(85.17% 0.011 70);
-  --elco-beeswax-400: oklch(82.43% 0.012 70);
-  --elco-beeswax-500: oklch(76.89% 0.0115 70);
-  --elco-beeswax-600: oklch(69.52% 0.0095 70);
-  --elco-beeswax-700: oklch(54.86% 0.005 70);
-  --elco-beeswax-800: oklch(43.56% 0.004 70);
-  --elco-beeswax-900: oklch(33.78% 0.002 70);
+    /* Beeswax */
+    --elco-beeswax-50: 40 30% 98%;
+    --elco-beeswax-100: 40 20% 95%;
+    --elco-beeswax-200: 40 25% 90%;
+    --elco-beeswax-300: 40 22% 85%;
+    --elco-beeswax-400: 40 24% 82%;
+    --elco-beeswax-500: 40 23% 76%;
+    --elco-beeswax-600: 40 19% 68%;
+    --elco-beeswax-700: 40 10% 52%;
+    --elco-beeswax-800: 40 8% 40%;
+    --elco-beeswax-900: 40 4% 30%;
 
-  /* Black Pearl */
-  --elco-black-pearl-50: oklch(90.74% 0.003 196);
-  --elco-black-pearl-100: oklch(73.81% 0.002 196);
-  --elco-black-pearl-200: oklch(61.38% 0.002 196);
-  --elco-black-pearl-300: oklch(44.24% 0.003 196);
-  --elco-black-pearl-400: oklch(32.57% 0.004 196);
-  --elco-black-pearl-500: oklch(15.83% 0.013 202);
-  --elco-black-pearl-600: oklch(14.76% 0.013 202);
-  --elco-black-pearl-700: oklch(11.48% 0.016 202);
-  --elco-black-pearl-800: oklch(9.21% 0.015 202);
-  --elco-black-pearl-900: oklch(6.94% 0.014 202);
+    /* Black Pearl */
+    --elco-black-pearl-50: 180 3% 91%;
+    --elco-black-pearl-100: 180 2% 73%;
+    --elco-black-pearl-200: 180 2% 60%;
+    --elco-black-pearl-300: 180 3% 42%;
+    --elco-black-pearl-400: 180 4% 30%;
+    --elco-black-pearl-500: 192 13% 13%;
+    --elco-black-pearl-600: 192 13% 12%;
+    --elco-black-pearl-700: 192 16% 9%;
+    --elco-black-pearl-800: 192 15% 7%;
+    --elco-black-pearl-900: 192 14% 5%;
 
-  /* Fig Leaf */
-  --elco-fig-leaf-50: oklch(91.74% 0.011 120);
-  --elco-fig-leaf-100: oklch(76.39% 0.014 120);
-  --elco-fig-leaf-200: oklch(66.29% 0.014 120);
-  --elco-fig-leaf-300: oklch(51.43% 0.014 120);
-  --elco-fig-leaf-400: oklch(41.7% 0.018 120);
-  --elco-fig-leaf-500: oklch(27.16% 0.039 120);
-  --elco-fig-leaf-600: oklch(25.07% 0.037 120);
-  --elco-fig-leaf-700: oklch(17.81% 0.036 120);
-  --elco-fig-leaf-800: oklch(13.63% 0.034 120);
-  --elco-fig-leaf-900: oklch(10.36% 0.03 120);
+    /* Fig Leaf */
+    --elco-fig-leaf-50: 75 11% 92%;
+    --elco-fig-leaf-100: 75 14% 76%;
+    --elco-fig-leaf-200: 75 14% 65%;
+    --elco-fig-leaf-300: 75 14% 49%;
+    --elco-fig-leaf-400: 75 18% 39%;
+    --elco-fig-leaf-500: 75 39% 24%;
+    --elco-fig-leaf-600: 75 37% 22%;
+    --elco-fig-leaf-700: 75 36% 15%;
+    --elco-fig-leaf-800: 75 34% 11%;
+    --elco-fig-leaf-900: 75 30% 8%;
 
-  /* Honey Cream */
-  --elco-honey-cream-50: oklch(95.9% 0.067 75);
-  --elco-honey-cream-100: oklch(89.75% 0.059 75);
-  --elco-honey-cream-200: oklch(84.77% 0.062 75);
-  --elco-honey-cream-300: oklch(78.8% 0.064 75);
-  --elco-honey-cream-400: oklch(74.81% 0.065 75);
-  --elco-honey-cream-500: oklch(68.84% 0.061 75);
-  --elco-honey-cream-600: oklch(63.04% 0.046 75);
-  --elco-honey-cream-700: oklch(49.66% 0.024 75);
-  --elco-honey-cream-800: oklch(39.2% 0.024 75);
-  --elco-honey-cream-900: oklch(30.65% 0.024 75);
+    /* Honey Cream */
+    --elco-honey-cream-50: 45 67% 97%;
+    --elco-honey-cream-100: 45 59% 91%;
+    --elco-honey-cream-200: 45 62% 86%;
+    --elco-honey-cream-300: 45 64% 80%;
+    --elco-honey-cream-400: 45 65% 76%;
+    --elco-honey-cream-500: 45 61% 70%;
+    --elco-honey-cream-600: 45 46% 64%;
+    --elco-honey-cream-700: 45 24% 50%;
+    --elco-honey-cream-800: 45 24% 39%;
+    --elco-honey-cream-900: 45 24% 30%;
 
-  /* Sweet Tea */
-  --elco-sweet-tea-50: oklch(93.89% 0.038 60);
-  --elco-sweet-tea-100: oklch(81.83% 0.038 60);
-  --elco-sweet-tea-200: oklch(74.81% 0.038 60);
-  --elco-sweet-tea-300: oklch(64.07% 0.038 60);
-  --elco-sweet-tea-400: oklch(57.23% 0.038 60);
-  --elco-sweet-tea-500: oklch(47.58% 0.038 60);
-  --elco-sweet-tea-600: oklch(42.74% 0.038 60);
-  --elco-sweet-tea-700: oklch(34.09% 0.038 60);
-  --elco-sweet-tea-800: oklch(26.35% 0.038 60);
-  --elco-sweet-tea-900: oklch(20.61% 0.038 60);
+    /* Sweet Tea */
+    --elco-sweet-tea-50: 30 38% 95%;
+    --elco-sweet-tea-100: 30 38% 83%;
+    --elco-sweet-tea-200: 30 38% 76%;
+    --elco-sweet-tea-300: 30 38% 65%;
+    --elco-sweet-tea-400: 30 38% 58%;
+    --elco-sweet-tea-500: 30 38% 48%;
+    --elco-sweet-tea-600: 30 38% 43%;
+    --elco-sweet-tea-700: 30 38% 34%;
+    --elco-sweet-tea-800: 30 38% 26%;
+    --elco-sweet-tea-900: 30 38% 20%;
 
-  /* States */
-  --state-success-surface: oklch(53.6% 0.155 145);
-  --state-success-text: oklch(100% 0 0);
-  --state-error-surface: oklch(62.68% 0.195 25.5);
-  --state-error-text: oklch(100% 0 0);
-  --state-warning-surface: oklch(78.1% 0.156 68);
-  --state-warning-text: oklch(0% 0 0);
-  --state-info-surface: oklch(48.2% 0.158 245);
-  --state-info-text: oklch(100% 0 0);
+    /* Surface Foundations */
+    --surface-primary: var(--elco-beeswax-100);
+    --border-primary: var(--elco-beeswax-200);
+    --surface-secondary: var(--elco-beeswax-200);
+    --border-secondary: var(--elco-beeswax-100);
+    --surface-tertiary: var(--elco-beeswax-300);
+    --border-tertiary: var(--elco-beeswax-200);
 
-  /* Surface Foundations */
-  --surface-primary: var(--elco-beeswax-100);
-  --border-primary: var(--elco-beeswax-200);
-  --surface-secondary: var(--elco-beeswax-200);
-  --border-secondary: var(--elco-beeswax-100);
-  --surface-tertiary: var(--elco-beeswax-300);
-  --border-tertiary: var(--elco-beeswax-200);
+    /* UI Navigation */
+    --ui-nav-surface: var(--elco-beeswax-200);
+    --ui-nav-text: var(--elco-fig-leaf-900);
+    --ui-nav-border: var(--elco-fig-leaf-900);
+    --ui-nav-hover: var(--elco-sweet-tea-500);
 
-  /* UI Navigation */
-  --ui-nav-surface: var(--elco-beeswax-200);
-  --ui-nav-text: var(--elco-fig-leaf-900);
-  --ui-nav-border: var(--elco-fig-leaf-900);
-  --ui-nav-hover: var(--elco-sweet-tea-500);
+    /* UI Button */
+    --ui-button-surface: var(--elco-fig-leaf-500);
+    --ui-button-text: var(--elco-beeswax-50);
+    --ui-button-border: var(--elco-fig-leaf-500);
+    --ui-button-ring: var(--elco-fig-leaf-500);
 
-  /* UI Button */
-  --ui-button-surface: var(--elco-fig-leaf-500);
-  --ui-button-text: var(--elco-beeswax-50);
-  --ui-button-border: var(--elco-fig-leaf-500);
-  --ui-button-ring: var(--elco-fig-leaf-500);
+    /* UI Card */
+    --ui-card-surface: var(--elco-beeswax-200);
+    --ui-card-text: var(--elco-fig-leaf-900);
+    --ui-card-border: var(--elco-beeswax-100);
+    --ui-card-hover: var(--elco-beeswax-50);
 
-  /* UI Card */
-  --ui-card-surface: var(--elco-beeswax-200);
-  --ui-card-text: var(--elco-fig-leaf-900);
-  --ui-card-border: var(--elco-beeswax-100);
-  --ui-card-hover: var(--elco-beeswax-50);
+    /* UI Input */
+    --ui-input-surface: var(--elco-beeswax-200);
+    --ui-input-text: var(--elco-fig-leaf-900);
+    --ui-input-border: var(--elco-fig-leaf-900);
+    --ui-input-focus: var(--elco-sweet-tea-500);
 
-  /* UI Input */
-  --ui-input-surface: var(--elco-beeswax-200);
-  --ui-input-text: var(--elco-fig-leaf-900);
-  --ui-input-border: var(--elco-fig-leaf-900);
-  --ui-input-focus: var(--elco-sweet-tea-500);
+    /* Content */
+    --content-heading: var(--elco-fig-leaf-900);
+    --content-body: var(--elco-fig-leaf-900);
+    --content-meta: var(--elco-sweet-tea-800);
+    --content-emphasis: var(--elco-sweet-tea-500);
+    --content-caption: var(--elco-sweet-tea-800);
 
-  /* Content */
-  --content-heading: var(--elco-fig-leaf-900);
-  --content-body: var(--elco-fig-leaf-900);
-  --content-meta: var(--elco-sweet-tea-800);
-  --content-emphasis: var(--elco-sweet-tea-500);
-  --content-caption: var(--elco-sweet-tea-800);
+    /* Product */
+    --product-heading: var(--elco-fig-leaf-900);
+    --product-body: var(--elco-fig-leaf-900);
+    --product-meta: var(--elco-sweet-tea-800);
+    --product-emphasis: var(--elco-sweet-tea-500);
+    --product-caption: var(--elco-sweet-tea-800);
+    --product-price: var(--elco-sweet-tea-500);
+    --product-discount: var(--elco-fig-leaf-500);
+    --product-variation: var(--elco-sweet-tea-800);
+    --product-stock: var(--elco-fig-leaf-700);
+    --product-category: var(--elco-sweet-tea-700);
 
-  /* Product */
-  --product-heading: var(--elco-fig-leaf-900);
-  --product-body: var(--elco-fig-leaf-900);
-  --product-meta: var(--elco-sweet-tea-800);
-  --product-emphasis: var(--elco-sweet-tea-500);
-  --product-caption: var(--elco-sweet-tea-800);
-  --product-price: var(--elco-sweet-tea-500);
-  --product-discount: var(--elco-fig-leaf-500);
-  --product-variation: var(--elco-sweet-tea-800);
-  --product-stock: var(--elco-fig-leaf-700);
-  --product-category: var(--elco-sweet-tea-700);
+    /* States */
+    --state-success-surface: 142 69% 29%;
+    --state-success-text: 0 0% 100%;
+    --state-error-surface: 0 84% 60%;
+    --state-error-text: 0 0% 100%;
+    --state-warning-surface: 38 92% 50%;
+    --state-warning-text: 0 0% 0%;
+    --state-info-surface: 201 96% 32%;
+    --state-info-text: 0 0% 100%;
+  }
+
+  [data-theme="dark"],
+  .dark {
+    /* Surface - Dark Mode */
+    --surface-primary: var(--elco-fig-leaf-900);
+    --border-primary: var(--elco-fig-leaf-800);
+    --surface-secondary: var(--elco-fig-leaf-800);
+    --border-secondary: var(--elco-fig-leaf-900);
+    --surface-tertiary: var(--elco-fig-leaf-700);
+    --border-tertiary: var(--elco-fig-leaf-800);
+
+    /* UI Navigation - Dark Mode */
+    --ui-nav-surface: var(--surface-primary);
+    --ui-nav-text: var(--elco-sweet-tea-50);
+    --ui-nav-border: var(--border-primary);
+    --ui-nav-hover: var(--elco-sweet-tea-300);
+
+    /* UI Button - Dark Mode */
+    --ui-button-surface: var(--elco-sweet-tea-400);
+    --ui-button-text: var(--elco-fig-leaf-900);
+    --ui-button-border: var(--elco-sweet-tea-400);
+    --ui-button-ring: var(--elco-sweet-tea-300);
+
+    /* UI Card - Dark Mode */
+    --ui-card-surface: var(--elco-fig-leaf-800);
+    --ui-card-text: var(--elco-beeswax-50);
+    --ui-card-border: var(--elco-fig-leaf-900);
+    --ui-card-hover: var(--elco-fig-leaf-700);
+
+    /* UI Input - Dark Mode */
+    --ui-input-surface: var(--elco-fig-leaf-800);
+    --ui-input-text: var(--elco-beeswax-50);
+    --ui-input-border: var(--elco-beeswax-50);
+    --ui-input-focus: var(--elco-sweet-tea-300);
+
+    /* Content - Dark Mode */
+    --content-heading: var(--elco-beeswax-50);
+    --content-body: var(--elco-beeswax-50);
+    --content-meta: var(--elco-sweet-tea-100);
+    --content-emphasis: var(--elco-sweet-tea-300);
+    --content-caption: var(--elco-sweet-tea-100);
+
+    /* Product - Dark Mode */
+    --product-heading: var(--elco-beeswax-50);
+    --product-body: var(--elco-beeswax-50);
+    --product-meta: var(--elco-sweet-tea-100);
+    --product-emphasis: var(--elco-sweet-tea-300);
+    --product-caption: var(--elco-sweet-tea-100);
+    --product-price: var(--elco-sweet-tea-300);
+    --product-discount: var(--elco-fig-leaf-400);
+    --product-variation: var(--elco-sweet-tea-200);
+    --product-stock: var(--elco-fig-leaf-300);
+    --product-category: var(--elco-sweet-tea-200);
+  }
+  .content {
+    @apply font-sans text-body-base text-content-body;
+  }
+
+  /* Headings */
+  .content h1 {
+    @apply font-display text-display-xl md:text-display-2xl mb-8 text-content-heading;
+  }
+
+  .content h2 {
+    @apply font-display text-display-lg md:text-display-xl mb-6 text-content-heading;
+  }
+
+  .content h3 {
+    @apply font-display text-display-base md:text-display-lg mb-4 text-content-heading;
+  }
+
+  .content h4 {
+    @apply font-display text-display-sm md:text-display-base mb-4 text-content-heading;
+  }
+
+  .content h5 {
+    @apply font-display text-display-xs md:text-display-sm mb-3 text-content-heading;
+  }
+
+  .content h6 {
+    @apply font-display text-body-lg md:text-display-xs mb-3 text-content-heading;
+  }
+
+  /* Body Text */
+  .content p {
+    @apply text-body-base md:text-body-lg mb-6 text-content-body;
+  }
+
+  /* Lists */
+  .content ul,
+  .content ol {
+    @apply mb-6 pl-6 text-body-base md:text-body-lg text-content-body;
+  }
+
+  .content ul {
+    @apply list-disc;
+  }
+
+  .content ol {
+    @apply list-decimal;
+  }
+
+  .content li {
+    @apply mb-2;
+  }
+
+  /* Inline Elements */
+  .content strong {
+    @apply font-semibold text-content-emphasis;
+  }
+
+  .content em {
+    @apply italic text-content-emphasis;
+  }
+
+  /* Blockquotes */
+  .content blockquote {
+    @apply pl-4 border-l-4 border-content-meta italic my-8;
+    @apply text-body-base md:text-body-lg text-content-meta;
+  }
+
+  /* Links */
+  .content a {
+    @apply text-content-emphasis hover:underline;
+  }
+
+  /* Code */
+  .content pre {
+    @apply bg-surface-secondary p-4 rounded-lg mb-6 overflow-x-auto;
+    @apply text-body-sm md:text-body-base text-content-body;
+  }
+
+  .content code {
+    @apply bg-surface-secondary px-1.5 py-0.5 rounded text-sm;
+  }
 }
 
-[data-theme="dark"],
-.dark {
-  /* Surface - Dark Mode */
-  --surface-primary: var(--elco-fig-leaf-900);
-  --border-primary: var(--elco-fig-leaf-800);
-  --surface-secondary: var(--elco-fig-leaf-800);
-  --border-secondary: var(--elco-fig-leaf-900);
-  --surface-tertiary: var(--elco-fig-leaf-700);
-  --border-tertiary: var(--elco-fig-leaf-800);
-
-  /* UI Navigation - Dark Mode */
-  --ui-nav-surface: var(--surface-primary);
-  --ui-nav-text: var(--elco-sweet-tea-50);
-  --ui-nav-border: var(--border-primary);
-  --ui-nav-hover: var(--elco-sweet-tea-300);
-
-  /* UI Button - Dark Mode */
-  --ui-button-surface: var(--elco-sweet-tea-400);
-  --ui-button-text: var(--elco-fig-leaf-900);
-  --ui-button-border: var(--elco-sweet-tea-400);
-  --ui-button-ring: var(--elco-sweet-tea-300);
-
-  /* UI Card - Dark Mode */
-  --ui-card-surface: var(--elco-fig-leaf-800);
-  --ui-card-text: var(--elco-beeswax-50);
-  --ui-card-border: var(--elco-fig-leaf-900);
-  --ui-card-hover: var(--elco-fig-leaf-700);
-
-  /* UI Input - Dark Mode */
-  --ui-input-surface: var(--elco-fig-leaf-800);
-  --ui-input-text: var(--elco-beeswax-50);
-  --ui-input-border: var(--elco-beeswax-50);
-  --ui-input-focus: var(--elco-sweet-tea-300);
-
-  /* Content - Dark Mode */
-  --content-heading: var(--elco-beeswax-50);
-  --content-body: var(--elco-beeswax-50);
-  --content-meta: var(--elco-sweet-tea-100);
-  --content-emphasis: var(--elco-sweet-tea-300);
-  --content-caption: var(--elco-sweet-tea-100);
-
-  /* Product - Dark Mode */
-  --product-heading: var(--elco-beeswax-50);
-  --product-body: var(--elco-beeswax-50);
-  --product-meta: var(--elco-sweet-tea-100);
-  --product-emphasis: var(--elco-sweet-tea-300);
-  --product-caption: var(--elco-sweet-tea-100);
-  --product-price: var(--elco-sweet-tea-300);
-  --product-discount: var(--elco-fig-leaf-400);
-  --product-variation: var(--elco-sweet-tea-200);
-  --product-stock: var(--elco-fig-leaf-300);
-  --product-category: var(--elco-sweet-tea-200);
+@font-face {
+  font-family: "Alumni";
+  font-display: swap;
+  src: url("/fonts/AlumniSans.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
 }
 
-/* body {
-  color: var(--foreground);
-  background: var(--background);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@font-face {
+  font-family: "Alumni Italic";
+  font-display: swap;
+  src: url("/fonts/AlumniSans-Italic.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: italic;
 }
 
-::selection {
-  background-color: var(--foreground);
-  color: var(--background);
+@font-face {
+  font-family: "Cabin";
+  font-display: swap;
+  src: url("/fonts/Cabin.woff2") format("woff2");
+  font-weight: 400 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Cabin Italic";
+  font-display: swap;
+  src: url("/fonts/Cabin-Italic.woff2") format("woff2");
+  font-weight: 400 600;
+  font-style: italic;
+}
+
+html {
+  opacity: 1;
+  transition: opacity 0.1s ease-in;
+}
+
+html.fonts-loaded {
+  opacity: 1;
+}
+
+* {
+  text-wrap: pretty;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  text-wrap: balance;
+}
+
+/* p {
+  max-width: 64ch;
 } */
