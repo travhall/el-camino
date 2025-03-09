@@ -34,9 +34,8 @@ export const jsonStringifyReplacer = (_key: string, value: any) => {
 
 async function getImageUrl(imageId: string): Promise<string | null> {
   try {
-    const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-      imageId
-    );
+    const { result } =
+      await squareClient.catalogApi.retrieveCatalogObject(imageId);
     if (result.object?.type === "IMAGE") {
       return result.object.imageData?.url || null;
     }
@@ -172,5 +171,146 @@ export async function fetchProduct(id: string): Promise<Product | null> {
   } catch (error) {
     console.error("Error fetching product:", error);
     return null;
+  }
+}
+
+// Add to src/lib/square/client.ts
+
+import type { Category, CategoryHierarchy } from "./types";
+
+/**
+ * Fetches all categories from Square catalog
+ */
+export async function fetchCategories(): Promise<Category[]> {
+  try {
+    console.log("Fetching Square categories...");
+
+    // Fetch all categories
+    const response = await squareClient.catalogApi.listCatalog(
+      undefined,
+      "CATEGORY"
+    );
+
+    if (!response.result || !response.result.objects?.length) {
+      console.log("No categories found in catalog");
+      return [];
+    }
+
+    // Process categories
+    const categories = response.result.objects
+      .filter((item) => item.type === "CATEGORY")
+      .map((item) => {
+        // Create a URL-friendly slug from the category name
+        const slug = item.categoryData?.name
+          ? item.categoryData.name
+              .toLowerCase()
+              .replace(/[^\w\s-]/g, "")
+              .replace(/[\s_-]+/g, "-")
+              .replace(/^-+|-+$/g, "")
+          : item.id;
+
+        return {
+          id: item.id,
+          name: item.categoryData?.name || "",
+          slug,
+          isTopLevel: item.categoryData?.isTopLevel || false,
+          parentCategoryId: item.categoryData?.parentCategory?.id,
+          rootCategoryId: item.categoryData?.rootCategory,
+        };
+      });
+
+    console.log(`Processed ${categories.length} categories`);
+    return categories;
+  } catch (error) {
+    console.error("Error fetching Square categories:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      });
+    }
+    return [];
+  }
+}
+
+/**
+ * Organizes categories into a hierarchical structure
+ * NOTE: This is a placeholder implementation until we can analyze the actual data
+ * to determine how Square represents reporting categories vs. subcategories
+ */
+export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
+  try {
+    const allCategories = await fetchCategories();
+
+    // This is where we'll implement the logic to identify reporting categories
+    // and their related subcategories after analyzing the actual data structure
+    // For now, we'll return a flat structure
+
+    return allCategories.map((category) => ({
+      category,
+      subcategories: [],
+    }));
+  } catch (error) {
+    console.error("Error organizing category hierarchy:", error);
+    return [];
+  }
+}
+
+/**
+ * Fetches products by category ID
+ */
+export async function fetchProductsByCategory(
+  categoryId: string
+): Promise<Product[]> {
+  try {
+    console.log(`Fetching products for category: ${categoryId}`);
+
+    // Use the search endpoint to find items by category
+    const { result } = await squareClient.catalogApi.searchCatalogItems({
+      categoryIds: [categoryId],
+    });
+
+    if (!result.items?.length) {
+      console.log(`No products found for category: ${categoryId}`);
+      return [];
+    }
+
+    // Process items similar to the fetchProducts function
+    const products = await Promise.all(
+      result.items.map(async (item) => {
+        const variation = item.itemData?.variations?.[0];
+        const priceMoney = variation?.itemVariationData?.priceMoney;
+
+        let imageUrl = "/images/placeholder.png";
+        if (item.itemData?.imageIds?.[0]) {
+          try {
+            const fetchedUrl = await getImageUrl(item.itemData.imageIds[0]);
+            if (fetchedUrl) {
+              imageUrl = fetchedUrl;
+            }
+          } catch (error) {
+            console.error("Error fetching image for product:", item.id, error);
+          }
+        }
+
+        return {
+          id: item.id,
+          catalogObjectId: item.id,
+          variationId: variation?.id || item.id,
+          title: item.itemData?.name || "",
+          description: item.itemData?.description || "",
+          image: imageUrl,
+          price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
+          url: `/product/${item.id}`,
+        };
+      })
+    );
+
+    console.log(`Found ${products.length} products for category ${categoryId}`);
+    return products;
+  } catch (error) {
+    console.error(`Error fetching products for category ${categoryId}:`, error);
+    return [];
   }
 }

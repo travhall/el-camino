@@ -4,7 +4,7 @@
 
 <div
   id="cart-debug-panel"
-  class="fixed bottom-0 left-0 right-0 bg-elco-black-pearl-900/90 text-beeswax-50 shadow-lg z-50 backdrop-blur-sm border-t border-black-pearl-700"
+  class="fixed bottom-0 left-0 right-0 bg-elco-black-pearl-900/90 text-white shadow-lg z-50 backdrop-blur-sm border-t border-black-pearl-700"
 >
   <!-- Header Bar -->
   <div
@@ -12,13 +12,15 @@
   >
     <h3 class="text-lg font-bold flex items-center gap-2">
       <span>Cart Debug Panel</span>
-      <span class="text-xs bg-elco-black-pearl-700 px-2 py-1 rounded">
+      <span
+        class="text-xs bg-elco-black-pearl-700 text-white px-2 py-1 rounded"
+      >
         Updates: <span id="update-count">0</span>
       </span>
     </h3>
     <button
       id="minimize-debug"
-      class="text-sm px-3 py-1 bg-elco-black-pearl-700 hover:bg-elco-black-pearl-600 rounded"
+      class="text-sm px-3 py-1 bg-elco-black-pearl-700 text-white hover:bg-elco-black-pearl-600 rounded"
     >
       Toggle Panel
     </button>
@@ -35,14 +37,14 @@
           <span class="text-sm font-semibold">localStorage</span>
           <button
             id="show-storage"
-            class="text-xs px-2 py-1 bg-elco-black-pearl-700 hover:bg-elco-black-pearl-600 rounded"
+            class="text-xs px-2 py-1 bg-elco-black-pearl-700 text-white hover:bg-elco-black-pearl-600 rounded"
           >
             Refresh
           </button>
         </div>
         <pre
           id="storage-data"
-          class="text-xs bg-elco-black-pearl-800 p-2 rounded overflow-auto h-48 font-mono">
+          class="text-xs bg-elco-black-pearl-800 text-white p-2 rounded overflow-auto h-48 font-mono">
         </pre>
       </div>
 
@@ -53,7 +55,7 @@
         </div>
         <pre
           id="dom-status"
-          class="text-xs bg-elco-black-pearl-800 p-2 rounded overflow-auto h-48 font-mono">
+          class="text-xs bg-elco-black-pearl-800 text-white p-2 rounded overflow-auto h-48 font-mono">
         </pre>
       </div>
 
@@ -63,14 +65,14 @@
           <span class="text-sm font-semibold">Cart Manager State</span>
           <button
             id="show-cart"
-            class="text-xs px-2 py-1 bg-elco-black-pearl-700 hover:bg-elco-black-pearl-600 rounded"
+            class="text-xs px-2 py-1 bg-elco-black-pearl-700 text-white hover:bg-elco-black-pearl-600 rounded"
           >
             Refresh
           </button>
         </div>
         <pre
           id="cart-data"
-          class="text-xs bg-elco-black-pearl-800 p-2 rounded overflow-auto h-48 font-mono">
+          class="text-xs bg-elco-black-pearl-800 text-white p-2 rounded overflow-auto h-48 font-mono">
         </pre>
       </div>
 
@@ -78,16 +80,24 @@
       <div class="space-y-2">
         <div class="flex justify-between items-center">
           <span class="text-sm font-semibold">Square Catalog</span>
-          <button
-            id="list-catalog"
-            class="text-xs px-2 py-1 bg-elco-black-pearl-700 hover:bg-elco-black-pearl-600 rounded"
-          >
-            List Items
-          </button>
+          <div class="flex gap-1">
+            <button
+              id="list-catalog"
+              class="text-xs px-2 py-1 bg-elco-black-pearl-700 hover:bg-elco-black-pearl-600 rounded"
+            >
+              List Items
+            </button>
+            <button
+              id="fetch-categories"
+              class="text-xs px-2 py-1 bg-elco-black-pearl-700 text-white hover:bg-elco-black-pearl-600 rounded"
+            >
+              Fetch Categories
+            </button>
+          </div>
         </div>
         <pre
           id="catalog-data"
-          class="text-xs bg-elco-black-pearl-800 p-2 rounded overflow-auto h-32 font-mono mb-4">
+          class="text-xs bg-elco-black-pearl-800 text-white p-2 rounded overflow-auto h-32 font-mono mb-4">
         </pre>
 
         <!-- Test Actions -->
@@ -216,6 +226,38 @@
     }
   }
 
+  // New function to fetch and display categories
+  async function fetchCategoryData() {
+    const display = document.getElementById("catalog-data");
+    if (!display) return;
+
+    try {
+      display.textContent = "Loading category data...";
+      const response = await fetch("/api/get-categories");
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch categories: ${response.status}`);
+      }
+
+      const data = await response.json();
+      display.textContent = JSON.stringify(data, null, 2);
+
+      // Log detailed information for analysis
+      console.log("Complete category data:", data);
+
+      if (data.categories && data.categories.length > 0) {
+        console.log("Category structure sample:", data.categories[0]);
+      }
+
+      if (data.itemCategories && data.itemCategories.length > 0) {
+        console.log("Item-category relationships:", data.itemCategories);
+      }
+    } catch (error) {
+      display.textContent = `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
+      console.error("Category fetch error:", error);
+    }
+  }
+
   // Update the testSquareCheckout function in CartDebug.astro
   async function testSquareCheckout() {
     try {
@@ -335,7 +377,13 @@
 
   // Initial display
   document.addEventListener("DOMContentLoaded", updateDebugDisplay);
+
+  // Add click handlers for catalog and categories
   document
     .getElementById("list-catalog")
     ?.addEventListener("click", updateCatalogDisplay);
+
+  document
+    .getElementById("fetch-categories")
+    ?.addEventListener("click", fetchCategoryData);
 </script>

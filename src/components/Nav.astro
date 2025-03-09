@@ -1,43 +1,93 @@
 ---
+// src/components/Nav.astro
 import ThemeToggle from "./ThemeToggle.astro";
+import { fetchCategoryHierarchy } from "@/lib/square/categories";
 
-// Static catalog categories
-const catalogItems = [
+// Fetch Square categories for navigation
+// console.log("Nav: Fetching categories...");
+const categoryHierarchy = await fetchCategoryHierarchy();
+// console.log(`Nav: Found ${categoryHierarchy.length} top-level categories`);
+
+// Add static items that aren't from Square catalog
+const navItems = [
+  ...categoryHierarchy,
   {
-    label: "Skateboards",
-    url: "/skateboards",
+    category: {
+      id: "news",
+      name: "News",
+      slug: "news",
+      isTopLevel: true,
+      parentCategoryId: undefined,
+      rootCategoryId: undefined,
+    },
+    subcategories: [],
   },
   {
-    label: "Apparel",
-    url: "/styleguide",
-  },
-  {
-    label: "Footwear",
-    url: "/styleguide",
-  },
-  {
-    label: "Gift Cards & More",
-    url: "/styleguide",
-  },
-  {
-    label: "News",
-    url: "/news",
+    category: {
+      id: "about",
+      name: "About El Camino",
+      slug: "about",
+      isTopLevel: true,
+      parentCategoryId: undefined,
+      rootCategoryId: undefined,
+    },
+    subcategories: [],
   },
 ];
 ---
 
 <nav
-  class="flex flex-col md:flex-row w-full gap-2 justify-center border-4 border-border-secondary md:border-0 bg-surface-secondary md:relative md:top-auto fixed -translate-x-full md:translate-x-0 transition-transform duration-400 ease-in-out inset-0 top-[3rem] z-40 [&.nav-open]:translate-x-0"
+  class="flex flex-col md:flex-row w-full gap-2 justify-center border-4 border-border-secondary md:border-0 bg-surface-secondary md:relative md:top-auto fixed -translate-x-full md:translate-x-0 transition-transform duration-400 ease-in-out inset-0 top-[3rem] z-40 [&.nav-open]:translate-x-0 overflow-y-auto md:overflow-visible"
 >
   {
-    catalogItems.map((item, index) => (
-      <a
-        href={item.url}
-        class="nav-item text-5xl md:text-lg lg:text-xl font-semibold font-display self-start md:self-center leading-[1] p-4 text-ui-nav-text transition-all duration-300 ease-in-out relative md:hover:text-ui-nav-hover before:absolute before:bottom-0 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out md:hover:before:scale-x-100 md:hover:before:origin-left nav-link"
-        style={`--item-index: ${index};`}
-      >
-        {item.label}
-      </a>
+    navItems.map((item, index) => (
+      <div class="category-group relative flex flex-col md:flex-row group transition-all">
+        <a
+          href={
+            item.category.id === "news"
+              ? "/news"
+              : `/category/${item.category.slug}`
+          }
+          class="nav-item text-3xl md:text-lg lg:text-xl font-semibold font-display self-start md:self-center leading-[1] p-4 text-ui-nav-text transition-all duration-300 ease-in-out relative md:hover:text-ui-nav-hover before:absolute before:bottom-0 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out md:hover:before:scale-x-100 md:hover:before:origin-left nav-link"
+          style={`--item-index: ${index};`}
+          data-has-children={item.subcategories.length > 0}
+        >
+          {item.category.name}
+          {item.subcategories.length > 0 && (
+            <span class="dropdown-indicator inline-block ml-1 transform md:group-hover:rotate-180 transition-transform duration-200">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </span>
+          )}
+        </a>
+
+        {/* Dropdown menu - works for both mobile and desktop */}
+        {item.subcategories.length > 0 && (
+          <div class="dropdown-menu md:hidden md:group-hover:block absolute left-0 top-full pt-1 mt-0 z-50 min-w-[200px] md:opacity-100 md:transition-none">
+            <div class="bg-ui-nav-surface border border-ui-nav-border/20 shadow-lg rounded-sm p-1 overflow-hidden">
+              {item.subcategories.map((subcategory) => (
+                <a
+                  href={`/category/${item.category.slug}/${subcategory.slug}`}
+                  class="block px-4 py-2 text-ui-nav-text hover:bg-ui-nav-hover/20 hover:text-ui-nav-text transition-all duration-300 ease-in-out"
+                >
+                  {subcategory.name}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     ))
   }
   <div
@@ -45,8 +95,8 @@ const catalogItems = [
     style="--item-index: 6;"
   >
     <ThemeToggle />
-    <span class="hidden dark:block">Light Mode</span>
-    <span class="block dark:hidden">Dark Mode</span>
+    <span class="ml-2 dark:block hidden">Light Mode</span>
+    <span class="block dark:hidden ml-2">Dark Mode</span>
   </div>
 </nav>
 
@@ -66,6 +116,39 @@ const catalogItems = [
       animation-delay: calc(var(--item-index) * 0.1s);
     }
 
+    .dropdown-menu {
+      position: static;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: all 0.3s ease-in-out;
+      overflow: hidden;
+      background-color: rgba(var(--ui-nav-hover-rgb, 255, 255, 255), 0.05);
+      border-left: 2px solid rgba(var(--ui-nav-border-rgb, 255, 255, 255), 0.1);
+      margin-left: 1.5rem;
+      padding-left: 0.5rem;
+      border-radius: 0 0 4px 4px;
+    }
+
+    .dropdown-menu > div {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0.5rem 0;
+    }
+
+    .category-group.open .dropdown-menu {
+      display: block;
+      max-height: 500px;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Animate the indicator separately for mobile */
+    .category-group.open .dropdown-indicator {
+      transform: rotate(180deg);
+    }
+
     @keyframes slideIn {
       to {
         opacity: 1;
@@ -76,12 +159,60 @@ const catalogItems = [
 </style>
 
 <script>
+  function setupNavigation() {
+    // Mobile menu dropdown handling
+    const categoryGroups = document.querySelectorAll(".category-group");
+
+    categoryGroups.forEach((group) => {
+      const link = group.querySelector(".nav-item");
+      const hasChildren = link?.getAttribute("data-has-children") === "true";
+
+      if (hasChildren && link) {
+        const handleMobileClick = (event: Event) => {
+          if (window.innerWidth <= 768) {
+            event.preventDefault();
+
+            // Close any other open groups first
+            categoryGroups.forEach((otherGroup) => {
+              if (
+                otherGroup !== group &&
+                otherGroup.classList.contains("open")
+              ) {
+                otherGroup.classList.remove("open");
+              }
+            });
+
+            // Toggle current group
+            group.classList.toggle("open");
+
+            // Toggle dropdown indicator
+            const indicator = link.querySelector(".dropdown-indicator");
+            if (indicator && window.innerWidth <= 768) {
+              indicator.classList.toggle("rotate-180");
+            }
+          }
+        };
+
+        link.addEventListener("click", handleMobileClick);
+      }
+    });
+  }
+
   function resetNavItems() {
     const navLinks = document.querySelectorAll(".nav-link");
     navLinks.forEach((link) => {
       const element = link as HTMLElement;
       element.style.opacity = "";
       element.style.transform = "";
+    });
+
+    // Reset all open dropdowns when nav closes
+    document.querySelectorAll(".category-group.open").forEach((group) => {
+      group.classList.remove("open");
+      const indicator = group.querySelector(".dropdown-indicator");
+      if (indicator) {
+        indicator.classList.remove("rotate-180");
+      }
     });
   }
 
@@ -112,5 +243,13 @@ const catalogItems = [
     if (newNav) {
       observer.observe(newNav, { attributes: true });
     }
+    setupNavigation();
   });
+
+  // Initial setup
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupNavigation);
+  } else {
+    setupNavigation();
+  }
 </script>

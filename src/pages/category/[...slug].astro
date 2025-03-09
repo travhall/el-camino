@@ -1,0 +1,141 @@
+---
+// src/pages/category/[...slug].astro
+import {
+  fetchCategoryHierarchy,
+  fetchProductsByCategory,
+} from "@/lib/square/categories";
+import Layout from "@/layouts/Layout.astro";
+import ProductCard from "@/components/ProductCard.astro";
+import type { Category } from "@/lib/square/types";
+import type { Product } from "@/lib/square/types";
+
+// Get the slug from URL params
+const { slug } = Astro.params;
+console.log("Category page requested with slug:", slug);
+
+if (!slug) {
+  return Astro.redirect("/404");
+}
+
+// Fetch category data
+const categoryHierarchy = await fetchCategoryHierarchy();
+
+// Parse the slug to find the right category
+const slugParts = slug.split("/");
+const topLevelSlug = slugParts[0];
+const subCategorySlug = slugParts.length > 1 ? slugParts[1] : null;
+
+// Find the top-level category
+const topLevelCategory = categoryHierarchy.find(
+  (item) => item.category.slug === topLevelSlug
+)?.category;
+
+if (!topLevelCategory) {
+  console.error(`Top-level category not found for slug: ${topLevelSlug}`);
+  return Astro.redirect("/404");
+}
+
+// If there's a subcategory slug, find the subcategory
+let category = topLevelCategory;
+let parentCategory = null;
+
+if (subCategorySlug) {
+  const topLevelHierarchy = categoryHierarchy.find(
+    (item) => item.category.id === topLevelCategory.id
+  );
+
+  const subCategory = topLevelHierarchy?.subcategories.find(
+    (sub) => sub.slug === subCategorySlug
+  );
+
+  if (!subCategory) {
+    console.error(`Subcategory not found for slug: ${subCategorySlug}`);
+    return Astro.redirect("/404");
+  }
+
+  category = subCategory;
+  parentCategory = topLevelCategory;
+}
+
+// Fetch products for this specific category
+let products: Product[] = [];
+try {
+  // Use the proper Square API to get products by category ID
+  products = await fetchProductsByCategory(category.id);
+} catch (error) {
+  console.error("Error fetching products for category:", error);
+}
+
+// Get subcategories if we're on a top-level category page
+let subcategories: Category[] = [];
+if (!subCategorySlug) {
+  const categoryItem = categoryHierarchy.find(
+    (item) => item.category.id === category.id
+  );
+
+  if (categoryItem) {
+    subcategories = categoryItem.subcategories;
+  }
+}
+
+// Build page title
+const pageTitle = parentCategory
+  ? `${parentCategory.name} - ${category.name}`
+  : category.name;
+---
+
+<Layout>
+  <section>
+    <div
+      class="flex flex-col lg:flex-row justify-between gap-4 w-full items-baseline p-4"
+    >
+      <h2
+        class="font-display font-medium text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-content-heading"
+      >
+        {category.name}
+      </h2>
+
+      {
+        parentCategory && (
+          <div>
+            <a
+              href={`/category/${parentCategory.slug}`}
+              class="text-content-meta hover:text-content-emphasis"
+            >
+              &larr; Back to {parentCategory.name}
+            </a>
+          </div>
+        )
+      }
+
+      {
+        subcategories.length > 0 && (
+          <div class="flex flex-wrap gap-2">
+            {subcategories.map((subcategory) => (
+              <a
+                href={`/category/${category.slug}/${subcategory.slug}`}
+                class="px-2 py-1 text-sm bg-ui-button-surface text-ui-button-text border border-ui-button-border rounded-sm hover:bg-ui-button-hover"
+              >
+                {subcategory.name}
+              </a>
+            ))}
+          </div>
+        )
+      }
+    </div>
+
+    {
+      products.length > 0 ? (
+        <div class="card-grid grid justify-center sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-12 max-w-[120rem] mx-auto gap-1 p-1">
+          {products.map((product) => (
+            <ProductCard product={product} />
+          ))}
+        </div>
+      ) : (
+        <div class="text-center py-12">
+          <p class="text-content-body">No products found in this category.</p>
+        </div>
+      )
+    }
+  </section>
+</Layout>
