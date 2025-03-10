@@ -48,13 +48,13 @@ const navItems = [
               ? "/news"
               : `/category/${item.category.slug}`
           }
-          class="nav-item text-3xl md:text-lg lg:text-xl font-semibold font-display self-start md:self-center leading-[1] p-4 text-ui-nav-text transition-all duration-300 ease-in-out relative md:hover:text-ui-nav-hover before:absolute before:bottom-0 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out md:hover:before:scale-x-100 md:hover:before:origin-left nav-link"
+          class="nav-item text-3xl md:text-lg lg:text-xl font-semibold font-display self-start md:self-center items-center flex flex-row leading-[1] p-4 text-ui-nav-text transition-all duration-300 ease-in-out relative md:hover:text-ui-nav-hover before:absolute before:bottom-0 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out md:hover:before:scale-x-100 md:hover:before:origin-left nav-link"
           style={`--item-index: ${index};`}
           data-has-children={item.subcategories.length > 0}
         >
           {item.category.name}
           {item.subcategories.length > 0 && (
-            <span class="dropdown-indicator inline-block ml-1 transform md:group-hover:rotate-180 transition-transform duration-200">
+            <span class="dropdown-indicator block ml-1 transition-transform duration-200">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="12"
@@ -65,8 +65,24 @@ const navItems = [
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
+                class="hidden md:block transform md:group-hover:rotate-180"
               >
                 <polyline points="6 9 12 15 18 9" />
+              </svg>
+
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 48 48"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="md:hidden mobile-caret"
+              >
+                <polyline points="12 18 24 30 36 18" />
               </svg>
             </span>
           )}
@@ -79,7 +95,7 @@ const navItems = [
               {item.subcategories.map((subcategory) => (
                 <a
                   href={`/category/${item.category.slug}/${subcategory.slug}`}
-                  class="block px-4 py-2 text-ui-nav-text hover:bg-ui-nav-hover/20 hover:text-ui-nav-text transition-all duration-300 ease-in-out"
+                  class="block md:px-4 py-2 text-xl md:text-base text-ui-nav-text hover:bg-ui-nav-hover/20 hover:text-ui-nav-text transition-all duration-300 ease-in-out"
                 >
                   {subcategory.name}
                 </a>
@@ -144,8 +160,8 @@ const navItems = [
       transform: translateY(0);
     }
 
-    /* Animate the indicator separately for mobile */
-    .category-group.open .dropdown-indicator {
+    /* Caret rotation for mobile */
+    .category-group.open .mobile-caret {
       transform: rotate(180deg);
     }
 
@@ -184,12 +200,6 @@ const navItems = [
 
             // Toggle current group
             group.classList.toggle("open");
-
-            // Toggle dropdown indicator
-            const indicator = link.querySelector(".dropdown-indicator");
-            if (indicator && window.innerWidth <= 768) {
-              indicator.classList.toggle("rotate-180");
-            }
           }
         };
 
@@ -209,10 +219,6 @@ const navItems = [
     // Reset all open dropdowns when nav closes
     document.querySelectorAll(".category-group.open").forEach((group) => {
       group.classList.remove("open");
-      const indicator = group.querySelector(".dropdown-indicator");
-      if (indicator) {
-        indicator.classList.remove("rotate-180");
-      }
     });
   }
 
