@@ -1,13 +1,60 @@
 ---
 import { Icon } from "astro-icon/components";
-// import { getFooterPages } from "@/lib/strapi/api";
+import ThemeToggle from "./ThemeToggle.astro";
+import { getFooterPages } from "@/lib/wordpress/api";
+import { siteConfig } from "@/lib/site-config";
+import type { WordPressPage } from "@/lib/types/wordpress";
 
 const currentYear = new Date().getFullYear();
-// const footerPages = await getFooterPages();
+const { contact, social, tagline } = siteConfig;
+
+// Fetch footer pages from WordPress with error logging
+let footerPages: WordPressPage[] = [];
+try {
+  footerPages = await getFooterPages();
+  console.log(`Footer component loaded ${footerPages.length} footer pages`);
+} catch (error) {
+  console.error("Error loading footer pages:", error);
+}
+
+// Fallback links in case the API fails
+const fallbackLinks: WordPressPage[] = [
+  {
+    id: 1,
+    date: "",
+    slug: "privacy-policy",
+    title: { rendered: "Privacy Policy" },
+    content: { rendered: "" },
+  },
+  {
+    id: 2,
+    date: "",
+    slug: "terms-and-conditions",
+    title: { rendered: "Terms & Conditions" },
+    content: { rendered: "" },
+  },
+  {
+    id: 3,
+    date: "",
+    slug: "shipping-policy",
+    title: { rendered: "Shipping" },
+    content: { rendered: "" },
+  },
+  {
+    id: 4,
+    date: "",
+    slug: "return-policy",
+    title: { rendered: "Returns" },
+    content: { rendered: "" },
+  },
+];
+
+// Use WordPress pages if available, otherwise use fallbacks
+const linksToDisplay = footerPages.length > 0 ? footerPages : fallbackLinks;
 ---
 
 <footer
-  class="p-4 md:p-8 lg:p-12 w-full bg-surface-secondary border-4 border-border-secondary"
+  class="p-4 w-full bg-surface-secondary border-4 border-border-secondary"
 >
   <div class="flex flex-col items-start lg:flex-row lg:justify-between my-8">
     <div
@@ -18,7 +65,7 @@ const currentYear = new Date().getFullYear();
         class="w-20 h-auto p-4 text-elco-honey-cream-100 dark:text-elco-fig-leaf-900 bg-elco-fig-leaf-900 dark:bg-elco-honey-cream-50"
       />
       <p class="max-w-[18ch] px-4 leading-5 text-balance text-content-body">
-        100% Skater Owned, 100% Skater Operated
+        {tagline}
       </p>
     </div>
 
@@ -26,68 +73,59 @@ const currentYear = new Date().getFullYear();
       <address
         class="flex flex-col gap-2 mb-4 uppercase not-italic place-items-start lg:place-items-end text-content-body"
       >
-        <span>El Camino Skateboard Shop</span>
-        <span class="mb-4">310 Water Street, Eau Claire, WI 54703</span>
+        <span>{siteConfig.name}</span>
+        <span class="mb-4">{contact.address.display}</span>
         <a
-          href="tel:(534)626-1991"
+          href={`tel:${contact.phone.number}`}
           class="hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
         >
-          (534) 626-1991
+          {contact.phone.display}
         </a>
         <a
-          href="mailto:elcaminoboardshop@gmail.com"
+          href={`mailto:${contact.email}`}
           class="hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
         >
-          elcaminoboardshop@gmail.com
+          {contact.email}
         </a>
       </address>
 
       <ul class="inline-flex flex-row lg:self-end gap-2">
-        <li>
-          <a
-            href="https://www.facebook.com/people/El-Camino-Skateshop/61553258934455/"
-            target="_blank"
-          >
-            <Icon name="uil:facebook" class="w-6 h-auto text-content-body" />
-          </a>
-        </li>
-        <li>
-          <a
-            href="https://www.instagram.com/elcaminoskateshop/"
-            target="_blank"
-          >
-            <Icon name="uil:instagram" class="w-6 h-auto text-content-body" />
-          </a>
-        </li>
-        <li>
-          <a href="https://www.youtube.com/watch?v=9wx1kwv_qlc" target="_blank">
-            <Icon name="uil:youtube" class="w-6 h-auto text-content-body" />
-          </a>
-        </li>
+        {
+          social.map((item) => (
+            <li>
+              <a href={item.url} target="_blank" aria-label={item.platform}>
+                <Icon name={item.icon} class="w-6 h-auto text-content-body" />
+              </a>
+            </li>
+          ))
+        }
       </ul>
     </div>
   </div>
 
   <div
-    class="copyright flex flex-col gap-2 md:flex-row justify-between md:items-end xl:items-center"
+    class="copyright flex flex-col-reverse gap-2 md:flex-row justify-between"
   >
-    <!-- <ul class="flex flex-col md:flex-row gap-2 lg:gap-6 mb-8 md:mb-0">
-      {
-        footerPages?.length > 0 &&
-          footerPages.map((page) => (
-            <li>
-              <a
-                href={`/${page.slug}`}
-                class="text-sm hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
-              >
-                {page.title}
-              </a>
-            </li>
-          ))
-      }
-    </ul> -->
-    <small class="md:text-right text-content-body">
-      &copy;{currentYear} El Camino Skateboard Shop, all rights reserved
+    <small class="text-base md:text-xs">
+      &copy;{currentYear}
+      {siteConfig.name}, all rights reserved
     </small>
+    <ul class="flex flex-col md:flex-row gap-2 lg:gap-6 mb-8 md:mb-0">
+      {
+        linksToDisplay.map((page) => (
+          <li>
+            <a
+              href={`/legal/${page.slug}`}
+              class="text-base md:text-xs self-start md:self-center hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
+            >
+              {page.title.rendered}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <ThemeToggle
+      classes="text-base md:text-xs mb-4 self-start md:self-center hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
+    />
   </div>
 </footer>

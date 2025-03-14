@@ -1,7 +1,6 @@
 // src/lib/square/categories.ts
 import { squareClient } from "./client";
 import type { Category, CategoryHierarchy, Product } from "./types";
-import type { CatalogObject } from "square";
 
 /**
  * Converts a category name to a URL-friendly slug
@@ -15,12 +14,28 @@ function createSlug(name: string): string {
 }
 
 /**
+ * Returns the index for sorting based on Square Admin order
+ */
+function getSortIndex(name: string): number {
+  const orderMap: Record<string, number> = {
+    Skateboards: 0,
+    Apparel: 1,
+    Footwear: 2,
+    "Gift Cards & More": 3,
+  };
+
+  return orderMap[name] ?? 999;
+}
+
+/**
  * Fetches all categories from Square catalog
+ * Attempts to preserve any potential ordering information in the raw response
  */
 export async function fetchCategories(): Promise<Category[]> {
   try {
     console.log("Fetching Square categories...");
 
+    // Use listCatalog to get raw catalog objects
     const response = await squareClient.catalogApi.listCatalog(
       undefined,
       "CATEGORY"
@@ -31,10 +46,21 @@ export async function fetchCategories(): Promise<Category[]> {
       return [];
     }
 
-    // Process categories
-    const categories = response.result.objects
+    // Log the raw category objects (may help identify ordering fields)
+    const rawObjects = response.result.objects;
+    console.log("Raw category objects:", rawObjects);
+
+    // Process categories, preserving raw API fields
+    const categories = rawObjects
       .filter((item) => item.type === "CATEGORY")
       .map((item) => {
+        // Attempt to extract any properties that might relate to ordering
+        // from the raw API response
+        const rawOrder =
+          (item as any)?.ordinal ||
+          (item as any)?.display_position ||
+          (item as any)?.sort_order;
+
         return {
           id: item.id,
           name: item.categoryData?.name || "",
@@ -42,19 +68,29 @@ export async function fetchCategories(): Promise<Category[]> {
           isTopLevel: item.categoryData?.isTopLevel || false,
           parentCategoryId: item.categoryData?.parentCategory?.id,
           rootCategoryId: item.categoryData?.rootCategory,
+          // Store original position in array and any potential ordering fields
+          apiIndex: rawObjects.indexOf(item),
+          rawOrder: rawOrder,
         };
       });
 
+    // Log information for debugging
     console.log(`Processed ${categories.length} categories`);
+    console.log(
+      "Categories with potential ordering info:",
+      categories
+        .map(
+          (c: Category) =>
+            `${c.name} (apiIndex: ${c.apiIndex}, rawOrder: ${c.rawOrder})`
+        )
+        .join(", ")
+    );
+
     return categories;
   } catch (error) {
     console.error("Error fetching Square categories:", error);
     if (error instanceof Error) {
-      console.error("Error details:", {
-        message: error.message,
-        name: error.name,
-        stack: error.stack,
-      });
+      console.error("Error details:", error.message);
     }
     return [];
   }
@@ -62,7 +98,7 @@ export async function fetchCategories(): Promise<Category[]> {
 
 /**
  * Organizes categories into a hierarchical structure
- * Based on the actual Square data structure
+ * Uses explicit sort order to match Square Admin
  */
 export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
   try {
@@ -73,7 +109,24 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
     }
 
     // Find top-level categories
-    const topLevelCategories = allCategories.filter((cat) => cat.isTopLevel);
+    let topLevelCategories = allCategories.filter((cat) => cat.isTopLevel);
+
+    // Log pre-sorted categories
+    console.log(
+      "Pre-sorted categories:",
+      topLevelCategories.map((c) => c.name).join(", ")
+    );
+
+    // Sort according to Square Admin order
+    topLevelCategories.sort(
+      (a, b) => getSortIndex(a.name) - getSortIndex(b.name)
+    );
+
+    // Log post-sorted categories
+    console.log(
+      "Post-sorted categories:",
+      topLevelCategories.map((c) => c.name).join(", ")
+    );
 
     // Create hierarchy
     const hierarchy: CategoryHierarchy[] = topLevelCategories.map((topCat) => {

@@ -1,0 +1,72 @@
+---
+// src/pages/legal/[slug].astro
+import { getPages } from "@/lib/wordpress/api";
+import Layout from "@/layouts/Layout.astro";
+
+export async function getStaticPaths() {
+  const footerPageSlugs = [
+    "privacy-policy",
+    "return-policy",
+    "shipping-policy",
+    "terms-and-conditions",
+  ];
+
+  try {
+    // Fetch pages from WordPress
+    console.log("Fetching pages for legal section...");
+    const pages = await getPages();
+    console.log(`Fetched ${pages.length} pages from WordPress`);
+
+    // Filter to just legal pages
+    const legalPages = pages.filter((page) =>
+      footerPageSlugs.includes(page.slug)
+    );
+    console.log(`Found ${legalPages.length} legal pages that match our slugs`);
+
+    return legalPages.map((page) => ({
+      params: { slug: page.slug },
+      props: { page },
+    }));
+  } catch (error) {
+    console.error("Error in getStaticPaths:", error);
+    return [];
+  }
+}
+
+// Extract page from props
+const { page } = Astro.props;
+
+// If page is undefined, redirect to 404
+if (!page) {
+  return Astro.redirect("/404");
+}
+
+// Get the title and content from the page
+const pageTitle = page.title.rendered;
+const fullTitle = `${pageTitle} | El Camino`;
+---
+
+<Layout title={fullTitle}>
+  <main class="container mx-auto px-4 py-12">
+    <article class="prose dark:prose-invert max-w-3xl mx-auto">
+      <h1 class="text-display-lg font-display text-content-heading">
+        {pageTitle}
+      </h1>
+      <div class="mt-8 text-content-body" set:html={page.content.rendered} />
+    </article>
+  </main>
+</Layout>
+
+<style>
+  /* Additional styles for WordPress content */
+  :global(.wp-block-image img) {
+    max-width: 100%;
+    height: auto;
+  }
+
+  :global(.wp-block-quote) {
+    border-left: 4px solid var(--ui-button-surface);
+    padding-left: 1rem;
+    font-style: italic;
+  }
+</style>

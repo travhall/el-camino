@@ -1,4 +1,5 @@
 // src/lib/types/wordpress.ts
+
 export interface WordPressPost {
   id: number;
   date: string;
@@ -17,14 +18,14 @@ export interface WordPressPost {
       {
         source_url: string;
         alt_text?: string;
-      }
+      },
     ];
     "wp:term"?: [
       [
         {
           name: string;
-        }
-      ]
+        },
+      ],
     ];
     author?: [
       {
@@ -32,7 +33,32 @@ export interface WordPressPost {
         avatar_urls: {
           "96": string;
         };
-      }
+      },
+    ];
+  };
+}
+
+export interface MetadataItem {
+  key: string;
+  value: string;
+}
+
+export interface WordPressPage {
+  id: number;
+  date: string;
+  slug: string;
+  title: {
+    rendered: string;
+  };
+  content: {
+    rendered: string;
+  };
+  _embedded?: {
+    "wp:featuredmedia"?: [
+      {
+        source_url: string;
+        alt_text?: string;
+      },
     ];
   };
 }

@@ -1,37 +1,48 @@
 ---
 // src/components/Sidebar.astro
+import { fetchCategoryHierarchy } from "@/lib/square/categories";
+
 interface Props {
   class?: string;
 }
 
 const { class: additionalClasses = "" } = Astro.props;
-const prodCats = [
-  {
-    category: "Skateboarding",
-    src: "/images/category-skateboarding.png",
-    url: "/skateboarding",
-  },
-  // {
-  //   category: "Footwear",
-  //   src: "/images/category-footwear.png",
-  //   url: "/styleguide",
-  // },
-  {
-    category: "Apparel",
-    src: "/images/category-apparel.png",
-    url: "/styleguide",
-  },
-  {
-    category: "Accessories",
-    src: "/images/category-accessories.png",
-    url: "/styleguide",
-  },
-];
+
+// Fetch categories from Square
+const categoryHierarchy = await fetchCategoryHierarchy();
+
+// Extract top-level categories
+const topLevelCategories = categoryHierarchy.map((item) => ({
+  category: item.category.name,
+  url: `/category/${item.category.slug}`,
+  // Using placeholder images - replace with actual category images when available
+  src: `/images/category-${item.category.slug}.png`,
+}));
+
+// Function to sort categories to match Square Admin order
+function getSortedCategories() {
+  // Define order map with string index signature
+  const orderMap: Record<string, number> = {
+    Skateboards: 0,
+    Apparel: 1,
+    Footwear: 2,
+    "Gift Cards & More": 3,
+  };
+
+  return [...topLevelCategories].sort((a, b) => {
+    const indexA = a.category in orderMap ? orderMap[a.category] : 999;
+    const indexB = b.category in orderMap ? orderMap[b.category] : 999;
+    return indexA - indexB;
+  });
+}
+
+// Get sorted categories
+const prodCats = getSortedCategories();
 ---
 
 <aside
   class:list={[
-    "sidebar col-span-full md:col-span-2 md:col-start-1 md:row-start-5 2xl:row-start-4 md:row-end-[16] 2xl:row-end-9 p-1",
+    "sidebar col-span-full md:col-span-2 md:col-start-1 md:row-start-5 2xl:row-start-4 md:row-end-[15] 2xl:row-end-11 p-1",
     additionalClasses,
   ]}
 >
@@ -50,6 +61,7 @@ const prodCats = [
             alt={e.category}
             class="category-img object-cover w-full h-auto aspect-video opacity-20 transition-all"
             loading="lazy"
+            onerror="this.src='/images/placeholder.png'"
           />
           <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-border-secondary border-b-0 bg-surface-secondary text-content-heading transition-all">
             {e.category}

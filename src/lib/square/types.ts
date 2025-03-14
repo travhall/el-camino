@@ -95,6 +95,8 @@ export interface Category {
   isTopLevel: boolean;
   parentCategoryId?: string;
   rootCategoryId?: string;
+  apiIndex?: number; // Position in API response array
+  rawOrder?: number; // Any potential ordering field from API
 }
 
 /**

@@ -1,37 +1,27 @@
 ---
 import ClientRouter from "astro/components/ClientRouter.astro";
 import { SEOMetadata } from "astro-seo-metadata";
-import type { SEO } from "@/lib/types/content";
-import { generateOrganizationSchema } from "@/lib/seo/structured-data";
+import { siteConfig, getStructuredData } from "@/lib/site-config";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import "@/styles/globals.css";
 // import CartDebug from "@/components/CartDebug.astro";
 
 interface Props {
-  seo?: SEO;
+  title: string;
   structuredData?: object;
 }
 
-const { seo, structuredData } = Astro.props;
+const { title } = Astro.props;
+const { structuredData } = Astro.props;
 
-const DEFAULT_SEO = {
-  title: "El Camino Skate Shop",
-  description:
-    "El Camino Skate Shop is a skater owned and operated skateboard shop, located in Eau Claire, WI",
-  image: "/default-og-image.jpg",
-};
-
+// Use site config for default SEO values
 const seoData = {
-  ...DEFAULT_SEO,
-  ...seo,
+  ...siteConfig.seo,
 };
 
-const orgSchema = generateOrganizationSchema({
-  name: "El Camino Skate Shop",
-  logo: "/logo.png",
-  address: "1901 Brackett Ave #1, Eau Claire, WI 54701",
-});
+// Get structured data from site config
+const orgSchema = getStructuredData();
 ---
 
 <!doctype html>
@@ -83,12 +73,12 @@ const orgSchema = generateOrganizationSchema({
     />
 
     <SEOMetadata
-      siteName="El Camino Skate Shop"
-      title={seoData.title}
-      description={seoData.description}
-      image={seoData.image}
+      siteName={siteConfig.name}
+      title={seoData.defaultTitle}
+      description={seoData.defaultDescription}
+      image={seoData.defaultImage}
       favicon="/favicon.svg"
-      author="El Camino"
+      author={siteConfig.name}
       copyright="ISC"
       astroSitemap={true}
       canonicalUrl={Astro.url.toString()}
@@ -96,7 +86,7 @@ const orgSchema = generateOrganizationSchema({
       astroGenerator={true}
     />
 
-    {seoData.noIndex && <meta name="robots" content="noindex" />}
+    {seoData && <meta name="robots" content="noindex" />}
 
     <script type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
     {
