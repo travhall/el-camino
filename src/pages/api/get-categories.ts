@@ -5,7 +5,7 @@ import type { CatalogObject } from "square";
 
 export const GET: APIRoute = async () => {
   try {
-    console.log("Fetching Square categories...");
+    // console.log("Fetching Square categories...");
 
     // Fetch all categories
     const categoryResponse = await squareClient.catalogApi.listCatalog(

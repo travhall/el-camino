@@ -6,12 +6,13 @@ import { siteConfig } from "@/lib/site-config";
 
 const { contact, social } = siteConfig;
 
-// Fetch Square categories for navigation
+// Fetch Square categories for navigation - now only includes categories with products
 // console.log("Nav: Fetching categories...");
 const categoryHierarchy = await fetchCategoryHierarchy();
 // console.log(`Nav: Found ${categoryHierarchy.length} top-level categories`);
 
-const navItems = [
+// Static navigation items that should always appear
+const staticNavItems = [
   {
     category: {
       id: "shop",
@@ -22,41 +23,40 @@ const navItems = [
       rootCategoryId: undefined,
     },
     subcategories: [
-      {
-        id: "skate-team",
-        name: "Skate Team",
-        slug: "skate-team",
-        isTopLevel: false,
-        parentCategoryId: "shop",
-        rootCategoryId: "shop",
-      },
-      {
-        id: "tattoos",
-        name: "Tattoos",
-        slug: "tattoos",
-        isTopLevel: false,
-        parentCategoryId: "shop",
-        rootCategoryId: "shop",
-      },
-      {
-        id: "gallery",
-        name: "The Gallery",
-        slug: "gallery",
-        isTopLevel: false,
-        parentCategoryId: "shop",
-        rootCategoryId: "shop",
-      },
-      {
-        id: "community",
-        name: "Community",
-        slug: "community",
-        isTopLevel: false,
-        parentCategoryId: "shop",
-        rootCategoryId: "shop",
-      },
+      // {
+      //   id: "skate-team",
+      //   name: "Skate Team",
+      //   slug: "skate-team",
+      //   isTopLevel: false,
+      //   parentCategoryId: "shop",
+      //   rootCategoryId: "shop",
+      // },
+      // {
+      //   id: "tattoos",
+      //   name: "Tattoos",
+      //   slug: "tattoos",
+      //   isTopLevel: false,
+      //   parentCategoryId: "shop",
+      //   rootCategoryId: "shop",
+      // },
+      // {
+      //   id: "gallery",
+      //   name: "The Gallery",
+      //   slug: "gallery",
+      //   isTopLevel: false,
+      //   parentCategoryId: "shop",
+      //   rootCategoryId: "shop",
+      // },
+      // {
+      //   id: "community",
+      //   name: "Community",
+      //   slug: "community",
+      //   isTopLevel: false,
+      //   parentCategoryId: "shop",
+      //   rootCategoryId: "shop",
+      // },
     ],
   },
-  ...categoryHierarchy,
   {
     category: {
       id: "news",
@@ -68,6 +68,13 @@ const navItems = [
     },
     subcategories: [],
   },
+];
+
+// Combine static items with dynamic product categories
+const navItems = [
+  staticNavItems[0], // "The Shop" goes first
+  ...categoryHierarchy, // Only categories with products
+  staticNavItems[1], // "News" goes last
 ];
 ---
 

@@ -7,9 +7,11 @@ import { formatDate } from "@/utils/dates";
 interface Props {
   post: WordPressPost;
   featured?: boolean;
+  priority?: boolean; // Add priority prop
 }
 
-const { post, featured = false } = Astro.props;
+// Add priority to props destructuring
+const { post, featured = false, priority = false } = Astro.props;
 
 const category = post._embedded?.["wp:term"]?.[0]?.[0];
 const featuredMedia = post._embedded?.["wp:featuredmedia"]?.[0];
@@ -35,7 +37,8 @@ const imageUrl = featuredMedia?.source_url;
             ? ""
             : "opacity-10 [.article-card:has(button:hover)_&]:scale-105 [.article-card:has(button:hover)_&]:opacity-95",
         ]}
-        loading="lazy"
+        loading={priority || featured ? "eager" : "lazy"}
+        fetchpriority={priority || featured ? "high" : "auto"}
       />
     )
   }
@@ -74,6 +77,7 @@ const imageUrl = featuredMedia?.source_url;
                 src={author.avatar_urls["96"]}
                 alt={author.name}
                 class="w-8 h-8 rounded-full mr-2"
+                loading="lazy"
               />
             )}
             <span>{author.name}</span>

@@ -8,49 +8,45 @@ import type { WordPressPage } from "@/lib/types/wordpress";
 const currentYear = new Date().getFullYear();
 const { contact, social, tagline } = siteConfig;
 
-// Fetch footer pages from WordPress with error logging
+// Fetch footer pages from WordPress
 let footerPages: WordPressPage[] = [];
 try {
   footerPages = await getFooterPages();
-  console.log(`Footer component loaded ${footerPages.length} footer pages`);
 } catch (error) {
   console.error("Error loading footer pages:", error);
+
+  // If the API fails, we'll use these minimal fallback links
+  footerPages = [
+    {
+      id: 1,
+      date: "",
+      slug: "privacy-policy",
+      title: { rendered: "Privacy Policy" },
+      content: { rendered: "" },
+    },
+    {
+      id: 2,
+      date: "",
+      slug: "terms-and-conditions",
+      title: { rendered: "Terms and Conditions" },
+      content: { rendered: "" },
+    },
+    {
+      id: 3,
+      date: "",
+      slug: "shipping-policy",
+      title: { rendered: "Shipping" },
+      content: { rendered: "" },
+    },
+    {
+      id: 4,
+      date: "",
+      slug: "return-policy",
+      title: { rendered: "Returns" },
+      content: { rendered: "" },
+    },
+  ];
 }
-
-// Fallback links in case the API fails
-const fallbackLinks: WordPressPage[] = [
-  {
-    id: 1,
-    date: "",
-    slug: "privacy-policy",
-    title: { rendered: "Privacy Policy" },
-    content: { rendered: "" },
-  },
-  {
-    id: 2,
-    date: "",
-    slug: "terms-and-conditions",
-    title: { rendered: "Terms & Conditions" },
-    content: { rendered: "" },
-  },
-  {
-    id: 3,
-    date: "",
-    slug: "shipping-policy",
-    title: { rendered: "Shipping" },
-    content: { rendered: "" },
-  },
-  {
-    id: 4,
-    date: "",
-    slug: "return-policy",
-    title: { rendered: "Returns" },
-    content: { rendered: "" },
-  },
-];
-
-// Use WordPress pages if available, otherwise use fallbacks
-const linksToDisplay = footerPages.length > 0 ? footerPages : fallbackLinks;
 ---
 
 <footer
@@ -103,20 +99,22 @@ const linksToDisplay = footerPages.length > 0 ? footerPages : fallbackLinks;
     </div>
   </div>
 
-  <div
-    class="copyright flex flex-col-reverse gap-2 md:flex-row justify-between"
-  >
-    <small class="text-base md:text-xs">
-      &copy;{currentYear}
-      {siteConfig.name}, all rights reserved
-    </small>
-    <ul class="flex flex-col md:flex-row gap-2 lg:gap-6 mb-8 md:mb-0">
+  <div class="copyright flex flex-col-reverse md:flex-row justify-between">
+    <ul
+      class="flex flex-col-reverse md:flex-row gap-4 lg:gap-6 items-center mb-8 md:mb-0"
+    >
+      <li>
+        <small class="block text-base md:text-xs pt-4 md:pt-0 self-end">
+          &copy;{currentYear}
+          {siteConfig.name}, all rights reserved
+        </small>
+      </li>
       {
-        linksToDisplay.map((page) => (
-          <li>
+        footerPages.map((page) => (
+          <li class="p-0">
             <a
               href={`/legal/${page.slug}`}
-              class="text-base md:text-xs self-start md:self-center hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
+              class="text-base md:text-xs self-start md:self-center"
             >
               {page.title.rendered}
             </a>
@@ -125,7 +123,7 @@ const linksToDisplay = footerPages.length > 0 ? footerPages : fallbackLinks;
       }
     </ul>
     <ThemeToggle
-      classes="text-base md:text-xs mb-4 self-start md:self-center hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
+      classes="text-base md:text-xs mb-8 md:mb-0 self-start md:self-center hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
     />
   </div>
 </footer>

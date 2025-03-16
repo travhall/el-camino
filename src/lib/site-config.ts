@@ -64,11 +64,11 @@ export const siteConfig: SiteConfig = {
       url: "https://www.instagram.com/elcaminoskateshop/",
       icon: "uil:instagram",
     },
-    {
-      platform: "youtube",
-      url: "https://www.youtube.com/watch?v=9wx1kwv_qlc",
-      icon: "uil:youtube",
-    },
+    // {
+    //   platform: "youtube",
+    //   url: "https://www.youtube.com/watch?v=9wx1kwv_qlc",
+    //   icon: "uil:youtube",
+    // },
   ],
   tagline: "100% Skater Owned, 100% Skater Operated",
   seo: {
@@ -115,3 +115,17 @@ export function getStructuredData() {
     sameAs: siteConfig.social.map((social) => social.url),
   };
 }
+
+export const apiConfig = {
+  wordpress: {
+    baseUrl:
+      import.meta.env.PUBLIC_WORDPRESS_API_URL ||
+      "https://api.elcaminoskateshop.com/wp-json/wp/v2",
+    requestTimeout: 5000, // milliseconds
+    cacheTTL: 600, // seconds
+  },
+  square: {
+    cacheTTL: 300, // seconds
+    batchSize: 20, // items per request
+  },
+};

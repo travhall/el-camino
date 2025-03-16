@@ -34,8 +34,9 @@ export const jsonStringifyReplacer = (_key: string, value: any) => {
 
 async function getImageUrl(imageId: string): Promise<string | null> {
   try {
-    const { result } =
-      await squareClient.catalogApi.retrieveCatalogObject(imageId);
+    const { result } = await squareClient.catalogApi.retrieveCatalogObject(
+      imageId
+    );
     if (result.object?.type === "IMAGE") {
       return result.object.imageData?.url || null;
     }
@@ -59,10 +60,10 @@ export async function fetchProducts(): Promise<Product[]> {
       return [];
     }
 
-    console.log("Square API Response:", {
-      success: !!response.result,
-      objectCount: response.result.objects?.length || 0,
-    });
+    // console.log("Square API Response:", {
+    //   success: !!response.result,
+    //   objectCount: response.result.objects?.length || 0,
+    // });
 
     if (!response.result.objects?.length) {
       console.log("No products found in catalog");
@@ -115,15 +116,15 @@ export async function fetchProducts(): Promise<Product[]> {
         })
     );
 
-    console.log("Processed products:", {
-      count: products.length,
-      firstProduct: products[0]
-        ? {
-            id: products[0].id,
-            title: products[0].title,
-          }
-        : null,
-    });
+    // console.log("Processed products:", {
+    //   count: products.length,
+    //   firstProduct: products[0]
+    //     ? {
+    //         id: products[0].id,
+    //         title: products[0].title,
+    //       }
+    //     : null,
+    // });
 
     return products;
   } catch (error) {
@@ -219,7 +220,7 @@ export async function fetchCategories(): Promise<Category[]> {
         };
       });
 
-    console.log(`Processed ${categories.length} categories`);
+    // console.log(`Processed ${categories.length} categories`);
     return categories;
   } catch (error) {
     console.error("Error fetching Square categories:", error);

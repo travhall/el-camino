@@ -51,7 +51,7 @@ const prodCats = getSortedCategories();
   </h3>
   <div class="flex flex-col sm:flex-row md:flex-col gap-1">
     {
-      prodCats.map((e) => (
+      prodCats.map((e, index) => (
         <a
           href={e.url}
           class="category-link block relative border-t-4 border-ui-button-surface overflow-hidden"
@@ -60,8 +60,9 @@ const prodCats = getSortedCategories();
             src={e.src}
             alt={e.category}
             class="category-img object-cover w-full h-auto aspect-video opacity-20 transition-all"
-            loading="lazy"
-            onerror="this.src='/images/placeholder.png'"
+            loading={index < 2 ? "eager" : "lazy"}
+            decoding={index < 2 ? "sync" : "async"}
+            onerror="this.onerror=null; this.src='/images/placeholder.png';"
           />
           <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-border-secondary border-b-0 bg-surface-secondary text-content-heading transition-all">
             {e.category}

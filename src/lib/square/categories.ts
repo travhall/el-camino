@@ -75,16 +75,16 @@ export async function fetchCategories(): Promise<Category[]> {
       });
 
     // Log information for debugging
-    console.log(`Processed ${categories.length} categories`);
-    console.log(
-      "Categories with potential ordering info:",
-      categories
-        .map(
-          (c: Category) =>
-            `${c.name} (apiIndex: ${c.apiIndex}, rawOrder: ${c.rawOrder})`
-        )
-        .join(", ")
-    );
+    // console.log(`Processed ${categories.length} categories`);
+    // console.log(
+    //   "Categories with potential ordering info:",
+    //   categories
+    //     .map(
+    //       (c: Category) =>
+    //         `${c.name} (apiIndex: ${c.apiIndex}, rawOrder: ${c.rawOrder})`
+    //     )
+    //     .join(", ")
+    // );
 
     return categories;
   } catch (error) {
@@ -112,10 +112,10 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
     let topLevelCategories = allCategories.filter((cat) => cat.isTopLevel);
 
     // Log pre-sorted categories
-    console.log(
-      "Pre-sorted categories:",
-      topLevelCategories.map((c) => c.name).join(", ")
-    );
+    // console.log(
+    //   "Pre-sorted categories:",
+    //   topLevelCategories.map((c) => c.name).join(", ")
+    // );
 
     // Sort according to Square Admin order
     topLevelCategories.sort(
@@ -123,10 +123,10 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
     );
 
     // Log post-sorted categories
-    console.log(
-      "Post-sorted categories:",
-      topLevelCategories.map((c) => c.name).join(", ")
-    );
+    // console.log(
+    //   "Post-sorted categories:",
+    //   topLevelCategories.map((c) => c.name).join(", ")
+    // );
 
     // Create hierarchy
     const hierarchy: CategoryHierarchy[] = topLevelCategories.map((topCat) => {
@@ -167,9 +167,9 @@ export async function fetchProductsByCategory(
       return [];
     }
 
-    console.log(
-      `Found ${result.items.length} products for category ${categoryId}`
-    );
+    // console.log(
+    //   `Found ${result.items.length} products for category ${categoryId}`
+    // );
 
     // Process items similar to the fetchProducts function
     const products = await Promise.all(

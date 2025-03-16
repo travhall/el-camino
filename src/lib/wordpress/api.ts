@@ -13,7 +13,7 @@ export async function getPosts(): Promise<WordPressPost[]> {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
-    console.log("WordPress API Response:", data);
+    // console.log("WordPress API Response:", data);
     return data.posts.map((post: any) => ({
       id: post.ID,
       date: post.date,
@@ -141,10 +141,10 @@ export async function getFooterPages(): Promise<WordPressPage[]> {
     ];
 
     const allPages = await getPages();
-    console.log(
-      `Filtering ${allPages.length} pages for footer pages with slugs:`,
-      footerPageSlugs
-    );
+    // console.log(
+    //   `Filtering ${allPages.length} pages for footer pages with slugs:`,
+    //   footerPageSlugs
+    // );
 
     const footerPages = allPages.filter((page) =>
       footerPageSlugs.includes(page.slug)

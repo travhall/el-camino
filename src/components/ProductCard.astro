@@ -4,9 +4,10 @@ import { MoneyUtils } from "@/lib/square/money";
 
 interface Props {
   product: Product;
+  priority?: boolean; // Add priority prop
 }
 
-const { product } = Astro.props;
+const { product, priority = false } = Astro.props;
 
 const formattedPrice =
   typeof product.price === "object"
@@ -50,8 +51,10 @@ const formattedPrice =
       alt={product.title}
       itemprop="image"
       class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
-      loading="lazy"
-      onerror="this.src='/images/placeholder.png'"
+      loading={priority ? "eager" : "lazy"}
+      fetchpriority={priority ? "high" : "auto"}
+      decoding={priority ? "sync" : "async"}
+      onerror="this.onerror=null; this.src='/images/placeholder.png';"
     />
 
     <!-- Hover Overlay -->
