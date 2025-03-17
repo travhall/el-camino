@@ -48,7 +48,7 @@ export async function fetchCategories(): Promise<Category[]> {
 
     // Log the raw category objects (may help identify ordering fields)
     const rawObjects = response.result.objects;
-    console.log("Raw category objects:", rawObjects);
+    // console.log("Raw category objects:", rawObjects);
 
     // Process categories, preserving raw API fields
     const categories = rawObjects
