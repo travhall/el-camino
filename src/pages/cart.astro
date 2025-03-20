@@ -39,7 +39,6 @@ import Button from "@/components/Button.astro";
 <script>
   import { cart } from "@/lib/cart";
   import type { CartItem } from "@/lib/cart/types";
-  import type { Money } from "@/lib/square/types";
   import { MoneyUtils } from "@/lib/square/money";
 
   let updateDisplayTimeout: number | null = null;
@@ -93,17 +92,20 @@ import Button from "@/components/Button.astro";
 
   function showNotification(
     message: string,
-    type: "success" | "error" = "success"
+    type: "success" | "error" | "info" = "success"
   ): void {
     const container = document.getElementById("notification-container");
     if (!container) return;
 
     const notification = document.createElement("div");
-    notification.className = `px-4 py-2 rounded-lg transition-all duration-300 ${
+    const bgClass =
       type === "success"
         ? "bg-state-success-surface text-state-success-text"
-        : "bg-state-error-surface text-state-error-text"
-    }`;
+        : type === "error"
+          ? "bg-state-error-surface text-state-error-text"
+          : "bg-blue-100 text-blue-800";
+
+    notification.className = `px-4 py-2 rounded-lg transition-all duration-300 ${bgClass}`;
     notification.textContent = message;
 
     container.appendChild(notification);
@@ -141,33 +143,13 @@ import Button from "@/components/Button.astro";
             ? `<img src="${item.image}" alt="${item.title}" class="w-24 h-24 object-cover rounded-sm" />`
             : ""
         }
-        <div class="flex-grow">
+        <div class="flex-grow flex flex-col justify-between">
           <h3 class="font-display text-lg mb-2 text-content-heading">${item.title}</h3>
           <div class="flex justify-between items-center">
-            <div class="flex items-center gap-2">
-              <button
-                class="quantity-btn decrease p-1 bg-transparent hover:bg-ui-button-surface/10 border-ui-button-text rounded font-sans font-semibold transition-all duration-300 border-2"
-                data-id="${item.id}"
-                aria-label="Decrease quantity"
-              >
-                <span class="h-5 w-5 m-1 inline-block text-content-body">-</span>
-              </button>
-              <span class="quantity-display w-8 text-center text-content-body" data-quantity-display="${
-                item.id
-              }">
-                ${item.quantity}
-              </span>
-              <button
-                class="quantity-btn increase p-1 bg-transparent hover:bg-ui-button-surface/10 border-ui-button-text rounded font-sans font-semibold transition-all duration-300 border-2"
-                data-id="${item.id}"
-                aria-label="Increase quantity"
-              >
-                <span class="h-5 w-5 m-1 inline-block text-content-body">+</span>
-              </button>
+            <div class="text-content-body">
+              Quantity: ${item.quantity}
             </div>
-            <span class="font-display item-price text-content-emphasis" data-price-display="${
-              item.id
-            }">
+            <span class="font-display item-price text-content-emphasis">
               ${MoneyUtils.format(MoneyUtils.fromFloat(item.price * item.quantity))}
             </span>
             <button
@@ -175,7 +157,7 @@ import Button from "@/components/Button.astro";
               data-id="${item.id}"
               aria-label="Remove item"
             >
-              Remove Item
+              Remove
             </button>
           </div>
         </div>
@@ -224,32 +206,12 @@ import Button from "@/components/Button.astro";
 
   function attachEventListeners(): void {
     document
-      .querySelectorAll<HTMLButtonElement>(".quantity-btn")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          const id = button.dataset.id;
-          if (!id) return;
-
-          const currentQuantity =
-            cart.getItems().find((item) => item.id === id)?.quantity || 0;
-          const newQuantity = button.classList.contains("decrease")
-            ? Math.max(0, currentQuantity - 1)
-            : currentQuantity + 1;
-
-          if (newQuantity === 0) {
-            cart.removeItem(id);
-          } else {
-            cart.updateQuantity(id, newQuantity);
-          }
-        });
-      });
-
-    document
       .querySelectorAll<HTMLButtonElement>(".remove-btn")
       .forEach((button) => {
         button.addEventListener("click", () => {
           const id = button.dataset.id;
           if (!id) return;
+          console.log(`Removing item ${id}`);
           cart.removeItem(id);
         });
       });
@@ -268,7 +230,13 @@ import Button from "@/components/Button.astro";
   }
 
   function updateDisplay(): void {
-    if (isUpdating) return;
+    console.log("Updating cart display");
+
+    if (isUpdating) {
+      console.log("Already updating, skipping");
+      return;
+    }
+
     isUpdating = true;
 
     if (updateDisplayTimeout) {
@@ -279,6 +247,8 @@ import Button from "@/components/Button.astro";
       try {
         const items = cart.getItems();
         const total = cart.getTotal();
+
+        console.log(`Cart has ${items.length} items with total ${total}`);
 
         const cartLoading = document.getElementById("cart-loading");
         const cartContainer = document.getElementById("cart-container");
@@ -291,10 +261,12 @@ import Button from "@/components/Button.astro";
         if (cartLoading) cartLoading.classList.add("hidden");
         cartContainer.classList.remove("hidden");
 
-        cartContainer.innerHTML =
-          items.length === 0
-            ? createEmptyCart()
-            : `
+        if (items.length === 0) {
+          console.log("Cart is empty, showing empty cart");
+          cartContainer.innerHTML = createEmptyCart();
+        } else {
+          console.log("Rendering cart with items:", items);
+          cartContainer.innerHTML = `
             <div class="grid md:grid-cols-3 gap-8">
               <div class="md:col-span-2 space-y-4">
                 <button
@@ -309,6 +281,7 @@ import Button from "@/components/Button.astro";
               ${createOrderSummary(total)}
             </div>
           `;
+        }
 
         attachEventListeners();
       } catch (error) {

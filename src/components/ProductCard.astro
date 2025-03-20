@@ -1,13 +1,20 @@
 ---
 import type { Product } from "@/lib/square/types";
 import { MoneyUtils } from "@/lib/square/money";
+import { isItemInStock } from "@/lib/square/inventory";
 
 interface Props {
   product: Product;
-  priority?: boolean; // Add priority prop
+  priority?: boolean;
 }
 
 const { product, priority = false } = Astro.props;
+
+// Check inventory status
+const inStock = await isItemInStock(product.variationId);
+const availabilitySchema = inStock
+  ? "https://schema.org/InStock"
+  : "https://schema.org/OutOfStock";
 
 const formattedPrice =
   typeof product.price === "object"
@@ -17,7 +24,7 @@ const formattedPrice =
 
 <a
   href={product.url}
-  class="group flex flex-col col-span-full sm:col-span-2 p-1 bg-ui-card-surface text-ui-card-text border-2 border-ui-card-border hover:bg-ui-card-hover"
+  class={`group flex flex-col col-span-full sm:col-span-2 p-1 bg-ui-card-surface text-ui-card-text border-2 border-ui-card-border hover:bg-ui-card-hover ${!inStock ? "opacity-75" : ""}`}
   itemscope
   itemtype="http://schema.org/Product"
 >
@@ -31,7 +38,7 @@ const formattedPrice =
   }
   <meta itemprop="url" content={product.url} />
   <link itemprop="image" href={product.image} />
-  <meta itemprop="availability" content="https://schema.org/InStock" />
+  <meta itemprop="availability" content={availabilitySchema} />
 
   <!-- OpenGraph metadata -->
   <meta property="og:title" content={product.title} />
@@ -50,12 +57,21 @@ const formattedPrice =
       src={product.image}
       alt={product.title}
       itemprop="image"
-      class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+      class={`object-cover w-full h-full transition-transform duration-300 group-hover:scale-105 ${!inStock ? "opacity-75" : ""}`}
       loading={priority ? "eager" : "lazy"}
       fetchpriority={priority ? "high" : "auto"}
       decoding={priority ? "sync" : "async"}
       onerror="this.onerror=null; this.src='/images/placeholder.png';"
     />
+
+    <!-- Out of Stock Overlay (only shown when out of stock) -->
+    {
+      !inStock && (
+        <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-sm font-bold">
+          Out of Stock
+        </div>
+      )
+    }
 
     <!-- Hover Overlay -->
     <div
@@ -91,6 +107,7 @@ const formattedPrice =
           ? MoneyUtils.toFloat(product.price).toString()
           : product.price.toString()}
       />
+      <meta itemprop="availability" content={availabilitySchema} />
       <span class="font-display text-product-price text-2xl whitespace-nowrap">
         {formattedPrice}
       </span>
