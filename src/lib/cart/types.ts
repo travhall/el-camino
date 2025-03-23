@@ -7,6 +7,7 @@ export interface CartItem {
   price: number; // Keep as number for compatibility
   quantity: number;
   image?: string;
+  variationName?: string; // Added for variation display
 }
 
 export interface CartState {

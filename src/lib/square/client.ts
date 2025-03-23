@@ -146,11 +146,17 @@ export async function fetchProduct(id: string): Promise<Product | null> {
     if (!result.object || result.object.type !== "ITEM") return null;
 
     const item = result.object;
-    const variation = item.itemData?.variations?.[0];
-    const priceMoney = variation?.itemVariationData?.priceMoney;
+    const variations = item.itemData?.variations || [];
 
-    if (!variation || !priceMoney) return null;
+    if (!variations.length) return null;
 
+    // Use first variation as default
+    const defaultVariation = variations[0];
+    const defaultPriceMoney = defaultVariation?.itemVariationData?.priceMoney;
+
+    if (!defaultVariation || !defaultPriceMoney) return null;
+
+    // Get image
     let imageUrl = "/images/placeholder.png";
     if (item.itemData?.imageIds?.[0]) {
       const fetchedUrl = await getImageUrl(item.itemData.imageIds[0]);
@@ -159,23 +165,34 @@ export async function fetchProduct(id: string): Promise<Product | null> {
       }
     }
 
+    // Process all variations
+    const productVariations = variations.map((v) => {
+      const priceMoney = v.itemVariationData?.priceMoney;
+      return {
+        id: v.id,
+        variationId: v.id,
+        name: v.itemVariationData?.name || "",
+        price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
+      };
+    });
+
     return {
       id: item.id,
       catalogObjectId: item.id,
-      variationId: variation.id,
+      variationId: defaultVariation.id,
       title: item.itemData?.name || "",
       description: item.itemData?.description || "",
       image: imageUrl,
-      price: Number(priceMoney.amount) / 100,
+      price: Number(defaultPriceMoney.amount) / 100,
       url: `/product/${item.id}`,
+      variations: productVariations,
+      selectedVariationId: defaultVariation.id,
     };
   } catch (error) {
     console.error("Error fetching product:", error);
     return null;
   }
 }
-
-// Add to src/lib/square/client.ts
 
 import type { Category, CategoryHierarchy } from "./types";
 

@@ -3,7 +3,6 @@ import Layout from "@/layouts/Layout.astro";
 import Button from "@/components/Button.astro";
 import { fetchProduct } from "@/lib/square/client";
 import { MoneyUtils } from "@/lib/square/money";
-import { cart } from "@/lib/cart";
 import { checkItemInventory } from "@/lib/square/inventory";
 
 const { id } = Astro.params;
@@ -47,34 +46,26 @@ const fullTitle = `${pageTitle} | El Camino`;
           class={`w-full h-full object-cover ${!inStock ? "opacity-75" : ""}`}
           onerror="this.src='/images/placeholder.png'"
         />
-
-        {
-          !inStock && (
-            <div class="absolute top-4 left-4 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-sm">
-              Out of Stock
-            </div>
-          )
-        }
       </div>
 
-      <div class="mt-10 lg:mt-0">
+      <div class="product-info mt-10 lg:mt-0">
         <h1 class="text-3xl font-display mb-4 text-content-heading">
           {product.title}
         </h1>
 
         <div class="mt-3">
-          <p class="text-2xl font-display text-content-emphasis">
+          <p class="text-5xl font-display text-content-emphasis">
             {formattedPrice}
           </p>
 
           <!-- Inventory Status -->
           {
             !inStock ? (
-              <p class="mt-2 text-state-error-text">
-                This item is currently out of stock
+              <p class="mt-2 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold inline-block">
+                This item is currently sold out
               </p>
             ) : (
-              <p class="mt-2 text-state-success-text">
+              <p class="mt-2">
                 In Stock{" "}
                 {availableQuantity > 1
                   ? `(${availableQuantity} available)`
@@ -100,6 +91,33 @@ const fullTitle = `${pageTitle} | El Camino`;
           )
         }
 
+        {
+          product.variations && product.variations.length > 1 && (
+            <div class="mt-4">
+              <label
+                for="variation-select"
+                class="block text-sm font-medium text-content-body mb-2"
+              >
+                Select Option
+              </label>
+              <select
+                id="variation-select"
+                class="border-ui-input-border bg-ui-input-surface text-ui-input-text p-2 rounded-sm"
+                data-variations={JSON.stringify(product.variations)}
+              >
+                {product.variations.map((variation) => (
+                  <option
+                    value={variation.variationId}
+                    selected={variation.variationId === product.variationId}
+                  >
+                    {variation.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )
+        }
+
         <div class="mt-8">
           <Button
             type="button"
@@ -113,11 +131,14 @@ const fullTitle = `${pageTitle} | El Camino`;
               title: product.title,
               price: product.price,
               image: product.image,
+              variationName: product.variations?.find(
+                (v) => v.variationId === product.variationId
+              )?.name,
             })}
             id="add-to-cart-button"
             disabled={!inStock}
           >
-            {inStock ? "Add to Cart" : "Out of Stock"}
+            {inStock ? "Add to Cart" : "Sold Out"}
           </Button>
         </div>
       </div>
@@ -127,16 +148,99 @@ const fullTitle = `${pageTitle} | El Camino`;
 
 <script>
   import { cart } from "@/lib/cart";
+  import { MoneyUtils } from "@/lib/square/money"; // Add this import
+  import type { ProductVariation } from "@/lib/square/types"; // Add this import
 
   let isProcessing = false;
   let addToCartTimeout: number | null = null;
 
+  function setupVariationSelector(): void {
+    const select = document.getElementById(
+      "variation-select"
+    ) as HTMLSelectElement;
+    if (!select) return;
+
+    const addToCartButton = document.getElementById("add-to-cart-button");
+    if (!addToCartButton) return;
+
+    // Parse variations data
+    const variations = JSON.parse(
+      select.dataset.variations || "[]"
+    ) as ProductVariation[];
+
+    // Update price and button data when variation changes
+    select.addEventListener("change", async () => {
+      const selectedVariationId = select.value;
+      const selectedVariation = variations.find(
+        (v: ProductVariation) => v.variationId === selectedVariationId
+      );
+      if (!selectedVariation) return;
+
+      console.log(
+        `Selected variation: ${selectedVariation.name} (${selectedVariation.variationId})`
+      );
+
+      // Update price display
+      const priceElement = document.querySelector(".text-content-emphasis");
+      if (priceElement) {
+        priceElement.textContent = MoneyUtils.format(
+          MoneyUtils.fromFloat(selectedVariation.price)
+        );
+      }
+
+      // Check inventory for selected variation
+      try {
+        const response = await fetch(
+          `/api/check-inventory?variationId=${selectedVariationId}`
+        );
+        const data = await response.json();
+
+        const inStock = data.inStock;
+        const statusElement = document.querySelector(".mt-2");
+
+        if (statusElement) {
+          if (inStock) {
+            statusElement.className = "mt-2 text-state-success-text";
+            statusElement.textContent = `In Stock ${data.quantity > 1 ? `(${data.quantity} available)` : ""}`;
+          } else {
+            statusElement.className = "mt-2 text-state-error-text";
+            statusElement.textContent = "This item is currently out of stock";
+          }
+        }
+
+        // Update add to cart button
+        const btnElement = addToCartButton as HTMLButtonElement;
+        btnElement.disabled = !inStock;
+
+        if (inStock) {
+          btnElement.textContent = "Add to Cart";
+          btnElement.classList.remove("opacity-50", "cursor-not-allowed");
+        } else {
+          btnElement.textContent = "Out of Stock";
+          btnElement.classList.add("opacity-50", "cursor-not-allowed");
+        }
+
+        // Update product data on button
+        const productData = JSON.parse(addToCartButton.dataset.product || "{}");
+
+        // IMPORTANT: Update the variation ID and name
+        productData.variationId = selectedVariationId;
+        productData.price = selectedVariation.price;
+        productData.variationName = selectedVariation.name; // Include variation name
+
+        // Save updated data back to the button
+        addToCartButton.dataset.product = JSON.stringify(productData);
+
+        console.log("Updated button data:", productData);
+      } catch (error) {
+        console.error("Error checking inventory:", error);
+      }
+    });
+  }
+
   function setupAddToCartHandler(): void {
     const button = document.getElementById("add-to-cart-button");
-    if (!button) {
-      console.debug("Add to cart button not found");
-      return;
-    }
+    if (!button) return;
 
     // Remove existing listener if any
     button.replaceWith(button.cloneNode(true));
@@ -146,34 +250,76 @@ const fullTitle = `${pageTitle} | El Camino`;
     if (!newButton) return;
 
     newButton.addEventListener("click", async (e) => {
-      // Check if button is disabled
-      const btnElement = newButton as HTMLButtonElement;
-      if (btnElement.disabled) return;
-
-      if (isProcessing) return;
-      isProcessing = true;
-
       try {
-        const productData = newButton.dataset.product;
-        if (!productData) {
+        // Check if button is disabled
+        const btnElement = newButton as HTMLButtonElement;
+        if (btnElement.disabled || isProcessing) return;
+
+        isProcessing = true;
+
+        // IMPORTANT: Get the current variation selection directly
+        const select = document.getElementById(
+          "variation-select"
+        ) as HTMLSelectElement;
+
+        // Start with base product data from the button
+        const baseProductData = newButton.dataset.product;
+        if (!baseProductData) {
           throw new Error("No product data found");
         }
 
-        const product = JSON.parse(productData);
-        console.log(`Adding ${product.title} to cart`);
+        // Parse the base product
+        const product = JSON.parse(baseProductData);
 
-        // Check if item is already in cart
+        // If there's a variation selector, use its current value
+        if (select) {
+          const currentVariationId = select.value;
+          console.log(`Current selected variation ID: ${currentVariationId}`);
+
+          // Only override if there's a selection and it's different
+          if (
+            currentVariationId &&
+            currentVariationId !== product.variationId
+          ) {
+            // Find the variation details
+            const variationsData = select.dataset.variations;
+            if (variationsData) {
+              const variations = JSON.parse(variationsData);
+              const selectedVariation = variations.find(
+                (v: any) => v.variationId === currentVariationId
+              );
+
+              if (selectedVariation) {
+                console.log(
+                  `Overriding with selected variation: ${selectedVariation.name}`
+                );
+
+                // Update product with selected variation details
+                product.variationId = currentVariationId;
+                product.variationName = selectedVariation.name;
+                product.price = selectedVariation.price;
+              }
+            }
+          }
+        }
+
+        console.log(
+          `Adding to cart: ${product.title} with variation ${product.variationId} (${product.variationName})`
+        );
+
+        // Check if this specific variation is already in cart
         const cartItems = cart.getItems();
-        const existingItem = cartItems.find((item) => item.id === product.id);
+        const existingItem = cartItems.find(
+          (item) =>
+            item.id === product.id && item.variationId === product.variationId
+        );
 
         if (existingItem) {
-          // Item already in cart, don't add again
           showNotification("Item already in cart", "info");
-          isProcessing = false;
           return;
         }
 
-        // Add to cart without additional API checks (cart will handle that)
+        // Add to cart with the current variation
         const result = await cart.addItem({
           ...product,
           quantity: 1,
@@ -181,14 +327,11 @@ const fullTitle = `${pageTitle} | El Camino`;
 
         if (result.success) {
           showNotification(result.message || "Added to cart");
-          console.log("Item added to cart:", product.title);
         } else {
           showNotification(result.message || "Failed to add to cart", "error");
         }
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error("Error adding to cart:", errorMessage);
+        console.error("Error adding to cart:", error);
         showNotification("Failed to add to cart", "error");
       } finally {
         isProcessing = false;
@@ -213,7 +356,9 @@ const fullTitle = `${pageTitle} | El Camino`;
     notification.className = `cart-notification fixed top-4 right-4 px-4 py-2 rounded-lg z-50 transition-opacity duration-300 ${
       type === "success"
         ? "bg-state-success-surface text-state-success-text"
-        : "bg-state-error-surface text-state-error-text"
+        : type === "error"
+          ? "bg-state-error-surface text-state-error-text"
+          : "bg-state-info-surface text-state-info-text"
     }`;
     notification.textContent = message;
     document.body.appendChild(notification);
@@ -227,7 +372,12 @@ const fullTitle = `${pageTitle} | El Camino`;
 
   // Event Listeners
   document.addEventListener("astro:page-load", () => {
-    console.debug("Product page: Setting up add to cart handler");
+    console.debug("Product page: Setting up product handlers");
+
+    // Order matters here - setup variation selector first
+    setupVariationSelector();
+
+    // Then setup add to cart button
     setupAddToCartHandler();
   });
 

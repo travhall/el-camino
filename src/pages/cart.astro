@@ -6,9 +6,9 @@ import Button from "@/components/Button.astro";
 ---
 
 <Layout title="Your Shopping Cart | El Camino">
-  <section class="px-4 py-8">
+  <section class="p-4">
     <h1
-      class="font-display font-medium text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] mb-4 text-content-heading"
+      class="font-display font-medium text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-content-heading"
     >
       Shopping Cart
     </h1>
@@ -26,7 +26,7 @@ import Button from "@/components/Button.astro";
       id="loading-overlay"
       class="fixed inset-0 bg-surface-primary/50 items-center justify-center hidden z-50"
     >
-      <div class="bg-surface-secondary p-4 rounded-lg">
+      <div class="bg-surface-secondary p-4">
         <p class="text-lg text-content-body">Processing...</p>
       </div>
     </div>
@@ -106,7 +106,7 @@ import Button from "@/components/Button.astro";
           ? "bg-state-error-surface text-state-error-text"
           : "bg-blue-100 text-blue-800";
 
-    notification.className = `px-4 py-2 rounded-lg transition-all duration-300 ${bgClass}`;
+    notification.className = `px-4 py-2 transition-all duration-300 ${bgClass}`;
     notification.textContent = message;
 
     container.appendChild(notification);
@@ -129,49 +129,57 @@ import Button from "@/components/Button.astro";
     return `
       <div class="flex flex-col items-center" id="empty-cart">
         <p class="text-lg mb-6 text-content-body">Your cart is empty</p>
-        <a href="/all-products" class="inline-block bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4 lg:text-xl lg:py-3 lg:px-5">
-          Continue Shopping
-        </a>
+        <a
+              href="/all-products"
+              class="block w-full text-center bg-ui-button-surface/0 hover:bg-ui-button-surface/10 border-ui-button-surface text-ui-button-surface font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-2 px-4"
+            >
+              Continue Shopping
+            </a>
       </div>
     `;
   }
 
   function createCartItem(item: CartItem): string {
+    const itemKey = `${item.id}:${item.variationId}`;
+
     return `
-      <div class="bg-surface-secondary rounded-lg p-4 flex gap-4" data-item-container="${item.id}">
-        ${
-          item.image
-            ? `<img src="${item.image}" alt="${item.title}" class="w-24 h-24 object-cover rounded-sm" />`
-            : ""
-        }
-        <div class="flex-grow flex flex-col justify-between">
-          <h3 class="font-display text-lg mb-2 text-content-heading">${item.title}</h3>
-          <div class="flex justify-between items-center">
-            <div class="text-content-body">
-              Quantity: ${item.quantity}
-            </div>
-            <span class="font-display item-price text-content-emphasis">
-              ${MoneyUtils.format(MoneyUtils.fromFloat(item.price * item.quantity))}
-            </span>
-            <button
-              class="remove-btn p-2 bg-transparent hover:bg-state-error-surface/10 border-ui-button-text rounded font-sans font-semibold transition-all duration-300 border-2 text-state-error-text"
-              data-id="${item.id}"
-              aria-label="Remove item"
-            >
-              Remove
-            </button>
+    <div class="bg-surface-secondary p-4 flex gap-2 self-start" data-item-container="${itemKey}">
+      ${
+        item.image
+          ? `<img src="${item.image}" alt="${item.title}" class="w-24 h-24 object-cover" />`
+          : ""
+      }
+      <div class="flex-grow flex flex-col justify-between">
+        <h3 class="font-display text-3xl mb-2 text-content-heading">
+          ${item.title}
+          ${item.variationName ? ` - ${item.variationName}` : ""}
+        </h3>
+        <div class="flex justify-between items-center">
+          <div class="text-lg text-content-body">
+            Quantity: ${item.quantity}
           </div>
+          <span class="font-display text-3xl item-price text-content-emphasis">
+            ${MoneyUtils.format(MoneyUtils.fromFloat(item.price * item.quantity))}
+          </span>
+          <button
+            class="remove-btn p-2 bg-transparent text-sm hover:underline font-semibold transition-all duration-300"
+            data-id="${itemKey}"
+            aria-label="Remove item"
+          >
+            Remove
+          </button>
         </div>
       </div>
-    `;
+    </div>
+  `;
   }
 
   function createOrderSummary(total: number): string {
     return `
       <div class="md:col-span-1">
-        <div class="bg-surface-secondary rounded-lg p-6 sticky top-4">
-          <h2 class="font-display text-xl mb-4 text-content-heading">Order Summary</h2>
-          <div class="space-y-2 mb-4">
+        <div class="bg-surface-secondary p-6 sticky top-4">
+          <h2 class="font-display text-2xl mb-4 text-content-heading">Order Summary</h2>
+          <div class="order-summary space-y-2 mb-4">
             <div class="flex justify-between text-content-body">
               <span>Subtotal</span>
               <span id="subtotal">${MoneyUtils.format(
@@ -189,13 +197,13 @@ import Button from "@/components/Button.astro";
             <button
               type="button"
               id="checkout-button"
-              class="w-full bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4 lg:text-xl lg:py-3 lg:px-5"
+              class="w-full bg-ui-button-surface text-ui-button-text border-ui-button-border hover:bg-ui-button-surface/80 font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-2 px-4"
             >
               Proceed to Checkout
             </button>
             <a
-              href="/"
-              class="block w-full text-center bg-transparent hover:bg-ui-button-surface/10 border-ui-button-text font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-1 px-3 lg:py-2 lg:px-4"
+              href="/all-products"
+              class="block w-full text-center bg-ui-button-surface/0 hover:bg-ui-button-surface/10 border-ui-button-surface text-ui-button-surface font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-2 px-4"
             >
               Continue Shopping
             </a>
@@ -268,12 +276,12 @@ import Button from "@/components/Button.astro";
         } else {
           console.log("Rendering cart with items:", items);
           cartContainer.innerHTML = `
-            <div class="grid md:grid-cols-3 gap-8">
-              <div class="md:col-span-2 space-y-4">
+            <div class="grid md:grid-cols-3 gap-2">
+              <div class="md:col-span-2 space-y-2 grid">
                 <button
                   type="button"
                   id="clear-cart-button"
-                  class="w-full mb-4 bg-transparent hover:bg-state-error-surface/10 border-state-error-text text-state-error-text font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] text-lg py-2 px-4"
+                  class="font-semibold text-sm hover:underline transition-all duration-300 p-2 -my-1 justify-self-end"
                 >
                   Clear Cart
                 </button>

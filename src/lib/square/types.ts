@@ -1,4 +1,6 @@
 // /src/lib/square/types.ts
+import type { CartItem } from "../cart/types";
+
 export interface Money {
   amount: number; // Always in cents
   currency: string;
@@ -13,6 +15,8 @@ export interface Product {
   image: string;
   price: number; // For backward compatibility
   url: string;
+  variations?: ProductVariation[];
+  selectedVariationId?: string;
 }
 
 export type SquareMoneyObject = {
@@ -31,15 +35,7 @@ export interface OrderDetails {
   }>;
 }
 
-export interface CartItem {
-  id: string;
-  catalogObjectId: string;
-  variationId: string;
-  title: string;
-  price: number; // Keep as number for now for backward compatibility
-  quantity: number;
-  image?: string;
-}
+// CartItem is now imported from cart types
 
 export interface SquareProduct {
   id: string;
@@ -49,6 +45,14 @@ export interface SquareProduct {
   description?: string;
   priceMoney: Money;
   imageUrl?: string;
+}
+
+export interface ProductVariation {
+  id: string;
+  variationId: string;
+  name: string;
+  price: number;
+  inStock?: boolean;
 }
 
 export interface SquareApiConfig {

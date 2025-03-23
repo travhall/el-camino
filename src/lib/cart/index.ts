@@ -142,7 +142,9 @@ class CartManager implements ICartManager {
             console.log(
               `Adding item to cart from storage: ${item.title || item.id}`
             );
-            this.items.set(item.id, item);
+            // Create compound key for each item
+            const itemKey = `${item.id}:${item.variationId}`;
+            this.items.set(itemKey, item);
           }
         });
       } else {
@@ -200,6 +202,7 @@ class CartManager implements ICartManager {
           title: item.title,
           price: item.price,
           quantity: item.quantity,
+          variationName: item.variationName,
         }));
 
         this.storage.setItem(CART_STORAGE_KEY, JSON.stringify(simpleItems));
@@ -303,8 +306,11 @@ class CartManager implements ICartManager {
         };
       }
 
+      // Create a compound key using both product ID and variation ID
+      const itemKey = `${item.id}:${item.variationId}`;
+
       // Check existing cart quantity
-      const existingItem = this.items.get(item.id);
+      const existingItem = this.items.get(itemKey);
       const currentQty = existingItem?.quantity || 0;
       const newQty = currentQty + item.quantity;
 
@@ -317,11 +323,11 @@ class CartManager implements ICartManager {
         // If adding more would exceed available, cap at available
         if (availableQuantity > 0 && newQty > availableQuantity) {
           existingItem.quantity = availableQuantity;
-          this.items.set(item.id, existingItem);
+          this.items.set(itemKey, existingItem);
           console.log(`Limited quantity to ${availableQuantity}`);
         } else {
           existingItem.quantity = newQty;
-          this.items.set(item.id, existingItem);
+          this.items.set(itemKey, existingItem);
           console.log(
             `Updated existing item, new quantity: ${existingItem.quantity}`
           );
@@ -330,12 +336,12 @@ class CartManager implements ICartManager {
         // If adding new item would exceed available, cap at available
         if (availableQuantity > 0 && item.quantity > availableQuantity) {
           const limitedItem = { ...item, quantity: availableQuantity };
-          this.items.set(item.id, limitedItem);
+          this.items.set(itemKey, limitedItem);
           console.log(
             `Added new item with limited quantity: ${availableQuantity}`
           );
         } else {
-          this.items.set(item.id, { ...item }); // Create a copy to avoid reference issues
+          this.items.set(itemKey, { ...item }); // Create a copy to avoid reference issues
           console.log(`Added new item with quantity: ${item.quantity}`);
         }
       }
@@ -357,7 +363,9 @@ class CartManager implements ICartManager {
   }
 
   public removeItem(id: string): void {
-    const item = this.items.get(id);
+    // Check if this is a compound key (has colon)
+    const item = id.includes(":") ? this.items.get(id) : this.items.get(id); // Legacy support
+
     if (item) {
       this.items.delete(id);
       this.queueUpdate(() => {
@@ -447,10 +455,11 @@ class CartManager implements ICartManager {
       // Check each item
       for (const item of items) {
         const availableQuantity = stockLevels[item.variationId] || 0;
+        const itemKey = `${item.id}:${item.variationId}`;
 
         if (availableQuantity <= 0) {
           // Remove out of stock items
-          this.removeItem(item.id);
+          this.removeItem(itemKey);
           removedItems.push(item.title);
           cartUpdated = true;
         } else if (item.quantity > availableQuantity) {
@@ -462,7 +471,7 @@ class CartManager implements ICartManager {
           });
 
           item.quantity = availableQuantity;
-          this.items.set(item.id, item);
+          this.items.set(itemKey, item);
           cartUpdated = true;
         }
       }
@@ -524,7 +533,7 @@ class CartManager implements ICartManager {
     try {
       const lineItems = Array.from(this.items.values()).map((item) => ({
         quantity: item.quantity.toString(),
-        catalogObjectId: item.catalogObjectId,
+        catalogObjectId: item.variationId, // Use variationId instead of catalogObjectId
         itemType: "ITEM",
       }));
 
