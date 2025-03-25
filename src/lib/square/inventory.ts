@@ -9,7 +9,7 @@ import type { CartItem } from "../cart/types";
  */
 export async function checkItemInventory(variationId: string): Promise<number> {
   try {
-    console.log(`[Inventory] Checking inventory for ${variationId}`);
+    // console.log(`[Inventory] Checking inventory for ${variationId}`);
 
     // Query Square API for current inventory count
     const { result } = await squareClient.inventoryApi.retrieveInventoryCount(
@@ -25,7 +25,7 @@ export async function checkItemInventory(variationId: string): Promise<number> {
       ? parseInt(inStockCount.quantity, 10)
       : 0;
 
-    console.log(`[Inventory] Item ${variationId}: ${quantity} in stock`);
+    // console.log(`[Inventory] Item ${variationId}: ${quantity} in stock`);
     return quantity;
   } catch (error) {
     console.error(
@@ -68,7 +68,7 @@ export async function checkBulkInventory(
   }
 
   try {
-    console.log(`[Inventory] Checking inventory for ${uniqueIds.length} items`);
+    // console.log(`[Inventory] Checking inventory for ${uniqueIds.length} items`);
 
     // Fetch items from Square API
     const { result } =

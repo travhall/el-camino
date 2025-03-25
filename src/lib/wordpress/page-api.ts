@@ -1,5 +1,5 @@
 // src/lib/wordpress/page-api.ts
-import type { WordPressPage } from "../types/wordpress";
+import type { WordPressPage } from "../wordpress/types";
 
 const WP_URL =
   "https://public-api.wordpress.com/rest/v1.1/sites/elcaminoskateshop.wordpress.com";

@@ -1,4 +1,4 @@
-// src/lib/types/wordpress.ts
+// src/lib/wordpress/types.ts
 
 export interface WordPressPost {
   id: number;
@@ -18,14 +18,14 @@ export interface WordPressPost {
       {
         source_url: string;
         alt_text?: string;
-      },
+      }
     ];
     "wp:term"?: [
       [
         {
           name: string;
-        },
-      ],
+        }
+      ]
     ];
     author?: [
       {
@@ -33,7 +33,7 @@ export interface WordPressPost {
         avatar_urls: {
           "96": string;
         };
-      },
+      }
     ];
   };
 }
@@ -58,7 +58,7 @@ export interface WordPressPage {
       {
         source_url: string;
         alt_text?: string;
-      },
+      }
     ];
   };
 }

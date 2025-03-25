@@ -4,10 +4,11 @@ export interface CartItem {
   catalogObjectId: string;
   variationId: string;
   title: string;
-  price: number; // Keep as number for compatibility
+  price: number;
   quantity: number;
   image?: string;
-  variationName?: string; // Added for variation display
+  variationName?: string;
+  unit?: string; // Add unit property
 }
 
 export interface CartState {

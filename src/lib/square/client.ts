@@ -142,7 +142,11 @@ export async function fetchProducts(): Promise<Product[]> {
 
 export async function fetchProduct(id: string): Promise<Product | null> {
   try {
-    const { result } = await squareClient.catalogApi.retrieveCatalogObject(id);
+    const { result } = await squareClient.catalogApi.retrieveCatalogObject(
+      id,
+      true
+    ); // Pass true as second param
+
     if (!result.object || result.object.type !== "ITEM") return null;
 
     const item = result.object;
@@ -165,16 +169,84 @@ export async function fetchProduct(id: string): Promise<Product | null> {
       }
     }
 
-    // Process all variations
-    const productVariations = variations.map((v) => {
-      const priceMoney = v.itemVariationData?.priceMoney;
-      return {
-        id: v.id,
-        variationId: v.id,
-        name: v.itemVariationData?.name || "",
-        price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
-      };
-    });
+    // Process all variations and their images
+    const productVariations = await Promise.all(
+      variations.map(async (v) => {
+        const priceMoney = v.itemVariationData?.priceMoney;
+
+        // Check for variation-specific images
+        let variationImageUrl: string | undefined = undefined;
+        if (v.itemVariationData?.imageIds?.[0]) {
+          try {
+            const fetchedUrl = await getImageUrl(
+              v.itemVariationData.imageIds[0]
+            );
+            if (fetchedUrl) {
+              variationImageUrl = fetchedUrl;
+            }
+          } catch (error) {
+            console.error(`Error fetching image for variation ${v.id}:`, error);
+          }
+        }
+
+        // Get measurement unit if available
+        let unit = "";
+        if (v.itemVariationData?.measurementUnitId) {
+          // We would need to fetch the measurement unit separately
+          // For now, we'll just use a placeholder approach
+          try {
+            const { result: measurementResult } =
+              await squareClient.catalogApi.retrieveCatalogObject(
+                v.itemVariationData.measurementUnitId
+              );
+
+            if (measurementResult.object?.type === "MEASUREMENT_UNIT") {
+              const unitData = measurementResult.object.measurementUnitData;
+              if (unitData?.measurementUnit?.customUnit?.name) {
+                unit = unitData.measurementUnit.customUnit.name;
+              } else if (unitData?.measurementUnit?.type) {
+                unit = unitData.measurementUnit.type
+                  .toLowerCase()
+                  .replace("_", " ");
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching measurement unit: ${error}`);
+          }
+        }
+
+        return {
+          id: v.id,
+          variationId: v.id,
+          name: v.itemVariationData?.name || "",
+          price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
+          image: variationImageUrl,
+          unit: unit,
+        };
+      })
+    );
+
+    // Get custom attributes, specifically looking for 'Brand'
+    let brandValue = "";
+    if (item.customAttributeValues) {
+      // Look for any attribute with 'brand' in the key name (case insensitive)
+      const brandAttribute = Object.values(item.customAttributeValues).find(
+        (attr) =>
+          attr.name?.toLowerCase() === "brand" ||
+          attr.key?.toLowerCase() === "brand"
+      );
+
+      if (
+        brandAttribute &&
+        brandAttribute.type === "STRING" &&
+        brandAttribute.stringValue
+      ) {
+        brandValue = brandAttribute.stringValue;
+      }
+    }
+
+    // Use default variation unit or first found unit
+    const defaultUnit = productVariations[0]?.unit || "";
 
     return {
       id: item.id,
@@ -187,6 +259,8 @@ export async function fetchProduct(id: string): Promise<Product | null> {
       url: `/product/${item.id}`,
       variations: productVariations,
       selectedVariationId: defaultVariation.id,
+      brand: brandValue,
+      unit: defaultUnit,
     };
   } catch (error) {
     console.error("Error fetching product:", error);

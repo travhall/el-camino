@@ -32,15 +32,26 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 
 const pageTitle = product.title;
 const fullTitle = `${pageTitle} | El Camino`;
+
+// Get variation data for display
+const hasMultipleVariations =
+  product.variations && product.variations.length > 1;
+const currentVariation = product.variations?.find(
+  (v) => v.variationId === product.variationId
+);
+
+// Get the unit display - from the current variation or the product
+const unitDisplay = currentVariation?.unit || product.unit || '';
 ---
 
 <Layout title={fullTitle}>
-  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+  <section class="p-4 sm:p-6 lg:p-8">
     <div class="lg:grid lg:grid-cols-2 lg:gap-x-8 items-center">
       <div
-        class="aspect-w-4 aspect-h-3 border-4 border-surface-secondary overflow-hidden bg-surface-secondary rounded-sm"
+        class="aspect-square border-4 border-surface-secondary overflow-hidden bg-surface-secondary"
       >
         <img
+          id="product-image"
           src={product.image}
           alt={product.title}
           class={`w-full h-full object-cover ${!inStock ? "opacity-75" : ""}`}
@@ -49,13 +60,21 @@ const fullTitle = `${pageTitle} | El Camino`;
       </div>
 
       <div class="product-info mt-10 lg:mt-0">
-        <h1 class="text-3xl font-display mb-4 text-content-heading">
+        <h1 class="flex flex-col text-4xl font-display mb-4 text-content-heading">
+          {/* Display the brand if available */}
+          {product.brand && 
+            <span class="text-xl uppercase">{product.brand}</span>
+          }
           {product.title}
         </h1>
 
         <div class="mt-3">
           <p class="text-5xl font-display text-content-emphasis">
             {formattedPrice}
+            {/* Display unit if available */}
+            {unitDisplay && 
+              <span class="text-xl">{unitDisplay}</span>
+            }
           </p>
 
           <!-- Inventory Status -->
@@ -85,35 +104,52 @@ const fullTitle = `${pageTitle} | El Camino`;
 
         {
           product.description && (
-            <div class="mt-6">
+            <div class="mt-6 max-w-[54ch]">
               <p class="text-base text-content-body">{product.description}</p>
             </div>
           )
         }
 
         {
-          product.variations && product.variations.length > 1 && (
+          /* Display variation options - dropdown for multiple, text for single variation */
+        }
+        {
+          product.variations && (
             <div class="mt-4">
+              {hasMultipleVariations ? (
               <label
                 for="variation-select"
                 class="block text-sm font-medium text-content-body mb-2"
               >
-                Select Option
+                Options
               </label>
-              <select
-                id="variation-select"
-                class="border-ui-input-border bg-ui-input-surface text-ui-input-text p-2 rounded-sm"
-                data-variations={JSON.stringify(product.variations)}
-              >
-                {product.variations.map((variation) => (
-                  <option
-                    value={variation.variationId}
-                    selected={variation.variationId === product.variationId}
-                  >
-                    {variation.name}
-                  </option>
-                ))}
-              </select>
+                <select
+                  id="variation-select"
+                  class="border-ui-input-border bg-ui-input-surface text-ui-input-text p-2 rounded-sm"
+                  data-variations={JSON.stringify(product.variations)}
+                >
+                  {product.variations.map((variation) => (
+                    <option
+                      value={variation.variationId}
+                      selected={variation.variationId === product.variationId}
+                      data-image={variation.image || ""}
+                      data-unit={variation.unit || ""}
+                    >
+                      {variation.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div class="inline-block max-w-[54ch]">
+                  {currentVariation?.name || ""}
+                  <input
+                    type="hidden"
+                    id="variation-select"
+                    value={product.variationId}
+                    data-variations={JSON.stringify(product.variations || [])}
+                  />
+                </div>
+              )}
             </div>
           )
         }
@@ -131,6 +167,7 @@ const fullTitle = `${pageTitle} | El Camino`;
               title: product.title,
               price: product.price,
               image: product.image,
+              unit: currentVariation?.unit || product.unit || '',
               variationName: product.variations?.find(
                 (v) => v.variationId === product.variationId
               )?.name,
@@ -148,8 +185,8 @@ const fullTitle = `${pageTitle} | El Camino`;
 
 <script>
   import { cart } from "@/lib/cart";
-  import { MoneyUtils } from "@/lib/square/money"; // Add this import
-  import type { ProductVariation } from "@/lib/square/types"; // Add this import
+  import { MoneyUtils } from "@/lib/square/money";
+  import type { ProductVariation } from "@/lib/square/types";
 
   let isProcessing = false;
   let addToCartTimeout: number | null = null;
@@ -171,6 +208,7 @@ const fullTitle = `${pageTitle} | El Camino`;
     // Update price and button data when variation changes
     select.addEventListener("change", async () => {
       const selectedVariationId = select.value;
+      const selectedOption = select.options[select.selectedIndex];
       const selectedVariation = variations.find(
         (v: ProductVariation) => v.variationId === selectedVariationId
       );
@@ -183,9 +221,28 @@ const fullTitle = `${pageTitle} | El Camino`;
       // Update price display
       const priceElement = document.querySelector(".text-content-emphasis");
       if (priceElement) {
-        priceElement.textContent = MoneyUtils.format(
+        const formattedPrice = MoneyUtils.format(
           MoneyUtils.fromFloat(selectedVariation.price)
         );
+        
+        // Get unit from data-unit attribute or variation object
+        const unitDisplay = selectedOption.dataset.unit || selectedVariation.unit || '';
+        
+        // Update price and unit display
+        if (unitDisplay) {
+          priceElement.innerHTML = `${formattedPrice} <span class="text-xl">${unitDisplay}</span>`;
+        } else {
+          priceElement.textContent = formattedPrice;
+        }
+      }
+
+      // Update image if the variation has its own image
+      const productImage = document.getElementById(
+        "product-image"
+      ) as HTMLImageElement;
+      const variationImage = selectedOption.dataset.image || selectedVariation.image;
+      if (productImage && variationImage) {
+        productImage.src = variationImage;
       }
 
       // Check inventory for selected variation
@@ -227,6 +284,10 @@ const fullTitle = `${pageTitle} | El Camino`;
         productData.variationId = selectedVariationId;
         productData.price = selectedVariation.price;
         productData.variationName = selectedVariation.name; // Include variation name
+        productData.unit = selectedVariation.unit || ''; // Include unit
+        if (selectedVariation.image) {
+          productData.image = selectedVariation.image; // Include variation image
+        }
 
         // Save updated data back to the button
         addToCartButton.dataset.product = JSON.stringify(productData);
@@ -298,6 +359,10 @@ const fullTitle = `${pageTitle} | El Camino`;
                 product.variationId = currentVariationId;
                 product.variationName = selectedVariation.name;
                 product.price = selectedVariation.price;
+                product.unit = selectedVariation.unit || '';
+                if (selectedVariation.image) {
+                  product.image = selectedVariation.image;
+                }
               }
             }
           }

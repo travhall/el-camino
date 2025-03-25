@@ -17,6 +17,8 @@ export interface Product {
   url: string;
   variations?: ProductVariation[];
   selectedVariationId?: string;
+  brand?: string;
+  unit?: string;
 }
 
 export type SquareMoneyObject = {
@@ -53,6 +55,8 @@ export interface ProductVariation {
   name: string;
   price: number;
   inStock?: boolean;
+  image?: string;
+  unit?: string;
 }
 
 export interface SquareApiConfig {
