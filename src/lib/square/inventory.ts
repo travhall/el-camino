@@ -1,6 +1,5 @@
 // src/lib/square/inventory.ts
 import { squareClient } from "./client";
-import type { CartItem } from "../cart/types";
 
 /**
  * Check if a specific item is in stock - direct API call without caching
@@ -104,4 +103,67 @@ export async function checkBulkInventory(
       return acc;
     }, {} as Record<string, number>);
   }
+}
+
+// Add this new function to src/lib/square/inventory.ts
+// Leave all existing functions untouched
+
+/**
+ * Enhanced variation inventory checker that handles special cases
+ * @param product The product object with variations to check
+ * @returns Object with flags for stock status
+ */
+export async function getProductStockStatus(product: any): Promise<{
+  isOutOfStock: boolean;
+  hasLimitedOptions: boolean;
+}> {
+  // Default state: in stock with all options
+  const result = {
+    isOutOfStock: false,
+    hasLimitedOptions: false,
+  };
+
+  try {
+    // Handle products with variations
+    if (product.variations && product.variations.length > 0) {
+      // Extract valid variation IDs
+      const variationIds = product.variations
+        .filter((v: any) => v && v.variationId)
+        .map((v: any) => v.variationId);
+
+      if (variationIds.length === 0) {
+        return result; // No valid variations
+      }
+
+      // Use existing bulk inventory check
+      const inventoryData = await checkBulkInventory(variationIds);
+
+      // Count how many variations are in stock
+      const totalVariations = variationIds.length;
+      const inStockCount = Object.values(inventoryData).filter(
+        (qty) => qty > 0
+      ).length;
+
+      if (inStockCount === 0) {
+        // All variations out of stock
+        result.isOutOfStock = true;
+        result.hasLimitedOptions = false;
+      } else if (inStockCount < totalVariations) {
+        // Some variations out of stock, some in stock
+        result.isOutOfStock = false;
+        result.hasLimitedOptions = true;
+      }
+      // else defaults apply (all in stock)
+    } else if (product.variationId) {
+      // Single variation product
+      const inStock = await isItemInStock(product.variationId);
+      result.isOutOfStock = !inStock;
+      // Limited options doesn't apply to single variation
+    }
+  } catch (error) {
+    console.error("[Inventory] Error checking product stock status:", error);
+    // Default to in-stock on errors
+  }
+
+  return result;
 }

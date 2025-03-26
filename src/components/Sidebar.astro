@@ -1,6 +1,7 @@
 ---
 // src/components/Sidebar.astro
 import { fetchCategoryHierarchy } from "@/lib/square/categories";
+import { squareClient } from "@/lib/square/client";
 
 interface Props {
   class?: string;
@@ -11,17 +12,61 @@ const { class: additionalClasses = "" } = Astro.props;
 // Fetch categories from Square
 const categoryHierarchy = await fetchCategoryHierarchy();
 
-// Extract top-level categories
-const topLevelCategories = categoryHierarchy.map((item) => ({
+// Square image URLs by category ID
+const categoryImageUrls: Record<string, string> = {};
+
+// Process categories to get images
+for (const item of categoryHierarchy) {
+  try {
+    // Only try to fetch if we have a category ID
+    if (item.category.id) {
+      // Retrieve the category object with related objects
+      const { result } = await squareClient.catalogApi.retrieveCatalogObject(
+        item.category.id,
+        true
+      );
+
+      // Find image objects in related objects
+      if (result.relatedObjects && result.relatedObjects.length > 0) {
+        // Look for IMAGE type objects
+        const imageObjects = result.relatedObjects.filter(
+          (obj) => obj.type === "IMAGE"
+        );
+
+        // If we found any images, use the first one
+        if (imageObjects.length > 0 && imageObjects[0].imageData?.url) {
+          categoryImageUrls[item.category.id] = imageObjects[0].imageData.url;
+        }
+      }
+    }
+  } catch (error) {
+    console.error(
+      `Error fetching images for category ${item.category.id}:`,
+      error
+    );
+  }
+}
+
+// Function to get image URL for a category, falling back to local image
+function getCategoryImageUrl(category: { id: string; slug: string }): string {
+  // If we found an image URL in Square, use it
+  if (category.id && categoryImageUrls[category.id]) {
+    return categoryImageUrls[category.id];
+  }
+
+  // Otherwise fall back to local path
+  return `/images/category-${category.slug}.png`;
+}
+
+// Map categories with their images
+const categoriesWithImages = categoryHierarchy.map((item) => ({
   category: item.category.name,
   url: `/category/${item.category.slug}`,
-  // Using placeholder images - replace with actual category images when available
-  src: `/images/category-${item.category.slug}.png`,
+  src: getCategoryImageUrl(item.category),
 }));
 
-// Function to sort categories to match Square Admin order
+// Sort function remains the same
 function getSortedCategories() {
-  // Define order map with string index signature
   const orderMap: Record<string, number> = {
     Skateboards: 0,
     Apparel: 1,
@@ -29,7 +74,7 @@ function getSortedCategories() {
     "Gift Cards & More": 3,
   };
 
-  return [...topLevelCategories].sort((a, b) => {
+  return [...categoriesWithImages].sort((a, b) => {
     const indexA = a.category in orderMap ? orderMap[a.category] : 999;
     const indexB = b.category in orderMap ? orderMap[b.category] : 999;
     return indexA - indexB;
@@ -38,6 +83,10 @@ function getSortedCategories() {
 
 // Get sorted categories
 const prodCats = getSortedCategories();
+
+// Add debug logging to see if we're getting any image URLs
+console.log("Category image URLs:", categoryImageUrls);
+console.log("Category hierarchy:", categoryHierarchy);
 ---
 
 <aside

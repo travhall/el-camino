@@ -55,6 +55,7 @@ export interface ProductVariation {
   name: string;
   price: number;
   inStock?: boolean;
+  quantity?: number;
   image?: string;
   unit?: string;
 }

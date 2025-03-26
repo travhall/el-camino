@@ -3,7 +3,7 @@ import Layout from "@/layouts/Layout.astro";
 import Button from "@/components/Button.astro";
 import { fetchProduct } from "@/lib/square/client";
 import { MoneyUtils } from "@/lib/square/money";
-import { checkItemInventory } from "@/lib/square/inventory";
+import { checkItemInventory, checkBulkInventory } from "@/lib/square/inventory";
 
 const { id } = Astro.params;
 const product = id ? await fetchProduct(id) : null;
@@ -12,22 +12,70 @@ if (!product) {
   return Astro.redirect("/404");
 }
 
-// Check inventory status, but don't block rendering if it fails
-let availableQuantity = 1; // Default to allowing purchases
+// Prepare for variation inventory checking
+let variationInventory: Record<string, number> = {};
 let inventoryError = false;
+let selectedVariationInStock = false;
+let selectedVariationQuantity = 0;
+
+// Find an in-stock variation to use as default if needed
+let defaultVariationId = product.variationId;
 
 try {
-  availableQuantity = await checkItemInventory(product.variationId);
-  console.log(`Server-side inventory check: ${availableQuantity} available`);
+  if (product.variations && product.variations.length > 0) {
+    // Get all variation IDs
+    const variationIds = product.variations.map((v) => v.variationId);
+
+    // Check inventory for all variations at once (more efficient)
+    variationInventory = await checkBulkInventory(variationIds);
+
+    // Set inventory status for each variation directly on product.variations
+    product.variations = product.variations.map((v) => ({
+      ...v,
+      inStock: (variationInventory[v.variationId] || 0) > 0,
+      quantity: variationInventory[v.variationId] || 0,
+    }));
+
+    // Try to find first in-stock variation if default is out of stock
+    const defaultIsInStock = (variationInventory[defaultVariationId] || 0) > 0;
+
+    if (!defaultIsInStock && product.variations.length > 0) {
+      // Find first in-stock variation
+      const firstInStockVariation = product.variations.find((v) => v.inStock);
+      if (firstInStockVariation) {
+        // Use this as the selected variation
+        defaultVariationId = firstInStockVariation.variationId;
+        if (firstInStockVariation.image) {
+          product.image = firstInStockVariation.image;
+        }
+      }
+    }
+
+    // Set status for selected variation
+    const currentVariation = product.variations.find(
+      (v) => v.variationId === defaultVariationId
+    );
+
+    // Use the found variation or fall back to original selection
+    selectedVariationInStock = currentVariation?.inStock || false;
+    selectedVariationQuantity = currentVariation?.quantity || 0;
+
+    // Update product with potentially new default variation
+    product.variationId = defaultVariationId;
+  } else {
+    // Fallback to checking just the main variation
+    selectedVariationQuantity = await checkItemInventory(product.variationId);
+    selectedVariationInStock = selectedVariationQuantity > 0;
+  }
 } catch (err) {
   // If inventory check fails, we'll still show the product
   console.error(
     `Inventory check error: ${err instanceof Error ? err.message : String(err)}`
   );
   inventoryError = true;
+  selectedVariationInStock = true; // Default to allowing purchases if inventory check fails
 }
 
-const inStock = availableQuantity > 0 || inventoryError;
 const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 
 const pageTitle = product.title;
@@ -36,34 +84,53 @@ const fullTitle = `${pageTitle} | El Camino`;
 // Get variation data for display
 const hasMultipleVariations =
   product.variations && product.variations.length > 1;
-const currentVariation = product.variations?.find(
-  (v) => v.variationId === product.variationId
-);
 
-// Get the unit display - from the current variation or the product
-const unitDisplay = currentVariation?.unit || product.unit || '';
+// Simplified: Get the unit display directly from the variation if exists
+const unitDisplay =
+  product.variations?.find((v) => v.variationId === product.variationId)
+    ?.unit ||
+  product.unit ||
+  "";
 ---
 
 <Layout title={fullTitle}>
-  <section class="p-4 sm:p-6 lg:p-8">
-    <div class="lg:grid lg:grid-cols-2 lg:gap-x-8 items-center">
+  <section class="p-4 sm:p-6 lg:p-8 relative">
+    <div
+      class="lg:grid lg:grid-cols-2 lg:gap-x-8 xl:gap-x-12 2xl:gap-x-16 items-center"
+    >
       <div
-        class="aspect-square border-4 border-surface-secondary overflow-hidden bg-surface-secondary"
+        class="aspect-square border-4 border-surface-secondary overflow-hidden bg-surface-secondary relative"
       >
         <img
           id="product-image"
           src={product.image}
           alt={product.title}
-          class={`w-full h-full object-cover ${!inStock ? "opacity-75" : ""}`}
+          class={`w-full h-full object-cover ${!selectedVariationInStock ? "opacity-75" : ""}`}
           onerror="this.src='/images/placeholder.png'"
         />
+
+        {/* Out of stock overlay */}
+        {
+          !selectedVariationInStock && (
+            <div
+              id="stock-overlay"
+              class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-sm"
+            >
+              Sold Out
+            </div>
+          )
+        }
       </div>
 
       <div class="product-info mt-10 lg:mt-0">
-        <h1 class="flex flex-col text-4xl font-display mb-4 text-content-heading">
+        <h1
+          class="flex flex-col text-4xl font-display mb-4 text-content-heading"
+        >
           {/* Display the brand if available */}
-          {product.brand && 
-            <span class="text-xl uppercase">{product.brand}</span>
+          {
+            product.brand && (
+              <span class="text-xl uppercase">{product.brand}</span>
+            )
           }
           {product.title}
         </h1>
@@ -72,26 +139,25 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
           <p class="text-5xl font-display text-content-emphasis">
             {formattedPrice}
             {/* Display unit if available */}
-            {unitDisplay && 
-              <span class="text-xl">{unitDisplay}</span>
-            }
+            {unitDisplay && <span class="text-xl">{unitDisplay}</span>}
           </p>
 
           <!-- Inventory Status -->
-          {
-            !inStock ? (
-              <p class="mt-2 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold inline-block">
-                This item is currently sold out
-              </p>
-            ) : (
-              <p class="mt-2">
-                In Stock{" "}
-                {availableQuantity > 1
-                  ? `(${availableQuantity} available)`
-                  : ""}
-              </p>
-            )
-          }
+          <div id="inventory-status">
+            {
+              !selectedVariationInStock ? (
+                <p class="mt-2 text-state-error-surface text-md font-bold inline-block">
+                  This item is currently unavailable
+                </p>
+              ) : (
+                <p class="mt-2">
+                  {selectedVariationQuantity > 1
+                    ? `(${selectedVariationQuantity} available)`
+                    : ""}
+                </p>
+              )
+            }
+          </div>
 
           {
             inventoryError && (
@@ -110,43 +176,66 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
           )
         }
 
-        {
-          /* Display variation options - dropdown for multiple, text for single variation */
-        }
+        {/* Display variation options with stock status */}
         {
           product.variations && (
             <div class="mt-4">
               {hasMultipleVariations ? (
-              <label
-                for="variation-select"
-                class="block text-sm font-medium text-content-body mb-2"
-              >
-                Options
-              </label>
-                <select
-                  id="variation-select"
-                  class="border-ui-input-border bg-ui-input-surface text-ui-input-text p-2 rounded-sm"
-                  data-variations={JSON.stringify(product.variations)}
-                >
-                  {product.variations.map((variation) => (
-                    <option
-                      value={variation.variationId}
-                      selected={variation.variationId === product.variationId}
-                      data-image={variation.image || ""}
-                      data-unit={variation.unit || ""}
+                <div>
+                  <label
+                    for="variation-select"
+                    class="block text-sm font-medium text-content-body mb-2"
+                  >
+                    Options
+                  </label>
+                  <div class="relative">
+                    <select
+                      id="variation-select"
+                      class="border-ui-input-border bg-ui-input-surface text-ui-input-text p-2 pr-8 rounded-sm"
+                      data-variations={JSON.stringify(product.variations)}
                     >
-                      {variation.name}
-                    </option>
-                  ))}
-                </select>
+                      {product.variations.map((variation) => (
+                        <option
+                          value={variation.variationId}
+                          selected={
+                            variation.variationId === product.variationId
+                          }
+                          data-image={variation.image || ""}
+                          data-unit={variation.unit || ""}
+                          data-in-stock={variation.inStock ? "true" : "false"}
+                          data-quantity={variation.quantity || 0}
+                          disabled={!variation.inStock}
+                          class={!variation.inStock ? "text-content-meta" : ""}
+                        >
+                          {variation.name}{" "}
+                          {!variation.inStock ? "(Sold Out)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               ) : (
                 <div class="inline-block max-w-[54ch]">
-                  {currentVariation?.name || ""}
+                  {product.variations.find(
+                    (v) => v.variationId === product.variationId
+                  )?.name || ""}
                   <input
                     type="hidden"
                     id="variation-select"
                     value={product.variationId}
                     data-variations={JSON.stringify(product.variations || [])}
+                    data-in-stock={
+                      product.variations.find(
+                        (v) => v.variationId === product.variationId
+                      )?.inStock
+                        ? "true"
+                        : "false"
+                    }
+                    data-quantity={
+                      product.variations.find(
+                        (v) => v.variationId === product.variationId
+                      )?.quantity || 0
+                    }
                   />
                 </div>
               )}
@@ -159,7 +248,7 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
             type="button"
             variant="primary"
             size="lg"
-            classes={`w-full md:w-auto ${!inStock ? "opacity-50 cursor-not-allowed" : ""}`}
+            classes={`w-full md:w-auto ${!selectedVariationInStock ? "opacity-50 pointer-events-none cursor-not-allowed" : ""}`}
             data-product={JSON.stringify({
               id: product.id,
               catalogObjectId: product.catalogObjectId,
@@ -167,15 +256,15 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
               title: product.title,
               price: product.price,
               image: product.image,
-              unit: currentVariation?.unit || product.unit || '',
+              unit: unitDisplay,
               variationName: product.variations?.find(
                 (v) => v.variationId === product.variationId
               )?.name,
             })}
             id="add-to-cart-button"
-            disabled={!inStock}
+            disabled={!selectedVariationInStock}
           >
-            {inStock ? "Add to Cart" : "Sold Out"}
+            {selectedVariationInStock ? "Add to Cart" : "Sold Out"}
           </Button>
         </div>
       </div>
@@ -190,6 +279,21 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
 
   let isProcessing = false;
   let addToCartTimeout: number | null = null;
+
+  // Helper function for getting data values with fallbacks
+  function getDataValue(
+    option: HTMLOptionElement,
+    variation: any,
+    field: string,
+    defaultValue = ""
+  ) {
+    return option.dataset[field] || variation[field] || defaultValue;
+  }
+
+  // Helper function for creating a compound variation key
+  function getVariationKey(item: { id: string; variationId: string }) {
+    return `${item.id}:${item.variationId}`;
+  }
 
   function setupVariationSelector(): void {
     const select = document.getElementById(
@@ -206,7 +310,7 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
     ) as ProductVariation[];
 
     // Update price and button data when variation changes
-    select.addEventListener("change", async () => {
+    select.addEventListener("change", () => {
       const selectedVariationId = select.value;
       const selectedOption = select.options[select.selectedIndex];
       const selectedVariation = variations.find(
@@ -214,9 +318,9 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
       );
       if (!selectedVariation) return;
 
-      console.log(
-        `Selected variation: ${selectedVariation.name} (${selectedVariation.variationId})`
-      );
+      // Get variation stock status - strict comparison to "true" string
+      const inStock = selectedOption.dataset.inStock === "true";
+      const quantity = parseInt(selectedOption.dataset.quantity || "0", 10);
 
       // Update price display
       const priceElement = document.querySelector(".text-content-emphasis");
@@ -224,10 +328,14 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
         const formattedPrice = MoneyUtils.format(
           MoneyUtils.fromFloat(selectedVariation.price)
         );
-        
-        // Get unit from data-unit attribute or variation object
-        const unitDisplay = selectedOption.dataset.unit || selectedVariation.unit || '';
-        
+
+        // Get unit using the helper function
+        const unitDisplay = getDataValue(
+          selectedOption,
+          selectedVariation,
+          "unit"
+        );
+
         // Update price and unit display
         if (unitDisplay) {
           priceElement.innerHTML = `${formattedPrice} <span class="text-xl">${unitDisplay}</span>`;
@@ -240,62 +348,31 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
       const productImage = document.getElementById(
         "product-image"
       ) as HTMLImageElement;
-      const variationImage = selectedOption.dataset.image || selectedVariation.image;
+      const variationImage =
+        selectedOption.dataset.image || selectedVariation.image;
       if (productImage && variationImage) {
         productImage.src = variationImage;
       }
 
-      // Check inventory for selected variation
-      try {
-        const response = await fetch(
-          `/api/check-inventory?variationId=${selectedVariationId}`
-        );
-        const data = await response.json();
+      // Update product data on button
+      const productData = JSON.parse(addToCartButton.dataset.product || "{}");
 
-        const inStock = data.inStock;
-        const statusElement = document.querySelector(".mt-2");
+      // Update product data with destructuring
+      if (selectedVariation) {
+        const { name, price, unit = "", image } = selectedVariation;
 
-        if (statusElement) {
-          if (inStock) {
-            statusElement.className = "mt-2 text-state-success-text";
-            statusElement.textContent = `In Stock ${data.quantity > 1 ? `(${data.quantity} available)` : ""}`;
-          } else {
-            statusElement.className = "mt-2 text-state-error-text";
-            statusElement.textContent = "This item is currently out of stock";
-          }
-        }
-
-        // Update add to cart button
-        const btnElement = addToCartButton as HTMLButtonElement;
-        btnElement.disabled = !inStock;
-
-        if (inStock) {
-          btnElement.textContent = "Add to Cart";
-          btnElement.classList.remove("opacity-50", "cursor-not-allowed");
-        } else {
-          btnElement.textContent = "Out of Stock";
-          btnElement.classList.add("opacity-50", "cursor-not-allowed");
-        }
-
-        // Update product data on button
-        const productData = JSON.parse(addToCartButton.dataset.product || "{}");
-
-        // IMPORTANT: Update the variation ID and name
-        productData.variationId = selectedVariationId;
-        productData.price = selectedVariation.price;
-        productData.variationName = selectedVariation.name; // Include variation name
-        productData.unit = selectedVariation.unit || ''; // Include unit
-        if (selectedVariation.image) {
-          productData.image = selectedVariation.image; // Include variation image
-        }
-
-        // Save updated data back to the button
-        addToCartButton.dataset.product = JSON.stringify(productData);
-
-        console.log("Updated button data:", productData);
-      } catch (error) {
-        console.error("Error checking inventory:", error);
+        // Update product data with Object.assign
+        Object.assign(productData, {
+          variationId: selectedVariationId,
+          variationName: name,
+          price,
+          unit,
+          ...(image && { image }),
+        });
       }
+
+      // Save updated data back to the button
+      addToCartButton.dataset.product = JSON.stringify(productData);
     });
   }
 
@@ -312,13 +389,12 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
 
     newButton.addEventListener("click", async (e) => {
       try {
-        // Check if button is disabled
+        // Check if button is disabled first
         const btnElement = newButton as HTMLButtonElement;
         if (btnElement.disabled || isProcessing) return;
-
         isProcessing = true;
 
-        // IMPORTANT: Get the current variation selection directly
+        // Get the current variation selection directly
         const select = document.getElementById(
           "variation-select"
         ) as HTMLSelectElement;
@@ -333,54 +409,43 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
         const product = JSON.parse(baseProductData);
 
         // If there's a variation selector, use its current value
-        if (select) {
+        if (select?.value) {
           const currentVariationId = select.value;
-          console.log(`Current selected variation ID: ${currentVariationId}`);
+          const variationsData = select.dataset.variations;
 
-          // Only override if there's a selection and it's different
-          if (
-            currentVariationId &&
-            currentVariationId !== product.variationId
-          ) {
-            // Find the variation details
-            const variationsData = select.dataset.variations;
-            if (variationsData) {
-              const variations = JSON.parse(variationsData);
-              const selectedVariation = variations.find(
-                (v: any) => v.variationId === currentVariationId
-              );
+          if (variationsData) {
+            const variations = JSON.parse(variationsData);
+            const selectedVariation = variations.find(
+              (v: { variationId: string }) =>
+                v.variationId === currentVariationId
+            );
 
-              if (selectedVariation) {
-                console.log(
-                  `Overriding with selected variation: ${selectedVariation.name}`
-                );
+            if (selectedVariation) {
+              // Update product data with destructuring
+              const { name, price, unit = "", image } = selectedVariation;
 
-                // Update product with selected variation details
-                product.variationId = currentVariationId;
-                product.variationName = selectedVariation.name;
-                product.price = selectedVariation.price;
-                product.unit = selectedVariation.unit || '';
-                if (selectedVariation.image) {
-                  product.image = selectedVariation.image;
-                }
-              }
+              // Update product data using Object.assign
+              Object.assign(product, {
+                variationId: currentVariationId,
+                variationName: name,
+                price,
+                unit,
+                ...(image && { image }),
+              });
             }
           }
         }
 
-        console.log(
-          `Adding to cart: ${product.title} with variation ${product.variationId} (${product.variationName})`
-        );
-
-        // Check if this specific variation is already in cart
+        // Check if this specific variation is already in cart using compound key
         const cartItems = cart.getItems();
+        const productKey = getVariationKey(product);
         const existingItem = cartItems.find(
-          (item) =>
-            item.id === product.id && item.variationId === product.variationId
+          (item) => getVariationKey(item) === productKey
         );
 
         if (existingItem) {
-          showNotification("Item already in cart", "info");
+          window.showNotification("Item already in cart", "info");
+          isProcessing = false;
           return;
         }
 
@@ -391,62 +456,29 @@ const unitDisplay = currentVariation?.unit || product.unit || '';
         });
 
         if (result.success) {
-          showNotification(result.message || "Added to cart");
+          window.showNotification(result.message || "Added to cart");
         } else {
-          showNotification(result.message || "Failed to add to cart", "error");
+          window.showNotification(
+            result.message || "Failed to add to cart",
+            "error"
+          );
         }
       } catch (error) {
         console.error("Error adding to cart:", error);
-        showNotification("Failed to add to cart", "error");
+        window.showNotification("Failed to add to cart", "error");
       } finally {
         isProcessing = false;
       }
     });
   }
 
-  function showNotification(
-    message: string,
-    type: "success" | "error" | "info" = "success"
-  ): void {
-    if (addToCartTimeout) {
-      clearTimeout(addToCartTimeout);
-    }
-
-    const existingNotification = document.querySelector(".cart-notification");
-    if (existingNotification) {
-      existingNotification.remove();
-    }
-
-    const notification = document.createElement("div");
-    notification.className = `cart-notification fixed top-4 right-4 px-4 py-2 rounded-lg z-50 transition-opacity duration-300 ${
-      type === "success"
-        ? "bg-state-success-surface text-state-success-text"
-        : type === "error"
-          ? "bg-state-error-surface text-state-error-text"
-          : "bg-state-info-surface text-state-info-text"
-    }`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-
-    // Fade out and remove
-    addToCartTimeout = window.setTimeout(() => {
-      notification.style.opacity = "0";
-      setTimeout(() => notification.remove(), 300);
-    }, 2000);
-  }
-
   // Event Listeners
   document.addEventListener("astro:page-load", () => {
-    console.debug("Product page: Setting up product handlers");
-
-    // Order matters here - setup variation selector first
     setupVariationSelector();
-
-    // Then setup add to cart button
     setupAddToCartHandler();
   });
 
-  // Cleanup on HMR
+  // Cleanup
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {
       if (addToCartTimeout) {

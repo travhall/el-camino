@@ -1,8 +1,6 @@
 ---
 // src/pages/cart.astro
 import Layout from "@/layouts/Layout.astro";
-import { Icon } from "astro-icon/components";
-import Button from "@/components/Button.astro";
 ---
 
 <Layout title="Your Shopping Cart | El Camino">
@@ -13,10 +11,10 @@ import Button from "@/components/Button.astro";
       Shopping Cart
     </h1>
 
-    <!-- Loading State -->
+    <!-- Loading/Content Container -->
     <div
       id="cart-loading"
-      class="text-center min-h-[50dvh] items-center justify-center py-12"
+      class="text-center min-h-[50dvh] flex items-center justify-center py-12"
     >
       <p class="text-lg animate-pulse text-content-body">Loading cart...</p>
     </div>
@@ -24,7 +22,7 @@ import Button from "@/components/Button.astro";
     <!-- Cart Content -->
     <div id="cart-container" class="hidden"></div>
 
-    <!-- Loading Indicator -->
+    <!-- Processing Indicator -->
     <div
       id="loading-overlay"
       class="fixed inset-0 bg-surface-primary/50 min-h-[50dvh] items-center justify-center hidden z-50"
@@ -32,10 +30,6 @@ import Button from "@/components/Button.astro";
       <div class="bg-surface-secondary p-4">
         <p class="text-lg text-content-body">Processing...</p>
       </div>
-    </div>
-
-    <!-- Notification Container -->
-    <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2">
     </div>
   </section>
 </Layout>
@@ -45,80 +39,8 @@ import Button from "@/components/Button.astro";
   import type { CartItem } from "@/lib/cart/types";
   import { MoneyUtils } from "@/lib/square/money";
 
-  let updateDisplayTimeout: number | null = null;
+  // Track UI update state
   let isUpdating = false;
-
-  async function handleCheckout(): Promise<void> {
-    try {
-      const items = cart.getItems();
-      if (items.length === 0) {
-        showNotification("Your cart is empty", "error");
-        return;
-      }
-
-      setLoading(true);
-
-      const response = await fetch("/api/create-checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ items }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error?.message ||
-            `Checkout failed with status: ${response.status}`
-        );
-      }
-
-      if (!data.checkoutUrl) {
-        throw new Error("No checkout URL returned");
-      }
-
-      showNotification("Redirecting to checkout...", "success");
-      window.location.href = data.checkoutUrl;
-    } catch (error) {
-      console.error("Checkout error:", error);
-      showNotification(
-        error instanceof Error
-          ? error.message
-          : "Checkout failed. Please try again.",
-        "error"
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function showNotification(
-    message: string,
-    type: "success" | "error" | "info" = "success"
-  ): void {
-    const container = document.getElementById("notification-container");
-    if (!container) return;
-
-    const notification = document.createElement("div");
-    const bgClass =
-      type === "success"
-        ? "bg-state-success-surface text-state-success-text"
-        : type === "error"
-          ? "bg-state-error-surface text-state-error-text"
-          : "bg-blue-100 text-blue-800";
-
-    notification.className = `px-4 py-2 transition-all duration-300 ${bgClass}`;
-    notification.textContent = message;
-
-    container.appendChild(notification);
-
-    setTimeout(() => {
-      notification.style.opacity = "0";
-      setTimeout(() => notification.remove(), 300);
-    }, 3000);
-  }
 
   function setLoading(show: boolean): void {
     const overlay = document.getElementById("loading-overlay");
@@ -128,11 +50,12 @@ import Button from "@/components/Button.astro";
     }
   }
 
+  // Templates
   function createEmptyCart(): string {
     return `
       <div class="flex flex-col min-h-[50dvh] items-center justify-center" id="empty-cart">
         <p class="text-lg mb-6 text-content-body">Your cart is empty</p>
-        <a
+            <a
               href="/all-products"
               class="block text-center bg-ui-button-surface/0 hover:bg-ui-button-surface/10 border-ui-button-surface text-ui-button-surface font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-2 px-4"
             >
@@ -216,6 +139,49 @@ import Button from "@/components/Button.astro";
     `;
   }
 
+  // Cart Functions
+  async function handleCheckout(): Promise<void> {
+    try {
+      const items = cart.getItems();
+      if (items.length === 0) {
+        window.showNotification("Your cart is empty", "error");
+        return;
+      }
+
+      setLoading(true);
+
+      const response = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ items }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || "Checkout failed");
+      }
+
+      if (!data.checkoutUrl) {
+        throw new Error("No checkout URL returned");
+      }
+
+      window.showNotification("Redirecting to checkout...", "success");
+      window.location.href = data.checkoutUrl;
+    } catch (error) {
+      window.showNotification(
+        error instanceof Error
+          ? error.message
+          : "Checkout failed. Please try again.",
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function attachEventListeners(): void {
     document
       .querySelectorAll<HTMLButtonElement>(".remove-btn")
@@ -223,7 +189,6 @@ import Button from "@/components/Button.astro";
         button.addEventListener("click", () => {
           const id = button.dataset.id;
           if (!id) return;
-          console.log(`Removing item ${id}`);
           cart.removeItem(id);
         });
       });
@@ -236,98 +201,73 @@ import Button from "@/components/Button.astro";
       ?.addEventListener("click", () => {
         if (confirm("Are you sure you want to clear your cart?")) {
           cart.clear();
-          showNotification("Cart cleared successfully");
+          window.showNotification("Cart cleared successfully");
         }
       });
   }
 
   function updateDisplay(): void {
-    console.log("Updating cart display");
-
-    if (isUpdating) {
-      console.log("Already updating, skipping");
-      return;
-    }
-
+    if (isUpdating) return;
     isUpdating = true;
 
-    if (updateDisplayTimeout) {
-      window.clearTimeout(updateDisplayTimeout);
-    }
+    try {
+      const items = cart.getItems();
+      const total = cart.getTotal();
 
-    updateDisplayTimeout = window.setTimeout(() => {
-      try {
-        const items = cart.getItems();
-        const total = cart.getTotal();
+      const cartLoading = document.getElementById("cart-loading");
+      const cartContainer = document.getElementById("cart-container");
 
-        console.log(`Cart has ${items.length} items with total ${total}`);
+      if (!cartContainer) return;
 
-        const cartLoading = document.getElementById("cart-loading");
-        const cartContainer = document.getElementById("cart-container");
+      if (cartLoading) cartLoading.classList.add("hidden");
+      cartContainer.classList.remove("hidden");
 
-        if (!cartContainer) {
-          console.debug("Cart container not found, waiting for DOM");
-          return;
-        }
-
-        if (cartLoading) cartLoading.classList.add("hidden");
-        cartContainer.classList.remove("hidden");
-
-        if (items.length === 0) {
-          console.log("Cart is empty, showing empty cart");
-          cartContainer.innerHTML = createEmptyCart();
-        } else {
-          console.log("Rendering cart with items:", items);
-          cartContainer.innerHTML = `
-            <div class="grid md:grid-cols-3 gap-2 items-start">
-              <div class="md:col-span-2 space-y-2 grid">
-                <button
-                  type="button"
-                  id="clear-cart-button"
-                  class="font-semibold text-sm hover:underline transition-all duration-300 p-2 -my-1 justify-self-end"
-                >
-                  Clear Cart
-                </button>
-                ${items.map(createCartItem).join("")}
-              </div>
-              ${createOrderSummary(total)}
+      if (items.length === 0) {
+        cartContainer.innerHTML = createEmptyCart();
+      } else {
+        cartContainer.innerHTML = `
+          <div class="grid md:grid-cols-3 gap-2 items-start">
+            <div class="md:col-span-2 space-y-2 grid">
+              <button
+                type="button"
+                id="clear-cart-button"
+                class="font-semibold text-sm hover:underline transition-all duration-300 p-2 -my-1 justify-self-end"
+              >
+                Clear Cart
+              </button>
+              ${items.map(createCartItem).join("")}
             </div>
-          `;
-        }
-
-        attachEventListeners();
-      } catch (error) {
-        console.error("Error updating cart display:", error);
-      } finally {
-        isUpdating = false;
-        updateDisplayTimeout = null;
+            ${createOrderSummary(total)}
+          </div>
+        `;
       }
-    }, 50);
+
+      attachEventListeners();
+    } catch (error) {
+      // Silent failure
+    } finally {
+      isUpdating = false;
+    }
   }
 
   // Event Handlers
-  let pageLoadHandler = () => {
-    console.debug("Cart page: Page loaded");
+  function handlePageLoad() {
     updateDisplay();
-  };
+  }
 
-  let cartUpdateHandler = () => {
-    console.debug("Cart updated event received");
+  function handleCartUpdate() {
     updateDisplay();
-  };
+  }
 
   // Add event listeners
-  document.addEventListener("astro:page-load", pageLoadHandler);
-  window.addEventListener("cartUpdated", cartUpdateHandler);
+  document.addEventListener("astro:page-load", handlePageLoad);
+  window.addEventListener("cartUpdated", handleCartUpdate);
 
   // Cleanup
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {
-      if (updateDisplayTimeout) {
-        window.clearTimeout(updateDisplayTimeout);
-      }
-      document.removeEventListener("astro:page-load", pageLoadHandler);
-      window.removeEventListener("cartUpdated", cartUpdateHandler);
+      document.removeEventListener("astro:page-load", handlePageLoad);
+      window.removeEventListener("cartUpdated", handleCartUpdate);
     });
   }
 </script>

@@ -1,0 +1,64 @@
+---
+// src/components/Notification.astro
+---
+
+<div
+  id="notification-container"
+  class="fixed top-4 right-4 z-[9999] text-lg font-light space-y-2 rounded-sm"
+>
+</div>
+
+<script>
+  // Add TypeScript declaration for the global function
+  declare global {
+    interface Window {
+      showNotification(
+        message: string,
+        type?: "success" | "error" | "info",
+        duration?: number
+      ): void;
+    }
+  }
+
+  // Notification type definition
+  type NotificationType = "success" | "error" | "info";
+
+  // Create notification manager
+  const notificationManager = {
+    showNotification(
+      message: string,
+      type: NotificationType = "success",
+      duration: number = 3000
+    ): void {
+      const container = document.getElementById("notification-container");
+      if (!container) {
+        console.error("Notification container not found!");
+        return;
+      }
+
+      // Create notification element
+      const notification = document.createElement("div");
+      const bgClass =
+        type === "success"
+          ? "bg-state-success-surface text-state-success-text"
+          : type === "error"
+            ? "bg-state-error-surface text-state-error-text"
+            : "bg-blue-100 text-blue-800";
+
+      notification.className = `px-4 py-2 transition-all duration-300 ${bgClass}`;
+      notification.textContent = message;
+
+      container.appendChild(notification);
+
+      // Set up removal
+      setTimeout(() => {
+        notification.style.opacity = "0";
+        setTimeout(() => notification.remove(), 300);
+      }, duration);
+    },
+  };
+
+  // Assign to window object
+  window.showNotification =
+    notificationManager.showNotification.bind(notificationManager);
+</script>

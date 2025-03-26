@@ -5,10 +5,18 @@ import { MoneyUtils } from "@/lib/square/money";
 import type { OrderLineItem, Order } from "square";
 import { cart } from "@/lib/cart";
 
+// Track line item additional info
+type LineItemInfo = {
+  image?: string;
+  variationName?: string;
+};
+type LineItemDetails = Record<string, LineItemInfo>;
+
 const orderId = Astro.url.searchParams.get("orderId");
 console.log("Processing order confirmation:", orderId);
 
 let orderDetails: Order | null = null;
+let lineItemDetails: LineItemDetails = {};
 let error: string | null = null;
 
 if (!orderId) {
@@ -16,6 +24,7 @@ if (!orderId) {
   console.error("Missing orderId in URL");
 } else {
   try {
+    // Retrieve the basic order
     const { result } = await squareClient.ordersApi.retrieveOrder(orderId);
 
     if (!result.order) {
@@ -23,6 +32,86 @@ if (!orderId) {
     }
 
     orderDetails = result.order;
+
+    // Fetch details for each line item
+    if (orderDetails.lineItems?.length) {
+      for (const item of orderDetails.lineItems) {
+        if (item.catalogObjectId) {
+          const itemKey = item.uid || "";
+          lineItemDetails[itemKey] = {};
+
+          try {
+            // Try to fetch the catalog object (should be a variation)
+            const { result: objectResult } =
+              await squareClient.catalogApi.retrieveCatalogObject(
+                item.catalogObjectId
+              );
+
+            if (objectResult.object) {
+              // Check if it's a variation
+              if (objectResult.object.type === "ITEM_VARIATION") {
+                // Store variation name
+                if (objectResult.object.itemVariationData?.name) {
+                  lineItemDetails[itemKey].variationName =
+                    objectResult.object.itemVariationData.name;
+                }
+
+                // Try to get variation image
+                if (objectResult.object.itemVariationData?.imageIds?.[0]) {
+                  const { result: imageResult } =
+                    await squareClient.catalogApi.retrieveCatalogObject(
+                      objectResult.object.itemVariationData.imageIds[0]
+                    );
+
+                  if (
+                    imageResult.object?.type === "IMAGE" &&
+                    imageResult.object.imageData?.url
+                  ) {
+                    lineItemDetails[itemKey].image =
+                      imageResult.object.imageData.url;
+                    continue; // Skip to next item if we found an image
+                  }
+                }
+
+                // If no variation image, check parent item image
+                if (objectResult.object.itemVariationData?.itemId) {
+                  // Get the parent item
+                  const { result: parentResult } =
+                    await squareClient.catalogApi.retrieveCatalogObject(
+                      objectResult.object.itemVariationData.itemId
+                    );
+
+                  if (
+                    parentResult.object?.type === "ITEM" &&
+                    parentResult.object.itemData?.imageIds?.[0]
+                  ) {
+                    // Get the image from the parent item
+                    const { result: imageResult } =
+                      await squareClient.catalogApi.retrieveCatalogObject(
+                        parentResult.object.itemData.imageIds[0]
+                      );
+
+                    if (
+                      imageResult.object?.type === "IMAGE" &&
+                      imageResult.object.imageData?.url
+                    ) {
+                      lineItemDetails[itemKey].image =
+                        imageResult.object.imageData.url;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error(
+              `Error fetching details for item ${item.catalogObjectId}:`,
+              error
+            );
+          }
+        }
+      }
+    }
+
     console.log("Order retrieved successfully:", orderDetails.id);
   } catch (e) {
     error = e instanceof Error ? e.message : "Failed to load order";
@@ -36,7 +125,9 @@ function formatMoney(money: OrderLineItem["totalMoney"]): string {
 }
 
 // Get the title and content from the page
-const pageTitle = orderDetails?.id;
+const pageTitle = orderDetails?.id
+  ? `Order #${orderDetails.id.slice(-6)}`
+  : "Order Confirmation";
 const fullTitle = `${pageTitle} | El Camino`;
 ---
 
@@ -74,26 +165,49 @@ const fullTitle = `${pageTitle} | El Camino`;
             <p class="text-content-body">Your order has been confirmed.</p>
           </div>
 
-          <div class="bg-surface-secondary rounded-lg p-6">
-            <h2 class="font-display text-xl mb-4 text-content-heading">
+          <div class="order-summary bg-surface-secondary rounded-lg p-6">
+            <h2 class="font-display text-2xl mb-4 text-content-heading">
               Order Summary
             </h2>
-            <div class="space-y-4">
+            <div>
               {orderDetails.lineItems?.map((item) => (
-                <div class="flex justify-between text-content-body">
-                  <span>
-                    {item.name} × {item.quantity}
-                  </span>
-                  <span class="font-display">
-                    {formatMoney(item.totalMoney)}
-                  </span>
+                <div class="flex items-center py-4 border-b border-surface-tertiary">
+                  {/* Item image */}
+                  <div class="w-16 h-16 mr-4 bg-surface-tertiary rounded overflow-hidden">
+                    <img
+                      src={
+                        item.uid && lineItemDetails[item.uid]?.image
+                          ? lineItemDetails[item.uid].image
+                          : "/images/placeholder.png"
+                      }
+                      alt={item.name || "Product"}
+                      class="w-full h-full object-cover"
+                      onerror="this.src='/images/placeholder.png'"
+                    />
+                  </div>
+                  <div class="flex-1 flex justify-between text-content-body">
+                    <div>
+                      <div>{item.name}</div>
+                      {item.uid && lineItemDetails[item.uid]?.variationName && (
+                        <div class="text-sm text-content-meta">
+                          {lineItemDetails[item.uid].variationName}
+                        </div>
+                      )}
+                      <div class="text-xs">Qty: {item.quantity}</div>
+                    </div>
+                    <span class="font-display font-bold text-2xl self-center">
+                      {formatMoney(item.totalMoney)}
+                    </span>
+                  </div>
                 </div>
               ))}
 
-              <div class="border-t border-surface-secondary pt-4">
+              <div class="pt-4">
                 <div class="flex justify-between font-bold text-content-emphasis">
                   <span>Total</span>
-                  <span>{formatMoney(orderDetails.totalMoney)}</span>
+                  <span class="font-display font-bold text-3xl">
+                    {formatMoney(orderDetails.totalMoney)}
+                  </span>
                 </div>
               </div>
             </div>
