@@ -3,8 +3,9 @@ import Layout from "@/layouts/Layout.astro";
 import Button from "@/components/Button.astro";
 import { fetchProduct } from "@/lib/square/client";
 import { MoneyUtils } from "@/lib/square/money";
-import { checkItemInventory, checkBulkInventory } from "@/lib/square/inventory";
+import { checkBulkInventory } from "@/lib/square/inventory";
 
+// Get product ID from URL params
 const { id } = Astro.params;
 const product = id ? await fetchProduct(id) : null;
 
@@ -26,7 +27,7 @@ try {
     // Get all variation IDs
     const variationIds = product.variations.map((v) => v.variationId);
 
-    // Check inventory for all variations at once (more efficient)
+    // Check inventory for all variations at once using improved function with caching
     variationInventory = await checkBulkInventory(variationIds);
 
     // Set inventory status for each variation directly on product.variations
@@ -51,10 +52,11 @@ try {
       }
     }
 
-    // Set status for selected variation
-    const currentVariation = product.variations.find(
-      (v) => v.variationId === defaultVariationId
+    // Set status for selected variation - avoid find by using a Map for O(1) lookup
+    const variationMap = new Map(
+      product.variations.map((v) => [v.variationId, v])
     );
+    const currentVariation = variationMap.get(defaultVariationId);
 
     // Use the found variation or fall back to original selection
     selectedVariationInStock = currentVariation?.inStock || false;
@@ -63,8 +65,8 @@ try {
     // Update product with potentially new default variation
     product.variationId = defaultVariationId;
   } else {
-    // Fallback to checking just the main variation
-    selectedVariationQuantity = await checkItemInventory(product.variationId);
+    // For single variation products, use the cached inventory check
+    selectedVariationQuantity = variationInventory[product.variationId] || 0;
     selectedVariationInStock = selectedVariationQuantity > 0;
   }
 } catch (err) {
@@ -85,15 +87,23 @@ const fullTitle = `${pageTitle} | El Camino`;
 const hasMultipleVariations =
   product.variations && product.variations.length > 1;
 
-// Simplified: Get the unit display directly from the variation if exists
-const unitDisplay =
-  product.variations?.find((v) => v.variationId === product.variationId)
-    ?.unit ||
-  product.unit ||
-  "";
+// Use Map for O(1) lookups instead of find operations
+const variationMap = product.variations
+  ? new Map(product.variations.map((v) => [v.variationId, v]))
+  : new Map();
+
+// Get the unit display for the current variation
+const selectedVariation = variationMap.get(product.variationId);
+const unitDisplay = selectedVariation?.unit || product.unit || "";
+
+// Create variation name lookup for Add to Cart button
+const variationName = selectedVariation?.name || "";
 ---
 
 <Layout title={fullTitle}>
+  {/* Preload main product image */}
+  <link rel="preload" href={product.image} as="image" />
+
   <section class="p-4 sm:p-6 lg:p-8 relative">
     <div
       class="lg:grid lg:grid-cols-2 lg:gap-x-8 xl:gap-x-12 2xl:gap-x-16 items-center"
@@ -106,6 +116,8 @@ const unitDisplay =
           src={product.image}
           alt={product.title}
           class={`w-full h-full object-cover ${!selectedVariationInStock ? "opacity-75" : ""}`}
+          loading="eager"
+          fetchpriority="high"
           onerror="this.src='/images/placeholder.png'"
         />
 
@@ -136,10 +148,19 @@ const unitDisplay =
         </h1>
 
         <div class="mt-3">
-          <p class="text-5xl font-display text-content-emphasis">
+          <p
+            id="price-display"
+            class="text-5xl font-display text-content-emphasis"
+          >
             {formattedPrice}
             {/* Display unit if available */}
-            {unitDisplay && <span class="text-xl">{unitDisplay}</span>}
+            {
+              unitDisplay && (
+                <span class="text-xl" id="unit-display">
+                  {unitDisplay}
+                </span>
+              )
+            }
           </p>
 
           <!-- Inventory Status -->
@@ -149,13 +170,9 @@ const unitDisplay =
                 <p class="mt-2 text-state-error-surface text-md font-bold inline-block">
                   This item is currently unavailable
                 </p>
-              ) : (
-                <p class="mt-2">
-                  {selectedVariationQuantity > 1
-                    ? `(${selectedVariationQuantity} available)`
-                    : ""}
-                </p>
-              )
+              ) : selectedVariationQuantity > 1 ? (
+                <p class="mt-2">({selectedVariationQuantity} available)</p>
+              ) : null
             }
           </div>
 
@@ -200,6 +217,7 @@ const unitDisplay =
                           selected={
                             variation.variationId === product.variationId
                           }
+                          data-price={variation.price}
                           data-image={variation.image || ""}
                           data-unit={variation.unit || ""}
                           data-in-stock={variation.inStock ? "true" : "false"}
@@ -216,26 +234,14 @@ const unitDisplay =
                 </div>
               ) : (
                 <div class="inline-block max-w-[54ch]">
-                  {product.variations.find(
-                    (v) => v.variationId === product.variationId
-                  )?.name || ""}
+                  {variationName}
                   <input
                     type="hidden"
                     id="variation-select"
                     value={product.variationId}
                     data-variations={JSON.stringify(product.variations || [])}
-                    data-in-stock={
-                      product.variations.find(
-                        (v) => v.variationId === product.variationId
-                      )?.inStock
-                        ? "true"
-                        : "false"
-                    }
-                    data-quantity={
-                      product.variations.find(
-                        (v) => v.variationId === product.variationId
-                      )?.quantity || 0
-                    }
+                    data-in-stock={selectedVariationInStock ? "true" : "false"}
+                    data-quantity={selectedVariationQuantity}
                   />
                 </div>
               )}
@@ -243,29 +249,30 @@ const unitDisplay =
           )
         }
 
-        <div class="mt-8">
-          <Button
-            type="button"
-            variant="primary"
-            size="lg"
-            classes={`w-full md:w-auto ${!selectedVariationInStock ? "opacity-50 pointer-events-none cursor-not-allowed" : ""}`}
-            data-product={JSON.stringify({
-              id: product.id,
-              catalogObjectId: product.catalogObjectId,
-              variationId: product.variationId,
-              title: product.title,
-              price: product.price,
-              image: product.image,
-              unit: unitDisplay,
-              variationName: product.variations?.find(
-                (v) => v.variationId === product.variationId
-              )?.name,
-            })}
-            id="add-to-cart-button"
-            disabled={!selectedVariationInStock}
-          >
-            {selectedVariationInStock ? "Add to Cart" : "Sold Out"}
-          </Button>
+        <Button
+          type="button"
+          variant="primary"
+          size="lg"
+          classes={`w-full md:w-auto my-6 ${!selectedVariationInStock ? "opacity-50 cursor-not-allowed" : ""}`}
+          data-product={JSON.stringify({
+            id: product.id,
+            catalogObjectId: product.catalogObjectId,
+            variationId: product.variationId,
+            title: product.title,
+            price: product.price,
+            image: product.image,
+            unit: unitDisplay,
+            variationName: variationName,
+          })}
+          id="add-to-cart-button"
+          disabled={!selectedVariationInStock}
+        >
+          {selectedVariationInStock ? "Add to Cart" : "Sold Out"}
+        </Button>
+        <div class="">
+          <h4>Available for pick up at El Camino</h4>
+          <p>Usually ready in 2 hours</p>
+          <a href="#">Store Location &amp; Hours</a>
         </div>
       </div>
     </div>
@@ -275,24 +282,24 @@ const unitDisplay =
 <script>
   import { cart } from "@/lib/cart";
   import { MoneyUtils } from "@/lib/square/money";
-  import type { ProductVariation } from "@/lib/square/types";
+  import type { ProductData, ProductVariation } from "@/lib/square/types";
 
   let isProcessing = false;
-  let addToCartTimeout: number | null = null;
-
-  // Helper function for getting data values with fallbacks
-  function getDataValue(
-    option: HTMLOptionElement,
-    variation: any,
-    field: string,
-    defaultValue = ""
-  ) {
-    return option.dataset[field] || variation[field] || defaultValue;
-  }
 
   // Helper function for creating a compound variation key
   function getVariationKey(item: { id: string; variationId: string }) {
     return `${item.id}:${item.variationId}`;
+  }
+
+  // Price formatting helper with memoization
+  const priceCache = new Map<number, string>();
+  function getFormattedPrice(price: number): string {
+    if (priceCache.has(price)) {
+      return priceCache.get(price)!;
+    }
+    const formatted = MoneyUtils.format(MoneyUtils.fromFloat(price));
+    priceCache.set(price, formatted);
+    return formatted;
   }
 
   function setupVariationSelector(): void {
@@ -304,37 +311,43 @@ const unitDisplay =
     const addToCartButton = document.getElementById("add-to-cart-button");
     if (!addToCartButton) return;
 
-    // Parse variations data
+    const priceElement = document.getElementById("price-display");
+    const inventoryStatusElement = document.getElementById("inventory-status");
+    const productImage = document.getElementById(
+      "product-image"
+    ) as HTMLImageElement | null;
+
+    // Parse variations data - only do this once
     const variations = JSON.parse(
       select.dataset.variations || "[]"
     ) as ProductVariation[];
 
-    // Update price and button data when variation changes
+    // Create a map for faster lookups
+    const variationMap = new Map<string, ProductVariation>(
+      variations.map((v) => [v.variationId, v])
+    );
+
+    // Update product display when variation changes
     select.addEventListener("change", () => {
-      const selectedVariationId = select.value;
       const selectedOption = select.options[select.selectedIndex];
-      const selectedVariation = variations.find(
-        (v: ProductVariation) => v.variationId === selectedVariationId
-      );
+      const selectedVariationId = select.value;
+
+      // Use map for O(1) lookup instead of find
+      const selectedVariation = variationMap.get(selectedVariationId);
       if (!selectedVariation) return;
 
-      // Get variation stock status - strict comparison to "true" string
+      // Get variation properties using dataset for better performance
       const inStock = selectedOption.dataset.inStock === "true";
       const quantity = parseInt(selectedOption.dataset.quantity || "0", 10);
+      const price = parseFloat(
+        selectedOption.dataset.price || String(selectedVariation.price)
+      );
+      const unitDisplay =
+        selectedOption.dataset.unit || selectedVariation.unit || "";
 
       // Update price display
-      const priceElement = document.querySelector(".text-content-emphasis");
       if (priceElement) {
-        const formattedPrice = MoneyUtils.format(
-          MoneyUtils.fromFloat(selectedVariation.price)
-        );
-
-        // Get unit using the helper function
-        const unitDisplay = getDataValue(
-          selectedOption,
-          selectedVariation,
-          "unit"
-        );
+        const formattedPrice = getFormattedPrice(price);
 
         // Update price and unit display
         if (unitDisplay) {
@@ -344,35 +357,79 @@ const unitDisplay =
         }
       }
 
+      // Update inventory status text
+      if (inventoryStatusElement) {
+        if (inStock) {
+          inventoryStatusElement.innerHTML =
+            quantity > 1 ? `<p class="mt-2">(${quantity} available)</p>` : "";
+        } else {
+          inventoryStatusElement.innerHTML = `
+            <p class="mt-2 text-state-error-surface text-md font-bold inline-block">
+              This item is currently unavailable
+            </p>
+          `;
+        }
+      }
+
       // Update image if the variation has its own image
-      const productImage = document.getElementById(
-        "product-image"
-      ) as HTMLImageElement;
-      const variationImage =
-        selectedOption.dataset.image || selectedVariation.image;
-      if (productImage && variationImage) {
-        productImage.src = variationImage;
+      if (productImage) {
+        const variationImage =
+          selectedOption.dataset.image || selectedVariation.image;
+        if (variationImage) {
+          productImage.src = variationImage;
+        }
+
+        // Update opacity based on stock
+        if (!inStock) {
+          productImage.classList.add("opacity-75");
+        } else {
+          productImage.classList.remove("opacity-75");
+        }
+      }
+
+      // Update stock overlay
+      const stockOverlay = document.getElementById("stock-overlay");
+      if (inStock && stockOverlay) {
+        stockOverlay.remove();
+      } else if (!inStock && !stockOverlay && productImage?.parentElement) {
+        const newOverlay = document.createElement("div");
+        newOverlay.id = "stock-overlay";
+        newOverlay.className =
+          "absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-sm";
+        newOverlay.textContent = "Sold Out";
+        productImage.parentElement.appendChild(newOverlay);
       }
 
       // Update product data on button
-      const productData = JSON.parse(addToCartButton.dataset.product || "{}");
+      const productData = JSON.parse(
+        addToCartButton.dataset.product || "{}"
+      ) as ProductData;
 
-      // Update product data with destructuring
-      if (selectedVariation) {
-        const { name, price, unit = "", image } = selectedVariation;
+      // Update product data with selectedVariation properties
+      Object.assign(productData, {
+        variationId: selectedVariationId,
+        variationName: selectedVariation.name,
+        price: selectedVariation.price,
+        unit: unitDisplay,
+      });
 
-        // Update product data with Object.assign
-        Object.assign(productData, {
-          variationId: selectedVariationId,
-          variationName: name,
-          price,
-          unit,
-          ...(image && { image }),
-        });
+      if (selectedVariation.image) {
+        productData.image = selectedVariation.image;
       }
 
       // Save updated data back to the button
       addToCartButton.dataset.product = JSON.stringify(productData);
+
+      // Update button state
+      const btnElement = addToCartButton as HTMLButtonElement;
+      btnElement.disabled = !inStock;
+      btnElement.textContent = inStock ? "Add to Cart" : "Sold Out";
+
+      if (inStock) {
+        btnElement.classList.remove("opacity-50", "cursor-not-allowed");
+      } else {
+        btnElement.classList.add("opacity-50", "cursor-not-allowed");
+      }
     });
   }
 
@@ -380,76 +437,42 @@ const unitDisplay =
     const button = document.getElementById("add-to-cart-button");
     if (!button) return;
 
-    // Remove existing listener if any
-    button.replaceWith(button.cloneNode(true));
+    // Remove existing listener if any (more efficient than cloning)
+    const newButton = button.cloneNode(true) as HTMLElement;
+    button.parentNode?.replaceChild(newButton, button);
 
-    // Get fresh reference after cloning
-    const newButton = document.getElementById("add-to-cart-button");
-    if (!newButton) return;
+    newButton.addEventListener("click", async () => {
+      // Check if button is disabled first
+      const btnElement = newButton as HTMLButtonElement;
+      if (btnElement.disabled || isProcessing) return;
+      isProcessing = true;
 
-    newButton.addEventListener("click", async (e) => {
       try {
-        // Check if button is disabled first
-        const btnElement = newButton as HTMLButtonElement;
-        if (btnElement.disabled || isProcessing) return;
-        isProcessing = true;
-
-        // Get the current variation selection directly
-        const select = document.getElementById(
-          "variation-select"
-        ) as HTMLSelectElement;
-
-        // Start with base product data from the button
+        // Get the product data directly
         const baseProductData = newButton.dataset.product;
         if (!baseProductData) {
           throw new Error("No product data found");
         }
 
-        // Parse the base product
-        const product = JSON.parse(baseProductData);
+        // Parse the product data
+        const product = JSON.parse(baseProductData) as ProductData;
 
-        // If there's a variation selector, use its current value
-        if (select?.value) {
-          const currentVariationId = select.value;
-          const variationsData = select.dataset.variations;
-
-          if (variationsData) {
-            const variations = JSON.parse(variationsData);
-            const selectedVariation = variations.find(
-              (v: { variationId: string }) =>
-                v.variationId === currentVariationId
-            );
-
-            if (selectedVariation) {
-              // Update product data with destructuring
-              const { name, price, unit = "", image } = selectedVariation;
-
-              // Update product data using Object.assign
-              Object.assign(product, {
-                variationId: currentVariationId,
-                variationName: name,
-                price,
-                unit,
-                ...(image && { image }),
-              });
-            }
-          }
-        }
-
-        // Check if this specific variation is already in cart using compound key
-        const cartItems = cart.getItems();
+        // Create the compound key for cart lookup
         const productKey = getVariationKey(product);
-        const existingItem = cartItems.find(
-          (item) => getVariationKey(item) === productKey
+
+        // Check if already in cart - use O(1) lookup with Map
+        const cartItems = cart.getItems();
+        const cartItemMap = new Map(
+          cartItems.map((item) => [getVariationKey(item), item])
         );
 
-        if (existingItem) {
+        if (cartItemMap.has(productKey)) {
           window.showNotification("Item already in cart", "info");
           isProcessing = false;
           return;
         }
 
-        // Add to cart with the current variation
+        // Add to cart
         const result = await cart.addItem({
           ...product,
           quantity: 1,
@@ -472,18 +495,9 @@ const unitDisplay =
     });
   }
 
-  // Event Listeners
+  // Set up event listeners
   document.addEventListener("astro:page-load", () => {
     setupVariationSelector();
     setupAddToCartHandler();
   });
-
-  // Cleanup
-  if (import.meta.hot) {
-    import.meta.hot.dispose(() => {
-      if (addToCartTimeout) {
-        clearTimeout(addToCartTimeout);
-      }
-    });
-  }
 </script>

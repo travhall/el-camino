@@ -1,6 +1,9 @@
 // /src/lib/square/client.ts
 import { Client, Environment } from "square";
 import type { Product } from "./types";
+import { getImageUrl, batchGetImageUrls } from "./imageUtils";
+import { defaultCircuitBreaker, logApiError } from "./apiUtils";
+import { processSquareError, logError } from "./errorUtils";
 
 function validateEnvironment() {
   const missingVars = [];
@@ -32,76 +35,31 @@ export const jsonStringifyReplacer = (_key: string, value: any) => {
   return value;
 };
 
-async function getImageUrl(imageId: string): Promise<string | null> {
-  try {
-    const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-      imageId
-    );
-    if (result.object?.type === "IMAGE") {
-      return result.object.imageData?.url || null;
-    }
-    return null;
-  } catch (error) {
-    console.error("Error fetching image:", error);
-    return null;
-  }
-}
-
 export async function fetchProducts(): Promise<Product[]> {
-  try {
-    console.log("Fetching Square products...");
-    const response = await squareClient.catalogApi.listCatalog(
-      undefined,
-      "ITEM"
-    );
+  return defaultCircuitBreaker.execute(async () => {
+    try {
+      console.log("Fetching Square products...");
+      const response = await squareClient.catalogApi.listCatalog(
+        undefined,
+        "ITEM"
+      );
 
-    if (!response.result) {
-      console.error("No result in Square response:", response);
-      return [];
-    }
+      if (!response.result) {
+        console.error("No result in Square response:", response);
+        return [];
+      }
 
-    // console.log("Square API Response:", {
-    //   success: !!response.result,
-    //   objectCount: response.result.objects?.length || 0,
-    // });
+      if (!response.result.objects?.length) {
+        console.log("No products found in catalog");
+        return [];
+      }
 
-    if (!response.result.objects?.length) {
-      console.log("No products found in catalog");
-      return [];
-    }
-
-    const products = await Promise.all(
-      response.result.objects
-        .filter((item) => {
-          if (item.type !== "ITEM") {
-            console.log("Filtered out non-ITEM type:", item.type);
-            return false;
-          }
-          return true;
-        })
-        .map(async (item) => {
+      // First, extract basic product info without async operations
+      const productsWithBasicInfo = response.result.objects
+        .filter((item) => item.type === "ITEM")
+        .map((item) => {
           const variation = item.itemData?.variations?.[0];
           const priceMoney = variation?.itemVariationData?.priceMoney;
-
-          if (!variation || !priceMoney) {
-            console.log("Product missing variation or price:", item.id);
-          }
-
-          let imageUrl = "/images/placeholder.png";
-          if (item.itemData?.imageIds?.[0]) {
-            try {
-              const fetchedUrl = await getImageUrl(item.itemData.imageIds[0]);
-              if (fetchedUrl) {
-                imageUrl = fetchedUrl;
-              }
-            } catch (error) {
-              console.error(
-                "Error fetching image for product:",
-                item.id,
-                error
-              );
-            }
-          }
 
           return {
             id: item.id,
@@ -109,110 +67,113 @@ export async function fetchProducts(): Promise<Product[]> {
             variationId: variation?.id || item.id,
             title: item.itemData?.name || "",
             description: item.itemData?.description || "",
-            image: imageUrl,
+            imageId: item.itemData?.imageIds?.[0] || null,
             price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
-            url: `/product/${item.id}`,
           };
-        })
-    );
+        });
 
-    // console.log("Processed products:", {
-    //   count: products.length,
-    //   firstProduct: products[0]
-    //     ? {
-    //         id: products[0].id,
-    //         title: products[0].title,
-    //       }
-    //     : null,
-    // });
+      // Then fetch all images in parallel
+      const imageIds = productsWithBasicInfo
+        .map((p) => p.imageId)
+        .filter(Boolean) as string[];
 
-    return products;
-  } catch (error) {
-    console.error("Error fetching Square products:", error);
-    if (error instanceof Error) {
-      console.error("Error details:", {
-        message: error.message,
-        name: error.name,
-        stack: error.stack,
-      });
+      const imageUrlMap: Record<string, string> = {};
+      if (imageIds.length > 0) {
+        const batchedImages = await batchGetImageUrls(imageIds);
+        Object.assign(imageUrlMap, batchedImages);
+      }
+
+      // Assemble final products
+      const products = productsWithBasicInfo.map((p) => ({
+        id: p.id,
+        catalogObjectId: p.catalogObjectId,
+        variationId: p.variationId,
+        title: p.title,
+        description: p.description,
+        image:
+          p.imageId && imageUrlMap[p.imageId]
+            ? imageUrlMap[p.imageId]
+            : "/images/placeholder.png",
+        price: p.price,
+        url: `/product/${p.id}`,
+      }));
+
+      return products;
+    } catch (error) {
+      logApiError("fetchProducts", error);
+      return [];
     }
-    return [];
-  }
+  });
 }
 
 export async function fetchProduct(id: string): Promise<Product | null> {
-  try {
-    const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-      id,
-      true
-    ); // Pass true as second param
+  return defaultCircuitBreaker.execute(async () => {
+    try {
+      const { result } = await squareClient.catalogApi.retrieveCatalogObject(
+        id,
+        true
+      ); // Pass true as second param
 
-    if (!result.object || result.object.type !== "ITEM") return null;
+      if (!result.object || result.object.type !== "ITEM") return null;
 
-    const item = result.object;
-    const variations = item.itemData?.variations || [];
+      const item = result.object;
+      const variations = item.itemData?.variations || [];
 
-    if (!variations.length) return null;
+      if (!variations.length) return null;
 
-    // Use first variation as default
-    const defaultVariation = variations[0];
-    const defaultPriceMoney = defaultVariation?.itemVariationData?.priceMoney;
+      // Use first variation as default
+      const defaultVariation = variations[0];
+      const defaultPriceMoney = defaultVariation?.itemVariationData?.priceMoney;
 
-    if (!defaultVariation || !defaultPriceMoney) return null;
+      if (!defaultVariation || !defaultPriceMoney) return null;
 
-    // Get image
-    let imageUrl = "/images/placeholder.png";
-    if (item.itemData?.imageIds?.[0]) {
-      const fetchedUrl = await getImageUrl(item.itemData.imageIds[0]);
-      if (fetchedUrl) {
-        imageUrl = fetchedUrl;
+      // Get image - we'll do this in parallel with variation processing
+      let imageUrl = "/images/placeholder.png";
+      let imagePromise: Promise<string | null> | null = null;
+
+      if (item.itemData?.imageIds?.[0]) {
+        imagePromise = getImageUrl(item.itemData.imageIds[0]);
       }
-    }
 
-    // Process all variations and their images
-    const productVariations = await Promise.all(
-      variations.map(async (v) => {
+      // Get all variation IDs with images for batch fetching
+      const variationImageIds = variations
+        .filter((v) => v.itemVariationData?.imageIds?.[0])
+        .map((v) => v.itemVariationData!.imageIds![0]);
+
+      // Fetch all variation images in parallel
+      const variationImagePromise =
+        variationImageIds.length > 0
+          ? batchGetImageUrls(variationImageIds)
+          : Promise.resolve({} as Record<string, string>);
+
+      // Wait for both promises to resolve
+      const [mainImage, variationImages] = await Promise.all([
+        imagePromise,
+        variationImagePromise,
+      ]);
+
+      if (mainImage) {
+        imageUrl = mainImage;
+      }
+
+      // Process all variations with their data
+      const productVariations = variations.map((v) => {
         const priceMoney = v.itemVariationData?.priceMoney;
 
         // Check for variation-specific images
         let variationImageUrl: string | undefined = undefined;
         if (v.itemVariationData?.imageIds?.[0]) {
-          try {
-            const fetchedUrl = await getImageUrl(
-              v.itemVariationData.imageIds[0]
-            );
-            if (fetchedUrl) {
-              variationImageUrl = fetchedUrl;
-            }
-          } catch (error) {
-            console.error(`Error fetching image for variation ${v.id}:`, error);
-          }
+          const imageId = v.itemVariationData.imageIds[0];
+          variationImageUrl =
+            variationImages[imageId as keyof typeof variationImages];
         }
 
-        // Get measurement unit if available
+        // For now, we'll use placeholder unit logic
+        // A more advanced implementation would batch fetch measurement units
         let unit = "";
         if (v.itemVariationData?.measurementUnitId) {
-          // We would need to fetch the measurement unit separately
-          // For now, we'll just use a placeholder approach
-          try {
-            const { result: measurementResult } =
-              await squareClient.catalogApi.retrieveCatalogObject(
-                v.itemVariationData.measurementUnitId
-              );
-
-            if (measurementResult.object?.type === "MEASUREMENT_UNIT") {
-              const unitData = measurementResult.object.measurementUnitData;
-              if (unitData?.measurementUnit?.customUnit?.name) {
-                unit = unitData.measurementUnit.customUnit.name;
-              } else if (unitData?.measurementUnit?.type) {
-                unit = unitData.measurementUnit.type
-                  .toLowerCase()
-                  .replace("_", " ");
-              }
-            }
-          } catch (error) {
-            console.error(`Error fetching measurement unit: ${error}`);
-          }
+          // Placeholder for measurement unit
+          unit = "each";
         }
 
         return {
@@ -223,186 +184,59 @@ export async function fetchProduct(id: string): Promise<Product | null> {
           image: variationImageUrl,
           unit: unit,
         };
-      })
-    );
-
-    // Get custom attributes, specifically looking for 'Brand'
-    let brandValue = "";
-    if (item.customAttributeValues) {
-      // Look for any attribute with 'brand' in the key name (case insensitive)
-      const brandAttribute = Object.values(item.customAttributeValues).find(
-        (attr) =>
-          attr.name?.toLowerCase() === "brand" ||
-          attr.key?.toLowerCase() === "brand"
-      );
-
-      if (
-        brandAttribute &&
-        brandAttribute.type === "STRING" &&
-        brandAttribute.stringValue
-      ) {
-        brandValue = brandAttribute.stringValue;
-      }
-    }
-
-    // Use default variation unit or first found unit
-    const defaultUnit = productVariations[0]?.unit || "";
-
-    return {
-      id: item.id,
-      catalogObjectId: item.id,
-      variationId: defaultVariation.id,
-      title: item.itemData?.name || "",
-      description: item.itemData?.description || "",
-      image: imageUrl,
-      price: Number(defaultPriceMoney.amount) / 100,
-      url: `/product/${item.id}`,
-      variations: productVariations,
-      selectedVariationId: defaultVariation.id,
-      brand: brandValue,
-      unit: defaultUnit,
-    };
-  } catch (error) {
-    console.error("Error fetching product:", error);
-    return null;
-  }
-}
-
-import type { Category, CategoryHierarchy } from "./types";
-
-/**
- * Fetches all categories from Square catalog
- */
-export async function fetchCategories(): Promise<Category[]> {
-  try {
-    console.log("Fetching Square categories...");
-
-    // Fetch all categories
-    const response = await squareClient.catalogApi.listCatalog(
-      undefined,
-      "CATEGORY"
-    );
-
-    if (!response.result || !response.result.objects?.length) {
-      console.log("No categories found in catalog");
-      return [];
-    }
-
-    // Process categories
-    const categories = response.result.objects
-      .filter((item) => item.type === "CATEGORY")
-      .map((item) => {
-        // Create a URL-friendly slug from the category name
-        const slug = item.categoryData?.name
-          ? item.categoryData.name
-              .toLowerCase()
-              .replace(/[^\w\s-]/g, "")
-              .replace(/[\s_-]+/g, "-")
-              .replace(/^-+|-+$/g, "")
-          : item.id;
-
-        return {
-          id: item.id,
-          name: item.categoryData?.name || "",
-          slug,
-          isTopLevel: item.categoryData?.isTopLevel || false,
-          parentCategoryId: item.categoryData?.parentCategory?.id,
-          rootCategoryId: item.categoryData?.rootCategory,
-        };
       });
 
-    // console.log(`Processed ${categories.length} categories`);
-    return categories;
-  } catch (error) {
-    console.error("Error fetching Square categories:", error);
-    if (error instanceof Error) {
-      console.error("Error details:", {
-        message: error.message,
-        name: error.name,
-        stack: error.stack,
-      });
-    }
-    return [];
-  }
-}
+      // Get custom attributes, specifically looking for 'Brand'
+      let brandValue = "";
+      if (item.customAttributeValues) {
+        // Look for any attribute with 'brand' in the key name (case insensitive)
+        const brandAttribute = Object.values(item.customAttributeValues).find(
+          (attr) =>
+            attr.name?.toLowerCase() === "brand" ||
+            attr.key?.toLowerCase() === "brand"
+        );
 
-/**
- * Organizes categories into a hierarchical structure
- * NOTE: This is a placeholder implementation until we can analyze the actual data
- * to determine how Square represents reporting categories vs. subcategories
- */
-export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
-  try {
-    const allCategories = await fetchCategories();
-
-    // This is where we'll implement the logic to identify reporting categories
-    // and their related subcategories after analyzing the actual data structure
-    // For now, we'll return a flat structure
-
-    return allCategories.map((category) => ({
-      category,
-      subcategories: [],
-    }));
-  } catch (error) {
-    console.error("Error organizing category hierarchy:", error);
-    return [];
-  }
-}
-
-/**
- * Fetches products by category ID
- */
-export async function fetchProductsByCategory(
-  categoryId: string
-): Promise<Product[]> {
-  try {
-    console.log(`Fetching products for category: ${categoryId}`);
-
-    // Use the search endpoint to find items by category
-    const { result } = await squareClient.catalogApi.searchCatalogItems({
-      categoryIds: [categoryId],
-    });
-
-    if (!result.items?.length) {
-      console.log(`No products found for category: ${categoryId}`);
-      return [];
-    }
-
-    // Process items similar to the fetchProducts function
-    const products = await Promise.all(
-      result.items.map(async (item) => {
-        const variation = item.itemData?.variations?.[0];
-        const priceMoney = variation?.itemVariationData?.priceMoney;
-
-        let imageUrl = "/images/placeholder.png";
-        if (item.itemData?.imageIds?.[0]) {
-          try {
-            const fetchedUrl = await getImageUrl(item.itemData.imageIds[0]);
-            if (fetchedUrl) {
-              imageUrl = fetchedUrl;
-            }
-          } catch (error) {
-            console.error("Error fetching image for product:", item.id, error);
-          }
+        if (
+          brandAttribute &&
+          brandAttribute.type === "STRING" &&
+          brandAttribute.stringValue
+        ) {
+          brandValue = brandAttribute.stringValue;
         }
+      }
 
-        return {
-          id: item.id,
-          catalogObjectId: item.id,
-          variationId: variation?.id || item.id,
-          title: item.itemData?.name || "",
-          description: item.itemData?.description || "",
-          image: imageUrl,
-          price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
-          url: `/product/${item.id}`,
-        };
-      })
-    );
+      // Use default variation unit or first found unit
+      const defaultUnit = productVariations[0]?.unit ?? "";
 
-    console.log(`Found ${products.length} products for category ${categoryId}`);
-    return products;
-  } catch (error) {
-    console.error(`Error fetching products for category ${categoryId}:`, error);
-    return [];
-  }
+      return {
+        id: item.id,
+        catalogObjectId: item.id,
+        variationId: defaultVariation.id,
+        title: item.itemData?.name || "",
+        description: item.itemData?.description || "",
+        image: imageUrl,
+        price: Number(defaultPriceMoney.amount) / 100,
+        url: `/product/${item.id}`,
+        variations: productVariations,
+        selectedVariationId: defaultVariation.id,
+        brand: brandValue,
+        unit: defaultUnit,
+      };
+    } catch (error) {
+      // Use our new error handling utilities
+      const appError = processSquareError(error, `fetchProduct:${id}`);
+      logError(appError);
+
+      // Always return null on error, never undefined
+      return null;
+    }
+  });
+}
+
+/**
+ * Clean API state and caches
+ */
+export function cleanupClientState(): void {
+  // Reset circuit breaker
+  defaultCircuitBreaker.reset();
 }

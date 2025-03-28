@@ -8,16 +8,16 @@ import Layout from "@/layouts/Layout.astro";
 import ProductCard from "@/components/ProductCard.astro";
 import type { Category } from "@/lib/square/types";
 import type { Product } from "@/lib/square/types";
+import { getProductStockStatus } from "@/lib/square/inventory";
 
 // Get the slug from URL params
 const { slug } = Astro.params;
-// console.log("Category page requested with slug:", slug);
 
 if (!slug) {
   return Astro.redirect("/404");
 }
 
-// Fetch category data
+// Fetch category data - this will use cache if available
 const categoryHierarchy = await fetchCategoryHierarchy();
 
 // Parse the slug to find the right category
@@ -26,9 +26,10 @@ const topLevelSlug = slugParts[0];
 const subCategorySlug = slugParts.length > 1 ? slugParts[1] : null;
 
 // Find the top-level category
-const topLevelCategory = categoryHierarchy.find(
+const topLevelItem = categoryHierarchy.find(
   (item) => item.category.slug === topLevelSlug
-)?.category;
+);
+const topLevelCategory = topLevelItem?.category;
 
 if (!topLevelCategory) {
   console.error(`Top-level category not found for slug: ${topLevelSlug}`);
@@ -40,11 +41,7 @@ let category = topLevelCategory;
 let parentCategory = null;
 
 if (subCategorySlug) {
-  const topLevelHierarchy = categoryHierarchy.find(
-    (item) => item.category.id === topLevelCategory.id
-  );
-
-  const subCategory = topLevelHierarchy?.subcategories.find(
+  const subCategory = topLevelItem?.subcategories.find(
     (sub) => sub.slug === subCategorySlug
   );
 
@@ -60,33 +57,36 @@ if (subCategorySlug) {
 // Fetch products for this specific category
 let products: Product[] = [];
 try {
-  // Use the proper Square API to get products by category ID
+  // This function now uses caching from our improved implementation
   products = await fetchProductsByCategory(category.id);
 } catch (error) {
   console.error("Error fetching products for category:", error);
 }
 
 // Get subcategories if we're on a top-level category page
-let subcategories: Category[] = [];
-if (!subCategorySlug) {
-  const categoryItem = categoryHierarchy.find(
-    (item) => item.category.id === category.id
-  );
-
-  if (categoryItem) {
-    subcategories = categoryItem.subcategories;
-  }
-}
+// Avoid unnecessary processing by using the already found topLevelItem
+let subcategories: Category[] =
+  !subCategorySlug && topLevelItem ? topLevelItem.subcategories : [];
 
 // Build page title
 const pageTitle = parentCategory
   ? `${parentCategory.name} - ${category.name}`
   : category.name;
 const fullTitle = `Shop ${pageTitle} | El Camino`;
+
+// Check if we need to preload any product images to improve page load
+// Pick the first few products to preload (limit to 4 to avoid too many requests)
+const preloadImages = products
+  .slice(0, 4)
+  .map((p) => p.image)
+  .filter((img) => !img.includes("placeholder"));
 ---
 
 <Layout title={fullTitle}>
   <section>
+    {/* Preload critical images */}
+    {preloadImages.map((img) => <link rel="preload" href={img} as="image" />)}
+
     <div
       class="flex flex-col lg:flex-row justify-between gap-4 w-full items-baseline p-4"
     >
@@ -128,8 +128,8 @@ const fullTitle = `Shop ${pageTitle} | El Camino`;
     {
       products.length > 0 ? (
         <div class="card-grid grid justify-center sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-12 max-w-[120rem] mx-auto gap-1 p-1">
-          {products.map((product) => (
-            <ProductCard product={product} />
+          {products.map((product, index) => (
+            <ProductCard product={product} priority={index < 8} />
           ))}
         </div>
       ) : (

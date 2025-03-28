@@ -1,38 +1,40 @@
 // src/lib/square/inventory.ts
 import { squareClient } from "./client";
+import type { Product, ProductVariation } from "./types";
+import { inventoryCache } from "./cacheUtils";
+import { processSquareError, logError, handleError } from "./errorUtils";
 
 /**
- * Check if a specific item is in stock - direct API call without caching
+ * Check if a specific item is in stock - with caching
  * @param variationId The Square variation ID to check
  * @returns The quantity in stock
  */
 export async function checkItemInventory(variationId: string): Promise<number> {
-  try {
-    // console.log(`[Inventory] Checking inventory for ${variationId}`);
+  return inventoryCache.getOrCompute(variationId, async () => {
+    try {
+      // Query Square API for current inventory count
+      const { result } = await squareClient.inventoryApi.retrieveInventoryCount(
+        variationId
+      );
 
-    // Query Square API for current inventory count
-    const { result } = await squareClient.inventoryApi.retrieveInventoryCount(
-      variationId
-    );
+      // Get the counts and find IN_STOCK state
+      const counts = result.counts || [];
+      const inStockCount = counts.find((count) => count.state === "IN_STOCK");
 
-    // Get the counts and find IN_STOCK state
-    const counts = result.counts || [];
-    const inStockCount = counts.find((count) => count.state === "IN_STOCK");
+      // Parse quantity as number (Square returns string)
+      const quantity = inStockCount?.quantity
+        ? parseInt(inStockCount.quantity, 10)
+        : 0;
 
-    // Parse quantity as number (Square returns string)
-    const quantity = inStockCount?.quantity
-      ? parseInt(inStockCount.quantity, 10)
-      : 0;
-
-    // console.log(`[Inventory] Item ${variationId}: ${quantity} in stock`);
-    return quantity;
-  } catch (error) {
-    console.error(
-      `[Inventory] Error checking inventory for ${variationId}:`,
-      error
-    );
-    return 0; // Assume out of stock if there's an error
-  }
+      return quantity;
+    } catch (error) {
+      const appError = processSquareError(
+        error,
+        `checkItemInventory:${variationId}`
+      );
+      return handleError<number>(appError, 0);
+    }
+  });
 }
 
 /**
@@ -46,7 +48,7 @@ export async function isItemInStock(variationId: string): Promise<boolean> {
 }
 
 /**
- * Check inventory for multiple items at once
+ * Check inventory for multiple items at once with caching and batching
  * @param variationIds Array of Square variation IDs to check
  * @returns Object mapping variation IDs to their quantities
  */
@@ -60,60 +62,90 @@ export async function checkBulkInventory(
     return {};
   }
 
-  // For a single item, use the simpler endpoint
-  if (uniqueIds.length === 1) {
-    const quantity = await checkItemInventory(uniqueIds[0]);
-    return { [uniqueIds[0]]: quantity };
+  // Process cache hits and identify items that need fetching
+  const resultMap: Record<string, number> = {};
+  const idsToFetch: string[] = [];
+
+  uniqueIds.forEach((id) => {
+    const cached = inventoryCache.get(id);
+    if (cached !== undefined) {
+      resultMap[id] = cached;
+    } else {
+      idsToFetch.push(id);
+    }
+  });
+
+  // If all items were cached, return early
+  if (idsToFetch.length === 0) return resultMap;
+
+  // For a single item to fetch, use the simpler endpoint
+  if (idsToFetch.length === 1) {
+    const quantity = await checkItemInventory(idsToFetch[0]);
+    resultMap[idsToFetch[0]] = quantity;
+    return resultMap;
   }
 
   try {
-    // console.log(`[Inventory] Checking inventory for ${uniqueIds.length} items`);
+    // Batch API requests (Square API can handle up to 100 items per request)
+    const BATCH_SIZE = 100;
+    const batches = [];
 
-    // Fetch items from Square API
-    const { result } =
-      await squareClient.inventoryApi.batchRetrieveInventoryCounts({
-        catalogObjectIds: uniqueIds,
-      });
+    for (let i = 0; i < idsToFetch.length; i += BATCH_SIZE) {
+      const batchIds = idsToFetch.slice(i, i + BATCH_SIZE);
+      batches.push(batchIds);
+    }
 
-    const counts = result.counts || [];
-    const inventoryResults: Record<string, number> = {};
+    // Process all batches in parallel
+    const batchResults = await Promise.all(
+      batches.map(async (batchIds) => {
+        const { result } =
+          await squareClient.inventoryApi.batchRetrieveInventoryCounts({
+            catalogObjectIds: batchIds,
+          });
+        return result.counts || [];
+      })
+    );
+
+    // Flatten and process all counts
+    const allCounts = batchResults.flat();
 
     // Process API results - only consider IN_STOCK state
-    counts.forEach((count) => {
+    allCounts.forEach((count) => {
       if (count.state === "IN_STOCK" && count.catalogObjectId) {
         const quantity = parseInt(count.quantity || "0", 10);
-        inventoryResults[count.catalogObjectId] = quantity;
+        resultMap[count.catalogObjectId] = quantity;
+
+        // Update cache
+        inventoryCache.set(count.catalogObjectId, quantity);
       }
     });
 
     // Set zero quantities for requested items that weren't found in IN_STOCK state
-    uniqueIds.forEach((id) => {
-      if (inventoryResults[id] === undefined) {
-        inventoryResults[id] = 0;
+    idsToFetch.forEach((id) => {
+      if (resultMap[id] === undefined) {
+        resultMap[id] = 0;
+        // Cache zero results too
+        inventoryCache.set(id, 0);
       }
     });
 
-    return inventoryResults;
+    return resultMap;
   } catch (error) {
-    console.error("[Inventory] Error checking bulk inventory:", error);
-
-    // Return zeros for all requested IDs on error
-    return uniqueIds.reduce((acc, id) => {
-      acc[id] = 0;
-      return acc;
-    }, {} as Record<string, number>);
+    const appError = processSquareError(error, "checkBulkInventory");
+    return handleError<Record<string, number>>(
+      appError,
+      {}
+      // Optional retry function could be implemented here
+    );
   }
 }
 
-// Add this new function to src/lib/square/inventory.ts
-// Leave all existing functions untouched
-
 /**
- * Enhanced variation inventory checker that handles special cases
+ * Enhanced variation inventory checker that handles special cases with proper typing
  * @param product The product object with variations to check
  * @returns Object with flags for stock status
  */
-export async function getProductStockStatus(product: any): Promise<{
+export async function getProductStockStatus(product: Product): Promise<{
   isOutOfStock: boolean;
   hasLimitedOptions: boolean;
 }> {
@@ -128,8 +160,8 @@ export async function getProductStockStatus(product: any): Promise<{
     if (product.variations && product.variations.length > 0) {
       // Extract valid variation IDs
       const variationIds = product.variations
-        .filter((v: any) => v && v.variationId)
-        .map((v: any) => v.variationId);
+        .filter((v: ProductVariation) => v && v.variationId)
+        .map((v: ProductVariation) => v.variationId);
 
       if (variationIds.length === 0) {
         return result; // No valid variations
@@ -161,9 +193,21 @@ export async function getProductStockStatus(product: any): Promise<{
       // Limited options doesn't apply to single variation
     }
   } catch (error) {
-    console.error("[Inventory] Error checking product stock status:", error);
-    // Default to in-stock on errors
+    const appError = processSquareError(
+      error,
+      `getProductStockStatus:${product.id}`
+    );
+    logError(appError);
+    // Default to in-stock on errors for better user experience
   }
 
   return result;
+}
+
+/**
+ * Clear inventory cache entries older than the TTL
+ * Call this periodically to prevent unbounded cache growth
+ */
+export function pruneInventoryCache(): number {
+  return inventoryCache.prune();
 }
