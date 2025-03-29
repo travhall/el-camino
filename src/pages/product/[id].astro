@@ -269,10 +269,9 @@ const variationName = selectedVariation?.name || "";
         >
           {selectedVariationInStock ? "Add to Cart" : "Sold Out"}
         </Button>
-        <div class="">
-          <h4>Available for pick up at El Camino</h4>
-          <p>Usually ready in 2 hours</p>
-          <a href="#">Store Location &amp; Hours</a>
+        <div class="text-sm flex flex-col space-y-2">
+          <p class="italic">Available for pick up at El Camino</p>
+          <a href="#" class="underline">Store Location &amp; Hours</a>
         </div>
       </div>
     </div>
@@ -364,10 +363,10 @@ const variationName = selectedVariation?.name || "";
             quantity > 1 ? `<p class="mt-2">(${quantity} available)</p>` : "";
         } else {
           inventoryStatusElement.innerHTML = `
-            <p class="mt-2 text-state-error-surface text-md font-bold inline-block">
-              This item is currently unavailable
-            </p>
-          `;
+          <p class="mt-2 text-state-error-surface text-md font-bold inline-block">
+            This item is currently unavailable
+          </p>
+        `;
         }
       }
 
@@ -431,6 +430,50 @@ const variationName = selectedVariation?.name || "";
         btnElement.classList.add("opacity-50", "cursor-not-allowed");
       }
     });
+
+    // Also update variation display to indicate items in cart
+    updateVariationSelectInCartStatus();
+  }
+
+  // Update the variation selector to show which items are in cart
+  function updateVariationSelectInCartStatus(): void {
+    const select = document.getElementById(
+      "variation-select"
+    ) as HTMLSelectElement;
+    if (!select || !select.dataset.variations) return;
+
+    const variations = JSON.parse(
+      select.dataset.variations
+    ) as ProductVariation[];
+    const cartItems = cart.getItems();
+
+    // Only consider variations of this product
+    const productId = variations.length > 0 ? variations[0].id : "";
+    if (!productId) return;
+
+    // Create a set of variation IDs already in cart
+    const cartVariationIds = new Set(
+      cartItems
+        .filter((item) => item.id === productId)
+        .map((item) => item.variationId)
+    );
+
+    // Mark options as "In Cart" but keep them enabled
+    Array.from(select.options).forEach((option) => {
+      const originalText = option.textContent?.replace(" (In Cart)", "") || "";
+
+      if (cartVariationIds.has(option.value)) {
+        // Add "(In Cart)" indicator but keep selectable
+        option.textContent = `${originalText} (In Cart)`;
+        option.classList.add("in-cart-option");
+      } else {
+        // Make sure we don't have duplicate "(In Cart)" text from multiple updates
+        if (option.textContent?.includes(" (In Cart)")) {
+          option.textContent = originalText;
+        }
+        option.classList.remove("in-cart-option");
+      }
+    });
   }
 
   function setupAddToCartHandler(): void {
@@ -448,7 +491,12 @@ const variationName = selectedVariation?.name || "";
       isProcessing = true;
 
       try {
-        // Get the product data directly
+        // Get the current variation selection directly from the select
+        const select = document.getElementById(
+          "variation-select"
+        ) as HTMLSelectElement;
+
+        // Start with base product data from the button
         const baseProductData = newButton.dataset.product;
         if (!baseProductData) {
           throw new Error("No product data found");
@@ -457,22 +505,58 @@ const variationName = selectedVariation?.name || "";
         // Parse the product data
         const product = JSON.parse(baseProductData) as ProductData;
 
-        // Create the compound key for cart lookup
-        const productKey = getVariationKey(product);
+        // If there's a variation selector, get its current value
+        if (select) {
+          const currentVariationId = select.value;
 
-        // Check if already in cart - use O(1) lookup with Map
+          // Only override if there's a selection and it's different
+          if (
+            currentVariationId &&
+            currentVariationId !== product.variationId
+          ) {
+            const variationsData = select.dataset.variations;
+            if (variationsData) {
+              const variations = JSON.parse(
+                variationsData
+              ) as ProductVariation[];
+              const selectedVariation = variations.find(
+                (v) => v.variationId === currentVariationId
+              );
+
+              if (selectedVariation) {
+                // This is critical: Update ALL relevant product properties
+                product.variationId = currentVariationId;
+                product.variationName = selectedVariation.name;
+                product.price = selectedVariation.price;
+                product.unit = selectedVariation.unit || "";
+
+                // If the variation has its own image, use it
+                if (selectedVariation.image) {
+                  product.image = selectedVariation.image;
+                }
+              }
+            }
+          }
+        }
+
+        // Check if this specific variation is already in the cart
         const cartItems = cart.getItems();
+
+        // Create a map for O(1) lookups
         const cartItemMap = new Map(
           cartItems.map((item) => [getVariationKey(item), item])
         );
 
+        const productKey = getVariationKey(product);
+
+        // Check if this specific variation is already in cart
         if (cartItemMap.has(productKey)) {
           window.showNotification("Item already in cart", "info");
           isProcessing = false;
           return;
         }
 
-        // Add to cart
+        // Add to cart with complete product information
         const result = await cart.addItem({
           ...product,
           quantity: 1,
@@ -480,6 +564,8 @@ const variationName = selectedVariation?.name || "";
 
         if (result.success) {
           window.showNotification(result.message || "Added to cart");
+          // Update variation display to mark items in cart
+          updateVariationSelectInCartStatus();
         } else {
           window.showNotification(
             result.message || "Failed to add to cart",
@@ -495,9 +581,23 @@ const variationName = selectedVariation?.name || "";
     });
   }
 
+  // Add a listener for cart updates
+  window.addEventListener("cartUpdated", updateVariationSelectInCartStatus);
+
   // Set up event listeners
   document.addEventListener("astro:page-load", () => {
     setupVariationSelector();
     setupAddToCartHandler();
+    updateVariationSelectInCartStatus(); // Initialize on page load
   });
+
+  // Cleanup
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      window.removeEventListener(
+        "cartUpdated",
+        updateVariationSelectInCartStatus
+      );
+    });
+  }
 </script>

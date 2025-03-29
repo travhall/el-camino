@@ -262,9 +262,8 @@ class CartManager implements ICartManager {
 
     console.log(`Starting to add item ${item.title} (${item.variationId})`);
 
-    // First try to directly add the item without API check if there are network issues
     try {
-      // Check if item is in stock using a straightforward approach
+      // Check if item is in stock
       let availableQuantity = 1; // Default to allowing 1 item
 
       try {
@@ -309,8 +308,13 @@ class CartManager implements ICartManager {
       // Create a compound key using both product ID and variation ID
       const itemKey = `${item.id}:${item.variationId}`;
 
-      // Check existing cart quantity
+      // Check if this specific variation is already in the cart
+      // This is critical - we need to check using direct key lookup, not array.find()
       const existingItem = this.items.get(itemKey);
+
+      console.log(`Checking cart for item with key: ${itemKey}`);
+      console.log(`Existing item found?`, existingItem ? "Yes" : "No");
+
       const currentQty = existingItem?.quantity || 0;
       const newQty = currentQty + item.quantity;
 
@@ -341,7 +345,22 @@ class CartManager implements ICartManager {
             `Added new item with limited quantity: ${availableQuantity}`
           );
         } else {
-          this.items.set(itemKey, { ...item }); // Create a copy to avoid reference issues
+          // Create a deep copy to avoid reference issues
+          const newItem = {
+            ...item,
+            // Ensure these properties are explicitly set from the original item
+            id: item.id,
+            variationId: item.variationId,
+            catalogObjectId: item.catalogObjectId || item.id, // Fallback
+            title: item.title,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image,
+            variationName: item.variationName,
+            unit: item.unit,
+          };
+
+          this.items.set(itemKey, newItem);
           console.log(`Added new item with quantity: ${item.quantity}`);
         }
       }
