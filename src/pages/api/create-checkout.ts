@@ -1,4 +1,4 @@
-// /api/create-checkout.ts
+// src/pages/api/create-checkout.ts
 import type { APIRoute } from "astro";
 import { Client, Environment } from "square";
 import type { CartItem } from "@/lib/cart/types";

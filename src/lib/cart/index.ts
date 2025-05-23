@@ -263,8 +263,13 @@ class CartManager implements ICartManager {
     console.log(`Starting to add item ${item.title} (${item.variationId})`);
 
     try {
+      // Ensure quantity is a valid number
+      const requestedQuantity =
+        item.quantity && item.quantity > 0 ? item.quantity : 1;
+      console.log(`Requested quantity: ${requestedQuantity}`);
+
       // Check if item is in stock
-      let availableQuantity = 1; // Default to allowing 1 item
+      let availableQuantity = 0;
 
       try {
         // Try to get real inventory data
@@ -294,6 +299,7 @@ class CartManager implements ICartManager {
         );
         // If inventory check fails, we'll still try to add the item
         // This prevents network errors from blocking all purchases
+        availableQuantity = 999; // Set a high number to allow the purchase to proceed
       }
 
       // Only block completely out of stock items
@@ -309,67 +315,90 @@ class CartManager implements ICartManager {
       const itemKey = `${item.id}:${item.variationId}`;
 
       // Check if this specific variation is already in the cart
-      // This is critical - we need to check using direct key lookup, not array.find()
       const existingItem = this.items.get(itemKey);
 
       console.log(`Checking cart for item with key: ${itemKey}`);
       console.log(`Existing item found?`, existingItem ? "Yes" : "No");
 
-      const currentQty = existingItem?.quantity || 0;
-      const newQty = currentQty + item.quantity;
+      // Calculate current cart quantity and new total
+      const currentCartQty = existingItem?.quantity || 0;
+      const newTotalQty = currentCartQty + requestedQuantity;
 
       console.log(
-        `Current quantity: ${currentQty}, New quantity: ${newQty}, Available: ${availableQuantity}`
+        `Current quantity in cart: ${currentCartQty}, Adding: ${requestedQuantity}, New total would be: ${newTotalQty}, Available: ${availableQuantity}`
       );
 
-      // Normal flow - add item with requested quantity
-      if (existingItem) {
-        // If adding more would exceed available, cap at available
-        if (availableQuantity > 0 && newQty > availableQuantity) {
+      // Check if adding would exceed available inventory
+      if (newTotalQty > availableQuantity) {
+        // If we're already at max, return error
+        if (currentCartQty >= availableQuantity) {
+          return {
+            success: false,
+            message: `You already have the maximum available quantity (${currentCartQty}) in your cart`,
+          };
+        }
+
+        // Otherwise add what we can
+        const possibleToAdd = availableQuantity - currentCartQty;
+
+        if (existingItem) {
+          // Update existing item to maximum
           existingItem.quantity = availableQuantity;
           this.items.set(itemKey, existingItem);
-          console.log(`Limited quantity to ${availableQuantity}`);
+          console.log(`Updated item quantity to maximum: ${availableQuantity}`);
         } else {
-          existingItem.quantity = newQty;
-          this.items.set(itemKey, existingItem);
-          console.log(
-            `Updated existing item, new quantity: ${existingItem.quantity}`
-          );
-        }
-      } else {
-        // If adding new item would exceed available, cap at available
-        if (availableQuantity > 0 && item.quantity > availableQuantity) {
-          const limitedItem = { ...item, quantity: availableQuantity };
-          this.items.set(itemKey, limitedItem);
-          console.log(
-            `Added new item with limited quantity: ${availableQuantity}`
-          );
-        } else {
-          // Create a deep copy to avoid reference issues
-          const newItem = {
-            ...item,
-            // Ensure these properties are explicitly set from the original item
-            id: item.id,
-            variationId: item.variationId,
-            catalogObjectId: item.catalogObjectId || item.id, // Fallback
-            title: item.title,
-            price: item.price,
-            quantity: item.quantity,
-            image: item.image,
-            variationName: item.variationName,
-            unit: item.unit,
-          };
-
+          // Add new item with maximum quantity
+          const newItem = { ...item, quantity: possibleToAdd };
           this.items.set(itemKey, newItem);
-          console.log(`Added new item with quantity: ${item.quantity}`);
+          console.log(`Added new item with maximum quantity: ${possibleToAdd}`);
         }
+
+        // Save changes
+        this.saveCart();
+        this.dispatchCartEvent("itemAdded", { item });
+
+        return {
+          success: true,
+          message: `Added ${possibleToAdd} to cart (maximum available)`,
+        };
+      }
+
+      // Normal flow - add or update with requested quantity
+      if (existingItem) {
+        // Update with the NEW TOTAL quantity
+        existingItem.quantity = newTotalQty;
+        this.items.set(itemKey, existingItem);
+        console.log(`Updated existing item, new quantity: ${newTotalQty}`);
+      } else {
+        // Create a deep copy with the requested quantity
+        const newItem = {
+          ...item,
+          id: item.id,
+          variationId: item.variationId,
+          catalogObjectId: item.catalogObjectId || item.id,
+          title: item.title,
+          price: item.price,
+          quantity: requestedQuantity, // Use requested quantity
+          image: item.image,
+          variationName: item.variationName,
+          unit: item.unit,
+        };
+
+        this.items.set(itemKey, newItem);
+        console.log(`Added new item with quantity: ${requestedQuantity}`);
       }
 
       // Save changes and dispatch events
       this.saveCart();
       this.dispatchCartEvent("itemAdded", { item });
 
-      return { success: true };
+      return {
+        success: true,
+        message:
+          requestedQuantity === 1
+            ? "Added to cart"
+            : `Added ${requestedQuantity} to cart`,
+      };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);

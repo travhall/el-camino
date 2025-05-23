@@ -14,16 +14,19 @@ export const GET: APIRoute = async () => {
       result.objects
         ?.filter((item: CatalogObject) => item.type === "ITEM")
         .map((item: CatalogObject) => {
-          const variation = item.itemData?.variations?.[0];
+          const variations = item.itemData?.variations || [];
           return {
             id: item.id,
-            type: item.type,
             name: item.itemData?.name,
             description: item.itemData?.description,
-            variationId: variation?.id,
-            price: variation?.itemVariationData?.priceMoney
-              ? Number(variation.itemVariationData.priceMoney.amount) / 100
-              : 0,
+            variations: variations.map((variation) => ({
+              variationId: variation.id,
+              name: variation.itemVariationData?.name,
+              price: variation.itemVariationData?.priceMoney
+                ? Number(variation.itemVariationData.priceMoney.amount) / 100
+                : 0,
+              attributes: variation.itemVariationData?.attributes || {},
+            })),
           };
         }) || [];
 
