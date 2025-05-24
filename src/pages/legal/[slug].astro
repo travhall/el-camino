@@ -1,48 +1,122 @@
 ---
-// src/pages/legal/[slug].astro
-import { getPages } from "@/lib/wordpress/api";
+// src/pages/legal/[slug].astro - SSR Version
+import { getPages, getLegalPages } from "@/lib/wordpress/api";
 import type { WordPressPage } from "@/lib/wordpress/types";
 import Layout from "@/layouts/Layout.astro";
 
-export async function getStaticPaths() {
-  const footerPageSlugs = [
-    "privacy-policy",
-    "return-policy",
-    "shipping-policy",
-    "terms-and-conditions",
-  ];
+// Get the slug from the URL params
+const { slug } = Astro.params;
 
-  try {
-    // Fetch pages from WordPress
-    const pages = await getPages();
+console.log("🔍 SSR Legal page request for slug:", slug);
 
-    // Filter to just legal pages with proper TypeScript typing
-    const legalPages = pages.filter((page: WordPressPage) =>
-      footerPageSlugs.includes(page.slug)
-    );
-
-    // Return paths with proper TypeScript typing
-    return legalPages.map((page: WordPressPage) => ({
-      params: { slug: page.slug },
-      props: { page },
-    }));
-  } catch (error) {
-    console.error("Error in getStaticPaths:", error);
-    return [];
-  }
+// Validate slug parameter
+if (!slug || typeof slug !== "string") {
+  console.error("❌ Invalid or missing slug parameter");
+  return Astro.redirect("/404");
 }
 
-// Extract page from props with proper typing
-const { page }: { page: WordPressPage } = Astro.props;
+// Define valid legal page slugs
+const validLegalSlugs = [
+  "privacy-policy",
+  "return-policy",
+  "shipping-policy",
+  "terms-and-conditions",
+];
 
-// If page is undefined, redirect to 404
-if (!page) {
+// Check if this is a valid legal page slug
+if (!validLegalSlugs.includes(slug)) {
+  console.error("❌ Invalid legal page slug:", slug);
   return Astro.redirect("/404");
+}
+
+// Fetch the specific page
+let page: WordPressPage | null = null;
+
+try {
+  // First try to get all legal pages (uses cache)
+  const legalPages = await getLegalPages();
+  page = legalPages.find((p) => p.slug === slug) || null;
+
+  // If not found in legal pages, try all pages as fallback
+  if (!page) {
+    console.log("📄 Page not found in legal pages, trying all pages...");
+    const allPages = await getPages();
+    page = allPages.find((p) => p.slug === slug) || null;
+  }
+
+  console.log("✅ Found page:", {
+    slug: page?.slug,
+    title: page?.title.rendered,
+    hasContent: !!page?.content.rendered,
+    contentLength: page?.content.rendered.length || 0,
+  });
+} catch (error) {
+  console.error("❌ Error fetching page:", error);
+}
+
+// If page not found, create fallback content
+if (!page) {
+  console.warn("⚠️ Page not found, using fallback content for:", slug);
+
+  const fallbackTitles: Record<string, string> = {
+    "privacy-policy": "Privacy Policy",
+    "return-policy": "Return Policy",
+    "shipping-policy": "Shipping Policy",
+    "terms-and-conditions": "Terms and Conditions",
+  };
+
+  const fallbackContent: Record<string, string> = {
+    "privacy-policy": `
+      <h2>Privacy Policy</h2>
+      <p>This privacy policy explains how El Camino Skate Shop collects, uses, and protects your information.</p>
+      <h3>Information We Collect</h3>
+      <p>We collect information you provide directly to us when making purchases or contacting us.</p>
+      <h3>How We Use Your Information</h3>
+      <p>We use your information to process orders, provide customer service, and improve our services.</p>
+      <h3>Data Protection</h3>
+      <p>We implement appropriate security measures to protect your personal information.</p>
+    `,
+    "return-policy": `
+      <h2>Return Policy</h2>
+      <p>We want you to be completely satisfied with your purchase.</p>
+      <h3>Return Period</h3>
+      <p>Items may be returned within 30 days of purchase for a full refund.</p>
+      <h3>Return Process</h3>
+      <p>Contact us to initiate a return. Items must be in original condition.</p>
+    `,
+    "shipping-policy": `
+      <h2>Shipping Policy</h2>
+      <p>We ship to locations within the United States.</p>
+      <h3>Processing Time</h3>
+      <p>Orders are typically processed within 1-2 business days.</p>
+      <h3>Shipping Rates</h3>
+      <p>Shipping costs are calculated at checkout based on location and weight.</p>
+    `,
+    "terms-and-conditions": `
+      <h2>Terms and Conditions</h2>
+      <p>By using our website, you agree to these terms and conditions.</p>
+      <h3>Use of Website</h3>
+      <p>You may use our website for lawful purposes only.</p>
+      <h3>Product Information</h3>
+      <p>We make every effort to ensure product information is accurate.</p>
+    `,
+  };
+
+  page = {
+    id: Date.now(),
+    date: new Date().toISOString(),
+    slug,
+    title: { rendered: fallbackTitles[slug] || "Legal Page" },
+    content: {
+      rendered: fallbackContent[slug] || "<p>Content is being updated.</p>",
+    },
+  };
 }
 
 // Get the title and content from the page
 const pageTitle = page.title.rendered;
 const fullTitle = `${pageTitle} | El Camino`;
+const pageContent = page.content.rendered;
 ---
 
 <Layout title={fullTitle}>
@@ -51,7 +125,43 @@ const fullTitle = `${pageTitle} | El Camino`;
       <h1 class="text-display-lg font-display text-content-heading">
         {pageTitle}
       </h1>
-      <div class="mt-8 text-content-body" set:html={page.content.rendered} />
+
+      <!-- Debug information (only in dev mode) -->
+      <!-- {
+        import.meta.env.DEV && (
+          <div class="mb-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+            <h3 class="text-sm font-semibold mb-2">🔧 Debug Info:</h3>
+            <div class="text-xs space-y-1">
+              <p>
+                <strong>Slug:</strong> {slug}
+              </p>
+              <p>
+                <strong>Page found:</strong> {page ? "Yes" : "No"}
+              </p>
+              <p>
+                <strong>Content length:</strong> {pageContent.length} characters
+              </p>
+              <p>
+                <strong>Mode:</strong> SSR (Server-Side Rendered)
+              </p>
+            </div>
+          </div>
+        )
+      } -->
+
+      <div class="mt-8 text-content-body" set:html={pageContent} />
+
+      <!-- Fallback if content is empty -->
+      {
+        (!pageContent || pageContent.trim() === "") && (
+          <div class="mt-8 p-6 bg-surface-tertiary border border-border-tertiary rounded">
+            <p class="text-content-body">
+              This page content is currently being updated. Please check back
+              soon.
+            </p>
+          </div>
+        )
+      }
     </article>
   </main>
 </Layout>
@@ -67,5 +177,16 @@ const fullTitle = `${pageTitle} | El Camino`;
     border-left: 4px solid var(--ui-button-surface);
     padding-left: 1rem;
     font-style: italic;
+  }
+
+  /* Style fallback content nicely */
+  :global(.prose h2) {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  :global(.prose h3) {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
   }
 </style>

@@ -353,3 +353,42 @@ export function getCacheStats(): {
     storageCacheKeys,
   };
 }
+
+/**
+ * Test function to debug WordPress API endpoints
+ */
+export async function debugWordPressAPI(): Promise<void> {
+  const endpoints = [
+    "/posts?type=page&number=10",
+    "/posts?type=page&fields=ID,title,slug,content&number=10",
+    "/posts?status=publish&type=page&number=10",
+    "/posts?type=page&status=publish&fields=ID,title,date,content,slug&number=10",
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`\n🧪 Testing endpoint: ${endpoint}`);
+      const response = await fetch(
+        `https://public-api.wordpress.com/rest/v1.1/sites/elcaminoskateshop.wordpress.com${endpoint}`
+      );
+      const data = await response.json();
+
+      console.log("Response status:", response.status);
+      console.log("Response data:", {
+        hasData: !!data,
+        hasPosts: !!data?.posts,
+        postsCount: data?.posts?.length || 0,
+        error: data?.error || "none",
+        firstPost: data?.posts?.[0]
+          ? {
+              ID: data.posts[0].ID,
+              title: data.posts[0].title,
+              slug: data.posts[0].slug,
+            }
+          : null,
+      });
+    } catch (error) {
+      console.error(`❌ Error testing ${endpoint}:`, error);
+    }
+  }
+}
