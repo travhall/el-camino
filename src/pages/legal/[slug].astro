@@ -1,6 +1,7 @@
 ---
 // src/pages/legal/[slug].astro
 import { getPages } from "@/lib/wordpress/api";
+import type { WordPressPage } from "@/lib/wordpress/types";
 import Layout from "@/layouts/Layout.astro";
 
 export async function getStaticPaths() {
@@ -13,17 +14,15 @@ export async function getStaticPaths() {
 
   try {
     // Fetch pages from WordPress
-    // console.log("Fetching pages for legal section...");
     const pages = await getPages();
-    // console.log(`Fetched ${pages.length} pages from WordPress`);
 
-    // Filter to just legal pages
-    const legalPages = pages.filter((page) =>
+    // Filter to just legal pages with proper TypeScript typing
+    const legalPages = pages.filter((page: WordPressPage) =>
       footerPageSlugs.includes(page.slug)
     );
-    // console.log(`Found ${legalPages.length} legal pages that match our slugs`);
 
-    return legalPages.map((page) => ({
+    // Return paths with proper TypeScript typing
+    return legalPages.map((page: WordPressPage) => ({
       params: { slug: page.slug },
       props: { page },
     }));
@@ -33,8 +32,8 @@ export async function getStaticPaths() {
   }
 }
 
-// Extract page from props
-const { page } = Astro.props;
+// Extract page from props with proper typing
+const { page }: { page: WordPressPage } = Astro.props;
 
 // If page is undefined, redirect to 404
 if (!page) {

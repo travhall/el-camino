@@ -138,6 +138,10 @@ function processPage(page: any): WordPressPage {
   };
 }
 
+// =============================================================================
+// POSTS API (for news/blog content)
+// =============================================================================
+
 /**
  * Get all posts with caching
  */
@@ -173,10 +177,14 @@ export async function getPost(slug: string): Promise<WordPressPost | null> {
   }
 }
 
+// =============================================================================
+// PAGES API (for legal/policy content)
+// =============================================================================
+
 /**
  * Get all pages with caching
  */
-export async function getAllPages(): Promise<WordPressPage[]> {
+export async function getPages(): Promise<WordPressPage[]> {
   try {
     const data = await fetchWithCache<any>(
       "/posts?type=page&fields=ID,title,date,content,slug,featured_image",
@@ -201,7 +209,7 @@ export async function getPage(slug: string): Promise<WordPressPage | null> {
   try {
     const cacheKey = `page_${slug}`;
 
-    // Check cache first (allows faster lookup than searching through all pages)
+    // Try direct fetch first
     try {
       const page = await fetchWithCache<any>(
         `/posts/slug:${slug}?type=page&fields=ID,title,date,content,slug,featured_image`,
@@ -217,8 +225,8 @@ export async function getPage(slug: string): Promise<WordPressPage | null> {
       );
     }
 
-    // Fallback: try to find the page in all pages (which are likely cached)
-    const allPages = await getAllPages();
+    // Fallback: search through all pages
+    const allPages = await getPages();
     const page = allPages.find((p) => p.slug === slug);
 
     return page || null;
@@ -228,25 +236,21 @@ export async function getPage(slug: string): Promise<WordPressPage | null> {
   }
 }
 
-// Predefined page collections
-const FOOTER_PAGE_SLUGS = [
-  "privacy-policy",
-  "return-policy",
-  "shipping-policy",
-  "terms-and-conditions",
-];
-
-const NAV_PAGE_SLUGS = ["about", "products", "blog", "contact"];
-
 /**
- * Get footer pages with caching
+ * Get specific legal/policy pages for footer
  */
-export async function getFooterPages(): Promise<WordPressPage[]> {
-  try {
-    // Check for specialized cache first
-    const cacheKey = "footer_pages";
+export async function getLegalPages(): Promise<WordPressPage[]> {
+  const legalSlugs = [
+    "privacy-policy",
+    "return-policy",
+    "shipping-policy",
+    "terms-and-conditions",
+  ];
 
-    // Check if cached footer pages data exists (memory or localStorage)
+  try {
+    const cacheKey = "legal_pages";
+
+    // Check cache first
     if (
       memoryCache[cacheKey] &&
       Date.now() - memoryCache[cacheKey].timestamp < MEMORY_CACHE_TTL
@@ -254,59 +258,28 @@ export async function getFooterPages(): Promise<WordPressPage[]> {
       return memoryCache[cacheKey].data;
     }
 
-    // Otherwise get all pages (likely cached) and filter
-    const allPages = await getAllPages();
-    const footerPages = allPages.filter((page) =>
-      FOOTER_PAGE_SLUGS.includes(page.slug)
+    // Get all pages and filter to legal ones
+    const allPages = await getPages();
+    const legalPages = allPages.filter((page) =>
+      legalSlugs.includes(page.slug)
     );
 
-    // Cache the result in memory
+    // Cache the result
     memoryCache[cacheKey] = {
-      data: footerPages,
+      data: legalPages,
       timestamp: Date.now(),
     };
 
-    return footerPages;
+    return legalPages;
   } catch (error) {
-    console.error("Error fetching footer pages:", error);
+    console.error("Error fetching legal pages:", error);
     return [];
   }
 }
 
-/**
- * Get navigation pages with caching
- */
-export async function getNavPages(): Promise<WordPressPage[]> {
-  try {
-    // Check for specialized cache first
-    const cacheKey = "nav_pages";
-
-    // Check if cached nav pages data exists (memory or localStorage)
-    if (
-      memoryCache[cacheKey] &&
-      Date.now() - memoryCache[cacheKey].timestamp < MEMORY_CACHE_TTL
-    ) {
-      return memoryCache[cacheKey].data;
-    }
-
-    // Otherwise get all pages (likely cached) and filter
-    const allPages = await getAllPages();
-    const navPages = allPages.filter((page) =>
-      NAV_PAGE_SLUGS.includes(page.slug)
-    );
-
-    // Cache the result in memory
-    memoryCache[cacheKey] = {
-      data: navPages,
-      timestamp: Date.now(),
-    };
-
-    return navPages;
-  } catch (error) {
-    console.error("Error fetching navigation pages:", error);
-    return [];
-  }
-}
+// =============================================================================
+// CACHE MANAGEMENT
+// =============================================================================
 
 /**
  * Clear all caches (memory and localStorage)

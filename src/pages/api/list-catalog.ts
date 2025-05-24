@@ -25,7 +25,6 @@ export const GET: APIRoute = async () => {
               price: variation.itemVariationData?.priceMoney
                 ? Number(variation.itemVariationData.priceMoney.amount) / 100
                 : 0,
-              attributes: variation.itemVariationData?.attributes || {},
             })),
           };
         }) || [];
