@@ -600,29 +600,37 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     // Update size buttons
     const sizeButtons = document.querySelectorAll('[data-option-type="size"]');
     sizeButtons.forEach((element: Element) => {
-      // Ensure this is a button before proceeding
       if (!(element instanceof HTMLButtonElement)) return;
 
-      const button = element; // Now TypeScript knows it's an HTMLButtonElement
+      const button = element;
       const size = button.dataset.optionValue;
       if (!size) return;
 
-      // If color is selected, check if this size works with selected color
-      // Update this section in the updateOptionButtonStates function
-      if (selectedColor) {
-        const hasValidCombo = variations.some((v) => {
-          const parts = v.name.split(",").map((p: string) => p.trim());
-          // Only disable if BOTH conditions are met AND the item is out of stock
-          return parts[0] === size && parts[1] === selectedColor && !v.inStock;
-        });
+      // Check if this size has any available combinations
+      let hasAvailableCombo = false;
 
-        // Reverse the logic - only disable if specifically invalid
-        button.disabled = hasValidCombo;
-        if (hasValidCombo) {
-          button.classList.add("opacity-60", "cursor-not-allowed");
-        } else {
-          button.classList.remove("opacity-60", "cursor-not-allowed");
-        }
+      if (selectedColor) {
+        // If color is selected, check if this size works with that color
+        hasAvailableCombo = variations.some((v) => {
+          if (!v.name) return false;
+          const parts = v.name.split(",").map((p: string) => p.trim());
+          return parts[0] === size && parts[1] === selectedColor && v.inStock;
+        });
+      } else {
+        // No color selected, check if this size has any in-stock variations
+        hasAvailableCombo = variations.some((v) => {
+          if (!v.name) return false;
+          const parts = v.name.split(",").map((p: string) => p.trim());
+          return parts[0] === size && v.inStock;
+        });
+      }
+
+      // Update button state - FIXED: correct logic
+      button.disabled = !hasAvailableCombo;
+      if (!hasAvailableCombo) {
+        button.classList.add("opacity-60", "cursor-not-allowed");
+      } else {
+        button.classList.remove("opacity-60", "cursor-not-allowed");
       }
 
       // Update selected state
@@ -637,6 +645,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           "text-ui-button-text",
           "border-ui-button-border/50"
         );
+        button.setAttribute("aria-pressed", "true");
       } else {
         button.classList.add(
           "bg-ui-input-surface",
@@ -648,6 +657,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           "text-ui-button-text",
           "border-ui-button-border/50"
         );
+        button.setAttribute("aria-pressed", "false");
       }
     });
 
@@ -656,26 +666,37 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
       '[data-option-type="color"]'
     );
     colorButtons.forEach((element: Element) => {
-      // Ensure this is a button before proceeding
       if (!(element instanceof HTMLButtonElement)) return;
 
-      const button = element; // Now TypeScript knows it's an HTMLButtonElement
+      const button = element;
       const color = button.dataset.optionValue;
       if (!color) return;
 
-      // If size is selected, check if this color works with selected size
+      // Check if this color has any available combinations
+      let hasAvailableCombo = false;
+
       if (selectedSize) {
-        const hasValidCombo = variations.some((v: any) => {
+        // If size is selected, check if this color works with that size
+        hasAvailableCombo = variations.some((v: any) => {
+          if (!v.name) return false;
           const parts = v.name.split(",").map((p: string) => p.trim());
           return parts[0] === selectedSize && parts[1] === color && v.inStock;
         });
+      } else {
+        // No size selected, check if this color has any in-stock variations
+        hasAvailableCombo = variations.some((v: any) => {
+          if (!v.name) return false;
+          const parts = v.name.split(",").map((p: string) => p.trim());
+          return parts[1] === color && v.inStock;
+        });
+      }
 
-        button.disabled = !hasValidCombo;
-        if (!hasValidCombo) {
-          button.classList.add("opacity-60", "cursor-not-allowed");
-        } else {
-          button.classList.remove("opacity-60", "cursor-not-allowed");
-        }
+      // Update button state - FIXED: correct logic
+      button.disabled = !hasAvailableCombo;
+      if (!hasAvailableCombo) {
+        button.classList.add("opacity-60", "cursor-not-allowed");
+      } else {
+        button.classList.remove("opacity-60", "cursor-not-allowed");
       }
 
       // Update selected state
@@ -690,6 +711,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           "text-ui-button-text",
           "border-ui-button-border/50"
         );
+        button.setAttribute("aria-pressed", "true");
       } else {
         button.classList.add(
           "bg-ui-input-surface",
@@ -701,6 +723,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           "text-ui-button-text",
           "border-ui-button-border/50"
         );
+        button.setAttribute("aria-pressed", "false");
       }
     });
   }
