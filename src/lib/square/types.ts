@@ -17,6 +17,8 @@ export interface Product {
   selectedVariationId?: string;
   brand?: string;
   unit?: string;
+  // New: Available attributes for this product
+  availableAttributes?: Record<string, string[]>;
 }
 
 export interface ProductData {
@@ -68,6 +70,21 @@ export interface ProductVariation {
   quantity?: number;
   image?: string;
   unit?: string;
+  // New: Structured attributes parsed from name
+  attributes?: Record<string, string>;
+}
+
+// New: Interface for variation selection state
+export interface VariationSelectionState {
+  selectedAttributes: Record<string, string>;
+  availableAttributes: Record<string, string[]>;
+  currentVariation?: ProductVariation;
+}
+
+// New: Configuration for variation parsing
+export interface VariationConfig {
+  attributeMappings: Record<number, string[]>;
+  displayNames: Record<string, string>;
 }
 
 export interface SquareApiConfig {

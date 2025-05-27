@@ -4,6 +4,10 @@ import type { Product } from "./types";
 import { getImageUrl, batchGetImageUrls } from "./imageUtils";
 import { defaultCircuitBreaker, logApiError } from "./apiUtils";
 import { processSquareError, logError } from "./errorUtils";
+import {
+  parseVariationName,
+  buildAvailableAttributes,
+} from "./variationParser";
 
 function validateEnvironment() {
   const missingVars = [];
@@ -176,6 +180,9 @@ export async function fetchProduct(id: string): Promise<Product | null> {
           unit = "each";
         }
 
+        // Parse variation attributes from the name
+        const attributes = parseVariationName(v.itemVariationData?.name || "");
+
         return {
           id: v.id,
           variationId: v.id,
@@ -183,8 +190,12 @@ export async function fetchProduct(id: string): Promise<Product | null> {
           price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
           image: variationImageUrl,
           unit: unit,
+          attributes: attributes, // Add parsed attributes
         };
       });
+
+      // Build available attributes map
+      const availableAttributes = buildAvailableAttributes(productVariations);
 
       // Get custom attributes, specifically looking for 'Brand'
       let brandValue = "";
@@ -221,6 +232,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         selectedVariationId: defaultVariation.id,
         brand: brandValue,
         unit: defaultUnit,
+        availableAttributes: availableAttributes, // Add available attributes
       };
     } catch (error) {
       // Use our new error handling utilities
