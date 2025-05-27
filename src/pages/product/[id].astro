@@ -175,8 +175,9 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
               ) : selectedVariationQuantity > 0 ? (
                 <p class="mt-2 text-state-success-surface">
                   In Stock{" "}
-                  {selectedVariationQuantity > 1 &&
-                    `(${selectedVariationQuantity} available)`}
+                  <span id="stock-details">
+                    ({selectedVariationQuantity} available)
+                  </span>
                 </p>
               ) : null
             }
@@ -332,9 +333,12 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
                 +
               </button>
             </div>
-            <span id="availability-indicator" class="text-sm text-content-meta">
-              {selectedVariationQuantity} available
-            </span>
+            <div id="availability-indicator" class="text-sm">
+              <span class="text-content-meta" id="remaining-count">
+                {selectedVariationQuantity} remaining
+              </span>
+              <span id="cart-quantity" class="ml-2 hidden"> (0 in cart) </span>
+            </div>
           </div>
         </div>
 
@@ -346,6 +350,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
             variations: variations,
             availableAttributes: availableAttributes,
             selectedVariationId: defaultVariationId,
+            productId: product.id,
           })}
         />
 
@@ -396,8 +401,17 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
   import { MoneyUtils } from "@/lib/square/money";
   import { findVariationByAttributes } from "@/lib/square/variationParser";
   import type { ProductData } from "@/lib/square/types";
+  import {
+    ProductAvailabilityState,
+    getButtonText,
+    getStatusMessage,
+    isButtonDisabled,
+    getDefaultQuantity,
+    getMaxQuantity,
+    isQuantityInputDisabled,
+  } from "@/lib/square/types";
 
-  // Type definitions for window globals
+  // Global declarations
   declare global {
     interface Window {
       cart: typeof cart;
@@ -414,6 +428,194 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
   let currentVariation: any = null;
   let variations: any[] = [];
   let availableAttributes: Record<string, string[]> = {};
+  let productId = "";
+
+  /**
+   * Central availability update function - replaces all the scattered updates
+   */
+  function updateProductAvailability(
+    variationId: string,
+    totalInventory: number
+  ): void {
+    console.log(
+      `Updating availability for ${productId}:${variationId}, inventory: ${totalInventory}`
+    );
+
+    // Get current availability info from cart
+    const availabilityInfo = cart.getProductAvailability(
+      productId,
+      variationId,
+      totalInventory
+    );
+    console.log("Availability info:", availabilityInfo);
+
+    // Update all UI elements with centralized logic
+    updateQuantityControls(availabilityInfo);
+    updateAddToCartButton(availabilityInfo);
+    updateStatusMessaging(availabilityInfo);
+    updateImageOverlay(availabilityInfo);
+    updateInventoryDisplay(availabilityInfo);
+  }
+
+  /**
+   * Update quantity input and controls
+   */
+  function updateQuantityControls(info: any): void {
+    const quantityInput = document.getElementById(
+      "quantity-input"
+    ) as HTMLInputElement;
+    const decreaseButton = document.getElementById(
+      "decrease-quantity"
+    ) as HTMLButtonElement;
+    const increaseButton = document.getElementById(
+      "increase-quantity"
+    ) as HTMLButtonElement;
+
+    if (!quantityInput) return;
+
+    // Set default quantity (1 for available, 0 for unavailable)
+    const defaultQty = getDefaultQuantity(info.state);
+    quantityInput.value = defaultQty.toString();
+
+    // Set max to remaining (not total)
+    const maxQty = getMaxQuantity(info);
+    quantityInput.max = maxQty.toString();
+
+    // Enable/disable based on state
+    const isDisabled = isQuantityInputDisabled(info.state);
+    quantityInput.disabled = isDisabled;
+
+    // Update buttons
+    if (decreaseButton) {
+      decreaseButton.disabled = isDisabled || defaultQty <= 1;
+    }
+    if (increaseButton) {
+      increaseButton.disabled = isDisabled || defaultQty >= maxQty;
+    }
+
+    console.log(
+      `Quantity controls updated: default=${defaultQty}, max=${maxQty}, disabled=${isDisabled}`
+    );
+  }
+
+  /**
+   * Update add to cart button
+   */
+  function updateAddToCartButton(info: any): void {
+    const addToCartBtn = document.getElementById(
+      "add-to-cart-button"
+    ) as HTMLButtonElement;
+    if (!addToCartBtn) return;
+
+    // Update button text using centralized helper
+    addToCartBtn.textContent = getButtonText(info.state);
+
+    // Update disabled state
+    const shouldDisable = isButtonDisabled(info.state);
+    addToCartBtn.disabled = shouldDisable;
+
+    // Update visual feedback
+    if (shouldDisable) {
+      addToCartBtn.classList.add("opacity-50", "cursor-not-allowed");
+    } else {
+      addToCartBtn.classList.remove("opacity-50", "cursor-not-allowed");
+    }
+
+    console.log(
+      `Button updated: text="${getButtonText(info.state)}", disabled=${shouldDisable}`
+    );
+  }
+
+  /**
+   * Update status messaging (replaces inventory-status updates)
+   */
+  function updateStatusMessaging(info: any): void {
+    const inventoryStatus = document.getElementById("inventory-status");
+    if (!inventoryStatus) return;
+
+    const message = getStatusMessage(info);
+
+    // Clear and update with appropriate styling
+    if (info.state === ProductAvailabilityState.OUT_OF_STOCK) {
+      inventoryStatus.innerHTML = `
+      <p class="mt-2 text-state-error-surface text-md font-bold inline-block">
+        Out of Stock
+      </p>
+    `;
+    } else if (info.state === ProductAvailabilityState.ALL_IN_CART) {
+      inventoryStatus.innerHTML = `
+      <p class="mt-2 text-content-meta">
+        ${message}
+      </p>
+    `;
+    } else {
+      // Available state
+      inventoryStatus.innerHTML = `
+      <p class="mt-2 text-state-success-surface">
+        In Stock <span id="stock-details">(${info.remaining} remaining${info.inCart > 0 ? `, ${info.inCart} in cart` : ""})</span>
+      </p>
+    `;
+    }
+
+    console.log(`Status updated: "${message}" (${info.state})`);
+  }
+
+  /**
+   * Update image overlay (only show for true out of stock)
+   */
+  function updateImageOverlay(info: any): void {
+    const stockOverlay = document.getElementById("stock-overlay");
+    const productImage = document.getElementById("product-image");
+    const imageContainer = productImage?.parentElement;
+
+    // Remove existing overlay
+    if (stockOverlay) {
+      stockOverlay.remove();
+    }
+
+    // Only add overlay for true out of stock (not "all in cart")
+    if (
+      info.state === ProductAvailabilityState.OUT_OF_STOCK &&
+      imageContainer
+    ) {
+      const overlay = document.createElement("div");
+      overlay.id = "stock-overlay";
+      overlay.className =
+        "absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-sm";
+      overlay.textContent = "Out of Stock";
+      imageContainer.appendChild(overlay);
+
+      // Dim image
+      if (productImage) {
+        productImage.classList.add("opacity-75");
+      }
+    } else if (productImage) {
+      // Remove dimming for available/all-in-cart states
+      productImage.classList.remove("opacity-75");
+    }
+  }
+
+  /**
+   * Update remaining/cart quantity displays
+   */
+  function updateInventoryDisplay(info: any): void {
+    // Update remaining count
+    const remainingElement = document.getElementById("remaining-count");
+    if (remainingElement) {
+      remainingElement.textContent = `${info.remaining} remaining`;
+    }
+
+    // Update cart quantity display
+    const cartQuantityElement = document.getElementById("cart-quantity");
+    if (cartQuantityElement) {
+      if (info.inCart > 0) {
+        cartQuantityElement.textContent = `(${info.inCart} in cart)`;
+        cartQuantityElement.classList.remove("hidden");
+      } else {
+        cartQuantityElement.classList.add("hidden");
+      }
+    }
+  }
 
   /**
    * Initialize data from hidden input
@@ -428,6 +630,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
       const data = JSON.parse(dataInput.value);
       variations = data.variations || [];
       availableAttributes = data.availableAttributes || {};
+      productId = data.productId || "";
 
       // Find current variation and set initial attributes
       currentVariation = variations.find(
@@ -461,58 +664,18 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     const { variationId, name, price, inStock, quantity, image, unit } =
       variation;
 
+    // Use our centralized availability system
+    updateProductAvailability(variationId, quantity || 0);
+
     // Update price display
     const priceElement = document.getElementById("price-display");
     if (priceElement) {
       const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(price));
-
       if (unit) {
         priceElement.innerHTML = `${formattedPrice} <span class="text-xl">${unit}</span>`;
       } else {
         priceElement.textContent = formattedPrice;
       }
-    }
-
-    // Update inventory status
-    const inventoryStatus = document.getElementById("inventory-status");
-    if (inventoryStatus) {
-      if (!inStock) {
-        inventoryStatus.innerHTML = `
-          <p class="mt-2 text-state-error-surface text-md font-bold inline-block">
-            This item is currently unavailable
-          </p>
-        `;
-      } else if (quantity > 1) {
-        inventoryStatus.innerHTML = `
-          <p class="mt-2 text-state-success-surface">
-            In Stock (${quantity} available)
-          </p>
-        `;
-      } else {
-        inventoryStatus.innerHTML = `
-          <p class="mt-2 text-state-success-surface">
-            In Stock
-          </p>
-        `;
-      }
-    }
-
-    // Update availability indicator
-    const availabilityIndicator = document.getElementById(
-      "availability-indicator"
-    );
-    if (availabilityIndicator) {
-      availabilityIndicator.textContent = `${quantity} available`;
-    }
-
-    // Update quantity input
-    const quantityInput = document.getElementById(
-      "quantity-input"
-    ) as HTMLInputElement;
-    if (quantityInput) {
-      quantityInput.max = String(quantity);
-      quantityInput.value = "1";
-      updateQuantityButtonStates();
     }
 
     // Update image if variation has its own
@@ -525,52 +688,23 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
       }
     }
 
-    // Update add to cart button
+    // Update product data in button
     const addToCartButton = document.getElementById(
       "add-to-cart-button"
     ) as HTMLButtonElement;
-    if (addToCartButton) {
-      addToCartButton.disabled = !inStock;
-
-      if (!inStock) {
-        addToCartButton.textContent = "Sold Out";
-        addToCartButton.classList.add("opacity-50", "cursor-not-allowed");
-      } else {
-        addToCartButton.textContent = "Add to Cart";
-        addToCartButton.classList.remove("opacity-50", "cursor-not-allowed");
+    if (addToCartButton?.dataset.product) {
+      try {
+        const productData = JSON.parse(
+          addToCartButton.dataset.product
+        ) as ProductData;
+        productData.variationId = variationId;
+        productData.variationName = name;
+        productData.price = price;
+        if (unit) productData.unit = unit;
+        addToCartButton.dataset.product = JSON.stringify(productData);
+      } catch (e) {
+        console.error("Error updating product data:", e);
       }
-
-      // Update product data
-      if (addToCartButton.dataset.product) {
-        try {
-          const productData = JSON.parse(
-            addToCartButton.dataset.product
-          ) as ProductData;
-          productData.variationId = variationId;
-          productData.variationName = name;
-          productData.price = price;
-          if (unit) productData.unit = unit;
-          addToCartButton.dataset.product = JSON.stringify(productData);
-        } catch (e) {
-          console.error("Error updating product data:", e);
-        }
-      }
-    }
-
-    // Update stock overlay
-    const stockOverlay = document.getElementById("stock-overlay");
-    const productImageContainer =
-      document.getElementById("product-image")?.parentElement;
-
-    if (!inStock && !stockOverlay && productImageContainer) {
-      const overlay = document.createElement("div");
-      overlay.id = "stock-overlay";
-      overlay.className =
-        "absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-sm";
-      overlay.textContent = "Sold Out";
-      productImageContainer.appendChild(overlay);
-    } else if (inStock && stockOverlay) {
-      stockOverlay.remove();
     }
   }
 
@@ -597,14 +731,22 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           variations,
           testAttributes
         );
-        const isAvailable = matchingVariation?.inStock || false;
+
+        // Use our availability system to check if this variation can be added to cart
+        const isAvailable =
+          matchingVariation?.inStock &&
+          cart.canAddToCart(
+            productId,
+            matchingVariation.variationId,
+            matchingVariation.quantity || 0
+          );
 
         // Update button state
         btn.disabled = !isAvailable;
         if (!isAvailable) {
-          btn.classList.add("opacity-60", "cursor-not-allowed");
+          btn.classList.add("opacity-50", "cursor-not-allowed");
         } else {
-          btn.classList.remove("opacity-60", "cursor-not-allowed");
+          btn.classList.remove("opacity-50", "cursor-not-allowed");
         }
 
         // Update selected state
@@ -641,39 +783,11 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
    */
   function handleAttributeSelection(attributeType: string, value: string) {
     selectedAttributes[attributeType] = value;
-
-    // Find matching variation
     const matchingVariation = findMatchingVariation();
     if (matchingVariation) {
       updateProductUI(matchingVariation);
     }
-
-    // Update button states
     updateAttributeButtonStates();
-    updateCartStatusDisplay();
-  }
-
-  /**
-   * Update quantity button states
-   */
-  function updateQuantityButtonStates() {
-    const quantityInput = document.getElementById(
-      "quantity-input"
-    ) as HTMLInputElement;
-    const decreaseButton = document.getElementById(
-      "decrease-quantity"
-    ) as HTMLButtonElement;
-    const increaseButton = document.getElementById(
-      "increase-quantity"
-    ) as HTMLButtonElement;
-
-    if (!quantityInput || !decreaseButton || !increaseButton) return;
-
-    const currentValue = parseInt(quantityInput.value, 10) || 1;
-    const maxValue = parseInt(quantityInput.max, 10) || 1;
-
-    decreaseButton.disabled = currentValue <= 1;
-    increaseButton.disabled = currentValue >= maxValue;
   }
 
   /**
@@ -681,7 +795,6 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
    */
   function setupAttributeButtons() {
     const attributeButtons = document.querySelectorAll(".attribute-button");
-
     attributeButtons.forEach((button) => {
       button.addEventListener("click", (e) => {
         const btn = e.currentTarget as HTMLButtonElement;
@@ -698,7 +811,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
   }
 
   /**
-   * Setup quantity controls
+   * Setup quantity controls with fixed increment behavior
    */
   function setupQuantityControls() {
     const quantityInput = document.getElementById(
@@ -713,43 +826,46 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
     if (!quantityInput || !decreaseButton || !increaseButton) return;
 
-    updateQuantityButtonStates();
-
-    decreaseButton.addEventListener("click", () => {
-      const currentValue = parseInt(quantityInput.value, 10) || 1;
-      if (currentValue > 1) {
-        quantityInput.value = String(currentValue - 1);
-        updateQuantityButtonStates();
-      }
-    });
-
+    // Fixed increment - adds 1, not jump to max
     increaseButton.addEventListener("click", () => {
-      const currentValue = parseInt(quantityInput.value, 10) || 1;
-      const maxValue = parseInt(quantityInput.max, 10) || 1;
+      const currentValue = parseInt(quantityInput.value, 10) || 0;
+      const maxValue = parseInt(quantityInput.max, 10) || 0;
 
       if (currentValue < maxValue) {
         quantityInput.value = String(currentValue + 1);
-        updateQuantityButtonStates();
+        // Update button states
+        decreaseButton.disabled = false;
+        increaseButton.disabled = currentValue + 1 >= maxValue;
+      }
+    });
+
+    decreaseButton.addEventListener("click", () => {
+      const currentValue = parseInt(quantityInput.value, 10) || 0;
+      if (currentValue > 1) {
+        quantityInput.value = String(currentValue - 1);
+        // Update button states
+        increaseButton.disabled = false;
+        decreaseButton.disabled = currentValue - 1 <= 1;
       }
     });
 
     quantityInput.addEventListener("change", () => {
       let value = parseInt(quantityInput.value, 10);
-      const max = parseInt(quantityInput.max, 10) || 1;
+      const max = parseInt(quantityInput.max, 10) || 0;
 
-      if (isNaN(value) || value < 1) {
-        value = 1;
-      } else if (value > max) {
-        value = max;
-      }
+      if (isNaN(value) || value < 1) value = 1;
+      else if (value > max) value = max;
 
       quantityInput.value = String(value);
-      updateQuantityButtonStates();
+
+      // Update button states
+      decreaseButton.disabled = value <= 1;
+      increaseButton.disabled = value >= max;
     });
   }
 
   /**
-   * Setup add to cart handler
+   * Setup add to cart handler with availability checking
    */
   function setupAddToCartHandler() {
     const button = document.getElementById("add-to-cart-button");
@@ -765,13 +881,10 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
       isProcessing = true;
       const originalText = btnElement.textContent || "Add to Cart";
       btnElement.textContent = "Adding...";
-      btnElement.classList.add("opacity-70");
 
       try {
         const productData = btnElement.dataset.product;
-        if (!productData) {
-          throw new Error("No product data found");
-        }
+        if (!productData) throw new Error("No product data found");
 
         const product = JSON.parse(productData);
         const quantityInput = document.getElementById(
@@ -784,101 +897,62 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           return;
         }
 
-        const itemKey = `${product.id}:${product.variationId}`;
-        const existingItems = cart.getItems();
-        const existingItem = existingItems.find(
-          (item) => `${item.id}:${item.variationId}` === itemKey
-        );
-
-        if (existingItem) {
-          const maxAvailable = parseInt(quantityInput?.max || "999", 10);
-          const newTotal = existingItem.quantity + quantity;
-
-          if (newTotal > maxAvailable) {
-            window.showNotification(
-              `Cannot add more. Maximum available: ${maxAvailable}`,
-              "error"
-            );
-          } else {
-            const result = await cart.updateQuantity(itemKey, newTotal);
-            if (result.success) {
-              window.showNotification(
-                `Updated quantity to ${newTotal}`,
-                "success"
-              );
-              if (quantityInput) {
-                quantityInput.value = "1";
-                updateQuantityButtonStates();
-              }
-            } else {
-              window.showNotification(
-                result.message || "Failed to update quantity",
-                "error"
-              );
-            }
-          }
-        } else {
-          product.quantity = quantity;
-          const result = await cart.addItem(product);
-
-          if (result.success) {
-            window.showNotification(`Added ${quantity} to cart`, "success");
-            if (quantityInput) {
-              quantityInput.value = "1";
-              updateQuantityButtonStates();
-            }
-          } else {
-            window.showNotification(
-              result.message || "Failed to add to cart",
-              "error"
-            );
-          }
+        // Use cart's canAddToCart method
+        const totalAvailable = currentVariation?.quantity || 0;
+        if (
+          !cart.canAddToCart(
+            productId,
+            product.variationId,
+            totalAvailable,
+            quantity
+          )
+        ) {
+          window.showNotification("Cannot add that quantity to cart", "error");
+          return;
         }
 
-        updateCartStatusDisplay();
+        product.quantity = quantity;
+        const result = await cart.addItem(product);
+
+        if (result.success) {
+          window.showNotification(
+            result.message || `Added ${quantity} to cart`,
+            "success"
+          );
+
+          // Reset quantity to 1
+          if (quantityInput) quantityInput.value = "1";
+
+          // Update availability display
+          if (currentVariation) {
+            updateProductAvailability(
+              currentVariation.variationId,
+              currentVariation.quantity || 0
+            );
+          }
+        } else {
+          window.showNotification(
+            result.message || "Failed to add to cart",
+            "error"
+          );
+        }
       } catch (error) {
-        console.error("Error modifying cart:", error);
-        window.showNotification("Failed to update cart", "error");
+        console.error("Error adding to cart:", error);
+        window.showNotification("Failed to add to cart", "error");
       } finally {
         isProcessing = false;
         btnElement.textContent = originalText;
-        btnElement.classList.remove("opacity-70");
       }
     });
   }
 
   /**
-   * Update cart status display
-   */
-  function updateCartStatusDisplay() {
-    if (!currentVariation) return;
-
-    const itemKey = `${currentVariation.id || ""}:${currentVariation.variationId}`;
-    const cartItems = cart.getItems();
-    const existingItem = cartItems.find(
-      (item) => `${item.id}:${item.variationId}` === itemKey
-    );
-
-    const cartStatus = document.getElementById("cart-status");
-    if (!cartStatus) return;
-
-    if (existingItem) {
-      cartStatus.textContent = `${existingItem.quantity} in cart`;
-      cartStatus.classList.remove("hidden");
-    } else {
-      cartStatus.textContent = "";
-      cartStatus.classList.add("hidden");
-    }
-  }
-
-  /**
-   * Setup fallback variation buttons (for products without structured attributes)
+   * Setup fallback variation buttons
    */
   function setupFallbackVariationButtons() {
     const variationButtons = document.querySelectorAll("[data-variation-id]");
-
     variationButtons.forEach((button) => {
-      button.addEventListener("click", async () => {
+      button.addEventListener("click", () => {
         const btn = button as HTMLButtonElement;
         if (btn.disabled) return;
 
@@ -886,7 +960,6 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
         const variation = variations.find((v) => v.variationId === variationId);
 
         if (variation) {
-          currentVariation = variation;
           updateProductUI(variation);
 
           // Update button styles
@@ -913,10 +986,23 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
             "text-ui-input-text",
             "border-ui-input-border/50"
           );
-
-          updateCartStatusDisplay();
         }
       });
+    });
+  }
+
+  /**
+   * Listen for cart changes
+   */
+  function setupCartEventListeners() {
+    window.addEventListener("cartUpdated", () => {
+      if (currentVariation) {
+        updateProductAvailability(
+          currentVariation.variationId,
+          currentVariation.quantity || 0
+        );
+        updateAttributeButtonStates();
+      }
     });
   }
 
@@ -933,7 +1019,17 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     setupQuantityControls();
     setupFallbackVariationButtons();
     setupAddToCartHandler();
+    setupCartEventListeners();
+
+    // Initial UI update with our new system
+    if (currentVariation) {
+      updateProductAvailability(
+        currentVariation.variationId,
+        currentVariation.quantity || 0
+      );
+    }
     updateAttributeButtonStates();
-    updateCartStatusDisplay();
+
+    console.log("Product detail page initialized with new availability system");
   });
 </script>

@@ -1,8 +1,9 @@
 // src/lib/cart/index.ts
 import type { CartItem, CartEvent, CartState } from "./types";
-import type { OrderRequest } from "../square/types";
+import type { OrderRequest, ProductAvailabilityInfo } from "../square/types";
 import { checkItemInventory, checkBulkInventory } from "../square/inventory";
 import { Client, Environment } from "square";
+import { ProductAvailabilityState, getAvailabilityInfo } from "../square/types";
 
 const CART_STORAGE_KEY = "cart";
 const VIEW_TRANSITION_EVENT = "astro:after-swap";
@@ -251,6 +252,111 @@ class CartManager implements ICartManager {
       (total, item) => total + item.quantity,
       0
     );
+  }
+
+  public getVariationQuantity(productId: string, variationId: string): number {
+    const itemKey = `${productId}:${variationId}`;
+    const item = this.items.get(itemKey);
+    return item?.quantity || 0;
+  }
+
+  public getRemainingQuantity(
+    productId: string,
+    variationId: string,
+    totalAvailable: number
+  ): number {
+    const inCart = this.getVariationQuantity(productId, variationId);
+    return Math.max(0, totalAvailable - inCart);
+  }
+
+  /**
+   * Get availability information for a product variation including cart state
+   * @param productId Product ID
+   * @param variationId Variation ID
+   * @param totalInventory Total inventory available from Square API
+   * @returns ProductAvailabilityInfo with current state
+   */
+  public getProductAvailability(
+    productId: string,
+    variationId: string,
+    totalInventory: number
+  ): ProductAvailabilityInfo {
+    const inCart = this.getVariationQuantity(productId, variationId);
+    return getAvailabilityInfo(totalInventory, inCart);
+  }
+
+  /**
+   * Get availability state only (without full info object)
+   * @param productId Product ID
+   * @param variationId Variation ID
+   * @param totalInventory Total inventory available from Square API
+   * @returns ProductAvailabilityState
+   */
+  public getProductAvailabilityState(
+    productId: string,
+    variationId: string,
+    totalInventory: number
+  ): ProductAvailabilityState {
+    const info = this.getProductAvailability(
+      productId,
+      variationId,
+      totalInventory
+    );
+    return info.state;
+  }
+
+  /**
+   * Check if a product can be added to cart based on current availability
+   * @param productId Product ID
+   * @param variationId Variation ID
+   * @param totalInventory Total inventory available
+   * @param requestedQuantity Quantity trying to add (default: 1)
+   * @returns boolean indicating if add is allowed
+   */
+  public canAddToCart(
+    productId: string,
+    variationId: string,
+    totalInventory: number,
+    requestedQuantity: number = 1
+  ): boolean {
+    const info = this.getProductAvailability(
+      productId,
+      variationId,
+      totalInventory
+    );
+
+    // Can't add if out of stock
+    if (info.state === ProductAvailabilityState.OUT_OF_STOCK) {
+      return false;
+    }
+
+    // Can't add if all available items are already in cart
+    if (info.state === ProductAvailabilityState.ALL_IN_CART) {
+      return false;
+    }
+
+    // Check if requested quantity would exceed remaining
+    return requestedQuantity <= info.remaining;
+  }
+
+  /**
+   * Get the maximum quantity that can be added to cart right now
+   * @param productId Product ID
+   * @param variationId Variation ID
+   * @param totalInventory Total inventory available
+   * @returns maximum addable quantity
+   */
+  public getMaxAddableQuantity(
+    productId: string,
+    variationId: string,
+    totalInventory: number
+  ): number {
+    const info = this.getProductAvailability(
+      productId,
+      variationId,
+      totalInventory
+    );
+    return Math.max(0, info.remaining);
   }
 
   public async addItem(
