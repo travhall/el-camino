@@ -1,9 +1,7 @@
 ---
-// src/components/ProductCard.astro
 import type { Product } from "@/lib/square/types";
 import { MoneyUtils } from "@/lib/square/money";
-import { checkBulkInventory } from "@/lib/square/inventory";
-import { fetchProduct } from "@/lib/square/client";
+import { getProductStockStatus } from "@/lib/square/inventory";
 
 interface Props {
   product: Product;
@@ -12,117 +10,36 @@ interface Props {
 
 const { product, priority = false } = Astro.props;
 
-// First, check if we need to fetch the full product details
-let fullProduct = product;
-
-// CRITICAL FIX: If product doesn't have variations, fetch the complete product
-if (!product.variations || product.variations.length === 0) {
-  try {
-    const fetchedProduct = await fetchProduct(product.id);
-    if (fetchedProduct) {
-      // console.log(
-      //   `Fetched full product details for ${product.title}. Has variations: ${!!fetchedProduct.variations}`
-      // );
-      fullProduct = fetchedProduct;
-    }
-  } catch (error) {
-    console.error(`Error fetching full product: ${error}`);
-  }
-}
-
-// Initialize with default values
-let isOutOfStock = true; // Default to assuming out of stock
-let hasLimitedOptions = false;
-
-// Check inventory status
-try {
-  // For products with variations, we need special handling
-  if (fullProduct.variations && fullProduct.variations.length > 0) {
-    // console.log(
-    //   `${fullProduct.title} has ${fullProduct.variations.length} variations`
-    // );
-
-    // Get all variation IDs
-    const variationIds = fullProduct.variations
-      .filter((v) => v && v.variationId)
-      .map((v) => v.variationId);
-
-    // console.log(`Variation IDs: ${variationIds.join(", ")}`);
-
-    if (variationIds.length > 0) {
-      // Check inventory for all variations at once
-      const inventoryData = await checkBulkInventory(variationIds);
-
-      // console.log(`Inventory data: ${JSON.stringify(inventoryData)}`);
-
-      // Count how many variations are in stock
-      const totalVariations = variationIds.length;
-      const inStockCount = Object.values(inventoryData).filter(
-        (qty) => qty > 0
-      ).length;
-
-      // console.log(
-      //   `Total variations: ${totalVariations}, In stock: ${inStockCount}`
-      // );
-
-      if (inStockCount === 0) {
-        // All variations out of stock
-        isOutOfStock = true;
-        hasLimitedOptions = false;
-      } else {
-        // At least one variation is in stock
-        isOutOfStock = false;
-
-        // If some are in stock and some are out of stock, show limited options
-        hasLimitedOptions = inStockCount < totalVariations;
-      }
-    }
-  } else {
-    // Single variation product
-    // console.log(
-    //   `${fullProduct.title} is a single variation product: ${fullProduct.variationId}`
-    // );
-    const stockLevel = await checkBulkInventory([fullProduct.variationId]);
-    isOutOfStock = (stockLevel[fullProduct.variationId] || 0) === 0;
-    // console.log(
-    //   `Single variation stock: ${stockLevel[fullProduct.variationId] || 0}`
-    // );
-  }
-} catch (error) {
-  console.error(`[ProductCard] Error checking inventory: ${error}`);
-  // On error, be optimistic and show product as in stock
-  isOutOfStock = false;
-  hasLimitedOptions = false;
-}
+// Get stock status using existing inventory system
+const { isOutOfStock } = await getProductStockStatus(product);
 
 // Format price
-const formattedPrice = MoneyUtils.format(
-  typeof fullProduct.price === "object"
-    ? fullProduct.price
-    : MoneyUtils.fromFloat(fullProduct.price)
-);
+const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 
-// Final debug output
-// console.log(
-//   `FINAL STATUS for ${fullProduct.title}: isOutOfStock=${isOutOfStock}, hasLimitedOptions=${hasLimitedOptions}`
-// );
+// Schema.org availability
+const availabilitySchema = isOutOfStock
+  ? "https://schema.org/OutOfStock"
+  : "https://schema.org/InStock";
 ---
 
 <a
-  href={fullProduct.url}
+  href={product.url}
   class={`group flex flex-col col-span-full sm:col-span-2 p-1 bg-ui-card-surface text-ui-card-text border-2 border-ui-card-border hover:bg-ui-card-hover ${isOutOfStock ? "opacity-75" : ""}`}
-  data-product-id={fullProduct.id}
-  data-variations-count={fullProduct.variations?.length || 0}
+  itemscope
+  itemtype="http://schema.org/Product"
 >
+  <!-- Product Image Container -->
   <div class="relative aspect-video sm:aspect-square overflow-hidden mb-1">
     <img
-      src={fullProduct.image}
-      alt={fullProduct.title || "Product"}
-      class={`object-cover w-full h-full transition-transform duration-300 group-hover:scale-105 ${isOutOfStock ? "opacity-75" : ""}`}
+      src={product.image}
+      alt={product.title}
+      class={`object-cover w-full h-full transition-all duration-200 group-hover:scale-105 ${isOutOfStock ? "opacity-75" : ""}`}
       loading={priority ? "eager" : "lazy"}
-      onerror="this.onerror=null; this.src='/images/placeholder.png';"
+      fetchpriority={priority ? "high" : "auto"}
+      onerror="this.src='/images/placeholder.png'"
     />
 
+    <!-- ONLY show overlay for true out of stock (removed "Limited Inventory") -->
     {
       isOutOfStock && (
         <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-sm font-bold">
@@ -130,35 +47,42 @@ const formattedPrice = MoneyUtils.format(
         </div>
       )
     }
+  </div>
 
+  <!-- Product Info -->
+  <div class="flex flex-col p-2">
+    <!-- Brand (if available) -->
     {
-      !isOutOfStock && hasLimitedOptions && (
-        <div class="absolute top-0 left-0 bg-state-warning-surface text-state-warning-text px-2 py-1 text-sm font-bold">
-          Limited Inventory
-        </div>
+      product.brand && (
+        <p class="text-xs uppercase text-content-meta mb-1" itemprop="brand">
+          {product.brand}
+        </p>
       )
     }
 
-    <div
-      class="absolute inset-0 bg-ui-card-surface/0 group-hover:bg-ui-card-surface/80 flex items-center justify-center transition-all duration-300"
-    >
-      <span
-        class="font-display text-product-heading text-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        >View Details</span
-      >
-    </div>
-  </div>
-
-  <div class="flex flex-col p-2">
+    <!-- Product Title -->
     <h2
-      class="text-product-heading text-sm font-light leading-tight line-clamp-2"
+      class="text-product-heading text-sm font-light leading-tight line-clamp-2 mb-2"
+      itemprop="name"
     >
-      {fullProduct.title}
+      {product.title}
     </h2>
+
+    <!-- Price and Availability -->
     <div class="flex-shrink-0">
-      <span class="font-display text-product-price text-2xl whitespace-nowrap"
-        >{formattedPrice}</span
+      <meta itemprop="availability" content={availabilitySchema} />
+      <span
+        class="font-display text-product-price text-2xl whitespace-nowrap"
+        itemprop="offers"
+        itemscope
+        itemtype="http://schema.org/Offer"
       >
+        <meta itemprop="price" content={product.price.toString()} />
+        <meta itemprop="priceCurrency" content="USD" />
+        <meta itemprop="availability" content={availabilitySchema} />
+        {formattedPrice}
+        {product.unit && <span class="text-lg ml-1">{product.unit}</span>}
+      </span>
     </div>
   </div>
 </a>
