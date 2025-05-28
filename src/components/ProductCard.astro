@@ -29,7 +29,7 @@ const availabilitySchema = isOutOfStock
   itemtype="http://schema.org/Product"
 >
   <!-- Product Image Container -->
-  <div class="relative aspect-video sm:aspect-square overflow-hidden mb-1">
+  <div class="relative aspect-video sm:aspect-square overflow-hidden mb-4">
     <img
       src={product.image}
       alt={product.title}
@@ -39,7 +39,7 @@ const availabilitySchema = isOutOfStock
       onerror="this.src='/images/placeholder.png'"
     />
 
-    <!-- ONLY show overlay for true out of stock (removed "Limited Inventory") -->
+    <!-- ONLY show overlay for true out of stock -->
     {
       isOutOfStock && (
         <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-sm font-bold">
@@ -50,11 +50,11 @@ const availabilitySchema = isOutOfStock
   </div>
 
   <!-- Product Info -->
-  <div class="flex flex-col p-2">
+  <div class="flex flex-col grow px-1">
     <!-- Brand (if available) -->
     {
       product.brand && (
-        <p class="text-xs uppercase text-content-meta mb-1" itemprop="brand">
+        <p class="text-xs uppercase text-content-meta" itemprop="brand">
           {product.brand}
         </p>
       )
@@ -62,17 +62,17 @@ const availabilitySchema = isOutOfStock
 
     <!-- Product Title -->
     <h2
-      class="text-product-heading text-sm font-light leading-tight line-clamp-2 mb-2"
+      class="text-product-heading font-light leading-tight line-clamp-2 mb-1"
       itemprop="name"
     >
       {product.title}
     </h2>
 
     <!-- Price and Availability -->
-    <div class="flex-shrink-0">
+    <div class="text-product-price">
       <meta itemprop="availability" content={availabilitySchema} />
       <span
-        class="font-display text-product-price text-2xl whitespace-nowrap"
+        class="font-display text-2xl whitespace-nowrap"
         itemprop="offers"
         itemscope
         itemtype="http://schema.org/Offer"
@@ -81,7 +81,7 @@ const availabilitySchema = isOutOfStock
         <meta itemprop="priceCurrency" content="USD" />
         <meta itemprop="availability" content={availabilitySchema} />
         {formattedPrice}
-        {product.unit && <span class="text-lg ml-1">{product.unit}</span>}
+        {product.unit && <span class="text-lg">{product.unit}</span>}
       </span>
     </div>
   </div>

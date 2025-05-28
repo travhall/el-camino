@@ -165,21 +165,14 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
             }
           </p>
 
-          <!-- Inventory Status -->
+          <!-- Inventory Status - ONLY show when out of stock -->
           <div id="inventory-status">
             {
-              !selectedVariationInStock ? (
+              !selectedVariationInStock && (
                 <p class="mt-2 text-state-error-surface text-md font-bold inline-block">
                   This item is currently unavailable
                 </p>
-              ) : selectedVariationQuantity > 0 ? (
-                <p class="mt-2 text-state-success-surface">
-                  In Stock{" "}
-                  <span id="stock-details">
-                    ({selectedVariationQuantity} available)
-                  </span>
-                </p>
-              ) : null
+              )
             }
           </div>
         </div>
@@ -207,7 +200,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
                 return (
                   <div class="mt-6">
-                    <h3 class="text-lg font-medium text-content-heading mb-2">
+                    <h3 class="text-sm font-medium text-content-heading mb-2">
                       {displayName}
                     </h3>
                     <div class="flex flex-wrap gap-2">
@@ -253,7 +246,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
               return (
                 <div class="mt-4">
-                  <h3 class="text-lg font-medium text-content-heading mb-2">
+                  <h3 class="text-sm font-medium text-content-heading mb-2">
                     {displayName}
                   </h3>
                   <div class="inline-block px-4 py-2 bg-ui-button-surface text-ui-button-text border-ui-button-border/50 rounded">
@@ -268,7 +261,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
         {
           hasMultipleVariations && attributeTypes.length === 0 && (
             <div class="mt-6">
-              <h3 class="text-lg font-medium text-content-heading mb-2">
+              <h3 class="text-sm font-medium text-content-heading mb-2">
                 Options
               </h3>
               <div id="variation-buttons" class="flex flex-wrap gap-2">
@@ -335,7 +328,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
             </div>
             <div id="availability-indicator" class="text-sm">
               <span class="text-content-meta" id="remaining-count">
-                {selectedVariationQuantity} remaining
+                {selectedVariationQuantity} available
               </span>
               <span id="cart-quantity" class="ml-2 hidden"> (0 in cart) </span>
             </div>
@@ -527,37 +520,27 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
   }
 
   /**
-   * Update status messaging (replaces inventory-status updates)
+   * Update status messaging - ONLY show when out of stock
    */
   function updateStatusMessaging(info: any): void {
     const inventoryStatus = document.getElementById("inventory-status");
     if (!inventoryStatus) return;
 
-    const message = getStatusMessage(info);
-
-    // Clear and update with appropriate styling
+    // ONLY show message when truly out of stock
     if (info.state === ProductAvailabilityState.OUT_OF_STOCK) {
       inventoryStatus.innerHTML = `
-      <p class="mt-2 text-state-error-surface text-md font-bold inline-block">
-        Out of Stock
-      </p>
-    `;
-    } else if (info.state === ProductAvailabilityState.ALL_IN_CART) {
-      inventoryStatus.innerHTML = `
-      <p class="mt-2 text-content-meta">
-        ${message}
-      </p>
-    `;
+        <p class="mt-2 text-state-error-surface text-md font-bold inline-block">
+          Out of Stock
+        </p>
+      `;
     } else {
-      // Available state
-      inventoryStatus.innerHTML = `
-      <p class="mt-2 text-state-success-surface">
-        In Stock <span id="stock-details">(${info.remaining} remaining${info.inCart > 0 ? `, ${info.inCart} in cart` : ""})</span>
-      </p>
-    `;
+      // Clear the status for all other states (available, all in cart)
+      inventoryStatus.innerHTML = "";
     }
 
-    console.log(`Status updated: "${message}" (${info.state})`);
+    console.log(
+      `Status updated: ${info.state === ProductAvailabilityState.OUT_OF_STOCK ? "Out of Stock" : "No message"} (${info.state})`
+    );
   }
 
   /**
@@ -602,7 +585,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     // Update remaining count
     const remainingElement = document.getElementById("remaining-count");
     if (remainingElement) {
-      remainingElement.textContent = `${info.remaining} remaining`;
+      remainingElement.textContent = `${info.remaining} available`;
     }
 
     // Update cart quantity display
@@ -1030,6 +1013,8 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     }
     updateAttributeButtonStates();
 
-    console.log("Product detail page initialized with new availability system");
+    console.log(
+      "Product detail page initialized with updated availability system"
+    );
   });
 </script>

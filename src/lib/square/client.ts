@@ -113,6 +113,8 @@ export async function fetchProducts(): Promise<Product[]> {
 export async function fetchProduct(id: string): Promise<Product | null> {
   return defaultCircuitBreaker.execute(async () => {
     try {
+      console.log(`[fetchProduct] Fetching product: ${id}`);
+
       const { result } = await squareClient.catalogApi.retrieveCatalogObject(
         id,
         true
@@ -160,39 +162,87 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         imageUrl = mainImage;
       }
 
-      // Process all variations with their data
-      const productVariations = variations.map((v) => {
-        const priceMoney = v.itemVariationData?.priceMoney;
+      // Process all variations with their data including proper measurement units
+      const productVariations = await Promise.all(
+        variations.map(async (v) => {
+          const priceMoney = v.itemVariationData?.priceMoney;
 
-        // Check for variation-specific images
-        let variationImageUrl: string | undefined = undefined;
-        if (v.itemVariationData?.imageIds?.[0]) {
-          const imageId = v.itemVariationData.imageIds[0];
-          variationImageUrl =
-            variationImages[imageId as keyof typeof variationImages];
-        }
+          // Check for variation-specific images
+          let variationImageUrl: string | undefined = undefined;
+          if (v.itemVariationData?.imageIds?.[0]) {
+            const imageId = v.itemVariationData.imageIds[0];
+            variationImageUrl =
+              variationImages[imageId as keyof typeof variationImages];
+          }
 
-        // For now, we'll use placeholder unit logic
-        // A more advanced implementation would batch fetch measurement units
-        let unit = "";
-        if (v.itemVariationData?.measurementUnitId) {
-          // Placeholder for measurement unit
-          unit = "each";
-        }
+          // FIXED: Properly fetch measurement unit data instead of hardcoding "each"
+          let unit = "";
+          if (v.itemVariationData?.measurementUnitId) {
+            try {
+              console.log(
+                `[fetchProduct] Fetching measurement unit: ${v.itemVariationData.measurementUnitId}`
+              );
 
-        // Parse variation attributes from the name
-        const attributes = parseVariationName(v.itemVariationData?.name || "");
+              const { result: measurementResult } =
+                await squareClient.catalogApi.retrieveCatalogObject(
+                  v.itemVariationData.measurementUnitId
+                );
 
-        return {
-          id: v.id,
-          variationId: v.id,
-          name: v.itemVariationData?.name || "",
-          price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
-          image: variationImageUrl,
-          unit: unit,
-          attributes: attributes, // Add parsed attributes
-        };
-      });
+              if (measurementResult.object?.type === "MEASUREMENT_UNIT") {
+                const unitData = measurementResult.object.measurementUnitData;
+                console.log(
+                  `[fetchProduct] Measurement unit data:`,
+                  JSON.stringify(unitData, null, 2)
+                );
+
+                // Priority order: custom unit name > custom abbreviation > standard unit type
+                if (unitData?.measurementUnit?.customUnit?.name) {
+                  unit = unitData.measurementUnit.customUnit.name;
+                  console.log(`[fetchProduct] Using custom unit name: ${unit}`);
+                } else if (
+                  unitData?.measurementUnit?.customUnit?.abbreviation
+                ) {
+                  unit = unitData.measurementUnit.customUnit.abbreviation;
+                  console.log(
+                    `[fetchProduct] Using custom unit abbreviation: ${unit}`
+                  );
+                } else if (unitData?.measurementUnit?.type) {
+                  // Convert standard unit types to readable format
+                  const unitType = unitData.measurementUnit.type;
+                  unit = unitType.toLowerCase().replace(/_/g, " ");
+                  console.log(
+                    `[fetchProduct] Using standard unit type: ${unit}`
+                  );
+                }
+              }
+            } catch (error) {
+              logApiError(
+                `fetchProduct:measurementUnit:${v.itemVariationData.measurementUnitId}`,
+                error
+              );
+              // Don't fail the entire product fetch for unit errors - just leave unit empty
+              console.warn(
+                `[fetchProduct] Failed to fetch measurement unit, using empty unit`
+              );
+            }
+          }
+
+          // Parse variation attributes from the name
+          const attributes = parseVariationName(
+            v.itemVariationData?.name || ""
+          );
+
+          return {
+            id: v.id,
+            variationId: v.id,
+            name: v.itemVariationData?.name || "",
+            price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
+            image: variationImageUrl,
+            unit: unit || undefined, // Only include unit if it exists
+            attributes: attributes, // Add parsed attributes
+          };
+        })
+      );
 
       // Build available attributes map
       const availableAttributes = buildAvailableAttributes(productVariations);
@@ -219,7 +269,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
       // Use default variation unit or first found unit
       const defaultUnit = productVariations[0]?.unit ?? "";
 
-      return {
+      const product = {
         id: item.id,
         catalogObjectId: item.id,
         variationId: defaultVariation.id,
@@ -234,6 +284,20 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         unit: defaultUnit,
         availableAttributes: availableAttributes, // Add available attributes
       };
+
+      console.log(
+        `[fetchProduct] Successfully fetched product: ${product.title}`,
+        {
+          variations: productVariations.length,
+          hasUnit: !!product.unit,
+          unit: product.unit,
+          measurementUnitIds: variations
+            .map((v) => v.itemVariationData?.measurementUnitId)
+            .filter(Boolean),
+        }
+      );
+
+      return product;
     } catch (error) {
       // Use our new error handling utilities
       const appError = processSquareError(error, `fetchProduct:${id}`);

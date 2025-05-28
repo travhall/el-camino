@@ -139,9 +139,19 @@ export async function fetchProductsByCategory(
 
       // First collect all image IDs to fetch them in parallel
       const imageIds: string[] = [];
+      const measurementUnitIds: string[] = [];
+
       result.items.forEach((item) => {
         if (item.itemData?.imageIds?.[0]) {
           imageIds.push(item.itemData.imageIds[0]);
+        }
+
+        // Collect measurement unit IDs for batch fetching
+        const variation = item.itemData?.variations?.[0];
+        if (variation?.itemVariationData?.measurementUnitId) {
+          measurementUnitIds.push(
+            variation.itemVariationData.measurementUnitId
+          );
         }
       });
 
@@ -152,16 +162,80 @@ export async function fetchProductsByCategory(
         Object.assign(imageUrlMap, batchedImages);
       }
 
-      // Process items with the fetched images
+      // Fetch all measurement units in parallel
+      const measurementUnitsMap: Record<string, string> = {};
+      if (measurementUnitIds.length > 0) {
+        console.log(
+          `[fetchProductsByCategory] Fetching ${measurementUnitIds.length} measurement units`
+        );
+
+        // Use Promise.allSettled to handle individual failures gracefully
+        const measurementResults = await Promise.allSettled(
+          measurementUnitIds.map(async (unitId) => {
+            try {
+              const { result: measurementResult } =
+                await squareClient.catalogApi.retrieveCatalogObject(unitId);
+
+              if (measurementResult.object?.type === "MEASUREMENT_UNIT") {
+                const unitData = measurementResult.object.measurementUnitData;
+
+                let unitName = "";
+                // Priority order: custom unit name > custom abbreviation > standard unit type
+                if (unitData?.measurementUnit?.customUnit?.name) {
+                  unitName = unitData.measurementUnit.customUnit.name;
+                } else if (
+                  unitData?.measurementUnit?.customUnit?.abbreviation
+                ) {
+                  unitName = unitData.measurementUnit.customUnit.abbreviation;
+                } else if (unitData?.measurementUnit?.type) {
+                  unitName = unitData.measurementUnit.type
+                    .toLowerCase()
+                    .replace(/_/g, " ");
+                }
+
+                return { unitId, unitName };
+              }
+              return { unitId, unitName: "" };
+            } catch (error) {
+              console.warn(
+                `Failed to fetch measurement unit ${unitId}:`,
+                error
+              );
+              return { unitId, unitName: "" };
+            }
+          })
+        );
+
+        // Process results
+        measurementResults.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.unitName) {
+            measurementUnitsMap[result.value.unitId] = result.value.unitName;
+          }
+        });
+
+        console.log(
+          `[fetchProductsByCategory] Fetched measurement units:`,
+          measurementUnitsMap
+        );
+      }
+
+      // Process items with the fetched images and measurement units
       const products = result.items.map((item) => {
         const variation = item.itemData?.variations?.[0];
         const priceMoney = variation?.itemVariationData?.priceMoney;
         const imageId = item.itemData?.imageIds?.[0];
+        const measurementUnitId =
+          variation?.itemVariationData?.measurementUnitId;
 
         const imageUrl =
           imageId && imageUrlMap[imageId]
             ? imageUrlMap[imageId]
             : "/images/placeholder.png";
+
+        // Get the unit name from our fetched measurement units
+        const unit = measurementUnitId
+          ? measurementUnitsMap[measurementUnitId] || undefined
+          : undefined;
 
         return {
           id: item.id,
@@ -172,8 +246,17 @@ export async function fetchProductsByCategory(
           image: imageUrl,
           price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
           url: `/product/${item.id}`,
+          unit: unit, // Now properly includes measurement unit
         };
       });
+
+      console.log(
+        `[fetchProductsByCategory] Fetched ${products.length} products for category ${categoryId}`,
+        {
+          withUnits: products.filter((p) => p.unit).length,
+          units: [...new Set(products.map((p) => p.unit).filter(Boolean))],
+        }
+      );
 
       return products;
     } catch (error) {
