@@ -4,6 +4,7 @@ import { batchGetImageUrls } from "./imageUtils";
 import type { Category, CategoryHierarchy, Product } from "./types";
 import { categoryCache, productCache } from "./cacheUtils";
 import { processSquareError, logError, handleError } from "./errorUtils";
+import { createProductUrl } from "@/utils/slugUtils";
 
 /**
  * Converts a category name to a URL-friendly slug
@@ -245,7 +246,7 @@ export async function fetchProductsByCategory(
           description: item.itemData?.description || "",
           image: imageUrl,
           price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
-          url: `/product/${item.id}`,
+          url: createProductUrl({ title: item.itemData?.name || "" }),
           unit: unit, // Now properly includes measurement unit
         };
       });

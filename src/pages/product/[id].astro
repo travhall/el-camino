@@ -8,10 +8,65 @@ import {
   createInitialSelectionState,
   getAttributeDisplayName,
 } from "@/lib/square/variationParser";
+import { fetchProducts } from "@/lib/square/client";
+import {
+  extractIdFromSlug,
+  createSlug,
+  getVariationFromVariantParam,
+  createSEOTitle,
+  createSlugMapping,
+} from "@/utils/slugUtils";
 
-// Get product ID from URL params
-const { id } = Astro.params;
-const product = id ? await fetchProduct(id) : null;
+// Get the slug from URL params (note: still called 'id' because file is [id].astro)
+const { id: slug } = Astro.params;
+const variantParam = Astro.url.searchParams.get("variant");
+
+if (!slug) {
+  return Astro.redirect("/404");
+}
+
+// Create slug mapping (in production, this should be cached/built at build time)
+const allProducts = await fetchProducts();
+const slugMapping = createSlugMapping(allProducts);
+
+// Get Square ID from slug
+const id = extractIdFromSlug(slug, slugMapping);
+
+if (!id) {
+  console.error(`No ID found for slug: ${slug}`);
+  return Astro.redirect("/404");
+}
+
+// Fetch product data
+const product = await fetchProduct(id);
+if (!product) {
+  console.error(`Product not found for ID: ${id}`);
+  return Astro.redirect("/404");
+}
+
+// Handle old ID-only URLs - redirect to new format
+if (slug === id) {
+  const productSlug = createSlug(product.title);
+  return Astro.redirect(`/product/${productSlug}`, 301);
+}
+
+// Handle variant parameter
+if (variantParam && product.variations) {
+  const targetVariation = getVariationFromVariantParam(product, variantParam);
+
+  if (targetVariation) {
+    // Update product with selected variant
+    product.selectedVariationId = targetVariation.variationId;
+    product.price = targetVariation.price;
+    if (targetVariation.image) {
+      product.image = targetVariation.image;
+    }
+  } else {
+    // Invalid variant parameter - redirect to base product
+    const baseSlug = createSlug(product.title);
+    return Astro.redirect(`/product/${baseSlug}`, 301);
+  }
+}
 
 if (!product) {
   return Astro.redirect("/404");
@@ -98,7 +153,13 @@ const hasMultipleVariations = variations.length > 1;
 
 // Set product metadata
 const pageTitle = product.title;
-const fullTitle = `${pageTitle} | El Camino`;
+const selectedVariationForSEO =
+  variantParam && product.variations
+    ? product.variations.find(
+        (v) => v.variationId === product.selectedVariationId
+      )
+    : undefined;
+const fullTitle = createSEOTitle(product, selectedVariationForSEO);
 const unitDisplay = selectedVariation?.unit || product.unit || "";
 ---
 
@@ -407,6 +468,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     getMaxQuantity,
     isQuantityInputDisabled,
   } from "@/lib/square/types";
+  import { createVariantSlug } from "@/utils/slugUtils";
 
   // Global declarations
   declare global {
@@ -648,6 +710,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     if (!variation) return;
 
     currentVariation = variation;
+    updateVariantUrl(variation);
     const { variationId, name, price, inStock, quantity, image, unit } =
       variation;
 
@@ -692,6 +755,19 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
       } catch (e) {
         console.error("Error updating product data:", e);
       }
+    }
+  }
+
+  /**
+   * Update URL when variants are selected
+   */
+  function updateVariantUrl(selectedVariation: any): void {
+    const baseUrl = window.location.pathname.split("?")[0];
+
+    if (selectedVariation.name) {
+      const variantSlug = createVariantSlug(selectedVariation.name);
+      const newUrl = `${baseUrl}?variant=${variantSlug}`;
+      window.history.pushState({}, "", newUrl);
     }
   }
 
@@ -988,6 +1064,23 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           currentVariation.variationId,
           currentVariation.quantity || 0
         );
+
+        // If current variant is now unavailable, switch to first available
+        const availabilityInfo = cart.getProductAvailability(
+          productId,
+          currentVariation.variationId,
+          currentVariation.quantity || 0
+        );
+
+        if (availabilityInfo.state === ProductAvailabilityState.OUT_OF_STOCK) {
+          const firstAvailable = variations.find((v) =>
+            cart.canAddToCart(productId, v.variationId, v.quantity || 0)
+          );
+          if (firstAvailable) {
+            updateProductUI(firstAvailable);
+          }
+        }
+
         updateAttributeButtonStates();
       }
     });
@@ -1008,17 +1101,38 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     setupAddToCartHandler();
     setupCartEventListeners();
 
-    // Initial UI update with our new system
+    // NEW: Check if current variant is available after cart loads
     if (currentVariation) {
+      const availabilityInfo = cart.getProductAvailability(
+        productId,
+        currentVariation.variationId,
+        currentVariation.quantity || 0
+      );
+
+      // If current variant unavailable, switch to first available
+      if (availabilityInfo.state === ProductAvailabilityState.OUT_OF_STOCK) {
+        const firstAvailable = variations.find((v) => {
+          const info = cart.getProductAvailability(
+            productId,
+            v.variationId,
+            v.quantity || 0
+          );
+          return info.state === ProductAvailabilityState.AVAILABLE;
+        });
+
+        if (firstAvailable) {
+          currentVariation = firstAvailable;
+        }
+      }
+
+      // Always update URL with variant (including default)
+      updateVariantUrl(currentVariation);
       updateProductAvailability(
         currentVariation.variationId,
         currentVariation.quantity || 0
       );
     }
-    updateAttributeButtonStates();
 
-    console.log(
-      "Product detail page initialized with updated availability system"
-    );
+    updateAttributeButtonStates();
   });
 </script>

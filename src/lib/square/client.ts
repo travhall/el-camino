@@ -8,6 +8,7 @@ import {
   parseVariationName,
   buildAvailableAttributes,
 } from "./variationParser";
+import { createProductUrl } from "@/utils/slugUtils";
 
 function validateEnvironment() {
   const missingVars = [];
@@ -99,7 +100,7 @@ export async function fetchProducts(): Promise<Product[]> {
             ? imageUrlMap[p.imageId]
             : "/images/placeholder.png",
         price: p.price,
-        url: `/product/${p.id}`,
+        url: createProductUrl({ title: p.title }),
       }));
 
       return products;
@@ -277,7 +278,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         description: item.itemData?.description || "",
         image: imageUrl,
         price: Number(defaultPriceMoney.amount) / 100,
-        url: `/product/${item.id}`,
+        url: createProductUrl({ title: item.itemData?.name || "" }),
         variations: productVariations,
         selectedVariationId: defaultVariation.id,
         brand: brandValue,
