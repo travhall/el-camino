@@ -227,17 +227,6 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
               )
             }
           </p>
-
-          <!-- Inventory Status - ONLY show when out of stock -->
-          <div id="inventory-status">
-            {
-              !selectedVariationInStock && (
-                <p class="mt-2 text-state-error-surface text-md font-bold inline-block">
-                  This item is currently unavailable
-                </p>
-              )
-            }
-          </div>
         </div>
 
         <!-- Product Description -->
@@ -610,9 +599,9 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
       inventoryStatus.innerHTML = "";
     }
 
-    console.log(
-      `Status updated: ${info.state === ProductAvailabilityState.OUT_OF_STOCK ? "Out of Stock" : "No message"} (${info.state})`
-    );
+    // console.log(
+    //   `Status updated: ${info.state === ProductAvailabilityState.OUT_OF_STOCK ? "Out of Stock" : "No message"} (${info.state})`
+    // );
   }
 
   /**
@@ -654,7 +643,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
    * Update remaining/cart quantity displays
    */
   function updateInventoryDisplay(info: any): void {
-    // Update remaining count
+    // Update remaining count (just the number)
     const remainingElement = document.getElementById("remaining-count");
     if (remainingElement) {
       remainingElement.textContent = `${info.remaining} available`;
@@ -847,14 +836,32 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     });
   }
 
+  function showOutOfStockState(attributes: Record<string, string>) {
+    // Update price display (keep current price)
+    const priceElement = document.getElementById("price-display");
+    if (priceElement && currentVariation) {
+      const formattedPrice = MoneyUtils.format(
+        MoneyUtils.fromFloat(currentVariation.price)
+      );
+      priceElement.textContent = formattedPrice;
+    }
+
+    // Force out-of-stock UI using our centralized system
+    updateProductAvailability("out-of-stock", 0);
+  }
+
   /**
    * Handle attribute selection
    */
   function handleAttributeSelection(attributeType: string, value: string) {
     selectedAttributes[attributeType] = value;
     const matchingVariation = findMatchingVariation();
+
     if (matchingVariation) {
       updateProductUI(matchingVariation);
+    } else {
+      // No exact match - show as out of stock
+      showOutOfStockState(selectedAttributes);
     }
     updateAttributeButtonStates();
   }
