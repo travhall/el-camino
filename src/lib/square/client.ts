@@ -8,7 +8,7 @@ import {
   parseVariationName,
   buildAvailableAttributes,
 } from "./variationParser";
-import { createProductUrl } from "@/utils/slugUtils";
+import { createProductUrl } from "./slugUtils";
 
 function validateEnvironment() {
   const missingVars = [];

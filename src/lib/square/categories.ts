@@ -4,7 +4,7 @@ import { batchGetImageUrls } from "./imageUtils";
 import type { Category, CategoryHierarchy, Product } from "./types";
 import { categoryCache, productCache } from "./cacheUtils";
 import { processSquareError, logError, handleError } from "./errorUtils";
-import { createProductUrl } from "@/utils/slugUtils";
+import { createProductUrl } from "@/lib/square/slugUtils";
 
 /**
  * Converts a category name to a URL-friendly slug
