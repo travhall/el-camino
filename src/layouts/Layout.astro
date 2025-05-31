@@ -11,10 +11,9 @@ import "@/styles/globals.css";
 interface Props {
   title: string;
   structuredData?: object;
-  heroImage?: string; // Add hero image for LCP optimization
 }
 
-const { title, structuredData, heroImage } = Astro.props;
+const { title, structuredData } = Astro.props;
 
 // Use site config for default SEO values
 const seoData = {
@@ -44,14 +43,6 @@ const orgSchema = getStructuredData();
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-
-    <!-- CRITICAL: Preload LCP hero image if provided -->
-    {heroImage && (
-      <>
-        <link rel="preload" as="image" href={heroImage} fetchpriority="high">
-        <link rel="preload" as="image" href={heroImage.replace(/\.(jpg|jpeg|png)$/i, '.webp')} fetchpriority="high" type="image/webp">
-      </>
-    )}
 
     <link
       rel="preload"
@@ -109,26 +100,27 @@ const orgSchema = getStructuredData();
     }
 
     <script is:inline>
-      {/* window.squareLoaded = false; */}
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          window.squareLoaded = false;
-          window.loadSquareScript = function() {
-            if (!window.squareLoaded && !window.Square) {
-              window.squareLoaded = true;
-              const script = document.createElement('script');
-              script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
-              script.async = true;
-              document.head.appendChild(script);
-              return new Promise((resolve) => {
-                script.onload = resolve;
-              });
-            }
-            return Promise.resolve();
-          };
-        }, 100);
-      });
-    </script>
+  // Only load Square when needed (cart/product pages)
+  if (window.location.pathname.includes('/cart') || 
+      window.location.pathname.includes('/product') || 
+      window.location.pathname.includes('/all-products') || 
+      window.location.pathname.includes('/category') || 
+      window.location.pathname.includes('/shop')) {
+      window.loadSquareScript = function() {
+      if (!window.squareLoaded && !window.Square) {
+        window.squareLoaded = true;
+        const script = document.createElement('script');
+        script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
+        script.async = true;
+        document.head.appendChild(script);
+        return new Promise((resolve) => {
+          script.onload = resolve;
+        });
+      }
+      return Promise.resolve();
+    };
+  }
+</script>
     <ClientRouter />
   </head>
   <body
@@ -145,33 +137,3 @@ const orgSchema = getStructuredData();
     <div id="portal-root"></div>
   </body>
 </html>
-
-<script>
-  // Move overlays to portal container
-  const portalRoot = document.getElementById("portal-root");
-  if (portalRoot) {
-    document
-      .querySelectorAll("[data-portal-overlays]")
-      .forEach((overlayGroup) => {
-        const clone = overlayGroup.cloneNode(true);
-        portalRoot.appendChild(clone);
-        overlayGroup.remove();
-      });
-  }
-</script>
-
-<style is:global>
-  #portal-root {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 0;
-    pointer-events: none;
-    z-index: 5000;
-  }
-
-  #portal-root [data-portal-overlay] {
-    pointer-events: auto;
-  }
-</style>
