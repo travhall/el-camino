@@ -6,9 +6,24 @@ functions = "netlify/functions"
 [[headers]]
 for = "/*"
 [headers.values]
+# Security Headers
 X-Frame-Options = "DENY"
 X-XSS-Protection = "1; mode=block"
-Content-Security-Policy = "frame-ancestors 'none'"
+X-Content-Type-Options = "nosniff"
+Referrer-Policy = "strict-origin-when-cross-origin"
+Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Content Security Policy - Allow Square integration
+Content-Security-Policy = "default-src 'self'; img-src 'self' https: data:; script-src 'self' 'unsafe-inline' https://sandbox.web.squarecdn.com https://web.squarecdn.com; style-src 'self' 'unsafe-inline'; font-src 'self' https:; connect-src 'self' https: wss:; frame-src 'none'; object-src 'none'"
+
+# Cross-Origin Opener Policy - Prevent window attacks
+Cross-Origin-Opener-Policy = "same-origin"
+
+# Force HTTPS and improve caching
+Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+
+# SEO - Ensure indexing is allowed (override any blocking)
+X-Robots-Tag = "index, follow"
 
 [build.environment]
 NODE_VERSION = "18"
