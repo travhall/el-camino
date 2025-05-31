@@ -3,7 +3,7 @@ import { squareClient } from "./client";
 import { batchGetImageUrls } from "./imageUtils";
 import type { Category, CategoryHierarchy, Product } from "./types";
 import { categoryCache, productCache } from "./cacheUtils";
-import { processSquareError, logError, handleError } from "./errorUtils";
+import { processSquareError, handleError } from "./errorUtils";
 import { createProductUrl } from "@/lib/square/slugUtils";
 
 /**

@@ -176,7 +176,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           id="product-image"
           src={product.image}
           alt={product.title}
-          class={`w-full h-full object-cover ${!selectedVariationInStock ? "opacity-75" : ""}`}
+          class={`w-full h-full object-cover ${!selectedVariationInStock ? "opacity-50" : ""}`}
           loading="eager"
           fetchpriority="high"
           onerror="this.src='/images/placeholder.png'"
@@ -276,7 +276,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
                             class:list={[
                               "px-4 py-2 border rounded attribute-button",
                               "bg-ui-input-surface text-ui-input-text border-ui-input-border/50",
-                              !isAvailable && "opacity-60",
+                              !isAvailable && "opacity-50",
                             ]}
                             disabled={!isAvailable}
                           >
@@ -337,7 +337,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
                       variation.variationId === defaultVariationId
                         ? "bg-ui-button-surface text-ui-button-text border-ui-button-border/50"
                         : "bg-ui-input-surface text-ui-input-text border-ui-input-border/50",
-                      !variation.inStock && "opacity-60",
+                      !variation.inStock && "opacity-50",
                     ]}
                     disabled={!variation.inStock}
                   >
@@ -460,7 +460,6 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
   import {
     ProductAvailabilityState,
     getButtonText,
-    getStatusMessage,
     isButtonDisabled,
     getDefaultQuantity,
     getMaxQuantity,
@@ -634,11 +633,11 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
       // Dim image
       if (productImage) {
-        productImage.classList.add("opacity-75");
+        productImage.classList.add("opacity-50");
       }
     } else if (productImage) {
       // Remove dimming for available/all-in-cart states
-      productImage.classList.remove("opacity-75");
+      productImage.classList.remove("opacity-50");
     }
   }
 
@@ -709,8 +708,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
     currentVariation = variation;
     updateVariantUrl(variation);
-    const { variationId, name, price, inStock, quantity, image, unit } =
-      variation;
+    const { variationId, name, price, quantity, image, unit } = variation;
 
     // Use our centralized availability system
     updateProductAvailability(variationId, quantity || 0);
