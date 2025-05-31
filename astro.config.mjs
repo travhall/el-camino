@@ -1,10 +1,8 @@
 import { defineConfig } from "astro/config";
 import tailwind from "@astrojs/tailwind";
 import icon from "astro-icon";
-import mdx from "@astrojs/mdx";
 import netlify from "@astrojs/netlify";
-import node from "@astrojs/node"; // Add node adapter for local preview
-import react from "@astrojs/react";
+import node from "@astrojs/node";
 import path from "path";
 
 // Check if we're in preview mode
@@ -12,9 +10,7 @@ const isPreview = process.env.PREVIEW === "true";
 
 export default defineConfig({
   integrations: [
-    react(),
     tailwind(),
-    mdx(),
     icon({ iconDir: "src/assets/icons" }),
   ],
   output: "server",
@@ -31,7 +27,6 @@ export default defineConfig({
     clientPrerender: true,
   },
   server: {
-    // Enable compression for development server
     compress: true,
   },
   vite: {
@@ -53,23 +48,16 @@ export default defineConfig({
         "~": path.resolve("."),
       },
     },
-    // Add build optimizations for development
     build: {
       minify: true,
       cssMinify: true,
       rollupOptions: {
-        // Optimize code splitting
         output: {
           manualChunks: {
             square: ["square"],
-            react: ["react", "react-dom"],
           },
         },
       },
-    },
-    // Optimize dev server
-    optimizeDeps: {
-      include: ["react", "react-dom"],
     },
   },
 });
