@@ -25,24 +25,24 @@ const linkText = `Read article: ${post.title.rendered.replace(/<[^>]*>/g, '')}`;
 
 <article
   class:list={[
-    "relative overflow-hidden bg-ui-card-surface text-ui-card-text border-ui-card-border flex flex-col aspect-[3/4] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 transition-all duration-300",
-    featured ? "banner-card" : "article-card",
+    "relative overflow-hidden bg-ui-card-surface text-ui-card-text border-ui-card-border flex flex-col aspect-[3/4] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3",
+    // Add containment for better rendering performance
+    featured ? "banner-card contain-layout" : "article-card transition-all duration-300",
   ]}
 >
   {
     imageUrl && (
       <img
-        src={imageUrl}
-        alt={featuredMedia?.alt_text || `Featured image for: ${post.title.rendered.replace(/<[^>]*>/g, '')}`}
-        class:list={[
-          "object-cover w-full h-full transition-all duration-300",
-          featured
-            ? ""
-            : "opacity-10 [.article-card:has(button:hover)_&]:scale-105 [.article-card:has(button:hover)_&]:opacity-95",
-        ]}
-        loading={priority || featured ? "eager" : "lazy"}
-        fetchpriority={priority || featured ? "high" : "auto"}
-      />
+  src={imageUrl}
+  alt={featuredMedia?.alt_text || `Featured image for: ${post.title.rendered.replace(/<[^>]*>/g, '')}`}
+  class:list={[
+    "object-cover w-full h-full",
+    // Remove transition-all from featured/LCP images
+    featured ? "" : "transition-all duration-300 opacity-10 [.article-card:has(button:hover)_&]:scale-105 [.article-card:has(button:hover)_&]:opacity-95"
+  ]}
+  loading={priority || featured ? "eager" : "lazy"}
+  fetchpriority={priority || featured ? "high" : "auto"}
+/>
     )
   }
 

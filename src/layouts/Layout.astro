@@ -109,20 +109,25 @@ const orgSchema = getStructuredData();
     }
 
     <script is:inline>
-      window.squareLoaded = false;
-      window.loadSquareScript = function() {
-        if (!window.squareLoaded && !window.Square) {
-          window.squareLoaded = true;
-          const script = document.createElement('script');
-          script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
-          script.async = true;
-          document.head.appendChild(script);
-          return new Promise((resolve) => {
-            script.onload = resolve;
-          });
-        }
-        return Promise.resolve();
-      };
+      {/* window.squareLoaded = false; */}
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          window.squareLoaded = false;
+          window.loadSquareScript = function() {
+            if (!window.squareLoaded && !window.Square) {
+              window.squareLoaded = true;
+              const script = document.createElement('script');
+              script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
+              script.async = true;
+              document.head.appendChild(script);
+              return new Promise((resolve) => {
+                script.onload = resolve;
+              });
+            }
+            return Promise.resolve();
+          };
+        }, 100);
+      });
     </script>
     <ClientRouter />
   </head>
