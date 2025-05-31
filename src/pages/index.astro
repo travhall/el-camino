@@ -13,9 +13,17 @@ try {
 } catch (e) {
   error = e instanceof Error ? e.message : "An error occurred loading posts";
 }
+
+// Get hero image from first post for LCP optimization
+const heroImage = posts.length > 0 
+  ? posts[0]._embedded?.["wp:featuredmedia"]?.[0]?.source_url 
+  : undefined;
 ---
 
-<Layout title="Welcome Home, we're glad you're here | El Camino">
+<Layout 
+  title="Welcome Home, we're glad you're here | El Camino"
+  heroImage={heroImage}
+>
   <section>
     <ArticleGrid posts={posts} error={error} showSidebar={true} />
   </section>
