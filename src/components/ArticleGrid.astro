@@ -10,6 +10,7 @@ interface Props {
   error?: string | null;
   isLoading?: boolean;
   showSidebar?: boolean;
+  prioritizeFirst?: boolean; // Add prop for LCP optimization
 }
 
 const {
@@ -17,6 +18,7 @@ const {
   error = null,
   isLoading = !posts.length,
   showSidebar = false,
+  prioritizeFirst = false, // Default false for other pages
 } = Astro.props;
 
 // If sidebar is shown, limit to 6 posts for homepage layout
@@ -45,7 +47,11 @@ const skeletonCount = showSidebar ? 6 : 12;
     ) : displayPosts.length > 0 ? (
       <>
         {displayPosts.map((post, index) => (
-          <ArticleCard post={post} featured={index === 0} />
+          <ArticleCard 
+            post={post} 
+            featured={index === 0} 
+            priority={prioritizeFirst && index === 0}
+          />
         ))}
         {showSidebar && <Sidebar />}
       </>
