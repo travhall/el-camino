@@ -150,6 +150,17 @@ import Layout from "@/layouts/Layout.astro";
 
       setLoading(true);
 
+      // Load Square script dynamically only when needed for checkout
+      if (window.loadSquareScript) {
+        try {
+          await window.loadSquareScript();
+          console.log("Square script loaded for checkout");
+        } catch (error) {
+          console.error("Failed to load Square script:", error);
+          // Continue anyway - the API might still work
+        }
+      }
+
       const response = await fetch("/api/create-checkout", {
         method: "POST",
         headers: {
