@@ -53,7 +53,6 @@ const orgSchema = getStructuredData();
       </>
     )}
 
-    <!-- Preload critical fonts with high priority -->
     <link
       rel="preload"
       href="/fonts/AlumniSans.woff2"
@@ -99,9 +98,6 @@ const orgSchema = getStructuredData();
       astroGenerator={true}
     />
 
-    <!-- 🚨 REMOVED: {seoData && <meta name="robots" content="noindex" />} -->
-    <!-- This was blocking the entire site from Google indexing! -->
-
     <script type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
     {
       structuredData && (
@@ -112,12 +108,8 @@ const orgSchema = getStructuredData();
       )
     }
 
-    <!-- Load Square script only when needed for better performance -->
-    <script>
-      // Global flag to track if Square is loaded
+    <script is:inline>
       window.squareLoaded = false;
-      
-      // Function to load Square script dynamically
       window.loadSquareScript = function() {
         if (!window.squareLoaded && !window.Square) {
           window.squareLoaded = true;
