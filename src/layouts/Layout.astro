@@ -11,10 +11,10 @@ import "@/styles/globals.css";
 interface Props {
   title: string;
   structuredData?: object;
+  heroImage?: string; // Add hero image for LCP optimization
 }
 
-const { title } = Astro.props;
-const { structuredData } = Astro.props;
+const { title, structuredData, heroImage } = Astro.props;
 
 // Use site config for default SEO values
 const seoData = {
@@ -45,12 +45,22 @@ const orgSchema = getStructuredData();
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
 
+    <!-- CRITICAL: Preload LCP hero image if provided -->
+    {heroImage && (
+      <>
+        <link rel="preload" as="image" href={heroImage} fetchpriority="high">
+        <link rel="preload" as="image" href={heroImage.replace(/\.(jpg|jpeg|png)$/i, '.webp')} fetchpriority="high" type="image/webp">
+      </>
+    )}
+
+    <!-- Preload critical fonts with high priority -->
     <link
       rel="preload"
       href="/fonts/AlumniSans.woff2"
       as="font"
       type="font/woff2"
       crossorigin="anonymous"
+      fetchpriority="high"
     />
     <link
       rel="preload"
@@ -65,6 +75,7 @@ const orgSchema = getStructuredData();
       as="font"
       type="font/woff2"
       crossorigin="anonymous"
+      fetchpriority="high"
     />
     <link
       rel="preload"
@@ -88,7 +99,8 @@ const orgSchema = getStructuredData();
       astroGenerator={true}
     />
 
-    {seoData && <meta name="robots" content="noindex" />}
+    <!-- 🚨 REMOVED: {seoData && <meta name="robots" content="noindex" />} -->
+    <!-- This was blocking the entire site from Google indexing! -->
 
     <script type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
     {
@@ -100,8 +112,26 @@ const orgSchema = getStructuredData();
       )
     }
 
-    <script is:inline async src="https://sandbox.web.squarecdn.com/v1/square.js"
-    ></script>
+    <!-- Load Square script only when needed for better performance -->
+    <script>
+      // Global flag to track if Square is loaded
+      window.squareLoaded = false;
+      
+      // Function to load Square script dynamically
+      window.loadSquareScript = function() {
+        if (!window.squareLoaded && !window.Square) {
+          window.squareLoaded = true;
+          const script = document.createElement('script');
+          script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
+          script.async = true;
+          document.head.appendChild(script);
+          return new Promise((resolve) => {
+            script.onload = resolve;
+          });
+        }
+        return Promise.resolve();
+      };
+    </script>
     <ClientRouter />
   </head>
   <body
