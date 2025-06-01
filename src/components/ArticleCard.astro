@@ -3,14 +3,17 @@
 import type { WordPressPost } from "@/lib/wordpress/types";
 import Button from "./Button.astro";
 import { formatDate } from "@/utils/dates";
+import {
+  optimizeWordPressImage,
+  generateWordPressSrcSet,
+} from "@/lib/wordpress/wordpress-images";
 
 interface Props {
   post: WordPressPost;
   featured?: boolean;
-  priority?: boolean; // Add priority prop
+  priority?: boolean;
 }
 
-// Add priority to props destructuring
 const { post, featured = false, priority = false } = Astro.props;
 
 const category = post._embedded?.["wp:term"]?.[0]?.[0];
@@ -19,30 +22,53 @@ const author = post._embedded?.author?.[0];
 
 const imageUrl = featuredMedia?.source_url;
 
-// Create descriptive link text for better SEO
-const linkText = `Read article: ${post.title.rendered.replace(/<[^>]*>/g, '')}`;
+// Optimize images for different screen sizes
+const optimizedImageUrl = imageUrl
+  ? optimizeWordPressImage(imageUrl, {
+      width: featured ? 1200 : 800,
+      height: featured ? 800 : 600,
+      quality: 85,
+      format: "webp",
+    })
+  : "";
+
+const srcSet = imageUrl ? generateWordPressSrcSet(imageUrl) : "";
+
+const linkText = `Read article: ${post.title.rendered.replace(/<[^>]*>/g, "")}`;
 ---
 
 <article
   class:list={[
     "relative overflow-hidden bg-ui-card-surface text-ui-card-text border-ui-card-border flex flex-col aspect-[3/4] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3",
-    // Add containment for better rendering performance
-    featured ? "banner-card contain-layout" : "article-card transition-all duration-300",
+    featured
+      ? "banner-card contain-layout"
+      : "article-card transition-all duration-300",
   ]}
 >
   {
-    imageUrl && (
+    optimizedImageUrl && (
       <img
-  src={imageUrl}
-  alt={featuredMedia?.alt_text || `Featured image for: ${post.title.rendered.replace(/<[^>]*>/g, '')}`}
-  class:list={[
-    "object-cover w-full h-full",
-    // Remove transition-all from featured/LCP images
-    featured ? "" : "transition-all duration-300 opacity-10 [.article-card:has(button:hover)_&]:scale-105 [.article-card:has(button:hover)_&]:opacity-95"
-  ]}
-  loading={priority || featured ? "eager" : "lazy"}
-  fetchpriority={priority || featured ? "high" : "auto"}
-/>
+        src={optimizedImageUrl}
+        srcset={srcSet}
+        sizes={
+          featured
+            ? "(min-width: 768px) 66vw, 100vw"
+            : "(min-width: 768px) 33vw, 100vw"
+        }
+        alt={
+          featuredMedia?.alt_text ||
+          `Featured image for: ${post.title.rendered.replace(/<[^>]*>/g, "")}`
+        }
+        class:list={[
+          "object-cover w-full h-full",
+          featured
+            ? ""
+            : "transition-all duration-300 opacity-10 [.article-card:has(button:hover)_&]:scale-105 [.article-card:has(button:hover)_&]:opacity-95",
+        ]}
+        loading={priority || featured ? "eager" : "lazy"}
+        fetchpriority={priority || featured ? "high" : "auto"}
+        decoding={priority || featured ? "sync" : "async"}
+      />
     )
   }
 
@@ -77,7 +103,10 @@ const linkText = `Read article: ${post.title.rendered.replace(/<[^>]*>/g, '')}`;
           <div class="flex items-center text-content-meta">
             {author.avatar_urls?.["96"] && (
               <img
-                src={author.avatar_urls["96"]}
+                src={optimizeWordPressImage(author.avatar_urls["96"], {
+                  width: 32,
+                  height: 32,
+                })}
                 alt={`Profile photo of ${author.name}`}
                 class="w-8 h-8 rounded-full mr-2"
                 loading="lazy"
@@ -97,7 +126,9 @@ const linkText = `Read article: ${post.title.rendered.replace(/<[^>]*>/g, '')}`;
       >
         <Button type="button" variant="primary" size="md">
           Read More
-          <span class="sr-only">: {post.title.rendered.replace(/<[^>]*>/g, '')}</span>
+          <span class="sr-only"
+            >: {post.title.rendered.replace(/<[^>]*>/g, "")}</span
+          >
         </Button>
       </a>
     </div>

@@ -3,10 +3,42 @@ command = "pnpm run build"
 publish = "dist"
 functions = "netlify/functions"
 
+# HTML files - short cache, always revalidate
+[[headers]]
+for = "*.html"
+[headers.values]
+Cache-Control = "public, max-age=0, must-revalidate"
+
+# Static assets - long cache with immutable
+[[headers]]
+for = "/assets/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+# Fonts - long cache
+[[headers]]
+for = "/fonts/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+# Images - medium cache
+[[headers]]
+for = "*.{jpg,jpeg,png,gif,ico,svg,webp,avif}"
+[headers.values]
+Cache-Control = "public, max-age=86400, s-maxage=604800"
+
+# JS/CSS - long cache with versioning
+[[headers]]
+for = "*.{js,css}"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+# All other files - security headers and reasonable cache
 [[headers]]
 for = "/*"
 [headers.values]
-Cache-Control = "public, max-age=31536000, immutable"
+Cache-Control = "public, max-age=3600"
+
 # Security Headers
 X-Frame-Options = "DENY"
 X-XSS-Protection = "1; mode=block"
@@ -14,16 +46,16 @@ X-Content-Type-Options = "nosniff"
 Referrer-Policy = "strict-origin-when-cross-origin"
 Permissions-Policy = "camera=(), microphone=(), geolocation=()"
 
-# Content Security Policy - Allow Square integration
-Content-Security-Policy = "default-src 'self'; img-src 'self' https: data:; script-src 'self' 'unsafe-inline' https://sandbox.web.squarecdn.com https://web.squarecdn.com; style-src 'self' 'unsafe-inline'; font-src 'self' https:; connect-src 'self' https: wss:; frame-src 'none'; object-src 'none'"
+# Content Security Policy - Updated for WordPress images
+Content-Security-Policy = "default-src 'self'; img-src 'self' https: data: *.wordpress.com; script-src 'self' 'unsafe-inline' https://sandbox.web.squarecdn.com https://web.squarecdn.com; style-src 'self' 'unsafe-inline'; font-src 'self' https:; connect-src 'self' https: wss:; frame-src 'none'; object-src 'none'"
 
-# Cross-Origin Opener Policy - Prevent window attacks
+# Cross-Origin Opener Policy
 Cross-Origin-Opener-Policy = "same-origin"
 
-# Force HTTPS and improve caching
+# HSTS
 Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
 
-# SEO - Ensure indexing is allowed (override any blocking)
+# SEO
 X-Robots-Tag = "index, follow"
 
 [build.environment]
