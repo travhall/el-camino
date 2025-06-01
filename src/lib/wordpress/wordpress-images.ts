@@ -34,7 +34,10 @@ export function optimizeWordPressImage(
   if (format === "webp") params.set("format", "webp");
   if (fit) params.set("fit", fit);
 
-  // Strip existing query params and add optimized ones
+  // Add these WordPress.com optimization parameters
+  params.set("strip", "all"); // Remove metadata
+  params.set("zoom", "1"); // Prevent upscaling
+
   const baseUrl = url.split("?")[0];
   return `${baseUrl}?${params.toString()}`;
 }

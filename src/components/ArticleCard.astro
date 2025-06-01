@@ -25,8 +25,8 @@ const imageUrl = featuredMedia?.source_url;
 // Optimize images for different screen sizes
 const optimizedImageUrl = imageUrl
   ? optimizeWordPressImage(imageUrl, {
-      width: featured ? 1200 : 800,
-      height: featured ? 800 : 600,
+      width: featured ? 800 : 600,
+      height: featured ? 533 : 400,
       quality: 85,
       format: "webp",
     })
@@ -68,6 +68,8 @@ const linkText = `Read article: ${post.title.rendered.replace(/<[^>]*>/g, "")}`;
         loading={priority || featured ? "eager" : "lazy"}
         fetchpriority={priority || featured ? "high" : "auto"}
         decoding={priority || featured ? "sync" : "async"}
+        width={featured ? 800 : 600}
+        height={featured ? 533 : 400}
       />
     )
   }
@@ -106,6 +108,7 @@ const linkText = `Read article: ${post.title.rendered.replace(/<[^>]*>/g, "")}`;
                 src={optimizeWordPressImage(author.avatar_urls["96"], {
                   width: 32,
                   height: 32,
+                  format: "webp",
                 })}
                 alt={`Profile photo of ${author.name}`}
                 class="w-8 h-8 rounded-full mr-2"
