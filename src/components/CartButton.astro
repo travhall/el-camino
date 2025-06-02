@@ -1,79 +1,55 @@
 ---
-// src/components/BartButton.astro
+// src/components/CartButton.astro
 import { Icon } from "astro-icon/components";
 import { cart } from "@/lib/cart";
 const cartCount = cart.getItemCount();
 ---
 
 <a href="/cart" class="relative p-2" aria-label="Shopping Cart">
-  <div class="flex flex-row items-center">
-    <!-- <span class="hidden md:block text-lg lg:text-xl font-semibold font-display"
-      >Cart</span
-    > -->
-    <Icon class="h-5 w-5 m-1" name="uil:shopping-cart" />
-    <span
-      id="cart-count"
-      class:list={[
-        "absolute top-1 right-0 bg-ui-button-surface text-ui-button-text text-xs rounded-full w-4 h-4 flex items-center justify-center",
-        { hidden: cartCount === 0 },
-      ]}
-    >
-      {cartCount}
-    </span>
-  </div>
+  <Icon class="h-6 w-6 m-1" name="uil:shopping-cart" />
+  <span
+    id="cart-count"
+    class:list={[
+      "absolute top-1 right-0 bg-ui-button-surface text-ui-button-text text-xs rounded-full w-4 h-4 flex items-center justify-center",
+      { hidden: cartCount === 0 },
+    ]}
+  >
+    {cartCount}
+  </span>
 </a>
 
 <script>
-  import { cart } from "@/lib/cart";
-
+  let cartLoaded = false;
   let updateTimeout: number | null = null;
-  let isUpdating = false;
 
-  function updateCartCount() {
-    if (isUpdating) return;
-    isUpdating = true;
-
-    if (updateTimeout) {
-      window.clearTimeout(updateTimeout);
+  async function loadCart() {
+    if (!cartLoaded) {
+      const { cart } = await import("@/lib/cart");
+      cartLoaded = true;
+      return cart;
     }
+    return (await import("@/lib/cart")).cart;
+  }
 
-    updateTimeout = window.setTimeout(() => {
+  async function updateCartCount() {
+    if (updateTimeout) window.clearTimeout(updateTimeout);
+
+    updateTimeout = window.setTimeout(async () => {
       const countElement = document.getElementById("cart-count");
-      if (!countElement) {
-        console.debug("Cart count element not found, waiting for DOM");
-        return;
-      }
+      if (!countElement) return;
 
       try {
+        const cart = await loadCart();
         const count = cart.getItemCount();
         countElement.textContent = count.toString();
         countElement.classList.toggle("hidden", count === 0);
       } catch (error) {
         console.error("Error updating cart count:", error);
-      } finally {
-        isUpdating = false;
-        updateTimeout = null;
       }
     }, 50);
   }
 
-  // Event Listeners
-  window.addEventListener("cartUpdated", () => {
-    console.debug("Cart update event received in button");
-    updateCartCount();
-  });
-
-  document.addEventListener("astro:page-load", () => {
-    console.debug("Cart button: Page loaded");
-    updateCartCount();
-  });
-
-  // Cleanup
-  if (import.meta.hot) {
-    import.meta.hot.dispose(() => {
-      if (updateTimeout) {
-        window.clearTimeout(updateTimeout);
-      }
-    });
-  }
+  // Lazy load on first interaction
+  window.addEventListener("cartUpdated", updateCartCount);
+  document.addEventListener("astro:page-load", updateCartCount);
 </script>
