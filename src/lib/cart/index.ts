@@ -542,47 +542,11 @@ class CartManager implements ICartManager {
       this.removeItem(id);
       return { success: true };
     }
+    item.quantity = quantity;
+    this.items.set(id, item);
+    this.queueUpdate(() => this.saveCart());
 
-    try {
-      // Check inventory
-      const availableQuantity = await checkItemInventory(item.variationId);
-
-      if (availableQuantity <= 0) {
-        // Remove item if out of stock
-        this.removeItem(id);
-        return {
-          success: false,
-          message: "This item is no longer in stock",
-        };
-      }
-
-      // Limit quantity to available stock
-      const newQuantity = Math.min(quantity, availableQuantity);
-
-      if (newQuantity < quantity) {
-        item.quantity = newQuantity;
-        this.items.set(id, item);
-        this.queueUpdate(() => this.saveCart());
-
-        return {
-          success: true,
-          message: `Quantity adjusted to ${newQuantity} (maximum available)`,
-        };
-      }
-
-      // Normal update
-      item.quantity = newQuantity;
-      this.items.set(id, item);
-      this.queueUpdate(() => this.saveCart());
-
-      return { success: true };
-    } catch (error) {
-      console.error("Error updating quantity:", error);
-      return {
-        success: false,
-        message: "Failed to update quantity",
-      };
-    }
+    return { success: true };
   }
 
   public async validateCart(): Promise<{ success: boolean; message?: string }> {
