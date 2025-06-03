@@ -43,8 +43,9 @@ import Modal from "@/components/Modal.astro";
   import type { CartItem } from "@/lib/cart/types";
   import { MoneyUtils } from "@/lib/square/money";
 
-  // Track UI update state
+  // Track UI update state and inventory data
   let isUpdating = false;
+  let inventoryData: Record<string, number> = {};
 
   function setLoading(show: boolean): void {
     const overlay = document.getElementById("loading-overlay");
@@ -52,6 +53,61 @@ import Modal from "@/components/Modal.astro";
       overlay.classList.toggle("hidden", !show);
       overlay.classList.toggle("flex", show);
     }
+  }
+
+  // Load inventory data via server-side API (no CORS issues)
+  async function loadInventoryData(items: CartItem[]): Promise<void> {
+    if (items.length === 0) {
+      inventoryData = {};
+      return;
+    }
+
+    try {
+      const variationIds = items.map(item => item.variationId);
+      
+      const response = await fetch('/api/cart-inventory', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ variationIds })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.inventory) {
+        inventoryData = result.inventory;
+        console.log('Loaded inventory data:', inventoryData);
+      } else {
+        throw new Error(result.error || 'Failed to load inventory');
+      }
+    } catch (error) {
+      console.error('Error loading inventory data:', error);
+      // Fallback to generous limits on API failure
+      inventoryData = {};
+      items.forEach(item => {
+        inventoryData[item.variationId] = 99;
+      });
+    }
+  }
+
+  // Validate quantity using cart's availability system (like product detail page)
+  function canUpdateQuantity(itemKey: string, newQuantity: number): boolean {
+    const [productId, variationId] = itemKey.split(':');
+    const totalInventory = inventoryData[variationId] || 99;
+    
+    return cart.canAddToCart(productId, variationId, totalInventory, newQuantity - getCurrentCartQuantity(itemKey));
+  }
+
+  // Get current quantity in cart for an item
+  function getCurrentCartQuantity(itemKey: string): number {
+    const items = cart.getItems();
+    const item = items.find(i => `${i.id}:${i.variationId}` === itemKey);
+    return item?.quantity || 0;
   }
 
   // Templates
@@ -219,13 +275,16 @@ import Modal from "@/components/Modal.astro";
       ?.addEventListener("click", handleClearCart);
   }
 
-  function updateDisplay(): void {
+  async function updateDisplay(): Promise<void> {
     if (isUpdating) return;
     isUpdating = true;
 
     try {
       const items = cart.getItems();
       const total = cart.getTotal();
+
+      // Load inventory data first
+      await loadInventoryData(items);
 
       const cartLoading = document.getElementById("cart-loading");
       const cartContainer = document.getElementById("cart-container");
@@ -238,12 +297,19 @@ import Modal from "@/components/Modal.astro";
       if (items.length === 0) {
         cartContainer.innerHTML = createEmptyCart();
       } else {
-        // Create cart items HTML
+        // Create cart items HTML with proper inventory limits
         const cartItemsHtml = items
           .map((item) => {
             const itemKey = `${item.id}:${item.variationId}`;
             const itemSubtotal = item.price * item.quantity;
             const itemImage = getCartItemImage(item);
+            
+            // Get inventory for this variation
+            const totalInventory = inventoryData[item.variationId] || 99;
+            const maxQuantity = Math.max(totalInventory, item.quantity); // Allow current quantity even if over stock
+            
+            // Check if increment is allowed using cart's availability system
+            const canIncrement = canUpdateQuantity(itemKey, item.quantity + 1);
 
             return `
             <div class="bg-surface-secondary p-4 flex gap-4 self-start" data-item-container="${itemKey}">
@@ -291,8 +357,11 @@ import Modal from "@/components/Modal.astro";
                     <label for="quantity-${itemKey}" class="text-sm text-content-body">Qty:</label>
                     <div class="flex items-center border border-border-primary rounded">
                       <button type="button" class="quantity-decrease px-2 py-1 hover:bg-surface-primary transition-colors" data-item-key="${itemKey}" data-current-qty="${item.quantity}">−</button>
-                      <input type="number" id="quantity-${itemKey}" class="quantity-input w-16 text-center py-1 border-0 bg-surface-primary text-content-body focus:ring-1 focus:ring-content-emphasis [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value="${item.quantity}" min="1" max="99" data-item-key="${itemKey}" />
-                      <button type="button" class="quantity-increase px-2 py-1 hover:bg-surface-primary transition-colors" data-item-key="${itemKey}">+</button>
+                      <input type="number" id="quantity-${itemKey}" class="quantity-input w-16 text-center py-1 border-0 bg-surface-primary text-content-body focus:ring-1 focus:ring-content-emphasis [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value="${item.quantity}" min="1" max="${maxQuantity}" data-item-key="${itemKey}" />
+                      <button type="button" class="quantity-increase px-2 py-1 hover:bg-surface-primary transition-colors ${!canIncrement ? 'opacity-50 cursor-not-allowed' : ''}" data-item-key="${itemKey}" ${!canIncrement ? 'disabled' : ''}>+</button>
+                    </div>
+                    <div class="text-xs text-content-meta">
+                      ${totalInventory} available
                     </div>
                   </div>
 
@@ -338,194 +407,179 @@ import Modal from "@/components/Modal.astro";
 
   // Setup event listeners for cart items
   function setupCartItemEventListeners() {
-    import("@/lib/cart").then(({ cart }) => {
-      import("@/lib/square/inventory").then(({ checkItemInventory }) => {
-        // Debounce utility
-        function debounce<T extends (...args: any[]) => any>(
-          func: T,
-          wait: number
-        ): (...args: Parameters<T>) => void {
-          let timeout: number;
-          return (...args: Parameters<T>) => {
-            clearTimeout(timeout);
-            timeout = window.setTimeout(() => func.apply(null, args), wait);
-          };
-        }
+    // Debounce utility
+    function debounce<T extends (...args: any[]) => any>(
+      func: T,
+      wait: number
+    ): (...args: Parameters<T>) => void {
+      let timeout: number;
+      return (...args: Parameters<T>) => {
+        clearTimeout(timeout);
+        timeout = window.setTimeout(() => func.apply(null, args), wait);
+      };
+    }
 
-        // Handle quantity changes with bypassed inventory check for decrements
-        async function updateQuantity(
-          itemKey: string,
-          newQuantity: number,
-          bypassInventoryCheck = false
-        ) {
-          try {
-            if (bypassInventoryCheck) {
-              // Direct update for decrements - bypass aggressive inventory checking
-              const items = cart.getItems();
-              const item = items.find(
-                (i) => `${i.id}:${i.variationId}` === itemKey
-              );
-              if (item) {
-                const cartManager = cart as any;
-                item.quantity = newQuantity;
-                cartManager.items.set(itemKey, item);
-                cartManager.saveCart();
-                return { success: true };
-              }
-            } else {
-              // Normal update for increments - includes inventory checking
-              const result = await cart.updateQuantity(itemKey, newQuantity);
-              if (!result.success && result.message) {
-                window.showNotification(result.message, "error");
-              } else if (result.message) {
-                window.showNotification(result.message, "info");
-              }
-              return result;
-            }
-          } catch (error) {
-            window.showNotification("Failed to update quantity", "error");
-            return { success: false };
-          }
-        }
-
-        const debouncedUpdateQuantity = debounce(updateQuantity, 500);
-
-        // Handle remove item
-        function handleRemove(itemKey: string, itemTitle: string) {
-          window.showModal(
-            "Remove Item",
-            `Are you sure you want to remove "${itemTitle}" from your cart?`,
-            () => {
-              cart.removeItem(itemKey);
-              window.showNotification("Item removed from cart");
-            },
-            "Remove",
-            "Cancel"
+    // Handle quantity changes - simplified without aggressive inventory checking
+    async function updateQuantity(
+      itemKey: string,
+      newQuantity: number,
+      bypassInventoryCheck = false
+    ) {
+      try {
+        if (bypassInventoryCheck) {
+          // Direct update for decrements - bypass aggressive inventory checking
+          const items = cart.getItems();
+          const item = items.find(
+            (i) => `${i.id}:${i.variationId}` === itemKey
           );
-        }
-
-        // Validate quantity against inventory (for increments only)
-        async function validateQuantity(
-          itemKey: string,
-          quantity: number
-        ): Promise<boolean> {
-          try {
-            const [, variationId] = itemKey.split(":");
-            const availableQuantity = await checkItemInventory(variationId);
-
-            if (quantity > availableQuantity) {
-              window.showNotification(
-                `Only ${availableQuantity} available in stock`,
-                "error"
-              );
-              return false;
-            }
-            return true;
-          } catch (error) {
-            console.warn("Could not validate inventory:", error);
-            return true; // Allow if validation fails
+          if (item) {
+            const cartManager = cart as any;
+            item.quantity = newQuantity;
+            cartManager.items.set(itemKey, item);
+            cartManager.saveCart();
+            return { success: true };
           }
+        } else {
+          // Normal update for increments - includes inventory checking
+          const result = await cart.updateQuantity(itemKey, newQuantity);
+          if (!result.success && result.message) {
+            window.showNotification(result.message, "error");
+          } else if (result.message) {
+            window.showNotification(result.message, "info");
+          }
+          return result;
+        }
+      } catch (error) {
+        window.showNotification("Failed to update quantity", "error");
+        return { success: false };
+      }
+    }
+
+    const debouncedUpdateQuantity = debounce(updateQuantity, 500);
+
+    // Handle remove item
+    function handleRemove(itemKey: string, itemTitle: string) {
+      window.showModal(
+        "Remove Item",
+        `Are you sure you want to remove "${itemTitle}" from your cart?`,
+        () => {
+          cart.removeItem(itemKey);
+          window.showNotification("Item removed from cart");
+        },
+        "Remove",
+        "Cancel"
+      );
+    }
+
+    // Set up event listeners
+    // Quantity input changes
+    document
+      .querySelectorAll<HTMLInputElement>(".quantity-input")
+      .forEach((input) => {
+        input.addEventListener("change", async (e) => {
+          const target = e.target as HTMLInputElement;
+          const itemKey = target.dataset.itemKey!;
+          const newQuantity = parseInt(target.value, 10);
+
+          if (newQuantity < 1) {
+            target.value = "1";
+            return;
+          }
+
+          // Use cart's availability system for validation
+          if (canUpdateQuantity(itemKey, newQuantity)) {
+            debouncedUpdateQuantity(itemKey, newQuantity, false);
+          } else {
+            window.showNotification("Cannot add that quantity to cart", "error");
+            // Reset to current cart quantity
+            const items = cart.getItems();
+            const currentItem = items.find(
+              (item) => `${item.id}:${item.variationId}` === itemKey
+            );
+            target.value = currentItem?.quantity.toString() || "1";
+          }
+        });
+      });
+
+    // Quantity decrease buttons - FIXED LOGIC
+    document.querySelectorAll(".quantity-decrease").forEach((button) => {
+      button.addEventListener("click", async (e) => {
+        const target = e.target as HTMLButtonElement;
+        const itemKey = target.dataset.itemKey!;
+        const currentQty = parseInt(target.dataset.currentQty || "1", 10);
+        const input = document.querySelector(
+          `input[data-item-key="${itemKey}"]`
+        ) as HTMLInputElement;
+
+        // ONLY show confirmation modal when quantity is exactly 1
+        if (currentQty === 1) {
+          const container = target.closest("[data-item-container]");
+          const titleElement = container?.querySelector("h3 a");
+          const itemTitle = titleElement?.textContent || "this item";
+
+          handleRemove(itemKey, itemTitle);
+          return;
         }
 
-        // Set up event listeners
-        // Quantity input changes
-        document
-          .querySelectorAll<HTMLInputElement>(".quantity-input")
-          .forEach((input) => {
-            input.addEventListener("change", async (e) => {
-              const target = e.target as HTMLInputElement;
-              const itemKey = target.dataset.itemKey!;
-              const newQuantity = parseInt(target.value, 10);
+        // Normal decrement: 3 -> 2, 2 -> 1, etc.
+        const newQuantity = currentQty - 1;
+        input.value = newQuantity.toString();
 
-              if (newQuantity < 1) {
-                target.value = "1";
-                return;
-              }
+        // Update the data-current-qty for next click
+        target.dataset.currentQty = newQuantity.toString();
 
-              if (await validateQuantity(itemKey, newQuantity)) {
-                debouncedUpdateQuantity(itemKey, newQuantity, false);
-              } else {
-                // Reset to current cart quantity
-                const items = cart.getItems();
-                const currentItem = items.find(
-                  (item) => `${item.id}:${item.variationId}` === itemKey
-                );
-                target.value = currentItem?.quantity.toString() || "1";
-              }
-            });
-          });
+        // Use bypass for decrements to avoid aggressive inventory check
+        debouncedUpdateQuantity(itemKey, newQuantity, true);
+      });
+    });
 
-        // Quantity decrease buttons - FIXED LOGIC
-        document.querySelectorAll(".quantity-decrease").forEach((button) => {
-          button.addEventListener("click", async (e) => {
-            const target = e.target as HTMLButtonElement;
-            const itemKey = target.dataset.itemKey!;
-            const currentQty = parseInt(target.dataset.currentQty || "1", 10);
-            const input = document.querySelector(
-              `input[data-item-key="${itemKey}"]`
-            ) as HTMLInputElement;
+    // Quantity increase buttons - FIXED WITH PROPER LIMITS
+    document.querySelectorAll(".quantity-increase").forEach((button) => {
+      button.addEventListener("click", async (e) => {
+        const target = e.target as HTMLButtonElement;
+        
+        // Check if button is disabled
+        if (target.disabled) {
+          window.showNotification("Cannot add more items - inventory limit reached", "error");
+          return;
+        }
+        
+        const itemKey = target.dataset.itemKey!;
+        const input = document.querySelector(
+          `input[data-item-key="${itemKey}"]`
+        ) as HTMLInputElement;
+        const currentQuantity = parseInt(input.value, 10);
+        const newQuantity = currentQuantity + 1;
 
-            // ONLY show confirmation modal when quantity is exactly 1
-            if (currentQty === 1) {
-              const container = target.closest("[data-item-container]");
-              const titleElement = container?.querySelector("h3 a");
-              const itemTitle = titleElement?.textContent || "this item";
+        // Use cart's availability system for validation
+        if (canUpdateQuantity(itemKey, newQuantity)) {
+          input.value = newQuantity.toString();
 
-              handleRemove(itemKey, itemTitle);
-              return;
-            }
+          // Update decrease button's data-current-qty
+          const decreaseBtn = document.querySelector(
+            `button.quantity-decrease[data-item-key="${itemKey}"]`
+          ) as HTMLButtonElement;
+          if (decreaseBtn) {
+            decreaseBtn.dataset.currentQty = newQuantity.toString();
+          }
 
-            // Normal decrement: 3 -> 2, 2 -> 1, etc.
-            const newQuantity = currentQty - 1;
-            input.value = newQuantity.toString();
+          debouncedUpdateQuantity(itemKey, newQuantity, false);
+        } else {
+          window.showNotification("Cannot add more items - inventory limit reached", "error");
+        }
+      });
+    });
 
-            // Update the data-current-qty for next click
-            target.dataset.currentQty = newQuantity.toString();
+    // Remove buttons
+    document.querySelectorAll(".remove-btn").forEach((button) => {
+      button.addEventListener("click", (e) => {
+        const target = e.target as HTMLButtonElement;
+        const itemKey = target.dataset.itemKey!;
+        const container = target.closest("[data-item-container]");
+        const titleElement = container?.querySelector("h3 a");
+        const itemTitle = titleElement?.textContent || "this item";
 
-            // Use bypass for decrements to avoid aggressive inventory check
-            debouncedUpdateQuantity(itemKey, newQuantity, true);
-          });
-        });
-
-        // Quantity increase buttons
-        document.querySelectorAll(".quantity-increase").forEach((button) => {
-          button.addEventListener("click", async (e) => {
-            const target = e.target as HTMLButtonElement;
-            const itemKey = target.dataset.itemKey!;
-            const input = document.querySelector(
-              `input[data-item-key="${itemKey}"]`
-            ) as HTMLInputElement;
-            const currentQuantity = parseInt(input.value, 10);
-            const newQuantity = currentQuantity + 1;
-
-            if (await validateQuantity(itemKey, newQuantity)) {
-              input.value = newQuantity.toString();
-
-              // Update decrease button's data-current-qty
-              const decreaseBtn = document.querySelector(
-                `button.quantity-decrease[data-item-key="${itemKey}"]`
-              ) as HTMLButtonElement;
-              if (decreaseBtn) {
-                decreaseBtn.dataset.currentQty = newQuantity.toString();
-              }
-
-              debouncedUpdateQuantity(itemKey, newQuantity, false);
-            }
-          });
-        });
-
-        // Remove buttons
-        document.querySelectorAll(".remove-btn").forEach((button) => {
-          button.addEventListener("click", (e) => {
-            const target = e.target as HTMLButtonElement;
-            const itemKey = target.dataset.itemKey!;
-            const container = target.closest("[data-item-container]");
-            const titleElement = container?.querySelector("h3 a");
-            const itemTitle = titleElement?.textContent || "this item";
-
-            handleRemove(itemKey, itemTitle);
-          });
-        });
+        handleRemove(itemKey, itemTitle);
       });
     });
   }
