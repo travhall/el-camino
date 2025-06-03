@@ -1,6 +1,7 @@
 ---
 // src/pages/cart.astro
 import Layout from "@/layouts/Layout.astro";
+import Modal from "@/components/Modal.astro";
 ---
 
 <Layout title="Your Shopping Cart | El Camino">
@@ -32,6 +33,9 @@ import Layout from "@/layouts/Layout.astro";
       </div>
     </div>
   </section>
+
+  <!-- Include Modal Component -->
+  <Modal />
 </Layout>
 
 <script>
@@ -55,49 +59,14 @@ import Layout from "@/layouts/Layout.astro";
     return `
       <div class="flex flex-col min-h-[50dvh] items-center justify-center" id="empty-cart">
         <p class="text-lg mb-6 text-content-body">Your cart is empty</p>
-            <a
-              href="/all-products"
-              class="block text-center bg-ui-button-surface/0 hover:bg-ui-button-surface/10 border-ui-button-surface text-ui-button-surface font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-2 px-4"
-            >
-              Continue Shopping
-            </a>
+        <a
+          href="/all-products"
+          class="block text-center bg-ui-button-surface/0 hover:bg-ui-button-surface/10 border-ui-button-surface text-ui-button-surface font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-2 px-4"
+        >
+          Continue Shopping
+        </a>
       </div>
     `;
-  }
-
-  function createCartItem(item: CartItem): string {
-    const itemKey = `${item.id}:${item.variationId}`;
-
-    return `
-    <div class="bg-surface-secondary p-4 flex gap-2 self-start" data-item-container="${itemKey}">
-      ${
-        item.image
-          ? `<img src="${item.image}" alt="${item.title}" class="w-24 h-24 object-cover" />`
-          : ""
-      }
-      <div class="flex-grow flex flex-col justify-between">
-        <h3 class="font-display text-3xl mb-2 text-content-heading">
-          ${item.title}
-          ${item.variationName ? ` - ${item.variationName}` : ""}
-        </h3>
-        <div class="flex justify-between items-center">
-          <div class="text-lg text-content-body">
-            Quantity: ${item.quantity}
-          </div>
-          <span class="font-display text-3xl item-price text-content-emphasis">
-            ${MoneyUtils.format(MoneyUtils.fromFloat(item.price * item.quantity))}
-          </span>
-          <button
-            class="remove-btn p-2 bg-transparent text-sm hover:underline font-semibold transition-all duration-300"
-            data-id="${itemKey}"
-            aria-label="Remove item"
-          >
-            Remove
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
   }
 
   function createOrderSummary(total: number): string {
@@ -118,8 +87,8 @@ import Layout from "@/layouts/Layout.astro";
                 MoneyUtils.fromFloat(total)
               )}</span>
             </div>
-            </div>
-            <div class="space-y-3">
+          </div>
+          <div class="space-y-3">
             <p class="italic text-content-emphasis">Shipping &amp; taxes are calculated at checkout</p>
             <button
               type="button"
@@ -138,6 +107,17 @@ import Layout from "@/layouts/Layout.astro";
         </div>
       </div>
     `;
+  }
+
+  // Get correct cart item image - fallback to variation lookup if needed
+  function getCartItemImage(item: CartItem): string {
+    // If item has image, use it (might be default product image)
+    if (item.image) {
+      return item.image;
+    }
+
+    // Fallback to placeholder if no image
+    return "/images/placeholder.png";
   }
 
   // Cart Functions
@@ -194,28 +174,49 @@ import Layout from "@/layouts/Layout.astro";
     }
   }
 
-  function attachEventListeners(): void {
-    document
-      .querySelectorAll<HTMLButtonElement>(".remove-btn")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          const id = button.dataset.id;
-          if (!id) return;
-          cart.removeItem(id);
-        });
-      });
+  function handleClearCart(): void {
+    const itemCount = cart.getItemCount();
+    if (itemCount === 0) {
+      window.showNotification("Cart is already empty", "info");
+      return;
+    }
 
+    // Special case: if only 1 item, show specific item removal message
+    const items = cart.getItems();
+    if (items.length === 1) {
+      const item = items[0];
+      window.showModal(
+        "Remove Item",
+        `Are you sure you want to remove "${item.title}" from your cart?`,
+        () => {
+          cart.clear();
+          window.showNotification("Cart cleared successfully");
+        },
+        "Remove",
+        "Cancel"
+      );
+    } else {
+      window.showModal(
+        "Clear Cart",
+        `Are you sure you want to remove all ${itemCount} item${itemCount > 1 ? "s" : ""} from your cart?`,
+        () => {
+          cart.clear();
+          window.showNotification("Cart cleared successfully");
+        },
+        "Clear Cart",
+        "Cancel"
+      );
+    }
+  }
+
+  function attachEventListeners(): void {
     document
       .getElementById("checkout-button")
       ?.addEventListener("click", handleCheckout);
+
     document
       .getElementById("clear-cart-button")
-      ?.addEventListener("click", () => {
-        if (confirm("Are you sure you want to clear your cart?")) {
-          cart.clear();
-          window.showNotification("Cart cleared successfully");
-        }
-      });
+      ?.addEventListener("click", handleClearCart);
   }
 
   function updateDisplay(): void {
@@ -237,6 +238,76 @@ import Layout from "@/layouts/Layout.astro";
       if (items.length === 0) {
         cartContainer.innerHTML = createEmptyCart();
       } else {
+        // Create cart items HTML
+        const cartItemsHtml = items
+          .map((item) => {
+            const itemKey = `${item.id}:${item.variationId}`;
+            const itemSubtotal = item.price * item.quantity;
+            const itemImage = getCartItemImage(item);
+
+            return `
+            <div class="bg-surface-secondary p-4 flex gap-4 self-start" data-item-container="${itemKey}">
+              <div class="flex-shrink-0">
+                <img 
+                  src="${itemImage}" 
+                  alt="${item.title}" 
+                  class="w-24 h-24 object-cover rounded border border-border-secondary" 
+                  onerror="this.src='/images/placeholder.png'"
+                />
+              </div>
+              
+              <div class="flex-grow flex flex-col justify-between min-w-0">
+                <div class="flex flex-row justify-between">
+                  <div class="flex flex-col">
+                    <h3 class="font-display text-2xl text-content-heading leading-tight">
+                      <a href="/product/${item.id}" class="hover:text-content-emphasis transition-colors">
+                        ${item.title}
+                      </a>
+                    </h3>
+                    ${
+                      item.variationName
+                        ? `
+                      <p class="text-content-meta text-sm mt-1">
+                        ${item.variationName}
+                      </p>
+                    `
+                        : ""
+                    }
+                  </div>
+                <div>
+                  <div class="text-right">
+                      <div class="text-content-meta text-xs">
+                        ${MoneyUtils.format(MoneyUtils.fromFloat(item.price))} each
+                      </div>
+                      <div class="font-display font-bold text-2xl text-content-emphasis">
+                        ${MoneyUtils.format(MoneyUtils.fromFloat(itemSubtotal))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex justify-between items-end gap-4">
+                  <div class="flex items-center gap-2">
+                    <label for="quantity-${itemKey}" class="text-sm text-content-body">Qty:</label>
+                    <div class="flex items-center border border-border-primary rounded">
+                      <button type="button" class="quantity-decrease px-2 py-1 hover:bg-surface-primary transition-colors" data-item-key="${itemKey}" data-current-qty="${item.quantity}">−</button>
+                      <input type="number" id="quantity-${itemKey}" class="quantity-input w-16 text-center py-1 border-0 bg-surface-primary text-content-body focus:ring-1 focus:ring-content-emphasis" value="${item.quantity}" min="1" max="99" data-item-key="${itemKey}" />
+                      <button type="button" class="quantity-increase px-2 py-1 hover:bg-surface-primary transition-colors" data-item-key="${itemKey}">+</button>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-4">
+                    <button type="button" class="remove-btn text-sm text-content-meta hover:text-state-error-surface transition-colors font-medium" data-item-key="${itemKey}">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          })
+          .join("");
+
         cartContainer.innerHTML = `
           <div class="grid md:grid-cols-3 gap-2 items-start">
             <div class="md:col-span-2 space-y-2 grid">
@@ -247,19 +318,216 @@ import Layout from "@/layouts/Layout.astro";
               >
                 Clear Cart
               </button>
-              ${items.map(createCartItem).join("")}
+              ${cartItemsHtml}
             </div>
             ${createOrderSummary(total)}
           </div>
         `;
+
+        // Set up cart item event listeners
+        setupCartItemEventListeners();
       }
 
       attachEventListeners();
     } catch (error) {
-      // Silent failure
+      console.error("Error updating cart display:", error);
     } finally {
       isUpdating = false;
     }
+  }
+
+  // Setup event listeners for cart items
+  function setupCartItemEventListeners() {
+    import("@/lib/cart").then(({ cart }) => {
+      import("@/lib/square/inventory").then(({ checkItemInventory }) => {
+        // Debounce utility
+        function debounce<T extends (...args: any[]) => any>(
+          func: T,
+          wait: number
+        ): (...args: Parameters<T>) => void {
+          let timeout: number;
+          return (...args: Parameters<T>) => {
+            clearTimeout(timeout);
+            timeout = window.setTimeout(() => func.apply(null, args), wait);
+          };
+        }
+
+        // Handle quantity changes with bypassed inventory check for decrements
+        async function updateQuantity(
+          itemKey: string,
+          newQuantity: number,
+          bypassInventoryCheck = false
+        ) {
+          try {
+            if (bypassInventoryCheck) {
+              // Direct update for decrements - bypass aggressive inventory checking
+              const items = cart.getItems();
+              const item = items.find(
+                (i) => `${i.id}:${i.variationId}` === itemKey
+              );
+              if (item) {
+                const cartManager = cart as any;
+                item.quantity = newQuantity;
+                cartManager.items.set(itemKey, item);
+                cartManager.saveCart();
+                return { success: true };
+              }
+            } else {
+              // Normal update for increments - includes inventory checking
+              const result = await cart.updateQuantity(itemKey, newQuantity);
+              if (!result.success && result.message) {
+                window.showNotification(result.message, "error");
+              } else if (result.message) {
+                window.showNotification(result.message, "info");
+              }
+              return result;
+            }
+          } catch (error) {
+            window.showNotification("Failed to update quantity", "error");
+            return { success: false };
+          }
+        }
+
+        const debouncedUpdateQuantity = debounce(updateQuantity, 500);
+
+        // Handle remove item
+        function handleRemove(itemKey: string, itemTitle: string) {
+          window.showModal(
+            "Remove Item",
+            `Are you sure you want to remove "${itemTitle}" from your cart?`,
+            () => {
+              cart.removeItem(itemKey);
+              window.showNotification("Item removed from cart");
+            },
+            "Remove",
+            "Cancel"
+          );
+        }
+
+        // Validate quantity against inventory (for increments only)
+        async function validateQuantity(
+          itemKey: string,
+          quantity: number
+        ): Promise<boolean> {
+          try {
+            const [, variationId] = itemKey.split(":");
+            const availableQuantity = await checkItemInventory(variationId);
+
+            if (quantity > availableQuantity) {
+              window.showNotification(
+                `Only ${availableQuantity} available in stock`,
+                "error"
+              );
+              return false;
+            }
+            return true;
+          } catch (error) {
+            console.warn("Could not validate inventory:", error);
+            return true; // Allow if validation fails
+          }
+        }
+
+        // Set up event listeners
+        // Quantity input changes
+        document
+          .querySelectorAll<HTMLInputElement>(".quantity-input")
+          .forEach((input) => {
+            input.addEventListener("change", async (e) => {
+              const target = e.target as HTMLInputElement;
+              const itemKey = target.dataset.itemKey!;
+              const newQuantity = parseInt(target.value, 10);
+
+              if (newQuantity < 1) {
+                target.value = "1";
+                return;
+              }
+
+              if (await validateQuantity(itemKey, newQuantity)) {
+                debouncedUpdateQuantity(itemKey, newQuantity, false);
+              } else {
+                // Reset to current cart quantity
+                const items = cart.getItems();
+                const currentItem = items.find(
+                  (item) => `${item.id}:${item.variationId}` === itemKey
+                );
+                target.value = currentItem?.quantity.toString() || "1";
+              }
+            });
+          });
+
+        // Quantity decrease buttons - FIXED LOGIC
+        document.querySelectorAll(".quantity-decrease").forEach((button) => {
+          button.addEventListener("click", async (e) => {
+            const target = e.target as HTMLButtonElement;
+            const itemKey = target.dataset.itemKey!;
+            const currentQty = parseInt(target.dataset.currentQty || "1", 10);
+            const input = document.querySelector(
+              `input[data-item-key="${itemKey}"]`
+            ) as HTMLInputElement;
+
+            // ONLY show confirmation modal when quantity is exactly 1
+            if (currentQty === 1) {
+              const container = target.closest("[data-item-container]");
+              const titleElement = container?.querySelector("h3 a");
+              const itemTitle = titleElement?.textContent || "this item";
+
+              handleRemove(itemKey, itemTitle);
+              return;
+            }
+
+            // Normal decrement: 3 -> 2, 2 -> 1, etc.
+            const newQuantity = currentQty - 1;
+            input.value = newQuantity.toString();
+
+            // Update the data-current-qty for next click
+            target.dataset.currentQty = newQuantity.toString();
+
+            // Use bypass for decrements to avoid aggressive inventory check
+            debouncedUpdateQuantity(itemKey, newQuantity, true);
+          });
+        });
+
+        // Quantity increase buttons
+        document.querySelectorAll(".quantity-increase").forEach((button) => {
+          button.addEventListener("click", async (e) => {
+            const target = e.target as HTMLButtonElement;
+            const itemKey = target.dataset.itemKey!;
+            const input = document.querySelector(
+              `input[data-item-key="${itemKey}"]`
+            ) as HTMLInputElement;
+            const currentQuantity = parseInt(input.value, 10);
+            const newQuantity = currentQuantity + 1;
+
+            if (await validateQuantity(itemKey, newQuantity)) {
+              input.value = newQuantity.toString();
+
+              // Update decrease button's data-current-qty
+              const decreaseBtn = document.querySelector(
+                `button.quantity-decrease[data-item-key="${itemKey}"]`
+              ) as HTMLButtonElement;
+              if (decreaseBtn) {
+                decreaseBtn.dataset.currentQty = newQuantity.toString();
+              }
+
+              debouncedUpdateQuantity(itemKey, newQuantity, false);
+            }
+          });
+        });
+
+        // Remove buttons
+        document.querySelectorAll(".remove-btn").forEach((button) => {
+          button.addEventListener("click", (e) => {
+            const target = e.target as HTMLButtonElement;
+            const itemKey = target.dataset.itemKey!;
+            const container = target.closest("[data-item-container]");
+            const titleElement = container?.querySelector("h3 a");
+            const itemTitle = titleElement?.textContent || "this item";
+
+            handleRemove(itemKey, itemTitle);
+          });
+        });
+      });
+    });
   }
 
   // Event Handlers
