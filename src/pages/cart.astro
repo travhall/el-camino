@@ -5,9 +5,9 @@ import Modal from "@/components/Modal.astro";
 ---
 
 <Layout title="Your Shopping Cart | El Camino">
-  <section class="p-4">
+  <section class="p-1 pb-0">
     <h1
-      class="font-display font-black text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-content-heading"
+      class="font-display font-black p-3 pb-0 -mb-6 text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-content-heading"
     >
       Cart
     </h1>
@@ -28,7 +28,7 @@ import Modal from "@/components/Modal.astro";
       id="loading-overlay"
       class="fixed inset-0 bg-surface-primary/50 min-h-[50dvh] items-center justify-center hidden z-50"
     >
-      <div class="bg-surface-secondary p-4">
+      <div class="bg-surface-secondary p-1">
         <p class="text-lg text-content-body">Processing...</p>
       </div>
     </div>
@@ -63,14 +63,14 @@ import Modal from "@/components/Modal.astro";
     }
 
     try {
-      const variationIds = items.map(item => item.variationId);
-      
-      const response = await fetch('/api/cart-inventory', {
-        method: 'POST',
+      const variationIds = items.map((item) => item.variationId);
+
+      const response = await fetch("/api/cart-inventory", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ variationIds })
+        body: JSON.stringify({ variationIds }),
       });
 
       if (!response.ok) {
@@ -78,18 +78,18 @@ import Modal from "@/components/Modal.astro";
       }
 
       const result = await response.json();
-      
+
       if (result.success && result.inventory) {
         inventoryData = result.inventory;
-        console.log('Loaded inventory data:', inventoryData);
+        console.log("Loaded inventory data:", inventoryData);
       } else {
-        throw new Error(result.error || 'Failed to load inventory');
+        throw new Error(result.error || "Failed to load inventory");
       }
     } catch (error) {
-      console.error('Error loading inventory data:', error);
+      console.error("Error loading inventory data:", error);
       // Fallback to generous limits on API failure
       inventoryData = {};
-      items.forEach(item => {
+      items.forEach((item) => {
         inventoryData[item.variationId] = 99;
       });
     }
@@ -97,16 +97,21 @@ import Modal from "@/components/Modal.astro";
 
   // Validate quantity using cart's availability system (like product detail page)
   function canUpdateQuantity(itemKey: string, newQuantity: number): boolean {
-    const [productId, variationId] = itemKey.split(':');
+    const [productId, variationId] = itemKey.split(":");
     const totalInventory = inventoryData[variationId] || 99;
-    
-    return cart.canAddToCart(productId, variationId, totalInventory, newQuantity - getCurrentCartQuantity(itemKey));
+
+    return cart.canAddToCart(
+      productId,
+      variationId,
+      totalInventory,
+      newQuantity - getCurrentCartQuantity(itemKey)
+    );
   }
 
   // Get current quantity in cart for an item
   function getCurrentCartQuantity(itemKey: string): number {
     const items = cart.getItems();
-    const item = items.find(i => `${i.id}:${i.variationId}` === itemKey);
+    const item = items.find((i) => `${i.id}:${i.variationId}` === itemKey);
     return item?.quantity || 0;
   }
 
@@ -128,9 +133,9 @@ import Modal from "@/components/Modal.astro";
   function createOrderSummary(total: number): string {
     return `
       <div class="md:col-span-1">
-        <div class="bg-surface-secondary p-6 sticky top-4">
-          <h2 class="font-display text-2xl mb-4 text-content-heading">Order Summary</h2>
-          <div class="order-summary space-y-2 mb-4">
+        <div class="bg-surface-secondary p-4 sticky top-4">
+          <h2 class="font-display text-2xl mb-2 text-content-heading">Order Summary</h2>
+          <div class="order-summary lg:space-y-2 mb-2">
             <div class="flex justify-between text-content-body">
               <span>Subtotal</span>
               <span id="subtotal">${MoneyUtils.format(
@@ -144,7 +149,7 @@ import Modal from "@/components/Modal.astro";
               )}</span>
             </div>
           </div>
-          <div class="space-y-3">
+          <div class="space-y-2">
             <p class="italic text-content-emphasis">Shipping &amp; taxes are calculated at checkout</p>
             <button
               type="button"
@@ -303,11 +308,11 @@ import Modal from "@/components/Modal.astro";
             const itemKey = `${item.id}:${item.variationId}`;
             const itemSubtotal = item.price * item.quantity;
             const itemImage = getCartItemImage(item);
-            
+
             // Get inventory for this variation
             const totalInventory = inventoryData[item.variationId] || 99;
             const maxQuantity = Math.max(totalInventory, item.quantity); // Allow current quantity even if over stock
-            
+
             // Check if increment is allowed using cart's availability system
             const canIncrement = canUpdateQuantity(itemKey, item.quantity + 1);
 
@@ -315,16 +320,15 @@ import Modal from "@/components/Modal.astro";
             <div class="bg-surface-secondary p-4 flex gap-4 self-start" data-item-container="${itemKey}">
               <div class="flex-shrink-0">
                 <img 
-                  src="${itemImage}" 
-                  alt="${item.title}" 
-                  class="w-24 h-24 object-cover rounded border border-border-secondary" 
+                  src="${itemImage}"
+                  alt="${item.title}"
+                  class="w-16 h-16 lg:w-24 lg:h-24 object-cover rounded border border-border-secondary" 
                   onerror="this.src='/images/placeholder.png'"
                 />
               </div>
-              
               <div class="flex-grow flex flex-col justify-between min-w-0">
                 <div class="flex flex-row justify-between">
-                  <div class="flex flex-col">
+                  <div class="flex flex-col mb-2 lg:mb-0">
                     <h3 class="font-display text-2xl text-content-heading leading-tight">
                       <a href="/product/${item.id}" class="hover:text-content-emphasis transition-colors">
                         ${item.title}
@@ -354,11 +358,11 @@ import Modal from "@/components/Modal.astro";
 
                 <div class="flex justify-between items-end gap-4">
                   <div class="flex items-center gap-2">
-                    <label for="quantity-${itemKey}" class="text-sm text-content-body">Qty:</label>
+                    <label for="quantity-${itemKey}" class="text-sm text-content-body hidden lg:block">Qty:</label>
                     <div class="flex items-center border border-border-primary rounded">
                       <button type="button" class="quantity-decrease px-2 py-1 hover:bg-surface-primary transition-colors" data-item-key="${itemKey}" data-current-qty="${item.quantity}">−</button>
                       <input type="number" id="quantity-${itemKey}" class="quantity-input w-16 text-center py-1 border-0 bg-surface-primary text-content-body focus:ring-1 focus:ring-content-emphasis [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value="${item.quantity}" min="1" max="${maxQuantity}" data-item-key="${itemKey}" />
-                      <button type="button" class="quantity-increase px-2 py-1 hover:bg-surface-primary transition-colors ${!canIncrement ? 'opacity-50 cursor-not-allowed' : ''}" data-item-key="${itemKey}" ${!canIncrement ? 'disabled' : ''}>+</button>
+                      <button type="button" class="quantity-increase px-2 py-1 hover:bg-surface-primary transition-colors ${!canIncrement ? "opacity-50 cursor-not-allowed" : ""}" data-item-key="${itemKey}" ${!canIncrement ? "disabled" : ""}>+</button>
                     </div>
                     <div class="text-xs text-content-meta">
                       ${totalInventory} available
@@ -378,8 +382,8 @@ import Modal from "@/components/Modal.astro";
           .join("");
 
         cartContainer.innerHTML = `
-          <div class="grid md:grid-cols-3 gap-2 items-start">
-            <div class="md:col-span-2 space-y-2 grid">
+          <div class="grid md:grid-cols-3 gap-1 items-start">
+            <div class="md:col-span-2 space-y-1 grid">
               <button
                 type="button"
                 id="clear-cart-button"
@@ -490,7 +494,10 @@ import Modal from "@/components/Modal.astro";
           if (canUpdateQuantity(itemKey, newQuantity)) {
             debouncedUpdateQuantity(itemKey, newQuantity, false);
           } else {
-            window.showNotification("Cannot add that quantity to cart", "error");
+            window.showNotification(
+              "Cannot add that quantity to cart",
+              "error"
+            );
             // Reset to current cart quantity
             const items = cart.getItems();
             const currentItem = items.find(
@@ -537,13 +544,16 @@ import Modal from "@/components/Modal.astro";
     document.querySelectorAll(".quantity-increase").forEach((button) => {
       button.addEventListener("click", async (e) => {
         const target = e.target as HTMLButtonElement;
-        
+
         // Check if button is disabled
         if (target.disabled) {
-          window.showNotification("Cannot add more items - inventory limit reached", "error");
+          window.showNotification(
+            "Cannot add more items - inventory limit reached",
+            "error"
+          );
           return;
         }
-        
+
         const itemKey = target.dataset.itemKey!;
         const input = document.querySelector(
           `input[data-item-key="${itemKey}"]`
@@ -565,7 +575,10 @@ import Modal from "@/components/Modal.astro";
 
           debouncedUpdateQuantity(itemKey, newQuantity, false);
         } else {
-          window.showNotification("Cannot add more items - inventory limit reached", "error");
+          window.showNotification(
+            "Cannot add more items - inventory limit reached",
+            "error"
+          );
         }
       });
     });
