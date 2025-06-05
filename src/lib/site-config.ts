@@ -5,6 +5,12 @@ export interface SocialLink {
   icon: string;
 }
 
+export interface BusinessHours {
+  day: string;
+  hours: string;
+  isOpen: boolean;
+}
+
 export interface SiteConfig {
   name: string;
   description: string;
@@ -24,6 +30,7 @@ export interface SiteConfig {
     };
     email: string;
   };
+  hours: BusinessHours[];
   social: SocialLink[];
   tagline: string;
   seo: {
@@ -53,6 +60,15 @@ export const siteConfig: SiteConfig = {
     },
     email: "elcaminoboardshop@gmail.com",
   },
+  hours: [
+    { day: "Monday", hours: "Closed", isOpen: false },
+    { day: "Tuesday", hours: "Closed", isOpen: false },
+    { day: "Wednesday", hours: "11am - 7pm", isOpen: true },
+    { day: "Thursday", hours: "11am - 7pm", isOpen: true },
+    { day: "Friday", hours: "11am - 7pm", isOpen: true },
+    { day: "Saturday", hours: "11am - 7pm", isOpen: true },
+    { day: "Sunday", hours: "11am - 5pm", isOpen: true },
+  ],
   social: [
     {
       platform: "facebook",
@@ -64,11 +80,6 @@ export const siteConfig: SiteConfig = {
       url: "https://www.instagram.com/elcaminoskateshop/",
       icon: "uil:instagram",
     },
-    // {
-    //   platform: "youtube",
-    //   url: "https://www.youtube.com/watch?v=9wx1kwv_qlc",
-    //   icon: "uil:youtube",
-    // },
   ],
   tagline: "100% Skater Owned, 100% Skater Operated",
   seo: {
@@ -86,6 +97,10 @@ export function getSocialLinks() {
 
 export function getContactInfo() {
   return siteConfig.contact;
+}
+
+export function getBusinessHours() {
+  return siteConfig.hours;
 }
 
 export function getSEODefaults() {
@@ -112,6 +127,12 @@ export function getStructuredData() {
       postalCode: siteConfig.contact.address.zip,
       addressCountry: "US",
     },
+    openingHoursSpecification: siteConfig.hours.map((day) => ({
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: day.day,
+      opens: day.isOpen ? day.hours.split(" - ")[0] : undefined,
+      closes: day.isOpen ? day.hours.split(" - ")[1] : undefined,
+    })),
     sameAs: siteConfig.social.map((social) => social.url),
   };
 }

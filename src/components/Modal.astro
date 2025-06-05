@@ -13,6 +13,7 @@
         confirmText?: string,
         cancelText?: string
       ): void;
+      showLocationModal(): void;
     }
   }
 
@@ -35,6 +36,9 @@
         console.error("Portal root not found!");
         return;
       }
+
+      // Prevent page scrolling
+      document.body.style.overflow = "hidden";
 
       // Create modal backdrop
       const backdrop = document.createElement("div");
@@ -134,6 +138,151 @@
       };
     },
 
+    showLocationModal(): void {
+      // Remove any existing modal
+      this.closeModal();
+
+      const portalRoot = document.getElementById("portal-root");
+      if (!portalRoot) {
+        console.error("Portal root not found!");
+        return;
+      }
+
+      // Prevent page scrolling
+      document.body.style.overflow = "hidden";
+
+      // Create modal backdrop
+      const backdrop = document.createElement("div");
+      backdrop.className =
+        "fixed inset-0 bg-surface-tertiary/80 dark:bg-surface-primary/80 backdrop-blur-sm border-2 z-[9998] flex items-center justify-center p-4";
+      backdrop.setAttribute("role", "dialog");
+      backdrop.setAttribute("aria-modal", "true");
+      backdrop.setAttribute("aria-labelledby", "location-modal-title");
+
+      // Create modal content
+      const modal = document.createElement("div");
+      modal.className =
+        "bg-surface-primary dark:bg-surface-tertiary border border-border-secondary rounded shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto";
+
+      modal.innerHTML = `
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 id="location-modal-title" class="font-display text-xl text-content-heading">
+              El Camino Skate Shop
+            </h2>
+            <button
+              id="modal-close"
+              class="text-content-meta hover:text-content-heading transition-colors"
+              aria-label="Close modal"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          
+          <div class="space-y-4">
+            <!-- Address -->
+            <div>
+              <p class="text-content-body">
+                310 Water Street<br>
+                Eau Claire, WI 54703
+              </p>
+            </div>
+            
+            <!-- Contact -->
+            <div class="space-y-1">
+              <p class="text-content-body">
+                <a href="tel:+15346261991" class="hover:text-content-emphasis transition-colors">
+                  (534) 626-1991
+                </a>
+              </p>
+              <p class="text-content-body">
+                <a href="mailto:elcaminoboardshop@gmail.com" class="hover:text-content-emphasis transition-colors">
+                  elcaminoboardshop@gmail.com
+                </a>
+              </p>
+            </div>
+            
+            <!-- Hours -->
+            <div>
+              <h3 class="font-display text-lg text-content-heading mb-2">Hours of operation</h3>
+              <div class="space-y-1">
+                <div class="flex justify-between">
+                  <span class="text-content-body">Monday</span>
+                  <span class="text-content-meta">Closed</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-content-body">Tuesday</span>
+                  <span class="text-content-meta">Closed</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-content-body">Wednesday</span>
+                  <span class="text-content-body">11am - 7pm</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-content-body">Thursday</span>
+                  <span class="text-content-body">11am - 7pm</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-content-body">Friday</span>
+                  <span class="text-content-body">11am - 7pm</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-content-body">Saturday</span>
+                  <span class="text-content-body">11am - 7pm</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-content-body">Sunday</span>
+                  <span class="text-content-body">11am - 5pm</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      backdrop.appendChild(modal);
+      portalRoot.appendChild(backdrop);
+      this.activeModal = backdrop;
+
+      // Focus management
+      const closeButton = modal.querySelector(
+        "#modal-close"
+      ) as HTMLButtonElement;
+      closeButton?.focus();
+
+      // Event listeners
+      const handleClose = () => {
+        this.closeModal();
+      };
+
+      const handleKeydown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          this.closeModal();
+        }
+      };
+
+      const handleBackdropClick = (e: MouseEvent) => {
+        if (e.target === backdrop) {
+          this.closeModal();
+        }
+      };
+
+      closeButton?.addEventListener("click", handleClose);
+      document.addEventListener("keydown", handleKeydown);
+      backdrop.addEventListener("click", handleBackdropClick);
+
+      // Store event listeners for cleanup
+      backdrop.setAttribute("data-cleanup", "true");
+      (backdrop as any)._cleanup = () => {
+        closeButton?.removeEventListener("click", handleClose);
+        document.removeEventListener("keydown", handleKeydown);
+        backdrop.removeEventListener("click", handleBackdropClick);
+      };
+    },
+
     closeModal(): void {
       if (this.activeModal) {
         // Call cleanup function if it exists
@@ -142,12 +291,16 @@
         }
         this.activeModal.remove();
         this.activeModal = null;
+
+        // Restore page scrolling
+        document.body.style.overflow = "";
       }
     },
   };
 
   // Assign to window object
   window.showModal = modalManager.showModal.bind(modalManager);
+  window.showLocationModal = modalManager.showLocationModal.bind(modalManager);
 
   // Cleanup on page navigation
   const cleanup = () => {

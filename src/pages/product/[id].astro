@@ -441,9 +441,13 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           class="text-sm flex flex-col mt-8 space-y-1 ps-4 py-2 border-l-2 border-ui-nav-border"
         >
           <p class="italic">Available for pick up at El Camino</p>
-          <a href="#" class="underline font-bold hover:no-underline mb-2"
-            >Store Location &amp; Hours</a
+          <button
+            id="location-hours-link"
+            class="underline font-bold hover:no-underline mb-2 text-left"
+            type="button"
           >
+            Store Location &amp; Hours
+          </button>
         </div>
       </div>
     </div>
@@ -1100,6 +1104,18 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
   }
 
   /**
+   * Setup location modal handler
+   */
+  function setupLocationModal() {
+    const locationLink = document.getElementById("location-hours-link");
+    if (locationLink) {
+      locationLink.addEventListener("click", () => {
+        window.showLocationModal();
+      });
+    }
+  }
+
+  /**
    * Initialize everything on page load
    */
   document.addEventListener("astro:page-load", () => {
@@ -1113,6 +1129,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     setupFallbackVariationButtons();
     setupAddToCartHandler();
     setupCartEventListeners();
+    setupLocationModal();
 
     // NEW: Check if current variant is available after cart loads
     if (currentVariation) {
