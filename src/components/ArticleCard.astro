@@ -1,11 +1,9 @@
 ---
-// src/components/ArticleCard.astro
+// src/components/ArticleCard.astro - Minimal changes
 import type {
   WordPressPost,
   ExtractedWordPressData,
   WordPressFallbackContent,
-  OptimizedWordPressImages,
-  ArticleStructuredData,
 } from "@/lib/wordpress/types";
 import Button from "./Button.astro";
 import { formatDate } from "@/utils/dates";
@@ -14,11 +12,9 @@ interface Props {
   post: WordPressPost;
   featured?: boolean;
   priority?: boolean;
-  // Pre-processed data to eliminate render-time computation
-  embeddedData?: ExtractedWordPressData;
-  fallbackContent?: WordPressFallbackContent;
-  optimizedImages?: OptimizedWordPressImages;
-  structuredData?: ArticleStructuredData;
+  // Minimal preprocessing - only the data extraction
+  embeddedData: ExtractedWordPressData;
+  fallbackContent: WordPressFallbackContent;
 }
 
 const {
@@ -27,35 +23,16 @@ const {
   priority = false,
   embeddedData,
   fallbackContent,
-  optimizedImages,
-  structuredData,
 } = Astro.props;
 
-// Use pre-processed data or extract safely as fallback
-const safeEmbeddedData = embeddedData || {
-  category: post._embedded?.["wp:term"]?.[0]?.[0] || null,
-  featuredMedia: post._embedded?.["wp:featuredmedia"]?.[0] || null,
-  author: post._embedded?.author?.[0] || null,
-};
+// Use existing image URLs - no optimization to avoid 400 errors
+const imageUrl = embeddedData.featuredMedia?.source_url || "";
+const avatarUrl = embeddedData.author?.avatar_urls?.["96"] || "";
 
-const safeFallbackContent = fallbackContent || {
-  title: post.title.rendered.replace(/<[^>]*>/g, "") || "Untitled Article",
-  excerpt:
-    post.excerpt.rendered.replace(/<[^>]*>/g, "") ||
-    "Read this article from El Camino.",
-  imageAlt: `Featured image for: ${post.title.rendered.replace(/<[^>]*>/g, "")}`,
-};
-
-// Use pre-optimized images or fallback to unoptimized
-const imageUrl =
-  optimizedImages?.main || safeEmbeddedData.featuredMedia?.source_url || "";
-const srcSet = optimizedImages?.srcSet || "";
-const avatarUrl =
-  optimizedImages?.avatar || safeEmbeddedData.author?.avatar_urls?.["96"] || "";
-
-const linkText = `Read article: ${safeFallbackContent.title}`;
+const linkText = `Read article: ${fallbackContent.title}`;
 ---
 
+<!-- Keep ALL existing HTML and Tailwind classes unchanged -->
 <article
   class:list={[
     "relative overflow-hidden bg-ui-card-surface text-ui-card-text border-ui-card-border flex flex-col aspect-[3/4.5] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3",
@@ -64,28 +41,12 @@ const linkText = `Read article: ${safeFallbackContent.title}`;
       : "article-card transition-all duration-300",
   ]}
 >
-  <!-- Structured Data for SEO -->
-  {
-    structuredData && (
-      <script
-        type="application/ld+json"
-        set:html={JSON.stringify(structuredData)}
-      />
-    )
-  }
-
-  <!-- Featured Image -->
+  <!-- Featured Image - using original URLs -->
   {
     imageUrl && (
       <img
         src={imageUrl}
-        srcset={srcSet}
-        sizes={
-          featured
-            ? "(min-width: 768px) 66vw, 100vw"
-            : "(min-width: 768px) 33vw, 100vw"
-        }
-        alt={safeFallbackContent.imageAlt}
+        alt={fallbackContent.imageAlt}
         class:list={[
           "object-cover w-full h-full",
           featured
@@ -112,9 +73,9 @@ const linkText = `Read article: ${safeFallbackContent.title}`;
   >
     <!-- Category Badge -->
     {
-      safeEmbeddedData.category?.name && (
+      embeddedData.category?.name && (
         <span class="font-display font-semibold text-base tracking-wide uppercase -mb-5 text-content-meta">
-          {safeEmbeddedData.category.name}
+          {embeddedData.category.name}
         </span>
       )
     }
@@ -134,12 +95,12 @@ const linkText = `Read article: ${safeFallbackContent.title}`;
     <!-- Author & Meta Information -->
     <div class="mt-auto flex flex-col gap-4">
       {
-        safeEmbeddedData.author && (
+        embeddedData.author && (
           <div class="flex items-center text-content-meta">
             {avatarUrl && (
               <img
                 src={avatarUrl}
-                alt={`Profile photo of ${safeEmbeddedData.author.name}`}
+                alt={`Profile photo of ${embeddedData.author.name}`}
                 class="w-8 h-8 rounded-full mr-2 ring-2 ring-ui-card-border"
                 loading="lazy"
                 width="32"
@@ -147,7 +108,7 @@ const linkText = `Read article: ${safeFallbackContent.title}`;
                 onerror="this.style.display='none'"
               />
             )}
-            <span class="font-medium">{safeEmbeddedData.author.name}</span>
+            <span class="font-medium">{embeddedData.author.name}</span>
             <span class="mx-2">•</span>
             <time datetime={post.date} class="text-sm">
               {formatDate(post.date)}
@@ -164,13 +125,14 @@ const linkText = `Read article: ${safeFallbackContent.title}`;
       >
         <Button type="button" variant="primary" size="md">
           Read More
-          <span class="sr-only">: {safeFallbackContent.title}</span>
+          <span class="sr-only">: {fallbackContent.title}</span>
         </Button>
       </a>
     </div>
   </div>
 </article>
 
+<!-- Keep existing scripts unchanged -->
 <script>
   // Progressive enhancement for image loading
   document.addEventListener("astro:page-load", () => {
@@ -180,13 +142,11 @@ const linkText = `Read article: ${safeFallbackContent.title}`;
       const image = card.querySelector("img") as HTMLImageElement;
 
       if (image) {
-        // Mark as loaded when image loads successfully
         const handleImageLoad = () => {
           card.classList.add("loaded");
           image.removeEventListener("load", handleImageLoad);
         };
 
-        // Handle image load errors gracefully
         const handleImageError = () => {
           card.setAttribute("data-error", "true");
           console.warn("Failed to load article image:", image.src);
@@ -200,7 +160,6 @@ const linkText = `Read article: ${safeFallbackContent.title}`;
           image.addEventListener("error", handleImageError);
         }
       } else {
-        // No image, mark as loaded immediately
         card.classList.add("loaded");
       }
     });
@@ -218,7 +177,6 @@ const linkText = `Read article: ${safeFallbackContent.title}`;
                 .querySelector("h2")
                 ?.textContent?.trim();
 
-              // Track article impression (integrate with your analytics)
               if (
                 articleTitle &&
                 typeof window !== "undefined" &&

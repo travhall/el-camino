@@ -136,3 +136,4 @@ export const inventoryCache = new Cache<number>("inventory", 60); // 1 minute
 export const categoryCache = new Cache<any>("category", 300); // 5 minutes
 export const productCache = new Cache<any>("product", 120); // 2 minutes
 export const imageCache = new Cache<string>("image", 3600); // 1 hour
+export const wordpressCache = new Cache<any>("wordpress", 300);

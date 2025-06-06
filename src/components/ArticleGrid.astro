@@ -1,9 +1,13 @@
 ---
-// src/components/ArticleGrid.astro
+// src/components/ArticleGrid.astro - Minimal changes only
 import ArticleCard from "./ArticleCard.astro";
 import ArticleCardSkeleton from "./ArticleCardSkeleton.astro";
 import Sidebar from "./Sidebar.astro";
 import type { WordPressPost } from "@/lib/wordpress/types";
+import {
+  extractEmbeddedData,
+  generateFallbackContent,
+} from "@/lib/wordpress/types";
 
 interface Props {
   posts: WordPressPost[];
@@ -24,6 +28,13 @@ const displayPosts = showSidebar ? posts.slice(0, 6) : posts;
 
 // Loading skeleton count
 const skeletonCount = showSidebar ? 6 : 12;
+
+// MINIMAL OPTIMIZATION: Only preprocess the data extraction
+const processedPosts = displayPosts.map((post) => ({
+  post,
+  embeddedData: extractEmbeddedData(post),
+  fallbackContent: generateFallbackContent(post),
+}));
 ---
 
 {
@@ -42,15 +53,19 @@ const skeletonCount = showSidebar ? 6 : 12;
       Array(skeletonCount)
         .fill(null)
         .map((_, i) => <ArticleCardSkeleton featured={i === 0} />)
-    ) : displayPosts.length > 0 ? (
+    ) : processedPosts.length > 0 ? (
       <>
-        {displayPosts.map((post, index) => (
-          <ArticleCard
-            post={post}
-            featured={index === 0}
-            priority={index === 0}
-          />
-        ))}
+        {processedPosts.map(
+          ({ post, embeddedData, fallbackContent }, index) => (
+            <ArticleCard
+              post={post}
+              embeddedData={embeddedData}
+              fallbackContent={fallbackContent}
+              featured={index === 0}
+              priority={index === 0}
+            />
+          )
+        )}
         {showSidebar && <Sidebar />}
       </>
     ) : (
