@@ -1,4 +1,4 @@
-// src/lib/square/categories.ts
+// src/lib/square/categories.ts - OPTIMIZED VERSION
 import { squareClient } from "./client";
 import { batchGetImageUrls } from "./imageUtils";
 import type {
@@ -12,9 +12,6 @@ import { categoryCache, productCache } from "./cacheUtils";
 import { processSquareError, handleError } from "./errorUtils";
 import { createProductUrl } from "@/lib/square/slugUtils";
 
-/**
- * Converts a category name to a URL-friendly slug
- */
 function createSlug(name: string): string {
   return name
     .toLowerCase()
@@ -23,9 +20,6 @@ function createSlug(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/**
- * Returns the index for sorting based on Square Admin order
- */
 function getSortIndex(name: string): number {
   const orderMap: Record<string, number> = {
     Skateboards: 0,
@@ -33,50 +27,37 @@ function getSortIndex(name: string): number {
     Footwear: 2,
     "Gift Cards & More": 3,
   };
-
   return orderMap[name] ?? 999;
 }
 
-/**
- * Fetches all categories from Square catalog with caching
- */
 export async function fetchCategories(): Promise<Category[]> {
   return categoryCache.getOrCompute("all-categories", async () => {
     try {
-      // Use listCatalog to get raw catalog objects
       const response = await squareClient.catalogApi.listCatalog(
         undefined,
         "CATEGORY"
       );
 
-      if (!response.result || !response.result.objects?.length) {
-        console.log("No categories found in catalog");
+      if (!response.result?.objects?.length) {
         return [];
       }
 
-      // Process categories, preserving raw API fields
       const rawObjects = response.result.objects;
       return rawObjects
         .filter((item) => item.type === "CATEGORY")
-        .map((item) => {
-          // Attempt to extract any properties that might relate to ordering
-          const rawOrder =
+        .map((item) => ({
+          id: item.id,
+          name: item.categoryData?.name || "",
+          slug: createSlug(item.categoryData?.name || ""),
+          isTopLevel: item.categoryData?.isTopLevel || false,
+          parentCategoryId: item.categoryData?.parentCategory?.id,
+          rootCategoryId: item.categoryData?.rootCategory,
+          apiIndex: rawObjects.indexOf(item),
+          rawOrder:
             (item as any)?.ordinal ||
             (item as any)?.display_position ||
-            (item as any)?.sort_order;
-
-          return {
-            id: item.id,
-            name: item.categoryData?.name || "",
-            slug: createSlug(item.categoryData?.name || ""),
-            isTopLevel: item.categoryData?.isTopLevel || false,
-            parentCategoryId: item.categoryData?.parentCategory?.id,
-            rootCategoryId: item.categoryData?.rootCategory,
-            // Store original position in array and any potential ordering fields
-            apiIndex: rawObjects.indexOf(item),
-            rawOrder: rawOrder,
-          };
-        });
+            (item as any)?.sort_order,
+        }));
     } catch (error) {
       const appError = processSquareError(error, "fetchCategories");
       return handleError<Category[]>(appError, []);
@@ -84,31 +65,18 @@ export async function fetchCategories(): Promise<Category[]> {
   });
 }
 
-/**
- * Organizes categories into a hierarchical structure
- * Uses explicit sort order to match Square Admin with caching
- */
 export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
   return categoryCache.getOrCompute("hierarchy", async () => {
     try {
-      // Get categories (this will use the cache if available)
       const allCategories = await fetchCategories();
+      if (!allCategories.length) return [];
 
-      if (!allCategories.length) {
-        return [];
-      }
-
-      // Find top-level categories
       let topLevelCategories = allCategories.filter((cat) => cat.isTopLevel);
-
-      // Sort according to Square Admin order
       topLevelCategories.sort(
         (a, b) => getSortIndex(a.name) - getSortIndex(b.name)
       );
 
-      // Create hierarchy
       return topLevelCategories.map((topCat) => {
-        // Find subcategories based on rootCategoryId
         const subcategories = allCategories.filter(
           (subCat) => subCat.rootCategoryId === topCat.id && !subCat.isTopLevel
         );
@@ -125,28 +93,20 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
   });
 }
 
-/**
- * Fetch products by category ID using Square's searchCatalogItems endpoint
- * with caching and parallel image fetching
- */
 export async function fetchProductsByCategory(
   categoryId: string,
   options?: ProductLoadingOptions
 ): Promise<PaginatedProducts> {
-  const { limit = 24, cursor, includeInventory = true } = options || {};
-
-  // Create cache key that includes pagination parameters
+  const { limit = 24, cursor } = options || {};
   const cacheKey = `category-${categoryId}-${cursor || "initial"}-${limit}`;
 
   return productCache.getOrCompute(cacheKey, async () => {
     try {
-      // Use existing Square client with enhanced request for pagination
       const searchRequest: any = {
         categoryIds: [categoryId],
-        limit: Math.min(limit, 100), // Square API limit
+        limit: Math.min(limit, 100),
       };
 
-      // Add cursor for pagination (Square pagination pattern)
       if (cursor) {
         searchRequest.cursor = cursor;
       }
@@ -156,94 +116,34 @@ export async function fetchProductsByCategory(
       );
 
       if (!result?.items?.length) {
-        console.log(
-          `No products found for category ID: ${categoryId} (cursor: ${
-            cursor || "initial"
-          })`
-        );
         return {
           products: [],
-          totalCount: 0,
           hasMore: false,
         };
       }
 
-      // === EXISTING LOGIC PRESERVED EXACTLY ===
-      // First collect all image IDs to fetch them in parallel
-      const imageIds: string[] = [];
-      const measurementUnitIds: string[] = [];
+      // Parallel processing for performance
+      const imageIds = result.items
+        .map((item) => item.itemData?.imageIds?.[0])
+        .filter((id): id is string => Boolean(id));
 
-      result.items.forEach((item) => {
-        if (item.itemData?.imageIds?.[0]) {
-          imageIds.push(item.itemData.imageIds[0]);
-        }
+      const measurementUnitIds = result.items
+        .map(
+          (item) =>
+            item.itemData?.variations?.[0]?.itemVariationData?.measurementUnitId
+        )
+        .filter((id): id is string => Boolean(id));
 
-        // Collect measurement unit IDs for batch fetching
-        const variation = item.itemData?.variations?.[0];
-        if (variation?.itemVariationData?.measurementUnitId) {
-          measurementUnitIds.push(
-            variation.itemVariationData.measurementUnitId
-          );
-        }
-      });
+      // Batch fetch images and units
+      const [imageUrlMap, measurementUnitsMap] = await Promise.all([
+        imageIds.length
+          ? batchGetImageUrls(imageIds)
+          : Promise.resolve({} as Record<string, string>),
+        measurementUnitIds.length
+          ? fetchMeasurementUnits(measurementUnitIds)
+          : Promise.resolve({} as Record<string, string>),
+      ]);
 
-      // Fetch all images in parallel using the existing utility function
-      const imageUrlMap: Record<string, string> = {};
-      if (imageIds.length > 0) {
-        const batchedImages = await batchGetImageUrls(imageIds);
-        Object.assign(imageUrlMap, batchedImages);
-      }
-
-      // Fetch all measurement units in parallel (existing logic)
-      const measurementUnitsMap: Record<string, string> = {};
-      if (measurementUnitIds.length > 0) {
-        console.log(
-          `[fetchProductsByCategory] Fetching ${measurementUnitIds.length} measurement units`
-        );
-
-        const measurementResults = await Promise.allSettled(
-          measurementUnitIds.map(async (unitId) => {
-            try {
-              const { result: measurementResult } =
-                await squareClient.catalogApi.retrieveCatalogObject(unitId);
-
-              if (measurementResult.object?.type === "MEASUREMENT_UNIT") {
-                const unitData = measurementResult.object.measurementUnitData;
-
-                let unitName = "";
-                if (unitData?.measurementUnit?.customUnit?.name) {
-                  unitName = unitData.measurementUnit.customUnit.name;
-                } else if (
-                  unitData?.measurementUnit?.customUnit?.abbreviation
-                ) {
-                  unitName = unitData.measurementUnit.customUnit.abbreviation;
-                } else if (unitData?.measurementUnit?.type) {
-                  unitName = unitData.measurementUnit.type
-                    .toLowerCase()
-                    .replace(/_/g, " ");
-                }
-
-                return { unitId, unitName };
-              }
-              return { unitId, unitName: "" };
-            } catch (error) {
-              console.warn(
-                `Failed to fetch measurement unit ${unitId}:`,
-                error
-              );
-              return { unitId, unitName: "" };
-            }
-          })
-        );
-
-        measurementResults.forEach((result) => {
-          if (result.status === "fulfilled" && result.value.unitName) {
-            measurementUnitsMap[result.value.unitId] = result.value.unitName;
-          }
-        });
-      }
-
-      // Process items with the fetched images and measurement units (existing logic)
       const products = result.items.map((item) => {
         const variation = item.itemData?.variations?.[0];
         const priceMoney = variation?.itemVariationData?.priceMoney;
@@ -272,53 +172,69 @@ export async function fetchProductsByCategory(
           unit: unit,
         };
       });
-      // === END EXISTING LOGIC ===
 
-      // NEW: Enhanced return with pagination metadata
-      const paginatedResult: PaginatedProducts = {
+      return {
         products,
-        nextCursor: result.cursor, // Square API provides cursor for next page
-        totalCount: products.length, // Use actual count since matchedCount may not exist
-        hasMore: !!result.cursor, // Has more if cursor exists
+        nextCursor: result.cursor,
+        hasMore: !!result.cursor,
       };
-
-      console.log(
-        `[fetchProductsByCategory] Fetched ${products.length} products for category ${categoryId}`,
-        {
-          cursor: cursor || "initial",
-          hasMore: paginatedResult.hasMore,
-          nextCursor: paginatedResult.nextCursor ? "present" : "none",
-          withUnits: products.filter((p) => p.unit).length,
-          units: [...new Set(products.map((p) => p.unit).filter(Boolean))],
-        }
-      );
-
-      return paginatedResult;
     } catch (error) {
       const appError = processSquareError(
         error,
-        `fetchProductsByCategory:${categoryId}:${cursor || "initial"}`
+        `fetchProductsByCategory:${categoryId}`
       );
       return handleError<PaginatedProducts>(appError, {
         products: [],
-        totalCount: 0,
         hasMore: false,
       });
     }
   });
 }
 
-// BACKWARD COMPATIBILITY: Keep existing function signature
-export async function fetchProductsByCategoryLegacy(
-  categoryId: string
-): Promise<Product[]> {
-  const result = await fetchProductsByCategory(categoryId, { limit: 100 });
-  return result.products;
+// Optimized measurement unit fetching
+async function fetchMeasurementUnits(
+  unitIds: string[]
+): Promise<Record<string, string>> {
+  const results = await Promise.allSettled(
+    unitIds.map(async (unitId) => {
+      try {
+        const { result } = await squareClient.catalogApi.retrieveCatalogObject(
+          unitId
+        );
+
+        if (result.object?.type === "MEASUREMENT_UNIT") {
+          const unitData = result.object.measurementUnitData;
+          let unitName = "";
+
+          if (unitData?.measurementUnit?.customUnit?.name) {
+            unitName = unitData.measurementUnit.customUnit.name;
+          } else if (unitData?.measurementUnit?.customUnit?.abbreviation) {
+            unitName = unitData.measurementUnit.customUnit.abbreviation;
+          } else if (unitData?.measurementUnit?.type) {
+            unitName = unitData.measurementUnit.type
+              .toLowerCase()
+              .replace(/_/g, " ");
+          }
+
+          return { unitId, unitName };
+        }
+        return { unitId, unitName: "" };
+      } catch {
+        return { unitId, unitName: "" };
+      }
+    })
+  );
+
+  const unitMap: Record<string, string> = {};
+  results.forEach((result) => {
+    if (result.status === "fulfilled" && result.value.unitName) {
+      unitMap[result.value.unitId] = result.value.unitName;
+    }
+  });
+
+  return unitMap;
 }
 
-/**
- * Clear category cache
- */
 export function clearCategoryCache(): void {
   categoryCache.clear();
   productCache.clear();

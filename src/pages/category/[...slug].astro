@@ -1,24 +1,17 @@
 ---
-// src/pages/category/[...slug].astro - SIMPLIFIED VERSION
-// Keep all existing logic, just add simple "Load More" at the bottom
-
+// src/pages/category/[...slug].astro - FINAL OPTIMIZED VERSION (Pure Infinite Scroll)
 import {
   fetchCategoryHierarchy,
   fetchProductsByCategory,
 } from "@/lib/square/categories";
 import Layout from "@/layouts/Layout.astro";
 import ProductCard from "@/components/ProductCard.astro";
-import type { Category } from "@/lib/square/types";
-import type { Product } from "@/lib/square/types";
+import type { Category, Product } from "@/lib/square/types";
 
-// Get the slug from URL params
 const { slug } = Astro.params;
+if (!slug) return Astro.redirect("/404");
 
-if (!slug) {
-  return Astro.redirect("/404");
-}
-
-// === KEEP ALL EXISTING CATEGORY RESOLUTION LOGIC ===
+// === EXISTING CATEGORY RESOLUTION ===
 const categoryHierarchy = await fetchCategoryHierarchy();
 const slugParts = slug.split("/");
 const topLevelSlug = slugParts[0];
@@ -27,106 +20,89 @@ const subCategorySlug = slugParts.length > 1 ? slugParts[1] : null;
 const topLevelItem = categoryHierarchy.find(
   (item) => item.category.slug === topLevelSlug
 );
-const topLevelCategory = topLevelItem?.category;
+if (!topLevelItem?.category) return Astro.redirect("/404");
 
-if (!topLevelCategory) {
-  console.error(`Top-level category not found for slug: ${topLevelSlug}`);
-  return Astro.redirect("/404");
-}
-
-let category = topLevelCategory;
+let category = topLevelItem.category;
 let parentCategory = null;
 
 if (subCategorySlug) {
-  const subCategory = topLevelItem?.subcategories.find(
+  const subCategory = topLevelItem.subcategories.find(
     (sub) => sub.slug === subCategorySlug
   );
-
-  if (!subCategory) {
-    console.error(`Subcategory not found for slug: ${subCategorySlug}`);
-    return Astro.redirect("/404");
-  }
-
+  if (!subCategory) return Astro.redirect("/404");
   category = subCategory;
-  parentCategory = topLevelCategory;
+  parentCategory = topLevelItem.category;
 }
 
-// === ENHANCED PRODUCT FETCHING ===
+// === STREAMLINED PRODUCT FETCHING ===
 let products: Product[] = [];
 let nextCursor: string | undefined;
 let hasMore = false;
 
 try {
-  // Load 24 products initially using enhanced function
-  const result = await fetchProductsByCategory(category.id, { 
-    limit: 24,
-    includeInventory: true 
-  });
-  
+  const result = await fetchProductsByCategory(category.id, { limit: 24 });
   products = result.products;
   nextCursor = result.nextCursor;
   hasMore = result.hasMore;
 } catch (error) {
-  console.error("Error fetching products for category:", error);
+  console.error("Error fetching products:", error);
 }
 
-// Get subcategories if we're on a top-level category page
-let subcategories: Category[] =
-  !subCategorySlug && topLevelItem ? topLevelItem.subcategories : [];
-
-// Build page title
+const subcategories = !subCategorySlug ? topLevelItem.subcategories : [];
 const pageTitle = parentCategory
   ? `${parentCategory.name} - ${category.name}`
   : category.name;
-const fullTitle = `Shop ${pageTitle} | El Camino`;
-
-// Preload critical images (first 8 products)
 const preloadImages = products
   .slice(0, 8)
   .map((p) => p.image)
   .filter((img) => !img.includes("placeholder"));
 ---
 
-<Layout title={fullTitle}>
+<Layout title={`Shop ${pageTitle} | El Camino`}>
   <section>
-    {/* Preload critical images */}
     {preloadImages.map((img) => <link rel="preload" href={img} as="image" />)}
 
-    <!-- KEEP EXISTING HEADER EXACTLY AS IS -->
-    <div class="flex flex-col lg:flex-row justify-between gap-4 w-full items-baseline p-4">
-      <h1 class="font-display font-black text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-content-heading">
+    <div
+      class="flex flex-col lg:flex-row justify-between gap-4 w-full items-baseline p-4"
+    >
+      <h1
+        class="font-display font-black text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-content-heading"
+      >
         {category.name}
       </h1>
 
-      {parentCategory && (
-        <div>
-          <a
-            href={`/category/${parentCategory.slug}`}
-            class="text-content-meta lg:hover:text-content-emphasis"
-          >
-            &larr; Back to {parentCategory.name}
-          </a>
-        </div>
-      )}
-
-      {subcategories.length > 0 && (
-        <div class="flex flex-wrap gap-2">
-          {subcategories.map((subcategory) => (
+      {
+        parentCategory && (
+          <div>
             <a
-              href={`/category/${category.slug}/${subcategory.slug}`}
-              class="px-2 py-1 text-sm bg-ui-button-surface text-ui-button-text border border-ui-button-border rounded-sm lg:hover:bg-ui-button-hover"
+              href={`/category/${parentCategory.slug}`}
+              class="text-content-meta lg:hover:text-content-emphasis"
             >
-              {subcategory.name}
+              &larr; Back to {parentCategory.name}
             </a>
-          ))}
-        </div>
-      )}
+          </div>
+        )
+      }
+
+      {
+        subcategories.length > 0 && (
+          <div class="flex flex-wrap gap-2">
+            {subcategories.map((subcategory) => (
+              <a
+                href={`/category/${category.slug}/${subcategory.slug}`}
+                class="px-2 py-1 text-sm bg-ui-button-surface text-ui-button-text border border-ui-button-border rounded-sm lg:hover:bg-ui-button-hover"
+              >
+                {subcategory.name}
+              </a>
+            ))}
+          </div>
+        )
+      }
     </div>
 
-    <!-- KEEP EXISTING PRODUCTS GRID -->
-    {products.length > 0 ? (
-      <>
-        <div 
+    {
+      products.length > 0 ? (
+        <div
           id="products-grid"
           class="card-grid grid justify-center sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-12 w-full max-w-[120rem] mx-auto gap-1 p-1"
         >
@@ -134,86 +110,76 @@ const preloadImages = products
             <ProductCard product={product} priority={index < 8} />
           ))}
         </div>
+      ) : (
+        <div class="text-center py-12">
+          <p class="text-content-body">No products found in this category.</p>
+        </div>
+      )
+    }
 
-        <!-- SIMPLE LOAD MORE - ONLY IF MORE PRODUCTS EXIST -->
-        {hasMore && (
-          <div class="flex justify-center mt-8 mb-4">
-            <button
-              id="load-more-btn"
-              class="px-8 py-3 bg-ui-button-surface text-ui-button-text border border-ui-button-border rounded lg:hover:bg-ui-button-hover transition-colors"
-              data-category-id={category.id}
-              data-cursor={nextCursor}
-            >
-              Load More Products
-            </button>
-
-            <!-- Simple loading indicator -->
-            <div id="loading-indicator" class="ml-4 items-center" style="display: none;">
-              <div class="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-              <span class="ml-2 text-content-meta">Loading...</span>
-            </div>
+    <!-- Loading indicator at bottom -->
+    {
+      hasMore && (
+        <div
+          id="scroll-trigger"
+          class="flex justify-center py-8"
+          data-category-id={category.id}
+          data-cursor={nextCursor}
+        >
+          <div
+            id="loading-indicator"
+            class="flex items-center text-content-meta"
+          >
+            <div class="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mr-2" />
+            Loading more products...
           </div>
-        )}
-      </>
-    ) : (
-      <div class="text-center py-12">
-        <p class="text-content-body">No products found in this category.</p>
-      </div>
-    )}
+        </div>
+      )
+    }
   </section>
 </Layout>
 
 <script>
-  class SimpleLoadMore {
-    private button!: HTMLButtonElement;
-    private loading!: HTMLElement;
+  class InfiniteScroll {
     private grid!: HTMLElement;
+    private trigger!: HTMLElement | null;
     private categoryId!: string;
     private cursor!: string | null;
     private isLoading = false;
     private observer?: IntersectionObserver;
 
     constructor() {
-      this.button = document.getElementById('load-more-btn') as HTMLButtonElement;
-      this.loading = document.getElementById('loading-indicator') as HTMLElement;
-      this.grid = document.getElementById('products-grid') as HTMLElement;
-      
-      if (!this.button) return;
+      this.grid = document.getElementById("products-grid") as HTMLElement;
+      this.trigger = document.getElementById("scroll-trigger");
 
-      this.categoryId = this.button.dataset.categoryId!;
-      this.cursor = this.button.dataset.cursor || null;
+      if (!this.trigger) return;
 
-      // Set up both click and scroll loading
-      this.button.addEventListener('click', () => this.loadMore());
-      this.setupScrollLoading();
+      this.categoryId = this.trigger.dataset.categoryId!;
+      this.cursor = this.trigger.dataset.cursor || null;
+      this.setupObserver();
     }
 
-    private setupScrollLoading(): void {
-      if ('IntersectionObserver' in window) {
-        this.observer = new IntersectionObserver(
-          (entries) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting && !this.isLoading) {
-                this.loadMore();
-              }
-            });
-          },
-          { rootMargin: '400px' } // Start loading 400px before button becomes visible
-        );
-        this.observer.observe(this.button);
-      }
+    private setupObserver(): void {
+      this.observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && !this.isLoading) {
+            this.loadMore();
+          }
+        },
+        { rootMargin: "200px" }
+      );
+      this.observer.observe(this.trigger!);
     }
 
     private async loadMore(): Promise<void> {
       if (!this.cursor || this.isLoading) return;
 
       this.isLoading = true;
-      this.showLoading();
 
       try {
-        const response = await fetch('/api/load-more-products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/load-more-products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             categoryId: this.categoryId,
             cursor: this.cursor,
@@ -222,41 +188,44 @@ const preloadImages = products
         });
 
         const data = await response.json();
-        
-        if (data.success && data.products.length > 0) {
-          // Add new products to grid
-          data.products.forEach((product: any) => {
-            const card = this.createProductCard(product);
-            this.grid.appendChild(card);
+
+        if (data.success && data.products?.length > 0) {
+          // Add products with smooth animation
+          data.products.forEach((product: any, index: number) => {
+            setTimeout(() => {
+              const card = this.createProductCard(product);
+              this.grid.appendChild(card);
+            }, index * 50); // Stagger animations
           });
 
-          // Update cursor for next load
           this.cursor = data.nextCursor;
-          
-          // Hide button if no more products
+
           if (!data.hasMore) {
-            this.hideButton();
+            this.trigger!.style.display = "none";
+            this.observer?.disconnect();
           }
         } else {
-          this.hideButton();
+          this.trigger!.style.display = "none";
+          this.observer?.disconnect();
         }
       } catch (error) {
-        console.error('Error loading more products:', error);
-        this.showError();
+        console.error("Failed to load products:", error);
+        this.trigger!.innerHTML =
+          '<p class="text-content-meta">Failed to load more products</p>';
       } finally {
         this.isLoading = false;
-        this.hideLoading();
       }
     }
 
     private createProductCard(product: any): HTMLElement {
-      const card = document.createElement('a');
+      const card = document.createElement("a");
       card.href = product.url;
-      card.className = 'group flex flex-col col-span-full sm:col-span-2 p-1 bg-ui-card-surface text-ui-card-text border-2 border-ui-card-border lg:hover:bg-ui-card-hover';
-      
-      const price = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
+      card.className =
+        "group flex flex-col col-span-full sm:col-span-2 p-1 bg-ui-card-surface text-ui-card-text border-2 border-ui-card-border lg:hover:bg-ui-card-hover";
+
+      const price = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
       }).format(product.price);
 
       card.innerHTML = `
@@ -270,56 +239,32 @@ const preloadImages = products
           />
         </div>
         <div class="flex flex-col grow px-1">
-          ${product.brand ? `<p class="text-xs uppercase text-content-meta">${product.brand}</p>` : ''}
+          ${product.brand ? `<p class="text-xs uppercase text-content-meta">${product.brand}</p>` : ""}
           <h2 class="text-product-heading font-light leading-tight line-clamp-2 mb-1">
             ${product.title}
           </h2>
           <div class="text-product-price">
             <span class="font-display text-2xl whitespace-nowrap">
-              ${price}
-              ${product.unit ? `<span class="text-lg">${product.unit}</span>` : ''}
+              ${price}${product.unit ? `<span class="text-lg">${product.unit}</span>` : ""}
             </span>
           </div>
         </div>
       `;
 
-      // Smooth animation
-      card.style.opacity = '0';
-      card.style.transform = 'translateY(20px)';
-      
-      setTimeout(() => {
-        card.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-        card.style.opacity = '1';
-        card.style.transform = 'translateY(0)';
-      }, 50);
+      // Smooth entrance animation
+      card.style.opacity = "0";
+      card.style.transform = "translateY(20px)";
+
+      requestAnimationFrame(() => {
+        card.style.transition =
+          "opacity 0.4s ease-out, transform 0.4s ease-out";
+        card.style.opacity = "1";
+        card.style.transform = "translateY(0)";
+      });
 
       return card;
     }
-
-    private showLoading(): void {
-      this.button.disabled = true;
-      this.loading.style.display = 'flex';
-    }
-
-    private hideLoading(): void {
-      this.button.disabled = false;
-      this.loading.style.display = 'none';
-    }
-
-    private hideButton(): void {
-      this.button.style.display = 'none';
-      this.observer?.disconnect();
-    }
-
-    private showError(): void {
-      this.button.textContent = 'Error loading products';
-      this.button.disabled = true;
-      this.observer?.disconnect();
-    }
   }
 
-  // Initialize on page load
-  document.addEventListener('astro:page-load', () => {
-    new SimpleLoadMore();
-  });
+  document.addEventListener("astro:page-load", () => new InfiniteScroll());
 </script>
