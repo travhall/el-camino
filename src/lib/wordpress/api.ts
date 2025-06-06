@@ -1,141 +1,227 @@
 // src/lib/wordpress/api.ts
 import type { WordPressPage, WordPressPost } from "./types";
+import { imageCache } from "@/lib/square/cacheUtils";
+import {
+  createError,
+  handleError,
+  ErrorType,
+  logError,
+} from "@/lib/square/errorUtils";
+import type { AppError } from "@/lib/square/errorUtils";
+
+// Add WordPress cache to existing cache exports in square/cacheUtils.ts
+// export const wordpressCache = new Cache<any>('wordpress', 300); // 5 minutes
+
+// Import the WordPress cache (this would be added to cacheUtils.ts)
+const wordpressCache = new (await import("@/lib/square/cacheUtils")).Cache<any>(
+  "wordpress",
+  300
+);
 
 // Configuration
 const WP_URL =
   "https://public-api.wordpress.com/rest/v1.1/sites/elcaminoskateshop.wordpress.com";
-const MEMORY_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const STORAGE_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-const STORAGE_PREFIX = "wp_cache_";
-
-// Cache interfaces
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-// In-memory cache
-const memoryCache: Record<string, CacheEntry<any>> = {};
 
 /**
- * Fetches data with dual-layer caching (memory and localStorage)
- * @param endpoint API endpoint to fetch
- * @param cacheKey Unique cache key
- * @returns Cached or fresh data
+ * Process WordPress API errors into standardized format
+ */
+function processWordPressError(error: unknown, source: string): AppError {
+  if (error instanceof Error) {
+    if (
+      error.message.includes("404") ||
+      error.message.includes("status: 404")
+    ) {
+      return createError(
+        ErrorType.DATA_NOT_FOUND,
+        "WordPress content not found",
+        {
+          source,
+          originalError: error,
+        }
+      );
+    }
+
+    if (
+      error.message.includes("timeout") ||
+      error.message.includes("ETIMEDOUT")
+    ) {
+      return createError(ErrorType.TIMEOUT_ERROR, "WordPress API timeout", {
+        source,
+        originalError: error,
+      });
+    }
+
+    if (
+      error.message.includes("network") ||
+      error.message.includes("ENOTFOUND")
+    ) {
+      return createError(
+        ErrorType.NETWORK_ERROR,
+        "WordPress API network error",
+        {
+          source,
+          originalError: error,
+        }
+      );
+    }
+
+    if (error.message.includes("429")) {
+      return createError(ErrorType.API_RATE_LIMIT, "WordPress API rate limit", {
+        source,
+        originalError: error,
+      });
+    }
+
+    if (
+      error.message.includes("500") ||
+      error.message.includes("502") ||
+      error.message.includes("503")
+    ) {
+      return createError(
+        ErrorType.API_UNAVAILABLE,
+        "WordPress API unavailable",
+        {
+          source,
+          originalError: error,
+        }
+      );
+    }
+
+    return createError(ErrorType.API_RESPONSE_ERROR, error.message, {
+      source,
+      originalError: error,
+    });
+  }
+
+  return createError(ErrorType.UNKNOWN, "Unknown WordPress API error", {
+    source,
+    originalError: error,
+  });
+}
+
+/**
+ * Fetch data with standardized caching and error handling
  */
 async function fetchWithCache<T>(
   endpoint: string,
   cacheKey: string
 ): Promise<T> {
-  const now = Date.now();
-
-  // 1. Check memory cache first (fastest)
-  if (
-    memoryCache[cacheKey] &&
-    now - memoryCache[cacheKey].timestamp < MEMORY_CACHE_TTL
-  ) {
-    return memoryCache[cacheKey].data;
-  }
-
-  // 2. Try localStorage next
-  if (typeof window !== "undefined") {
+  return wordpressCache.getOrCompute(cacheKey, async () => {
     try {
-      const stored = localStorage.getItem(`${STORAGE_PREFIX}${cacheKey}`);
-      if (stored) {
-        const parsedItem = JSON.parse(stored) as CacheEntry<T>;
-        if (now - parsedItem.timestamp < STORAGE_CACHE_TTL) {
-          // Refresh memory cache with localStorage data
-          memoryCache[cacheKey] = parsedItem;
-          return parsedItem.data;
-        }
-      }
-    } catch (e) {
-      // Silently fail on localStorage errors (might be disabled/private mode)
-    }
-  }
+      const response = await fetch(`${WP_URL}${endpoint}`, {
+        headers: { Accept: "application/json" },
+      });
 
-  // 3. Fetch fresh data
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return (await response.json()) as T;
+    } catch (error) {
+      const appError = processWordPressError(
+        error,
+        `wordpress-api:${endpoint}`
+      );
+      throw appError; // Let the cache handle the error with handleError
+    }
+  });
+}
+
+/**
+ * Process WordPress post data with error handling
+ */
+function processPost(post: {
+  ID?: number;
+  date?: string;
+  slug?: string;
+  title?: string;
+  excerpt?: string;
+  content?: string;
+  featured_image?: string;
+}): WordPressPost {
   try {
-    const response = await fetch(`${WP_URL}${endpoint}`, {
-      headers: {
-        Accept: "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = (await response.json()) as T;
-
-    // Update memory cache
-    const cacheItem: CacheEntry<T> = { data, timestamp: now };
-    memoryCache[cacheKey] = cacheItem;
-
-    // Update localStorage when available
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(
-          `${STORAGE_PREFIX}${cacheKey}`,
-          JSON.stringify(cacheItem)
-        );
-      } catch (e) {
-        // Silently fail on localStorage errors
-      }
-    }
-
-    return data;
+    return {
+      id: post.ID || 0,
+      date: post.date || new Date().toISOString(),
+      slug: post.slug || "",
+      title: { rendered: post.title || "Untitled" },
+      excerpt: { rendered: post.excerpt || "" },
+      content: { rendered: post.content || "" },
+      _embedded: post.featured_image
+        ? {
+            "wp:featuredmedia": [
+              {
+                source_url: post.featured_image,
+                alt_text: post.title || "Featured image",
+              },
+            ],
+          }
+        : undefined,
+    };
   } catch (error) {
-    console.error(`API fetch error for ${endpoint}:`, error);
-    throw error;
+    const appError = processWordPressError(
+      error,
+      `processPost:${post?.ID || "unknown"}`
+    );
+    logError(appError);
+
+    // Return minimal valid post to prevent breaking renders
+    return {
+      id: post?.ID || 0,
+      date: new Date().toISOString(),
+      slug: post?.slug || "untitled",
+      title: { rendered: "Content temporarily unavailable" },
+      excerpt: { rendered: "Please try again later." },
+      content: { rendered: "" },
+    };
   }
 }
 
 /**
- * Process WordPress post data into our application format
+ * Process WordPress page data with error handling
  */
-function processPost(post: any): WordPressPost {
-  return {
-    id: post.ID,
-    date: post.date,
-    slug: post.slug,
-    title: { rendered: post.title },
-    excerpt: { rendered: post.excerpt },
-    content: { rendered: post.content },
-    _embedded: post.featured_image
-      ? {
-          "wp:featuredmedia": [
-            {
-              source_url: post.featured_image,
-              alt_text: post.title,
-            },
-          ],
-        }
-      : undefined,
-  };
-}
+function processPage(page: {
+  ID?: number;
+  date?: string;
+  slug?: string;
+  title?: string;
+  content?: string;
+  featured_image?: string;
+}): WordPressPage {
+  try {
+    return {
+      id: page.ID || 0,
+      date: page.date || new Date().toISOString(),
+      slug: page.slug || "",
+      title: { rendered: page.title || "Untitled" },
+      content: { rendered: page.content || "" },
+      _embedded: page.featured_image
+        ? {
+            "wp:featuredmedia": [
+              {
+                source_url: page.featured_image,
+                alt_text: page.title || "Featured image",
+              },
+            ],
+          }
+        : undefined,
+    };
+  } catch (error) {
+    const appError = processWordPressError(
+      error,
+      `processPage:${page?.ID || "unknown"}`
+    );
+    logError(appError);
 
-/**
- * Process WordPress page data into our application format
- */
-function processPage(page: any): WordPressPage {
-  return {
-    id: page.ID,
-    date: page.date,
-    slug: page.slug,
-    title: { rendered: page.title },
-    content: { rendered: page.content },
-    _embedded: page.featured_image
-      ? {
-          "wp:featuredmedia": [
-            {
-              source_url: page.featured_image,
-              alt_text: page.title,
-            },
-          ],
-        }
-      : undefined,
-  };
+    // Return minimal valid page
+    return {
+      id: page?.ID || 0,
+      date: new Date().toISOString(),
+      slug: page?.slug || "untitled",
+      title: { rendered: "Page temporarily unavailable" },
+      content: { rendered: "Please try again later." },
+    };
+  }
 }
 
 // =============================================================================
@@ -143,7 +229,7 @@ function processPage(page: any): WordPressPage {
 // =============================================================================
 
 /**
- * Get all posts with caching
+ * Get all posts with standardized caching and error handling
  */
 export async function getPosts(): Promise<WordPressPost[]> {
   try {
@@ -152,17 +238,27 @@ export async function getPosts(): Promise<WordPressPost[]> {
       "all_posts"
     );
 
-    return Array.isArray(data.posts) ? data.posts.map(processPost) : [];
+    if (!data?.posts || !Array.isArray(data.posts)) {
+      return [];
+    }
+
+    return data.posts
+      .map(processPost)
+      .filter((post: any): post is WordPressPost => post.id > 0); // Filter out failed processing
   } catch (error) {
-    console.error("Error fetching posts:", error);
-    return [];
+    const appError = processWordPressError(error, "getPosts");
+    return handleError<WordPressPost[]>(appError, []);
   }
 }
 
 /**
- * Get a single post by slug with caching
+ * Get a single post by slug with standardized error handling
  */
 export async function getPost(slug: string): Promise<WordPressPost | null> {
+  if (!slug) {
+    return null;
+  }
+
   try {
     const cacheKey = `post_${slug}`;
     const post = await fetchWithCache<any>(
@@ -170,10 +266,10 @@ export async function getPost(slug: string): Promise<WordPressPost | null> {
       cacheKey
     );
 
-    return processPost(post);
+    return post ? processPost(post) : null;
   } catch (error) {
-    console.error(`Error fetching post "${slug}":`, error);
-    return null;
+    const appError = processWordPressError(error, `getPost:${slug}`);
+    return handleError<WordPressPost | null>(appError, null);
   }
 }
 
@@ -182,7 +278,7 @@ export async function getPost(slug: string): Promise<WordPressPost | null> {
 // =============================================================================
 
 /**
- * Get all pages with caching
+ * Get all pages with standardized caching and error handling
  */
 export async function getPages(): Promise<WordPressPage[]> {
   try {
@@ -191,21 +287,27 @@ export async function getPages(): Promise<WordPressPage[]> {
       "all_pages"
     );
 
-    if (!data.posts || !Array.isArray(data.posts)) {
+    if (!data?.posts || !Array.isArray(data.posts)) {
       return [];
     }
 
-    return data.posts.map(processPage);
+    return data.posts
+      .map(processPage)
+      .filter((page: any): page is WordPressPage => page.id > 0);
   } catch (error) {
-    console.error("Error fetching pages:", error);
-    return [];
+    const appError = processWordPressError(error, "getPages");
+    return handleError<WordPressPage[]>(appError, []);
   }
 }
 
 /**
- * Get a single page by slug with caching
+ * Get a single page by slug with fallback strategy
  */
 export async function getPage(slug: string): Promise<WordPressPage | null> {
+  if (!slug) {
+    return null;
+  }
+
   try {
     const cacheKey = `page_${slug}`;
 
@@ -231,8 +333,8 @@ export async function getPage(slug: string): Promise<WordPressPage | null> {
 
     return page || null;
   } catch (error) {
-    console.error(`Error fetching page "${slug}":`, error);
-    return null;
+    const appError = processWordPressError(error, `getPage:${slug}`);
+    return handleError<WordPressPage | null>(appError, null);
   }
 }
 
@@ -250,145 +352,53 @@ export async function getLegalPages(): Promise<WordPressPage[]> {
   try {
     const cacheKey = "legal_pages";
 
-    // Check cache first
-    if (
-      memoryCache[cacheKey] &&
-      Date.now() - memoryCache[cacheKey].timestamp < MEMORY_CACHE_TTL
-    ) {
-      return memoryCache[cacheKey].data;
-    }
-
-    // Get all pages and filter to legal ones
-    const allPages = await getPages();
-    const legalPages = allPages.filter((page) =>
-      legalSlugs.includes(page.slug)
-    );
-
-    // Cache the result
-    memoryCache[cacheKey] = {
-      data: legalPages,
-      timestamp: Date.now(),
-    };
-
-    return legalPages;
+    return wordpressCache.getOrCompute(cacheKey, async () => {
+      const allPages = await getPages();
+      return allPages.filter((page) => legalSlugs.includes(page.slug));
+    });
   } catch (error) {
-    console.error("Error fetching legal pages:", error);
-    return [];
+    const appError = processWordPressError(error, "getLegalPages");
+    return handleError<WordPressPage[]>(appError, []);
   }
 }
 
 // =============================================================================
-// CACHE MANAGEMENT
+// CACHE MANAGEMENT (Using standardized patterns)
 // =============================================================================
 
 /**
- * Clear all caches (memory and localStorage)
+ * Clear WordPress cache using standard cache methods
  */
-export function clearAllCaches(): void {
-  // Clear memory cache
-  Object.keys(memoryCache).forEach((key) => {
-    delete memoryCache[key];
-  });
-
-  // Clear localStorage cache
-  if (typeof window !== "undefined") {
-    try {
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith(STORAGE_PREFIX)) {
-          localStorage.removeItem(key);
-        }
-      });
-    } catch (e) {
-      console.error("Error clearing localStorage cache:", e);
-    }
-  }
+export function clearWordPressCache(): void {
+  wordpressCache.clear();
+  console.log("[WordPress] Cache cleared");
 }
 
 /**
- * Clear a specific cache item
+ * Clear specific WordPress cache item
  */
-export function clearCacheItem(key: string): void {
-  // Clear from memory cache
-  if (memoryCache[key]) {
-    delete memoryCache[key];
-  }
-
-  // Clear from localStorage
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.removeItem(`${STORAGE_PREFIX}${key}`);
-    } catch (e) {
-      console.error(`Error clearing localStorage cache for key "${key}":`, e);
-    }
-  }
+export function clearWordPressCacheItem(key: string): void {
+  wordpressCache.delete(key);
+  console.log(`[WordPress] Cache item cleared: ${key}`);
 }
 
 /**
- * Get cache statistics (for debugging)
+ * Get WordPress cache statistics
  */
-export function getCacheStats(): {
-  memoryCacheSize: number;
-  memoryCacheKeys: string[];
-  storageCacheSize: number;
-  storageCacheKeys: string[];
+export function getWordPressCacheStats(): {
+  cacheSize: number;
+  cacheName: string;
 } {
-  const memoryCacheKeys = Object.keys(memoryCache);
-  let storageCacheKeys: string[] = [];
-
-  // Check localStorage when available
-  if (typeof window !== "undefined") {
-    try {
-      storageCacheKeys = Object.keys(localStorage)
-        .filter((key) => key.startsWith(STORAGE_PREFIX))
-        .map((key) => key.replace(STORAGE_PREFIX, ""));
-    } catch (e) {
-      console.error("Error getting localStorage stats:", e);
-    }
-  }
-
+  // Note: This would require adding a getStats method to the Cache class
   return {
-    memoryCacheSize: memoryCacheKeys.length,
-    memoryCacheKeys,
-    storageCacheSize: storageCacheKeys.length,
-    storageCacheKeys,
+    cacheSize: Object.keys((wordpressCache as any).cache || {}).length,
+    cacheName: "wordpress",
   };
 }
 
 /**
- * Test function to debug WordPress API endpoints
+ * Prune expired WordPress cache entries
  */
-export async function debugWordPressAPI(): Promise<void> {
-  const endpoints = [
-    "/posts?type=page&number=10",
-    "/posts?type=page&fields=ID,title,slug,content&number=10",
-    "/posts?status=publish&type=page&number=10",
-    "/posts?type=page&status=publish&fields=ID,title,date,content,slug&number=10",
-  ];
-
-  for (const endpoint of endpoints) {
-    try {
-      console.log(`\n🧪 Testing endpoint: ${endpoint}`);
-      const response = await fetch(
-        `https://public-api.wordpress.com/rest/v1.1/sites/elcaminoskateshop.wordpress.com${endpoint}`
-      );
-      const data = await response.json();
-
-      console.log("Response status:", response.status);
-      console.log("Response data:", {
-        hasData: !!data,
-        hasPosts: !!data?.posts,
-        postsCount: data?.posts?.length || 0,
-        error: data?.error || "none",
-        firstPost: data?.posts?.[0]
-          ? {
-              ID: data.posts[0].ID,
-              title: data.posts[0].title,
-              slug: data.posts[0].slug,
-            }
-          : null,
-      });
-    } catch (error) {
-      console.error(`❌ Error testing ${endpoint}:`, error);
-    }
-  }
+export function pruneWordPressCache(): number {
+  return wordpressCache.prune();
 }

@@ -1,5 +1,5 @@
 ---
-// src/pages/news/index.astro
+// src/pages/news/index.astro - Enhanced but keeps existing structure
 import Layout from "@/layouts/Layout.astro";
 import ArticleGrid from "@/components/ArticleGrid.astro";
 import { getPosts } from "@/lib/wordpress/api";
@@ -34,9 +34,28 @@ const paginatedPosts = posts.slice(
   (currentPage - 1) * PAGE_SIZE,
   currentPage * PAGE_SIZE
 );
+
+// Enhanced: Preload critical images for performance
+const criticalImages = paginatedPosts
+  .slice(0, 4)
+  .map((post) => post._embedded?.["wp:featuredmedia"]?.[0]?.source_url)
+  .filter((img): img is string => !!img);
 ---
 
 <Layout title="The Latest News | El Camino">
+  <!-- Enhanced: Critical image preloading -->
+  <Fragment slot="head">
+    {criticalImages.map((img) => <link rel="preload" href={img} as="image" />)}
+
+    <!-- Enhanced: RSS feed for SEO -->
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="El Camino News RSS"
+      href="/rss.xml"
+    />
+  </Fragment>
+
   <section>
     <div class="flex flex-row justify-between w-full items-baseline p-4">
       <h1
@@ -60,6 +79,7 @@ const paginatedPosts = posts.slice(
       </div>
     </div>
 
+    <!-- Uses your existing ArticleGrid - no changes needed -->
     <ArticleGrid posts={paginatedPosts} error={error} />
 
     {
@@ -87,3 +107,21 @@ const paginatedPosts = posts.slice(
     }
   </section>
 </Layout>
+
+<!-- Enhanced: Performance monitoring -->
+<script>
+  document.addEventListener("astro:page-load", () => {
+    // Track page load performance
+    if ("PerformanceObserver" in window) {
+      const observer = new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry) => {
+          if (entry.entryType === "largest-contentful-paint") {
+            console.log("News page LCP:", entry.startTime);
+          }
+        });
+      });
+
+      observer.observe({ entryTypes: ["largest-contentful-paint"] });
+    }
+  });
+</script>

@@ -1,40 +1,59 @@
 ---
 // src/components/ArticleCard.astro
-import type { WordPressPost } from "@/lib/wordpress/types";
+import type {
+  WordPressPost,
+  ExtractedWordPressData,
+  WordPressFallbackContent,
+  OptimizedWordPressImages,
+  ArticleStructuredData,
+} from "@/lib/wordpress/types";
 import Button from "./Button.astro";
 import { formatDate } from "@/utils/dates";
-import {
-  optimizeWordPressImage,
-  generateWordPressSrcSet,
-} from "@/lib/wordpress/wordpress-images";
 
 interface Props {
   post: WordPressPost;
   featured?: boolean;
   priority?: boolean;
+  // Pre-processed data to eliminate render-time computation
+  embeddedData?: ExtractedWordPressData;
+  fallbackContent?: WordPressFallbackContent;
+  optimizedImages?: OptimizedWordPressImages;
+  structuredData?: ArticleStructuredData;
 }
 
-const { post, featured = false, priority = false } = Astro.props;
+const {
+  post,
+  featured = false,
+  priority = false,
+  embeddedData,
+  fallbackContent,
+  optimizedImages,
+  structuredData,
+} = Astro.props;
 
-const category = post._embedded?.["wp:term"]?.[0]?.[0];
-const featuredMedia = post._embedded?.["wp:featuredmedia"]?.[0];
-const author = post._embedded?.author?.[0];
+// Use pre-processed data or extract safely as fallback
+const safeEmbeddedData = embeddedData || {
+  category: post._embedded?.["wp:term"]?.[0]?.[0] || null,
+  featuredMedia: post._embedded?.["wp:featuredmedia"]?.[0] || null,
+  author: post._embedded?.author?.[0] || null,
+};
 
-const imageUrl = featuredMedia?.source_url;
+const safeFallbackContent = fallbackContent || {
+  title: post.title.rendered.replace(/<[^>]*>/g, "") || "Untitled Article",
+  excerpt:
+    post.excerpt.rendered.replace(/<[^>]*>/g, "") ||
+    "Read this article from El Camino.",
+  imageAlt: `Featured image for: ${post.title.rendered.replace(/<[^>]*>/g, "")}`,
+};
 
-// Optimize images for different screen sizes
-const optimizedImageUrl = imageUrl
-  ? optimizeWordPressImage(imageUrl, {
-      width: featured ? 800 : 600,
-      height: featured ? 533 : 400,
-      quality: 85,
-      format: "webp",
-    })
-  : "";
+// Use pre-optimized images or fallback to unoptimized
+const imageUrl =
+  optimizedImages?.main || safeEmbeddedData.featuredMedia?.source_url || "";
+const srcSet = optimizedImages?.srcSet || "";
+const avatarUrl =
+  optimizedImages?.avatar || safeEmbeddedData.author?.avatar_urls?.["96"] || "";
 
-const srcSet = imageUrl ? generateWordPressSrcSet(imageUrl) : "";
-
-const linkText = `Read article: ${post.title.rendered.replace(/<[^>]*>/g, "")}`;
+const linkText = `Read article: ${safeFallbackContent.title}`;
 ---
 
 <article
@@ -45,35 +64,45 @@ const linkText = `Read article: ${post.title.rendered.replace(/<[^>]*>/g, "")}`;
       : "article-card transition-all duration-300",
   ]}
 >
+  <!-- Structured Data for SEO -->
   {
-    optimizedImageUrl && (
+    structuredData && (
+      <script
+        type="application/ld+json"
+        set:html={JSON.stringify(structuredData)}
+      />
+    )
+  }
+
+  <!-- Featured Image -->
+  {
+    imageUrl && (
       <img
-        src={optimizedImageUrl}
+        src={imageUrl}
         srcset={srcSet}
         sizes={
           featured
             ? "(min-width: 768px) 66vw, 100vw"
             : "(min-width: 768px) 33vw, 100vw"
         }
-        alt={
-          featuredMedia?.alt_text ||
-          `Featured image for: ${post.title.rendered.replace(/<[^>]*>/g, "")}`
-        }
+        alt={safeFallbackContent.imageAlt}
         class:list={[
           "object-cover w-full h-full",
           featured
             ? ""
             : "transition-all duration-300 opacity-10 lg:[.article-card:has(button:hover)_&]:scale-105 lg:[.article-card:has(button:hover)_&]:opacity-95",
         ]}
-        loading={priority || featured ? "eager" : "lazy"}
-        fetchpriority={priority || featured ? "high" : "auto"}
-        decoding={priority || featured ? "sync" : "async"}
+        loading={priority ? "eager" : "lazy"}
+        fetchpriority={priority ? "high" : "auto"}
+        decoding={priority ? "sync" : "async"}
         width={featured ? 800 : 600}
         height={featured ? 533 : 400}
+        onerror="this.style.opacity='0.5'"
       />
     )
   }
 
+  <!-- Content Overlay -->
   <div
     class:list={[
       "flex flex-col gap-4 lg:gap-6 px-6 py-12 xl:p-12 absolute bottom-0 m-1 bg-ui-card-surface/00 backdrop-blur-0 lg:[.article-card:has(button:hover)_&]:bg-ui-card-surface/80 lg:[.article-card:has(button:hover)_&]:backdrop-blur transition-all duration-300",
@@ -81,47 +110,53 @@ const linkText = `Read article: ${post.title.rendered.replace(/<[^>]*>/g, "")}`;
         "bg-ui-card-surface/90 md:bg-ui-card-surface first-of-type:m-0 md:border-t-4 md:border-l-4 md:border-ui-card-border md:w-5/6 lg:w-2/3 right-0",
     ]}
   >
+    <!-- Category Badge -->
     {
-      category?.name && (
+      safeEmbeddedData.category?.name && (
         <span class="font-display font-semibold text-base tracking-wide uppercase -mb-5 text-content-meta">
-          {category.name}
+          {safeEmbeddedData.category.name}
         </span>
       )
     }
 
+    <!-- Article Title -->
     <h2
       class="font-display font-black text-6xl md:text-4xl xl:text-6xl 3xl:text-7xl leading-[0.8] text-content-heading"
       set:html={post.title.rendered}
     />
 
+    <!-- Article Excerpt -->
     <div
       class="text-sm md:text-base 2xl:text-lg leading-snug line-clamp-2 text-content-body"
       set:html={post.excerpt.rendered}
     />
 
+    <!-- Author & Meta Information -->
     <div class="mt-auto flex flex-col gap-4">
       {
-        author && (
+        safeEmbeddedData.author && (
           <div class="flex items-center text-content-meta">
-            {author.avatar_urls?.["96"] && (
+            {avatarUrl && (
               <img
-                src={optimizeWordPressImage(author.avatar_urls["96"], {
-                  width: 32,
-                  height: 32,
-                  format: "webp",
-                })}
-                alt={`Profile photo of ${author.name}`}
-                class="w-8 h-8 rounded-full mr-2"
+                src={avatarUrl}
+                alt={`Profile photo of ${safeEmbeddedData.author.name}`}
+                class="w-8 h-8 rounded-full mr-2 ring-2 ring-ui-card-border"
                 loading="lazy"
+                width="32"
+                height="32"
+                onerror="this.style.display='none'"
               />
             )}
-            <span>{author.name}</span>
+            <span class="font-medium">{safeEmbeddedData.author.name}</span>
             <span class="mx-2">•</span>
-            <time datetime={post.date}>{formatDate(post.date)}</time>
+            <time datetime={post.date} class="text-sm">
+              {formatDate(post.date)}
+            </time>
           </div>
         )
       }
 
+      <!-- Read More Button -->
       <a
         href={`/news/${post.slug}`}
         class="self-start focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-button-ring"
@@ -129,11 +164,84 @@ const linkText = `Read article: ${post.title.rendered.replace(/<[^>]*>/g, "")}`;
       >
         <Button type="button" variant="primary" size="md">
           Read More
-          <span class="sr-only"
-            >: {post.title.rendered.replace(/<[^>]*>/g, "")}</span
-          >
+          <span class="sr-only">: {safeFallbackContent.title}</span>
         </Button>
       </a>
     </div>
   </div>
 </article>
+
+<script>
+  // Progressive enhancement for image loading
+  document.addEventListener("astro:page-load", () => {
+    const articleCards = document.querySelectorAll("article");
+
+    articleCards.forEach((card) => {
+      const image = card.querySelector("img") as HTMLImageElement;
+
+      if (image) {
+        // Mark as loaded when image loads successfully
+        const handleImageLoad = () => {
+          card.classList.add("loaded");
+          image.removeEventListener("load", handleImageLoad);
+        };
+
+        // Handle image load errors gracefully
+        const handleImageError = () => {
+          card.setAttribute("data-error", "true");
+          console.warn("Failed to load article image:", image.src);
+          image.removeEventListener("error", handleImageError);
+        };
+
+        if (image.complete) {
+          handleImageLoad();
+        } else {
+          image.addEventListener("load", handleImageLoad);
+          image.addEventListener("error", handleImageError);
+        }
+      } else {
+        // No image, mark as loaded immediately
+        card.classList.add("loaded");
+      }
+    });
+  });
+
+  // Intersection Observer for analytics (optional)
+  document.addEventListener("astro:page-load", () => {
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const card = entry.target as HTMLElement;
+              const articleTitle = card
+                .querySelector("h2")
+                ?.textContent?.trim();
+
+              // Track article impression (integrate with your analytics)
+              if (
+                articleTitle &&
+                typeof window !== "undefined" &&
+                (window as any).gtag
+              ) {
+                (window as any).gtag("event", "article_impression", {
+                  article_title: articleTitle,
+                  position: Array.from(
+                    card.parentElement?.children || []
+                  ).indexOf(card),
+                });
+              }
+
+              observer.unobserve(card);
+            }
+          });
+        },
+        { threshold: 0.5, rootMargin: "0px 0px -100px 0px" }
+      );
+
+      document.querySelectorAll("article").forEach((card) => {
+        observer.observe(card);
+      });
+    }
+  });
+</script>
