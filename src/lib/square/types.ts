@@ -313,3 +313,18 @@ export function isQuantityInputDisabled(
 ): boolean {
   return state !== ProductAvailabilityState.AVAILABLE;
 }
+
+export interface PaginatedProducts {
+  products: Product[];
+  nextCursor?: string;
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export interface ProductLoadingOptions {
+  limit?: number;
+  cursor?: string;
+  includeInventory?: boolean;
+}
+
+export type DisplayPreference = 24 | 48 | 96 | "all";

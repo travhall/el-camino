@@ -1,7 +1,13 @@
 // src/lib/square/categories.ts
 import { squareClient } from "./client";
 import { batchGetImageUrls } from "./imageUtils";
-import type { Category, CategoryHierarchy, Product } from "./types";
+import type {
+  Category,
+  CategoryHierarchy,
+  Product,
+  PaginatedProducts,
+  ProductLoadingOptions,
+} from "./types";
 import { categoryCache, productCache } from "./cacheUtils";
 import { processSquareError, handleError } from "./errorUtils";
 import { createProductUrl } from "@/lib/square/slugUtils";
@@ -124,20 +130,45 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
  * with caching and parallel image fetching
  */
 export async function fetchProductsByCategory(
-  categoryId: string
-): Promise<Product[]> {
-  return productCache.getOrCompute(`category-${categoryId}`, async () => {
-    try {
-      // Use Square's searchCatalogItems endpoint to find items by category
-      const { result } = await squareClient.catalogApi.searchCatalogItems({
-        categoryIds: [categoryId],
-      });
+  categoryId: string,
+  options?: ProductLoadingOptions
+): Promise<PaginatedProducts> {
+  const { limit = 24, cursor, includeInventory = true } = options || {};
 
-      if (!result?.items?.length) {
-        console.log(`No products found for category ID: ${categoryId}`);
-        return [];
+  // Create cache key that includes pagination parameters
+  const cacheKey = `category-${categoryId}-${cursor || "initial"}-${limit}`;
+
+  return productCache.getOrCompute(cacheKey, async () => {
+    try {
+      // Use existing Square client with enhanced request for pagination
+      const searchRequest: any = {
+        categoryIds: [categoryId],
+        limit: Math.min(limit, 100), // Square API limit
+      };
+
+      // Add cursor for pagination (Square pagination pattern)
+      if (cursor) {
+        searchRequest.cursor = cursor;
       }
 
+      const { result } = await squareClient.catalogApi.searchCatalogItems(
+        searchRequest
+      );
+
+      if (!result?.items?.length) {
+        console.log(
+          `No products found for category ID: ${categoryId} (cursor: ${
+            cursor || "initial"
+          })`
+        );
+        return {
+          products: [],
+          totalCount: 0,
+          hasMore: false,
+        };
+      }
+
+      // === EXISTING LOGIC PRESERVED EXACTLY ===
       // First collect all image IDs to fetch them in parallel
       const imageIds: string[] = [];
       const measurementUnitIds: string[] = [];
@@ -156,21 +187,20 @@ export async function fetchProductsByCategory(
         }
       });
 
-      // Fetch all images in parallel using the imported utility function
+      // Fetch all images in parallel using the existing utility function
       const imageUrlMap: Record<string, string> = {};
       if (imageIds.length > 0) {
         const batchedImages = await batchGetImageUrls(imageIds);
         Object.assign(imageUrlMap, batchedImages);
       }
 
-      // Fetch all measurement units in parallel
+      // Fetch all measurement units in parallel (existing logic)
       const measurementUnitsMap: Record<string, string> = {};
       if (measurementUnitIds.length > 0) {
         console.log(
           `[fetchProductsByCategory] Fetching ${measurementUnitIds.length} measurement units`
         );
 
-        // Use Promise.allSettled to handle individual failures gracefully
         const measurementResults = await Promise.allSettled(
           measurementUnitIds.map(async (unitId) => {
             try {
@@ -181,7 +211,6 @@ export async function fetchProductsByCategory(
                 const unitData = measurementResult.object.measurementUnitData;
 
                 let unitName = "";
-                // Priority order: custom unit name > custom abbreviation > standard unit type
                 if (unitData?.measurementUnit?.customUnit?.name) {
                   unitName = unitData.measurementUnit.customUnit.name;
                 } else if (
@@ -207,20 +236,14 @@ export async function fetchProductsByCategory(
           })
         );
 
-        // Process results
         measurementResults.forEach((result) => {
           if (result.status === "fulfilled" && result.value.unitName) {
             measurementUnitsMap[result.value.unitId] = result.value.unitName;
           }
         });
-
-        console.log(
-          `[fetchProductsByCategory] Fetched measurement units:`,
-          measurementUnitsMap
-        );
       }
 
-      // Process items with the fetched images and measurement units
+      // Process items with the fetched images and measurement units (existing logic)
       const products = result.items.map((item) => {
         const variation = item.itemData?.variations?.[0];
         const priceMoney = variation?.itemVariationData?.priceMoney;
@@ -233,7 +256,6 @@ export async function fetchProductsByCategory(
             ? imageUrlMap[imageId]
             : "/images/placeholder.png";
 
-        // Get the unit name from our fetched measurement units
         const unit = measurementUnitId
           ? measurementUnitsMap[measurementUnitId] || undefined
           : undefined;
@@ -247,27 +269,51 @@ export async function fetchProductsByCategory(
           image: imageUrl,
           price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
           url: createProductUrl({ title: item.itemData?.name || "" }),
-          unit: unit, // Now properly includes measurement unit
+          unit: unit,
         };
       });
+      // === END EXISTING LOGIC ===
+
+      // NEW: Enhanced return with pagination metadata
+      const paginatedResult: PaginatedProducts = {
+        products,
+        nextCursor: result.cursor, // Square API provides cursor for next page
+        totalCount: products.length, // Use actual count since matchedCount may not exist
+        hasMore: !!result.cursor, // Has more if cursor exists
+      };
 
       console.log(
         `[fetchProductsByCategory] Fetched ${products.length} products for category ${categoryId}`,
         {
+          cursor: cursor || "initial",
+          hasMore: paginatedResult.hasMore,
+          nextCursor: paginatedResult.nextCursor ? "present" : "none",
           withUnits: products.filter((p) => p.unit).length,
           units: [...new Set(products.map((p) => p.unit).filter(Boolean))],
         }
       );
 
-      return products;
+      return paginatedResult;
     } catch (error) {
       const appError = processSquareError(
         error,
-        `fetchProductsByCategory:${categoryId}`
+        `fetchProductsByCategory:${categoryId}:${cursor || "initial"}`
       );
-      return handleError<Product[]>(appError, []);
+      return handleError<PaginatedProducts>(appError, {
+        products: [],
+        totalCount: 0,
+        hasMore: false,
+      });
     }
   });
+}
+
+// BACKWARD COMPATIBILITY: Keep existing function signature
+export async function fetchProductsByCategoryLegacy(
+  categoryId: string
+): Promise<Product[]> {
+  const result = await fetchProductsByCategory(categoryId, { limit: 100 });
+  return result.products;
 }
 
 /**
