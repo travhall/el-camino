@@ -1,241 +1,244 @@
-# Astro Starter Kit: Basics
+# El Camino
 
-```sh
-npm create astro@latest -- --template basics
+A modern e-commerce platform built with Astro and Square integration, featuring dynamic product catalogs, cart management, and seamless checkout experiences.
+
+![Astro](https://img.shields.io/badge/Astro-5.0.5-orange?logo=astro&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7.2-blue?logo=typescript&logoColor=white)
+![Square](https://img.shields.io/badge/Square-39.0.0-success?logo=square&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.16-blue?logo=tailwind-css&logoColor=white)
+
+## 🛍️ Features
+
+### E-commerce Core
+
+- **Dynamic Product Catalog** - Synced with Square inventory
+- **Product Variations** - Size, color, and style options with individual inventory tracking
+- **Real-time Inventory** - Live stock validation and out-of-stock indicators
+- **Smart Cart Management** - Persistent cart state with navigation preservation
+- **Secure Checkout** - Square-powered payment processing
+
+### Technical Highlights
+
+- **Server-Side Rendering** - Optimized for performance and SEO
+- **Type-Safe Development** - Full TypeScript implementation
+- **Resilient Architecture** - Circuit breaker patterns and error recovery
+- **Caching System** - Intelligent caching for inventory and product data
+- **Mobile-First Design** - Responsive interface with Tailwind CSS
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js ≥20.0.0
+- pnpm 9.15.0 (enforced)
+- Square Developer Account
+
+### Installation
+
+```bash
+# Clone repository
+git clone https://github.com/travhall/el-camino.git
+cd el-camino
+
+# Install dependencies
+pnpm install
+
+# Configure environment
+cp .env.example .env
 ```
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/basics)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/basics)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/basics/devcontainer.json)
+### Environment Setup
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Create `.env` file with Square credentials:
 
-![just-the-basics](https://github.com/withastro/astro/assets/2244813/a0a5533c-a856-4198-8470-2d67b1d7c554)
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src/
-│   ├── components/
-│   │   └── Card.astro
-│   ├── layouts/
-│   │   └── Layout.astro
-│   └── pages/
-│       └── index.astro
-└── package.json
+```env
+SQUARE_ACCESS_TOKEN=your_square_access_token
+PUBLIC_SQUARE_APP_ID=your_square_app_id
+PUBLIC_SQUARE_LOCATION_ID=your_square_location_id
+SQUARE_WEBHOOK_SIGNATURE_KEY=your_webhook_signature_key
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+### Development
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+```bash
+# Start development server
+pnpm dev
 
-Any static assets, like images, can be placed in the `public/` directory.
+# Run type checking
+pnpm check
 
-## 🧞 Commands
+# Build for production
+pnpm build
 
-All commands are run from the root of the project, from a terminal:
+# Preview production build
+pnpm preview
+```
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+## 📁 Project Structure
 
 ```
-└── 📁el-camino
-    └── 📁.astro
-        └── 📁collections
-            └── blog.schema.json
-            └── pages.schema.json
-        └── content-assets.mjs
-        └── content-modules.mjs
-        └── content.d.ts
-        └── data-store.json
-        └── icon.d.ts
-        └── settings.json
-        └── types.d.ts
-    └── 📁.git
-        └── 📁branches
-        └── 📁hooks
-            └── …
-        └── 📁info
-            └── exclude
-        └── 📁logs
-            └── 📁refs
-                └── 📁heads
-                    └── master
-                └── 📁remotes
-                    └── 📁origin
-                        └── HEAD
-                        └── master
-            └── HEAD
-        └── 📁objects
-            └── 📁00
-                └── …
-            └── 📁info
-            └── 📁pack
-                └── pack-1c3cf46a32f382dc11a78a4a1b185e9e97209a19.idx
-                └── pack-1c3cf46a32f382dc11a78a4a1b185e9e97209a19.pack
-                └── pack-1c3cf46a32f382dc11a78a4a1b185e9e97209a19.rev
-        └── 📁refs
-            └── 📁heads
-                └── master
-            └── 📁remotes
-                └── 📁origin
-                    └── HEAD
-                    └── master
-            ├── tags
-        └── .DS_Store
-        └── COMMIT_EDITMSG
-        └── config
-        └── description
-        └── FETCH_HEAD
-        └── HEAD
-        └── index
-        └── ORIG_HEAD
-        └── packed-refs
-    └── 📁.github
-        ├── workflows
-    └── 📁.netlify
-        └── 📁build
-        └── 📁v1
-            └── 📁edge-functions
-                ├── middleware
-            └── 📁functions
-                ├── ssr
-            └── .DS_Store
-            └── config.json
-        └── .DS_Store
-    └── 📁.vscode
-        └── extensions.json
-        └── launch.json
-        └── settings.json
-    └── 📁content
-        └── 📁pages
-            └── About.md
-        └── 📁posts
-            └── Test-post-one-title.md
-    └── 📁netlify
-        └── 📁functions
-        └── 📁plugins
-            └── .DS_Store
-        └── .DS_Store
-    └── 📁public
-        └── 📁admin
-            └── .gitignore
-            └── index.html
-        └── 📁fonts
-            └── AlumniSans-Italic.woff2
-            └── AlumniSans.woff2
-            └── Cabin-Italic.woff2
-            └── Cabin.woff2
-        └── 📁images
-            └── category-apparel.png
-            └── category-footwear.png
-            └── category-skateboarding.png
-            └── placeholder.png
-            └── promo-img-01.png
-            └── promo-img-02.png
-            └── promo-img-03.png
-            └── promo-img-04.png
-            └── promo-img-05.png
-            └── promo-img-06.png
-        └── .DS_Store
-        └── favicon.svg
-    └── 📁src
-        └── 📁assets
-            └── 📁icons
-                └── Icon.svg
-                └── Logo.svg
-        └── 📁components
-            └── .DS_Store
-            └── Button.astro
-            └── CartButton.astro
-            └── CartDebug.astro
-            └── Footer.astro
-            └── Header.astro
-            └── Nav.astro
-            └── ProductCard.astro
-            └── Sidebar.astro
-            └── ThemeToggle.astro
-        └── 📁layouts
-            └── Layout.astro
-        └── 📁lib
-            └── 📁cart
-                └── index.ts
-                └── types.ts
-            └── 📁cms
-                └── structured-data.ts
-            └── 📁square
-                └── client.ts
-                └── money.ts
-                └── testing.ts
-                └── types.ts
-            └── 📁types
-                └── .DS_Store
-                └── content.ts
-                └── index.ts
-            └── .DS_Store
-        └── 📁pages
-            └── 📁api
-                └── cart-actions.ts
-                └── create-checkout.ts
-                └── list-catalog.ts
-                └── square-webhook.ts
-                └── ssr-verify.ts
-            └── 📁product
-                └── [id].astro
-            └── .DS_Store
-            └── 404.astro
-            └── cart.astro
-            └── debug.astro
-            └── index.astro
-            └── order-confirmation.astro
-            └── styleguide.astro
-        └── 📁styles
-            └── globals.css
-        └── 📁utils
-            └── dates.ts
-            └── urls.ts
-        └── .DS_Store
-        └── env.d.ts
-    └── 📁tina
-        └── 📁__generated__
-            └── _graphql.json
-            └── _lookup.json
-            └── _schema.json
-            └── client.ts
-            └── config.prebuild.jsx
-            └── frags.gql
-            └── queries.gql
-            └── schema.gql
-            └── static-media.json
-            └── types.ts
-        └── .gitignore
-        └── config.ts
-        └── tina-lock.json
-    └── .DS_Store
-    └── .env
-    └── .env.production
-    └── .gitignore
-    └── .npmrc
-    └── astro.config.mjs
-    └── netlify.toml
-    └── package.json
-    └── pnpm-lock.yaml
-    └── README.md
-    └── tailwind.config.mjs
-    └── tsconfig.json
+src/
+├── components/          # Reusable UI components
+│   ├── ProductCard.astro
+│   ├── CartButton.astro
+│   └── Header.astro
+├── layouts/            # Page layouts
+│   └── Layout.astro
+├── lib/               # Business logic
+│   ├── cart/          # Cart management
+│   ├── square/        # Square API integration
+│   └── types/         # TypeScript definitions
+├── pages/             # Routes and API endpoints
+│   ├── api/           # Server endpoints
+│   ├── product/       # Dynamic product pages
+│   └── cart.astro
+└── styles/            # Global styles
 ```
+
+## 🔧 Key Integrations
+
+### Square Commerce
+
+- **Catalog Management** - Automatic product sync
+- **Inventory Tracking** - Real-time stock levels
+- **Payment Processing** - Secure checkout flow
+- **Order Management** - Complete order lifecycle
+
+### Advanced Features
+
+- **Product Variations** - Complex SKU management
+- **Cart Persistence** - Survives page navigation
+- **Inventory Validation** - Prevents overselling
+- **Error Recovery** - Graceful API failure handling
+
+## 🛠️ API Endpoints
+
+| Endpoint               | Method | Purpose                    |
+| ---------------------- | ------ | -------------------------- |
+| `/api/list-catalog`    | GET    | Fetch product catalog      |
+| `/api/create-checkout` | POST   | Initialize Square checkout |
+| `/api/cart-actions`    | POST   | Cart operations            |
+| `/api/square-webhook`  | POST   | Square webhook handler     |
+
+## 📱 Pages
+
+- **`/`** - Product catalog homepage
+- **`/product/[id]`** - Dynamic product detail pages
+- **`/cart`** - Shopping cart management
+- **`/order-confirmation`** - Post-purchase confirmation
+
+## 🎨 Styling
+
+Built with Tailwind CSS featuring:
+
+- Custom color palette for e-commerce
+- Responsive breakpoints
+- Component-based utility classes
+- Dark/light theme support
+
+## 🧪 Testing
+
+```bash
+# Run Square integration tests
+pnpm test
+
+# Type checking
+pnpm check
+```
+
+## 🚀 Deployment
+
+Optimized for Netlify with automatic builds:
+
+```bash
+# Production build
+pnpm build
+
+# Preview locally
+pnpm preview-local
+```
+
+### Netlify Configuration
+
+- **Build Command**: `pnpm build`
+- **Publish Directory**: `dist`
+- **Node Version**: 20.x
+- **Package Manager**: pnpm
+
+## 🔒 Security
+
+- Environment variable validation
+- Webhook signature verification
+- Type-safe API interactions
+- Input sanitization
+- Error boundary implementation
+
+## 📊 Performance
+
+- **SSR Optimization** - Server-side rendering for dynamic content
+- **Asset Optimization** - Automatic image and code optimization
+- **Caching Strategy** - Smart caching for API responses
+- **Bundle Splitting** - Optimal JavaScript delivery
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Follow TypeScript strict mode
+4. Ensure all tests pass
+5. Submit pull request
+
+### Development Guidelines
+
+- Maintain type safety across all modules
+- Follow existing component patterns
+- Update documentation for new features
+- Test Square integration thoroughly
+
+## 📝 Documentation
+
+Additional documentation available:
+
+- [Square Integration Guide](docs/square-integration.md)
+- [Product Variations Implementation](docs/product-variations.md)
+- [Inventory Management](docs/inventory-management.md)
+- [Cart System Architecture](docs/cart-system.md)
+
+## 🔧 Dependencies
+
+### Core
+
+- **Astro 5.0.5** - Web framework
+- **TypeScript 5.7.2** - Type safety
+- **Square 39.0.0** - Payment processing
+- **Tailwind CSS 3.4.16** - Styling
+
+### Features
+
+- **@astrojs/netlify** - Deployment adapter
+- **astro-icon** - Icon system
+- **astro-seo-metadata** - SEO optimization
+
+## 📈 Roadmap
+
+- [ ] Multi-currency support
+- [ ] Advanced search and filtering
+- [ ] Customer account system
+- [ ] Order history and tracking
+- [ ] Inventory management dashboard
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+For issues and questions:
+
+- Check [existing issues](https://github.com/travhall/el-camino/issues)
+- Review Square API documentation
+- Contact Square developer support for payment issues
+
+---
+
+Built with ❤️ using Astro and Square Commerce APIs
