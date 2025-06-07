@@ -1,5 +1,6 @@
 ---
-// src/pages/category/[...slug].astro - FINAL OPTIMIZED VERSION (Pure Infinite Scroll)
+// src/pages/category/[...slug].astro
+import ProductCardSkeleton from "@/components/ProductCardSkeleton.astro";
 import {
   fetchCategoryHierarchy,
   fetchProductsByCategory,
@@ -101,22 +102,27 @@ const preloadImages = products
     </div>
 
     {
-      products.length > 0 ? (
-        <div
-          id="products-grid"
-          class="card-grid grid justify-center sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-12 w-full max-w-[120rem] mx-auto gap-1 p-1"
-        >
-          {products.map((product, index) => (
-            <ProductCard product={product} priority={index < 8} />
-          ))}
-        </div>
-      ) : (
-        <div class="text-center py-12">
-          <p class="text-content-body">No products found in this category.</p>
-        </div>
-      )
-    }
-
+  products.length > 0 ? (
+    <div
+      id="products-grid"
+      class="card-grid grid justify-center sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-12 w-full max-w-[120rem] mx-auto gap-1 p-1"
+    >
+      {products.map((product, index) => (
+        <ProductCard product={product} priority={index < 8} />
+      ))}
+    </div>
+  ) : (
+    <!-- Show skeletons instead of empty message -->
+    <div
+      id="products-grid"
+      class="card-grid grid justify-center sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-12 w-full max-w-[120rem] mx-auto gap-1 p-1"
+    >
+      {Array.from({ length: 24 }).map(() => (
+        <ProductCardSkeleton />
+      ))}
+    </div>
+  )
+}
     <!-- Loading indicator at bottom -->
     {
       hasMore && (
@@ -172,50 +178,93 @@ const preloadImages = products
     }
 
     private async loadMore(): Promise<void> {
-      if (!this.cursor || this.isLoading) return;
+    if (!this.cursor || this.isLoading) return;
 
-      this.isLoading = true;
+    this.isLoading = true;
+    
+    // Show skeleton placeholders
+    this.showLoadingSkeletons();
 
-      try {
-        const response = await fetch("/api/load-more-products", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            categoryId: this.categoryId,
-            cursor: this.cursor,
-            limit: 24,
-          }),
+    try {
+      const response = await fetch("/api/load-more-products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoryId: this.categoryId,
+          cursor: this.cursor,
+          limit: 24,
+        }),
+      });
+
+      const data = await response.json();
+
+      // Remove skeletons before adding real products
+      this.removeLoadingSkeletons();
+
+      if (data.success && data.products?.length > 0) {
+        // Add products with smooth animation
+        data.products.forEach((product: any, index: number) => {
+          setTimeout(() => {
+            const card = this.createProductCard(product);
+            this.grid.appendChild(card);
+          }, index * 50);
         });
 
-        const data = await response.json();
+        this.cursor = data.nextCursor;
 
-        if (data.success && data.products?.length > 0) {
-          // Add products with smooth animation
-          data.products.forEach((product: any, index: number) => {
-            setTimeout(() => {
-              const card = this.createProductCard(product);
-              this.grid.appendChild(card);
-            }, index * 50); // Stagger animations
-          });
-
-          this.cursor = data.nextCursor;
-
-          if (!data.hasMore) {
-            this.trigger!.style.display = "none";
-            this.observer?.disconnect();
-          }
-        } else {
+        if (!data.hasMore) {
           this.trigger!.style.display = "none";
           this.observer?.disconnect();
         }
-      } catch (error) {
-        console.error("Failed to load products:", error);
-        this.trigger!.innerHTML =
-          '<p class="text-content-meta">Failed to load more products</p>';
-      } finally {
-        this.isLoading = false;
+      } else {
+        this.trigger!.style.display = "none";
+        this.observer?.disconnect();
       }
+    } catch (error) {
+      this.removeLoadingSkeletons();
+      console.error("Failed to load products:", error);
+      this.trigger!.innerHTML = '<p class="text-content-meta">Failed to load more products</p>';
+    } finally {
+      this.isLoading = false;
     }
+  }
+
+  private showLoadingSkeletons(): void {
+    // Create 24 skeleton cards
+    for (let i = 0; i < 24; i++) {
+      const skeleton = this.createSkeletonCard();
+      skeleton.setAttribute('data-loading-skeleton', 'true');
+      this.grid.appendChild(skeleton);
+    }
+  }
+
+  private removeLoadingSkeletons(): void {
+    const skeletons = this.grid.querySelectorAll('[data-loading-skeleton="true"]');
+    skeletons.forEach(skeleton => skeleton.remove());
+  }
+
+  private createSkeletonCard(): HTMLElement {
+    const skeleton = document.createElement("div");
+    skeleton.className = "group flex flex-col col-span-full sm:col-span-2 p-1 bg-ui-card-surface text-ui-card-text border-2 border-ui-card-border";
+    skeleton.setAttribute('role', 'status');
+    skeleton.setAttribute('aria-label', 'Loading product');
+
+    skeleton.innerHTML = `
+      <div class="relative aspect-video sm:aspect-square overflow-hidden mb-4 bg-surface-secondary animate-pulse">
+        <div class="w-full h-full bg-surface-tertiary"></div>
+      </div>
+      <div class="flex flex-col grow px-1 space-y-2">
+        <div class="h-3 bg-surface-tertiary rounded w-16 animate-pulse"></div>
+        <div class="space-y-1">
+          <div class="h-4 bg-surface-tertiary rounded animate-pulse"></div>
+          <div class="h-4 bg-surface-tertiary rounded w-3/4 animate-pulse"></div>
+        </div>
+        <div class="h-6 bg-surface-tertiary rounded w-20 animate-pulse"></div>
+      </div>
+    `;
+
+    return skeleton;
+  }
 
     private createProductCard(product: any): HTMLElement {
       const card = document.createElement("a");
