@@ -35,11 +35,12 @@ const placeholderId = `placeholder-${product.id}`;
   <!-- Product Image Container with Progressive Loading -->
   <div class="relative aspect-video sm:aspect-square overflow-hidden mb-4">
     <!-- Subtle gradient placeholder -->
-    <div 
+    <div
       class="absolute inset-0 bg-gradient-to-br from-surface-secondary to-surface-tertiary animate-pulse transition-opacity duration-300"
       id={placeholderId}
-    ></div>
-    
+    >
+    </div>
+
     <img
       id={imageId}
       src={product.image}
@@ -53,21 +54,25 @@ const placeholderId = `placeholder-${product.id}`;
     />
 
     <!-- Stock Status Overlay (preserved) -->
-    {isOutOfStock && (
-      <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-sm font-bold">
-        Sold Out
-      </div>
-    )}
+    {
+      isOutOfStock && (
+        <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-sm font-bold">
+          Sold Out
+        </div>
+      )
+    }
   </div>
 
   <!-- Product Info (unchanged) -->
   <div class="flex flex-col grow px-1">
     <!-- Brand (if available) -->
-    {product.brand && (
-      <p class="text-xs uppercase text-content-meta" itemprop="brand">
-        {product.brand}
-      </p>
-    )}
+    {
+      product.brand && (
+        <p class="text-xs uppercase text-content-meta" itemprop="brand">
+          {product.brand}
+        </p>
+      )
+    }
 
     <!-- Product Title -->
     <h2
