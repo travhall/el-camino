@@ -6,36 +6,40 @@ import { processSquareError, logError, handleError } from "./errorUtils";
 import { requestDeduplicator } from './requestDeduplication';
 
 /**
- * Check if a specific item is in stock - with caching
+ * Check if a specific item is in stock - with caching and deduplication
  * @param variationId The Square variation ID to check
  * @returns The quantity in stock
  */
 export async function checkItemInventory(variationId: string): Promise<number> {
-  return inventoryCache.getOrCompute(variationId, async () => {
-    try {
-      // Query Square API for current inventory count
-      const { result } = await squareClient.inventoryApi.retrieveInventoryCount(
-        variationId
-      );
+  const cacheKey = `inventory:${variationId}`;
+  
+  return requestDeduplicator.dedupe(cacheKey, () =>
+    inventoryCache.getOrCompute(variationId, async () => {
+      try {
+        // Query Square API for current inventory count
+        const { result } = await squareClient.inventoryApi.retrieveInventoryCount(
+          variationId
+        );
 
-      // Get the counts and find IN_STOCK state
-      const counts = result.counts || [];
-      const inStockCount = counts.find((count) => count.state === "IN_STOCK");
+        // Get the counts and find IN_STOCK state
+        const counts = result.counts || [];
+        const inStockCount = counts.find((count) => count.state === "IN_STOCK");
 
-      // Parse quantity as number (Square returns string)
-      const quantity = inStockCount?.quantity
-        ? parseInt(inStockCount.quantity, 10)
-        : 0;
+        // Parse quantity as number (Square returns string)
+        const quantity = inStockCount?.quantity
+          ? parseInt(inStockCount.quantity, 10)
+          : 0;
 
-      return quantity;
-    } catch (error) {
-      const appError = processSquareError(
-        error,
-        `checkItemInventory:${variationId}`
-      );
-      return handleError<number>(appError, 0);
-    }
-  });
+        return quantity;
+      } catch (error) {
+        const appError = processSquareError(
+          error,
+          `checkItemInventory:${variationId}`
+        );
+        return handleError<number>(appError, 0);
+      }
+    })
+  );
 }
 
 /**
