@@ -3,6 +3,7 @@ import { squareClient } from "./client";
 import type { Product, ProductVariation } from "./types";
 import { inventoryCache } from "./cacheUtils";
 import { processSquareError, logError, handleError } from "./errorUtils";
+import { requestDeduplicator } from './requestDeduplication';
 
 /**
  * Check if a specific item is in stock - with caching
@@ -55,89 +56,93 @@ export async function isItemInStock(variationId: string): Promise<boolean> {
 export async function checkBulkInventory(
   variationIds: string[]
 ): Promise<Record<string, number>> {
-  // Deduplicate IDs
-  const uniqueIds = [...new Set(variationIds)];
+  const cacheKey = `bulk:${variationIds.sort().join(',')}`;
+  
+  return requestDeduplicator.dedupe(cacheKey, async () => {
+    // Deduplicate IDs
+    const uniqueIds = [...new Set(variationIds)];
 
-  if (uniqueIds.length === 0) {
-    return {};
-  }
+    if (uniqueIds.length === 0) {
+      return {};
+    }
 
-  // Process cache hits and identify items that need fetching
-  const resultMap: Record<string, number> = {};
-  const idsToFetch: string[] = [];
+    // Process cache hits and identify items that need fetching
+    const resultMap: Record<string, number> = {};
+    const idsToFetch: string[] = [];
 
-  uniqueIds.forEach((id) => {
-    const cached = inventoryCache.get(id);
-    if (cached !== undefined) {
-      resultMap[id] = cached;
-    } else {
-      idsToFetch.push(id);
+    uniqueIds.forEach((id) => {
+      const cached = inventoryCache.get(id);
+      if (cached !== undefined) {
+        resultMap[id] = cached;
+      } else {
+        idsToFetch.push(id);
+      }
+    });
+
+    // If all items were cached, return early
+    if (idsToFetch.length === 0) return resultMap;
+
+    // For a single item to fetch, use the simpler endpoint
+    if (idsToFetch.length === 1) {
+      const quantity = await checkItemInventory(idsToFetch[0]);
+      resultMap[idsToFetch[0]] = quantity;
+      return resultMap;
+    }
+
+    try {
+      // Batch API requests (Square API can handle up to 100 items per request)
+      const BATCH_SIZE = 100;
+      const batches = [];
+
+      for (let i = 0; i < idsToFetch.length; i += BATCH_SIZE) {
+        const batchIds = idsToFetch.slice(i, i + BATCH_SIZE);
+        batches.push(batchIds);
+      }
+
+      // Process all batches in parallel
+      const batchResults = await Promise.all(
+        batches.map(async (batchIds) => {
+          const { result } =
+            await squareClient.inventoryApi.batchRetrieveInventoryCounts({
+              catalogObjectIds: batchIds,
+            });
+          return result.counts || [];
+        })
+      );
+
+      // Flatten and process all counts
+      const allCounts = batchResults.flat();
+
+      // Process API results - only consider IN_STOCK state
+      allCounts.forEach((count) => {
+        if (count.state === "IN_STOCK" && count.catalogObjectId) {
+          const quantity = parseInt(count.quantity || "0", 10);
+          resultMap[count.catalogObjectId] = quantity;
+
+          // Update cache
+          inventoryCache.set(count.catalogObjectId, quantity);
+        }
+      });
+
+      // Set zero quantities for requested items that weren't found in IN_STOCK state
+      idsToFetch.forEach((id) => {
+        if (resultMap[id] === undefined) {
+          resultMap[id] = 0;
+          // Cache zero results too
+          inventoryCache.set(id, 0);
+        }
+      });
+
+      return resultMap;
+    } catch (error) {
+      const appError = processSquareError(error, "checkBulkInventory");
+      return handleError<Record<string, number>>(
+        appError,
+        {}
+        // Optional retry function could be implemented here
+      );
     }
   });
-
-  // If all items were cached, return early
-  if (idsToFetch.length === 0) return resultMap;
-
-  // For a single item to fetch, use the simpler endpoint
-  if (idsToFetch.length === 1) {
-    const quantity = await checkItemInventory(idsToFetch[0]);
-    resultMap[idsToFetch[0]] = quantity;
-    return resultMap;
-  }
-
-  try {
-    // Batch API requests (Square API can handle up to 100 items per request)
-    const BATCH_SIZE = 100;
-    const batches = [];
-
-    for (let i = 0; i < idsToFetch.length; i += BATCH_SIZE) {
-      const batchIds = idsToFetch.slice(i, i + BATCH_SIZE);
-      batches.push(batchIds);
-    }
-
-    // Process all batches in parallel
-    const batchResults = await Promise.all(
-      batches.map(async (batchIds) => {
-        const { result } =
-          await squareClient.inventoryApi.batchRetrieveInventoryCounts({
-            catalogObjectIds: batchIds,
-          });
-        return result.counts || [];
-      })
-    );
-
-    // Flatten and process all counts
-    const allCounts = batchResults.flat();
-
-    // Process API results - only consider IN_STOCK state
-    allCounts.forEach((count) => {
-      if (count.state === "IN_STOCK" && count.catalogObjectId) {
-        const quantity = parseInt(count.quantity || "0", 10);
-        resultMap[count.catalogObjectId] = quantity;
-
-        // Update cache
-        inventoryCache.set(count.catalogObjectId, quantity);
-      }
-    });
-
-    // Set zero quantities for requested items that weren't found in IN_STOCK state
-    idsToFetch.forEach((id) => {
-      if (resultMap[id] === undefined) {
-        resultMap[id] = 0;
-        // Cache zero results too
-        inventoryCache.set(id, 0);
-      }
-    });
-
-    return resultMap;
-  } catch (error) {
-    const appError = processSquareError(error, "checkBulkInventory");
-    return handleError<Record<string, number>>(
-      appError,
-      {}
-      // Optional retry function could be implemented here
-    );
-  }
 }
 
 /**
