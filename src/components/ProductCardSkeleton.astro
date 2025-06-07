@@ -1,0 +1,34 @@
+---
+// src/components/ProductCardSkeleton.astro
+interface Props {
+  priority?: boolean;
+}
+
+const { priority = false } = Astro.props;
+---
+
+<div
+  class="group flex flex-col col-span-full sm:col-span-2 p-1 bg-ui-card-surface text-ui-card-text border-2 border-ui-card-border"
+  role="status"
+  aria-label="Loading product"
+>
+  <!-- Image skeleton matching ProductCard aspect ratios -->
+  <div class="relative aspect-video sm:aspect-square overflow-hidden mb-4 bg-surface-secondary animate-pulse">
+    <div class="w-full h-full bg-surface-tertiary"></div>
+  </div>
+
+  <!-- Content skeleton matching ProductCard structure -->
+  <div class="flex flex-col grow px-1 space-y-2">
+    <!-- Brand skeleton (optional, small) -->
+    <div class="h-3 bg-surface-tertiary rounded w-16 animate-pulse"></div>
+    
+    <!-- Title skeleton (matches ProductCard text-product-heading) -->
+    <div class="space-y-1">
+      <div class="h-4 bg-surface-tertiary rounded animate-pulse"></div>
+      <div class="h-4 bg-surface-tertiary rounded w-3/4 animate-pulse"></div>
+    </div>
+    
+    <!-- Price skeleton (matches ProductCard text-product-price text-2xl) -->
+    <div class="h-6 bg-surface-tertiary rounded w-20 animate-pulse"></div>
+  </div>
+</div>
