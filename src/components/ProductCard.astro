@@ -20,45 +20,54 @@ const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 const availabilitySchema = isOutOfStock
   ? "https://schema.org/OutOfStock"
   : "https://schema.org/InStock";
+
+// Generate unique IDs for progressive loading
+const imageId = `img-${product.id}`;
+const placeholderId = `placeholder-${product.id}`;
 ---
 
 <a
   href={product.url}
-  class={`group flex flex-col col-span-full sm:col-span-2 p-1 bg-ui-card-surface text-ui-card-text border-2 border-ui-card-border lg:hover:bg-ui-card-hover ${isOutOfStock ? "opacity-75" : ""}`}
+  class={`group flex flex-col col-span-full sm:col-span-2 p-1 bg-ui-card-surface text-ui-card-text border-2 border-ui-card-border lg:hover:bg-ui-card-hover transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isOutOfStock ? "opacity-75" : ""}`}
   itemscope
   itemtype="http://schema.org/Product"
 >
-  <!-- Product Image Container -->
+  <!-- Product Image Container with Progressive Loading -->
   <div class="relative aspect-video sm:aspect-square overflow-hidden mb-4">
+    <!-- Subtle gradient placeholder -->
+    <div 
+      class="absolute inset-0 bg-gradient-to-br from-surface-secondary to-surface-tertiary animate-pulse transition-opacity duration-300"
+      id={placeholderId}
+    ></div>
+    
     <img
+      id={imageId}
       src={product.image}
       alt={product.title}
-      class={`object-cover w-full h-full transition-all duration-200 lg:group-hover:scale-105 ${isOutOfStock ? "opacity-75" : ""}`}
+      class={`object-cover w-full h-full transition-all duration-300 opacity-0 lg:group-hover:scale-105 ${isOutOfStock ? "opacity-75" : ""}`}
       loading={priority ? "eager" : "lazy"}
       fetchpriority={priority ? "high" : "auto"}
-      onerror="this.src='/images/placeholder.png'"
+      decoding={priority ? "sync" : "async"}
+      onerror={`this.src='/images/placeholder.png'; this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove()`}
+      onload={`this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove()`}
     />
 
-    <!-- ONLY show overlay for true out of stock -->
-    {
-      isOutOfStock && (
-        <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-sm font-bold">
-          Sold Out
-        </div>
-      )
-    }
+    <!-- Stock Status Overlay (preserved) -->
+    {isOutOfStock && (
+      <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-sm font-bold">
+        Sold Out
+      </div>
+    )}
   </div>
 
-  <!-- Product Info -->
+  <!-- Product Info (unchanged) -->
   <div class="flex flex-col grow px-1">
     <!-- Brand (if available) -->
-    {
-      product.brand && (
-        <p class="text-xs uppercase text-content-meta" itemprop="brand">
-          {product.brand}
-        </p>
-      )
-    }
+    {product.brand && (
+      <p class="text-xs uppercase text-content-meta" itemprop="brand">
+        {product.brand}
+      </p>
+    )}
 
     <!-- Product Title -->
     <h2
