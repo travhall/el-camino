@@ -1,5 +1,5 @@
 ---
-// src/components/ArticleCard.astro - Minimal changes
+// src/components/ArticleCard.astro
 import type {
   WordPressPost,
   ExtractedWordPressData,
@@ -7,12 +7,12 @@ import type {
 } from "@/lib/wordpress/types";
 import Button from "./Button.astro";
 import { formatDate } from "@/utils/dates";
+import { Image } from "astro:assets";
 
 interface Props {
   post: WordPressPost;
   featured?: boolean;
   priority?: boolean;
-  // Minimal preprocessing - only the data extraction
   embeddedData: ExtractedWordPressData;
   fallbackContent: WordPressFallbackContent;
 }
@@ -25,14 +25,15 @@ const {
   fallbackContent,
 } = Astro.props;
 
-// Use existing image URLs - no optimization to avoid 400 errors
 const imageUrl = embeddedData.featuredMedia?.source_url || "";
 const avatarUrl = embeddedData.author?.avatar_urls?.["96"] || "";
-
 const linkText = `Read article: ${fallbackContent.title}`;
+
+// Image dimensions based on card type
+const imageWidth = featured ? 800 : 600;
+const imageHeight = featured ? 533 : 400;
 ---
 
-<!-- Keep ALL existing HTML and Tailwind classes unchanged -->
 <article
   class:list={[
     "relative overflow-hidden bg-ui-card-surface text-ui-card-text border-ui-card-border flex flex-col aspect-[3/4.5] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3",
@@ -41,12 +42,16 @@ const linkText = `Read article: ${fallbackContent.title}`;
       : "article-card transition-all duration-300",
   ]}
 >
-  <!-- Featured Image - using original URLs -->
+  <!-- Featured Image with Astro Image -->
   {
     imageUrl && (
-      <img
+      <Image
         src={imageUrl}
         alt={fallbackContent.imageAlt}
+        width={imageWidth}
+        height={imageHeight}
+        format="avif"
+        quality={85}
         class:list={[
           "object-cover w-full h-full",
           featured
@@ -56,9 +61,6 @@ const linkText = `Read article: ${fallbackContent.title}`;
         loading={priority ? "eager" : "lazy"}
         fetchpriority={priority ? "high" : "auto"}
         decoding={priority ? "sync" : "async"}
-        width={featured ? 800 : 600}
-        height={featured ? 533 : 400}
-        onerror="this.style.opacity='0.5'"
       />
     )
   }
@@ -98,14 +100,15 @@ const linkText = `Read article: ${fallbackContent.title}`;
         embeddedData.author && (
           <div class="flex items-center text-content-meta">
             {avatarUrl && (
-              <img
+              <Image
                 src={avatarUrl}
                 alt={`Profile photo of ${embeddedData.author.name}`}
+                width={32}
+                height={32}
+                format="avif"
+                quality={85}
                 class="w-8 h-8 rounded-full mr-2 ring-2 ring-ui-card-border"
                 loading="lazy"
-                width="32"
-                height="32"
-                onerror="this.style.display='none'"
               />
             )}
             <span class="font-medium">{embeddedData.author.name}</span>
@@ -132,9 +135,28 @@ const linkText = `Read article: ${fallbackContent.title}`;
   </div>
 </article>
 
-<!-- Keep existing scripts unchanged -->
 <script>
-  // Progressive enhancement for image loading
+  // Client-side fallback for failed images
+  document.addEventListener("astro:page-load", () => {
+    const images = document.querySelectorAll<HTMLImageElement>(
+      "img[src*='wordpress'], img[src*='gravatar']"
+    );
+
+    images.forEach((img) => {
+      img.addEventListener("error", () => {
+        if (img.classList.contains("w-8")) {
+          // Avatar image - hide it
+          img.style.display = "none";
+        } else {
+          // Featured image - show placeholder
+          img.style.opacity = "0.5";
+          img.alt = "Article image not available";
+        }
+      });
+    });
+  });
+
+  // Progressive enhancement for image loading (preserve existing functionality)
   document.addEventListener("astro:page-load", () => {
     const articleCards = document.querySelectorAll("article");
 
@@ -165,7 +187,7 @@ const linkText = `Read article: ${fallbackContent.title}`;
     });
   });
 
-  // Intersection Observer for analytics (optional)
+  // Intersection Observer for analytics (preserve existing functionality)
   document.addEventListener("astro:page-load", () => {
     if ("IntersectionObserver" in window) {
       const observer = new IntersectionObserver(

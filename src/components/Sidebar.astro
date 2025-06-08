@@ -2,6 +2,7 @@
 // src/components/Sidebar.astro
 import { fetchCategoryHierarchy } from "@/lib/square/categories";
 import { squareClient } from "@/lib/square/client";
+import { Image } from "astro:assets";
 
 interface Props {
   class?: string;
@@ -83,10 +84,6 @@ function getSortedCategories() {
 
 // Get sorted categories
 const prodCats = getSortedCategories();
-
-// Add debug logging to see if we're getting any image URLs
-// console.log("Category image URLs:", categoryImageUrls);
-// console.log("Category hierarchy:", categoryHierarchy);
 ---
 
 <aside
@@ -105,13 +102,16 @@ const prodCats = getSortedCategories();
           href={e.url}
           class="category-link block relative border-t-4 border-ui-button-surface overflow-hidden"
         >
-          <img
+          <Image
             src={e.src}
             alt={e.category}
+            width={600}
+            height={338}
+            format="avif"
+            quality={85}
             class="category-img object-cover w-full h-auto aspect-video opacity-20 transition-all"
             loading={index < 2 ? "eager" : "lazy"}
             decoding={index < 2 ? "sync" : "async"}
-            onerror="this.onerror=null; this.src='/images/placeholder.png';"
           />
           <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-border-secondary border-b-0 bg-surface-secondary text-content-heading transition-all">
             {e.category}
@@ -131,3 +131,19 @@ const prodCats = getSortedCategories();
     font-weight: bold;
   }
 </style>
+
+<script>
+  // Client-side fallback for failed images
+  document.addEventListener("astro:page-load", () => {
+    const images = document.querySelectorAll<HTMLImageElement>(
+      "img[src*='square'], img[src*='category-']"
+    );
+
+    images.forEach((img) => {
+      img.addEventListener("error", () => {
+        img.src = "/images/placeholder.png";
+        img.alt = "Category image not available";
+      });
+    });
+  });
+</script>

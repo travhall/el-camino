@@ -1,8 +1,10 @@
 ---
+// src/pages/order-confirmation.astro
 import Layout from "@/layouts/Layout.astro";
 import { squareClient } from "@/lib/square/client";
 import { MoneyUtils } from "@/lib/square/money";
 import type { OrderLineItem, Order } from "square";
+import { Image } from "astro:assets";
 
 // Track line item additional info
 type LineItemInfo = {
@@ -171,17 +173,21 @@ const fullTitle = `${pageTitle} | El Camino`;
             <div>
               {orderDetails.lineItems?.map((item) => (
                 <div class="flex items-center py-4 border-b border-surface-tertiary">
-                  {/* Item image */}
+                  {/* Item image with Astro Image */}
                   <div class="w-16 h-16 mr-4 bg-surface-tertiary rounded overflow-hidden">
-                    <img
+                    <Image
                       src={
                         item.uid && lineItemDetails[item.uid]?.image
-                          ? lineItemDetails[item.uid].image
+                          ? lineItemDetails[item.uid].image!
                           : "/images/placeholder.png"
                       }
                       alt={item.name || "Product"}
+                      width={64}
+                      height={64}
+                      format="avif"
+                      quality={85}
                       class="w-full h-full object-cover"
-                      onerror="this.src='/images/placeholder.png'"
+                      loading="lazy"
                     />
                   </div>
                   <div class="flex-1 flex justify-between text-content-body">
@@ -239,5 +245,17 @@ const fullTitle = `${pageTitle} | El Camino`;
       console.log("Clearing cart for confirmed order");
       cart.clear();
     }
+  });
+
+  // Client-side fallback for failed images
+  document.addEventListener("astro:page-load", () => {
+    const images = document.querySelectorAll("img[src*='square']");
+
+    images.forEach((img) => {
+      img.addEventListener("error", function (this: HTMLImageElement) {
+        this.src = "/images/placeholder.png";
+        this.alt = "Product image not available";
+      });
+    });
   });
 </script>

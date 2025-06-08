@@ -40,7 +40,13 @@ export default defineConfig({
         protocol: "https",
         hostname: "**.wp.com",
       },
+      {
+        protocol: "https",
+        hostname: "**.squarecdn.com",
+      },
     ],
+    formats: ["avif", "webp", "jpeg"],
+    quality: 85,
   },
   server: {
     compress: true,
