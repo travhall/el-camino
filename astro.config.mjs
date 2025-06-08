@@ -9,10 +9,7 @@ import path from "path";
 const isPreview = process.env.PREVIEW === "true";
 
 export default defineConfig({
-  integrations: [
-    tailwind(),
-    icon({ iconDir: "src/assets/icons" }),
-  ],
+  integrations: [tailwind(), icon({ iconDir: "src/assets/icons" })],
   output: "server",
   adapter: isPreview
     ? node({
@@ -25,6 +22,9 @@ export default defineConfig({
       }),
   experimental: {
     clientPrerender: true,
+  },
+  image: {
+    service: { entrypoint: "astro/assets/services/sharp" },
   },
   server: {
     compress: true,
