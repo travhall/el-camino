@@ -44,6 +44,10 @@ export default defineConfig({
         protocol: "https",
         hostname: "**.squarecdn.com",
       },
+      {
+        protocol: "https",
+        hostname: "**.s3.us-west-2.amazonaws.com",
+      },
     ],
     formats: ["avif", "webp", "jpeg"],
     quality: 85,
