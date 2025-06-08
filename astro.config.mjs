@@ -25,6 +25,22 @@ export default defineConfig({
   },
   image: {
     service: { entrypoint: "astro/assets/services/sharp" },
+    domains: [
+      "elcaminoskateshop.wordpress.com",
+      "api.elcaminoskateshop.com",
+      "images.unsplash.com",
+      "via.placeholder.com",
+    ],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.gravatar.com",
+      },
+      {
+        protocol: "https",
+        hostname: "**.wp.com",
+      },
+    ],
   },
   server: {
     compress: true,
