@@ -1,17 +1,23 @@
 ---
-// src/components/Nav.astro
+// src/components/Nav.astro - Clean, optimized version with performance cache
 import { fetchCategoryHierarchy } from "@/lib/square/categories";
+import { navigationCache } from "@/lib/square/navigationCache";
 import { Icon } from "astro-icon/components";
 import { siteConfig } from "@/lib/site-config";
 
 const { contact, social } = siteConfig;
 
-// Fetch Square categories for navigation - now only includes categories with products
-// console.log("Nav: Fetching categories...");
-const categoryHierarchy = await fetchCategoryHierarchy();
-// console.log(`Nav: Found ${categoryHierarchy.length} top-level categories`);
+// Enhanced category fetching with 15-minute cache
+let categoryHierarchy;
+try {
+  const navConfig = await navigationCache.getNavigationStructure();
+  categoryHierarchy = navConfig?.items || (await fetchCategoryHierarchy());
+} catch (error) {
+  console.warn("Navigation cache failed, using standard fetch");
+  categoryHierarchy = await fetchCategoryHierarchy();
+}
 
-// Static navigation items that should always appear
+// Static navigation items
 const staticNavItems = [
   {
     category: {
@@ -22,40 +28,7 @@ const staticNavItems = [
       parentCategoryId: undefined,
       rootCategoryId: undefined,
     },
-    subcategories: [
-      // {
-      //   id: "skate-team",
-      //   name: "Skate Team",
-      //   slug: "skate-team",
-      //   isTopLevel: false,
-      //   parentCategoryId: "shop",
-      //   rootCategoryId: "shop",
-      // },
-      // {
-      //   id: "tattoos",
-      //   name: "Tattoos",
-      //   slug: "tattoos",
-      //   isTopLevel: false,
-      //   parentCategoryId: "shop",
-      //   rootCategoryId: "shop",
-      // },
-      // {
-      //   id: "gallery",
-      //   name: "The Gallery",
-      //   slug: "gallery",
-      //   isTopLevel: false,
-      //   parentCategoryId: "shop",
-      //   rootCategoryId: "shop",
-      // },
-      // {
-      //   id: "community",
-      //   name: "Community",
-      //   slug: "community",
-      //   isTopLevel: false,
-      //   parentCategoryId: "shop",
-      //   rootCategoryId: "shop",
-      // },
-    ],
+    subcategories: [],
   },
   {
     category: {
@@ -70,16 +43,21 @@ const staticNavItems = [
   },
 ];
 
-// Combine static items with dynamic product categories
+// Combine navigation items
 const navItems = [
-  staticNavItems[0], // "The Shop" goes first
-  ...categoryHierarchy, // Only categories with products
-  staticNavItems[1], // "News" goes last
+  staticNavItems[0], // "The Shop" first
+  ...categoryHierarchy, // Categories with products
+  staticNavItems[1], // "News" last
 ];
 ---
 
+<!-- Skip to content link -->
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
 <nav
   class="flex flex-col md:flex-row w-full lg:gap-2 pt-32 md:pt-0 justify-center border-4 border-border-secondary md:border-0 bg-surface-secondary md:relative md:top-auto fixed -translate-x-full md:translate-x-0 transition-transform duration-400 ease-in-out inset-0 top-[3rem] z-40 [&.nav-open]:translate-x-0 overflow-y-auto md:overflow-visible"
+  role="navigation"
+  aria-label="Main navigation"
 >
   {
     navItems.map((item, index) => (
@@ -95,6 +73,8 @@ const navItems = [
           class="nav-item text-3xl md:text-lg lg:text-xl font-semibold font-display self-start md:self-center items-center flex flex-row leading-[1] p-4 text-ui-nav-text transition-all duration-300 ease-in-out relative md:hover:text-ui-nav-hover before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out md:hover:before:scale-x-100 md:hover:before:origin-left nav-link"
           style={`--item-index: ${index};`}
           data-has-children={item.subcategories.length > 0}
+          aria-expanded={item.subcategories.length > 0 ? "false" : undefined}
+          aria-haspopup={item.subcategories.length > 0 ? "menu" : undefined}
         >
           {item.category.name}
           {item.subcategories.length > 0 && (
@@ -110,6 +90,7 @@ const navItems = [
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 class="hidden md:block transform md:group-hover:rotate-180"
+                aria-hidden="true"
               >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
@@ -125,6 +106,7 @@ const navItems = [
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 class="md:hidden mobile-caret"
+                aria-hidden="true"
               >
                 <polyline points="12 18 24 30 36 18" />
               </svg>
@@ -155,7 +137,7 @@ const navItems = [
     ))
   }
 
-  {/* Mobile footer content - styled to match main footer */}
+  {/* Mobile footer */}
   <div
     class="flex flex-col gap-2 p-4 pt-12 border-t border-ui-nav-border/20 mt-6 md:hidden nav-link"
     style="--item-index: 6;"
@@ -202,10 +184,31 @@ const navItems = [
 </nav>
 
 <style>
+  /* Skip link */
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: rgb(var(--ui-nav-surface-rgb));
+    color: rgb(var(--ui-nav-text-rgb));
+    padding: 8px;
+    text-decoration: none;
+    border-radius: 4px;
+    border: 2px solid rgb(var(--ui-nav-hover-rgb));
+    z-index: 100;
+    font-weight: 600;
+    transition: top 0.3s;
+  }
+
+  .skip-link:focus {
+    top: 6px;
+  }
+
   nav {
     view-transition-name: nav;
   }
 
+  /* Mobile animations */
   @media (max-width: 768px) {
     .nav-link {
       opacity: 0;
@@ -226,7 +229,6 @@ const navItems = [
       overflow: hidden;
       background-color: rgba(var(--ui-nav-hover-rgb, 255, 255, 255), 0.05);
       border-left: 2px solid rgba(var(--ui-nav-border-rgb, 255, 255, 255), 0.1);
-      /* margin-left: 1.5rem; */
       padding-left: 0.5rem;
       border-radius: 0 0 4px 4px;
     }
@@ -245,7 +247,6 @@ const navItems = [
       transform: translateY(0);
     }
 
-    /* Caret rotation for mobile */
     .category-group.open .mobile-caret {
       transform: rotate(180deg);
     }
@@ -257,38 +258,80 @@ const navItems = [
       }
     }
   }
+
+  /* Focus styles */
+  .nav-item:focus-visible {
+    outline: 2px solid rgb(var(--ui-nav-hover-rgb));
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+
+  .dropdown-menu a:focus-visible {
+    outline: 2px solid rgb(var(--ui-nav-hover-rgb));
+    outline-offset: -2px;
+    border-radius: 0.25rem;
+  }
 </style>
 
 <script>
   function setupNavigation() {
-    // Mobile menu dropdown handling
     const categoryGroups = document.querySelectorAll(".category-group");
 
     categoryGroups.forEach((group) => {
       const link = group.querySelector(".nav-item");
+      const dropdown = group.querySelector(".dropdown-menu");
       const hasChildren = link?.getAttribute("data-has-children") === "true";
 
-      if (hasChildren && link) {
-        const handleMobileClick = (event: Event) => {
+      if (hasChildren && link && dropdown) {
+        // Mobile click toggle
+        link.addEventListener("click", (event: Event) => {
           if (window.innerWidth <= 768) {
             event.preventDefault();
 
-            // Close any other open groups first
+            // Close others
             categoryGroups.forEach((otherGroup) => {
               if (
                 otherGroup !== group &&
                 otherGroup.classList.contains("open")
               ) {
                 otherGroup.classList.remove("open");
+                const otherLink = otherGroup.querySelector(
+                  ".nav-item"
+                ) as HTMLElement;
+                if (otherLink) otherLink.setAttribute("aria-expanded", "false");
               }
             });
 
-            // Toggle current group
-            group.classList.toggle("open");
+            // Toggle current
+            const isOpen = group.classList.contains("open");
+            if (isOpen) {
+              group.classList.remove("open");
+              link.setAttribute("aria-expanded", "false");
+            } else {
+              group.classList.add("open");
+              link.setAttribute("aria-expanded", "true");
+            }
           }
-        };
+        });
 
-        link.addEventListener("click", handleMobileClick);
+        // Focus management for hover + tab workflow
+        const dropdownLinks = dropdown.querySelectorAll("a");
+        dropdownLinks.forEach((dropdownLink) => {
+          dropdownLink.addEventListener("focus", () => {
+            group.classList.add("open");
+            link.setAttribute("aria-expanded", "true");
+          });
+        });
+
+        // Close when focus leaves
+        group.addEventListener("focusout", (event) => {
+          setTimeout(() => {
+            if (!group.contains(document.activeElement)) {
+              group.classList.remove("open");
+              link.setAttribute("aria-expanded", "false");
+            }
+          }, 0);
+        });
       }
     });
   }
@@ -301,19 +344,18 @@ const navItems = [
       element.style.transform = "";
     });
 
-    // Reset all open dropdowns when nav closes
     document.querySelectorAll(".category-group.open").forEach((group) => {
       group.classList.remove("open");
     });
   }
 
-  // Reset animations when menu closes
+  // Mobile animation observer
   const nav = document.querySelector("nav");
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       if (mutation.attributeName === "class") {
         if (!nav?.classList.contains("nav-open")) {
-          setTimeout(resetNavItems, 300); // Wait for slide out transition
+          setTimeout(resetNavItems, 300);
         }
       }
     });
@@ -323,12 +365,11 @@ const navItems = [
     observer.observe(nav, { attributes: true });
   }
 
-  // Clean up observer on page transitions
+  // Page transitions
   document.addEventListener("astro:before-swap", () => {
     observer.disconnect();
   });
 
-  // Reinitialize on new page
   document.addEventListener("astro:after-swap", () => {
     const newNav = document.querySelector("nav");
     if (newNav) {
@@ -337,7 +378,7 @@ const navItems = [
     setupNavigation();
   });
 
-  // Initial setup
+  // Initialize
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", setupNavigation);
   } else {

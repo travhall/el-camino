@@ -1,4 +1,6 @@
 // /src/lib/square/types.ts
+
+import type { AppError } from "./errorUtils";
 export interface Money {
   amount: number; // Always in cents
   currency: string;
@@ -326,3 +328,61 @@ export interface ProductLoadingOptions {
 }
 
 export type DisplayPreference = 24 | 48 | 96 | "all";
+
+/**
+ * Navigation-specific interfaces that extend existing Category system
+ */
+export interface NavigationItem {
+  category: Category;
+  subcategories: Category[];
+  hasProducts?: boolean; // Leverage existing product checking
+}
+
+export interface NavigationConfig {
+  items: NavigationItem[];
+  staticItems: StaticNavigationItem[];
+  mobileBreakpoint: number;
+  animationDuration: number;
+}
+
+export interface StaticNavigationItem {
+  id: string;
+  name: string;
+  slug: string;
+  url: string;
+  subcategories: StaticNavigationSubItem[];
+}
+
+export interface StaticNavigationSubItem {
+  id: string;
+  name: string;
+  slug: string;
+  url: string;
+}
+
+/**
+ * Navigation accessibility interfaces
+ */
+export interface NavigationAccessibility {
+  hasSubmenu: boolean;
+  isExpanded: boolean;
+  ariaLabel: string;
+  keyboardSupport: boolean;
+}
+
+/**
+ * Navigation performance metrics
+ */
+export interface NavigationMetrics {
+  renderTime: number;
+  cacheHitRate: number;
+  interactionLatency: number;
+}
+
+/**
+ * Navigation error states
+ */
+export interface NavigationError extends AppError {
+  fallbackUsed: boolean;
+  staticItemsOnly: boolean;
+}
