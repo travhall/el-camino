@@ -1,0 +1,50 @@
+---
+// src/pages/test-brands.astro - PROPER implementation using existing components
+import Layout from "@/layouts/Layout.astro";
+import ProductFilters from "@/components/ProductFilters.astro";
+import FilterableProductGrid from "@/components/FilterableProductGrid.astro";
+import { fetchProducts } from "@/lib/square/client";
+import { extractFilterOptions } from "@/lib/square/filterUtils";
+
+const products = await fetchProducts();
+const filterOptions = extractFilterOptions(products);
+
+// Debug logging
+console.log("Products loaded:", products.length);
+console.log("Products with brands:", products.filter((p) => p.brand).length);
+console.log("Brand options:", filterOptions.brands.length);
+---
+
+<Layout title="Filter Test - Using Proper Components">
+  <!-- Responsive Grid Layout (no fixed sidebar) -->
+  <div class="min-h-screen bg-surface-primary">
+    <!-- Container with responsive columns -->
+    <div
+      class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-6 p-4 max-w-[120rem] mx-auto"
+    >
+      <!-- Filter Sidebar: Brands ONLY (no categories here - those go on category pages) -->
+      <aside class="lg:col-span-1">
+        <ProductFilters
+          filterOptions={filterOptions}
+          totalProducts={products.length}
+          filteredCount={products.length}
+        />
+      </aside>
+
+      <!-- Main Content -->
+      <main class="lg:col-span-3 xl:col-span-4">
+        <div class="mb-6">
+          <h1 class="text-4xl font-bold text-content-heading mb-2">
+            Brand Filter Test
+          </h1>
+          <p class="text-content-meta">
+            Using proper ProductFilters + FilterableProductGrid components
+          </p>
+        </div>
+
+        <!-- Products using proper component -->
+        <FilterableProductGrid products={products} />
+      </main>
+    </div>
+  </div>
+</Layout>

@@ -9,7 +9,7 @@ import {
   buildAvailableAttributes,
 } from "./variationParser";
 import { createProductUrl } from "./slugUtils";
-import { requestDeduplicator } from './requestDeduplication';
+import { requestDeduplicator } from "./requestDeduplication";
 
 function validateEnvironment() {
   const missingVars = [];
@@ -41,9 +41,33 @@ export const jsonStringifyReplacer = (_key: string, value: any) => {
   return value;
 };
 
+/**
+ * Extract brand value from custom attributes
+ */
+function extractBrandValue(customAttributeValues: any): string {
+  if (!customAttributeValues) return "";
+
+  // Look for any attribute with 'brand' in the key name (case insensitive)
+  const brandAttribute = Object.values(customAttributeValues).find(
+    (attr: any) =>
+      attr?.name?.toLowerCase() === "brand" ||
+      attr?.key?.toLowerCase() === "brand"
+  ) as any;
+
+  if (
+    brandAttribute &&
+    brandAttribute.type === "STRING" &&
+    brandAttribute.stringValue
+  ) {
+    return brandAttribute.stringValue;
+  }
+
+  return "";
+}
+
 export async function fetchProducts(): Promise<Product[]> {
-  const cacheKey = 'products:all';
-  
+  const cacheKey = "products:all";
+
   return requestDeduplicator.dedupe(cacheKey, () =>
     defaultCircuitBreaker.execute(async () => {
       try {
@@ -63,12 +87,15 @@ export async function fetchProducts(): Promise<Product[]> {
           return [];
         }
 
-        // First, extract basic product info without async operations
+        // First, extract basic product info including brand from custom attributes
         const productsWithBasicInfo = response.result.objects
           .filter((item) => item.type === "ITEM")
           .map((item) => {
             const variation = item.itemData?.variations?.[0];
             const priceMoney = variation?.itemVariationData?.priceMoney;
+
+            // Extract brand from custom attributes
+            const brandValue = extractBrandValue(item.customAttributeValues);
 
             return {
               id: item.id,
@@ -78,6 +105,7 @@ export async function fetchProducts(): Promise<Product[]> {
               description: item.itemData?.description || "",
               imageId: item.itemData?.imageIds?.[0] || null,
               price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
+              brand: brandValue, // Add brand extraction
             };
           });
 
@@ -92,7 +120,7 @@ export async function fetchProducts(): Promise<Product[]> {
           Object.assign(imageUrlMap, batchedImages);
         }
 
-        // Assemble final products
+        // Assemble final products with brand data
         const products = productsWithBasicInfo.map((p) => ({
           id: p.id,
           catalogObjectId: p.catalogObjectId,
@@ -105,7 +133,12 @@ export async function fetchProducts(): Promise<Product[]> {
               : "/images/placeholder.png",
           price: p.price,
           url: createProductUrl({ title: p.title }),
+          brand: p.brand || undefined, // Only include if brand exists
         }));
+
+        console.log(
+          `[fetchProducts] Fetched ${products.length} products, ${products.filter((p) => p.brand).length} with brands`
+        );
 
         return products;
       } catch (error) {
@@ -118,7 +151,7 @@ export async function fetchProducts(): Promise<Product[]> {
 
 export async function fetchProduct(id: string): Promise<Product | null> {
   const cacheKey = `product:${id}`;
-  
+
   return requestDeduplicator.dedupe(cacheKey, () =>
     defaultCircuitBreaker.execute(async () => {
       try {
@@ -138,7 +171,8 @@ export async function fetchProduct(id: string): Promise<Product | null> {
 
         // Use first variation as default
         const defaultVariation = variations[0];
-        const defaultPriceMoney = defaultVariation?.itemVariationData?.priceMoney;
+        const defaultPriceMoney =
+          defaultVariation?.itemVariationData?.priceMoney;
 
         if (!defaultVariation || !defaultPriceMoney) return null;
 
@@ -207,7 +241,9 @@ export async function fetchProduct(id: string): Promise<Product | null> {
                   // Priority order: custom unit name > custom abbreviation > standard unit type
                   if (unitData?.measurementUnit?.customUnit?.name) {
                     unit = unitData.measurementUnit.customUnit.name;
-                    console.log(`[fetchProduct] Using custom unit name: ${unit}`);
+                    console.log(
+                      `[fetchProduct] Using custom unit name: ${unit}`
+                    );
                   } else if (
                     unitData?.measurementUnit?.customUnit?.abbreviation
                   ) {
@@ -256,24 +292,8 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         // Build available attributes map
         const availableAttributes = buildAvailableAttributes(productVariations);
 
-        // Get custom attributes, specifically looking for 'Brand'
-        let brandValue = "";
-        if (item.customAttributeValues) {
-          // Look for any attribute with 'brand' in the key name (case insensitive)
-          const brandAttribute = Object.values(item.customAttributeValues).find(
-            (attr) =>
-              attr.name?.toLowerCase() === "brand" ||
-              attr.key?.toLowerCase() === "brand"
-          );
-
-          if (
-            brandAttribute &&
-            brandAttribute.type === "STRING" &&
-            brandAttribute.stringValue
-          ) {
-            brandValue = brandAttribute.stringValue;
-          }
-        }
+        // Extract brand using the same function as fetchProducts
+        const brandValue = extractBrandValue(item.customAttributeValues);
 
         // Use default variation unit or first found unit
         const defaultUnit = productVariations[0]?.unit ?? "";
@@ -289,7 +309,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
           url: createProductUrl({ title: item.itemData?.name || "" }),
           variations: productVariations,
           selectedVariationId: defaultVariation.id,
-          brand: brandValue,
+          brand: brandValue || undefined, // Only include if brand exists
           unit: defaultUnit,
           availableAttributes: availableAttributes, // Add available attributes
         };
@@ -300,6 +320,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
             variations: productVariations.length,
             hasUnit: !!product.unit,
             unit: product.unit,
+            brand: product.brand,
             measurementUnitIds: variations
               .map((v) => v.itemVariationData?.measurementUnitId)
               .filter(Boolean),

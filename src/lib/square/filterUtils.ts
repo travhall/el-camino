@@ -1,0 +1,152 @@
+// src/lib/square/filterUtils.ts
+import type {
+  Product,
+  ProductFilters,
+  FilterOptions,
+  BrandOption,
+} from "./types";
+import { createFilterSlug } from "./types";
+
+/**
+ * Extract filter options from product array
+ * Follows existing patterns from categories.ts
+ */
+export function extractFilterOptions(products: Product[]): FilterOptions {
+  const brandCounts = new Map<string, number>();
+
+  // Count brands, following existing data processing patterns
+  products.forEach((product) => {
+    if (product.brand) {
+      brandCounts.set(product.brand, (brandCounts.get(product.brand) || 0) + 1);
+    }
+  });
+
+  // Convert to sorted brand options
+  const brands: BrandOption[] = Array.from(brandCounts.entries())
+    .map(([name, count]) => ({
+      name,
+      count,
+      slug: createFilterSlug(name),
+    }))
+    .sort((a, b) => b.count - a.count); // Sort by popularity
+
+  return { brands };
+}
+
+/**
+ * Filter products based on active filters
+ * Pure function - no side effects
+ */
+export function filterProducts(
+  products: Product[],
+  filters: ProductFilters
+): Product[] {
+  return products.filter((product) => {
+    // Brand filtering
+    if (filters.brands.length > 0) {
+      if (!product.brand) return false;
+      return filters.brands.includes(product.brand);
+    }
+
+    return true;
+  });
+}
+
+/**
+ * Parse filters from URL search params
+ * Follows existing URL handling patterns
+ */
+export function parseFiltersFromURL(
+  searchParams: URLSearchParams
+): ProductFilters {
+  const brands = searchParams.get("brands")?.split(",").filter(Boolean) || [];
+
+  return { brands };
+}
+
+/**
+ * Convert filters to URL search params
+ * Returns new URLSearchParams for immutability
+ */
+export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
+  const params = new URLSearchParams();
+
+  if (filters.brands.length > 0) {
+    params.set("brands", filters.brands.join(","));
+  }
+
+  return params;
+}
+
+/**
+ * Update URL with new filters
+ * Follows existing navigation patterns
+ */
+export function updateURLWithFilters(filters: ProductFilters): void {
+  const params = filtersToURLParams(filters);
+  const newURL = `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`;
+
+  // Use pushState for bookmarkable URLs
+  window.history.pushState({}, "", newURL);
+}
+
+/**
+ * Get active filters count for UI badges
+ */
+export function getActiveFiltersCount(filters: ProductFilters): number {
+  return filters.brands.length;
+}
+
+/**
+ * Check if any filters are active
+ */
+export function hasActiveFilters(filters: ProductFilters): boolean {
+  return filters.brands.length > 0;
+}
+
+/**
+ * Clear all filters
+ */
+export function clearAllFilters(): ProductFilters {
+  return { brands: [] };
+}
+
+/**
+ * Add brand to active filters
+ */
+export function addBrandFilter(
+  filters: ProductFilters,
+  brand: string
+): ProductFilters {
+  if (filters.brands.includes(brand)) return filters;
+
+  return {
+    ...filters,
+    brands: [...filters.brands, brand].sort(),
+  };
+}
+
+/**
+ * Remove brand from active filters
+ */
+export function removeBrandFilter(
+  filters: ProductFilters,
+  brand: string
+): ProductFilters {
+  return {
+    ...filters,
+    brands: filters.brands.filter((b) => b !== brand),
+  };
+}
+
+/**
+ * Toggle brand filter on/off
+ */
+export function toggleBrandFilter(
+  filters: ProductFilters,
+  brand: string
+): ProductFilters {
+  return filters.brands.includes(brand)
+    ? removeBrandFilter(filters, brand)
+    : addBrandFilter(filters, brand);
+}

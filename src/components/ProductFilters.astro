@@ -1,0 +1,386 @@
+---
+// src/components/ProductFilters.astro
+import type { FilterOptions } from "@/lib/square/types";
+
+interface Props {
+  filterOptions: FilterOptions;
+  totalProducts: number;
+  filteredCount: number;
+}
+
+const { filterOptions, totalProducts, filteredCount } = Astro.props;
+---
+
+<!-- Responsive Filter Container with proper sticky -->
+<div class="lg:block">
+  <!-- Desktop: Sticky card with proper spacing -->
+  <div
+    class="hidden lg:block bg-surface-secondary rounded-lg p-6 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto"
+  >
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-semibold text-content-heading">Filters</h2>
+      <button
+        id="clear-filters"
+        class="text-sm text-content-meta hover:text-content-emphasis transition-colors hidden"
+      >
+        Clear All
+      </button>
+    </div>
+
+    <!-- Results Count -->
+    <div class="mb-6 p-3 bg-surface-tertiary rounded">
+      <p class="text-sm text-content-meta">
+        Showing <span id="filtered-count">{filteredCount}</span> of <span
+          >{totalProducts}</span
+        > products
+      </p>
+    </div>
+
+    <!-- Brand Filter Section -->
+    {
+      filterOptions.brands.length > 0 && (
+        <div class="mb-8">
+          <h3 class="text-lg font-medium text-content-heading mb-4">Brand</h3>
+          <div id="brand-filters" class="space-y-2 max-h-80 overflow-y-auto">
+            {filterOptions.brands.map((brand) => (
+              <label class="flex items-center group cursor-pointer p-2 rounded hover:bg-surface-tertiary transition-colors">
+                <input
+                  type="checkbox"
+                  name="brand"
+                  value={brand.name}
+                  class="mr-3 rounded border-ui-input-border text-ui-accent focus:ring-ui-accent"
+                />
+                <span class="flex-1 text-content-body group-hover:text-content-emphasis">
+                  {brand.name}
+                </span>
+                <span class="text-sm text-content-meta">({brand.count})</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )
+    }
+  </div>
+</div>
+
+<!-- Mobile Filter Button -->
+<button
+  id="mobile-filter-toggle"
+  class="lg:hidden fixed bottom-4 right-4 bg-ui-button-primary text-ui-button-primary-text rounded-full p-4 shadow-lg z-50 transition-transform hover:scale-105"
+  aria-label="Open Filters"
+>
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"
+    ></path>
+  </svg>
+  <span
+    id="filter-count-badge"
+    class="absolute -top-1 -right-1 bg-ui-accent text-white text-xs rounded-full min-w-[1.25rem] h-5 items-center justify-center px-1 hidden"
+  >
+    0
+  </span>
+</button>
+
+<!-- Mobile Drawer Overlay -->
+<div
+  id="mobile-filter-overlay"
+  class="lg:hidden fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 opacity-0 pointer-events-none"
+>
+</div>
+
+<!-- Mobile Filter Drawer -->
+<div
+  id="mobile-filter-drawer"
+  class="lg:hidden fixed bottom-0 left-0 right-0 bg-surface-secondary border-t border-ui-border z-50 max-h-[80vh] overflow-y-auto transform translate-y-full transition-transform duration-300"
+>
+  <div class="p-4">
+    <!-- Mobile Header -->
+    <div
+      class="flex items-center justify-between mb-4 pb-4 border-b border-ui-border"
+    >
+      <h2 class="text-lg font-semibold text-content-heading">
+        Filter Products
+      </h2>
+      <button
+        id="mobile-filter-close"
+        class="p-1 text-content-meta hover:text-content-emphasis"
+        aria-label="Close Filters"
+      >
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Results Count -->
+    <div class="mb-4 p-3 bg-surface-tertiary rounded">
+      <p class="text-sm text-content-meta">
+        <span id="mobile-filtered-count">{filteredCount}</span> of {
+          totalProducts
+        } products
+      </p>
+    </div>
+
+    <!-- Mobile Brand Filter Section -->
+    <div class="mb-6">
+      <h3 class="text-base font-medium text-content-heading mb-3">Brand</h3>
+      <div id="mobile-brand-filters" class="space-y-3 max-h-64 overflow-y-auto">
+        {
+          filterOptions.brands.map((brand) => (
+            <label class="flex items-center justify-between group cursor-pointer p-2 rounded hover:bg-surface-tertiary">
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  name="brand"
+                  value={brand.name}
+                  class="mr-3 rounded border-ui-input-border text-ui-accent focus:ring-ui-accent"
+                />
+                <span class="text-content-body group-hover:text-content-emphasis">
+                  {brand.name}
+                </span>
+              </div>
+              <span class="text-sm text-content-meta">({brand.count})</span>
+            </label>
+          ))
+        }
+      </div>
+    </div>
+
+    <!-- Mobile Actions -->
+    <div class="flex gap-3 pt-4 border-t border-ui-border">
+      <button
+        id="mobile-clear-filters"
+        class="flex-1 py-2 px-4 border border-ui-button-border text-ui-button-text rounded hover:bg-ui-button-hover transition-colors hidden"
+      >
+        Clear All
+      </button>
+      <button
+        id="mobile-apply-close"
+        class="flex-1 py-2 px-4 bg-ui-button-primary text-ui-button-primary-text rounded hover:bg-ui-button-primary-hover transition-colors"
+      >
+        Apply
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  import {
+    parseFiltersFromURL,
+    updateURLWithFilters,
+    hasActiveFilters,
+    getActiveFiltersCount,
+    clearAllFilters,
+    toggleBrandFilter,
+  } from "@/lib/square/filterUtils";
+  import type { ProductFilters as IProductFilters } from "@/lib/square/types";
+
+  class ProductFilters {
+    private mobileToggle: HTMLElement;
+    private mobileDrawer: HTMLElement;
+    private mobileOverlay: HTMLElement;
+    private mobileClose: HTMLElement;
+    private mobileApply: HTMLElement;
+    private clearButtons: NodeListOf<HTMLElement>;
+    private currentFilters: IProductFilters = { brands: [] };
+
+    constructor() {
+      this.mobileToggle = document.getElementById("mobile-filter-toggle")!;
+      this.mobileDrawer = document.getElementById("mobile-filter-drawer")!;
+      this.mobileOverlay = document.getElementById("mobile-filter-overlay")!;
+      this.mobileClose = document.getElementById("mobile-filter-close")!;
+      this.mobileApply = document.getElementById("mobile-apply-close")!;
+      this.clearButtons = document.querySelectorAll(
+        "#clear-filters, #mobile-clear-filters"
+      );
+
+      this.initializeFromURL();
+      this.setupEventListeners();
+    }
+
+    private initializeFromURL(): void {
+      const params = new URLSearchParams(window.location.search);
+      this.currentFilters = parseFiltersFromURL(params);
+
+      // Set initial checkbox states
+      this.currentFilters.brands.forEach((brand) => {
+        this.updateCheckboxes(brand, true);
+      });
+
+      this.updateUI();
+      this.dispatchFilterEvent();
+    }
+
+    private setupEventListeners(): void {
+      // Filter change handlers
+      document.addEventListener("change", (event) => {
+        const target = event.target as HTMLInputElement;
+        if (target.type === "checkbox" && target.name === "brand") {
+          this.handleBrandFilterChange(target);
+        }
+      });
+
+      // Mobile drawer controls
+      this.mobileToggle.addEventListener(
+        "click",
+        this.openMobileDrawer.bind(this)
+      );
+      this.mobileOverlay.addEventListener(
+        "click",
+        this.closeMobileDrawer.bind(this)
+      );
+      this.mobileClose.addEventListener(
+        "click",
+        this.closeMobileDrawer.bind(this)
+      );
+      this.mobileApply.addEventListener(
+        "click",
+        this.closeMobileDrawer.bind(this)
+      );
+
+      // Clear filters
+      this.clearButtons.forEach((button) => {
+        button.addEventListener("click", this.clearAllFilters.bind(this));
+      });
+
+      // Listen for external clear events
+      window.addEventListener(
+        "clearAllFilters",
+        this.handleExternalClear.bind(this)
+      );
+
+      // Handle browser back/forward
+      window.addEventListener("popstate", this.initializeFromURL.bind(this));
+    }
+
+    private handleBrandFilterChange(checkbox: HTMLInputElement): void {
+      const brand = checkbox.value;
+
+      console.log(
+        "[ProductFilters] Brand filter changed:",
+        brand,
+        "checked:",
+        checkbox.checked
+      );
+      console.log(
+        "[ProductFilters] Current filters before:",
+        this.currentFilters
+      );
+
+      // Update filters
+      this.currentFilters = toggleBrandFilter(this.currentFilters, brand);
+
+      console.log(
+        "[ProductFilters] Current filters after:",
+        this.currentFilters
+      );
+
+      // Sync checkboxes between desktop and mobile
+      this.updateCheckboxes(brand, checkbox.checked);
+
+      // Update URL and UI
+      updateURLWithFilters(this.currentFilters);
+      this.updateUI();
+      this.dispatchFilterEvent();
+    }
+
+    private updateCheckboxes(brand: string, checked: boolean): void {
+      const checkboxes = document.querySelectorAll(
+        `input[name="brand"][value="${brand}"]`
+      ) as NodeListOf<HTMLInputElement>;
+      checkboxes.forEach((checkbox) => {
+        checkbox.checked = checked;
+      });
+    }
+
+    private updateUI(): void {
+      const hasFilters = hasActiveFilters(this.currentFilters);
+      const activeCount = getActiveFiltersCount(this.currentFilters);
+
+      // Show/hide clear buttons
+      this.clearButtons.forEach((button) => {
+        button.style.display = hasFilters ? "block" : "none";
+      });
+
+      // Update mobile badge
+      const badge = document.getElementById("filter-count-badge");
+      if (badge) {
+        if (hasFilters) {
+          badge.textContent = activeCount.toString();
+          badge.style.display = "flex";
+          badge.classList.remove("hidden");
+          badge.classList.add("flex");
+        } else {
+          badge.style.display = "none";
+          badge.classList.add("hidden");
+          badge.classList.remove("flex");
+        }
+      }
+    }
+
+    private dispatchFilterEvent(): void {
+      const event = new CustomEvent("filtersChanged", {
+        detail: { filters: this.currentFilters },
+      });
+      window.dispatchEvent(event);
+    }
+
+    private clearAllFilters(): void {
+      this.currentFilters = clearAllFilters();
+
+      // Uncheck all checkboxes
+      const checkboxes = document.querySelectorAll(
+        'input[name="brand"]'
+      ) as NodeListOf<HTMLInputElement>;
+      checkboxes.forEach((checkbox) => {
+        checkbox.checked = false;
+      });
+
+      updateURLWithFilters(this.currentFilters);
+      this.updateUI();
+      this.dispatchFilterEvent();
+    }
+
+    private handleExternalClear(): void {
+      this.clearAllFilters();
+    }
+
+    private openMobileDrawer(): void {
+      this.mobileOverlay.classList.remove("pointer-events-none", "opacity-0");
+      this.mobileDrawer.classList.remove("translate-y-full");
+
+      // Prevent body scroll
+      document.body.style.overflow = "hidden";
+    }
+
+    private closeMobileDrawer(): void {
+      this.mobileOverlay.classList.add("opacity-0");
+      this.mobileDrawer.classList.add("translate-y-full");
+
+      setTimeout(() => {
+        this.mobileOverlay.classList.add("pointer-events-none");
+      }, 300);
+
+      // Restore body scroll
+      document.body.style.overflow = "";
+    }
+  }
+
+  // Initialize on page load
+  document.addEventListener("astro:page-load", () => {
+    new ProductFilters();
+  });
+</script>

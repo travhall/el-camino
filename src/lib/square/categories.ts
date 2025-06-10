@@ -1,4 +1,4 @@
-// src/lib/square/categories.ts - OPTIMIZED VERSION
+// src/lib/square/categories.ts - WITH BRAND EXTRACTION
 import { squareClient } from "./client";
 import { batchGetImageUrls } from "./imageUtils";
 import type {
@@ -28,6 +28,30 @@ function getSortIndex(name: string): number {
     "Gift Cards & More": 3,
   };
   return orderMap[name] ?? 999;
+}
+
+/**
+ * Extract brand value from custom attributes (same logic as client.ts)
+ */
+function extractBrandValue(customAttributeValues: any): string {
+  if (!customAttributeValues) return "";
+
+  // Look for any attribute with 'brand' in the key name (case insensitive)
+  const brandAttribute = Object.values(customAttributeValues).find(
+    (attr: any) =>
+      attr?.name?.toLowerCase() === "brand" ||
+      attr?.key?.toLowerCase() === "brand"
+  ) as any;
+
+  if (
+    brandAttribute &&
+    brandAttribute.type === "STRING" &&
+    brandAttribute.stringValue
+  ) {
+    return brandAttribute.stringValue;
+  }
+
+  return "";
 }
 
 export async function fetchCategories(): Promise<Category[]> {
@@ -111,9 +135,8 @@ export async function fetchProductsByCategory(
         searchRequest.cursor = cursor;
       }
 
-      const { result } = await squareClient.catalogApi.searchCatalogItems(
-        searchRequest
-      );
+      const { result } =
+        await squareClient.catalogApi.searchCatalogItems(searchRequest);
 
       if (!result?.items?.length) {
         return {
@@ -160,6 +183,9 @@ export async function fetchProductsByCategory(
           ? measurementUnitsMap[measurementUnitId] || undefined
           : undefined;
 
+        // ADDED: Extract brand from custom attributes
+        const brandValue = extractBrandValue(item.customAttributeValues);
+
         return {
           id: item.id,
           catalogObjectId: item.id,
@@ -170,8 +196,13 @@ export async function fetchProductsByCategory(
           price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
           url: createProductUrl({ title: item.itemData?.name || "" }),
           unit: unit,
+          brand: brandValue || undefined, // ADDED: Include brand
         };
       });
+
+      console.log(
+        `[fetchProductsByCategory] Fetched ${products.length} products, ${products.filter((p) => p.brand).length} with brands`
+      );
 
       return {
         products,
@@ -198,9 +229,8 @@ async function fetchMeasurementUnits(
   const results = await Promise.allSettled(
     unitIds.map(async (unitId) => {
       try {
-        const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-          unitId
-        );
+        const { result } =
+          await squareClient.catalogApi.retrieveCatalogObject(unitId);
 
         if (result.object?.type === "MEASUREMENT_UNIT") {
           const unitData = result.object.measurementUnitData;

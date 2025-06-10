@@ -386,3 +386,36 @@ export interface NavigationError extends AppError {
   fallbackUsed: boolean;
   staticItemsOnly: boolean;
 }
+
+/**
+ * Product filtering interfaces
+ */
+export interface ProductFilters {
+  brands: string[];
+  // Future: categories, price ranges, etc.
+}
+
+export interface FilterOptions {
+  brands: BrandOption[];
+}
+
+export interface BrandOption {
+  name: string;
+  count: number;
+  slug: string;
+}
+
+export interface FilterState {
+  activeBrands: Set<string>;
+}
+
+/**
+ * Filter utility functions
+ */
+export function createFilterSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .trim();
+}

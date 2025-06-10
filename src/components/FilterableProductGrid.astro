@@ -1,0 +1,251 @@
+---
+// src/components/FilterableProductGrid.astro
+import ProductCard from "./ProductCard.astro";
+import type { Product } from "@/lib/square/types";
+
+interface Props {
+  products: Product[];
+}
+
+const { products } = Astro.props;
+---
+
+<div
+  id="filterable-product-grid"
+  class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1 transition-opacity duration-300"
+  data-products={JSON.stringify(products)}
+>
+  {
+    products.map((product, index) => (
+      <div
+        class="product-card-wrapper grid"
+        data-product-id={product.id}
+        data-brand={product.brand || ""}
+      >
+        <ProductCard product={product} priority={index < 8} />
+      </div>
+    ))
+  }
+</div>
+
+<!-- No Results State -->
+<div
+  id="no-results"
+  class="hidden justify-center items-center col-span-full py-16 text-center"
+>
+  <div class="text-center">
+    <div class="text-6xl mb-4 opacity-20">🔍</div>
+    <h2 class="text-2xl font-display font-bold text-content-heading mb-2">
+      No products found
+    </h2>
+    <p class="text-content-meta mb-6 max-w-md">
+      Try adjusting your filters or browse all products.
+    </p>
+    <button
+      id="clear-filters-cta"
+      class="px-6 py-2 bg-ui-button-surface text-ui-button-text border border-ui-button-border rounded hover:bg-ui-button-hover transition-colors"
+    >
+      Clear Filters
+    </button>
+  </div>
+</div>
+
+<script>
+  import {
+    filterProducts,
+    parseFiltersFromURL,
+    updateURLWithFilters,
+    hasActiveFilters,
+    clearAllFilters,
+  } from "@/lib/square/filterUtils";
+  import type { Product, ProductFilters } from "@/lib/square/types";
+
+  class FilterableProductGrid {
+    private grid: HTMLElement;
+    private noResults: HTMLElement;
+    private allProducts: Product[];
+    private productWrappers: HTMLElement[];
+    private isFiltering = false;
+
+    constructor() {
+      this.grid = document.getElementById("filterable-product-grid")!;
+      this.noResults = document.getElementById("no-results")!;
+
+      // Parse products from data attribute
+      this.allProducts = JSON.parse(this.grid.dataset.products || "[]");
+
+      // Get all product wrapper elements
+      this.productWrappers = Array.from(
+        this.grid.querySelectorAll(".product-card-wrapper")
+      );
+
+      this.setupEventListeners();
+      this.handleInitialFilters();
+    }
+
+    private setupEventListeners(): void {
+      // Listen for filter changes from ProductFilters component
+      window.addEventListener(
+        "filtersChanged",
+        this.handleFiltersChanged.bind(this) as EventListener
+      );
+
+      // Listen for infinite scroll adding more products
+      window.addEventListener(
+        "addMoreProducts",
+        this.handleAddMoreProducts.bind(this) as EventListener
+      );
+
+      // Clear filters CTA
+      document
+        .getElementById("clear-filters-cta")
+        ?.addEventListener("click", () => {
+          this.clearAllFilters();
+        });
+    }
+
+    private handleInitialFilters(): void {
+      const params = new URLSearchParams(window.location.search);
+      const filters = parseFiltersFromURL(params);
+
+      if (hasActiveFilters(filters)) {
+        this.applyFilters(filters);
+      }
+    }
+
+    private handleFiltersChanged(event: CustomEvent): void {
+      const { filters } = event.detail;
+      this.applyFilters(filters);
+    }
+
+    private applyFilters(filters: ProductFilters): void {
+      if (this.isFiltering) return;
+      this.isFiltering = true;
+
+      console.log("[FilterableProductGrid] Applying filters:", filters);
+
+      // Add loading state
+      this.grid.style.opacity = "0.6";
+
+      // Use requestAnimationFrame for smooth transitions
+      requestAnimationFrame(() => {
+        const filteredProducts = filterProducts(this.allProducts, filters);
+        const filteredIds = new Set(filteredProducts.map((p) => p.id));
+
+        console.log(
+          "[FilterableProductGrid] Showing products:",
+          filteredProducts.length
+        );
+
+        this.updateGrid(filteredIds);
+        this.updateCounts(filteredProducts.length);
+
+        // Remove loading state
+        this.grid.style.opacity = "1";
+        this.isFiltering = false;
+      });
+    }
+
+    private updateGrid(visibleProductIds: Set<string>): void {
+      console.log("[FilterableProductGrid] Updating grid visibility");
+
+      let visibleCount = 0;
+
+      // Show/hide existing product wrappers instead of recreating HTML
+      this.productWrappers.forEach((wrapper) => {
+        const productId = wrapper.dataset.productId;
+
+        if (visibleProductIds.has(productId!)) {
+          wrapper.style.display = "";
+          wrapper.classList.remove("hidden");
+          visibleCount++;
+        } else {
+          wrapper.style.display = "none";
+          wrapper.classList.add("hidden");
+        }
+      });
+
+      // Show/hide no results
+      if (visibleCount === 0) {
+        this.noResults.style.display = "flex";
+        this.noResults.classList.remove("hidden");
+        this.noResults.classList.add("flex", "flex-col");
+      } else {
+        this.noResults.style.display = "none";
+        this.noResults.classList.add("hidden");
+        this.noResults.classList.remove("flex", "flex-col");
+      }
+    }
+
+    private updateCounts(filteredCount: number): void {
+      // Update desktop count
+      const desktopCount = document.getElementById("filtered-count");
+      if (desktopCount) {
+        desktopCount.textContent = filteredCount.toString();
+      }
+
+      // Update mobile count
+      const mobileCount = document.getElementById("mobile-filtered-count");
+      if (mobileCount) {
+        mobileCount.textContent = filteredCount.toString();
+      }
+    }
+
+    private handleAddMoreProducts(event: CustomEvent): void {
+      const { products: newProducts } = event.detail;
+
+      // Add to our products array
+      this.allProducts.push(...newProducts);
+
+      // Create new product wrappers and add to grid
+      newProducts.forEach((product: Product, index: number) => {
+        setTimeout(() => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "product-card-wrapper";
+          wrapper.dataset.productId = product.id;
+          wrapper.dataset.brand = product.brand || "";
+
+          // Create ProductCard HTML (matching server-side rendering)
+          wrapper.innerHTML = `<div data-astro-cid-hash>Product card would render here</div>`;
+
+          this.grid?.appendChild(wrapper);
+          this.productWrappers.push(wrapper);
+        }, index * 30);
+      });
+
+      // Re-apply current filters to include new products
+      const params = new URLSearchParams(window.location.search);
+      const currentFilters = parseFiltersFromURL(params);
+      this.applyFilters(currentFilters);
+
+      // Update filter options with new brands
+      this.updateFilterOptions();
+    }
+
+    private updateFilterOptions(): void {
+      // Extract new filter options and update the ProductFilters component
+      window.dispatchEvent(
+        new CustomEvent("updateFilterOptions", {
+          detail: {
+            products: this.allProducts,
+            // Could include updated filter options here
+          },
+        })
+      );
+    }
+
+    private clearAllFilters(): void {
+      const emptyFilters = clearAllFilters();
+      updateURLWithFilters(emptyFilters);
+      this.applyFilters(emptyFilters);
+
+      // Dispatch event to sync filter UI
+      window.dispatchEvent(new CustomEvent("clearAllFilters"));
+    }
+  }
+
+  // Initialize on page load
+  document.addEventListener("astro:page-load", () => {
+    new FilterableProductGrid();
+  });
+</script>
