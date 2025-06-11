@@ -286,69 +286,49 @@ export async function fetchProductsByCategoryWithPagination(
   categoryId: string,
   options: PaginationOptions = {}
 ): Promise<PaginatedProductsWithMeta> {
-  const { page = 1, pageSize = 24, filters = { brands: [] }, cursor } = options;
+  const { page = 1, pageSize = 24, filters = { brands: [] } } = options;
 
-  const cacheKey = `category-paginated-${categoryId}-${page}-${pageSize}-${JSON.stringify(filters)}`;
+  // Use smaller fetch limit to reduce API calls
+  const baseCacheKey = `category-products-${categoryId}`;
 
-  return productCache.getOrCompute(cacheKey, async () => {
-    try {
-      // Fetch larger set from Square API, then filter and paginate
-      const fetchLimit = Math.max(pageSize * page * 2, 100);
+  return productCache
+    .getOrCompute(baseCacheKey, async () => {
+      try {
+        // Fetch ALL products for category once
+        const squareResult = await fetchProductsByCategory(categoryId, {
+          limit: 100,
+        });
 
-      const squareResult = await fetchProductsByCategory(categoryId, {
-        limit: fetchLimit,
-        cursor: cursor,
-      });
-
-      // Apply filters to the fetched products
-      const filteredProducts = filterProducts(squareResult.products, filters);
-
-      // Calculate pagination boundaries
+        return squareResult.products;
+      } catch (error) {
+        return [];
+      }
+    })
+    .then((allProducts) => {
+      // Do pagination on cached products
+      const filteredProducts = filterProducts(allProducts, filters);
       const startIndex = (page - 1) * pageSize;
       const endIndex = startIndex + pageSize;
       const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
 
-      // Determine if we have more pages
-      const hasMoreFiltered = filteredProducts.length > endIndex;
-      const hasMoreFromSquare = squareResult.hasMore;
+      const totalPages = Math.ceil(filteredProducts.length / pageSize);
 
-      const estimatedHasMore =
-        hasMoreFiltered ||
-        (hasMoreFromSquare && filteredProducts.length < fetchLimit * 0.8);
-
-      // Calculate pagination metadata
       const pagination = calculatePaginationMeta(
         page,
         pageSize,
         paginatedProducts.length,
-        estimatedHasMore,
-        filteredProducts.length > endIndex ? undefined : filteredProducts.length
+        page < totalPages,
+        filteredProducts.length
       );
 
-      // Get filter options from all fetched products
-      const filterOptions = extractFilterOptions(squareResult.products);
+      const filterOptions = extractFilterOptions(allProducts);
 
       return {
         products: paginatedProducts,
-        nextCursor: squareResult.nextCursor,
-        hasMore: estimatedHasMore,
+        hasMore: page < totalPages,
         pagination,
         appliedFilters: filters,
         filterOptions,
       };
-    } catch (error) {
-      const appError = processSquareError(
-        error,
-        `fetchProductsByCategoryWithPagination:${categoryId}`
-      );
-
-      return handleError<PaginatedProductsWithMeta>(appError, {
-        products: [],
-        hasMore: false,
-        pagination: calculatePaginationMeta(page, pageSize, 0, false, 0),
-        appliedFilters: filters,
-        filterOptions: { brands: [] },
-      });
-    }
-  });
+    });
 }

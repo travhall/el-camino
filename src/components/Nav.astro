@@ -4,17 +4,16 @@ import { fetchCategoryHierarchy } from "@/lib/square/categories";
 import { navigationCache } from "@/lib/square/navigationCache";
 import { Icon } from "astro-icon/components";
 import { siteConfig } from "@/lib/site-config";
+import type { CategoryHierarchy } from "@/lib/square/types";
 
 const { contact, social } = siteConfig;
 
-// Enhanced category fetching with 15-minute cache
-let categoryHierarchy;
+let categoryHierarchy: CategoryHierarchy[];
 try {
-  const navConfig = await navigationCache.getNavigationStructure();
-  categoryHierarchy = navConfig?.items || (await fetchCategoryHierarchy());
-} catch (error) {
-  console.warn("Navigation cache failed, using standard fetch");
   categoryHierarchy = await fetchCategoryHierarchy();
+} catch (error) {
+  console.warn("Category fetch failed:", error);
+  categoryHierarchy = [];
 }
 
 // Static navigation items
