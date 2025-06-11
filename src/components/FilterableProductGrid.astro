@@ -1,19 +1,23 @@
 ---
-// src/components/FilterableProductGrid.astro
+// src/components/FilterableProductGrid.astro - PHASE 2: PAGINATION MODE SUPPORT
 import ProductCard from "./ProductCard.astro";
 import type { Product } from "@/lib/square/types";
 
 interface Props {
   products: Product[];
+  paginationMode?: boolean; // NEW: Enable server-side pagination behavior
+  categoryPath?: string; // NEW: Base path for pagination redirects
 }
 
-const { products } = Astro.props;
+const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 ---
 
 <div
   id="filterable-product-grid"
   class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1 transition-opacity duration-300"
   data-products={JSON.stringify(products)}
+  data-pagination-mode={paginationMode}
+  data-category-path={categoryPath}
 >
   {
     products.map((product, index) => (
@@ -28,10 +32,10 @@ const { products } = Astro.props;
   }
 </div>
 
-<!-- No Results State -->
+<!-- No Results State (only shown in client-side mode) -->
 <div
   id="no-results"
-  class="hidden justify-center items-center col-span-full py-16 text-center"
+  class={`${paginationMode ? "hidden" : ""} justify-center items-center col-span-full py-16 text-center`}
 >
   <div class="text-center">
     <div class="text-6xl mb-4 opacity-20">🔍</div>
@@ -55,6 +59,7 @@ const { products } = Astro.props;
     filterProducts,
     parseFiltersFromURL,
     updateURLWithFilters,
+    updateURLWithFiltersResetPage,
     hasActiveFilters,
     clearAllFilters,
   } from "@/lib/square/filterUtils";
@@ -66,21 +71,33 @@ const { products } = Astro.props;
     private allProducts: Product[];
     private productWrappers: HTMLElement[];
     private isFiltering = false;
+    private paginationMode: boolean;
+    private categoryPath: string;
 
     constructor() {
       this.grid = document.getElementById("filterable-product-grid")!;
       this.noResults = document.getElementById("no-results")!;
 
-      // Parse products from data attribute
+      // Parse configuration from data attributes
       this.allProducts = JSON.parse(this.grid.dataset.products || "[]");
+      this.paginationMode = this.grid.dataset.paginationMode === "true";
+      this.categoryPath = this.grid.dataset.categoryPath || "";
 
       // Get all product wrapper elements
       this.productWrappers = Array.from(
         this.grid.querySelectorAll(".product-card-wrapper")
       );
 
+      console.log(
+        `[FilterableProductGrid] Mode: ${this.paginationMode ? "pagination" : "client-side"}`
+      );
+
       this.setupEventListeners();
-      this.handleInitialFilters();
+
+      // Only handle initial filters in client-side mode
+      if (!this.paginationMode) {
+        this.handleInitialFilters();
+      }
     }
 
     private setupEventListeners(): void {
@@ -90,13 +107,7 @@ const { products } = Astro.props;
         this.handleFiltersChanged.bind(this) as EventListener
       );
 
-      // Listen for infinite scroll adding more products
-      window.addEventListener(
-        "addMoreProducts",
-        this.handleAddMoreProducts.bind(this) as EventListener
-      );
-
-      // Clear filters CTA
+      // Clear filters CTA (only relevant in client-side mode)
       document
         .getElementById("clear-filters-cta")
         ?.addEventListener("click", () => {
@@ -105,6 +116,9 @@ const { products } = Astro.props;
     }
 
     private handleInitialFilters(): void {
+      // Only apply initial filters in client-side mode
+      if (this.paginationMode) return;
+
       const params = new URLSearchParams(window.location.search);
       const filters = parseFiltersFromURL(params);
 
@@ -115,14 +129,54 @@ const { products } = Astro.props;
 
     private handleFiltersChanged(event: CustomEvent): void {
       const { filters } = event.detail;
-      this.applyFilters(filters);
+
+      if (this.paginationMode) {
+        // Only redirect if filters actually changed from URL state
+        const currentParams = new URLSearchParams(window.location.search);
+        const currentFiltersFromURL = parseFiltersFromURL(currentParams);
+
+        // Compare current filters to what's in URL
+        const filtersChanged =
+          JSON.stringify(filters) !== JSON.stringify(currentFiltersFromURL);
+
+        if (filtersChanged) {
+          // PAGINATION MODE: Redirect to page 1 with new filters
+          this.redirectWithFilters(filters);
+        }
+        // If filters haven't changed, do nothing (don't redirect)
+      } else {
+        // CLIENT-SIDE MODE: Apply filters immediately
+        this.applyFilters(filters);
+      }
+    }
+
+    private redirectWithFilters(filters: ProductFilters): void {
+      console.log("[FilterableProductGrid] Redirecting with filters:", filters);
+
+      // Show loading state
+      this.grid.style.opacity = "0.6";
+
+      // Update URL and navigate (will trigger page reload)
+      updateURLWithFiltersResetPage(filters);
+
+      // Fallback: if URL update doesn't trigger navigation, reload manually
+      setTimeout(() => {
+        if (this.grid.style.opacity === "0.6") {
+          window.location.href = window.location.href;
+        }
+      }, 100);
     }
 
     private applyFilters(filters: ProductFilters): void {
-      if (this.isFiltering) return;
+      // Only used in client-side mode
+      if (this.paginationMode || this.isFiltering) return;
+
       this.isFiltering = true;
 
-      console.log("[FilterableProductGrid] Applying filters:", filters);
+      console.log(
+        "[FilterableProductGrid] Applying client-side filters:",
+        filters
+      );
 
       // Add loading state
       this.grid.style.opacity = "0.6";
@@ -165,15 +219,17 @@ const { products } = Astro.props;
         }
       });
 
-      // Show/hide no results
-      if (visibleCount === 0) {
-        this.noResults.style.display = "flex";
-        this.noResults.classList.remove("hidden");
-        this.noResults.classList.add("flex", "flex-col");
-      } else {
-        this.noResults.style.display = "none";
-        this.noResults.classList.add("hidden");
-        this.noResults.classList.remove("flex", "flex-col");
+      // Show/hide no results (only in client-side mode)
+      if (!this.paginationMode) {
+        if (visibleCount === 0) {
+          this.noResults.style.display = "flex";
+          this.noResults.classList.remove("hidden");
+          this.noResults.classList.add("flex", "flex-col");
+        } else {
+          this.noResults.style.display = "none";
+          this.noResults.classList.add("hidden");
+          this.noResults.classList.remove("flex", "flex-col");
+        }
       }
     }
 
@@ -191,56 +247,20 @@ const { products } = Astro.props;
       }
     }
 
-    private handleAddMoreProducts(event: CustomEvent): void {
-      const { products: newProducts } = event.detail;
-
-      // Add to our products array
-      this.allProducts.push(...newProducts);
-
-      // Create new product wrappers and add to grid
-      newProducts.forEach((product: Product, index: number) => {
-        setTimeout(() => {
-          const wrapper = document.createElement("div");
-          wrapper.className = "product-card-wrapper";
-          wrapper.dataset.productId = product.id;
-          wrapper.dataset.brand = product.brand || "";
-
-          // Create ProductCard HTML (matching server-side rendering)
-          wrapper.innerHTML = `<div data-astro-cid-hash>Product card would render here</div>`;
-
-          this.grid?.appendChild(wrapper);
-          this.productWrappers.push(wrapper);
-        }, index * 30);
-      });
-
-      // Re-apply current filters to include new products
-      const params = new URLSearchParams(window.location.search);
-      const currentFilters = parseFiltersFromURL(params);
-      this.applyFilters(currentFilters);
-
-      // Update filter options with new brands
-      this.updateFilterOptions();
-    }
-
-    private updateFilterOptions(): void {
-      // Extract new filter options and update the ProductFilters component
-      window.dispatchEvent(
-        new CustomEvent("updateFilterOptions", {
-          detail: {
-            products: this.allProducts,
-            // Could include updated filter options here
-          },
-        })
-      );
-    }
-
     private clearAllFilters(): void {
       const emptyFilters = clearAllFilters();
-      updateURLWithFilters(emptyFilters);
-      this.applyFilters(emptyFilters);
 
-      // Dispatch event to sync filter UI
-      window.dispatchEvent(new CustomEvent("clearAllFilters"));
+      if (this.paginationMode) {
+        // Redirect to category root
+        window.location.href = this.categoryPath;
+      } else {
+        // Update URL and apply filters
+        updateURLWithFilters(emptyFilters);
+        this.applyFilters(emptyFilters);
+
+        // Dispatch event to sync filter UI
+        window.dispatchEvent(new CustomEvent("clearAllFilters"));
+      }
     }
   }
 

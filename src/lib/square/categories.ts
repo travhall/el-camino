@@ -269,3 +269,86 @@ export function clearCategoryCache(): void {
   categoryCache.clear();
   productCache.clear();
 }
+
+import type {
+  PaginationOptions,
+  PaginatedProductsWithMeta,
+  PaginationMeta,
+  ProductFilters,
+} from "./types";
+import { calculatePaginationMeta } from "./types";
+import { filterProducts, extractFilterOptions } from "./filterUtils";
+
+/**
+ * Fetch products with server-side filtering and page-based pagination
+ */
+export async function fetchProductsByCategoryWithPagination(
+  categoryId: string,
+  options: PaginationOptions = {}
+): Promise<PaginatedProductsWithMeta> {
+  const { page = 1, pageSize = 24, filters = { brands: [] }, cursor } = options;
+
+  const cacheKey = `category-paginated-${categoryId}-${page}-${pageSize}-${JSON.stringify(filters)}`;
+
+  return productCache.getOrCompute(cacheKey, async () => {
+    try {
+      // Fetch larger set from Square API, then filter and paginate
+      const fetchLimit = Math.max(pageSize * page * 2, 100);
+
+      const squareResult = await fetchProductsByCategory(categoryId, {
+        limit: fetchLimit,
+        cursor: cursor,
+      });
+
+      // Apply filters to the fetched products
+      const filteredProducts = filterProducts(squareResult.products, filters);
+
+      // Calculate pagination boundaries
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+      // Determine if we have more pages
+      const hasMoreFiltered = filteredProducts.length > endIndex;
+      const hasMoreFromSquare = squareResult.hasMore;
+
+      const estimatedHasMore =
+        hasMoreFiltered ||
+        (hasMoreFromSquare && filteredProducts.length < fetchLimit * 0.8);
+
+      // Calculate pagination metadata
+      const pagination = calculatePaginationMeta(
+        page,
+        pageSize,
+        paginatedProducts.length,
+        estimatedHasMore,
+        filteredProducts.length > endIndex ? undefined : filteredProducts.length
+      );
+
+      // Get filter options from all fetched products
+      const filterOptions = extractFilterOptions(squareResult.products);
+
+      return {
+        products: paginatedProducts,
+        nextCursor: squareResult.nextCursor,
+        hasMore: estimatedHasMore,
+        pagination,
+        appliedFilters: filters,
+        filterOptions,
+      };
+    } catch (error) {
+      const appError = processSquareError(
+        error,
+        `fetchProductsByCategoryWithPagination:${categoryId}`
+      );
+
+      return handleError<PaginatedProductsWithMeta>(appError, {
+        products: [],
+        hasMore: false,
+        pagination: calculatePaginationMeta(page, pageSize, 0, false, 0),
+        appliedFilters: filters,
+        filterOptions: { brands: [] },
+      });
+    }
+  });
+}

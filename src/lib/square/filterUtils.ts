@@ -150,3 +150,69 @@ export function toggleBrandFilter(
     ? removeBrandFilter(filters, brand)
     : addBrandFilter(filters, brand);
 }
+
+import type { ParsedURLParams } from "./types";
+
+/**
+ * Parse both pagination and filter parameters from URL
+ */
+export function parseURLParams(searchParams: URLSearchParams): ParsedURLParams {
+  const filters = parseFiltersFromURL(searchParams);
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+  const pageSize = Math.max(
+    12,
+    Math.min(96, parseInt(searchParams.get("pageSize") || "24", 10))
+  );
+
+  return {
+    filters,
+    page,
+    pageSize,
+  };
+}
+
+/**
+ * Build URL with pagination and filter parameters
+ */
+export function buildPaginatedURL(
+  basePath: string,
+  filters: ProductFilters,
+  page: number,
+  pageSize: number = 24
+): string {
+  const params = new URLSearchParams();
+
+  // Add filter parameters
+  if (filters.brands.length > 0) {
+    params.set("brands", filters.brands.join(","));
+  }
+
+  // Add pagination parameters
+  if (page > 1) {
+    params.set("page", page.toString());
+  }
+
+  if (pageSize !== 24) {
+    params.set("pageSize", pageSize.toString());
+  }
+
+  const queryString = params.toString();
+  return `${basePath}${queryString ? "?" + queryString : ""}`;
+}
+
+/**
+ * Navigate to page 1 when filters change (standard UX pattern)
+ */
+export function updateURLWithFiltersResetPage(filters: ProductFilters): void {
+  const currentParams = new URLSearchParams(window.location.search);
+  const pageSize = parseInt(currentParams.get("pageSize") || "24", 10);
+
+  const newURL = buildPaginatedURL(
+    window.location.pathname,
+    filters,
+    1, // Always reset to page 1 when filters change
+    pageSize
+  );
+
+  window.history.pushState({}, "", newURL);
+}

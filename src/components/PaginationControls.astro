@@ -1,0 +1,253 @@
+---
+// src/components/PaginationControls.astro
+import type { PaginationMeta, ProductFilters } from "@/lib/square/types";
+import { buildPaginatedURL } from "@/lib/square/filterUtils";
+
+interface Props {
+  pagination: PaginationMeta;
+  basePath: string;
+  filters: ProductFilters;
+  pageSize?: number;
+}
+
+const { pagination, basePath, filters, pageSize = 24 } = Astro.props;
+
+// DEBUG: Log the props
+console.log("PaginationControls Debug:", {
+  basePath,
+  filters,
+  pageSize,
+  pagination,
+});
+
+// Test URL generation
+const testURL = buildPaginatedURL(basePath, filters, 2, pageSize);
+console.log("Test URL for page 2:", testURL);
+
+// Don't render if only one page
+if (pagination.totalPages <= 1) {
+  return null;
+}
+
+const { currentPage, totalPages, hasNextPage, hasPrevPage } = pagination;
+
+// Generate page numbers with smart truncation
+function generatePageNumbers(
+  current: number,
+  total: number
+): (number | "ellipsis")[] {
+  if (total <= 7) {
+    // Show all pages if 7 or fewer
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  const pages: (number | "ellipsis")[] = [];
+
+  // Always show first page
+  pages.push(1);
+
+  if (current <= 4) {
+    // Near beginning: 1, 2, 3, 4, 5, ..., total
+    for (let i = 2; i <= Math.min(5, total - 1); i++) {
+      pages.push(i);
+    }
+    if (total > 6) pages.push("ellipsis");
+    if (total > 1) pages.push(total);
+  } else if (current >= total - 3) {
+    // Near end: 1, ..., total-4, total-3, total-2, total-1, total
+    if (total > 6) pages.push("ellipsis");
+    for (let i = Math.max(2, total - 4); i <= total; i++) {
+      pages.push(i);
+    }
+  } else {
+    // Middle: 1, ..., current-1, current, current+1, ..., total
+    pages.push("ellipsis");
+    for (let i = current - 1; i <= current + 1; i++) {
+      pages.push(i);
+    }
+    pages.push("ellipsis");
+    pages.push(total);
+  }
+
+  return pages;
+}
+
+const pageNumbers = generatePageNumbers(currentPage, totalPages);
+
+// URL generation helpers
+const prevURL = hasPrevPage
+  ? buildPaginatedURL(basePath, filters, currentPage - 1, pageSize)
+  : null;
+
+const nextURL = hasNextPage
+  ? buildPaginatedURL(basePath, filters, currentPage + 1, pageSize)
+  : null;
+
+const getPageURL = (page: number) =>
+  buildPaginatedURL(basePath, filters, page, pageSize);
+---
+
+<nav
+  class="flex items-center justify-center mt-8 mb-4"
+  aria-label="Pagination Navigation"
+  role="navigation"
+>
+  <!-- Mobile-First Design: Previous/Next + Page Info -->
+  <div class="flex items-center space-x-2 md:space-x-1">
+    <!-- Previous Button -->
+    {
+      prevURL ? (
+        <a
+          href={prevURL}
+          class="flex items-center px-3 py-2 text-sm text-content-body bg-ui-button-surface border border-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors"
+          aria-label={`Go to page ${currentPage - 1}`}
+        >
+          <svg
+            class="w-4 h-4 mr-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          <span class="hidden sm:inline">Previous</span>
+        </a>
+      ) : (
+        <span class="flex items-center px-3 py-2 text-sm text-content-meta bg-surface-secondary border border-ui-border rounded-sm cursor-not-allowed">
+          <svg
+            class="w-4 h-4 mr-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          <span class="hidden sm:inline">Previous</span>
+        </span>
+      )
+    }
+
+    <!-- Page Numbers (Hidden on small screens) -->
+    <div class="hidden md:flex items-center space-x-1">
+      {
+        pageNumbers.map((page, index) =>
+          page === "ellipsis" ? (
+            <span class="px-3 py-2 text-content-meta" aria-hidden="true">
+              ...
+            </span>
+          ) : (
+            <a
+              href={getPageURL(page)}
+              class={`px-3 py-2 text-sm border rounded-sm transition-colors ${
+                page === currentPage
+                  ? "bg-ui-accent text-ui-accent-text border-ui-accent font-medium"
+                  : "text-content-body bg-ui-button-surface border-ui-button-border hover:bg-ui-button-hover"
+              }`}
+              aria-label={
+                page === currentPage
+                  ? `Current page, page ${page}`
+                  : `Go to page ${page}`
+              }
+              aria-current={page === currentPage ? "page" : undefined}
+            >
+              {page}
+            </a>
+          )
+        )
+      }
+    </div>
+
+    <!-- Page Info (Mobile) -->
+    <div
+      class="flex md:hidden items-center px-3 py-2 text-sm text-content-body bg-surface-secondary border border-ui-border rounded-sm"
+    >
+      {currentPage} of {totalPages}
+    </div>
+
+    <!-- Next Button -->
+    {
+      nextURL ? (
+        <a
+          href={nextURL}
+          class="flex items-center px-3 py-2 text-sm text-content-body bg-ui-button-surface border border-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors"
+          aria-label={`Go to page ${currentPage + 1}`}
+        >
+          <span class="hidden sm:inline">Next</span>
+          <svg
+            class="w-4 h-4 ml-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </a>
+      ) : (
+        <span class="flex items-center px-3 py-2 text-sm text-content-meta bg-surface-secondary border border-ui-border rounded-sm cursor-not-allowed">
+          <span class="hidden sm:inline">Next</span>
+          <svg
+            class="w-4 h-4 ml-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </span>
+      )
+    }
+  </div>
+</nav>
+
+<!-- Results Summary -->
+<div class="text-center text-sm text-content-meta mb-4">
+  Showing {(currentPage - 1) * pageSize + 1} to {
+    Math.min(currentPage * pageSize, pagination.totalProducts)
+  } of {pagination.totalProducts} products
+</div>
+
+<script>
+  // Progressive enhancement for pagination
+  document.addEventListener("astro:page-load", () => {
+    const paginationLinks = document.querySelectorAll(
+      'nav[aria-label="Pagination Navigation"] a'
+    );
+
+    paginationLinks.forEach((link) => {
+      link.addEventListener("click", (e) => {
+        // Add loading state to clicked pagination link
+        const target = e.currentTarget as HTMLElement;
+        const originalContent = target.innerHTML;
+
+        target.style.opacity = "0.6";
+        target.style.pointerEvents = "none";
+
+        // Restore state if navigation fails (fallback)
+        setTimeout(() => {
+          target.style.opacity = "1";
+          target.style.pointerEvents = "auto";
+        }, 3000);
+      });
+    });
+  });
+</script>

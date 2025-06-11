@@ -1,14 +1,15 @@
 ---
-// src/pages/category/[...slug].astro
+// src/pages/category/[...slug].astro - PHASE 2: SERVER-SIDE PAGINATION
 import ProductFilters from "@/components/ProductFilters.astro";
 import FilterableProductGrid from "@/components/FilterableProductGrid.astro";
+import PaginationControls from "@/components/PaginationControls.astro";
 import {
   fetchCategoryHierarchy,
-  fetchProductsByCategory,
+  fetchProductsByCategoryWithPagination,
 } from "@/lib/square/categories";
-import { extractFilterOptions } from "@/lib/square/filterUtils";
+import { parseURLParams } from "@/lib/square/filterUtils";
 import Layout from "@/layouts/Layout.astro";
-import type { Category, Product } from "@/lib/square/types";
+import type { Category } from "@/lib/square/types";
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect("/404");
@@ -36,35 +37,65 @@ if (subCategorySlug) {
   parentCategory = topLevelItem.category;
 }
 
-// === ENHANCED PRODUCT FETCHING FOR FILTERING ===
-let products: Product[] = [];
-let nextCursor: string | undefined;
-let hasMore = false;
+// === NEW: PARSE URL PARAMETERS FOR PAGINATION + FILTERING ===
+const urlParams = parseURLParams(Astro.url.searchParams);
+const { filters, page, pageSize } = urlParams;
 
+console.log(`[Category Page] ${category.name} - Page ${page}, Filters:`, filters);
+
+// === ENHANCED PRODUCT FETCHING WITH PAGINATION ===
+let productData;
 try {
-  // Fetch more products initially for better filtering experience
-  const result = await fetchProductsByCategory(category.id, { limit: 48 });
-  products = result.products;
-  nextCursor = result.nextCursor;
-  hasMore = result.hasMore;
+  productData = await fetchProductsByCategoryWithPagination(category.id, {
+    page,
+    pageSize,
+    filters,
+  });
 } catch (error) {
-  console.error("Error fetching products:", error);
+  console.error("Error fetching paginated products:", error);
+  // Fallback to empty state
+  productData = {
+    products: [],
+    pagination: {
+      currentPage: page,
+      totalPages: 1,
+      pageSize,
+      totalProducts: 0,
+      hasNextPage: false,
+      hasPrevPage: false,
+    },
+    appliedFilters: filters,
+    filterOptions: { brands: [] },
+    hasMore: false,
+  };
 }
 
-// Extract filter options from current category products
-const filterOptions = extractFilterOptions(products);
+const { products, pagination, appliedFilters, filterOptions } = productData;
 
+// Generate page metadata
 const subcategories = !subCategorySlug ? topLevelItem.subcategories : [];
 const pageTitle = parentCategory
   ? `${parentCategory.name} - ${category.name}`
   : category.name;
+
+// Add pagination info to title if not on page 1
+const fullPageTitle = page > 1 
+  ? `${pageTitle} - Page ${page} | El Camino`
+  : `Shop ${pageTitle} | El Camino`;
+
+// Preload critical images (first 8 products)
 const preloadImages = products
   .slice(0, 8)
   .map((p) => p.image)
   .filter((img) => !img.includes("placeholder"));
+
+// Current category path for pagination URLs
+const categoryPath = parentCategory 
+  ? `/category/${parentCategory.slug}/${category.slug}`
+  : `/category/${category.slug}`;
 ---
 
-<Layout title={`Shop ${pageTitle} | El Camino`}>
+<Layout title={fullPageTitle}>
   {preloadImages.map((img) => <link rel="preload" href={img} as="image" />)}
 
   <!-- Responsive Grid Layout -->
@@ -76,7 +107,7 @@ const preloadImages = products
       <aside class="lg:col-span-1">
         <ProductFilters
           filterOptions={filterOptions}
-          totalProducts={products.length}
+          totalProducts={pagination.totalProducts}
           filteredCount={products.length}
         />
       </aside>
@@ -88,11 +119,19 @@ const preloadImages = products
           <div
             class="flex flex-col lg:flex-row justify-between gap-4 items-baseline"
           >
-            <h1
-              class="font-display font-black text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-content-heading"
-            >
-              {category.name}
-            </h1>
+            <div>
+              <h1
+                class="font-display font-black text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-content-heading"
+              >
+                {category.name}
+              </h1>
+              <!-- Page indicator for non-first pages -->
+              {page > 1 && (
+                <p class="text-content-meta text-lg mt-2">
+                  Page {page} of {pagination.totalPages}
+                </p>
+              )}
+            </div>
 
             <!-- Subcategory Navigation (Above Products per UX research) -->
             {
@@ -128,44 +167,53 @@ const preloadImages = products
         <!-- Products -->
         {
           products.length > 0 ? (
-            <FilterableProductGrid products={products} />
+            <>
+              <!-- Products Grid -->
+              <FilterableProductGrid 
+                products={products} 
+                paginationMode={true}
+                categoryPath={categoryPath}
+              />
+              
+              <!-- Pagination Controls -->
+              <PaginationControls
+                pagination={pagination}
+                basePath={categoryPath}
+                filters={appliedFilters}
+                pageSize={pageSize}
+              />
+            </>
           ) : (
             <div class="text-center py-16">
-              <div class="text-6xl mb-4 opacity-20">🛹</div>
+              <div class="text-6xl mb-4 opacity-20">
+                {appliedFilters.brands.length > 0 ? "🔍" : "🛹"}
+              </div>
               <h2 class="text-2xl font-display font-bold text-content-heading mb-2">
-                No products found
+                {appliedFilters.brands.length > 0 ? "No products match your filters" : "No products found"}
               </h2>
               <p class="text-content-meta mb-6 max-w-md mx-auto">
-                {subcategories.length > 0
-                  ? `Try browsing our subcategories above, or check out other product categories.`
-                  : `This category is currently empty. Check back soon for new products!`}
+                {appliedFilters.brands.length > 0 
+                  ? "Try adjusting your filters or browse all products."
+                  : subcategories.length > 0
+                  ? "Try browsing our subcategories above, or check out other product categories."
+                  : "This category is currently empty. Check back soon for new products!"
+                }
               </p>
-              <a
-                href="/all-products"
-                class="px-6 py-2 bg-ui-button-surface text-ui-button-text border border-ui-button-border rounded hover:bg-ui-button-hover transition-colors"
-              >
-                Browse All Products
-              </a>
-            </div>
-          )
-        }
-
-        <!-- Infinite Scroll Trigger -->
-        {
-          hasMore && (
-            <div
-              id="scroll-trigger"
-              class="flex justify-center py-8"
-              data-category-id={category.id}
-              data-cursor={nextCursor}
-            >
-              <div
-                id="loading-indicator"
-                class="flex items-center text-content-meta"
-              >
-                <div class="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mr-2" />
-                Loading more products...
-              </div>
+              {appliedFilters.brands.length > 0 ? (
+                <a
+                  href={categoryPath}
+                  class="px-6 py-2 bg-ui-button-surface text-ui-button-text border border-ui-button-border rounded hover:bg-ui-button-hover transition-colors"
+                >
+                  Clear Filters
+                </a>
+              ) : (
+                <a
+                  href="/all-products"
+                  class="px-6 py-2 bg-ui-button-surface text-ui-button-text border border-ui-button-border rounded hover:bg-ui-button-hover transition-colors"
+                >
+                  Browse All Products
+                </a>
+              )}
             </div>
           )
         }
@@ -173,99 +221,3 @@ const preloadImages = products
     </div>
   </div>
 </Layout>
-
-<script>
-  class CategoryInfiniteScroll {
-    private trigger: HTMLElement | null;
-    private categoryId: string = "";
-    private cursor: string | null = null;
-    private isLoading = false;
-    private observer?: IntersectionObserver;
-
-    constructor() {
-      this.trigger = document.getElementById("scroll-trigger");
-      if (!this.trigger) return;
-
-      this.categoryId = this.trigger.dataset.categoryId!;
-      this.cursor = this.trigger.dataset.cursor || null;
-      this.setupObserver();
-    }
-
-    private setupObserver(): void {
-      this.observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && !this.isLoading) {
-            this.loadMore();
-          }
-        },
-        { rootMargin: "200px" }
-      );
-      this.observer.observe(this.trigger!);
-    }
-
-    private async loadMore(): Promise<void> {
-      if (!this.cursor || this.isLoading) return;
-      this.isLoading = true;
-
-      const loadingIndicator = document.getElementById("loading-indicator");
-      if (loadingIndicator) {
-        loadingIndicator.innerHTML = `
-          <div class="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mr-2"></div>
-          Loading more products...
-        `;
-      }
-
-      try {
-        const response = await fetch("/api/load-more-products", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            categoryId: this.categoryId,
-            cursor: this.cursor,
-            limit: 24,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (data.success && data.products?.length > 0) {
-          // Dispatch event to FilterableProductGrid to add new products
-          window.dispatchEvent(
-            new CustomEvent("addMoreProducts", {
-              detail: { products: data.products },
-            })
-          );
-
-          this.cursor = data.nextCursor;
-          if (!data.hasMore) {
-            this.trigger!.style.display = "none";
-            this.observer?.disconnect();
-          }
-        } else {
-          this.trigger!.style.display = "none";
-          this.observer?.disconnect();
-        }
-      } catch (error) {
-        console.error("Failed to load products:", error);
-        this.trigger!.innerHTML = `
-          <div class="text-center py-4">
-            <p class="text-content-meta mb-2">Failed to load more products</p>
-            <button 
-              onclick="location.reload()" 
-              class="px-4 py-2 text-sm bg-ui-button-surface text-ui-button-text border border-ui-button-border rounded hover:bg-ui-button-hover"
-            >
-              Try Again
-            </button>
-          </div>
-        `;
-      } finally {
-        this.isLoading = false;
-      }
-    }
-  }
-
-  document.addEventListener(
-    "astro:page-load",
-    () => new CategoryInfiniteScroll()
-  );
-</script>
