@@ -1,6 +1,7 @@
 ---
 // src/components/FilterableProductGrid.astro - Enhanced Server-First with UX
 import ProductCard from "./ProductCard.astro";
+import ProductCardSkeleton from "./ProductCardSkeleton.astro";
 import type { Product } from "@/lib/square/types";
 
 interface Props {
@@ -14,7 +15,7 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 
 <div
   id="filterable-product-grid"
-  class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1 transition-all duration-300"
+  class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-1 transition-all duration-300"
   data-products={JSON.stringify(products)}
   data-pagination-mode={paginationMode}
   data-category-path={categoryPath}
@@ -51,15 +52,11 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 <!-- Product Grid Loading Skeleton -->
 <div
   id="product-grid-skeleton"
-  class="hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1"
+  class="hidden grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-1"
 >
   {
     Array.from({ length: 12 }, (_, i) => (
-      <div class="animate-pulse">
-        <div class="aspect-video sm:aspect-square bg-surface-tertiary rounded mb-2" />
-        <div class="h-4 bg-surface-tertiary rounded mb-1" />
-        <div class="h-3 bg-surface-tertiary rounded w-2/3" />
-      </div>
+      <ProductCardSkeleton priority={i < 8} />
     ))
   }
 </div>
