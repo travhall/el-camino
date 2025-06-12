@@ -99,26 +99,13 @@ const categoryPath = parentCategory
 
   <!-- Responsive Grid Layout -->
   <div class="min-h-screen bg-surface-primary">
-    <div
-      class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-2 p-2 max-w-[120rem] mx-auto"
-    >
-      <!-- Filter Sidebar -->
-      <aside class="lg:col-span-1">
-        <ProductFilters
-          filterOptions={filterOptions}
-          totalProducts={pagination.totalProducts}
-          filteredCount={products.length}
-        />
-      </aside>
 
-      <!-- Main Content -->
-      <main class="lg:col-span-3 xl:col-span-4">
         <!-- Category Header -->
-        <div class="mb-6">
+        <div class="p-4 pb-0">
           <div
             class="flex flex-col lg:flex-row justify-between gap-4 items-baseline"
           >
-            <div>
+            <div class="flex flex-row gap-4 items-baseline">
               <h1
                 class="font-display font-black text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-content-heading"
               >
@@ -126,7 +113,7 @@ const categoryPath = parentCategory
               </h1>
               <!-- Page indicator for non-first pages -->
               {page > 1 && (
-                <p class="text-content-meta text-lg mt-2">
+                <p class="text-content-meta text-sm mt-2">
                   Page {page} of {pagination.totalPages}
                 </p>
               )}
@@ -162,18 +149,32 @@ const categoryPath = parentCategory
             }
           </div>
         </div>
+    <div
+      class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-2 max-w-[120rem] mx-auto"
+    >
+      <!-- Filter Sidebar -->
+      <aside class="lg:col-span-1">
+        <ProductFilters
+          filterOptions={filterOptions}
+          totalProducts={pagination.totalProducts}
+          filteredCount={products.length}
+        />
+      </aside>
+
+      <!-- Main Content -->
+      <main class="lg:col-span-3 xl:col-span-4">
 
         <!-- Products -->
         {
           products.length > 0 ? (
             <>
               <!-- Products Grid -->
-              <FilterableProductGrid 
-                products={products} 
+              <FilterableProductGrid
+                products={products}
                 paginationMode={true}
                 categoryPath={categoryPath}
               />
-              
+
               <!-- Pagination Controls -->
               <PaginationControls
                 pagination={pagination}

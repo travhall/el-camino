@@ -12,13 +12,13 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
 ---
 
 <!-- Responsive Filter Container with proper sticky -->
-<div class="lg:block">
+<div class="lg:block sticky top-16">
   <!-- Desktop: Sticky card with proper spacing -->
   <div
-    class="hidden lg:block bg-surface-secondary rounded-lg p-6 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto"
+    class="hidden lg:block bg-surface-secondary rounded-sm p-4 sticky top-6 overflow-y-auto"
   >
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-semibold text-content-heading">Filters</h2>
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-sm font-semibold text-content-heading">Filters</h2>
       <button
         id="clear-filters"
         class="text-sm text-content-meta hover:text-content-emphasis transition-colors hidden"
@@ -28,7 +28,7 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
     </div>
 
     <!-- Results Count -->
-    <div class="mb-6 p-3 bg-surface-tertiary rounded">
+    <div class="mb-2 p-2 bg-surface-tertiary rounded-sm">
       <p class="text-sm text-content-meta">
         Showing <span id="filtered-count">{filteredCount}</span> of <span
           >{totalProducts}</span
@@ -40,15 +40,15 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
     {
       filterOptions.brands.length > 0 && (
         <div class="mb-8">
-          <h3 class="text-lg font-medium text-content-heading mb-4">Brand</h3>
+          <h3 class="text-sm font-medium text-content-heading mb-2">Brand</h3>
           <div id="brand-filters" class="space-y-2 max-h-80 overflow-y-auto">
             {filterOptions.brands.map((brand) => (
-              <label class="flex items-center group cursor-pointer p-2 rounded hover:bg-surface-tertiary transition-colors">
+              <label class="flex items-center group cursor-pointer p-2 rounded-sm hover:bg-surface-tertiary transition-colors">
                 <input
                   type="checkbox"
                   name="brand"
                   value={brand.name}
-                  class="mr-3 rounded border-ui-input-border text-ui-accent focus:ring-ui-accent"
+                  class="mr-3 rounded-sm border-ui-input-border text-ui-accent focus:ring-ui-accent"
                 />
                 <span class="flex-1 text-content-body group-hover:text-content-emphasis">
                   {brand.name}
@@ -66,7 +66,7 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
 <!-- Mobile Filter Button -->
 <button
   id="mobile-filter-toggle"
-  class="lg:hidden fixed bottom-4 right-4 bg-ui-button-primary text-ui-button-primary-text rounded-full p-4 shadow-lg z-50 transition-transform hover:scale-105"
+  class="lg:hidden fixed bottom-4 right-4 bg-ui-button-primary text-ui-button-primary-text rounded-sm-full p-4 shadow-lg z-50 transition-transform hover:scale-105"
   aria-label="Open Filters"
 >
   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +79,7 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
   </svg>
   <span
     id="filter-count-badge"
-    class="absolute -top-1 -right-1 bg-ui-accent text-white text-xs rounded-full min-w-[1.25rem] h-5 items-center justify-center px-1 hidden"
+    class="absolute -top-1 -right-1 bg-ui-accent text-white text-xs rounded-sm-full min-w-[1.25rem] h-5 items-center justify-center px-1 hidden"
   >
     0
   </span>
@@ -126,7 +126,7 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
     </div>
 
     <!-- Results Count -->
-    <div class="mb-4 p-3 bg-surface-tertiary rounded">
+    <div class="mb-4 p-3 bg-surface-tertiary rounded-sm">
       <p class="text-sm text-content-meta">
         <span id="mobile-filtered-count">{filteredCount}</span> of {
           totalProducts
@@ -140,13 +140,13 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
       <div id="mobile-brand-filters" class="space-y-3 max-h-64 overflow-y-auto">
         {
           filterOptions.brands.map((brand) => (
-            <label class="flex items-center justify-between group cursor-pointer p-2 rounded hover:bg-surface-tertiary">
+            <label class="flex items-center justify-between group cursor-pointer p-2 rounded-sm hover:bg-surface-tertiary">
               <div class="flex items-center">
                 <input
                   type="checkbox"
                   name="brand"
                   value={brand.name}
-                  class="mr-3 rounded border-ui-input-border text-ui-accent focus:ring-ui-accent"
+                  class="mr-3 rounded-sm border-ui-input-border text-ui-accent focus:ring-ui-accent"
                 />
                 <span class="text-content-body group-hover:text-content-emphasis">
                   {brand.name}
@@ -163,13 +163,13 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
     <div class="flex gap-3 pt-4 border-t border-ui-border">
       <button
         id="mobile-clear-filters"
-        class="flex-1 py-2 px-4 border border-ui-button-border text-ui-button-text rounded hover:bg-ui-button-hover transition-colors hidden"
+        class="flex-1 py-2 px-4 border border-ui-button-border text-ui-nav-text rounded-sm hover:bg-ui-button-hover transition-colors hidden"
       >
         Clear All
       </button>
       <button
         id="mobile-apply-close"
-        class="flex-1 py-2 px-4 bg-ui-button-primary text-ui-button-primary-text rounded hover:bg-ui-button-primary-hover transition-colors"
+        class="flex-1 py-2 px-4 bg-ui-button-primary text-ui-button-primary-text rounded-sm hover:bg-ui-button-primary-hover transition-colors"
       >
         Apply
       </button>
