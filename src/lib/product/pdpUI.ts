@@ -139,7 +139,7 @@ export class PDPUIManager {
     if (inventoryStatus) {
       if (info.state === ProductAvailabilityState.OUT_OF_STOCK) {
         inventoryStatus.innerHTML = `
-          <p class="mt-2 text-state-error-text">
+          <p class="mt-2 text-sm">
             This item is currently out of stock
           </p>
         `;
