@@ -1,38 +1,140 @@
 ---
-// src/components/ProductCardSkeleton.astro - Match ProductCard Structure
+// src/components/ProductCardSkeleton.astro - Enhanced with Better UX
 interface Props {
   priority?: boolean;
+  variant?: "default" | "compact" | "featured";
+  index?: number; // For staggered animations
 }
 
-const { priority = false } = Astro.props;
+const { priority = false, variant = "default", index = 0 } = Astro.props;
+
+// Randomize skeleton content widths for more realistic appearance
+const titleWidth = Math.floor(Math.random() * 20) + 60; // 60-80%
+const brandWidth = Math.floor(Math.random() * 15) + 40; // 40-55%
+const priceWidth = Math.floor(Math.random() * 10) + 35; // 35-45%
+
+// Calculate stagger delay
+const staggerDelay = index * 0.1;
 ---
 
 <div
-  class="group grid grid-rows-[auto_1fr] gap-2 w-full p-1 bg-ui-card-surface text-ui-card-text border-2 border-ui-card-border"
+  class={`grid grid-rows-[auto_1fr] gap-2 w-full p-1 bg-ui-card-surface ${variant === "featured" ? "col-span-2" : ""}`}
   role="status"
-  aria-label="Loading product"
+  aria-label="Loading product..."
+  style={`--stagger-delay: ${staggerDelay}s`}
 >
-  <!-- Image skeleton matching ProductCard aspect ratios -->
-  <div class="relative aspect-video sm:aspect-square overflow-hidden">
-    <div class="w-full h-full bg-surface-tertiary animate-pulse"></div>
+  <!-- Image Skeleton with Enhanced Shimmer -->
+  <div
+    class="relative aspect-video sm:aspect-square overflow-hidden bg-surface-secondary rounded-sm"
+  >
+    <!-- Base gradient -->
+    <div
+      class="absolute inset-0 bg-gradient-to-br from-surface-secondary to-surface-tertiary"
+    >
+    </div>
+
+    <!-- Enhanced shimmer overlay -->
+    <div
+      class="absolute inset-0 bg-gradient-to-r from-transparent via-surface-primary/30 to-transparent animate-shimmer-enhanced"
+    >
+    </div>
+
+    <!-- Optional: Skeleton icon for visual interest -->
+    <div class="absolute inset-0 flex items-center justify-center opacity-20">
+      <svg
+        class="w-8 h-8 text-content-meta animate-pulse-slow"
+        fill="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M3 12c0 1.1.9 2 2 2s2-.9 2-2-.9-2-2-2-2 .9-2 2zm14-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM8.5 12H7c-.6 0-1-.4-1-1s.4-1 1-1h1.5c.3 0 .5.2.5.5v1c0 .3-.2.5-.5.5zm7 0h1.5c.6 0 1-.4 1-1s-.4-1-1-1H15.5c-.3 0-.5.2-.5.5v1c0 .3.2.5.5.5zM19 12c0 1.1.9 2 2 2s2-.9 2-2-.9-2-2-2-2 .9-2 2z"
+        ></path>
+        <rect x="6" y="11" width="12" height="2" rx="1"></rect>
+      </svg>
+    </div>
   </div>
 
-  <!-- Content skeleton matching ProductCard structure -->
-  <div class="grid px-1">
-    <div class="self-start space-y-1">
-      <!-- Brand skeleton (optional, small) -->
-      <div class="h-3 bg-surface-tertiary rounded w-16 animate-pulse"></div>
+  <!-- Content Skeleton with Randomized Widths -->
+  <div class="grid px-1 gap-2">
+    <div class="self-start space-y-2">
+      <!-- Brand skeleton -->
+      <div
+        class="h-3 bg-surface-tertiary rounded animate-pulse-staggered"
+        style={`width: ${brandWidth}%; animation-delay: ${staggerDelay + 0.1}s`}
+      >
+      </div>
 
-      <!-- Title skeleton (matches ProductCard) -->
-      <div class="space-y-1 mb-1">
-        <div class="h-4 bg-surface-tertiary rounded animate-pulse"></div>
-        <div class="h-4 bg-surface-tertiary rounded w-3/4 animate-pulse"></div>
+      <!-- Title skeleton - multiple lines for realism -->
+      <div class="space-y-1">
+        <div
+          class="h-4 bg-surface-secondary rounded animate-pulse-staggered"
+          style={`width: ${titleWidth}%; animation-delay: ${staggerDelay + 0.2}s`}
+        >
+        </div>
+        <div
+          class="h-4 bg-surface-secondary rounded animate-pulse-staggered"
+          style={`width: ${Math.max(titleWidth - 20, 40)}%; animation-delay: ${staggerDelay + 0.3}s`}
+        >
+        </div>
       </div>
     </div>
 
-    <!-- Price skeleton (matches ProductCard) -->
+    <!-- Price skeleton -->
     <div class="self-end">
-      <div class="h-6 bg-surface-tertiary rounded w-20 animate-pulse"></div>
+      <div
+        class="h-6 bg-surface-secondary rounded animate-pulse-staggered"
+        style={`width: ${priceWidth}%; animation-delay: ${staggerDelay + 0.4}s`}
+      >
+      </div>
     </div>
   </div>
+
+  <!-- Screen reader accessibility -->
+  <span class="sr-only">Loading product information...</span>
 </div>
+
+<style>
+  /* Enhanced shimmer animation */
+  @keyframes shimmer-enhanced {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-shimmer-enhanced {
+    animation: shimmer-enhanced 2s ease-in-out infinite;
+  }
+
+  /* Staggered pulse animation */
+  @keyframes pulse-staggered {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .animate-pulse-staggered {
+    animation: pulse-staggered 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation-delay: var(--stagger-delay, 0s);
+  }
+
+  /* Slower pulse for icons */
+  .animate-pulse-slow {
+    animation: pulse-staggered 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Accessibility: Reduce motion */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-shimmer-enhanced,
+    .animate-pulse-staggered,
+    .animate-pulse-slow {
+      animation: none;
+    }
+  }
+</style>
