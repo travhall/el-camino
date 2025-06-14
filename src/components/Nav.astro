@@ -276,114 +276,238 @@ const navItems = [
 </style>
 
 <script>
-  function setupNavigation() {
-    const categoryGroups = document.querySelectorAll(".category-group");
+  // Replace the <script> section in Nav.astro with this TypeScript-compatible version
 
-    categoryGroups.forEach((group) => {
-      const link = group.querySelector(".nav-item");
-      const dropdown = group.querySelector(".dropdown-menu");
-      const hasChildren = link?.getAttribute("data-has-children") === "true";
+  interface NavElementData {
+    link: HTMLElement;
+    dropdown: HTMLElement;
+    index: number;
+    isOpen: boolean;
+  }
 
-      if (hasChildren && link && dropdown) {
-        // Mobile click toggle
-        link.addEventListener("click", (event: Event) => {
-          if (window.innerWidth <= 768) {
-            event.preventDefault();
+  class NavigationController {
+    private navElements: Map<Element, NavElementData> = new Map();
+    private isAnimating: boolean = false;
+    private focusTimeout: number | null = null;
 
-            // Close others
-            categoryGroups.forEach((otherGroup) => {
-              if (
-                otherGroup !== group &&
-                otherGroup.classList.contains("open")
-              ) {
-                otherGroup.classList.remove("open");
-                const otherLink = otherGroup.querySelector(
-                  ".nav-item"
-                ) as HTMLElement;
-                if (otherLink) otherLink.setAttribute("aria-expanded", "false");
-              }
-            });
+    constructor() {
+      this.init();
+    }
 
-            // Toggle current
-            const isOpen = group.classList.contains("open");
-            if (isOpen) {
-              group.classList.remove("open");
-              link.setAttribute("aria-expanded", "false");
-            } else {
-              group.classList.add("open");
-              link.setAttribute("aria-expanded", "true");
+    private init(): void {
+      this.cacheElements();
+      this.setupEventDelegation();
+      this.setupResizeHandler();
+    }
+
+    private cacheElements(): void {
+      const categoryGroups = document.querySelectorAll(".category-group");
+
+      categoryGroups.forEach((group: Element, index: number) => {
+        const link = group.querySelector(".nav-item") as HTMLElement;
+        const dropdown = group.querySelector(".dropdown-menu") as HTMLElement;
+        const hasChildren = link?.getAttribute("data-has-children") === "true";
+
+        if (hasChildren && link && dropdown) {
+          this.navElements.set(group, {
+            link,
+            dropdown,
+            index,
+            isOpen: false,
+          });
+        }
+      });
+    }
+
+    private setupEventDelegation(): void {
+      const nav = document.querySelector("nav");
+      if (!nav) return;
+
+      nav.addEventListener("click", this.handleClick.bind(this), {
+        passive: false,
+      });
+      nav.addEventListener("focusout", this.handleFocusOut.bind(this), {
+        passive: true,
+      });
+      nav.addEventListener("touchstart", this.handleTouch.bind(this), {
+        passive: true,
+      });
+    }
+
+    private handleClick(event: Event): void {
+      if (this.isAnimating) {
+        event.preventDefault();
+        return;
+      }
+
+      const target = event.target as HTMLElement;
+      const clickedLink = target.closest(".nav-item") as HTMLElement;
+      if (!clickedLink) return;
+
+      const group = clickedLink.closest(".category-group");
+      if (!group) return;
+
+      const elementData = this.navElements.get(group);
+
+      if (!elementData || window.innerWidth > 768) return;
+
+      event.preventDefault();
+      this.toggleDropdown(group, elementData);
+    }
+
+    private toggleDropdown(group: Element, elementData: NavElementData): void {
+      requestAnimationFrame(() => {
+        this.isAnimating = true;
+
+        this.closeOtherDropdowns(group);
+
+        const isOpen = elementData.isOpen;
+        this.setDropdownState(group, elementData, !isOpen);
+
+        setTimeout(() => {
+          this.isAnimating = false;
+        }, 300);
+      });
+    }
+
+    private closeOtherDropdowns(excludeGroup: Element): void {
+      const updates: (() => void)[] = [];
+
+      this.navElements.forEach(
+        (elementData: NavElementData, group: Element) => {
+          if (group !== excludeGroup && elementData.isOpen) {
+            updates.push(() =>
+              this.setDropdownState(group, elementData, false)
+            );
+          }
+        }
+      );
+
+      if (updates.length) {
+        requestAnimationFrame(() => {
+          updates.forEach((update) => update());
+        });
+      }
+    }
+
+    private setDropdownState(
+      group: Element,
+      elementData: NavElementData,
+      isOpen: boolean
+    ): void {
+      elementData.isOpen = isOpen;
+
+      const { link, dropdown } = elementData;
+
+      if (isOpen) {
+        group.classList.add("open");
+        link.setAttribute("aria-expanded", "true");
+        (dropdown as HTMLElement).style.contain = "layout style";
+      } else {
+        group.classList.remove("open");
+        link.setAttribute("aria-expanded", "false");
+        (dropdown as HTMLElement).style.contain = "";
+      }
+    }
+
+    private handleFocusOut(event: Event): void {
+      if (this.focusTimeout) {
+        clearTimeout(this.focusTimeout);
+      }
+
+      this.focusTimeout = window.setTimeout(() => {
+        const nav = event.currentTarget as HTMLElement;
+        if (!nav.contains(document.activeElement)) {
+          this.closeAllDropdowns();
+        }
+      }, 0);
+    }
+
+    private handleTouch(event: Event): void {
+      const target = event.target as HTMLElement;
+      const group = target.closest(".category-group");
+      if (group && this.navElements.has(group)) {
+        (group as HTMLElement).style.willChange = "transform";
+
+        setTimeout(() => {
+          (group as HTMLElement).style.willChange = "auto";
+        }, 1000);
+      }
+    }
+
+    private closeAllDropdowns(): void {
+      requestAnimationFrame(() => {
+        this.navElements.forEach(
+          (elementData: NavElementData, group: Element) => {
+            if (elementData.isOpen) {
+              this.setDropdownState(group, elementData, false);
             }
           }
-        });
+        );
+      });
+    }
 
-        // Focus management for hover + tab workflow
-        const dropdownLinks = dropdown.querySelectorAll("a");
-        dropdownLinks.forEach((dropdownLink) => {
-          dropdownLink.addEventListener("focus", () => {
-            group.classList.add("open");
-            link.setAttribute("aria-expanded", "true");
-          });
-        });
+    private setupResizeHandler(): void {
+      let resizeTimeout: number;
 
-        // Close when focus leaves
-        group.addEventListener("focusout", (event) => {
-          setTimeout(() => {
-            if (!group.contains(document.activeElement)) {
-              group.classList.remove("open");
-              link.setAttribute("aria-expanded", "false");
+      window.addEventListener(
+        "resize",
+        () => {
+          if (resizeTimeout) {
+            clearTimeout(resizeTimeout);
+          }
+
+          resizeTimeout = window.setTimeout(() => {
+            if (window.innerWidth > 768) {
+              this.closeAllDropdowns();
             }
-          }, 0);
-        });
+          }, 150);
+        },
+        { passive: true }
+      );
+    }
+
+    public destroy(): void {
+      if (this.focusTimeout) {
+        clearTimeout(this.focusTimeout);
       }
-    });
+      this.navElements.clear();
+    }
   }
 
-  function resetNavItems() {
-    const navLinks = document.querySelectorAll(".nav-link");
-    navLinks.forEach((link) => {
-      const element = link as HTMLElement;
-      element.style.opacity = "";
-      element.style.transform = "";
-    });
+  function initializeNavigation(): NavigationController {
+    const startTime = performance.now();
 
-    document.querySelectorAll(".category-group.open").forEach((group) => {
-      group.classList.remove("open");
-    });
+    const navController = new NavigationController();
+
+    const endTime = performance.now();
+    console.log(
+      `Navigation initialized in ${(endTime - startTime).toFixed(2)}ms`
+    );
+
+    return navController;
   }
 
-  // Mobile animation observer
-  const nav = document.querySelector("nav");
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.attributeName === "class") {
-        if (!nav?.classList.contains("nav-open")) {
-          setTimeout(resetNavItems, 300);
-        }
-      }
-    });
-  });
+  // Keep existing Astro page transition handling
+  let navController: NavigationController | null = null;
 
-  if (nav) {
-    observer.observe(nav, { attributes: true });
-  }
-
-  // Page transitions
   document.addEventListener("astro:before-swap", () => {
-    observer.disconnect();
+    if (navController) {
+      navController.destroy();
+      navController = null;
+    }
   });
 
   document.addEventListener("astro:after-swap", () => {
-    const newNav = document.querySelector("nav");
-    if (newNav) {
-      observer.observe(newNav, { attributes: true });
-    }
-    setupNavigation();
+    navController = initializeNavigation();
   });
 
-  // Initialize
+  // Initial load
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", setupNavigation);
+    document.addEventListener("DOMContentLoaded", () => {
+      navController = initializeNavigation();
+    });
   } else {
-    setupNavigation();
+    navController = initializeNavigation();
   }
 </script>
