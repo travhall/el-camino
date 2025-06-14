@@ -102,30 +102,22 @@ const categoryPath = parentCategory
 
     <!-- Category Header -->
     <div class="p-4 pb-0">
-      <div
-        class="flex flex-col lg:flex-row justify-between gap-4 items-baseline"
-      >
-        <h1
-          class="font-display font-black text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-content-heading"
+      <div class="flex flex-col lg:flex-row justify-between gap-4 items-baseline">
+        <div
+          class="flex flex-row w-full lg:w-auto justify-between gap-4 items-baseline"
         >
-          {category.name}
-        </h1>
-        <!-- Page indicator for non-first pages -->
-        {page > 1 && (
-          <p class="text-content-meta text-sm mt-2">
-            Page {page} of {pagination.totalPages}
-          </p>
-        )}
-      </div>
-    </div>
-
-    <!-- Page Body -->
-    <div
-      class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-2"
-    >
-      <!-- Filter Sidebar -->
-      <aside class="lg:col-span-1">
-
+          <h1
+            class="font-display font-black text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-content-heading"
+          >
+            {category.name}
+          </h1>
+          <!-- Page indicator for non-first pages -->
+          {page > 1 && (
+            <p class="text-content-meta text-sm mt-2">
+              Page {page} of {pagination.totalPages}
+            </p>
+          )}
+        </div>
         <!-- Subcategory Navigation (Above Products per UX research) -->
         {
           subcategories.length > 0 && (
@@ -154,6 +146,44 @@ const categoryPath = parentCategory
             </div>
           )
         }
+      </div>
+    </div>
+
+    <!-- Page Body -->
+    <div
+      class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-2"
+    >
+      <!-- Filter Sidebar -->
+      <aside class="lg:col-span-1">
+
+        <!-- Subcategory Navigation (Above Products per UX research) -->
+        <!-- {
+          subcategories.length > 0 && (
+            <div class="flex flex-wrap gap-2 mb-1.5">
+              {subcategories.map((subcategory) => (
+                <a
+                  href={`/category/${category.slug}/${subcategory.slug}`}
+                  class="px-2.5 py-1.5 text-sm bg-ui-card-surface text-ui-card-text border border-ui-card-border rounded-sm hover:bg-ui-card-surface/75 transition-colors"
+                >
+                  {subcategory.name}
+                </a>
+              ))}
+            </div>
+          )
+        }
+
+        {
+          parentCategory && (
+            <div class="flex flex-wrap gap-2 mb-1.5">
+              <a
+                href={`/category/${parentCategory.slug}`}
+                class="px-2.5 py-1.5 text-sm bg-ui-card-surface text-ui-card-text border border-ui-card-border rounded-sm hover:bg-ui-card-surface/75 transition-colors"
+              >
+                See all &ldquo;{parentCategory.name}&rdquo;
+              </a>
+            </div>
+          )
+        } -->
         <ProductFilters
           filterOptions={filterOptions}
           totalProducts={pagination.totalProducts}

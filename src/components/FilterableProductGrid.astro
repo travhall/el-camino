@@ -1,5 +1,5 @@
 ---
-// src/components/FilterableProductGrid.astro - Enhanced Server-First with UX
+// src/components/FilterableProductGrid.astro
 import ProductCard from "./ProductCard.astro";
 import ProductCardSkeleton from "./ProductCardSkeleton.astro";
 import type { Product } from "@/lib/square/types";
@@ -52,7 +52,7 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 <!-- Product Grid Loading Skeleton -->
 <div
   id="product-grid-skeleton"
-  class="hidden grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-1"
+  class="hidden grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-1"
 >
   {
     Array.from({ length: 12 }, (_, i) => (
@@ -64,7 +64,7 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 <!-- No Results State (for client-side mode only) -->
 <div
   id="no-results"
-  class={`${paginationMode ? "hidden" : ""} justify-center items-center col-span-full py-16 text-center`}
+  class={`${paginationMode ? "hidden" : "flex flex-col"} justify-center items-center col-span-full py-16 text-center`}
 >
   <div class="text-center">
     <div class="text-6xl mb-4 opacity-20">🔍</div>
@@ -94,19 +94,28 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
   } from "@/lib/square/filterUtils";
   import type { Product, ProductFilters } from "@/lib/square/types";
 
+  // Replace the class properties and constructor in FilterableProductGrid.astro:
+
   class FilterableProductGrid {
-    private grid: HTMLElement;
-    private noResults: HTMLElement;
-    private loadingOverlay: HTMLElement;
-    private skeleton: HTMLElement;
-    private allProducts: Product[];
-    private productWrappers: HTMLElement[];
+    private grid: HTMLElement | null;
+    private noResults!: HTMLElement;
+    private loadingOverlay!: HTMLElement;
+    private skeleton!: HTMLElement;
+    private allProducts!: Product[];
+    private productWrappers!: HTMLElement[];
     private isFiltering = false;
-    private paginationMode: boolean;
-    private categoryPath: string;
+    private paginationMode!: boolean;
+    private categoryPath!: string;
 
     constructor() {
-      this.grid = document.getElementById("filterable-product-grid")!;
+      this.grid = document.getElementById("filterable-product-grid");
+
+      // Exit early if component doesn't exist on this page
+      if (!this.grid) {
+        console.log("[FilterableProductGrid] Component not found on this page");
+        return;
+      }
+
       this.noResults = document.getElementById("no-results")!;
       this.loadingOverlay = document.getElementById("filter-loading-overlay")!;
       this.skeleton = document.getElementById("product-grid-skeleton")!;
@@ -130,6 +139,78 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
       if (!this.paginationMode) {
         this.handleInitialFilters();
       }
+    }
+
+    // Add null check to methods that use this.grid:
+    private fadeOutUnmatchedProducts(filters: ProductFilters): void {
+      if (!this.grid) return;
+
+      const filteredProducts = filterProducts(this.allProducts, filters);
+      const visibleIds = new Set(filteredProducts.map((p) => p.id));
+
+      this.productWrappers.forEach((wrapper) => {
+        const productId = wrapper.dataset.productId;
+
+        if (visibleIds.has(productId!)) {
+          wrapper.style.opacity = "1";
+          wrapper.style.transform = "scale(1)";
+        } else {
+          wrapper.style.opacity = "0.3";
+          wrapper.style.transform = "scale(0.95)";
+        }
+      });
+
+      this.updateCounts(filteredProducts.length);
+    }
+
+    private showFilteringFeedback(): void {
+      if (!this.grid) return;
+
+      this.grid.style.opacity = "0.8";
+      this.grid.style.pointerEvents = "none";
+    }
+
+    private showFullPageLoading(): void {
+      if (!this.grid) return;
+
+      this.loadingOverlay.classList.remove("hidden");
+      this.grid.style.opacity = "0.3";
+    }
+
+    private hideLoadingStates(): void {
+      if (!this.grid) return;
+
+      this.loadingOverlay.classList.add("hidden");
+      this.grid.style.opacity = "1";
+      this.grid.style.pointerEvents = "auto";
+      this.isFiltering = false;
+
+      this.productWrappers.forEach((wrapper) => {
+        wrapper.style.opacity = "1";
+        wrapper.style.transform = "scale(1)";
+      });
+    }
+
+    private applyFilters(filters: ProductFilters): void {
+      if (!this.grid || this.paginationMode || this.isFiltering) return;
+
+      this.isFiltering = true;
+      console.log("[FilterableProductGrid] Client-side filtering:", filters);
+
+      this.grid.style.opacity = "0.6";
+
+      requestAnimationFrame(() => {
+        const filteredProducts = filterProducts(this.allProducts, filters);
+        const filteredIds = new Set(filteredProducts.map((p) => p.id));
+
+        this.updateGrid(filteredIds);
+        this.updateCounts(filteredProducts.length);
+
+        if (this.grid) {
+          this.grid.style.opacity = "1";
+        }
+        this.isFiltering = false;
+      });
     }
 
     private setupEventListeners(): void {
@@ -166,14 +247,11 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
     private handleFiltersChanged(event: CustomEvent): void {
       const { filters } = event.detail;
 
-      // Always prevent duplicate filter changes
       if (this.isFiltering) return;
 
       if (this.paginationMode) {
-        // SERVER-FIRST MODE: Instant feedback + server navigation
         this.applyFiltersServerFirst(filters);
       } else {
-        // CLIENT-SIDE MODE: Apply filters immediately
         this.applyFilters(filters);
       }
     }
@@ -184,63 +262,33 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 
       console.log("[FilterableProductGrid] Server-first filtering:", filters);
 
-      // STEP 1: Instant visual feedback (perceived performance)
       this.showOptimisticUpdate(filters);
 
-      // STEP 2: Navigate to filtered results
       setTimeout(() => {
         updateURLWithFiltersResetPage(filters);
 
-        // Fallback navigation if history API doesn't trigger Astro router
         setTimeout(() => {
           if (this.isFiltering) {
             window.location.href = window.location.href;
           }
         }, 150);
-      }, 50); // Small delay for smooth visual transition
+      }, 50);
     }
 
     private showOptimisticUpdate(filters: ProductFilters): void {
-      // Show what we expect the results to look like
       if (hasActiveFilters(filters)) {
-        // Predict results by filtering current products
         const predictedResults = filterProducts(this.allProducts, filters);
 
         if (predictedResults.length > 0) {
-          // Show predicted filtered results with loading state
           this.fadeOutUnmatchedProducts(filters);
           this.showFilteringFeedback();
         } else {
-          // Show loading for new results
           this.showFullPageLoading();
         }
       } else {
-        // Clearing filters - show all products
         this.showAllProducts();
         this.showFilteringFeedback();
       }
-    }
-
-    private fadeOutUnmatchedProducts(filters: ProductFilters): void {
-      const filteredProducts = filterProducts(this.allProducts, filters);
-      const visibleIds = new Set(filteredProducts.map((p) => p.id));
-
-      this.productWrappers.forEach((wrapper) => {
-        const productId = wrapper.dataset.productId;
-
-        if (visibleIds.has(productId!)) {
-          // Keep visible products normal
-          wrapper.style.opacity = "1";
-          wrapper.style.transform = "scale(1)";
-        } else {
-          // Fade out products that won't match
-          wrapper.style.opacity = "0.3";
-          wrapper.style.transform = "scale(0.95)";
-        }
-      });
-
-      // Update counts optimistically
-      this.updateCounts(filteredProducts.length);
     }
 
     private showAllProducts(): void {
@@ -249,53 +297,6 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
         wrapper.style.transform = "scale(1)";
       });
       this.updateCounts(this.allProducts.length);
-    }
-
-    private showFilteringFeedback(): void {
-      // Add subtle loading indicator to grid
-      this.grid.style.opacity = "0.8";
-      this.grid.style.pointerEvents = "none";
-    }
-
-    private showFullPageLoading(): void {
-      // Show loading overlay for major changes
-      this.loadingOverlay.classList.remove("hidden");
-      this.grid.style.opacity = "0.3";
-    }
-
-    private hideLoadingStates(): void {
-      // Clean up all loading states
-      this.loadingOverlay.classList.add("hidden");
-      this.grid.style.opacity = "1";
-      this.grid.style.pointerEvents = "auto";
-      this.isFiltering = false;
-
-      // Reset all product styles
-      this.productWrappers.forEach((wrapper) => {
-        wrapper.style.opacity = "1";
-        wrapper.style.transform = "scale(1)";
-      });
-    }
-
-    private applyFilters(filters: ProductFilters): void {
-      // CLIENT-SIDE MODE (unchanged)
-      if (this.paginationMode || this.isFiltering) return;
-
-      this.isFiltering = true;
-      console.log("[FilterableProductGrid] Client-side filtering:", filters);
-
-      this.grid.style.opacity = "0.6";
-
-      requestAnimationFrame(() => {
-        const filteredProducts = filterProducts(this.allProducts, filters);
-        const filteredIds = new Set(filteredProducts.map((p) => p.id));
-
-        this.updateGrid(filteredIds);
-        this.updateCounts(filteredProducts.length);
-
-        this.grid.style.opacity = "1";
-        this.isFiltering = false;
-      });
     }
 
     private updateGrid(visibleProductIds: Set<string>): void {
@@ -314,7 +315,6 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
         }
       });
 
-      // Show/hide no results (client-side only)
       if (!this.paginationMode) {
         if (visibleCount === 0) {
           this.noResults.style.display = "flex";
@@ -344,17 +344,14 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
       const emptyFilters = clearAllFilters();
 
       if (this.paginationMode) {
-        // Show optimistic update then navigate
         this.showOptimisticUpdate(emptyFilters);
         setTimeout(() => {
           window.location.href = this.categoryPath;
         }, 50);
       } else {
-        // Update URL and apply filters
         updateURLWithFilters(emptyFilters);
         this.applyFilters(emptyFilters);
 
-        // Dispatch event to sync filter UI
         window.dispatchEvent(new CustomEvent("clearAllFilters"));
       }
     }
