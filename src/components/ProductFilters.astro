@@ -199,17 +199,25 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
   import type { ProductFilters as IProductFilters } from "@/lib/square/types";
 
   class ProductFilters {
-    private mobileToggle: HTMLElement;
-    private mobileDrawer: HTMLElement;
-    private mobileOverlay: HTMLElement;
-    private mobileClose: HTMLElement;
-    private mobileApply: HTMLElement;
-    private clearButtons: NodeListOf<HTMLElement>;
+    private mobileToggle?: HTMLElement;
+    private mobileDrawer?: HTMLElement;
+    private mobileOverlay?: HTMLElement;
+    private mobileClose?: HTMLElement;
+    private mobileApply?: HTMLElement;
+    private clearButtons?: NodeListOf<HTMLElement>;
     private currentFilters: IProductFilters = { brands: [] };
     private pendingMobileFilters: IProductFilters = { brands: [] };
     private allProducts: any[] = [];
 
     constructor() {
+      // Early exit if no filter elements exist
+      if (!document.getElementById("mobile-filter-toggle")) {
+        console.log(
+          "[ProductFilters] No filter elements found, skipping initialization"
+        );
+        return;
+      }
+
       this.mobileToggle = document.getElementById("mobile-filter-toggle")!;
       this.mobileDrawer = document.getElementById("mobile-filter-drawer")!;
       this.mobileOverlay = document.getElementById("mobile-filter-overlay")!;
@@ -265,27 +273,32 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
       });
 
       // Mobile drawer controls
-      this.mobileToggle.addEventListener(
+      this.mobileToggle?.addEventListener(
         "click",
         this.openMobileDrawer.bind(this)
       );
-      this.mobileOverlay.addEventListener(
+      this.mobileOverlay?.addEventListener(
         "click",
         this.closeMobileDrawer.bind(this)
       );
-      this.mobileClose.addEventListener(
+      this.mobileClose?.addEventListener(
         "click",
         this.closeMobileDrawer.bind(this)
       );
 
       // Mobile Apply - ACTUALLY APPLY FILTERS
-      this.mobileApply.addEventListener("click", () => {
-        this.applyMobileFilters();
+      this.mobileApply?.addEventListener("click", () => {
+        const hasChanges = this.filtersChanged();
+
+        if (hasChanges) {
+          this.applyMobileFilters();
+        }
+
         this.closeMobileDrawer();
       });
 
       // Clear filters
-      this.clearButtons.forEach((button) => {
+      this.clearButtons?.forEach((button) => {
         button.addEventListener("click", this.clearAllFilters.bind(this));
       });
 
@@ -374,6 +387,8 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
     private updateApplyButton(): void {
       const hasChanges = this.filtersChanged();
 
+      if (!this.mobileApply) return;
+
       if (hasChanges) {
         this.mobileApply.textContent = "Apply Filters";
         this.mobileApply.classList.add("bg-ui-accent", "hover:bg-ui-accent/90");
@@ -432,7 +447,7 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
       const activeCount = getActiveFiltersCount(this.currentFilters);
 
       // Show/hide clear buttons
-      this.clearButtons.forEach((button) => {
+      this.clearButtons?.forEach((button) => {
         button.style.display = hasFilters ? "block" : "none";
       });
 
@@ -487,20 +502,25 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
       this.updateMobilePreview();
       this.updateApplyButton();
 
-      this.mobileOverlay.classList.remove("pointer-events-none", "opacity-0");
-      this.mobileDrawer.classList.remove("translate-y-full");
+      this.mobileOverlay?.classList.remove("pointer-events-none", "opacity-0");
+      this.mobileDrawer?.classList.remove("translate-y-full");
       document.body.style.overflow = "hidden";
     }
 
     private closeMobileDrawer(): void {
-      this.mobileOverlay.classList.add("opacity-0");
-      this.mobileDrawer.classList.add("translate-y-full");
+      this.mobileOverlay?.classList.add("opacity-0");
+      this.mobileDrawer?.classList.add("translate-y-full");
 
       setTimeout(() => {
-        this.mobileOverlay.classList.add("pointer-events-none");
+        this.mobileOverlay?.classList.add("pointer-events-none");
       }, 300);
 
       document.body.style.overflow = "";
+
+      // Reset pending filters to current state without triggering URL changes
+      this.pendingMobileFilters = { ...this.currentFilters };
+      this.updateMobilePreview();
+      this.updateApplyButton();
     }
 
     private filtersChanged(): boolean {
