@@ -67,7 +67,7 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
 <!-- Mobile Filter Button -->
 <button
   id="mobile-filter-toggle"
-  class="lg:hidden fixed bottom-4 right-4 bg-ui-nav-surface text-ui-button-primary-text rounded-sm-full p-4 shadow-lg z-[500] transition-transform hover:scale-105"
+  class="lg:hidden fixed bottom-4 right-4 bg-ui-nav-surface text-ui-button-primary-text rounded-sm p-4 shadow-lg z-[500] transition-transform hover:scale-105"
   aria-label="Open Filters"
 >
   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,7 +80,7 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
   </svg>
   <span
     id="filter-count-badge"
-    class="absolute -top-1 -right-1 bg-ui-accent text-white text-xs rounded-sm-full min-w-[1.25rem] h-5 items-center justify-center px-1 hidden"
+    class="absolute -top-1 -right-1 bg-ui-accent text-white text-xs rounded-sm min-w-[1.25rem] h-5 items-center justify-center px-1 hidden"
   >
     0
   </span>
@@ -189,6 +189,7 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
   import {
     parseFiltersFromURL,
     updateURLWithFilters,
+    updateURLWithFiltersResetPage,
     hasActiveFilters,
     getActiveFiltersCount,
     clearAllFilters,
@@ -365,17 +366,13 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
         previewCount.textContent = previewProducts.length.toString();
 
         // Show preview if filters changed
-        const hasChanges =
-          JSON.stringify(this.pendingMobileFilters) !==
-          JSON.stringify(this.currentFilters);
+        const hasChanges = this.filtersChanged();
         previewElement.classList.toggle("hidden", !hasChanges);
       }
     }
 
     private updateApplyButton(): void {
-      const hasChanges =
-        JSON.stringify(this.pendingMobileFilters) !==
-        JSON.stringify(this.currentFilters);
+      const hasChanges = this.filtersChanged();
 
       if (hasChanges) {
         this.mobileApply.textContent = "Apply Filters";
@@ -444,11 +441,9 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
       if (badge) {
         if (hasFilters) {
           badge.textContent = activeCount.toString();
-          badge.style.display = "flex";
           badge.classList.remove("hidden");
           badge.classList.add("flex");
         } else {
-          badge.style.display = "none";
           badge.classList.add("hidden");
           badge.classList.remove("flex");
         }
@@ -474,7 +469,7 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
         checkbox.checked = false;
       });
 
-      updateURLWithFilters(this.currentFilters);
+      updateURLWithFiltersResetPage(this.currentFilters);
       this.updateUI();
       this.updateMobilePreview();
       this.updateApplyButton();
@@ -506,6 +501,15 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
       }, 300);
 
       document.body.style.overflow = "";
+    }
+
+    private filtersChanged(): boolean {
+      const currentBrands = [...this.currentFilters.brands].sort();
+      const pendingBrands = [...this.pendingMobileFilters.brands].sort();
+      return (
+        currentBrands.length !== pendingBrands.length ||
+        !currentBrands.every((brand, i) => brand === pendingBrands[i])
+      );
     }
   }
 
