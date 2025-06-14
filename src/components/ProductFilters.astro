@@ -241,6 +241,19 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
       this.setupEventListeners();
     }
 
+    // Add this method to the ProductFilters class
+    private updateCounts(filteredCount: number): void {
+      const desktopCount = document.getElementById("filtered-count");
+      if (desktopCount) {
+        desktopCount.textContent = filteredCount.toString();
+      }
+
+      const mobileCount = document.getElementById("mobile-filtered-count");
+      if (mobileCount) {
+        mobileCount.textContent = filteredCount.toString();
+      }
+    }
+
     private initializeFromURL(): void {
       const params = new URLSearchParams(window.location.search);
       this.currentFilters = parseFiltersFromURL(params);
@@ -253,6 +266,19 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
 
       this.updateUI();
       this.dispatchFilterEvent();
+    }
+
+    // And add the helper method:
+    private updateCountsFromPage(): void {
+      const gridElement = document.getElementById("filterable-product-grid");
+      if (gridElement?.dataset.products) {
+        try {
+          const products = JSON.parse(gridElement.dataset.products);
+          this.updateCounts(products.length);
+        } catch (e) {
+          console.warn("Could not parse products for count update");
+        }
+      }
     }
 
     private setupEventListeners(): void {

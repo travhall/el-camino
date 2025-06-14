@@ -141,7 +141,6 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
       }
     }
 
-    // Add null check to methods that use this.grid:
     private fadeOutUnmatchedProducts(filters: ProductFilters): void {
       if (!this.grid) return;
 
@@ -150,7 +149,6 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 
       this.productWrappers.forEach((wrapper) => {
         const productId = wrapper.dataset.productId;
-
         if (visibleIds.has(productId!)) {
           wrapper.style.opacity = "1";
           wrapper.style.transform = "scale(1)";
@@ -159,8 +157,6 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
           wrapper.style.transform = "scale(0.95)";
         }
       });
-
-      this.updateCounts(filteredProducts.length);
     }
 
     private showFilteringFeedback(): void {
@@ -204,7 +200,6 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
         const filteredIds = new Set(filteredProducts.map((p) => p.id));
 
         this.updateGrid(filteredIds);
-        this.updateCounts(filteredProducts.length);
 
         if (this.grid) {
           this.grid.style.opacity = "1";
@@ -296,7 +291,6 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
         wrapper.style.opacity = "1";
         wrapper.style.transform = "scale(1)";
       });
-      this.updateCounts(this.allProducts.length);
     }
 
     private updateGrid(visibleProductIds: Set<string>): void {
@@ -325,18 +319,6 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
           this.noResults.classList.add("hidden");
           this.noResults.classList.remove("flex", "flex-col");
         }
-      }
-    }
-
-    private updateCounts(filteredCount: number): void {
-      const desktopCount = document.getElementById("filtered-count");
-      if (desktopCount) {
-        desktopCount.textContent = filteredCount.toString();
-      }
-
-      const mobileCount = document.getElementById("mobile-filtered-count");
-      if (mobileCount) {
-        mobileCount.textContent = filteredCount.toString();
       }
     }
 
