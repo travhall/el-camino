@@ -1,5 +1,5 @@
 ---
-// src/components/ProductCard.astro - Simplified Enhancement
+// src/components/ProductCard.astro - FIXED: Remove inline style conflicts
 import type { Product } from "@/lib/square/types";
 import { MoneyUtils } from "@/lib/square/money";
 import { getProductStockStatus } from "@/lib/square/inventory";
@@ -7,7 +7,7 @@ import { getProductStockStatus } from "@/lib/square/inventory";
 interface Props {
   product: Product;
   priority?: boolean;
-  index?: number; // Add index for dynamic priority calculation
+  index?: number;
 }
 
 const { product, priority = false, index = 0 } = Astro.props;
@@ -79,18 +79,18 @@ const isDynamicPriority = priority || index < 12;
       </div>
     </div>
 
-    <!-- Enhanced Image with better loading -->
+    <!-- FIXED: Enhanced Image - Use classes instead of inline styles -->
     <img
       id={imageId}
       src={optimizedImageSrc}
       alt={product.title}
-      class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-75" : ""} image-enhanced`}
+      class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-75" : ""} image-enhanced will-change-transform`}
       loading={isDynamicPriority ? "eager" : "lazy"}
       fetchpriority={isDynamicPriority ? "high" : "auto"}
       decoding={isDynamicPriority ? "sync" : "async"}
       data-placeholder-id={placeholderId}
-      onerror={`this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjZTVlN2ViIi8+CjxwYXRoIGQ9Im0xNzUgMTAwIDUwIDUwIDUwLTUwIDI1IDI1LTI1IDI1IDI1IDI1LTI1IDI1LTUwLTUwLTUwIDUweiIgZmlsbD0iIzliYTFhNiIvPgo8dGV4dCB4PSIyMDAiIHk9IjE4MCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkltYWdlIFVuYXZhaWxhYmxlPC90ZXh0Pgo8L3N2Zz4K'; this.style.opacity='1'; this.classList.add('error'); document.getElementById('${placeholderId}')?.remove()`}
-      onload={`this.style.opacity='1'; this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
+      onerror={`this.classList.add('opacity-100', 'error'); document.getElementById('${placeholderId}')?.remove()`}
+      onload={`this.classList.add('opacity-100', 'loaded'); document.getElementById('${placeholderId}')?.remove()`}
     />
 
     <!-- Preserve existing stock status overlay -->
@@ -139,7 +139,7 @@ const isDynamicPriority = priority || index < 12;
   </div>
 </a>
 
-<!-- Enhanced CSS with better animations -->
+<!-- FIXED: Simplified CSS - Remove conflicting transitions -->
 <style>
   /* Shimmer animation */
   @keyframes shimmer {
@@ -155,43 +155,26 @@ const isDynamicPriority = priority || index < 12;
     animation: shimmer 2s ease-in-out infinite;
   }
 
-  /* Image loading states */
-  .image-enhanced {
-    transition:
-      opacity 0.3s ease,
-      transform 0.3s ease;
-  }
-
-  .image-enhanced.loaded {
-    opacity: 1;
-  }
+  /* REMOVED: .image-enhanced transition conflicts - let Tailwind handle all transitions */
 
   .image-enhanced.error {
-    opacity: 0.7;
     filter: grayscale(100%);
   }
 
   /* Accessibility: Reduce motion */
   @media (prefers-reduced-motion: reduce) {
-    .image-enhanced,
     .animate-shimmer {
       animation: none;
-      transition: none;
     }
-  }
 
-  /* Progressive enhancement for blur effect */
-  @supports (backdrop-filter: blur(5px)) {
+    /* Disable transitions for reduced motion */
     .image-enhanced {
-      backdrop-filter: blur(0px);
-      transition:
-        opacity 0.3s ease,
-        backdrop-filter 0.3s ease;
+      transition: none !important;
     }
   }
 </style>
 
-<!-- Simple progressive enhancement script -->
+<!-- FIXED: Use classes instead of inline styles -->
 <script>
   // Enhanced image loading feedback
   document.addEventListener("astro:page-load", () => {
@@ -201,8 +184,7 @@ const isDynamicPriority = priority || index < 12;
     images.forEach((img) => {
       // If image is already loaded (cached), trigger onload
       if (img.complete && img.naturalHeight !== 0) {
-        img.style.opacity = "1";
-        img.classList.add("loaded");
+        img.classList.add("opacity-100", "loaded");
         const placeholderId = img.dataset.placeholderId;
         if (placeholderId) {
           document.getElementById(placeholderId)?.remove();
@@ -210,31 +192,4 @@ const isDynamicPriority = priority || index < 12;
       }
     });
   });
-
-  // Performance monitoring (optional)
-  if (typeof window !== "undefined" && "performance" in window) {
-    document.addEventListener("astro:page-load", () => {
-      // Track image loading performance
-      const observer = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        entries.forEach((entry) => {
-          if (
-            entry.name.includes("squarecdn.com") &&
-            entry.name.includes("q=85")
-          ) {
-            console.log(
-              `Optimized image loaded: ${entry.duration}ms`,
-              entry.name
-            );
-          }
-        });
-      });
-
-      try {
-        observer.observe({ entryTypes: ["resource"] });
-      } catch (e) {
-        // PerformanceObserver not supported
-      }
-    });
-  }
 </script>

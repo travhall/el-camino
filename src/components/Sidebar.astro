@@ -1,5 +1,5 @@
 ---
-// src/components/Sidebar.astro
+// src/components/Sidebar.astro - Enhanced with shimmer loading
 import { fetchCategoryHierarchy } from "@/lib/square/categories";
 import { squareClient } from "@/lib/square/client";
 import { Image } from "astro:assets";
@@ -48,22 +48,38 @@ for (const item of categoryHierarchy) {
   }
 }
 
-// Function to get image URL for a category, falling back to local image
+// Enhanced function to get optimized image URL for a category
 function getCategoryImageUrl(category: { id: string; slug: string }): string {
-  // If we found an image URL in Square, use it
+  // If we found an image URL in Square, optimize it
   if (category.id && categoryImageUrls[category.id]) {
-    return categoryImageUrls[category.id];
+    const squareImageUrl = categoryImageUrls[category.id];
+    
+    // Optimize Square CDN image (same as ProductCard)
+    if (squareImageUrl.includes('squarecdn.com')) {
+      try {
+        const url = new URL(squareImageUrl);
+        url.searchParams.set('w', '600');
+        url.searchParams.set('h', '338'); // 16:9 aspect ratio
+        url.searchParams.set('q', '85');
+        url.searchParams.set('f', 'auto');
+        return url.toString();
+      } catch {
+        return squareImageUrl;
+      }
+    }
+    return squareImageUrl;
   }
 
   // Otherwise fall back to local path
   return `/images/category-${category.slug}.png`;
 }
 
-// Map categories with their images
+// Map categories with their optimized images
 const categoriesWithImages = categoryHierarchy.map((item) => ({
   category: item.category.name,
   url: `/category/${item.category.slug}`,
   src: getCategoryImageUrl(item.category),
+  id: item.category.id,
 }));
 
 // Sort function remains the same
@@ -96,50 +112,131 @@ const prodCats = getSortedCategories();
     Shop by Category
   </h3>
   <div class="flex flex-col sm:flex-row md:flex-col gap-1">
-    {
-      prodCats.map((e, index) => (
+    {prodCats.map((e, index) => {
+      const imageId = `category-img-${e.id || e.category}`;
+      const placeholderId = `category-placeholder-${e.id || e.category}`;
+      
+      return (
         <a
           href={e.url}
           class="category-link block relative border-t-4 border-ui-button-surface overflow-hidden"
         >
+          <!-- Enhanced shimmer placeholder -->
+          <div
+            class="absolute inset-0 bg-gradient-to-br from-surface-secondary to-surface-tertiary transition-opacity duration-300"
+            id={placeholderId}
+          >
+            <!-- Shimmer effect -->
+            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-surface-primary/30 to-transparent animate-shimmer -translate-x-full"></div>
+            
+            <!-- Category icon -->
+            <div class="absolute inset-0 flex items-center justify-center opacity-20">
+              <svg class="w-8 h-8 text-content-meta" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Enhanced category image -->
           <img
+            id={imageId}
             src={e.src}
             alt={e.category}
-            class="category-img object-cover w-full h-auto aspect-video opacity-20 transition-all"
+            class="category-img object-cover w-full h-auto aspect-video opacity-0 transition-all duration-300 category-image-enhanced will-change-transform"
             loading={index < 2 ? "eager" : "lazy"}
             decoding={index < 2 ? "sync" : "async"}
-            onerror="this.onerror=null; this.src='/images/placeholder.png';"
+            fetchpriority={index < 2 ? "high" : "auto"}
+            data-placeholder-id={placeholderId}
+            onload={`this.classList.add('opacity-20', 'loaded'); document.getElementById('${placeholderId}')?.remove()`}
+            onerror={`this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjMzOCIgdmlld0JveD0iMCAwIDYwMCAzMzgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI2MDAiIGhlaWdodD0iMzM4IiBmaWxsPSIjZTVlN2ViIi8+CjxwYXRoIGQ9Im0yNzUgMTAwIDUwIDUwIDUwLTUwIDI1IDI1LTI1IDI1IDI1IDI1LTI1IDI1LTUwLTUwLTUwIDUweiIgZmlsbD0iIzliYTFhNiIvPgo8dGV4dCB4PSIzMDAiIHk9IjE5MCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkNhdGVnb3J5IEltYWdlPC90ZXh0Pgo8dGV4dCB4PSIzMDAiIHk9IjIxMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlVuYXZhaWxhYmxlPC90ZXh0Pgo8L3N2Zz4K'; this.classList.add('opacity-20', 'error'); document.getElementById('${placeholderId}')?.remove()`}
           />
+          
           <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-border-secondary border-b-0 bg-surface-secondary text-content-heading transition-all">
             {e.category}
           </h4>
         </a>
-      ))
-    }
+      );
+    })}
   </div>
 </aside>
 
+<!-- Enhanced CSS -->
 <style>
-  .category-link:hover img {
+  /* Shimmer animation (same as ProductCard) */
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s ease-in-out infinite;
+  }
+
+  /* Enhanced category link hover effects */
+  .category-link:hover .category-img.loaded {
     opacity: 1;
     scale: 1.05;
   }
-  .category-link:hover h4 {
+  
+  .category-link:hover .category-title {
     font-weight: bold;
+  }
+
+  /* Category image loading states */
+  .category-image-enhanced.loaded {
+    opacity: 0.2; /* Default opacity for category images */
+  }
+
+  .category-image-enhanced.error {
+    opacity: 0.2;
+    filter: grayscale(100%);
+  }
+
+  /* Accessibility: Reduce motion */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-shimmer,
+    .category-image-enhanced {
+      animation: none;
+      transition: none !important;
+    }
   }
 </style>
 
 <script>
-  // Client-side fallback for failed images
+  // Enhanced image loading for category images
+  document.addEventListener("astro:page-load", () => {
+    const categoryImages = document.querySelectorAll<HTMLImageElement>(".category-image-enhanced");
+
+    categoryImages.forEach((img) => {
+      // If image is already loaded (cached), trigger onload
+      if (img.complete && img.naturalHeight !== 0) {
+        img.classList.add('opacity-20', 'loaded');
+        const placeholderId = img.dataset.placeholderId;
+        if (placeholderId) {
+          document.getElementById(placeholderId)?.remove();
+        }
+      }
+    });
+  });
+
+  // Enhanced fallback for failed images
   document.addEventListener("astro:page-load", () => {
     const images = document.querySelectorAll<HTMLImageElement>(
-      "img[src*='square'], img[src*='category-']"
+      "img[src*='square'], img[src*='category-'], .category-image-enhanced"
     );
 
     images.forEach((img) => {
       img.addEventListener("error", () => {
-        img.src = "/images/placeholder.png";
-        img.alt = "Category image not available";
+        if (!img.classList.contains('category-image-enhanced')) {
+          // Handle other images (non-enhanced)
+          img.src = "/images/placeholder.png";
+          img.alt = "Category image not available";
+        }
+        // Enhanced images handle errors via onerror attribute
       });
     });
   });
