@@ -73,6 +73,13 @@ const nextURL = hasNextPage
 
 const getPageURL = (page: number) =>
   buildPaginatedURL(basePath, filters, page, pageSize);
+
+// Debug: Log the URLs being generated
+console.log("Pagination Debug:");
+console.log("basePath:", basePath);
+console.log("filters:", filters);
+console.log("pageSize:", pageSize);
+console.log("Sample URL for page 2:", getPageURL(2));
 ---
 
 <nav
@@ -87,6 +94,7 @@ const getPageURL = (page: number) =>
       prevURL ? (
         <a
           href={prevURL}
+          data-astro-reload
           class="flex items-center px-3 py-2 text-sm text-ui-card-text bg-ui-card-surface border border-ui-card-border rounded-sm hover:bg-ui-card-hover transition-colors"
           aria-label={`Go to page ${currentPage - 1}`}
         >
@@ -136,6 +144,7 @@ const getPageURL = (page: number) =>
           ) : (
             <a
               href={getPageURL(page)}
+              data-astro-reload
               class={`px-3 py-2 text-sm border rounded-sm transition-colors ${
                 page === currentPage
                   ? "bg-ui-accent text-ui-accent-text border-ui-accent font-medium pointer-events-none"
@@ -167,6 +176,7 @@ const getPageURL = (page: number) =>
       nextURL ? (
         <a
           href={nextURL}
+          data-astro-reload
           class="flex items-center px-3 py-2 text-sm text-ui-card-text bg-ui-card-surface border border-ui-card-border rounded-sm hover:bg-ui-card-hover transition-colors"
           aria-label={`Go to page ${currentPage + 1}`}
         >
@@ -213,29 +223,3 @@ const getPageURL = (page: number) =>
     Math.min(currentPage * pageSize, pagination.totalProducts)
   } of {pagination.totalProducts} products
 </div>
-
-<script>
-  // Progressive enhancement for pagination
-  document.addEventListener("astro:page-load", () => {
-    const paginationLinks = document.querySelectorAll(
-      'nav[aria-label="Pagination Navigation"] a'
-    );
-
-    paginationLinks.forEach((link) => {
-      link.addEventListener("click", (e) => {
-        // Add loading state to clicked pagination link
-        const target = e.currentTarget as HTMLElement;
-        const originalContent = target.innerHTML;
-
-        target.style.opacity = "0.6";
-        target.style.pointerEvents = "none";
-
-        // Restore state if navigation fails (fallback)
-        setTimeout(() => {
-          target.style.opacity = "1";
-          target.style.pointerEvents = "auto";
-        }, 3000);
-      });
-    });
-  });
-</script>

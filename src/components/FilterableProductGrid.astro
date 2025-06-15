@@ -93,6 +93,7 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
     clearAllFilters,
   } from "@/lib/square/filterUtils";
   import type { Product, ProductFilters } from "@/lib/square/types";
+  import { buildPaginatedURL } from "@/lib/square/filterUtils";
 
   // Replace the class properties and constructor in FilterableProductGrid.astro:
 
@@ -247,34 +248,19 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
     private handleFiltersChanged(event: CustomEvent): void {
       const { filters } = event.detail;
 
-      if (this.isFiltering) return;
+      // Build new URL with filters
+      const currentParams = new URLSearchParams(window.location.search);
+      const pageSize = parseInt(currentParams.get("pageSize") || "24", 10);
 
-      // Always use client-side filtering for smooth UX
-      this.applyFilters(filters);
+      const newURL = buildPaginatedURL(
+        window.location.pathname,
+        filters,
+        1, // Reset to page 1
+        pageSize
+      );
 
-      // Update URL for pagination mode compatibility
-      if (this.paginationMode) {
-        updateURLWithFiltersResetPage(filters);
-      }
-    }
-
-    private applyFiltersServerFirst(filters: ProductFilters): void {
-      if (this.isFiltering) return;
-      this.isFiltering = true;
-
-      console.log("[FilterableProductGrid] Server-first filtering:", filters);
-
-      this.showOptimisticUpdate(filters);
-
-      setTimeout(() => {
-        updateURLWithFiltersResetPage(filters);
-
-        setTimeout(() => {
-          if (this.isFiltering) {
-            window.location.href = window.location.href;
-          }
-        }, 150);
-      }, 50);
+      // Navigate to new URL
+      window.location.href = newURL;
     }
 
     private showOptimisticUpdate(filters: ProductFilters): void {
