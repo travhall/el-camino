@@ -4,7 +4,7 @@ import { batchGetImageUrls } from "./imageUtils";
 import type {
   Category,
   CategoryHierarchy,
-  Product,
+  ExtendedCatalogObject,
   PaginatedProducts,
   ProductLoadingOptions,
 } from "./types";
@@ -18,16 +18,6 @@ function createSlug(name: string): string {
     .replace(/[^\w\s-]/g, "")
     .replace(/[\s_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
-}
-
-function getSortIndex(name: string): number {
-  const orderMap: Record<string, number> = {
-    Skateboards: 0,
-    Apparel: 1,
-    Footwear: 2,
-    "Gift Cards & More": 3,
-  };
-  return orderMap[name] ?? 999;
 }
 
 /**
@@ -67,21 +57,41 @@ export async function fetchCategories(): Promise<Category[]> {
       }
 
       const rawObjects = response.result.objects;
+
+      // DEBUG: Log the full structure of first few categories
+      // console.log("=== SQUARE CATEGORY DEBUG ===");
+      // rawObjects.slice(0, 4).forEach((item, index) => {
+      //   console.log(`Category ${index}:`, {
+      //     name: item.categoryData?.name,
+      //     id: item.id,
+      //     ordinal: (item as any)?.ordinal,
+      //     presentation_order: (item as any)?.presentation_order,
+      //     sort_order: (item as any)?.sort_order,
+      //     display_order: (item as any)?.display_order,
+      //     categoryData: item.categoryData,
+      //     // Log ALL fields to see what's available
+      //     allFields: Object.keys(item),
+      //   });
+      // });
+
       return rawObjects
         .filter((item) => item.type === "CATEGORY")
-        .map((item) => ({
-          id: item.id,
-          name: item.categoryData?.name || "",
-          slug: createSlug(item.categoryData?.name || ""),
-          isTopLevel: item.categoryData?.isTopLevel || false,
-          parentCategoryId: item.categoryData?.parentCategory?.id,
-          rootCategoryId: item.categoryData?.rootCategory,
-          apiIndex: rawObjects.indexOf(item),
-          rawOrder:
-            (item as any)?.ordinal ||
-            (item as any)?.display_position ||
-            (item as any)?.sort_order,
-        }));
+        .map((item, index) => {
+          // Extract ordinal from parentCategory (BigInt)
+          const parentOrdinal = item.categoryData?.parentCategory?.ordinal;
+          const orderValue = parentOrdinal ? Number(parentOrdinal) : 999;
+
+          return {
+            id: item.id,
+            name: item.categoryData?.name || "",
+            slug: createSlug(item.categoryData?.name || ""),
+            isTopLevel: item.categoryData?.isTopLevel || false,
+            parentCategoryId: item.categoryData?.parentCategory?.id,
+            rootCategoryId: item.categoryData?.rootCategory,
+            apiIndex: rawObjects.indexOf(item),
+            rawOrder: orderValue,
+          };
+        });
     } catch (error) {
       const appError = processSquareError(error, "fetchCategories");
       return handleError<Category[]>(appError, []);
@@ -95,15 +105,38 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
       const allCategories = await fetchCategories();
       if (!allCategories.length) return [];
 
+      // Sort by Square's ordinal instead of hardcoded order
       let topLevelCategories = allCategories.filter((cat) => cat.isTopLevel);
-      topLevelCategories.sort(
-        (a, b) => getSortIndex(a.name) - getSortIndex(b.name)
-      );
+
+      // REMOVE hardcoded getSortIndex, use Square's ordering
+      topLevelCategories.sort((a, b) => {
+        const orderA = a.rawOrder ?? 999;
+        const orderB = b.rawOrder ?? 999;
+
+        // If ordinals are the same, fall back to alphabetical
+        if (orderA === orderB) {
+          return a.name.localeCompare(b.name);
+        }
+
+        return orderA - orderB;
+      });
 
       return topLevelCategories.map((topCat) => {
-        const subcategories = allCategories.filter(
+        let subcategories = allCategories.filter(
           (subCat) => subCat.rootCategoryId === topCat.id && !subCat.isTopLevel
         );
+
+        // Sort subcategories by ordinal too
+        subcategories.sort((a, b) => {
+          const orderA = a.rawOrder ?? 999;
+          const orderB = b.rawOrder ?? 999;
+
+          if (orderA === orderB) {
+            return a.name.localeCompare(b.name);
+          }
+
+          return orderA - orderB;
+        });
 
         return {
           category: topCat,
@@ -200,9 +233,9 @@ export async function fetchProductsByCategory(
         };
       });
 
-      console.log(
-        `[fetchProductsByCategory] Fetched ${products.length} products, ${products.filter((p) => p.brand).length} with brands`
-      );
+      // console.log(
+      //   `[fetchProductsByCategory] Fetched ${products.length} products, ${products.filter((p) => p.brand).length} with brands`
+      // );
 
       return {
         products,

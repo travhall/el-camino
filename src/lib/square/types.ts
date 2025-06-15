@@ -141,6 +141,11 @@ export interface CategoryHierarchy {
   subcategories: Category[];
 }
 
+export interface ExtendedCatalogObject {
+  ordinal?: string;
+  presentation_order?: number;
+}
+
 /**
  * Represents a product with its category information
  */
