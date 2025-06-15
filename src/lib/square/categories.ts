@@ -4,7 +4,6 @@ import { batchGetImageUrls } from "./imageUtils";
 import type {
   Category,
   CategoryHierarchy,
-  ExtendedCatalogObject,
   PaginatedProducts,
   ProductLoadingOptions,
 } from "./types";
@@ -57,23 +56,6 @@ export async function fetchCategories(): Promise<Category[]> {
       }
 
       const rawObjects = response.result.objects;
-
-      // DEBUG: Log the full structure of first few categories
-      // console.log("=== SQUARE CATEGORY DEBUG ===");
-      // rawObjects.slice(0, 4).forEach((item, index) => {
-      //   console.log(`Category ${index}:`, {
-      //     name: item.categoryData?.name,
-      //     id: item.id,
-      //     ordinal: (item as any)?.ordinal,
-      //     presentation_order: (item as any)?.presentation_order,
-      //     sort_order: (item as any)?.sort_order,
-      //     display_order: (item as any)?.display_order,
-      //     categoryData: item.categoryData,
-      //     // Log ALL fields to see what's available
-      //     allFields: Object.keys(item),
-      //   });
-      // });
-
       return rawObjects
         .filter((item) => item.type === "CATEGORY")
         .map((item, index) => {
