@@ -1,6 +1,7 @@
 ---
 // src/pages/category/[...slug].astro - PHASE 2: SERVER-SIDE PAGINATION
 import ProductFilters from "@/components/ProductFilters.astro";
+import { extractFilterOptions } from "@/lib/square/filterUtils";
 import FilterableProductGrid from "@/components/FilterableProductGrid.astro";
 import PaginationControls from "@/components/PaginationControls.astro";
 import {
@@ -45,11 +46,27 @@ console.log(`[Category Page] ${category.name} - Page ${page}, Filters:`, filters
 // === ENHANCED PRODUCT FETCHING WITH PAGINATION ===
 let productData;
 try {
-  productData = await fetchProductsByCategoryWithPagination(category.id, {
-    page,
-    pageSize,
-    filters,
-  });
+  // Get ALL products for client-side filtering
+const { products: allProducts } = await fetchProductsByCategoryWithPagination(category.id, {
+  page: 1,
+  pageSize: 1000, // Get all products
+  filters: { brands: [] }, // No server-side filtering
+});
+
+productData = {
+  products: allProducts,
+  pagination: {
+    currentPage: page,
+    totalPages: 1,
+    pageSize: allProducts.length,
+    totalProducts: allProducts.length,
+    hasNextPage: false,
+    hasPrevPage: false,
+  },
+  appliedFilters: filters,
+  filterOptions: extractFilterOptions(allProducts),
+  hasMore: false,
+};
 } catch (error) {
   console.error("Error fetching paginated products:", error);
   // Fallback to empty state
@@ -201,7 +218,7 @@ const categoryPath = parentCategory
               <!-- Products Grid -->
               <FilterableProductGrid
                 products={products}
-                paginationMode={true}
+                paginationMode={false}
                 categoryPath={categoryPath}
               />
 

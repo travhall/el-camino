@@ -129,6 +129,10 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
         this.grid.querySelectorAll(".product-card-wrapper")
       );
 
+      this.productWrappers.forEach((wrapper) => {
+        wrapper.classList.add("filtered-visible");
+      });
+
       console.log(
         `[FilterableProductGrid] Mode: ${this.paginationMode ? "server-first" : "client-side"}`
       );
@@ -188,24 +192,25 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
     }
 
     private applyFilters(filters: ProductFilters): void {
-      if (!this.grid || this.paginationMode || this.isFiltering) return;
+      if (!this.grid || this.isFiltering) return;
 
       this.isFiltering = true;
-      console.log("[FilterableProductGrid] Client-side filtering:", filters);
 
-      this.grid.style.opacity = "0.6";
+      // Fade out entire grid
+      this.grid.style.opacity = "0.3";
 
-      requestAnimationFrame(() => {
+      setTimeout(() => {
         const filteredProducts = filterProducts(this.allProducts, filters);
         const filteredIds = new Set(filteredProducts.map((p) => p.id));
 
         this.updateGrid(filteredIds);
 
+        // Fade in entire grid
         if (this.grid) {
           this.grid.style.opacity = "1";
         }
         this.isFiltering = false;
-      });
+      }, 300);
     }
 
     private setupEventListeners(): void {
@@ -244,10 +249,12 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 
       if (this.isFiltering) return;
 
+      // Always use client-side filtering for smooth UX
+      this.applyFilters(filters);
+
+      // Update URL for pagination mode compatibility
       if (this.paginationMode) {
-        this.applyFiltersServerFirst(filters);
-      } else {
-        this.applyFilters(filters);
+        updateURLWithFiltersResetPage(filters);
       }
     }
 
@@ -300,25 +307,15 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
         const productId = wrapper.dataset.productId;
 
         if (visibleProductIds.has(productId!)) {
-          wrapper.style.display = "";
-          wrapper.classList.remove("hidden");
+          wrapper.style.display = "block";
           visibleCount++;
         } else {
           wrapper.style.display = "none";
-          wrapper.classList.add("hidden");
         }
       });
 
       if (!this.paginationMode) {
-        if (visibleCount === 0) {
-          this.noResults.style.display = "flex";
-          this.noResults.classList.remove("hidden");
-          this.noResults.classList.add("flex", "flex-col");
-        } else {
-          this.noResults.style.display = "none";
-          this.noResults.classList.add("hidden");
-          this.noResults.classList.remove("flex", "flex-col");
-        }
+        this.noResults.style.display = visibleCount === 0 ? "flex" : "none";
       }
     }
 
@@ -349,12 +346,19 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
   /* Smooth transitions for optimistic updates */
   .product-card-wrapper {
     transition:
-      opacity 0.2s ease,
-      transform 0.2s ease;
+      opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity, transform;
   }
 
   #filterable-product-grid {
-    transition: opacity 0.3s ease;
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .product-card-wrapper {
+    transition:
+      opacity 0.4s ease,
+      transform 0.4s ease;
   }
 
   /* Loading animation */
@@ -381,14 +385,6 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 
   .animate-spin {
     animation: spin 1s linear infinite;
-  }
-
-  /* Better product card transitions */
-  .product-card-wrapper {
-    transition:
-      opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-      transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: opacity, transform;
   }
 
   /* Reduce motion for accessibility */
