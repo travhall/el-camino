@@ -5,20 +5,88 @@ const { classes, ...rest } = Astro.props;
 ---
 
 <button
-  class:list={["flex flex-row gap-1 items-center", classes]}
+  class:list={[
+    "theme-toggle-button inline-flex rounded-full items-center cursor-pointer select-none",
+    classes,
+  ]}
   {...rest}
   data-theme-toggle
+  role="switch"
+  aria-checked="false"
   aria-label="Toggle theme"
 >
-  <span class="text-base md:text-xs font-light hidden dark:block"
-    >Switch to Light Mode</span
+  <!-- Toggle switch track and thumb -->
+  <div
+    class="theme-toggle-track relative inline-flex items-center h-7 w-12 rounded-full transition-all duration-300 ease-out border border-elco-fig-leaf-900 dark:border-elco-honey-cream-50"
   >
-  <span class="text-base md:text-xs font-light block dark:hidden"
-    >Switch to Dark Mode</span
-  >
-  <Icon class="block dark:hidden h-6 md:h-4 w-6 md:w-4" name="uil:moon" />
-  <Icon class="hidden dark:block h-6 md:h-4 w-6 md:w-4" name="uil:sun" />
+    <!-- Toggle thumb -->
+    <div
+      class="theme-toggle-thumb absolute left-0.5 top-0.5 h-[1.375rem] w-[1.375rem] rounded-full transition-all duration-300 ease-out transform translate-x-0 flex items-center justify-center bg-elco-fig-leaf-900 dark:bg-elco-honey-cream-50"
+    >
+      <!-- Theme icons -->
+      <Icon
+        name="uil:moon"
+        class="theme-icon-moon h-4 w-4 text-ui-button-text transition-all duration-200 opacity-100 dark:opacity-0"
+        aria-hidden="true"
+      />
+      <Icon
+        name="uil:sun"
+        class="theme-icon-sun absolute h-4 w-4 text-ui-button-text transition-all duration-200 opacity-0 dark:opacity-100"
+        aria-hidden="true"
+      />
+    </div>
+  </div>
+
+  <!-- Toggle label text -->
+  <span class="theme-toggle-text">
+    <span class="hidden dark:block sr-only">Switch to Light Mode</span>
+    <span class="block dark:hidden sr-only">Switch to Dark Mode</span>
+  </span>
 </button>
+
+<style>
+  .theme-toggle-button[aria-checked="true"] .theme-toggle-thumb {
+    @apply transform translate-x-5;
+  }
+
+  /* Focus states for keyboard navigation */
+  /* .theme-toggle-button:focus .theme-toggle-track {
+    @apply ring-2 ring-ui-button-ring/50 border-ui-button-ring;
+  } */
+
+  :root.dark .theme-toggle-thumb {
+    @apply transform translate-x-5;
+  }
+
+  :root.dark .theme-toggle-button {
+    --aria-checked: "true";
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .theme-toggle-track,
+    .theme-toggle-thumb,
+    .theme-icon-moon,
+    .theme-icon-sun,
+    .theme-toggle-text {
+      transition: none !important;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .theme-toggle-track {
+      @apply border-4;
+    }
+  }
+
+  /* Touch target sizing for mobile */
+  /* @media (pointer: coarse) {
+    .theme-toggle-button {
+      @apply p-2 -m-2;
+    }
+  } */
+</style>
 
 <script>
   function setupThemeToggle() {
@@ -33,6 +101,17 @@ const { classes, ...rest } = Astro.props;
       document.documentElement.classList.remove("light", "dark");
       document.documentElement.classList.add(theme);
       document.documentElement.setAttribute("data-theme", theme);
+
+      // Update button aria-checked state
+      updateButtonState(theme === "dark");
+    }
+
+    // Update button state
+    function updateButtonState(isDark: boolean) {
+      const toggleButtons = document.querySelectorAll("[data-theme-toggle]");
+      toggleButtons.forEach((button) => {
+        button.setAttribute("aria-checked", isDark.toString());
+      });
     }
 
     // Handle theme toggle clicks
@@ -44,6 +123,9 @@ const { classes, ...rest } = Astro.props;
       document.documentElement.classList.add(newTheme);
       document.documentElement.setAttribute("data-theme", newTheme);
       localStorage.setItem("theme", newTheme);
+
+      // Update button state
+      updateButtonState(newTheme === "dark");
     }
 
     // Setup toggle button(s)
@@ -65,6 +147,7 @@ const { classes, ...rest } = Astro.props;
         document.documentElement.classList.remove("light", "dark");
         document.documentElement.classList.add(newTheme);
         document.documentElement.setAttribute("data-theme", newTheme);
+        updateButtonState(newTheme === "dark");
       }
     });
 

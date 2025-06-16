@@ -3,46 +3,63 @@
 import { Icon } from "astro-icon/components";
 import ThemeToggle from "./ThemeToggle.astro";
 import { getLegalPages } from "@/lib/wordpress/api";
-import { siteConfig } from "@/lib/site-config";
 import type { WordPressPage } from "@/lib/wordpress/types";
+import {
+  siteConfig,
+  getStructuredData,
+  getBusinessHours,
+} from "@/lib/site-config";
+
+const structuredData = getStructuredData();
+
+const businessHours = getBusinessHours();
+const todayIndex = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
+const today = businessHours[todayIndex === 0 ? 6 : todayIndex - 1]; // Map Sunday to index 6
 
 const currentYear = new Date().getFullYear();
 const { contact, social, tagline } = siteConfig;
 
 // Fetch footer pages from WordPress
 let footerPages: WordPressPage[] = [];
+let wpError: string | null = null;
+
 try {
   footerPages = await getLegalPages();
+  if (footerPages.length === 0) {
+    throw new Error("No legal pages returned from API");
+  }
 } catch (error) {
-  console.error("Error loading footer pages:", error);
+  wpError =
+    error instanceof Error ? error.message : "WordPress connection failed";
+  console.error("Footer pages error:", wpError);
 
-  // If the API fails, we'll use these minimal fallback links
+  // Enhanced fallbacks with better metadata
   footerPages = [
     {
       id: 1,
       date: "",
-      slug: "privacy-policy",
-      title: { rendered: "Privacy Policy" },
+      slug: "privacy",
+      title: { rendered: "Privacy" },
       content: { rendered: "" },
     },
     {
       id: 2,
       date: "",
-      slug: "terms-and-conditions",
-      title: { rendered: "Terms and Conditions" },
+      slug: "terms",
+      title: { rendered: "Terms" },
       content: { rendered: "" },
     },
     {
       id: 3,
       date: "",
-      slug: "shipping-policy",
+      slug: "shipping",
       title: { rendered: "Shipping" },
       content: { rendered: "" },
     },
     {
       id: 4,
       date: "",
-      slug: "return-policy",
+      slug: "returns",
       title: { rendered: "Returns" },
       content: { rendered: "" },
     },
@@ -59,6 +76,7 @@ try {
     >
       <Icon
         name="Icon"
+        aria-hidden="true"
         class="w-20 h-auto p-4 text-elco-honey-cream-100 dark:text-elco-fig-leaf-900 bg-elco-fig-leaf-900 dark:bg-elco-honey-cream-50"
       />
       <p class="max-w-[18ch] px-4 leading-5 text-balance text-content-body">
@@ -67,36 +85,80 @@ try {
     </div>
 
     <div class="flex flex-col justify-end">
+      <!-- Address -->
       <address
         class="flex flex-col gap-2 mb-4 uppercase not-italic place-items-start lg:place-items-end text-content-body"
       >
-        <span>{siteConfig.name}</span>
-        <span class="mb-4">{contact.address.display}</span>
+        <strong class="sr-only">Contact Information</strong>
+        <span aria-label="Business name">{siteConfig.name}</span>
+        <span aria-label="Address" class="mb-4">{contact.address.display}</span>
         <a
           href={`tel:${contact.phone.number}`}
-          class="lg:hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
+          class="relative lg:hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left"
+          aria-label={`Call us at ${contact.phone.display}`}
         >
           {contact.phone.display}
         </a>
         <a
           href={`mailto:${contact.email}`}
-          class="lg:hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
+          class="relative lg:hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left"
+          aria-label={`Email us at ${contact.email}`}
         >
           {contact.email}
         </a>
       </address>
 
-      <ul class="inline-flex flex-row lg:self-end gap-2">
-        {
-          social.map((item) => (
-            <li>
-              <a href={item.url} target="_blank" aria-label={item.platform}>
-                <Icon name={item.icon} class="w-6 h-auto text-content-body" />
-              </a>
-            </li>
-          ))
-        }
-      </ul>
+      <!-- Social links -->
+      <nav aria-label="Social media links" class="lg:self-end">
+        <ul class="inline-flex flex-row gap-2">
+          {
+            social.map((item) => (
+              <li>
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Visit our ${item.platform} page (opens in new tab)`}
+                  class="text-content-body hover:text-content-emphasis transition-colors"
+                >
+                  <Icon
+                    name={item.icon}
+                    class="w-6 h-auto"
+                    aria-hidden="true"
+                  />
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <!-- Business Hours -->
+      <!-- <div class="mt-6">
+        <h3 class="text-sm font-medium text-content-heading mb-2 uppercase">
+          Hours
+        </h3>
+        <div class="space-y-1">
+          {
+            businessHours.map((day) => (
+              <div
+                class={`flex justify-between text-xs ${
+                  day === today
+                    ? "text-content-emphasis font-medium"
+                    : "text-content-body"
+                }`}
+              >
+                <span>{day.day}</span>
+                <span
+                  class={day.isOpen ? "text-content-body" : "text-content-meta"}
+                >
+                  {day.hours}
+                </span>
+              </div>
+            ))
+          }
+        </div>
+      </div> -->
     </div>
   </div>
 
@@ -114,15 +176,14 @@ try {
         footerPages.map((page) => (
           <a
             href={`/legal/${page.slug}`}
-            class="text-base md:text-xs self-start"
+            class="text-base md:text-xs self-start relative lg:hover:text-ui-nav-hover before:absolute before:-bottom-1 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left"
           >
             {page.title.rendered}
           </a>
         ))
       }
     </div>
-    <ThemeToggle
-      classes="text-base md:text-xs mb-8 lg:mb-0 self-start lg:hover:underline decoration-double underline-offset-4 decoration-ui-button-surface transition-all"
-    />
+    <ThemeToggle />
   </div>
 </footer>
+<script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
