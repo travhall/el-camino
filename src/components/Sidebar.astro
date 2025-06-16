@@ -104,22 +104,22 @@ const prodCats = getSortedCategories();
 
 <aside
   class:list={[
-    "sidebar col-span-full md:col-span-2 md:col-start-1 md:row-start-5 2xl:row-start-4 md:row-end-[15] 2xl:row-end-11",
+    "sidebar col-span-full md:col-span-2 md:col-start-1 md:row-start-5 2xl:row-start-4 md:row-end-[15] 2xl:row-end-11 bg-surface-secondary",
     additionalClasses,
   ]}
 >
-  <h3 class="font-display text-3xl py-8 px-2 text-content-heading">
+  <h3 class="font-display text-3xl p-4 text-content-heading">
     Shop by Category
   </h3>
-  <div class="flex flex-col sm:flex-row md:flex-col gap-1">
+  <div class="grid">
     {prodCats.map((e, index) => {
       const imageId = `category-img-${e.id || e.category}`;
       const placeholderId = `category-placeholder-${e.id || e.category}`;
-      
+
       return (
         <a
           href={e.url}
-          class="category-link block relative border-t-4 border-ui-button-surface overflow-hidden"
+          class="category-link block relative border-t-4 border-t-ui-button-surface border-b-4 border-b-surface-primary overflow-hidden"
         >
           <!-- Enhanced shimmer placeholder -->
           <div
@@ -128,7 +128,7 @@ const prodCats = getSortedCategories();
           >
             <!-- Shimmer effect -->
             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-surface-primary/30 to-transparent animate-shimmer -translate-x-full"></div>
-            
+
             <!-- Category icon -->
             <div class="absolute inset-0 flex items-center justify-center opacity-20">
               <svg class="w-8 h-8 text-content-meta" fill="currentColor" viewBox="0 0 20 20">
@@ -150,7 +150,7 @@ const prodCats = getSortedCategories();
             onload={`this.classList.add('opacity-20', 'loaded'); document.getElementById('${placeholderId}')?.remove()`}
             onerror={`this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjMzOCIgdmlld0JveD0iMCAwIDYwMCAzMzgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI2MDAiIGhlaWdodD0iMzM4IiBmaWxsPSIjZTVlN2ViIi8+CjxwYXRoIGQ9Im0yNzUgMTAwIDUwIDUwIDUwLTUwIDI1IDI1LTI1IDI1IDI1IDI1LTI1IDI1LTUwLTUwLTUwIDUweiIgZmlsbD0iIzliYTFhNiIvPgo8dGV4dCB4PSIzMDAiIHk9IjE5MCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkNhdGVnb3J5IEltYWdlPC90ZXh0Pgo8dGV4dCB4PSIzMDAiIHk9IjIxMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlVuYXZhaWxhYmxlPC90ZXh0Pgo8L3N2Zz4K'; this.classList.add('opacity-20', 'error'); document.getElementById('${placeholderId}')?.remove()`}
           />
-          
+
           <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-border-secondary border-b-0 bg-surface-secondary text-content-heading transition-all">
             {e.category}
           </h4>
@@ -162,7 +162,7 @@ const prodCats = getSortedCategories();
 
 <!-- Enhanced CSS -->
 <style>
-  /* Shimmer animation (same as ProductCard) */
+  /* Shimmer animation */
   @keyframes shimmer {
     0% {
       transform: translateX(-100%);

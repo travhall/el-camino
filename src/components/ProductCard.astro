@@ -51,7 +51,7 @@ const isDynamicPriority = priority || index < 12;
 
 <a
   href={product.url}
-  class={`group grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-ui-card-surface text-ui-card-text lg:hover:bg-ui-card-hover transition-all duration-200 ${isOutOfStock ? "opacity-75" : ""}`}
+  class={`group grid grid-rows-[auto_1fr] gap-3 w-full h-full p-1 bg-ui-card-surface text-ui-card-text lg:hover:bg-ui-card-hover transition-all duration-200`}
   itemscope
   itemtype="http://schema.org/Product"
 >
@@ -84,7 +84,7 @@ const isDynamicPriority = priority || index < 12;
       id={imageId}
       src={optimizedImageSrc}
       alt={product.title}
-      class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-75" : ""} image-enhanced will-change-transform`}
+      class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""} image-enhanced will-change-transform`}
       loading={isDynamicPriority ? "eager" : "lazy"}
       fetchpriority={isDynamicPriority ? "high" : "auto"}
       decoding={isDynamicPriority ? "sync" : "async"}
@@ -105,7 +105,7 @@ const isDynamicPriority = priority || index < 12;
 
   <!-- Product Info (unchanged) -->
   <div class="grid px-1">
-    <div class="self-start">
+    <div class={`self-start ${isOutOfStock ? "opacity-50" : ""}`}>
       {
         product.brand && (
           <p class="text-xs uppercase text-content-meta" itemprop="brand">
@@ -121,7 +121,9 @@ const isDynamicPriority = priority || index < 12;
       </h2>
     </div>
 
-    <div class="text-product-price self-end">
+    <div
+      class={`text-product-price self-end ${isOutOfStock ? "opacity-50" : ""}`}
+    >
       <meta itemprop="availability" content={availabilitySchema} />
       <span
         class="font-display text-2xl whitespace-nowrap"
