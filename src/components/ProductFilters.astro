@@ -12,29 +12,33 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
 
 // Parse current filters from URL for server-side rendering
 const currentParams = new URLSearchParams(Astro.url.search);
-const currentBrands = currentParams.get("brands")?.split(",").filter(Boolean) || [];
+const currentBrands = currentParams.getAll("brands") || [];
 const currentPageSize = currentParams.get("pageSize") || "24";
 ---
 
 <!-- Server-Side Filter Form -->
 <div class="lg:block sticky top-16">
   <!-- Desktop: Server-side form with immediate submission -->
-  <form method="GET" action="" class="hidden lg:block bg-surface-secondary rounded-sm p-4 overflow-y-auto">
+  <form
+    method="GET"
+    action=""
+    class="hidden lg:block bg-surface-secondary rounded-sm p-4 overflow-y-auto"
+  >
     <!-- Preserve existing URL parameters -->
     <input type="hidden" name="pageSize" value={currentPageSize} />
-    
+
     <div class="flex items-center justify-between mb-2">
       <h2 class="text-sm font-semibold text-content-heading">Filters</h2>
-      {currentBrands.length > 0 && (
-        <button
-          type="submit"
-          name="brands"
-          value=""
-          class="text-sm text-content-meta hover:text-content-emphasis transition-colors"
-        >
-          Clear Filters
-        </button>
-      )}
+      {
+        currentBrands.length > 0 && (
+          <a
+            href={`${Astro.url.pathname}?pageSize=${currentPageSize}`}
+            class="text-sm text-content-meta hover:text-content-emphasis transition-colors"
+          >
+            Clear Filters
+          </a>
+        )
+      }
     </div>
 
     <!-- Results Count -->
@@ -45,29 +49,31 @@ const currentPageSize = currentParams.get("pageSize") || "24";
     </div>
 
     <!-- Brand Filter Section -->
-    {filterOptions.brands.length > 0 && (
-      <div class="mb-4">
-        <h3 class="text-sm font-medium text-content-heading mb-2">Brand</h3>
-        <div class="max-h-80 overflow-y-auto">
-          {filterOptions.brands.map((brand) => (
-            <label class="flex items-center group cursor-pointer p-2 rounded-sm hover:bg-surface-tertiary transition-colors">
-              <input
-                type="checkbox"
-                name="brands"
-                value={brand.name}
-                checked={currentBrands.includes(brand.name)}
-                class="elco-checkbox mr-3 rounded-none border-ui-input-border text-ui-accent focus:ring-ui-accent"
-                onchange="this.form.submit()"
-              />
-              <span class="flex-1 text-content-body group-hover:text-content-emphasis">
-                {brand.name}
-              </span>
-              <span class="text-sm text-content-meta">({brand.count})</span>
-            </label>
-          ))}
+    {
+      filterOptions.brands.length > 0 && (
+        <div class="mb-4">
+          <h3 class="text-sm font-medium text-content-heading mb-2">Brand</h3>
+          <div class="max-h-80 overflow-y-auto">
+            {filterOptions.brands.map((brand) => (
+              <label class="flex items-center group cursor-pointer p-2 rounded-sm hover:bg-surface-tertiary transition-colors">
+                <input
+                  type="checkbox"
+                  name="brands"
+                  value={brand.name}
+                  checked={currentBrands.includes(brand.name)}
+                  class="elco-checkbox mr-3 rounded-none border-ui-input-border text-ui-accent focus:ring-ui-accent"
+                  onchange="this.form.submit()"
+                />
+                <span class="flex-1 text-content-body group-hover:text-content-emphasis">
+                  {brand.name}
+                </span>
+                <span class="text-sm text-content-meta">({brand.count})</span>
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
-    )}
+      )
+    }
   </form>
 </div>
 
@@ -86,13 +92,13 @@ const currentPageSize = currentParams.get("pageSize") || "24";
       d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"
     ></path>
   </svg>
-  {currentBrands.length > 0 && (
-    <span
-      class="absolute -top-1 -right-1 bg-ui-button-surface text-ui-button-text font-bold text-sm rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1"
-    >
-      {currentBrands.length}
-    </span>
-  )}
+  {
+    currentBrands.length > 0 && (
+      <span class="absolute -top-1 -right-1 bg-ui-button-surface text-ui-button-text font-bold text-sm rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1">
+        {currentBrands.length}
+      </span>
+    )
+  }
 </button>
 
 <!-- Mobile Drawer Overlay -->
@@ -110,23 +116,31 @@ const currentPageSize = currentParams.get("pageSize") || "24";
   <form method="GET" action="" class="p-4">
     <!-- Preserve existing URL parameters -->
     <input type="hidden" name="pageSize" value={currentPageSize} />
-    
+
     <!-- Mobile Header -->
-    <div class="flex items-center justify-between mb-4 pb-4 border-b border-ui-border">
-      <h2 class="text-lg font-semibold text-content-heading">Filter Products</h2>
+    <div
+      class="flex items-center justify-between mb-4 pb-4 border-b border-ui-border"
+    >
+      <h2 class="text-lg font-semibold text-content-heading">
+        Filter Products
+      </h2>
       <button
         type="button"
         id="mobile-filter-close"
         class="p-1 text-content-meta hover:text-content-emphasis"
         aria-label="Close Filters"
       >
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
             stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          ></path>
+            d="M6 18L18 6M6 6l12 12"></path>
         </svg>
       </button>
     </div>
@@ -142,38 +156,40 @@ const currentPageSize = currentParams.get("pageSize") || "24";
     <div class="mb-6">
       <h3 class="text-base font-medium text-content-heading mb-3">Brand</h3>
       <div class="space-y-3 max-h-64 overflow-y-auto">
-        {filterOptions.brands.map((brand) => (
-          <label class="flex items-center justify-between group cursor-pointer p-3 rounded-sm hover:bg-surface-tertiary transition-colors">
-            <div class="flex items-center">
-              <input
-                type="checkbox"
-                name="brands"
-                value={brand.name}
-                checked={currentBrands.includes(brand.name)}
-                class="mr-3 rounded-sm border-ui-input-border text-ui-accent focus:ring-ui-accent w-5 h-5"
-              />
-              <span class="text-content-body group-hover:text-content-emphasis">
-                {brand.name}
-              </span>
-            </div>
-            <span class="text-sm text-content-meta">({brand.count})</span>
-          </label>
-        ))}
+        {
+          filterOptions.brands.map((brand) => (
+            <label class="flex items-center justify-between group cursor-pointer p-3 rounded-sm hover:bg-surface-tertiary transition-colors">
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  name="brands"
+                  value={brand.name}
+                  checked={currentBrands.includes(brand.name)}
+                  class="mr-3 rounded-sm border-ui-input-border text-ui-accent focus:ring-ui-accent w-5 h-5"
+                />
+                <span class="text-content-body group-hover:text-content-emphasis">
+                  {brand.name}
+                </span>
+              </div>
+              <span class="text-sm text-content-meta">({brand.count})</span>
+            </label>
+          ))
+        }
       </div>
     </div>
 
     <!-- Mobile Actions -->
     <div class="flex gap-3 pt-4 border-t border-ui-border">
-      {currentBrands.length > 0 && (
-        <button
-          type="submit"
-          name="brands"
-          value=""
-          class="flex-1 py-3 px-4 border border-ui-button-border text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors"
-        >
-          Clear Filters
-        </button>
-      )}
+      {
+        currentBrands.length > 0 && (
+          <a
+            href={`${Astro.url.pathname}?pageSize=${currentPageSize}`}
+            class="flex-1 py-3 px-4 border border-ui-button-border text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
+          >
+            Clear Filters
+          </a>
+        )
+      }
       <button
         type="submit"
         class="flex-1 py-3 px-4 bg-ui-button-surface text-ui-button-text rounded-sm hover:bg-ui-button-primary-hover transition-colors font-medium"
@@ -205,7 +221,10 @@ const currentPageSize = currentParams.get("pageSize") || "24";
 
     private setupEventListeners(): void {
       this.mobileToggle?.addEventListener("click", this.openDrawer.bind(this));
-      this.mobileOverlay?.addEventListener("click", this.closeDrawer.bind(this));
+      this.mobileOverlay?.addEventListener(
+        "click",
+        this.closeDrawer.bind(this)
+      );
       this.mobileClose?.addEventListener("click", this.closeDrawer.bind(this));
     }
 

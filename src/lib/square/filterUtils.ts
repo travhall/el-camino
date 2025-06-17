@@ -54,12 +54,13 @@ export function filterProducts(
 
 /**
  * Parse filters from URL search params
- * Follows existing URL handling patterns
+ * Updated to handle multiple brand parameters from HTML forms
  */
 export function parseFiltersFromURL(
   searchParams: URLSearchParams
 ): ProductFilters {
-  const brands = searchParams.get("brands")?.split(",").filter(Boolean) || [];
+  // Use getAll() to handle multiple brand parameters: ?brands=A&brands=B
+  const brands = searchParams.getAll("brands").filter(Boolean);
 
   return { brands };
 }
