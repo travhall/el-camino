@@ -19,11 +19,7 @@ const currentPageSize = currentParams.get("pageSize") || "24";
 <!-- Server-Side Filter Form -->
 <div class="lg:block sticky top-16">
   <!-- Desktop: Server-side form with immediate submission -->
-  <form
-    method="GET"
-    action=""
-    class="hidden lg:block bg-surface-secondary rounded-sm p-4 overflow-y-auto"
-  >
+  <form method="GET" action="" class="hidden lg:block p-2 overflow-y-auto">
     <!-- Preserve existing URL parameters -->
     <input type="hidden" name="pageSize" value={currentPageSize} />
 
@@ -42,7 +38,7 @@ const currentPageSize = currentParams.get("pageSize") || "24";
     </div>
 
     <!-- Results Count -->
-    <div class="mb-2 p-2 bg-surface-tertiary rounded-sm">
+    <div class="mb-2 p-2 bg-surface-secondary rounded-sm">
       <p class="text-sm text-content-meta">
         Showing <span>{filteredCount}</span> of <span>{totalProducts}</span> products
       </p>
@@ -55,18 +51,20 @@ const currentPageSize = currentParams.get("pageSize") || "24";
           <h3 class="text-sm font-medium text-content-heading mb-2">Brand</h3>
           <div class="max-h-80 overflow-y-auto">
             {filterOptions.brands.map((brand) => (
-              <label class="flex items-center group cursor-pointer p-2 rounded-sm hover:bg-surface-tertiary transition-colors">
+              <label class="flex items-center group cursor-pointer p-1 rounded-sm hover:bg-surface-secondary transition-colors">
                 <input
                   type="checkbox"
                   name="brands"
                   value={brand.name}
                   checked={currentBrands.includes(brand.name)}
-                  class="elco-checkbox mr-3 rounded-none border-ui-input-border text-ui-accent focus:ring-ui-accent"
+                  class="elco-checkbox mr-2 rounded-none border-ui-input-border text-ui-accent focus:ring-ui-accent"
                 />
                 <span class="flex-1 text-content-body group-hover:text-content-emphasis">
                   {brand.name}
                 </span>
-                <span class="text-sm text-content-meta">({brand.count})</span>
+                <span class="text-sm text-content-meta mr-2">
+                  ({brand.count})
+                </span>
               </label>
             ))}
           </div>

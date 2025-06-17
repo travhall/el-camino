@@ -1,0 +1,712 @@
+---
+// src/components/MiniCart.astro - TypeScript Error-Free Version
+import { Icon } from "astro-icon/components";
+---
+
+<!-- Overlay -->
+<div
+  id="mini-cart-overlay"
+  class="fixed inset-0 bg-surface-primary/50 z-40 hidden opacity-0 transition-opacity duration-300"
+  aria-hidden="true"
+>
+</div>
+
+<!-- Slide Panel -->
+<div
+  id="mini-cart-panel"
+  class="fixed top-0 right-0 h-full w-96 max-w-full bg-surface-secondary z-50 transform translate-x-full transition-transform duration-300 shadow-lg"
+  role="dialog"
+  aria-labelledby="mini-cart-title"
+  aria-hidden="true"
+>
+  <!-- Header -->
+  <div class="flex items-center justify-between p-4 border-b border-ui-border">
+    <h2 id="mini-cart-title" class="font-display text-xl text-content-heading">
+      Cart (<span id="mini-cart-count">0</span>)
+    </h2>
+    <button
+      id="close-mini-cart"
+      type="button"
+      class="p-2 hover:bg-ui-button-surface rounded-sm transition-colors"
+      aria-label="Close cart"
+    >
+      <Icon name="uil:times" class="w-6 h-6" />
+    </button>
+  </div>
+
+  <!-- Content Area -->
+  <div id="mini-cart-content" class="flex-1 overflow-y-auto">
+    <div id="mini-cart-loading" class="text-center py-8">
+      <div
+        class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-content-heading"
+      >
+      </div>
+      <p class="mt-2 text-content-meta">Loading cart...</p>
+    </div>
+
+    <div id="mini-cart-empty" class="text-center py-8 px-4 hidden">
+      <Icon
+        name="uil:shopping-cart"
+        class="w-16 h-16 mx-auto text-content-meta mb-4"
+      />
+      <p class="text-content-meta">Your cart is empty</p>
+      <button
+        id="continue-shopping"
+        class="mt-4 px-6 py-2 bg-ui-button-surface text-ui-button-text rounded-sm hover:bg-ui-button-surface-hover transition-colors"
+      >
+        Continue Shopping
+      </button>
+    </div>
+
+    <div id="mini-cart-items" class="hidden">
+      <div class="p-4 space-y-4" id="items-list">
+        <!-- Items with controls populated here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div id="mini-cart-footer" class="border-t border-ui-border p-4 hidden">
+    <div class="flex justify-between items-center mb-4">
+      <span class="font-medium text-content-heading">Subtotal:</span>
+      <span
+        id="mini-cart-total"
+        class="font-display text-xl text-content-heading">$0.00</span
+      >
+    </div>
+
+    <div class="space-y-2">
+      <button
+        id="mini-cart-checkout"
+        class="w-full bg-ui-button-surface text-ui-button-text py-3 rounded-sm hover:bg-ui-button-surface-hover transition-colors font-medium"
+        disabled
+      >
+        <span class="checkout-text">Proceed to Checkout</span>
+        <div class="checkout-loading hidden">
+          <div
+            class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"
+          >
+          </div>
+          Processing...
+        </div>
+      </button>
+      <button
+        id="view-full-cart"
+        class="w-full border border-ui-border text-content-body py-3 rounded-sm hover:bg-ui-button-surface hover:text-ui-button-text transition-colors"
+      >
+        View Full Cart
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div
+  id="confirm-modal"
+  class="fixed inset-0 bg-black/50 z-60 hidden opacity-0 transition-opacity duration-200"
+>
+  <div class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-surface-secondary rounded-lg p-6 max-w-sm w-full">
+      <h3
+        class="text-lg font-medium text-content-heading mb-2"
+        id="modal-title"
+      >
+        Remove Item
+      </h3>
+      <p class="text-content-body mb-4" id="modal-message">
+        Are you sure you want to remove this item from your cart?
+      </p>
+      <div class="flex gap-3">
+        <button
+          id="modal-cancel"
+          class="flex-1 px-4 py-2 border border-ui-border text-content-body rounded-sm hover:bg-ui-button-surface hover:text-ui-button-text transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          id="modal-confirm"
+          class="flex-1 px-4 py-2 bg-red-600 text-white rounded-sm hover:bg-red-700 transition-colors"
+        >
+          Remove
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import type { CartItem } from "@/lib/cart/types";
+
+  let cart: any = null;
+  let inventoryData: Record<string, number> = {};
+  let pendingActions = new Set<string>();
+
+  async function loadCart() {
+    if (!cart) {
+      const module = await import("@/lib/cart");
+      cart = module.cart;
+    }
+    return cart;
+  }
+
+  function formatPrice(price: number): string {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(price);
+  }
+
+  // CHECKOUT: Use same pattern as cart.astro
+  async function handleCheckout(): Promise<void> {
+    const checkoutButton = document.getElementById(
+      "mini-cart-checkout"
+    ) as HTMLButtonElement | null;
+    const checkoutText = document.querySelector(
+      ".checkout-text"
+    ) as HTMLElement | null;
+    const checkoutLoading = document.querySelector(
+      ".checkout-loading"
+    ) as HTMLElement | null;
+
+    if (!checkoutButton || !checkoutText || !checkoutLoading) return;
+
+    try {
+      const cartInstance = await loadCart();
+      const items = cartInstance.getItems();
+
+      if (items.length === 0) {
+        showNotification("Your cart is empty", "error");
+        return;
+      }
+
+      // Show loading state
+      checkoutButton.disabled = true;
+      checkoutText.classList.add("hidden");
+      checkoutLoading.classList.remove("hidden");
+
+      // Load Square script dynamically if needed
+      if (typeof window !== "undefined" && (window as any).loadSquareScript) {
+        try {
+          await (window as any).loadSquareScript();
+          console.log("Square script loaded for checkout");
+        } catch (error) {
+          console.error("Failed to load Square script:", error);
+        }
+      }
+
+      const response = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ items }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || "Checkout failed");
+      }
+
+      if (!data.checkoutUrl) {
+        throw new Error("No checkout URL returned");
+      }
+
+      showNotification("Redirecting to checkout...", "success");
+      window.location.href = data.checkoutUrl;
+    } catch (error) {
+      console.error("Checkout error:", error);
+      showNotification(
+        error instanceof Error
+          ? error.message
+          : "Checkout failed. Please try again.",
+        "error"
+      );
+
+      // Reset button state
+      checkoutButton.disabled = false;
+      checkoutText.classList.remove("hidden");
+      checkoutLoading.classList.add("hidden");
+    }
+  }
+
+  // MODAL: Show confirmation dialog with complete null checks
+  function showConfirmModal(
+    title: string,
+    message: string,
+    onConfirm: () => void
+  ): void {
+    const modal = document.getElementById("confirm-modal");
+    const modalTitle = document.getElementById("modal-title");
+    const modalMessage = document.getElementById("modal-message");
+    const confirmButton = document.getElementById("modal-confirm");
+    const cancelButton = document.getElementById("modal-cancel");
+
+    if (
+      !modal ||
+      !modalTitle ||
+      !modalMessage ||
+      !confirmButton ||
+      !cancelButton
+    ) {
+      console.error("Modal elements not found");
+      return;
+    }
+
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+
+    modal.classList.remove("hidden");
+    requestAnimationFrame(() => {
+      if (modal) {
+        modal.classList.remove("opacity-0");
+      }
+    });
+
+    function cleanup() {
+      if (modal) {
+        modal.classList.add("opacity-0");
+        setTimeout(() => {
+          if (modal) {
+            modal.classList.add("hidden");
+          }
+        }, 200);
+      }
+      if (confirmButton) {
+        confirmButton.removeEventListener("click", handleConfirm);
+      }
+      if (cancelButton) {
+        cancelButton.removeEventListener("click", cleanup);
+      }
+    }
+
+    function handleConfirm() {
+      onConfirm();
+      cleanup();
+    }
+
+    confirmButton.addEventListener("click", handleConfirm);
+    cancelButton.addEventListener("click", cleanup);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) cleanup();
+    });
+  }
+
+  // UPDATE: Quantity with validation
+  async function updateQuantity(
+    itemKey: string,
+    newQuantity: number
+  ): Promise<void> {
+    if (pendingActions.has(itemKey)) return;
+
+    try {
+      pendingActions.add(itemKey);
+      const cartInstance = await loadCart();
+
+      if (newQuantity <= 0) {
+        const item = cartInstance
+          .getItems()
+          .find(
+            (item: CartItem) => `${item.id}:${item.variationId}` === itemKey
+          );
+        if (item) {
+          showConfirmModal(
+            "Remove Item",
+            `Remove "${item.title}" from your cart?`,
+            () => {
+              cartInstance.removeItem(itemKey);
+              updateMiniCartDisplay();
+            }
+          );
+        }
+      } else {
+        const result = await cartInstance.updateQuantity(itemKey, newQuantity);
+        if (result.success) {
+          updateMiniCartDisplay();
+        } else {
+          console.error("Failed to update quantity:", result.message);
+          showNotification(
+            result.message || "Failed to update quantity",
+            "error"
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+      showNotification("Error updating cart", "error");
+    } finally {
+      pendingActions.delete(itemKey);
+    }
+  }
+
+  // REMOVE: Item with confirmation
+  async function removeItem(itemKey: string, itemTitle: string): Promise<void> {
+    showConfirmModal(
+      "Remove Item",
+      `Remove "${itemTitle}" from your cart?`,
+      async () => {
+        try {
+          const cartInstance = await loadCart();
+          cartInstance.removeItem(itemKey);
+          updateMiniCartDisplay();
+          showNotification("Item removed from cart", "success");
+        } catch (error) {
+          console.error("Error removing item:", error);
+          showNotification("Error removing item", "error");
+        }
+      }
+    );
+  }
+
+  // NOTIFY: Simple notification system
+  function showNotification(message: string, type: "success" | "error"): void {
+    const notification = document.createElement("div");
+    notification.className = `fixed top-4 right-4 z-70 px-4 py-2 rounded-sm text-white transform translate-x-full transition-transform duration-300 ${
+      type === "success" ? "bg-green-600" : "bg-red-600"
+    }`;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+    requestAnimationFrame(() =>
+      notification.classList.remove("translate-x-full")
+    );
+
+    setTimeout(() => {
+      notification.classList.add("translate-x-full");
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
+  // RENDER: Cart item with interactive controls
+  function renderCartItem(item: CartItem): string {
+    const itemKey = `${item.id}:${item.variationId}`;
+    const inventory = inventoryData[item.variationId] || 0;
+    const isLowStock = inventory > 0 && inventory <= 5;
+    const isOutOfStock = inventory <= 0;
+    const maxQuantity = Math.min(inventory, 99);
+
+    return `
+      <div class="flex gap-3 p-3 border border-ui-border rounded-sm" data-item-key="${itemKey}">
+        ${
+          item.image
+            ? `
+          <img 
+            src="${item.image}" 
+            alt="${item.title}"
+            class="w-16 h-16 object-cover rounded-sm bg-surface-secondary"
+            loading="lazy"
+          />
+        `
+            : `
+          <div class="w-16 h-16 bg-surface-secondary rounded-sm flex items-center justify-center">
+            <svg class="w-8 h-8 text-content-meta" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+        `
+        }
+        
+        <div class="flex-1 min-w-0">
+          <h3 class="font-medium text-content-heading text-sm leading-tight line-clamp-2">
+            ${item.title}
+          </h3>
+          
+          ${
+            item.variationName
+              ? `
+            <p class="text-xs text-content-meta mt-1">${item.variationName}</p>
+          `
+              : ""
+          }
+          
+          <div class="flex items-center justify-between mt-2">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-content-heading">
+                ${formatPrice(item.price)}
+              </span>
+              ${item.unit ? `<span class="text-xs text-content-meta">${item.unit}</span>` : ""}
+            </div>
+            
+            <!-- Quantity Controls -->
+            <div class="flex items-center gap-1">
+              <button 
+                class="w-6 h-6 flex items-center justify-center border border-ui-border rounded-sm hover:bg-ui-button-surface transition-colors ${
+                  item.quantity <= 1 ? "opacity-50" : ""
+                }"
+                data-action="decrease"
+                data-item-key="${itemKey}"
+                ${item.quantity <= 1 ? "disabled" : ""}
+                aria-label="Decrease quantity"
+              >
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                </svg>
+              </button>
+              
+              <span class="w-8 text-center text-sm font-medium">${item.quantity}</span>
+              
+              <button 
+                class="w-6 h-6 flex items-center justify-center border border-ui-border rounded-sm hover:bg-ui-button-surface transition-colors ${
+                  item.quantity >= maxQuantity ? "opacity-50" : ""
+                }"
+                data-action="increase"
+                data-item-key="${itemKey}"
+                ${item.quantity >= maxQuantity ? "disabled" : ""}
+                aria-label="Increase quantity"
+              >
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div class="flex items-center justify-between mt-2">
+            <!-- Stock status -->
+            <div class="text-xs">
+              ${
+                isOutOfStock
+                  ? `
+                <span class="text-red-600 font-medium">Out of Stock</span>
+              `
+                  : isLowStock
+                    ? `
+                <span class="text-amber-600 font-medium">Only ${inventory} left</span>
+              `
+                    : ""
+              }
+            </div>
+            
+            <!-- Remove button -->
+            <button 
+              class="text-xs text-red-600 hover:text-red-700 underline"
+              data-action="remove"
+              data-item-key="${itemKey}"
+              data-item-title="${item.title}"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function loadInventoryData(items: CartItem[]): Promise<void> {
+    if (items.length === 0) return;
+
+    try {
+      const variationIds = items.map((item) => item.variationId);
+      const response = await fetch("/api/cart-inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variationIds }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        inventoryData = data.inventory || {};
+      }
+    } catch (error) {
+      console.warn("Failed to load inventory data:", error);
+    }
+  }
+
+  async function updateMiniCartDisplay(): Promise<void> {
+    const loadingEl = document.getElementById("mini-cart-loading");
+    const emptyEl = document.getElementById("mini-cart-empty");
+    const itemsEl = document.getElementById("mini-cart-items");
+    const footerEl = document.getElementById("mini-cart-footer");
+    const countEl = document.getElementById("mini-cart-count");
+    const totalEl = document.getElementById("mini-cart-total");
+    const itemsListEl = document.getElementById("items-list");
+    const checkoutButton = document.getElementById(
+      "mini-cart-checkout"
+    ) as HTMLButtonElement | null;
+
+    if (
+      !loadingEl ||
+      !emptyEl ||
+      !itemsEl ||
+      !footerEl ||
+      !countEl ||
+      !totalEl ||
+      !itemsListEl
+    ) {
+      console.error("Mini cart elements not found");
+      return;
+    }
+
+    try {
+      const cartInstance = await loadCart();
+      const items = cartInstance.getItems();
+      const total = cartInstance.getTotal();
+      const count = cartInstance.getItemCount();
+
+      await loadInventoryData(items);
+
+      countEl.textContent = count.toString();
+      loadingEl.classList.add("hidden");
+
+      if (items.length === 0) {
+        emptyEl.classList.remove("hidden");
+        itemsEl.classList.add("hidden");
+        footerEl.classList.add("hidden");
+        if (checkoutButton) {
+          checkoutButton.disabled = true;
+        }
+      } else {
+        emptyEl.classList.add("hidden");
+        itemsEl.classList.remove("hidden");
+        footerEl.classList.remove("hidden");
+
+        itemsListEl.innerHTML = items.map(renderCartItem).join("");
+        totalEl.textContent = formatPrice(total);
+
+        if (checkoutButton) {
+          checkoutButton.disabled = false;
+        }
+
+        // Add event listeners to new buttons
+        addItemEventListeners();
+      }
+    } catch (error) {
+      console.error("Error updating mini cart display:", error);
+      loadingEl.classList.add("hidden");
+      emptyEl.classList.remove("hidden");
+    }
+  }
+
+  // EVENT: Add listeners to item controls
+  function addItemEventListeners(): void {
+    const itemsListEl = document.getElementById("items-list");
+    if (!itemsListEl) return;
+
+    itemsListEl.addEventListener("click", async (e) => {
+      const target = e.target as HTMLElement;
+      const button = target.closest("button[data-action]") as HTMLButtonElement;
+      if (!button) return;
+
+      e.preventDefault();
+
+      const action = button.dataset.action;
+      const itemKey = button.dataset.itemKey;
+      const itemTitle = button.dataset.itemTitle;
+
+      if (!itemKey || button.disabled) return;
+
+      try {
+        const cartInstance = await loadCart();
+        const item = cartInstance
+          .getItems()
+          .find(
+            (item: CartItem) => `${item.id}:${item.variationId}` === itemKey
+          );
+
+        if (!item) return;
+
+        switch (action) {
+          case "increase":
+            await updateQuantity(itemKey, item.quantity + 1);
+            break;
+          case "decrease":
+            await updateQuantity(itemKey, item.quantity - 1);
+            break;
+          case "remove":
+            if (itemTitle) {
+              await removeItem(itemKey, itemTitle);
+            }
+            break;
+        }
+      } catch (error) {
+        console.error("Error handling item action:", error);
+        showNotification("Error updating cart", "error");
+      }
+    });
+  }
+
+  function initMiniCart() {
+    const overlay = document.getElementById("mini-cart-overlay");
+    const panel = document.getElementById("mini-cart-panel");
+    const closeButton = document.getElementById("close-mini-cart");
+    const continueShoppingButton = document.getElementById("continue-shopping");
+    const checkoutButton = document.getElementById("mini-cart-checkout");
+    const viewCartButton = document.getElementById("view-full-cart");
+
+    // Complete null checks before any usage
+    if (!overlay || !panel || !closeButton) {
+      console.error("Mini cart elements not found");
+      return;
+    }
+
+    function openMiniCart() {
+      if (!overlay || !panel || !closeButton) return;
+
+      overlay.classList.remove("hidden");
+      panel.setAttribute("aria-hidden", "false");
+
+      requestAnimationFrame(() => {
+        if (overlay && panel) {
+          overlay.classList.remove("opacity-0");
+          panel.classList.remove("translate-x-full");
+        }
+      });
+
+      closeButton.focus();
+      updateMiniCartDisplay();
+    }
+
+    function closeMiniCart() {
+      if (!overlay || !panel) return;
+
+      overlay.classList.add("opacity-0");
+      panel.classList.add("translate-x-full");
+      panel.setAttribute("aria-hidden", "true");
+
+      setTimeout(() => {
+        if (overlay) {
+          overlay.classList.add("hidden");
+        }
+      }, 300);
+    }
+
+    // Event listeners with guaranteed non-null elements
+    closeButton.addEventListener("click", closeMiniCart);
+    overlay.addEventListener("click", closeMiniCart);
+
+    if (continueShoppingButton) {
+      continueShoppingButton.addEventListener("click", closeMiniCart);
+    }
+
+    if (checkoutButton) {
+      checkoutButton.addEventListener("click", handleCheckout);
+    }
+
+    if (viewCartButton) {
+      viewCartButton.addEventListener("click", () => {
+        window.location.href = "/cart";
+      });
+    }
+
+    window.addEventListener("openMiniCart", openMiniCart);
+    window.addEventListener("cartUpdated", updateMiniCartDisplay);
+
+    document.addEventListener("keydown", (e) => {
+      if (
+        e.key === "Escape" &&
+        panel &&
+        !panel.classList.contains("translate-x-full")
+      ) {
+        closeMiniCart();
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initMiniCart);
+  } else {
+    initMiniCart();
+  }
+
+  document.addEventListener("astro:page-load", initMiniCart);
+</script>

@@ -349,49 +349,51 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
         }
 
         <!-- Quantity Input -->
-        <div class="mt-6">
-          <div class="flex flex-col space-y-2 items-start">
-            <label for="quantity-input" class="text-sm font-medium"
-              >Quantity</label
-            >
-            <div
-              class="flex border border-ui-input-border/50 rounded-md overflow-hidden"
-            >
-              <button
-                type="button"
-                id="decrease-quantity"
-                class="w-10 h-10 flex items-center justify-center border-r border-ui-input-border/50 bg-ui-input-surface text-ui-input-text"
-                disabled={true}
-              >
-                -
-              </button>
-              <input
-                type="number"
-                id="quantity-input"
-                min="1"
-                max={selectedVariationQuantity}
-                value="1"
-                class="w-14 h-10 text-center bg-ui-input-surface text-ui-input-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-              <button
-                type="button"
-                id="increase-quantity"
-                class="w-10 h-10 flex items-center justify-center border-l border-ui-input-border/50 bg-ui-input-surface text-ui-input-text"
-                disabled={selectedVariationQuantity <= 1}
-              >
-                +
-              </button>
+        {
+          selectedVariationInStock && (
+            <div class="mt-6">
+              <div class="flex flex-col space-y-2 items-start">
+                <label for="quantity-input" class="text-sm font-medium">
+                  Quantity
+                </label>
+                <div class="flex border border-ui-input-border/50 rounded-md overflow-hidden">
+                  <button
+                    type="button"
+                    id="decrease-quantity"
+                    class="w-10 h-10 flex items-center justify-center border-r border-ui-input-border/50 bg-ui-input-surface text-ui-input-text"
+                    disabled={true}
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    id="quantity-input"
+                    min="1"
+                    max={selectedVariationQuantity}
+                    value="1"
+                    class="w-14 h-10 text-center bg-ui-input-surface text-ui-input-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <button
+                    type="button"
+                    id="increase-quantity"
+                    class="w-10 h-10 flex items-center justify-center border-l border-ui-input-border/50 bg-ui-input-surface text-ui-input-text"
+                    disabled={selectedVariationQuantity <= 1}
+                  >
+                    +
+                  </button>
+                </div>
+                <div id="availability-indicator" class="text-sm">
+                  <span class="text-content-meta" id="remaining-count">
+                    {selectedVariationQuantity} available
+                  </span>
+                  <span id="cart-quantity" class="ml-1 hidden">
+                    ( 0 in cart )
+                  </span>
+                </div>
+              </div>
             </div>
-            <div id="availability-indicator" class="text-sm">
-              <span class="text-content-meta" id="remaining-count">
-                {selectedVariationQuantity} available
-              </span>
-              <span id="cart-quantity" class="ml-1 hidden">
-                ( 0 in cart )
-              </span>
-            </div>
-          </div>
-        </div>
+          )
+        }
 
         <!-- Hidden data for JavaScript -->
         <input
@@ -412,9 +414,6 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
             class="text-sm font-medium text-state-info-text bg-state-info-surface px-2 py-1 rounded hidden"
           ></span>
         </div>
-
-        <!-- Inventory Status -->
-        <div id="inventory-status"></div>
 
         <!-- Add to Cart Button -->
         <div class="mt-4">

@@ -1,11 +1,17 @@
 ---
 // src/components/CartButton.astro
+// Updated to trigger mini cart instead of navigation
 import { Icon } from "astro-icon/components";
 import { cart } from "@/lib/cart";
 const cartCount = cart.getItemCount();
 ---
 
-<a href="/cart" class="relative p-2" aria-label="Shopping Cart">
+<button
+  type="button"
+  class="relative p-2"
+  aria-label="Shopping Cart"
+  id="cart-button"
+>
   <Icon class="h-6 w-6 m-1" name="uil:shopping-cart" />
   <span
     id="cart-count"
@@ -16,7 +22,7 @@ const cartCount = cart.getItemCount();
   >
     {cartCount}
   </span>
-</a>
+</button>
 
 <script>
   let cartLoaded = false;
@@ -49,7 +55,29 @@ const cartCount = cart.getItemCount();
     }, 50);
   }
 
-  // Lazy load on first interaction
+  function initCartButton() {
+    const cartButton = document.getElementById("cart-button");
+    if (!cartButton) return;
+
+    // CHANGE: Dispatch event instead of navigate
+    cartButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      console.log("Cart button clicked, opening mini cart");
+      window.dispatchEvent(new CustomEvent("openMiniCart"));
+    });
+  }
+
+  // Initialize cart button
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initCartButton);
+  } else {
+    initCartButton();
+  }
+
+  // Re-initialize on Astro navigation
+  document.addEventListener("astro:page-load", initCartButton);
+
+  // Keep existing cart count update functionality
   window.addEventListener("cartUpdated", updateCartCount);
   document.addEventListener("astro:page-load", updateCartCount);
 </script>
