@@ -84,19 +84,6 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 </div>
 
 <script>
-  import {
-    filterProducts,
-    parseFiltersFromURL,
-    updateURLWithFilters,
-    updateURLWithFiltersResetPage,
-    hasActiveFilters,
-    clearAllFilters,
-  } from "@/lib/square/filterUtils";
-  import type { Product, ProductFilters } from "@/lib/square/types";
-  import { buildPaginatedURL } from "@/lib/square/filterUtils";
-
-  // Replace the class properties and constructor in FilterableProductGrid.astro:
-
   class FilterableProductGrid {
     private grid: HTMLElement | null;
 
@@ -104,93 +91,31 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
       this.grid = document.getElementById("filterable-product-grid");
       if (!this.grid) return;
 
-      this.setupFormAnimations();
-      this.restoreGridOnLoad();
+      this.initializeGrid();
     }
 
-    private setupFormAnimations(): void {
-      // Listen for form submissions from ProductFilters
-      document.addEventListener("submit", () => {
-        this.fadeGrid();
-      });
-
-      // Listen for clear filter link clicks
-      document.addEventListener("click", (e) => {
-        if ((e.target as HTMLElement)?.closest('a[href*="pageSize"]')) {
-          this.fadeGrid();
-        }
-      });
-    }
-
-    private fadeGrid(): void {
+    private initializeGrid(): void {
       if (this.grid) {
-        this.grid.style.transition = "opacity 0.3s ease";
-        this.grid.style.opacity = "0.6";
-      }
-    }
-
-    private restoreGridOnLoad(): void {
-      if (this.grid) {
+        // Ensure grid is visible on page load
         this.grid.style.opacity = "1";
+        this.grid.style.transition = "opacity 0.3s ease";
       }
     }
   }
 
-  // Initialize on page load
   document.addEventListener("astro:page-load", () => {
     new FilterableProductGrid();
   });
 </script>
 
 <style>
-  /* Smooth transitions for optimistic updates */
-  .product-card-wrapper {
-    transition:
-      opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-      transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: opacity, transform;
-  }
-
   #filterable-product-grid {
-    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 0.3s ease;
   }
 
-  .product-card-wrapper {
-    transition:
-      opacity 0.4s ease,
-      transform 0.4s ease;
-  }
-
-  /* Loading animation */
-  @keyframes pulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
-  }
-
-  .animate-pulse {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  /* Spinner animation */
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .animate-spin {
-    animation: spin 1s linear infinite;
-  }
-
-  /* Reduce motion for accessibility */
   @media (prefers-reduced-motion: reduce) {
-    .product-card-wrapper {
-      transition: none;
+    #filterable-product-grid {
+      transition: none !important;
     }
   }
 </style>
