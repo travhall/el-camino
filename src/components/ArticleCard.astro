@@ -53,10 +53,10 @@ const imageHeight = featured ? 533 : 400;
         format="avif"
         quality={85}
         class:list={[
-          "object-cover w-full h-full",
+          "object-cover w-full h-full transition-all duration-300",
           featured
-            ? "opacity-90"
-            : "transition-all duration-300 opacity-10 lg:[.article-card:has(button:hover)_&]:scale-105 lg:[.article-card:has(button:hover)_&]:opacity-95",
+            ? "opacity-90 lg:[.banner-card:has(button:hover)_&]:scale-105"
+            : "opacity-10 lg:[.article-card:has(button:hover)_&]:scale-105 lg:[.article-card:has(button:hover)_&]:opacity-95",
         ]}
         loading={priority ? "eager" : "lazy"}
         fetchpriority={priority ? "high" : "auto"}
@@ -121,7 +121,11 @@ const imageHeight = featured ? 533 : 400;
       }
 
       <!-- Read More Button -->
-      <a href={`/news/${post.slug}`} class="self-start" aria-label={linkText}>
+      <a
+        href={`/news/${post.slug}`}
+        class="self-start mt-4"
+        aria-label={linkText}
+      >
         <Button type="button" variant="primary" size="md" tabindex="-1">
           Read More
           <span class="sr-only">: {fallbackContent.title}</span>
