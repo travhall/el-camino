@@ -62,7 +62,6 @@ const currentPageSize = currentParams.get("pageSize") || "24";
                   value={brand.name}
                   checked={currentBrands.includes(brand.name)}
                   class="elco-checkbox mr-3 rounded-none border-ui-input-border text-ui-accent focus:ring-ui-accent"
-                  onchange="this.form.submit()"
                 />
                 <span class="flex-1 text-content-body group-hover:text-content-emphasis">
                   {brand.name}
@@ -201,7 +200,6 @@ const currentPageSize = currentParams.get("pageSize") || "24";
 </div>
 
 <script>
-  // Simplified mobile drawer controls only - no filter state management
   class MobileFilterDrawer {
     private mobileToggle: HTMLElement | null;
     private mobileDrawer: HTMLElement | null;
@@ -217,6 +215,7 @@ const currentPageSize = currentParams.get("pageSize") || "24";
       if (!this.mobileToggle) return;
 
       this.setupEventListeners();
+      this.setupGridAnimations();
     }
 
     private setupEventListeners(): void {
@@ -226,6 +225,35 @@ const currentPageSize = currentParams.get("pageSize") || "24";
         this.closeDrawer.bind(this)
       );
       this.mobileClose?.addEventListener("click", this.closeDrawer.bind(this));
+    }
+
+    private setupGridAnimations(): void {
+      // Remove immediate form submission, add animation delay
+      const desktopCheckboxes = document.querySelectorAll(
+        '.lg\\:block input[type="checkbox"]'
+      );
+      desktopCheckboxes.forEach((checkbox) => {
+        checkbox.removeAttribute("onchange");
+        checkbox.addEventListener("change", (e) => {
+          this.handleFilterChange(e.target as HTMLInputElement);
+        });
+      });
+    }
+
+    private handleFilterChange(checkbox: HTMLInputElement): void {
+      const grid = document.getElementById("filterable-product-grid");
+      const form = checkbox.closest("form") as HTMLFormElement;
+
+      if (grid && form) {
+        // Quick fade animation
+        grid.style.transition = "opacity 0.3s ease";
+        grid.style.opacity = "0.4";
+
+        // Submit after brief delay
+        setTimeout(() => {
+          form.submit();
+        }, 150);
+      }
     }
 
     private openDrawer(): void {
@@ -246,7 +274,6 @@ const currentPageSize = currentParams.get("pageSize") || "24";
     }
   }
 
-  // Initialize on page load
   document.addEventListener("astro:page-load", () => {
     new MobileFilterDrawer();
   });
