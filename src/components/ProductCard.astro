@@ -1,31 +1,43 @@
 ---
-// src/components/ProductCard.astro - SIMPLE FIX: Just remove blocking inventory call
+// src/components/ProductCard.astro - FIXED: Keep performance + restore stock status
 import type { Product } from "@/lib/square/types";
 import { MoneyUtils } from "@/lib/square/money";
-// REMOVED: import { getProductStockStatus } from "@/lib/square/inventory";
+import { getProductStockStatus } from "@/lib/square/inventory";
 
 interface Props {
   product: Product;
   priority?: boolean;
   index?: number;
+  skipInventoryCheck?: boolean; // NEW: Allow bypassing inventory for performance
 }
 
-const { product, priority = false, index = 0 } = Astro.props;
+const {
+  product,
+  priority = false,
+  index = 0,
+  skipInventoryCheck = false,
+} = Astro.props;
 
-// REMOVED: This was causing the 2-4 second navigation delay
-// const { isOutOfStock } = await getProductStockStatus(product);
+// CONDITIONAL: Only check inventory if not skipped (for category pages, skip for performance)
+let isOutOfStock = false;
+if (!skipInventoryCheck) {
+  const stockStatus = await getProductStockStatus(product);
+  isOutOfStock = stockStatus.isOutOfStock;
+}
 
-// Format price (unchanged from original)
+// Format price
 const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 
-// Schema.org availability (default to in-stock for immediate rendering)
-const availabilitySchema = "https://schema.org/InStock";
+// Schema.org availability
+const availabilitySchema = isOutOfStock
+  ? "https://schema.org/OutOfStock"
+  : "https://schema.org/InStock";
 
-// Generate unique IDs (from original)
+// Generate unique IDs
 const imageId = `img-${product.id}`;
 const placeholderId = `placeholder-${product.id}`;
 
-// Simple Square CDN optimization (from original)
+// Square CDN optimization
 const optimizedImageSrc = (() => {
   if (product.image.includes("squarecdn.com")) {
     try {
@@ -42,19 +54,19 @@ const optimizedImageSrc = (() => {
   return product.image;
 })();
 
-// Dynamic priority based on position (from original)
+// Dynamic priority
 const isDynamicPriority = priority || index < 12;
 ---
 
 <a
   href={product.url}
-  class={`group grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-ui-card-surface text-ui-card-text lg:hover:bg-ui-card-hover transition-all duration-200`}
+  class={`group grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-ui-card-surface text-ui-card-text lg:hover:bg-ui-card-hover transition-all duration-200 ${isOutOfStock ? "opacity-75" : ""}`}
   itemscope
   itemtype="http://schema.org/Product"
 >
-  <!-- Enhanced Product Image Container -->
+  <!-- Product Image Container -->
   <div class="relative aspect-video sm:aspect-square overflow-hidden">
-    <!-- Enhanced placeholder with shimmer (from original) -->
+    <!-- Enhanced placeholder with shimmer -->
     <div
       class="absolute inset-0 bg-gradient-to-br from-surface-secondary to-surface-tertiary transition-opacity duration-300"
       id={placeholderId}
@@ -64,7 +76,7 @@ const isDynamicPriority = priority || index < 12;
         class="absolute inset-0 bg-gradient-to-r from-transparent via-surface-primary/30 to-transparent animate-shimmer -translate-x-full"
       >
       </div>
-      <!-- Optional: Add icon for visual interest (from original) -->
+      <!-- El Camino logo -->
       <div class="absolute inset-0 flex items-center justify-center opacity-20">
         <svg width="48" height="44" fill="currentColor">
           <path
@@ -76,12 +88,12 @@ const isDynamicPriority = priority || index < 12;
       </div>
     </div>
 
-    <!-- FIXED: Enhanced Image - Use classes instead of inline styles (from original) -->
+    <!-- Enhanced Image -->
     <img
       id={imageId}
       src={optimizedImageSrc}
       alt={product.title}
-      class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 image-enhanced will-change-transform`}
+      class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""} image-enhanced will-change-transform`}
       loading={isDynamicPriority ? "eager" : "lazy"}
       fetchpriority={isDynamicPriority ? "high" : "auto"}
       decoding={isDynamicPriority ? "sync" : "async"}
@@ -90,12 +102,19 @@ const isDynamicPriority = priority || index < 12;
       onload={`this.classList.add('opacity-100', 'loaded'); document.getElementById('${placeholderId}')?.remove()`}
     />
 
-    <!-- REMOVED: Stock status overlays since we're not checking inventory -->
+    <!-- Stock status overlay -->
+    {
+      isOutOfStock && (
+        <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-sm font-bold z-10">
+          Sold Out
+        </div>
+      )
+    }
   </div>
 
-  <!-- Product Info (unchanged from original) -->
+  <!-- Product Info -->
   <div class="grid px-1">
-    <div class="self-start">
+    <div class={`self-start ${isOutOfStock ? "opacity-50" : ""}`}>
       {
         product.brand && (
           <p class="text-xs uppercase text-content-meta" itemprop="brand">
@@ -111,7 +130,9 @@ const isDynamicPriority = priority || index < 12;
       </h2>
     </div>
 
-    <div class="text-product-price self-end">
+    <div
+      class={`text-product-price self-end ${isOutOfStock ? "opacity-50" : ""}`}
+    >
       <meta itemprop="availability" content={availabilitySchema} />
       <span
         class="font-display text-2xl whitespace-nowrap"
@@ -129,9 +150,7 @@ const isDynamicPriority = priority || index < 12;
   </div>
 </a>
 
-<!-- FIXED: Simplified CSS - Remove conflicting transitions (from original) -->
 <style>
-  /* Shimmer animation */
   @keyframes shimmer {
     0% {
       transform: translateX(-100%);
@@ -149,28 +168,23 @@ const isDynamicPriority = priority || index < 12;
     filter: grayscale(100%);
   }
 
-  /* Accessibility: Reduce motion */
   @media (prefers-reduced-motion: reduce) {
     .animate-shimmer {
       animation: none;
     }
 
-    /* Disable transitions for reduced motion */
     .image-enhanced {
       transition: none !important;
     }
   }
 </style>
 
-<!-- FIXED: Use classes instead of inline styles (from original) -->
 <script>
-  // Enhanced image loading feedback
   document.addEventListener("astro:page-load", () => {
     const images =
       document.querySelectorAll<HTMLImageElement>(".image-enhanced");
 
     images.forEach((img) => {
-      // If image is already loaded (cached), trigger onload
       if (img.complete && img.naturalHeight !== 0) {
         img.classList.add("opacity-100", "loaded");
         const placeholderId = img.dataset.placeholderId;
