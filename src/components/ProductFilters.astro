@@ -215,7 +215,7 @@ const currentPageSize = currentParams.get("pageSize") || "24";
       if (!this.mobileToggle) return;
 
       this.setupEventListeners();
-      this.setupGridAnimations();
+      this.setupAnimations();
     }
 
     private setupEventListeners(): void {
@@ -227,32 +227,56 @@ const currentPageSize = currentParams.get("pageSize") || "24";
       this.mobileClose?.addEventListener("click", this.closeDrawer.bind(this));
     }
 
-    private setupGridAnimations(): void {
-      // Remove immediate form submission, add animation delay
+    private setupAnimations(): void {
+      // Desktop checkbox animations
       const desktopCheckboxes = document.querySelectorAll(
         '.lg\\:block input[type="checkbox"]'
       );
       desktopCheckboxes.forEach((checkbox) => {
         checkbox.removeAttribute("onchange");
         checkbox.addEventListener("change", (e) => {
-          this.handleFilterChange(e.target as HTMLInputElement);
+          this.handleDesktopFilterChange(e.target as HTMLInputElement);
         });
+      });
+
+      // Mobile form animation
+      const mobileForm = document.querySelector("#mobile-filter-drawer form");
+      mobileForm?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        this.handleMobileFormSubmit(e.target as HTMLFormElement);
       });
     }
 
-    private handleFilterChange(checkbox: HTMLInputElement): void {
+    private handleDesktopFilterChange(checkbox: HTMLInputElement): void {
       const grid = document.getElementById("filterable-product-grid");
       const form = checkbox.closest("form") as HTMLFormElement;
 
       if (grid && form) {
-        // Quick fade animation
         grid.style.transition = "opacity 0.3s ease";
         grid.style.opacity = "0.4";
+        grid.classList.add("filtering");
 
-        // Submit after brief delay
+        sessionStorage.setItem("filtering-in-progress", "true");
+
         setTimeout(() => {
           form.submit();
         }, 150);
+      }
+    }
+
+    private handleMobileFormSubmit(form: HTMLFormElement): void {
+      const grid = document.getElementById("filterable-product-grid");
+
+      if (grid) {
+        grid.style.transition = "opacity 0.3s ease";
+        grid.style.opacity = "0.4";
+
+        sessionStorage.setItem("filtering-in-progress", "true");
+        this.closeDrawer();
+
+        setTimeout(() => {
+          form.submit();
+        }, 200); // Slightly longer for mobile to allow drawer close
       }
     }
 

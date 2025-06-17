@@ -92,14 +92,52 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
       if (!this.grid) return;
 
       this.initializeGrid();
+      this.setupClearFilterAnimations();
     }
 
     private initializeGrid(): void {
-      if (this.grid) {
-        // Ensure grid is visible on page load
+      if (!this.grid) return;
+
+      // Check if we're loading from a filter action (grid should be faded)
+      const wasFiltering = sessionStorage.getItem("filtering-in-progress");
+
+      if (wasFiltering) {
+        // Smooth fade-in from filtered state
+        this.grid.style.opacity = "0.4";
+        this.grid.style.transition = "opacity 0.4s ease";
+
+        requestAnimationFrame(() => {
+          this.grid!.style.opacity = "1";
+        });
+
+        sessionStorage.removeItem("filtering-in-progress");
+      } else {
+        // Normal page load
         this.grid.style.opacity = "1";
         this.grid.style.transition = "opacity 0.3s ease";
       }
+    }
+
+    private setupClearFilterAnimations(): void {
+      // Add animation delay to clear filter links
+      const clearLinks = document.querySelectorAll(
+        'a[href*="pageSize"]:not([data-animated])'
+      );
+      clearLinks.forEach((link) => {
+        link.setAttribute("data-animated", "true");
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+
+          if (this.grid) {
+            this.grid.style.opacity = "0.4";
+            sessionStorage.setItem("filtering-in-progress", "true");
+
+            setTimeout(() => {
+              window.location.href = (e.target as HTMLAnchorElement).href;
+            }, 150);
+          }
+        });
+      });
     }
   }
 
@@ -111,6 +149,11 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 <style>
   #filterable-product-grid {
     transition: opacity 0.3s ease;
+  }
+
+  /* Ensure smooth transitions during filtering */
+  #filterable-product-grid.filtering {
+    pointer-events: none;
   }
 
   @media (prefers-reduced-motion: reduce) {
