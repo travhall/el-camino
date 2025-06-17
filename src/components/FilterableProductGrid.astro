@@ -99,225 +99,39 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 
   class FilterableProductGrid {
     private grid: HTMLElement | null;
-    private noResults!: HTMLElement;
-    private loadingOverlay!: HTMLElement;
-    private skeleton!: HTMLElement;
-    private allProducts!: Product[];
-    private productWrappers!: HTMLElement[];
-    private isFiltering = false;
-    private paginationMode!: boolean;
-    private categoryPath!: string;
 
     constructor() {
       this.grid = document.getElementById("filterable-product-grid");
-
-      // Exit early if component doesn't exist on this page
-      if (!this.grid) {
-        console.log("[FilterableProductGrid] Component not found on this page");
-        return;
-      }
-
-      this.noResults = document.getElementById("no-results")!;
-      this.loadingOverlay = document.getElementById("filter-loading-overlay")!;
-      this.skeleton = document.getElementById("product-grid-skeleton")!;
-
-      // Parse configuration from data attributes
-      this.allProducts = JSON.parse(this.grid.dataset.products || "[]");
-      this.paginationMode = this.grid.dataset.paginationMode === "true";
-      this.categoryPath = this.grid.dataset.categoryPath || "";
-
-      this.productWrappers = Array.from(
-        this.grid.querySelectorAll(".product-card-wrapper")
-      );
-
-      this.productWrappers.forEach((wrapper) => {
-        wrapper.classList.add("filtered-visible");
-      });
-
-      console.log(
-        `[FilterableProductGrid] Mode: ${this.paginationMode ? "server-first" : "client-side"}`
-      );
-
-      this.setupEventListeners();
-
-      // Only handle initial filters in client-side mode
-      if (!this.paginationMode) {
-        this.handleInitialFilters();
-      }
-    }
-
-    private fadeOutUnmatchedProducts(filters: ProductFilters): void {
       if (!this.grid) return;
 
-      const filteredProducts = filterProducts(this.allProducts, filters);
-      const visibleIds = new Set(filteredProducts.map((p) => p.id));
+      this.setupFormAnimations();
+      this.restoreGridOnLoad();
+    }
 
-      this.productWrappers.forEach((wrapper) => {
-        const productId = wrapper.dataset.productId;
-        if (visibleIds.has(productId!)) {
-          wrapper.style.opacity = "1";
-          wrapper.style.transform = "scale(1)";
-        } else {
-          wrapper.style.opacity = "0.3";
-          wrapper.style.transform = "scale(0.95)";
+    private setupFormAnimations(): void {
+      // Listen for form submissions from ProductFilters
+      document.addEventListener("submit", () => {
+        this.fadeGrid();
+      });
+
+      // Listen for clear filter link clicks
+      document.addEventListener("click", (e) => {
+        if ((e.target as HTMLElement)?.closest('a[href*="pageSize"]')) {
+          this.fadeGrid();
         }
       });
     }
 
-    private showFilteringFeedback(): void {
-      if (!this.grid) return;
-
-      this.grid.style.opacity = "0.8";
-      this.grid.style.pointerEvents = "none";
-    }
-
-    private showFullPageLoading(): void {
-      if (!this.grid) return;
-
-      this.loadingOverlay.classList.remove("hidden");
-      this.grid.style.opacity = "0.3";
-    }
-
-    private hideLoadingStates(): void {
-      if (!this.grid) return;
-
-      this.loadingOverlay.classList.add("hidden");
-      this.grid.style.opacity = "1";
-      this.grid.style.pointerEvents = "auto";
-      this.isFiltering = false;
-
-      this.productWrappers.forEach((wrapper) => {
-        wrapper.style.opacity = "1";
-        wrapper.style.transform = "scale(1)";
-      });
-    }
-
-    private applyFilters(filters: ProductFilters): void {
-      if (!this.grid || this.isFiltering) return;
-
-      this.isFiltering = true;
-
-      // Fade out entire grid
-      this.grid.style.opacity = "0.3";
-
-      setTimeout(() => {
-        const filteredProducts = filterProducts(this.allProducts, filters);
-        const filteredIds = new Set(filteredProducts.map((p) => p.id));
-
-        this.updateGrid(filteredIds);
-
-        // Fade in entire grid
-        if (this.grid) {
-          this.grid.style.opacity = "1";
-        }
-        this.isFiltering = false;
-      }, 300);
-    }
-
-    private setupEventListeners(): void {
-      // Listen for filter changes from ProductFilters component
-      window.addEventListener(
-        "filtersChanged",
-        this.handleFiltersChanged.bind(this) as EventListener
-      );
-
-      // Clear filters CTA
-      document
-        .getElementById("clear-filters-cta")
-        ?.addEventListener("click", () => {
-          this.clearAllFilters();
-        });
-
-      // Handle navigation completion (Astro page loads)
-      document.addEventListener("astro:page-load", () => {
-        this.hideLoadingStates();
-      });
-    }
-
-    private handleInitialFilters(): void {
-      if (this.paginationMode) return;
-
-      const params = new URLSearchParams(window.location.search);
-      const filters = parseFiltersFromURL(params);
-
-      if (hasActiveFilters(filters)) {
-        this.applyFilters(filters);
+    private fadeGrid(): void {
+      if (this.grid) {
+        this.grid.style.transition = "opacity 0.3s ease";
+        this.grid.style.opacity = "0.6";
       }
     }
 
-    private handleFiltersChanged(event: CustomEvent): void {
-      const { filters } = event.detail;
-
-      // Build new URL with filters
-      const currentParams = new URLSearchParams(window.location.search);
-      const pageSize = parseInt(currentParams.get("pageSize") || "24", 10);
-
-      const newURL = buildPaginatedURL(
-        window.location.pathname,
-        filters,
-        1, // Reset to page 1
-        pageSize
-      );
-
-      // Navigate to new URL
-      window.location.href = newURL;
-    }
-
-    private showOptimisticUpdate(filters: ProductFilters): void {
-      if (hasActiveFilters(filters)) {
-        const predictedResults = filterProducts(this.allProducts, filters);
-
-        if (predictedResults.length > 0) {
-          this.fadeOutUnmatchedProducts(filters);
-          this.showFilteringFeedback();
-        } else {
-          this.showFullPageLoading();
-        }
-      } else {
-        this.showAllProducts();
-        this.showFilteringFeedback();
-      }
-    }
-
-    private showAllProducts(): void {
-      this.productWrappers.forEach((wrapper) => {
-        wrapper.style.opacity = "1";
-        wrapper.style.transform = "scale(1)";
-      });
-    }
-
-    private updateGrid(visibleProductIds: Set<string>): void {
-      let visibleCount = 0;
-
-      this.productWrappers.forEach((wrapper) => {
-        const productId = wrapper.dataset.productId;
-
-        if (visibleProductIds.has(productId!)) {
-          wrapper.style.display = "block";
-          visibleCount++;
-        } else {
-          wrapper.style.display = "none";
-        }
-      });
-
-      if (!this.paginationMode) {
-        this.noResults.style.display = visibleCount === 0 ? "flex" : "none";
-      }
-    }
-
-    private clearAllFilters(): void {
-      const emptyFilters = clearAllFilters();
-
-      if (this.paginationMode) {
-        this.showOptimisticUpdate(emptyFilters);
-        setTimeout(() => {
-          window.location.href = this.categoryPath;
-        }, 50);
-      } else {
-        updateURLWithFilters(emptyFilters);
-        this.applyFilters(emptyFilters);
-
-        window.dispatchEvent(new CustomEvent("clearAllFilters"));
+    private restoreGridOnLoad(): void {
+      if (this.grid) {
+        this.grid.style.opacity = "1";
       }
     }
   }
