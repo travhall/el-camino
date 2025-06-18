@@ -1,7 +1,9 @@
 ---
-// src/pages/cart.astro
+// src/pages/cart.astro - Refactored with CartItem
 import Layout from "@/layouts/Layout.astro";
 import Modal from "@/components/Modal.astro";
+import Button from "@/components/Button.astro";
+import CartItem from "@/components/CartItem.astro";
 ---
 
 <Layout title="Your Shopping Cart | El Camino">
@@ -17,7 +19,11 @@ import Modal from "@/components/Modal.astro";
       id="cart-loading"
       class="text-center min-h-[50dvh] flex items-center justify-center py-12"
     >
-      <p class="text-lg animate-pulse text-content-body">Loading cart...</p>
+      <div
+        class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-content-heading"
+      >
+      </div>
+      <p class="mt-2 text-content-meta">Loading cart...</p>
     </div>
 
     <!-- Cart Content -->
@@ -28,13 +34,18 @@ import Modal from "@/components/Modal.astro";
       id="loading-overlay"
       class="fixed inset-0 bg-surface-primary/50 min-h-[50dvh] items-center justify-center hidden z-50"
     >
-      <div class="bg-surface-secondary p-1">
-        <p class="text-lg text-content-body">Processing...</p>
+      <div class="bg-surface-secondary p-4 rounded-sm">
+        <div class="flex items-center justify-center">
+          <div
+            class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-content-heading mr-3"
+          >
+          </div>
+          <p class="text-lg text-content-body">Processing...</p>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Include Modal Component -->
   <Modal />
 </Layout>
 
@@ -42,8 +53,12 @@ import Modal from "@/components/Modal.astro";
   import { cart } from "@/lib/cart";
   import type { CartItem } from "@/lib/cart/types";
   import { MoneyUtils } from "@/lib/square/money";
+  import {
+    getItemKey,
+    getStockStatus,
+    validateQuantityChange,
+  } from "@/lib/cart/cartHelpers";
 
-  // Track UI update state and inventory data
   let isUpdating = false;
   let inventoryData: Record<string, number> = {};
 
@@ -55,7 +70,6 @@ import Modal from "@/components/Modal.astro";
     }
   }
 
-  // Load inventory data via server-side API (no CORS issues)
   async function loadInventoryData(items: CartItem[]): Promise<void> {
     if (items.length === 0) {
       inventoryData = {};
@@ -64,12 +78,9 @@ import Modal from "@/components/Modal.astro";
 
     try {
       const variationIds = items.map((item) => item.variationId);
-
       const response = await fetch("/api/cart-inventory", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ variationIds }),
       });
 
@@ -78,16 +89,13 @@ import Modal from "@/components/Modal.astro";
       }
 
       const result = await response.json();
-
       if (result.success && result.inventory) {
         inventoryData = result.inventory;
-        console.log("Loaded inventory data:", inventoryData);
       } else {
         throw new Error(result.error || "Failed to load inventory");
       }
     } catch (error) {
       console.error("Error loading inventory data:", error);
-      // Fallback to generous limits on API failure
       inventoryData = {};
       items.forEach((item) => {
         inventoryData[item.variationId] = 99;
@@ -95,27 +103,22 @@ import Modal from "@/components/Modal.astro";
     }
   }
 
-  // Validate quantity using cart's availability system (like product detail page)
   function canUpdateQuantity(itemKey: string, newQuantity: number): boolean {
-    const [productId, variationId] = itemKey.split(":");
-    const totalInventory = inventoryData[variationId] || 99;
-
-    return cart.canAddToCart(
-      productId,
-      variationId,
-      totalInventory,
-      newQuantity - getCurrentCartQuantity(itemKey)
+    const validation = validateQuantityChange(
+      cart,
+      itemKey,
+      newQuantity,
+      inventoryData
     );
+    return validation.valid;
   }
 
-  // Get current quantity in cart for an item
   function getCurrentCartQuantity(itemKey: string): number {
     const items = cart.getItems();
-    const item = items.find((i) => `${i.id}:${i.variationId}` === itemKey);
+    const item = items.find((i) => getItemKey(i) === itemKey);
     return item?.quantity || 0;
   }
 
-  // Templates
   function createEmptyCart(): string {
     return `
       <div class="flex flex-col min-h-[50dvh] items-center justify-center" id="empty-cart">
@@ -142,12 +145,6 @@ import Modal from "@/components/Modal.astro";
                 MoneyUtils.fromFloat(total)
               )}</span>
             </div>
-            <!-- <div class="flex justify-between font-bold pt-2 border-t border-surface-secondary text-content-emphasis">
-              <span>Total</span>
-              <span id="total">${MoneyUtils.format(
-                MoneyUtils.fromFloat(total)
-              )}</span>
-            </div> -->
           </div>
           <div class="space-y-2">
             <p class="italic my-4">Shipping &amp; taxes are calculated at checkout</p>
@@ -170,18 +167,83 @@ import Modal from "@/components/Modal.astro";
     `;
   }
 
-  // Get correct cart item image - fallback to variation lookup if needed
-  function getCartItemImage(item: CartItem): string {
-    // If item has image, use it (might be default product image)
-    if (item.image) {
-      return item.image;
-    }
+  // CartItem custom element for dynamic rendering
+  class CartItemElement extends HTMLElement {
+    static create(item: CartItem, inventory: number): string {
+      const itemKey = getItemKey(item);
+      const itemSubtotal = item.price * item.quantity;
+      const { isOutOfStock } = getStockStatus(inventory);
+      const canIncrement = !isOutOfStock && item.quantity < inventory;
 
-    // Fallback to placeholder if no image
-    return "/images/placeholder.png";
+      return `
+        <cart-item-element data-item-container="${itemKey}">
+          <div class="bg-surface-secondary p-4 flex gap-4 self-start">
+            <div class="flex-shrink-0">
+              <img 
+                src="${item.image || "/images/placeholder.png"}"
+                alt="${item.title}"
+                class="w-16 h-16 lg:w-24 lg:h-24 object-cover rounded border border-border-secondary" 
+                onerror="this.src='/images/placeholder.png'"
+              />
+            </div>
+            <div class="flex-grow flex flex-col justify-between min-w-0">
+              <div class="flex flex-row justify-between">
+                <div class="flex flex-col mb-2 lg:mb-0">
+                  <h3 class="font-display text-2xl text-content-heading leading-tight">
+                    <a href="/product/${item.id}" class="lg:hover:text-content-emphasis transition-colors">
+                      ${item.title}
+                    </a>
+                  </h3>
+                  ${
+                    item.variationName
+                      ? `
+                    <p class="text-content-meta text-sm mt-1">${item.variationName}</p>
+                  `
+                      : ""
+                  }
+                </div>
+                <div>
+                  <div class="text-right">
+                    <div class="text-content-meta text-xs">
+                      ${MoneyUtils.format(MoneyUtils.fromFloat(item.price))} each
+                    </div>
+                    <div class="font-display font-bold text-2xl text-content-emphasis">
+                      ${MoneyUtils.format(MoneyUtils.fromFloat(itemSubtotal))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex justify-between items-end gap-4">
+                <div class="flex items-center gap-2">
+                  <label for="quantity-${itemKey}" class="text-sm text-content-body hidden lg:block">Qty:</label>
+                  <div class="flex items-center border border-border-primary rounded">
+                    <button type="button" class="quantity-decrease px-2 py-1 lg:hover:bg-surface-primary transition-colors" data-item-key="${itemKey}" data-current-qty="${item.quantity}" data-inventory="${inventory}">−</button>
+                    <input type="number" id="quantity-${itemKey}" class="quantity-input w-16 text-center py-1 border-0 bg-surface-primary text-content-body focus:ring-1 focus:ring-content-emphasis [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value="${item.quantity}" min="1" max="${inventory}" data-item-key="${itemKey}" data-inventory="${inventory}" />
+                    <button type="button" class="quantity-increase px-2 py-1 lg:hover:bg-surface-primary transition-colors ${!canIncrement ? "opacity-50 cursor-not-allowed" : ""}" data-item-key="${itemKey}" data-inventory="${inventory}" ${!canIncrement ? "disabled" : ""}>+</button>
+                  </div>
+                  <div class="text-xs text-content-meta">
+                    ${inventory} available
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                  <button type="button" class="remove-btn text-sm text-content-meta lg:hover:text-state-error-surface transition-colors font-medium" data-item-key="${itemKey}">
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </cart-item-element>
+      `;
+    }
   }
 
-  // Cart Functions
+  if (!customElements.get("cart-item-element")) {
+    customElements.define("cart-item-element", CartItemElement);
+  }
+
   async function handleCheckout(): Promise<void> {
     try {
       const items = cart.getItems();
@@ -192,22 +254,9 @@ import Modal from "@/components/Modal.astro";
 
       setLoading(true);
 
-      // Load Square script dynamically only when needed for checkout
-      if (window.loadSquareScript) {
-        try {
-          await window.loadSquareScript();
-          console.log("Square script loaded for checkout");
-        } catch (error) {
-          console.error("Failed to load Square script:", error);
-          // Continue anyway - the API might still work
-        }
-      }
-
       const response = await fetch("/api/create-checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items }),
       });
 
@@ -242,7 +291,6 @@ import Modal from "@/components/Modal.astro";
       return;
     }
 
-    // Special case: if only 1 item, show specific item removal message
     const items = cart.getItems();
     if (items.length === 1) {
       const item = items[0];
@@ -274,7 +322,6 @@ import Modal from "@/components/Modal.astro";
     document
       .getElementById("checkout-button")
       ?.addEventListener("click", handleCheckout);
-
     document
       .getElementById("clear-cart-button")
       ?.addEventListener("click", handleClearCart);
@@ -288,7 +335,6 @@ import Modal from "@/components/Modal.astro";
       const items = cart.getItems();
       const total = cart.getTotal();
 
-      // Load inventory data first
       await loadInventoryData(items);
 
       const cartLoading = document.getElementById("cart-loading");
@@ -302,82 +348,11 @@ import Modal from "@/components/Modal.astro";
       if (items.length === 0) {
         cartContainer.innerHTML = createEmptyCart();
       } else {
-        // Create cart items HTML with proper inventory limits
+        // Use CartItem elements
         const cartItemsHtml = items
           .map((item) => {
-            const itemKey = `${item.id}:${item.variationId}`;
-            const itemSubtotal = item.price * item.quantity;
-            const itemImage = getCartItemImage(item);
-
-            // Get inventory for this variation
-            const totalInventory = inventoryData[item.variationId] || 99;
-            const maxQuantity = Math.max(totalInventory, item.quantity); // Allow current quantity even if over stock
-
-            // Check if increment is allowed using cart's availability system
-            const canIncrement = canUpdateQuantity(itemKey, item.quantity + 1);
-
-            return `
-            <div class="bg-surface-secondary p-4 flex gap-4 self-start" data-item-container="${itemKey}">
-              <div class="flex-shrink-0">
-                <img 
-                  src="${itemImage}"
-                  alt="${item.title}"
-                  class="w-16 h-16 lg:w-24 lg:h-24 object-cover rounded border border-border-secondary" 
-                  onerror="this.src='/images/placeholder.png'"
-                />
-              </div>
-              <div class="flex-grow flex flex-col justify-between min-w-0">
-                <div class="flex flex-row justify-between">
-                  <div class="flex flex-col mb-2 lg:mb-0">
-                    <h3 class="font-display text-2xl text-content-heading leading-tight">
-                      <a href="/product/${item.id}" class="lg:hover:text-content-emphasis transition-colors">
-                        ${item.title}
-                      </a>
-                    </h3>
-                    ${
-                      item.variationName
-                        ? `
-                      <p class="text-content-meta text-sm mt-1">
-                        ${item.variationName}
-                      </p>
-                    `
-                        : ""
-                    }
-                  </div>
-                <div>
-                  <div class="text-right">
-                      <div class="text-content-meta text-xs">
-                        ${MoneyUtils.format(MoneyUtils.fromFloat(item.price))} each
-                      </div>
-                      <div class="font-display font-bold text-2xl text-content-emphasis">
-                        ${MoneyUtils.format(MoneyUtils.fromFloat(itemSubtotal))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="flex justify-between items-end gap-4">
-                  <div class="flex items-center gap-2">
-                    <label for="quantity-${itemKey}" class="text-sm text-content-body hidden lg:block">Qty:</label>
-                    <div class="flex items-center border border-border-primary rounded">
-                      <button type="button" class="quantity-decrease px-2 py-1 lg:hover:bg-surface-primary transition-colors" data-item-key="${itemKey}" data-current-qty="${item.quantity}">−</button>
-                      <input type="number" id="quantity-${itemKey}" class="quantity-input w-16 text-center py-1 border-0 bg-surface-primary text-content-body focus:ring-1 focus:ring-content-emphasis [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value="${item.quantity}" min="1" max="${maxQuantity}" data-item-key="${itemKey}" />
-                      <button type="button" class="quantity-increase px-2 py-1 lg:hover:bg-surface-primary transition-colors ${!canIncrement ? "opacity-50 cursor-not-allowed" : ""}" data-item-key="${itemKey}" ${!canIncrement ? "disabled" : ""}>+</button>
-                    </div>
-                    <div class="text-xs text-content-meta">
-                      ${totalInventory} available
-                    </div>
-                  </div>
-
-                  <div class="flex items-center gap-4">
-                    <button type="button" class="remove-btn text-sm text-content-meta lg:hover:text-state-error-surface transition-colors font-medium" data-item-key="${itemKey}">
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          `;
+            const inventory = inventoryData[item.variationId] || 99;
+            return CartItemElement.create(item, inventory);
           })
           .join("");
 
@@ -397,7 +372,6 @@ import Modal from "@/components/Modal.astro";
           </div>
         `;
 
-        // Set up cart item event listeners
         setupCartItemEventListeners();
       }
 
@@ -409,9 +383,7 @@ import Modal from "@/components/Modal.astro";
     }
   }
 
-  // Setup event listeners for cart items
   function setupCartItemEventListeners() {
-    // Debounce utility
     function debounce<T extends (...args: any[]) => any>(
       func: T,
       wait: number
@@ -423,7 +395,6 @@ import Modal from "@/components/Modal.astro";
       };
     }
 
-    // Handle quantity changes - simplified without aggressive inventory checking
     async function updateQuantity(
       itemKey: string,
       newQuantity: number,
@@ -431,11 +402,8 @@ import Modal from "@/components/Modal.astro";
     ) {
       try {
         if (bypassInventoryCheck) {
-          // Direct update for decrements - bypass aggressive inventory checking
           const items = cart.getItems();
-          const item = items.find(
-            (i) => `${i.id}:${i.variationId}` === itemKey
-          );
+          const item = items.find((i) => getItemKey(i) === itemKey);
           if (item) {
             const cartManager = cart as any;
             item.quantity = newQuantity;
@@ -444,7 +412,6 @@ import Modal from "@/components/Modal.astro";
             return { success: true };
           }
         } else {
-          // Normal update for increments - includes inventory checking
           const result = await cart.updateQuantity(itemKey, newQuantity);
           if (!result.success && result.message) {
             window.showNotification(result.message, "error");
@@ -461,7 +428,6 @@ import Modal from "@/components/Modal.astro";
 
     const debouncedUpdateQuantity = debounce(updateQuantity, 500);
 
-    // Handle remove item
     function handleRemove(itemKey: string, itemTitle: string) {
       window.showModal(
         "Remove Item",
@@ -475,7 +441,6 @@ import Modal from "@/components/Modal.astro";
       );
     }
 
-    // Set up event listeners
     // Quantity input changes
     document
       .querySelectorAll<HTMLInputElement>(".quantity-input")
@@ -490,25 +455,29 @@ import Modal from "@/components/Modal.astro";
             return;
           }
 
-          // Use cart's availability system for validation
-          if (canUpdateQuantity(itemKey, newQuantity)) {
+          const validation = validateQuantityChange(
+            cart,
+            itemKey,
+            newQuantity,
+            inventoryData
+          );
+          if (validation.valid) {
             debouncedUpdateQuantity(itemKey, newQuantity, false);
           } else {
             window.showNotification(
-              "Cannot add that quantity to cart",
+              validation.message || "Cannot update quantity",
               "error"
             );
-            // Reset to current cart quantity
             const items = cart.getItems();
             const currentItem = items.find(
-              (item) => `${item.id}:${item.variationId}` === itemKey
+              (item) => getItemKey(item) === itemKey
             );
             target.value = currentItem?.quantity.toString() || "1";
           }
         });
       });
 
-    // Quantity decrease buttons - FIXED LOGIC
+    // Quantity decrease buttons
     document.querySelectorAll(".quantity-decrease").forEach((button) => {
       button.addEventListener("click", async (e) => {
         const target = e.target as HTMLButtonElement;
@@ -518,34 +487,26 @@ import Modal from "@/components/Modal.astro";
           `input[data-item-key="${itemKey}"]`
         ) as HTMLInputElement;
 
-        // ONLY show confirmation modal when quantity is exactly 1
         if (currentQty === 1) {
           const container = target.closest("[data-item-container]");
           const titleElement = container?.querySelector("h3 a");
           const itemTitle = titleElement?.textContent || "this item";
-
           handleRemove(itemKey, itemTitle);
           return;
         }
 
-        // Normal decrement: 3 -> 2, 2 -> 1, etc.
         const newQuantity = currentQty - 1;
         input.value = newQuantity.toString();
-
-        // Update the data-current-qty for next click
         target.dataset.currentQty = newQuantity.toString();
-
-        // Use bypass for decrements to avoid aggressive inventory check
         debouncedUpdateQuantity(itemKey, newQuantity, true);
       });
     });
 
-    // Quantity increase buttons - FIXED WITH PROPER LIMITS
+    // Quantity increase buttons
     document.querySelectorAll(".quantity-increase").forEach((button) => {
       button.addEventListener("click", async (e) => {
         const target = e.target as HTMLButtonElement;
 
-        // Check if button is disabled
         if (target.disabled) {
           window.showNotification(
             "Cannot add more items - inventory limit reached",
@@ -561,22 +522,24 @@ import Modal from "@/components/Modal.astro";
         const currentQuantity = parseInt(input.value, 10);
         const newQuantity = currentQuantity + 1;
 
-        // Use cart's availability system for validation
-        if (canUpdateQuantity(itemKey, newQuantity)) {
+        const validation = validateQuantityChange(
+          cart,
+          itemKey,
+          newQuantity,
+          inventoryData
+        );
+        if (validation.valid) {
           input.value = newQuantity.toString();
-
-          // Update decrease button's data-current-qty
           const decreaseBtn = document.querySelector(
             `button.quantity-decrease[data-item-key="${itemKey}"]`
           ) as HTMLButtonElement;
           if (decreaseBtn) {
             decreaseBtn.dataset.currentQty = newQuantity.toString();
           }
-
           debouncedUpdateQuantity(itemKey, newQuantity, false);
         } else {
           window.showNotification(
-            "Cannot add more items - inventory limit reached",
+            validation.message || "Cannot add more items",
             "error"
           );
         }
@@ -591,13 +554,11 @@ import Modal from "@/components/Modal.astro";
         const container = target.closest("[data-item-container]");
         const titleElement = container?.querySelector("h3 a");
         const itemTitle = titleElement?.textContent || "this item";
-
         handleRemove(itemKey, itemTitle);
       });
     });
   }
 
-  // Event Handlers
   function handlePageLoad() {
     updateDisplay();
   }
@@ -606,11 +567,9 @@ import Modal from "@/components/Modal.astro";
     updateDisplay();
   }
 
-  // Add event listeners
   document.addEventListener("astro:page-load", handlePageLoad);
   window.addEventListener("cartUpdated", handleCartUpdate);
 
-  // Cleanup
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {
       document.removeEventListener("astro:page-load", handlePageLoad);
