@@ -1,5 +1,5 @@
 ---
-// src/pages/cart.astro - Refactored with CartItem
+// src/pages/cart.astro - Fixed with reliable MiniCart patterns
 import Layout from "@/layouts/Layout.astro";
 import Modal from "@/components/Modal.astro";
 ---
@@ -51,11 +51,6 @@ import Modal from "@/components/Modal.astro";
   import { cart } from "@/lib/cart";
   import type { CartItem } from "@/lib/cart/types";
   import { MoneyUtils } from "@/lib/square/money";
-  import {
-    getItemKey,
-    getStockStatus,
-    validateQuantityChange,
-  } from "@/lib/cart/cartHelpers";
 
   let isUpdating = false;
   let inventoryData: Record<string, number> = {};
@@ -65,6 +60,51 @@ import Modal from "@/components/Modal.astro";
     if (overlay) {
       overlay.classList.toggle("hidden", !show);
       overlay.classList.toggle("flex", show);
+    }
+  }
+
+  function showNotification(
+    message: string,
+    type: "success" | "error" = "success"
+  ): void {
+    // Use existing system if available
+    if (typeof window !== "undefined" && (window as any).showNotification) {
+      (window as any).showNotification(message, type);
+      return;
+    }
+
+    // Fallback
+    const notification = document.createElement("div");
+    notification.className = `fixed top-4 right-4 z-70 px-4 py-2 rounded-sm text-white transform translate-x-full transition-transform duration-300 ${
+      type === "success" ? "bg-green-600" : "bg-red-600"
+    }`;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+    requestAnimationFrame(() =>
+      notification.classList.remove("translate-x-full")
+    );
+
+    setTimeout(() => {
+      notification.classList.add("translate-x-full");
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
+  function showConfirmModal(
+    title: string,
+    message: string,
+    onConfirm: () => void
+  ): void {
+    // Use existing modal system if available
+    if (typeof window !== "undefined" && (window as any).showModal) {
+      (window as any).showModal(title, message, onConfirm, "Remove", "Cancel");
+      return;
+    }
+
+    // Fallback
+    if (confirm(`${title}\n\n${message}`)) {
+      onConfirm();
     }
   }
 
@@ -101,22 +141,6 @@ import Modal from "@/components/Modal.astro";
     }
   }
 
-  function canUpdateQuantity(itemKey: string, newQuantity: number): boolean {
-    const validation = validateQuantityChange(
-      cart,
-      itemKey,
-      newQuantity,
-      inventoryData
-    );
-    return validation.valid;
-  }
-
-  function getCurrentCartQuantity(itemKey: string): number {
-    const items = cart.getItems();
-    const item = items.find((i) => getItemKey(i) === itemKey);
-    return item?.quantity || 0;
-  }
-
   function createEmptyCart(): string {
     return `
       <div class="flex flex-col min-h-[50dvh] items-center justify-center" id="empty-cart">
@@ -139,9 +163,7 @@ import Modal from "@/components/Modal.astro";
           <div class="order-summary lg:space-y-2 mb-2">
             <div class="flex justify-between text-content-body">
               <span>Subtotal</span>
-              <span class="font-display font-bold text-3xl text-content-caption" id="subtotal">${MoneyUtils.format(
-                MoneyUtils.fromFloat(total)
-              )}</span>
+              <span class="font-display font-bold text-3xl text-content-caption" id="subtotal">${MoneyUtils.format(MoneyUtils.fromFloat(total))}</span>
             </div>
           </div>
           <div class="space-y-2">
@@ -165,88 +187,110 @@ import Modal from "@/components/Modal.astro";
     `;
   }
 
-  // CartItem custom element for dynamic rendering
-  class CartItemElement extends HTMLElement {
-    static create(item: CartItem, inventory: number): string {
-      const itemKey = getItemKey(item);
-      const itemSubtotal = item.price * item.quantity;
-      const { isOutOfStock } = getStockStatus(inventory);
-      const canIncrement = !isOutOfStock && item.quantity < inventory;
+  function createCartItem(item: CartItem): string {
+    const itemKey = `${item.id}:${item.variationId}`;
+    const itemSubtotal = item.price * item.quantity;
+    const inventory = inventoryData[item.variationId] || 999;
+    const isOutOfStock = inventory <= 0;
+    const canIncrement = !isOutOfStock && item.quantity < inventory;
 
-      return `
-        <cart-item-element data-item-container="${itemKey}">
-          <div class="bg-surface-secondary p-4 flex gap-4 self-start">
-            <div class="flex-shrink-0">
-              <img 
-                src="${item.image || "/images/placeholder.png"}"
-                alt="${item.title}"
-                class="w-16 h-16 lg:w-24 lg:h-24 object-cover rounded border border-border-secondary" 
-                onerror="this.src='/images/placeholder.png'"
-              />
+    return `
+      <div class="bg-surface-secondary p-4 flex gap-4 self-start" data-item-container="${itemKey}">
+        <div class="flex-shrink-0">
+          <img 
+            src="${item.image || "/images/placeholder.png"}"
+            alt="${item.title}"
+            class="w-16 h-16 lg:w-24 lg:h-24 object-cover rounded border border-border-secondary" 
+            onerror="this.src='/images/placeholder.png'"
+          />
+        </div>
+        <div class="flex-grow flex flex-col justify-between min-w-0">
+          <div class="flex flex-row justify-between">
+            <div class="flex flex-col mb-2 lg:mb-0">
+              <h3 class="font-display text-2xl text-content-heading leading-tight">
+                <a href="/product/${item.id}" class="lg:hover:text-content-emphasis transition-colors">
+                  ${item.title}
+                </a>
+              </h3>
+              ${
+                item.variationName
+                  ? `
+                <p class="text-content-meta text-sm mt-1">${item.variationName}</p>
+              `
+                  : ""
+              }
             </div>
-            <div class="flex-grow flex flex-col justify-between min-w-0">
-              <div class="flex flex-row justify-between">
-                <div class="flex flex-col mb-2 lg:mb-0">
-                  <h3 class="font-display text-2xl text-content-heading leading-tight">
-                    <a href="/product/${item.id}" class="lg:hover:text-content-emphasis transition-colors">
-                      ${item.title}
-                    </a>
-                  </h3>
-                  ${
-                    item.variationName
-                      ? `
-                    <p class="text-content-meta text-sm mt-1">${item.variationName}</p>
-                  `
-                      : ""
-                  }
+            <div>
+              <div class="text-right">
+                <div class="text-content-meta text-xs">
+                  ${MoneyUtils.format(MoneyUtils.fromFloat(item.price))} each
                 </div>
-                <div>
-                  <div class="text-right">
-                    <div class="text-content-meta text-xs">
-                      ${MoneyUtils.format(MoneyUtils.fromFloat(item.price))} each
-                    </div>
-                    <div class="font-display font-bold text-2xl text-content-emphasis">
-                      ${MoneyUtils.format(MoneyUtils.fromFloat(itemSubtotal))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="flex justify-between items-end gap-4">
-                <div class="flex items-center gap-2">
-                  <label for="quantity-${itemKey}" class="text-sm text-content-body hidden lg:block">Qty:</label>
-                  <div class="flex items-center border border-border-primary rounded">
-                    <button type="button" class="quantity-decrease px-2 py-1 lg:hover:bg-surface-primary transition-colors" data-item-key="${itemKey}" data-current-qty="${item.quantity}" data-inventory="${inventory}">−</button>
-                    <input type="number" id="quantity-${itemKey}" class="quantity-input w-16 text-center py-1 border-0 bg-surface-primary text-content-body focus:ring-1 focus:ring-content-emphasis [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value="${item.quantity}" min="1" max="${inventory}" data-item-key="${itemKey}" data-inventory="${inventory}" />
-                    <button type="button" class="quantity-increase px-2 py-1 lg:hover:bg-surface-primary transition-colors ${!canIncrement ? "opacity-50 cursor-not-allowed" : ""}" data-item-key="${itemKey}" data-inventory="${inventory}" ${!canIncrement ? "disabled" : ""}>+</button>
-                  </div>
-                  <div class="text-xs text-content-meta">
-                    ${inventory} available
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-4">
-                  <button type="button" class="remove-btn text-sm text-content-meta lg:hover:text-state-error-surface transition-colors font-medium" data-item-key="${itemKey}">
-                    Remove
-                  </button>
+                <div class="font-display font-bold text-2xl text-content-emphasis">
+                  ${MoneyUtils.format(MoneyUtils.fromFloat(itemSubtotal))}
                 </div>
               </div>
             </div>
           </div>
-        </cart-item-element>
-      `;
-    }
-  }
 
-  if (!customElements.get("cart-item-element")) {
-    customElements.define("cart-item-element", CartItemElement);
+          <div class="flex justify-between items-end gap-4">
+            <div class="flex items-center gap-2">
+              <label for="quantity-${itemKey}" class="text-sm text-content-body hidden lg:block">Qty:</label>
+              <div class="flex items-center border border-border-primary rounded">
+                <button 
+                  type="button" 
+                  class="quantity-decrease px-2 py-1 lg:hover:bg-surface-primary transition-colors ${item.quantity <= 1 ? "opacity-50 cursor-not-allowed" : ""}" 
+                  data-item-key="${itemKey}"
+                  data-action="decrease"
+                  ${item.quantity <= 1 ? "disabled" : ""}
+                >
+                  −
+                </button>
+                <input 
+                  type="number" 
+                  id="quantity-${itemKey}" 
+                  class="quantity-input w-16 text-center py-1 border-0 bg-surface-primary text-content-body focus:ring-1 focus:ring-content-emphasis [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                  value="${item.quantity}" 
+                  min="1" 
+                  max="${inventory}" 
+                  data-item-key="${itemKey}"
+                />
+                <button 
+                  type="button" 
+                  class="quantity-increase px-2 py-1 lg:hover:bg-surface-primary transition-colors ${!canIncrement ? "opacity-50 cursor-not-allowed" : ""}" 
+                  data-item-key="${itemKey}"
+                  data-action="increase"
+                  ${!canIncrement ? "disabled" : ""}
+                >
+                  +
+                </button>
+              </div>
+              <div class="text-xs text-content-meta">
+                ${inventory} available
+              </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+              <button 
+                type="button" 
+                class="remove-btn text-sm text-content-meta lg:hover:text-state-error-surface transition-colors font-medium" 
+                data-item-key="${itemKey}"
+                data-item-title="${item.title}"
+                data-action="remove"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   async function handleCheckout(): Promise<void> {
     try {
       const items = cart.getItems();
       if (items.length === 0) {
-        window.showNotification("Your cart is empty", "error");
+        showNotification("Your cart is empty", "error");
         return;
       }
 
@@ -268,10 +312,10 @@ import Modal from "@/components/Modal.astro";
         throw new Error("No checkout URL returned");
       }
 
-      window.showNotification("Redirecting to checkout...", "success");
+      showNotification("Redirecting to checkout...", "success");
       window.location.href = data.checkoutUrl;
     } catch (error) {
-      window.showNotification(
+      showNotification(
         error instanceof Error
           ? error.message
           : "Checkout failed. Please try again.",
@@ -285,44 +329,168 @@ import Modal from "@/components/Modal.astro";
   function handleClearCart(): void {
     const itemCount = cart.getItemCount();
     if (itemCount === 0) {
-      window.showNotification("Cart is already empty", "info");
+      showNotification("Cart is already empty", "error");
       return;
     }
 
     const items = cart.getItems();
     if (items.length === 1) {
       const item = items[0];
-      window.showModal(
+      showConfirmModal(
         "Remove Item",
         `Are you sure you want to remove "${item.title}" from your cart?`,
         () => {
           cart.clear();
-          window.showNotification("Cart cleared successfully");
-        },
-        "Remove",
-        "Cancel"
+          showNotification("Cart cleared successfully");
+        }
       );
     } else {
-      window.showModal(
+      showConfirmModal(
         "Clear Cart",
         `Are you sure you want to remove all ${itemCount} item${itemCount > 1 ? "s" : ""} from your cart?`,
         () => {
           cart.clear();
-          window.showNotification("Cart cleared successfully");
-        },
-        "Clear Cart",
-        "Cancel"
+          showNotification("Cart cleared successfully");
+        }
       );
     }
   }
 
   function attachEventListeners(): void {
-    document
-      .getElementById("checkout-button")
-      ?.addEventListener("click", handleCheckout);
-    document
-      .getElementById("clear-cart-button")
-      ?.addEventListener("click", handleClearCart);
+    const checkoutButton = document.getElementById("checkout-button");
+    const clearCartButton = document.getElementById("clear-cart-button");
+
+    if (checkoutButton) {
+      checkoutButton.addEventListener("click", handleCheckout);
+    }
+
+    if (clearCartButton) {
+      clearCartButton.addEventListener("click", handleClearCart);
+    }
+  }
+
+  function setupCartItemEventListeners() {
+    const cartContainer = document.getElementById("cart-container");
+    if (!cartContainer) return;
+
+    // Remove existing event listeners by cloning
+    const newCartContainer = cartContainer.cloneNode(true) as HTMLElement;
+    const parent = cartContainer.parentNode;
+    if (parent) {
+      parent.replaceChild(newCartContainer, cartContainer);
+    }
+
+    // Add single event listener using delegation - SAME PATTERN AS MINICART
+    newCartContainer.addEventListener("click", async (e) => {
+      const target = e.target as HTMLElement;
+      const button = target.closest("button[data-action]") as HTMLButtonElement;
+      if (!button || button.disabled) return;
+
+      e.preventDefault();
+
+      const action = button.dataset.action;
+      const itemKey = button.dataset.itemKey;
+      const itemTitle = button.dataset.itemTitle;
+
+      if (!itemKey) return;
+
+      try {
+        switch (action) {
+          case "increase":
+            const items = cart.getItems();
+            const item = items.find(
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+            );
+            if (item) {
+              const newQty = item.quantity + 1;
+              const inventory = inventoryData[item.variationId] || 999;
+
+              if (newQty <= inventory) {
+                await cart.updateQuantity(itemKey, newQty);
+                await updateDisplay();
+              } else {
+                showNotification(`Only ${inventory} available`, "error");
+              }
+            }
+            break;
+
+          case "decrease":
+            const currentItems = cart.getItems();
+            const currentItem = currentItems.find(
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+            );
+            if (currentItem) {
+              if (currentItem.quantity === 1) {
+                showConfirmModal(
+                  "Remove Item",
+                  `Remove "${currentItem.title}" from your cart?`,
+                  async () => {
+                    cart.removeItem(itemKey);
+                    await updateDisplay();
+                    showNotification("Item removed from cart", "success");
+                  }
+                );
+              } else {
+                await cart.updateQuantity(itemKey, currentItem.quantity - 1);
+                await updateDisplay();
+              }
+            }
+            break;
+
+          case "remove":
+            if (itemTitle) {
+              showConfirmModal(
+                "Remove Item",
+                `Remove "${itemTitle}" from your cart?`,
+                async () => {
+                  cart.removeItem(itemKey);
+                  await updateDisplay();
+                  showNotification("Item removed from cart", "success");
+                }
+              );
+            }
+            break;
+        }
+      } catch (error) {
+        console.error("Error handling cart action:", error);
+        showNotification("Error updating cart", "error");
+      }
+    });
+
+    // Handle quantity input changes with debouncing
+    let inputTimeout: number;
+    newCartContainer.addEventListener("input", (e) => {
+      const target = e.target as HTMLInputElement;
+      if (!target.classList.contains("quantity-input")) return;
+
+      const itemKey = target.dataset.itemKey;
+      if (!itemKey) return;
+
+      clearTimeout(inputTimeout);
+      inputTimeout = window.setTimeout(async () => {
+        const newQuantity = parseInt(target.value, 10);
+
+        if (newQuantity < 1) {
+          target.value = "1";
+          return;
+        }
+
+        const inventory = inventoryData[itemKey.split(":")[1]] || 999;
+        if (newQuantity > inventory) {
+          target.value = inventory.toString();
+          showNotification(`Only ${inventory} available`, "error");
+          return;
+        }
+
+        try {
+          await cart.updateQuantity(itemKey, newQuantity);
+          await updateDisplay();
+        } catch (error) {
+          console.error("Error updating quantity:", error);
+          showNotification("Error updating quantity", "error");
+        }
+      }, 500);
+    });
   }
 
   async function updateDisplay(): Promise<void> {
@@ -346,13 +514,7 @@ import Modal from "@/components/Modal.astro";
       if (items.length === 0) {
         cartContainer.innerHTML = createEmptyCart();
       } else {
-        // Use CartItem elements
-        const cartItemsHtml = items
-          .map((item) => {
-            const inventory = inventoryData[item.variationId] || 99;
-            return CartItemElement.create(item, inventory);
-          })
-          .join("");
+        const cartItemsHtml = items.map(createCartItem).join("");
 
         cartContainer.innerHTML = `
           <div class="grid md:grid-cols-3 gap-1 items-start">
@@ -379,182 +541,6 @@ import Modal from "@/components/Modal.astro";
     } finally {
       isUpdating = false;
     }
-  }
-
-  function setupCartItemEventListeners() {
-    function debounce<T extends (...args: any[]) => any>(
-      func: T,
-      wait: number
-    ): (...args: Parameters<T>) => void {
-      let timeout: number;
-      return (...args: Parameters<T>) => {
-        clearTimeout(timeout);
-        timeout = window.setTimeout(() => func.apply(null, args), wait);
-      };
-    }
-
-    async function updateQuantity(
-      itemKey: string,
-      newQuantity: number,
-      bypassInventoryCheck = false
-    ) {
-      try {
-        if (bypassInventoryCheck) {
-          const items = cart.getItems();
-          const item = items.find((i) => getItemKey(i) === itemKey);
-          if (item) {
-            const cartManager = cart as any;
-            item.quantity = newQuantity;
-            cartManager.items.set(itemKey, item);
-            cartManager.saveCart();
-            return { success: true };
-          }
-        } else {
-          const result = await cart.updateQuantity(itemKey, newQuantity);
-          if (!result.success && result.message) {
-            window.showNotification(result.message, "error");
-          } else if (result.message) {
-            window.showNotification(result.message, "info");
-          }
-          return result;
-        }
-      } catch (error) {
-        window.showNotification("Failed to update quantity", "error");
-        return { success: false };
-      }
-    }
-
-    const debouncedUpdateQuantity = debounce(updateQuantity, 500);
-
-    function handleRemove(itemKey: string, itemTitle: string) {
-      window.showModal(
-        "Remove Item",
-        `Are you sure you want to remove "${itemTitle}" from your cart?`,
-        () => {
-          cart.removeItem(itemKey);
-          window.showNotification("Item removed from cart");
-        },
-        "Remove",
-        "Cancel"
-      );
-    }
-
-    // Quantity input changes
-    document
-      .querySelectorAll<HTMLInputElement>(".quantity-input")
-      .forEach((input) => {
-        input.addEventListener("change", async (e) => {
-          const target = e.target as HTMLInputElement;
-          const itemKey = target.dataset.itemKey!;
-          const newQuantity = parseInt(target.value, 10);
-
-          if (newQuantity < 1) {
-            target.value = "1";
-            return;
-          }
-
-          const validation = validateQuantityChange(
-            cart,
-            itemKey,
-            newQuantity,
-            inventoryData
-          );
-          if (validation.valid) {
-            debouncedUpdateQuantity(itemKey, newQuantity, false);
-          } else {
-            window.showNotification(
-              validation.message || "Cannot update quantity",
-              "error"
-            );
-            const items = cart.getItems();
-            const currentItem = items.find(
-              (item) => getItemKey(item) === itemKey
-            );
-            target.value = currentItem?.quantity.toString() || "1";
-          }
-        });
-      });
-
-    // Quantity decrease buttons
-    document.querySelectorAll(".quantity-decrease").forEach((button) => {
-      button.addEventListener("click", async (e) => {
-        const target = e.target as HTMLButtonElement;
-        const itemKey = target.dataset.itemKey!;
-        const currentQty = parseInt(target.dataset.currentQty || "1", 10);
-        const input = document.querySelector(
-          `input[data-item-key="${itemKey}"]`
-        ) as HTMLInputElement;
-
-        if (currentQty === 1) {
-          const container = target.closest("[data-item-container]");
-          const titleElement = container?.querySelector("h3 a");
-          const itemTitle = titleElement?.textContent || "this item";
-          handleRemove(itemKey, itemTitle);
-          return;
-        }
-
-        const newQuantity = currentQty - 1;
-        input.value = newQuantity.toString();
-        target.dataset.currentQty = newQuantity.toString();
-        debouncedUpdateQuantity(itemKey, newQuantity, true);
-      });
-    });
-
-    // Quantity increase buttons
-    document.querySelectorAll(".quantity-increase").forEach((button) => {
-      button.addEventListener("click", async (e) => {
-        const target = e.target as HTMLButtonElement;
-
-        if (target.disabled) {
-          window.showNotification(
-            "Cannot add more items - inventory limit reached",
-            "error"
-          );
-          return;
-        }
-
-        const itemKey = target.dataset.itemKey!;
-        const input = document.querySelector(
-          `input[data-item-key="${itemKey}"]`
-        ) as HTMLInputElement;
-        const currentQuantity = parseInt(input.value, 10);
-        const newQuantity = currentQuantity + 1;
-
-        const validation = validateQuantityChange(
-          cart,
-          itemKey,
-          newQuantity,
-          inventoryData
-        );
-        if (validation.valid) {
-          input.value = newQuantity.toString();
-          const decreaseBtn = document.querySelector(
-            `button.quantity-decrease[data-item-key="${itemKey}"]`
-          ) as HTMLButtonElement;
-          if (decreaseBtn) {
-            decreaseBtn.dataset.currentQty = newQuantity.toString();
-          }
-          debouncedUpdateQuantity(itemKey, newQuantity, false);
-        } else {
-          window.showNotification(
-            validation.message || "Cannot add more items",
-            "error"
-          );
-        }
-      });
-    });
-
-    // Remove buttons
-    document.querySelectorAll(".remove-btn").forEach((button) => {
-      button.addEventListener("click", (e) => {
-        const target = e.target as HTMLButtonElement;
-        const itemKey = target.dataset.itemKey!;
-        const container = target.closest("[data-item-container]");
-        const titleElement = container?.querySelector("h3 a");
-        const itemTitle = titleElement?.textContent || "this item";
-        handleRemove(itemKey, itemTitle);
-      });
-    });
   }
 
   function handlePageLoad() {
