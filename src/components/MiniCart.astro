@@ -125,21 +125,28 @@ import { Icon } from "astro-icon/components";
     message: string,
     type: "success" | "error" = "success"
   ): void {
-    const notification = document.createElement("div");
-    notification.className = `fixed top-4 right-4 z-70 px-4 py-2 rounded-sm text-white transform translate-x-full transition-transform duration-300 ${
-      type === "success" ? "bg-green-600" : "bg-red-600"
-    }`;
-    notification.textContent = message;
+    // Use existing system if available
+    if (typeof window !== "undefined" && (window as any).showNotification) {
+      (window as any).showNotification(message, type);
+      return;
+    }
 
-    document.body.appendChild(notification);
-    requestAnimationFrame(() =>
-      notification.classList.remove("translate-x-full")
-    );
+    // Fallback (should not be needed but kept for safety)
+    // const notification = document.createElement("div");
+    // notification.className = `fixed top-4 right-4 z-70 px-4 py-2 rounded-sm text-white transform translate-x-full transition-transform duration-300 ${
+    //   type === "success" ? "bg-green-600" : "bg-red-600"
+    // }`;
+    // notification.textContent = message;
 
-    setTimeout(() => {
-      notification.classList.add("translate-x-full");
-      setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    // document.body.appendChild(notification);
+    // requestAnimationFrame(() =>
+    //   notification.classList.remove("translate-x-full")
+    // );
+
+    // setTimeout(() => {
+    //   notification.classList.add("translate-x-full");
+    //   setTimeout(() => notification.remove(), 300);
+    // }, 3000);
   }
 
   async function handleCheckout(): Promise<void> {

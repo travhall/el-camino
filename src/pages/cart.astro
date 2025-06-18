@@ -1,7 +1,6 @@
 ---
-// src/pages/cart.astro - Fixed with reliable MiniCart patterns
+// src/pages/cart.astro
 import Layout from "@/layouts/Layout.astro";
-import Modal from "@/components/Modal.astro";
 ---
 
 <Layout title="Your Shopping Cart | El Camino">
@@ -43,8 +42,6 @@ import Modal from "@/components/Modal.astro";
       </div>
     </div>
   </section>
-
-  <Modal />
 </Layout>
 
 <script>
@@ -73,22 +70,22 @@ import Modal from "@/components/Modal.astro";
       return;
     }
 
-    // Fallback
-    const notification = document.createElement("div");
-    notification.className = `fixed top-4 right-4 z-70 px-4 py-2 rounded-sm text-white transform translate-x-full transition-transform duration-300 ${
-      type === "success" ? "bg-green-600" : "bg-red-600"
-    }`;
-    notification.textContent = message;
+    // Fallback (should not be needed but kept for safety)
+    // const notification = document.createElement("div");
+    // notification.className = `fixed top-4 right-4 z-70 px-4 py-2 rounded-sm text-white transform translate-x-full transition-transform duration-300 ${
+    //   type === "success" ? "bg-green-600" : "bg-red-600"
+    // }`;
+    // notification.textContent = message;
 
-    document.body.appendChild(notification);
-    requestAnimationFrame(() =>
-      notification.classList.remove("translate-x-full")
-    );
+    // document.body.appendChild(notification);
+    // requestAnimationFrame(() =>
+    //   notification.classList.remove("translate-x-full")
+    // );
 
-    setTimeout(() => {
-      notification.classList.add("translate-x-full");
-      setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    // setTimeout(() => {
+    //   notification.classList.add("translate-x-full");
+    //   setTimeout(() => notification.remove(), 300);
+    // }, 3000);
   }
 
   function showConfirmModal(
