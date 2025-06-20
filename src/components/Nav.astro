@@ -1,9 +1,9 @@
 ---
 // src/components/Nav.astro - Clean, optimized version with performance cache
-import { fetchCategoryHierarchy } from "@/lib/square/categories";
-import { Icon } from "astro-icon/components";
 import { siteConfig } from "@/lib/site-config";
 import type { CategoryHierarchy } from "@/lib/square/types";
+import { fetchCategoryHierarchy } from "@/lib/square/categories";
+import { Icon } from "astro-icon/components";
 
 const { contact, social } = siteConfig;
 
@@ -105,7 +105,7 @@ const navItems = [
                 ? "/news"
                 : `/category/${item.category.slug}`
           }
-          class="nav-item text-5xl md:text-xl lg:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-[1] p-4 text-ui-nav-text transition-all duration-300 ease-in-out relative lg:hover:text-ui-nav-hover before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left nav-link"
+          class="nav-item text-5xl lg:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-[1] p-4 text-ui-nav-text transition-all duration-300 ease-in-out relative lg:hover:text-ui-nav-hover before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left nav-link"
           style={`--item-index: ${index};`}
           data-has-children={item.subcategories.length > 0}
           aria-expanded={item.subcategories.length > 0 ? "false" : undefined}
@@ -124,7 +124,7 @@ const navItems = [
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                class="hidden lg:block transform lg:group-hover:rotate-180"
+                class="hidden lg:block h-6 w-6 xl:h-4 xl:w-4 transform lg:group-hover:rotate-180"
                 aria-hidden="true"
               >
                 <polyline points="6 9 12 15 18 9" />
@@ -224,7 +224,7 @@ const navItems = [
   }
 
   /* Mobile animations */
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     .nav-link {
       opacity: 0;
       transform: translateX(2rem);
@@ -456,7 +456,7 @@ const navItems = [
           }
 
           resizeTimeout = window.setTimeout(() => {
-            if (window.innerWidth > 768) {
+            if (window.innerWidth > 1024) {
               this.closeAllDropdowns();
             }
           }, 150);
@@ -479,9 +479,9 @@ const navItems = [
     const navController = new NavigationController();
 
     const endTime = performance.now();
-    console.log(
-      `Navigation initialized in ${(endTime - startTime).toFixed(2)}ms`
-    );
+    // console.log(
+    //   `Navigation initialized in ${(endTime - startTime).toFixed(2)}ms`
+    // );
 
     return navController;
   }

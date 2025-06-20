@@ -41,7 +41,7 @@ if (subCategorySlug) {
 const urlParams = parseURLParams(Astro.url.searchParams);
 const { filters, page, pageSize } = urlParams;
 
-console.log(`[Category Page] ${category.name} - Page ${page}, Filters:`, filters);
+// console.log(`[Category Page] ${category.name} - Page ${page}, Filters:`, filters);
 
 // === ENHANCED PRODUCT FETCHING WITH PAGINATION ===
 let productData;
@@ -118,14 +118,14 @@ const categoryPath = parentCategory
             </p>
           )}
         </div>
-        <!-- Subcategory Navigation (Above Products per UX research) -->
+        <!-- Subcategory Navigation -->
         {
           subcategories.length > 0 && (
             <div class="flex flex-wrap gap-2 mb-1.5">
               {subcategories.map((subcategory) => (
                 <a
                   href={`/category/${category.slug}/${subcategory.slug}`}
-                  class="px-2.5 py-1.5 text-sm bg-ui-card-surface text-ui-card-text border border-ui-card-border rounded-sm hover:bg-ui-card-surface/75 transition-colors"
+                  class="px-2.5 py-1.5 text-sm bg-ui-card-surface text-ui-card-text border border-ui-nav-border rounded-sm lg:hover:bg-ui-nav-hover/40 transition-colors"
                 >
                   {subcategory.name}
                 </a>
@@ -139,7 +139,7 @@ const categoryPath = parentCategory
             <div class="flex flex-wrap gap-2 mb-1.5">
               <a
                 href={`/category/${parentCategory.slug}`}
-                class="px-2.5 py-1.5 text-sm bg-ui-card-surface text-ui-card-text border border-ui-card-border rounded-sm hover:bg-ui-card-surface/75 transition-colors"
+                class="px-2.5 py-1.5 text-sm bg-ui-card-surface text-ui-card-text border border-ui-nav-border rounded-sm lg:hover:bg-ui-nav-hover/40 transition-colors"
               >
                 See all &ldquo;{parentCategory.name}&rdquo;
               </a>
@@ -155,35 +155,6 @@ const categoryPath = parentCategory
     >
       <!-- Filter Sidebar -->
       <aside class="lg:col-span-1">
-
-        <!-- Subcategory Navigation (Above Products per UX research) -->
-        <!-- {
-          subcategories.length > 0 && (
-            <div class="flex flex-wrap gap-2 mb-1.5">
-              {subcategories.map((subcategory) => (
-                <a
-                  href={`/category/${category.slug}/${subcategory.slug}`}
-                  class="px-2.5 py-1.5 text-sm bg-ui-card-surface text-ui-card-text border border-ui-card-border rounded-sm hover:bg-ui-card-surface/75 transition-colors"
-                >
-                  {subcategory.name}
-                </a>
-              ))}
-            </div>
-          )
-        }
-
-        {
-          parentCategory && (
-            <div class="flex flex-wrap gap-2 mb-1.5">
-              <a
-                href={`/category/${parentCategory.slug}`}
-                class="px-2.5 py-1.5 text-sm bg-ui-card-surface text-ui-card-text border border-ui-card-border rounded-sm hover:bg-ui-card-surface/75 transition-colors"
-              >
-                See all &ldquo;{parentCategory.name}&rdquo;
-              </a>
-            </div>
-          )
-        } -->
         <ProductFilters
           filterOptions={filterOptions}
           totalProducts={pagination.totalProducts}
@@ -232,14 +203,14 @@ const categoryPath = parentCategory
               {appliedFilters.brands.length > 0 ? (
                 <a
                   href={categoryPath}
-                  class="px-6 py-2 bg-ui-button-surface text-ui-button-text border border-ui-button-border rounded hover:bg-ui-button-hover transition-colors"
+                  class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-ui-button-text bg-ui-button-surface border-ui-button-border lg:hover:bg-ui-button-surface/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-ui-button-ring transition-all ease-in-out duration-300"
                 >
                   Clear Filters
                 </a>
               ) : (
                 <a
                   href="/all-products"
-                  class="px-6 py-2 bg-ui-button-surface text-ui-button-text border border-ui-button-border rounded hover:bg-ui-button-hover transition-colors"
+                  class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-ui-button-text bg-ui-button-surface border-ui-button-border lg:hover:bg-ui-button-surface/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-ui-button-ring transition-all ease-in-out duration-300"
                 >
                   Browse All Products
                 </a>

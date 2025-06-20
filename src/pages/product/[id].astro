@@ -177,7 +177,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           id="product-image"
           src={product.image}
           alt={product.title}
-          class={`w-full h-full object-cover ${!selectedVariationInStock ? "opacity-50" : ""}`}
+          class={`w-full h-full object-cover ${!selectedVariationInStock ? "opacity-75" : ""}`}
           loading="eager"
           fetchpriority="high"
           onerror="this.src='/images/placeholder.png'"
@@ -231,17 +231,6 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           >
         </div>
 
-        <!-- Product Description -->
-        {
-          product.description && (
-            <div class="mt-6 max-w-[54ch]">
-              <p class="text-base text-content-body text-balance">
-                {product.description}
-              </p>
-            </div>
-          )
-        }
-
         <!-- Dynamic Attribute Selectors -->
         {
           hasMultipleVariations &&
@@ -275,7 +264,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
                             class:list={[
                               "px-4 py-2 border rounded attribute-button",
                               "bg-ui-input-surface text-ui-input-text border-ui-input-border/50",
-                              !isAvailable && "opacity-50",
+                              !isAvailable && "opacity-75",
                             ]}
                             disabled={!isAvailable}
                           >
@@ -336,7 +325,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
                       variation.variationId === defaultVariationId
                         ? "bg-ui-button-surface text-ui-button-text border-ui-button-border/50"
                         : "bg-ui-input-surface text-ui-input-text border-ui-input-border/50",
-                      !variation.inStock && "opacity-50",
+                      !variation.inStock && "opacity-75",
                     ]}
                     disabled={!variation.inStock}
                   >
@@ -421,7 +410,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
             type="button"
             variant="primary"
             size="lg"
-            classes={`w-full md:w-auto ${!selectedVariationInStock ? "opacity-50 cursor-not-allowed" : ""}`}
+            classes={`w-full md:w-auto ${!selectedVariationInStock ? "opacity-75 cursor-not-allowed" : ""}`}
             data-product={JSON.stringify({
               id: product.id,
               catalogObjectId: product.catalogObjectId,
@@ -439,14 +428,23 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           </Button>
         </div>
 
+        <!-- Product Description -->
+        {
+          product.description && (
+            <div class="mt-6 max-w-[54ch]">
+              <p class="text-base text-content-body text-balance">
+                {product.description}
+              </p>
+            </div>
+          )
+        }
+
         <!-- Store Information -->
-        <div
-          class="text-sm flex flex-col mt-8 space-y-1 ps-4 py-2 border-l-2 border-ui-nav-border"
-        >
+        <div class="text-sm flex flex-col mt-8 space-y-1 py-2">
           <p class="italic">Available for pick up at El Camino</p>
           <button
             id="location-hours-link"
-            class="underline font-bold lg:hover:no-underline mb-2 text-left"
+            class="relative inline-flex self-start lg:hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left"
             type="button"
           >
             Store Location &amp; Hours
@@ -459,7 +457,6 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 </Layout>
 
 <script>
-  // ✅ PHASE 3 FINAL: Minimal script using master controller
   import { PDPController } from "@/lib/product/pdpController";
   import { processSquareError, logError } from "@/lib/square/errorUtils";
 
