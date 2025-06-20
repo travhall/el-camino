@@ -435,10 +435,22 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
         <!-- Product Description -->
         {
           product.description && (
-            <div class="mt-6 max-w-[54ch]">
-              <p class="text-base text-content-body text-balance">
-                {product.description}
-              </p>
+            <div class="mt-6 max-w-md">
+              <div id="description-container">
+                <p
+                  id="product-description"
+                  class="text-base text-content-body text-balance line-clamp-2 transition-all duration-300 ease-in-out"
+                >
+                  {product.description}
+                </p>
+                <button
+                  id="description-toggle"
+                  type="button"
+                  class="mt-2 text-sm relative inline-flex self-start lg:hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left hidden"
+                >
+                  <span id="toggle-text">Read more</span>
+                </button>
+              </div>
             </div>
           )
         }
@@ -475,12 +487,54 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
   }
 
   /**
+   * Initialize product description read more/less functionality
+   */
+  function initializeDescriptionToggle(): void {
+    const container = document.getElementById("description-container");
+    const description = document.getElementById("product-description");
+    const toggleButton = document.getElementById("description-toggle");
+    const toggleText = document.getElementById("toggle-text");
+
+    if (!container || !description || !toggleButton || !toggleText) return;
+
+    // Check if text is actually truncated (height comparison)
+    const lineHeight = parseInt(getComputedStyle(description).lineHeight);
+    const maxHeight = lineHeight * 2; // 2 lines
+
+    // Force reflow to get accurate height measurement
+    description.style.height = "auto";
+    const actualHeight = description.scrollHeight;
+
+    // Show toggle button only if content exceeds 2 lines
+    if (actualHeight > maxHeight) {
+      toggleButton.classList.remove("hidden");
+
+      let isExpanded = false;
+
+      toggleButton.addEventListener("click", () => {
+        if (isExpanded) {
+          // Collapse
+          description.classList.add("line-clamp-2");
+          toggleText.textContent = "Read more";
+          isExpanded = false;
+        } else {
+          // Expand
+          description.classList.remove("line-clamp-2");
+          toggleText.textContent = "Read less";
+          isExpanded = true;
+        }
+      });
+    }
+  }
+
+  /**
    * ✅ ASTRO VIEW TRANSITIONS: Initialize on page load
    */
   document.addEventListener("astro:page-load", () => {
     if (!initializePDP()) {
       console.error("Failed to initialize PDP controller");
     }
+    initializeDescriptionToggle();
   });
 
   /**
