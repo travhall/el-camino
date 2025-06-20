@@ -248,7 +248,9 @@ import { Icon } from "astro-icon/components";
 
         <div class="flex-1 min-w-0">
           <h3 class="font-medium text-content-heading text-sm leading-tight line-clamp-2">
+            <a href="/product/${item.id}" class="lg:hover:text-content-emphasis transition-colors">
             ${item.title}
+            </a>
           </h3>
 
           ${
@@ -545,6 +547,9 @@ import { Icon } from "astro-icon/components";
         overlay.classList.remove("hidden");
         panel.setAttribute("aria-hidden", "false");
 
+        // Prevent page scrolling when MiniCart is open
+        document.body.style.overflow = "hidden";
+
         requestAnimationFrame(() => {
           overlay.classList.remove("opacity-0");
           panel.classList.remove("translate-x-full");
@@ -560,6 +565,9 @@ import { Icon } from "astro-icon/components";
         overlay.classList.add("opacity-0");
         panel.classList.add("translate-x-full");
         panel.setAttribute("aria-hidden", "true");
+
+        // Restore page scrolling when MiniCart is closed
+        document.body.style.overflow = "unset";
 
         setTimeout(() => {
           overlay.classList.add("hidden");
