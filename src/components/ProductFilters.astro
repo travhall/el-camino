@@ -1,5 +1,5 @@
 ---
-// src/components/ProductFilters.astro - Server-Side Form Implementation
+// src/components/ProductFilters.astro - Fixed implementation
 import type { FilterOptions } from "@/lib/square/types";
 
 interface Props {
@@ -14,13 +14,20 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
 const currentParams = new URLSearchParams(Astro.url.search);
 const currentBrands = currentParams.getAll("brands") || [];
 const currentPageSize = currentParams.get("pageSize") || "24";
+
+// Configuration for show more/less functionality
+const DEFAULT_VISIBLE_BRANDS = 6;
+const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
 ---
 
-<!-- Server-Side Filter Form -->
+<!-- Desktop Filter Sidebar -->
 <div class="lg:block sticky top-16">
-  <!-- Desktop: Server-side form with immediate submission -->
-  <form method="GET" action="" class="hidden lg:block p-2 overflow-y-auto">
-    <!-- Preserve existing URL parameters -->
+  <form
+    method="GET"
+    action=""
+    class="hidden lg:block p-2 overflow-y-auto"
+    id="desktop-filter-form"
+  >
     <input type="hidden" name="pageSize" value={currentPageSize} />
 
     <div class="flex items-center justify-between mb-2">
@@ -49,24 +56,43 @@ const currentPageSize = currentParams.get("pageSize") || "24";
       filterOptions.brands.length > 0 && (
         <div class="mb-4">
           <h3 class="text-sm font-medium text-content-heading mb-2">Brand</h3>
-          <div class="max-h-80 overflow-y-auto">
-            {filterOptions.brands.map((brand) => (
-              <label class="flex items-center group cursor-pointer p-1 rounded-sm hover:bg-surface-secondary transition-colors">
-                <input
-                  type="checkbox"
-                  name="brands"
-                  value={brand.name}
-                  checked={currentBrands.includes(brand.name)}
-                  class="elco-checkbox mr-2 rounded-none border-ui-input-border text-ui-accent focus:ring-ui-accent"
-                />
-                <span class="flex-1 text-content-body group-hover:text-content-emphasis">
-                  {brand.name}
-                </span>
-                <span class="text-sm text-content-meta mr-2">
-                  ({brand.count})
-                </span>
-              </label>
-            ))}
+          <div class="space-y-1" id="desktop-brand-list">
+            {filterOptions.brands.map((brand, index) => {
+              const isInitiallyHidden = index >= DEFAULT_VISIBLE_BRANDS;
+              return (
+                <label
+                  class={`flex items-center group cursor-pointer p-1 rounded-sm hover:bg-surface-secondary transition-colors ${isInitiallyHidden ? "hidden brand-extra-option" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    name="brands"
+                    value={brand.name}
+                    checked={currentBrands.includes(brand.name)}
+                    class="elco-checkbox mr-2 w-4 h-4 rounded-sm border-2 border-ui-input-border text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                  />
+                  <span class="flex-1 text-content-body group-hover:text-content-emphasis">
+                    {brand.name}
+                  </span>
+                  <span class="text-sm text-content-meta mr-2">
+                    ({brand.count})
+                  </span>
+                </label>
+              );
+            })}
+
+            {shouldShowToggle && (
+              <button
+                type="button"
+                id="desktop-show-more-brands"
+                class="w-full text-left text-sm text-ui-accent hover:text-ui-accent-hover transition-colors p-1 font-medium"
+                data-hidden-count={
+                  filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS
+                }
+              >
+                + Show {filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS}{" "}
+                more
+              </button>
+            )}
           </div>
         </div>
       )
@@ -110,8 +136,7 @@ const currentPageSize = currentParams.get("pageSize") || "24";
   id="mobile-filter-drawer"
   class="lg:hidden fixed bottom-0 left-0 right-0 bg-surface-secondary border-t border-ui-border z-[500] max-h-[80vh] overflow-y-auto transform translate-y-full transition-transform duration-300"
 >
-  <form method="GET" action="" class="p-4">
-    <!-- Preserve existing URL parameters -->
+  <form method="GET" action="" class="p-4" id="mobile-filter-form">
     <input type="hidden" name="pageSize" value={currentPageSize} />
 
     <!-- Mobile Header -->
@@ -152,25 +177,45 @@ const currentPageSize = currentParams.get("pageSize") || "24";
     <!-- Mobile Brand Filter Section -->
     <div class="mb-6">
       <h3 class="text-base font-medium text-content-heading mb-3">Brand</h3>
-      <div class="space-y-3 max-h-64 overflow-y-auto">
+      <div class="space-y-3" id="mobile-brand-list">
         {
-          filterOptions.brands.map((brand) => (
-            <label class="flex items-center justify-between group cursor-pointer p-3 rounded-sm hover:bg-surface-tertiary transition-colors">
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  name="brands"
-                  value={brand.name}
-                  checked={currentBrands.includes(brand.name)}
-                  class="mr-3 rounded-sm border-ui-input-border text-ui-accent focus:ring-ui-accent w-5 h-5"
-                />
-                <span class="text-content-body group-hover:text-content-emphasis">
-                  {brand.name}
-                </span>
-              </div>
-              <span class="text-sm text-content-meta">({brand.count})</span>
-            </label>
-          ))
+          filterOptions.brands.map((brand, index) => {
+            const isInitiallyHidden = index >= DEFAULT_VISIBLE_BRANDS;
+            return (
+              <label
+                class={`flex items-center justify-between group cursor-pointer p-3 rounded-sm hover:bg-surface-tertiary transition-colors ${isInitiallyHidden ? "hidden mobile-brand-extra-option" : ""}`}
+              >
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="brands"
+                    value={brand.name}
+                    checked={currentBrands.includes(brand.name)}
+                    class="elco-checkbox mr-3 w-5 h-5 rounded-sm border-2 border-ui-input-border text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                  />
+                  <span class="text-content-body group-hover:text-content-emphasis">
+                    {brand.name}
+                  </span>
+                </div>
+                <span class="text-sm text-content-meta">({brand.count})</span>
+              </label>
+            );
+          })
+        }
+
+        {
+          shouldShowToggle && (
+            <button
+              type="button"
+              id="mobile-show-more-brands"
+              class="w-full text-left text-sm text-ui-accent hover:text-ui-accent-hover transition-colors p-3 font-medium"
+              data-hidden-count={
+                filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS
+              }
+            >
+              + Show {filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more
+            </button>
+          )
         }
       </div>
     </div>
@@ -190,6 +235,7 @@ const currentPageSize = currentParams.get("pageSize") || "24";
       <button
         type="submit"
         class="flex-1 py-3 px-4 bg-ui-button-surface text-ui-button-text rounded-sm hover:bg-ui-button-primary-hover transition-colors font-medium"
+        id="mobile-apply-filters"
       >
         Apply Filters
       </button>
@@ -198,11 +244,12 @@ const currentPageSize = currentParams.get("pageSize") || "24";
 </div>
 
 <script>
-  class MobileFilterDrawer {
+  class FilterManager {
     private mobileToggle: HTMLElement | null;
     private mobileDrawer: HTMLElement | null;
     private mobileOverlay: HTMLElement | null;
     private mobileClose: HTMLElement | null;
+    private desktopFilterTimeout: number | null = null;
 
     constructor() {
       this.mobileToggle = document.getElementById("mobile-filter-toggle");
@@ -210,72 +257,122 @@ const currentPageSize = currentParams.get("pageSize") || "24";
       this.mobileOverlay = document.getElementById("mobile-filter-overlay");
       this.mobileClose = document.getElementById("mobile-filter-close");
 
-      if (!this.mobileToggle) return;
-
-      this.setupEventListeners();
-      this.setupAnimations();
+      this.setupDesktopFilters();
+      this.setupMobileDrawer();
+      this.setupShowMoreToggles();
     }
 
-    private setupEventListeners(): void {
-      this.mobileToggle?.addEventListener("click", this.openDrawer.bind(this));
-      this.mobileOverlay?.addEventListener(
-        "click",
-        this.closeDrawer.bind(this)
-      );
-      this.mobileClose?.addEventListener("click", this.closeDrawer.bind(this));
-    }
+    private setupDesktopFilters(): void {
+      const desktopForm = document.getElementById(
+        "desktop-filter-form"
+      ) as HTMLFormElement;
+      if (!desktopForm) return;
 
-    private setupAnimations(): void {
-      // Desktop checkbox animations
-      const desktopCheckboxes = document.querySelectorAll(
-        '.lg\\:block input[type="checkbox"]'
-      );
-      desktopCheckboxes.forEach((checkbox) => {
-        checkbox.removeAttribute("onchange");
-        checkbox.addEventListener("change", (e) => {
-          this.handleDesktopFilterChange(e.target as HTMLInputElement);
+      // Desktop: Apply filters after brief delay (batch approach)
+      const checkboxes = desktopForm.querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach((checkbox) => {
+        checkbox.addEventListener("change", () => {
+          // Clear existing timeout
+          if (this.desktopFilterTimeout) {
+            clearTimeout(this.desktopFilterTimeout);
+          }
+
+          // Set new timeout for batch filtering
+          this.desktopFilterTimeout = window.setTimeout(() => {
+            this.submitFilters(desktopForm);
+          }, 800); // 800ms delay for batch selection
         });
       });
+    }
 
-      // Mobile form animation
-      const mobileForm = document.querySelector("#mobile-filter-drawer form");
-      mobileForm?.addEventListener("submit", (e) => {
+    private setupMobileDrawer(): void {
+      // Mobile drawer controls - ONLY for open/close
+      this.mobileToggle?.addEventListener("click", () => this.openDrawer());
+      this.mobileOverlay?.addEventListener("click", () => this.closeDrawer());
+      this.mobileClose?.addEventListener("click", () => this.closeDrawer());
+
+      // Mobile form submission - ONLY when Apply button clicked
+      const mobileForm = document.getElementById(
+        "mobile-filter-form"
+      ) as HTMLFormElement;
+      const applyButton = document.getElementById("mobile-apply-filters");
+
+      if (mobileForm && applyButton) {
+        applyButton.addEventListener("click", (e) => {
+          e.preventDefault();
+          this.submitFilters(mobileForm);
+          this.closeDrawer();
+        });
+      }
+    }
+
+    private setupShowMoreToggles(): void {
+      // Desktop show more/less - ONLY controls visibility
+      const desktopButton = document.getElementById("desktop-show-more-brands");
+      if (desktopButton) {
+        const hiddenCount = parseInt(desktopButton.dataset.hiddenCount || "0");
+        this.setupToggle(desktopButton, ".brand-extra-option", hiddenCount);
+      }
+
+      // Mobile show more/less - ONLY controls visibility
+      const mobileButton = document.getElementById("mobile-show-more-brands");
+      if (mobileButton) {
+        const hiddenCount = parseInt(mobileButton.dataset.hiddenCount || "0");
+        this.setupToggle(
+          mobileButton,
+          ".mobile-brand-extra-option",
+          hiddenCount
+        );
+      }
+    }
+
+    private setupToggle(
+      button: HTMLElement,
+      optionSelector: string,
+      hiddenCount: number
+    ): void {
+      let isExpanded = false;
+      const extraOptions = document.querySelectorAll(optionSelector);
+
+      button.addEventListener("click", (e) => {
         e.preventDefault();
-        this.handleMobileFormSubmit(e.target as HTMLFormElement);
+        e.stopPropagation();
+
+        if (isExpanded) {
+          extraOptions.forEach((option) => option.classList.add("hidden"));
+          button.textContent = `+ Show ${hiddenCount} more`;
+        } else {
+          extraOptions.forEach((option) => option.classList.remove("hidden"));
+          button.textContent = "- Show less";
+        }
+        isExpanded = !isExpanded;
       });
     }
 
-    private handleDesktopFilterChange(checkbox: HTMLInputElement): void {
+    private submitFilters(form: HTMLFormElement): void {
       const grid = document.getElementById("filterable-product-grid");
-      const form = checkbox.closest("form") as HTMLFormElement;
+      if (!grid) return;
 
-      if (grid && form) {
-        grid.style.transition = "opacity 0.3s ease";
-        grid.style.opacity = "0.4";
-        grid.classList.add("filtering");
+      // Store current scroll position for smooth transition
+      const currentScroll = window.pageYOffset;
+      sessionStorage.setItem("pre-filter-scroll", currentScroll.toString());
 
-        sessionStorage.setItem("filtering-in-progress", "true");
+      // Dim results with smooth transition
+      grid.style.transition = "opacity 0.4s ease";
+      grid.style.opacity = "0.6";
 
-        setTimeout(() => {
-          form.submit();
-        }, 150);
-      }
-    }
+      sessionStorage.setItem("filtering-in-progress", "true");
 
-    private handleMobileFormSubmit(form: HTMLFormElement): void {
-      const grid = document.getElementById("filterable-product-grid");
+      // Smooth scroll to top before submitting
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
 
-      if (grid) {
-        grid.style.transition = "opacity 0.3s ease";
-        grid.style.opacity = "0.4";
-
-        sessionStorage.setItem("filtering-in-progress", "true");
-        this.closeDrawer();
-
-        setTimeout(() => {
-          form.submit();
-        }, 200); // Slightly longer for mobile to allow drawer close
-      }
+      // Submit after scroll animation
+      setTimeout(() => {
+        form.submit();
+      }, 300);
     }
 
     private openDrawer(): void {
@@ -297,6 +394,41 @@ const currentPageSize = currentParams.get("pageSize") || "24";
   }
 
   document.addEventListener("astro:page-load", () => {
-    new MobileFilterDrawer();
+    new FilterManager();
   });
 </script>
+
+<style>
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Checkbox styling */
+  .elco-checkbox {
+    accent-color: var(--ui-accent);
+  }
+
+  .elco-checkbox:focus {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 2px;
+  }
+
+  /* Smooth transitions */
+  .brand-extra-option,
+  .mobile-brand-extra-option {
+    transition: all 0.2s ease;
+  }
+
+  /* Reduce motion for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    .brand-extra-option,
+    .mobile-brand-extra-option {
+      transition: none !important;
+    }
+  }
+</style>

@@ -1,0 +1,88 @@
+---
+// src/components/AppliedFilters.astro - Separate component for applied filters
+
+export interface Props {
+  categoryPath?: string;
+}
+
+const { categoryPath = "" } = Astro.props;
+
+// Parse current filters from URL
+const currentParams = new URLSearchParams(Astro.url.search);
+const currentBrands = currentParams.getAll("brands") || [];
+const currentPageSize = currentParams.get("pageSize") || "24";
+
+// Only render if there are active filters
+if (currentBrands.length === 0) {
+  return null;
+}
+
+// Function to build URLs for removing individual filters
+function buildRemoveFilterUrl(brandToRemove: string): string {
+  const otherBrands = currentBrands.filter((b) => b !== brandToRemove);
+  const params = new URLSearchParams();
+
+  // Add remaining brands using the same format as the form
+  otherBrands.forEach((brand) => {
+    params.append("brands", brand);
+  });
+
+  // Preserve page size
+  if (currentPageSize !== "24") {
+    params.set("pageSize", currentPageSize);
+  }
+
+  const queryString = params.toString();
+  const basePath = categoryPath || Astro.url.pathname;
+  return `${basePath}${queryString ? "?" + queryString : ""}`;
+}
+
+// Clear all filters URL
+function buildClearAllUrl(): string {
+  const params = new URLSearchParams();
+  if (currentPageSize !== "24") {
+    params.set("pageSize", currentPageSize);
+  }
+
+  const queryString = params.toString();
+  const basePath = categoryPath || Astro.url.pathname;
+  return `${basePath}${queryString ? "?" + queryString : ""}`;
+}
+---
+
+<div class="mb-2 p-2 bg-surface-secondary rounded-sm border border-ui-border">
+  <div class="flex items-center gap-4">
+    <div class="flex flex-wrap gap-2">
+      {
+        currentBrands.map((brand) => (
+          <a
+            href={buildRemoveFilterUrl(brand)}
+            class="inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-ui-input-surface lg:hover:bg-ui-nav-hover/40 transition-colors text-ui-input-text border-ui-input-border/50 group"
+            title={`Remove ${brand} filter`}
+          >
+            <span>{brand}</span>
+            <svg
+              class="w-3 h-3 text-content-meta group-hover:text-content-body"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </a>
+        ))
+      }
+    </div>
+    <a
+      href={buildClearAllUrl()}
+      class="text-sm text-content-meta hover:text-content-emphasis transition-colors text-nowrap"
+    >
+      Clear All
+    </a>
+  </div>
+</div>

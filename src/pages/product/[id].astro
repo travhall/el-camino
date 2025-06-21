@@ -435,11 +435,11 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
         <!-- Product Description -->
         {
           product.description && (
-            <div class="mt-6 max-w-md">
+            <div class="mt-6 max-w-[52ch]">
               <div id="description-container">
                 <p
                   id="product-description"
-                  class="text-base text-content-body text-balance line-clamp-2 transition-all duration-300 ease-in-out"
+                  class="text-base text-content-body line-clamp-2 text-pretty transition-all duration-300 ease-in-out"
                 >
                   {product.description}
                 </p>
@@ -497,16 +497,18 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
     if (!container || !description || !toggleButton || !toggleText) return;
 
-    // Check if text is actually truncated (height comparison)
-    const lineHeight = parseInt(getComputedStyle(description).lineHeight);
-    const maxHeight = lineHeight * 2; // 2 lines
+    // More reliable overflow detection using scrollHeight vs clientHeight
+    // First ensure line-clamp is applied, then check for actual overflow
+    description.classList.add("line-clamp-2");
 
-    // Force reflow to get accurate height measurement
-    description.style.height = "auto";
-    const actualHeight = description.scrollHeight;
+    // Force layout recalculation
+    description.offsetHeight;
 
-    // Show toggle button only if content exceeds 2 lines
-    if (actualHeight > maxHeight) {
+    // Check if content is actually being clipped
+    const isOverflowing = description.scrollHeight > description.clientHeight;
+
+    // Show toggle button only if content is actually truncated
+    if (isOverflowing) {
       toggleButton.classList.remove("hidden");
 
       let isExpanded = false;

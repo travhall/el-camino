@@ -98,13 +98,18 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
     private initializeGrid(): void {
       if (!this.grid) return;
 
-      // Check if we're loading from a filter action (grid should be faded)
       const wasFiltering = sessionStorage.getItem("filtering-in-progress");
 
       if (wasFiltering) {
-        // Smooth fade-in from filtered state
-        this.grid.style.opacity = "0.4";
+        // Fade in from filtered state
+        this.grid.style.opacity = "0.5";
         this.grid.style.transition = "opacity 0.4s ease";
+
+        // Smooth scroll to top of results (standard UX)
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
 
         requestAnimationFrame(() => {
           this.grid!.style.opacity = "1";
@@ -112,7 +117,6 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
 
         sessionStorage.removeItem("filtering-in-progress");
       } else {
-        // Normal page load
         this.grid.style.opacity = "1";
         this.grid.style.transition = "opacity 0.3s ease";
       }

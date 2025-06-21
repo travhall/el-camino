@@ -1,5 +1,5 @@
 ---
-// src/components/MiniCart.astro - ZERO TypeScript errors, just works
+// src/components/MiniCart.astro
 import { Icon } from "astro-icon/components";
 ---
 
@@ -7,7 +7,6 @@ import { Icon } from "astro-icon/components";
 <div
   id="mini-cart-overlay"
   class="fixed inset-0 bg-surface-tertiary/80 dark:bg-surface-primary/80 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-300"
-  aria-hidden="true"
 >
 </div>
 
@@ -17,7 +16,6 @@ import { Icon } from "astro-icon/components";
   class="fixed top-0 right-0 h-screen w-96 max-w-full bg-surface-primary border-4 border-surface-primary z-50 transform translate-x-full transition-transform duration-300 shadow-lg overflow-y-scroll"
   role="dialog"
   aria-labelledby="mini-cart-title"
-  aria-hidden="true"
 >
   <div class="container grid grid-rows-[auto_1fr_auto] h-full">
     <!-- Header -->
@@ -118,6 +116,7 @@ import { Icon } from "astro-icon/components";
 
 <script>
   import type { CartItem } from "@/lib/cart/types";
+  import { createSlug } from "@/lib/square/slugUtils";
 
   let cart: any = null;
   let inventoryData: Record<string, number> = {};
@@ -231,109 +230,117 @@ import { Icon } from "astro-icon/components";
     const isLowStock = inventory > 0 && inventory <= 5;
     const maxQuantity = Math.min(inventory, 99);
 
+    // Generate proper slug from product title
+    const productSlug = createSlug(item.title);
+    const productUrl = `/product/${productSlug}`;
+
     return `
-      <div class="flex gap-3 p-3 border border-ui-border bg-surface-secondary rounded-sm" data-item-key="${itemKey}">
+    <div class="flex gap-3 p-3 border border-ui-border bg-surface-secondary rounded-sm" data-item-key="${itemKey}">
+      ${
+        item.image
+          ? `
+        <img 
+          src="${item.image}" 
+          alt="${item.title}"
+          class="w-16 h-16 object-cover rounded-sm bg-surface-secondary"
+          loading="lazy"
+        />
+      `
+          : `
+        <div class="w-16 h-16 bg-surface-secondary rounded-sm flex items-center justify-center">
+          <svg class="w-8 h-8 text-content-meta" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path>
+          </svg>
+        </div>
+      `
+      }
+
+      <div class="flex-1 min-w-0">
+        <h3 class="font-medium text-content-heading text-sm leading-tight line-clamp-2">
+          <a 
+            href="${productUrl}" 
+            class="lg:hover:text-content-emphasis transition-colors product-link"
+            data-product-url="${productUrl}"
+          >
+          ${item.title}
+          </a>
+        </h3>
+
         ${
-          item.image
+          item.variationName
             ? `
-          <img 
-            src="${item.image}" 
-            alt="${item.title}"
-            class="w-16 h-16 object-cover rounded-sm bg-surface-secondary"
-            loading="lazy"
-          />
+          <p class="text-xs text-content-meta mt-1">${item.variationName}</p>
         `
-            : `
-          <div class="w-16 h-16 bg-surface-secondary rounded-sm flex items-center justify-center">
-            <svg class="w-8 h-8 text-content-meta" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path>
-            </svg>
-          </div>
-        `
+            : ""
         }
 
-        <div class="flex-1 min-w-0">
-          <h3 class="font-medium text-content-heading text-sm leading-tight line-clamp-2">
-            <a href="/product/${item.id}" class="lg:hover:text-content-emphasis transition-colors">
-            ${item.title}
-            </a>
-          </h3>
-
-          ${
-            item.variationName
-              ? `
-            <p class="text-xs text-content-meta mt-1">${item.variationName}</p>
-          `
-              : ""
-          }
-
-          <div class="flex items-center justify-between mt-2">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-content-heading">
-                ${formatPrice(item.price)}
-              </span>
-              ${item.unit ? `<span class="text-xs text-content-meta">${item.unit}</span>` : ""}
-            </div>
-
-            <!-- Quantity Controls -->
-            <div class="flex items-center gap-1">
-              <button
-                class="w-6 h-6 flex items-center justify-center border border-ui-border rounded-sm hover:bg-ui-button-surface transition-colors ${
-                  item.quantity <= 1 ? "opacity-50" : ""
-                }"
-                data-action="decrease"
-                data-item-key="${itemKey}"
-                ${item.quantity <= 1 ? "disabled" : ""}
-                aria-label="Decrease quantity"
-              >
-                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
-                </svg>
-              </button>
-
-              <span class="w-8 text-center text-sm font-medium">${item.quantity}</span>
-
-              <button
-                class="w-6 h-6 flex items-center justify-center border border-ui-border rounded-sm hover:bg-ui-button-surface transition-colors ${
-                  item.quantity >= maxQuantity ? "opacity-50" : ""
-                }"
-                data-action="increase"
-                data-item-key="${itemKey}"
-                ${item.quantity >= maxQuantity ? "disabled" : ""}
-                aria-label="Increase quantity"
-              >
-                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
-                </svg>
-              </button>
-            </div>
+        <div class="flex items-center justify-between mt-2">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-content-heading">
+              ${formatPrice(item.price)}
+            </span>
+            ${item.unit ? `<span class="text-xs text-content-meta">${item.unit}</span>` : ""}
           </div>
 
-          <div class="flex items-center justify-between mt-2">
-            <!-- Stock status -->
-            <div class="text-xs">
-              ${
-                isOutOfStock
-                  ? `<span class="text-red-600 font-medium">Out of Stock</span>`
-                  : isLowStock
-                    ? `<span class="text-amber-600 font-medium">Only ${inventory} left</span>`
-                    : ""
-              }
-            </div>
-
-            <!-- Remove button -->
+          <!-- Quantity Controls -->
+          <div class="flex items-center gap-1">
             <button
-              class="text-xs relative lg:hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left"
-              data-action="remove"
+              class="w-6 h-6 flex items-center justify-center border border-ui-border rounded-sm hover:bg-ui-button-surface transition-colors ${
+                item.quantity <= 1 ? "opacity-50" : ""
+              }"
+              data-action="decrease"
               data-item-key="${itemKey}"
-              data-item-title="${item.title}"
+              ${item.quantity <= 1 ? "disabled" : ""}
+              aria-label="Decrease quantity"
             >
-              Remove
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+              </svg>
+            </button>
+
+            <span class="w-8 text-center text-sm font-medium">${item.quantity}</span>
+
+            <button
+              class="w-6 h-6 flex items-center justify-center border border-ui-border rounded-sm hover:bg-ui-button-surface transition-colors ${
+                item.quantity >= maxQuantity ? "opacity-50" : ""
+              }"
+              data-action="increase"
+              data-item-key="${itemKey}"
+              ${item.quantity >= maxQuantity ? "disabled" : ""}
+              aria-label="Increase quantity"
+            >
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+              </svg>
             </button>
           </div>
         </div>
+
+        <div class="flex items-center justify-between mt-2">
+          <!-- Stock status -->
+          <div class="text-xs">
+            ${
+              isOutOfStock
+                ? `<span class="text-red-600 font-medium">Out of Stock</span>`
+                : isLowStock
+                  ? `<span class="text-amber-600 font-medium">Only ${inventory} left</span>`
+                  : ""
+            }
+          </div>
+
+          <!-- Remove button -->
+          <button
+            class="text-xs relative lg:hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left"
+            data-action="remove"
+            data-item-key="${itemKey}"
+            data-item-title="${item.title}"
+          >
+            Remove
+          </button>
+        </div>
       </div>
-    `;
+    </div>
+  `;
   }
 
   async function loadInventoryData(items: CartItem[]): Promise<void> {
@@ -427,8 +434,20 @@ import { Icon } from "astro-icon/components";
       parent.replaceChild(newItemsList, itemsListEl);
     }
 
-    // Add single event listener
+    // Add event listener for both quantity controls AND product links
     newItemsList.addEventListener("click", async (e) => {
+      // Handle product links
+      const productLink = (e.target as HTMLElement).closest(
+        "a.product-link"
+      ) as HTMLAnchorElement;
+      if (productLink) {
+        // Don't prevent default - let link work naturally
+        // Just close the mini cart and let Astro handle navigation
+        closeMiniCart();
+        return;
+      }
+
+      // Handle quantity control buttons (existing logic)
       const button = (e.target as HTMLElement).closest(
         "button[data-action]"
       ) as HTMLButtonElement;
@@ -532,6 +551,29 @@ import { Icon } from "astro-icon/components";
         showNotification("Error updating cart", "error");
       }
     });
+
+    // Make closeMiniCart function accessible to this scope
+    function closeMiniCart() {
+      const overlay = document.getElementById("mini-cart-overlay");
+      const panel = document.getElementById("mini-cart-panel");
+
+      if (overlay && panel) {
+        // Use inert to immediately disable interaction (modern approach)
+        panel.setAttribute("inert", "");
+
+        overlay.classList.add("opacity-0");
+        panel.classList.add("translate-x-full");
+
+        // Restore page scrolling when MiniCart is closed
+        document.body.style.overflow = "unset";
+
+        setTimeout(() => {
+          overlay.classList.add("hidden");
+          // Clean up inert attribute after modal is fully closed
+          panel.removeAttribute("inert");
+        }, 300);
+      }
+    }
   }
 
   function initMiniCart() {
@@ -551,7 +593,6 @@ import { Icon } from "astro-icon/components";
     function openMiniCart() {
       if (overlay && panel && closeButton) {
         overlay.classList.remove("hidden");
-        panel.setAttribute("aria-hidden", "false");
 
         // Prevent page scrolling when MiniCart is open
         document.body.style.overflow = "hidden";
@@ -570,7 +611,6 @@ import { Icon } from "astro-icon/components";
       if (overlay && panel) {
         overlay.classList.add("opacity-0");
         panel.classList.add("translate-x-full");
-        panel.setAttribute("aria-hidden", "true");
 
         // Restore page scrolling when MiniCart is closed
         document.body.style.overflow = "unset";

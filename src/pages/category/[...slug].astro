@@ -1,7 +1,7 @@
 ---
-// src/pages/category/[...slug].astro - PHASE 2: SERVER-SIDE PAGINATION
+// src/pages/category/[...slug].astro 
 import ProductFilters from "@/components/ProductFilters.astro";
-import { extractFilterOptions } from "@/lib/square/filterUtils";
+import AppliedFilters from "@/components/AppliedFilters.astro";
 import FilterableProductGrid from "@/components/FilterableProductGrid.astro";
 import PaginationControls from "@/components/PaginationControls.astro";
 import {
@@ -41,15 +41,13 @@ if (subCategorySlug) {
 const urlParams = parseURLParams(Astro.url.searchParams);
 const { filters, page, pageSize } = urlParams;
 
-// console.log(`[Category Page] ${category.name} - Page ${page}, Filters:`, filters);
-
 // === ENHANCED PRODUCT FETCHING WITH PAGINATION ===
 let productData;
 try {
   productData = await fetchProductsByCategoryWithPagination(category.id, {
     page,
     pageSize,
-    filters, // Let server handle filtering
+    filters,
   });
 } catch (error) {
   console.error("Error fetching paginated products:", error);
@@ -78,7 +76,7 @@ const pageTitle = parentCategory
   : category.name;
 
 // Add pagination info to title if not on page 1
-const fullPageTitle = page > 1 
+const fullPageTitle = page > 1
   ? `${pageTitle} - Page ${page} | El Camino`
   : `Shop ${pageTitle} | El Camino`;
 
@@ -164,6 +162,9 @@ const categoryPath = parentCategory
 
       <!-- Main Content -->
       <main class="lg:col-span-3 xl:col-span-4">
+
+        <!-- Applied Filters Above Product Grid -->
+        <AppliedFilters categoryPath={categoryPath} />
 
         <!-- Products -->
         {
