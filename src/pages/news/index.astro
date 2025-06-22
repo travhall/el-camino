@@ -1,5 +1,5 @@
 ---
-// src/pages/news/index.astro - Enhanced but keeps existing structure
+// src/pages/news/index.astro
 import Layout from "@/layouts/Layout.astro";
 import ArticleGrid from "@/components/ArticleGrid.astro";
 import { getPosts } from "@/lib/wordpress/api";
@@ -81,30 +81,6 @@ const criticalImages = paginatedPosts
 
     <!-- Uses your existing ArticleGrid - no changes needed -->
     <ArticleGrid posts={paginatedPosts} error={error} />
-
-    {
-      hasPosts && (
-        <nav class="mt-8 flex justify-center gap-2" aria-label="Pagination">
-          {currentPage > 1 && (
-            <a
-              href={`?page=${currentPage - 1}&sort=${sortDirection}`}
-              class="px-4 py-2 text-sm border rounded-sm lg:hover:bg-gray-50"
-            >
-              Previous
-            </a>
-          )}
-
-          {posts.length > currentPage * PAGE_SIZE && (
-            <a
-              href={`?page=${currentPage + 1}&sort=${sortDirection}`}
-              class="px-4 py-2 text-sm border rounded-sm lg:hover:bg-gray-50"
-            >
-              Next
-            </a>
-          )}
-        </nav>
-      )
-    }
   </section>
 </Layout>
 

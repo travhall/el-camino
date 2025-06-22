@@ -1,4 +1,4 @@
-// src/lib/square/filterUtils.ts
+// src/lib/square/filterUtils.ts - Fixed pagination/filtering URL parameter handling
 import type {
   Product,
   ProductFilters,
@@ -67,13 +67,16 @@ export function parseFiltersFromURL(
 
 /**
  * Convert filters to URL search params
- * Returns new URLSearchParams for immutability
+ * FIXED: Now creates multiple parameters instead of comma-separated
  */
 export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
   const params = new URLSearchParams();
 
+  // Use append() to create multiple parameters: ?brands=A&brands=B
   if (filters.brands.length > 0) {
-    params.set("brands", filters.brands.join(","));
+    filters.brands.forEach((brand) => {
+      params.append("brands", brand);
+    });
   }
 
   return params;
@@ -174,6 +177,7 @@ export function parseURLParams(searchParams: URLSearchParams): ParsedURLParams {
 
 /**
  * Build URL with pagination and filter parameters
+ * FIXED: Now creates multiple brand parameters instead of comma-separated
  */
 export function buildPaginatedURL(
   basePath: string,
@@ -183,9 +187,11 @@ export function buildPaginatedURL(
 ): string {
   const params = new URLSearchParams();
 
-  // Add filter parameters
+  // Add filter parameters using append() for multiple brands: ?brands=A&brands=B
   if (filters.brands.length > 0) {
-    params.set("brands", filters.brands.join(","));
+    filters.brands.forEach((brand) => {
+      params.append("brands", brand);
+    });
   }
 
   // Add pagination parameters
