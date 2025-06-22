@@ -1,5 +1,5 @@
 ---
-// src/components/ProductFilters.astro - Fixed desktop show/hide persistence
+// src/components/ProductFilters.astro - Enhanced UX with fixed issues
 import type { FilterOptions } from "@/lib/square/types";
 
 interface Props {
@@ -25,46 +25,40 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
   <form method="GET" action="" class="hidden lg:block p-2 overflow-y-auto">
     <input type="hidden" name="pageSize" value={currentPageSize} />
 
-    <!-- <div class="flex items-center justify-between mb-2">
-      <h2 class="text-sm font-semibold text-content-heading">Filters</h2>
-      {
-        currentBrands.length > 0 && (
-          <a
-            href={`${Astro.url.pathname}?pageSize=${currentPageSize}`}
-            class="text-sm text-content-meta hover:text-content-emphasis transition-colors"
-          >
-            Clear Filters
-          </a>
-        )
-      }
-    </div> -->
-
     <!-- Results Count -->
-    <p class="text-sm text-content-meta sr-only">
-      Showing <span>{filteredCount}</span> of <span>{totalProducts}</span> products
-    </p>
+    <div class="mb-4 pb-4 border-b-2 border-border-primary">
+      <p class="text-lg text-content-body font-medium">
+        {filteredCount === totalProducts 
+          ? `${totalProducts} products`
+          : `${filteredCount} of ${totalProducts} products`
+        }
+      </p>
+    </div>
 
     <!-- Brand Filter Section -->
     {
       filterOptions.brands.length > 0 && (
         <div class="mb-4">
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="text-sm font-medium text-content-heading mb-2">Brand</h3>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xl font-medium font-display text-content-heading">Brand</h3>
             {currentBrands.length > 0 && (
-              <a
-                href={`${Astro.url.pathname}?pageSize=${currentPageSize}`}
+              <button
+                type="button"
+                data-clear-filters
                 class="text-sm text-content-meta hover:text-content-emphasis transition-colors"
               >
-                Clear Filters
-              </a>
+                Clear
+              </button>
             )}
           </div>
-          <div class="space-y-1">
+
+          <!-- Brand list with controlled visibility -->
+          <div class="space-y-1" data-brand-list>
             {filterOptions.brands.map((brand, index) => {
               const isHidden = index >= DEFAULT_VISIBLE_BRANDS;
               return (
                 <label
-                  class={`flex items-center group cursor-pointer p-1 rounded-sm hover:bg-surface-secondary transition-colors ${isHidden ? "brand-extra-item" : ""}`}
+                  class={`flex items-center group cursor-pointer p-1 rounded-sm hover:bg-surface-secondary transition-colors ${isHidden ? "brand-extra-item hidden" : ""}`}
                 >
                   <input
                     type="checkbox"
@@ -88,9 +82,10 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
                 type="button"
                 id="show-more-toggle"
                 class="w-full text-left text-sm text-ui-accent hover:text-ui-accent-hover transition-colors p-1 font-medium"
+                data-collapsed-text={`+ Show ${filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more`}
+                data-expanded-text="- Show less"
               >
-                + Show {filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS}{" "}
-                more
+                + Show {filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more
               </button>
             )}
           </div>
@@ -205,12 +200,13 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
     <div class="flex gap-3 pt-4 border-t border-ui-border">
       {
         currentBrands.length > 0 && (
-          <a
-            href={`${Astro.url.pathname}?pageSize=${currentPageSize}`}
+          <button
+            type="button"
+            data-clear-filters-mobile
             class="flex-1 py-3 px-4 border border-ui-button-border text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
           >
             Clear Filters
-          </a>
+          </button>
         )
       }
       <button
@@ -224,28 +220,34 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
 </div>
 
 <script>
-  class DesktopFilters {
+  class EnhancedFilters {
+    private form: HTMLFormElement | null;
+    private showMoreToggle: HTMLButtonElement | null;
+    private isExpanded: boolean = false;
+
     constructor() {
+      this.form = document.querySelector(".lg\\:block form") as HTMLFormElement;
+      this.showMoreToggle = document.getElementById("show-more-toggle") as HTMLButtonElement;
       this.setupDesktopFiltering();
       this.setupShowMoreToggle();
       this.setupMobileDrawer();
-      this.restoreShowMoreState();
+      this.setupClearButtons();
+
+      // Initialize collapsed state
+      this.initializeCollapsedState();
+    }
+
+    private initializeCollapsedState(): void {
+      // Always start collapsed
+      this.collapseFilters();
     }
 
     private setupDesktopFiltering(): void {
-      // Desktop: immediate submission on checkbox change
-      const form = document.querySelector(
-        ".lg\\:block form"
-      ) as HTMLFormElement;
-      if (!form) return;
+      if (!this.form) return;
 
-      const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+      const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
       checkboxes.forEach((checkbox) => {
         checkbox.addEventListener("change", () => {
-          // Store show more state before submission
-          const isExpanded =
-            localStorage.getItem("brand-filters-expanded") === "true";
-
           const grid = document.getElementById("filterable-product-grid");
           if (grid) {
             grid.style.transition = "opacity 0.3s ease";
@@ -255,64 +257,94 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
           sessionStorage.setItem("filtering-in-progress", "true");
 
           setTimeout(() => {
-            form.submit();
+            this.form!.submit();
           }, 150);
         });
       });
     }
 
     private setupShowMoreToggle(): void {
-      const toggle = document.getElementById("show-more-toggle");
-      if (!toggle) return;
+      if (!this.showMoreToggle) return;
 
-      const extraItems = document.querySelectorAll(".brand-extra-item");
-      const totalHidden = extraItems.length;
-
-      toggle.addEventListener("click", (e) => {
+      this.showMoreToggle.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        const isCurrentlyExpanded =
-          localStorage.getItem("brand-filters-expanded") === "true";
-
-        if (isCurrentlyExpanded) {
-          // Collapse
-          extraItems.forEach(
-            (item) => ((item as HTMLElement).style.display = "none")
-          );
-          toggle.textContent = `+ Show ${totalHidden} more`;
-          localStorage.setItem("brand-filters-expanded", "false");
+        if (this.isExpanded) {
+          this.collapseFilters();
         } else {
-          // Expand
-          extraItems.forEach(
-            (item) => ((item as HTMLElement).style.display = "flex")
-          );
-          toggle.textContent = "- Show less";
-          localStorage.setItem("brand-filters-expanded", "true");
+          this.expandFilters();
         }
       });
     }
 
-    private restoreShowMoreState(): void {
-      const isExpanded = localStorage.getItem("brand-filters-expanded");
-      const toggle = document.getElementById("show-more-toggle");
+    private collapseFilters(): void {
       const extraItems = document.querySelectorAll(".brand-extra-item");
+      const collapsedText = this.showMoreToggle?.dataset.collapsedText || "+ Show more";
 
-      if (isExpanded === "false" && toggle) {
-        // Hide extra items if previously collapsed
-        extraItems.forEach(
-          (item) => ((item as HTMLElement).style.display = "none")
-        );
-        toggle.textContent = `+ Show ${extraItems.length} more`;
-      } else {
-        // Default: show all (expanded state)
-        extraItems.forEach(
-          (item) => ((item as HTMLElement).style.display = "flex")
-        );
-        if (toggle) toggle.textContent = "- Show less";
-        if (isExpanded === null)
-          localStorage.setItem("brand-filters-expanded", "true");
+      extraItems.forEach((item) => {
+        (item as HTMLElement).classList.add("hidden");
+      });
+
+      if (this.showMoreToggle) {
+        this.showMoreToggle.textContent = collapsedText;
       }
+
+      this.isExpanded = false;
+    }
+
+    private expandFilters(): void {
+      const extraItems = document.querySelectorAll(".brand-extra-item");
+      const expandedText = this.showMoreToggle?.dataset.expandedText || "- Show less";
+
+      extraItems.forEach((item) => {
+        (item as HTMLElement).classList.remove("hidden");
+      });
+
+      if (this.showMoreToggle) {
+        this.showMoreToggle.textContent = expandedText;
+      }
+
+      this.isExpanded = true;
+    }
+
+    private setupClearButtons(): void {
+      // Desktop clear button
+      const clearBtn = document.querySelector("[data-clear-filters]");
+      clearBtn?.addEventListener("click", () => {
+        this.clearFiltersAndNavigate();
+      });
+
+      // Mobile clear button
+      const clearBtnMobile = document.querySelector("[data-clear-filters-mobile]");
+      clearBtnMobile?.addEventListener("click", () => {
+        this.clearFiltersAndNavigate();
+      });
+    }
+
+    private clearFiltersAndNavigate(): void {
+      const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
+      const params = new URLSearchParams();
+
+      if (currentPageSize !== "24") {
+        params.set("pageSize", currentPageSize);
+      }
+
+      const queryString = params.toString();
+      const basePath = window.location.pathname;
+      const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
+
+      // Add transition effect
+      const grid = document.getElementById("filterable-product-grid");
+      if (grid) {
+        grid.style.opacity = "0.5";
+      }
+
+      sessionStorage.setItem("filtering-in-progress", "true");
+
+      setTimeout(() => {
+        window.location.href = newUrl;
+      }, 150);
     }
 
     private setupMobileDrawer(): void {
@@ -340,27 +372,6 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
   }
 
   document.addEventListener("astro:page-load", () => {
-    new DesktopFilters();
+    new EnhancedFilters();
   });
 </script>
-
-<style>
-  .elco-checkbox {
-    accent-color: var(--ui-accent);
-  }
-
-  .elco-checkbox:focus {
-    outline: 2px solid var(--ui-accent);
-    outline-offset: 2px;
-  }
-
-  .brand-extra-item {
-    transition: all 0.2s ease;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .brand-extra-item {
-      transition: none !important;
-    }
-  }
-</style>

@@ -95,7 +95,7 @@ const getPageURL = (page: number) =>
         <a
           href={prevURL}
           data-astro-reload
-          class="flex items-center px-3 py-2 text-sm text-ui-card-text bg-ui-card-surface border border-ui-card-border rounded-sm hover:bg-ui-card-hover transition-colors"
+          class="flex items-center p-2 text-sm text-ui-card-text bg-ui-card-surface border border-ui-card-border rounded-full hover:bg-ui-card-hover transition-colors"
           aria-label={`Go to page ${currentPage - 1}`}
         >
           <svg
@@ -111,10 +111,10 @@ const getPageURL = (page: number) =>
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          <span class="hidden sm:inline">Previous</span>
+          {/* <span class="hidden sm:inline">Previous</span> */}
         </a>
       ) : (
-        <span class="flex items-center px-3 py-2 text-sm text-content-meta bg-surface-secondary border border-ui-border rounded-sm cursor-not-allowed">
+        <span class="flex items-center p-2 text-sm text-content-meta bg-surface-secondary border border-ui-border rounded-full cursor-not-allowed">
           <svg
             class="w-4 h-4 mr-1"
             fill="none"
@@ -128,7 +128,7 @@ const getPageURL = (page: number) =>
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          <span class="hidden sm:inline">Previous</span>
+          {/* <span class="hidden sm:inline">Previous</span> */}
         </span>
       )
     }
@@ -138,16 +138,16 @@ const getPageURL = (page: number) =>
       {
         pageNumbers.map((page, index) =>
           page === "ellipsis" ? (
-            <span class="px-3 py-2 text-content-meta" aria-hidden="true">
+            <span class="px-3 py-1 text-content-meta" aria-hidden="true">
               ...
             </span>
           ) : (
             <a
               href={getPageURL(page)}
               data-astro-reload
-              class={`px-3 py-2 text-sm border rounded-sm transition-colors ${
+              class={`px-3 py-1 text-sm border rounded-full transition-colors ${
                 page === currentPage
-                  ? "bg-ui-accent text-ui-accent-text border-ui-accent font-medium pointer-events-none"
+                  ? "bg-ui-button-surface text-ui-button-text border-ui-button-border font-medium pointer-events-none"
                   : "text-ui-card-text bg-ui-card-surface border-ui-card-border hover:bg-ui-card-hover"
               }`}
               aria-label={
@@ -166,7 +166,7 @@ const getPageURL = (page: number) =>
 
     <!-- Page Info (Mobile) -->
     <div
-      class="flex md:hidden items-center px-3 py-2 text-sm text-content-body bg-surface-secondary border border-ui-border rounded-sm"
+      class="flex md:hidden items-center px-3 py-2 text-sm text-content-body bg-surface-secondary border border-ui-border rounded-full"
     >
       {currentPage} of {totalPages}
     </div>
@@ -177,10 +177,10 @@ const getPageURL = (page: number) =>
         <a
           href={nextURL}
           data-astro-reload
-          class="flex items-center px-3 py-2 text-sm text-ui-card-text bg-ui-card-surface border border-ui-card-border rounded-sm hover:bg-ui-card-hover transition-colors"
+          class="flex items-center px-3 py-2 text-sm text-ui-card-text bg-ui-card-surface border border-ui-card-border rounded-full hover:bg-ui-card-hover transition-colors"
           aria-label={`Go to page ${currentPage + 1}`}
         >
-          <span class="hidden sm:inline">Next</span>
+          {/* <span class="hidden sm:inline">Next</span> */}
           <svg
             class="w-4 h-4 ml-1"
             fill="none"
@@ -196,8 +196,8 @@ const getPageURL = (page: number) =>
           </svg>
         </a>
       ) : (
-        <span class="flex items-center px-3 py-2 text-sm text-content-meta bg-surface-secondary border border-ui-border rounded-sm cursor-not-allowed">
-          <span class="hidden sm:inline">Next</span>
+        <span class="flex items-center px-3 py-2 text-sm text-content-meta bg-surface-secondary border border-ui-border rounded-full cursor-not-allowed">
+          {/* <span class="hidden sm:inline">Next</span> */}
           <svg
             class="w-4 h-4 ml-1"
             fill="none"
@@ -218,7 +218,7 @@ const getPageURL = (page: number) =>
 </nav>
 
 <!-- Results Summary -->
-<div class="text-center text-sm text-content-meta mb-2">
+<div class="text-center text-sm text-content-meta mb-2 sr-only">
   Showing {(currentPage - 1) * pageSize + 1} to {
     Math.min(currentPage * pageSize, pagination.totalProducts)
   } of {pagination.totalProducts} products
