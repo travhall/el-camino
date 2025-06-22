@@ -21,11 +21,11 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
 ---
 
 <!-- Desktop Filter Sidebar -->
-<div class="lg:block sticky top-16">
+<div class="lg:block sticky top-16 bg-surface-primary">
   <form method="GET" action="" class="hidden lg:block p-2 overflow-y-auto">
     <input type="hidden" name="pageSize" value={currentPageSize} />
 
-    <div class="flex items-center justify-between mb-2">
+    <!-- <div class="flex items-center justify-between mb-2">
       <h2 class="text-sm font-semibold text-content-heading">Filters</h2>
       {
         currentBrands.length > 0 && (
@@ -37,20 +37,28 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
           </a>
         )
       }
-    </div>
+    </div> -->
 
     <!-- Results Count -->
-    <!-- <div class="mb-2 p-2 bg-surface-secondary rounded-sm">
-      <p class="text-sm text-content-meta">
-        Showing <span>{filteredCount}</span> of <span>{totalProducts}</span> products
-      </p>
-    </div> -->
+    <p class="text-sm text-content-meta sr-only">
+      Showing <span>{filteredCount}</span> of <span>{totalProducts}</span> products
+    </p>
 
     <!-- Brand Filter Section -->
     {
       filterOptions.brands.length > 0 && (
         <div class="mb-4">
-          <h3 class="text-sm font-medium text-content-heading mb-2">Brand</h3>
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium text-content-heading mb-2">Brand</h3>
+            {currentBrands.length > 0 && (
+              <a
+                href={`${Astro.url.pathname}?pageSize=${currentPageSize}`}
+                class="text-sm text-content-meta hover:text-content-emphasis transition-colors"
+              >
+                Clear Filters
+              </a>
+            )}
+          </div>
           <div class="space-y-1">
             {filterOptions.brands.map((brand, index) => {
               const isHidden = index >= DEFAULT_VISIBLE_BRANDS;
