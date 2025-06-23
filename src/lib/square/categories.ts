@@ -295,6 +295,26 @@ import { calculatePaginationMeta } from "./types";
 import { filterProducts, extractFilterOptions } from "./filterUtils";
 
 /**
+ * Fetch ALL products from category, then filter and paginate
+ */
+async function fetchAllProductsFromCategory(categoryId: string): Promise<any[]> {
+  const allProducts: any[] = [];
+  let cursor: string | undefined = undefined;
+  
+  do {
+    const batch = await fetchProductsByCategory(categoryId, { 
+      limit: 100, 
+      cursor 
+    });
+    
+    allProducts.push(...batch.products);
+    cursor = batch.nextCursor;
+  } while (cursor);
+  
+  return allProducts;
+}
+
+/**
  * Fetch products with server-side filtering and page-based pagination
  */
 export async function fetchProductsByCategoryWithPagination(
@@ -303,18 +323,14 @@ export async function fetchProductsByCategoryWithPagination(
 ): Promise<PaginatedProductsWithMeta> {
   const { page = 1, pageSize = 24, filters = { brands: [] } } = options;
 
-  // Use smaller fetch limit to reduce API calls
-  const baseCacheKey = `category-products-${categoryId}`;
+  // Cache ALL products for the category
+  const baseCacheKey = `category-all-products-${categoryId}`;
 
   return productCache
     .getOrCompute(baseCacheKey, async () => {
       try {
-        // Fetch ALL products for category once
-        const squareResult = await fetchProductsByCategory(categoryId, {
-          limit: 100,
-        });
-
-        return squareResult.products;
+        // Fetch ALL products for category - this fixes the pagination bug
+        return await fetchAllProductsFromCategory(categoryId);
       } catch (error) {
         return [];
       }
