@@ -1,5 +1,5 @@
 ---
-// src/components/ProductFilters.astro - Fixed menu collapse with sessionStorage
+// src/components/ProductFilters.astro - Enhanced UX with fixed issues
 import type { FilterOptions } from "@/lib/square/types";
 
 interface Props {
@@ -13,4 +13,379 @@ const { filterOptions, totalProducts, filteredCount } = Astro.props;
 // Parse current filters from URL for server-side rendering
 const currentParams = new URLSearchParams(Astro.url.search);
 const currentBrands = currentParams.getAll("brands") || [];
-const currentPageSize = currentParams.get("pageSize") || "24
+const currentPageSize = currentParams.get("pageSize") || "24";
+
+// Configuration for show more/less functionality
+const DEFAULT_VISIBLE_BRANDS = 6;
+const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
+---
+
+<!-- Desktop Filter Sidebar -->
+<div class="lg:block bg-surface-primary">
+  <form method="GET" action="" class="hidden lg:block p-2 overflow-y-auto">
+    <input type="hidden" name="pageSize" value={currentPageSize} />
+
+    <!-- Results Count -->
+    <div class="mb-4 pb-4 border-b-2 border-border-primary">
+      <p class="text-lg text-content-body font-medium">
+        {filteredCount === totalProducts 
+          ? `${totalProducts} products`
+          : `${filteredCount} of ${totalProducts} products`
+        }
+      </p>
+    </div>
+
+    <!-- Brand Filter Section -->
+    {
+      filterOptions.brands.length > 0 && (
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xl font-medium font-display text-content-heading">Brand</h3>
+            {currentBrands.length > 0 && (
+              <button
+                type="button"
+                data-clear-filters
+                class="text-sm text-content-meta hover:text-content-emphasis transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <!-- Brand list with controlled visibility -->
+          <div class="space-y-1" data-brand-list>
+            {filterOptions.brands.map((brand, index) => {
+              const isHidden = index >= DEFAULT_VISIBLE_BRANDS;
+              return (
+                <label
+                  class={`flex items-center group cursor-pointer p-1 rounded-sm hover:bg-surface-secondary transition-colors ${isHidden ? "brand-extra-item hidden" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    name="brands"
+                    value={brand.name}
+                    checked={currentBrands.includes(brand.name)}
+                    class="elco-checkbox mr-2 w-4 h-4 rounded-sm border-2 border-ui-input-border text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                  />
+                  <span class="flex-1 text-content-body group-hover:text-content-emphasis">
+                    {brand.name}
+                  </span>
+                  <span class="text-sm text-content-meta mr-2">
+                    ({brand.count})
+                  </span>
+                </label>
+              );
+            })}
+
+            {shouldShowToggle && (
+              <button
+                type="button"
+                id="show-more-toggle"
+                class="w-full text-left text-sm text-ui-accent hover:text-ui-accent-hover transition-colors p-1 font-medium"
+                data-collapsed-text={`+ Show ${filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more`}
+                data-expanded-text="- Show less"
+              >
+                + Show {filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more
+              </button>
+            )}
+          </div>
+        </div>
+      )
+    }
+  </form>
+</div>
+
+<!-- Mobile Filter Button -->
+<button
+  id="mobile-filter-toggle"
+  class="lg:hidden fixed bottom-4 right-4 bg-ui-nav-surface text-ui-button-primary-text rounded-md flex flex-row gap-2 p-4 shadow-lg z-[250] transition-transform"
+  aria-label="Open Filters"
+>
+  Filters
+  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"
+    ></path>
+  </svg>
+  {
+    currentBrands.length > 0 && (
+      <span class="absolute -top-1 -right-1 bg-ui-button-surface text-ui-button-text font-bold text-sm rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1">
+        {currentBrands.length}
+      </span>
+    )
+  }
+</button>
+
+<!-- Mobile Drawer Overlay -->
+<div
+  id="mobile-filter-overlay"
+  class="lg:hidden fixed inset-0 bg-surface-tertiary/80 dark:bg-surface-primary/80 backdrop-blur-sm z-40 transition-opacity duration-300 opacity-0 pointer-events-none"
+>
+</div>
+
+<!-- Mobile Filter Drawer -->
+<div
+  id="mobile-filter-drawer"
+  class="lg:hidden fixed bottom-0 left-0 right-0 bg-surface-secondary border-t border-ui-border z-[500] max-h-[80vh] overflow-y-auto transform translate-y-full transition-transform duration-300"
+>
+  <form method="GET" action="" class="p-4">
+    <!-- Preserve existing URL parameters -->
+    <input type="hidden" name="pageSize" value={currentPageSize} />
+
+    <!-- Mobile Header -->
+    <div
+      class="flex items-center justify-between mb-4 pb-4 border-b border-ui-border"
+    >
+      <h2 class="text-lg font-semibold text-content-heading">
+        Filter Products
+      </h2>
+      <button
+        type="button"
+        id="mobile-filter-close"
+        class="p-1 text-content-meta hover:text-content-emphasis"
+        aria-label="Close Filters"
+      >
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Results Count -->
+    <div class="mb-4 p-3 bg-surface-tertiary rounded-sm">
+      <p class="text-sm text-content-meta">
+        {filteredCount} of {totalProducts} products
+      </p>
+    </div>
+
+    <!-- Mobile Brand Filter Section -->
+    <div class="mb-6">
+      <h3 class="text-base font-medium text-content-heading mb-3">Brand</h3>
+      <div class="space-y-3 max-h-64 overflow-y-auto">
+        {
+          filterOptions.brands.map((brand) => (
+            <label class="flex items-center justify-between group cursor-pointer p-3 rounded-sm hover:bg-surface-tertiary transition-colors">
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  name="brands"
+                  value={brand.name}
+                  checked={currentBrands.includes(brand.name)}
+                  class="elco-checkbox mr-3 rounded-sm border-ui-input-border text-ui-accent focus:ring-ui-accent w-5 h-5"
+                />
+                <span class="text-content-body group-hover:text-content-emphasis">
+                  {brand.name}
+                </span>
+              </div>
+              <span class="text-sm text-content-meta">({brand.count})</span>
+            </label>
+          ))
+        }
+      </div>
+    </div>
+
+    <!-- Mobile Actions -->
+    <div class="flex gap-3 pt-4 border-t border-ui-border">
+      {
+        currentBrands.length > 0 && (
+          <button
+            type="button"
+            data-clear-filters-mobile
+            class="flex-1 py-3 px-4 border border-ui-button-border text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
+          >
+            Clear Filters
+          </button>
+        )
+      }
+      <button
+        type="submit"
+        class="flex-1 py-3 px-4 bg-ui-button-surface text-ui-button-text rounded-sm hover:bg-ui-button-primary-hover transition-colors font-medium"
+      >
+        Apply Filters
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+  class EnhancedFilters {
+    private form: HTMLFormElement | null;
+    private showMoreToggle: HTMLButtonElement | null;
+    private isExpanded: boolean = false;
+
+    constructor() {
+      this.form = document.querySelector(".lg\\:block form") as HTMLFormElement;
+      this.showMoreToggle = document.getElementById("show-more-toggle") as HTMLButtonElement;
+      this.setupDesktopFiltering();
+      this.setupShowMoreToggle();
+      this.setupMobileDrawer();
+      this.setupClearButtons();
+
+      // Initialize collapsed state but restore if user had it expanded
+      this.initializeMenuState();
+    }
+
+    private initializeMenuState(): void {
+      const wasExpanded = sessionStorage.getItem("filter-menu-expanded") === "true";
+      
+      if (wasExpanded) {
+        this.expandFilters();
+      } else {
+        this.collapseFilters();
+      }
+    }
+
+    private setupDesktopFiltering(): void {
+      if (!this.form) return;
+
+      const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach((checkbox) => {
+        checkbox.addEventListener("change", () => {
+          // Store current expanded state before form submits
+          sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+          
+          const grid = document.getElementById("filterable-product-grid");
+          if (grid) {
+            grid.style.transition = "opacity 0.3s ease";
+            grid.style.opacity = "0.5";
+          }
+
+          sessionStorage.setItem("filtering-in-progress", "true");
+
+          setTimeout(() => {
+            this.form!.submit();
+          }, 150);
+        });
+      });
+    }
+
+    private setupShowMoreToggle(): void {
+      if (!this.showMoreToggle) return;
+
+      this.showMoreToggle.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (this.isExpanded) {
+          this.collapseFilters();
+        } else {
+          this.expandFilters();
+        }
+
+        // Store the new state
+        sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+      });
+    }
+
+    private collapseFilters(): void {
+      const extraItems = document.querySelectorAll(".brand-extra-item");
+      const collapsedText = this.showMoreToggle?.dataset.collapsedText || "+ Show more";
+
+      extraItems.forEach((item) => {
+        (item as HTMLElement).classList.add("hidden");
+      });
+
+      if (this.showMoreToggle) {
+        this.showMoreToggle.textContent = collapsedText;
+      }
+
+      this.isExpanded = false;
+    }
+
+    private expandFilters(): void {
+      const extraItems = document.querySelectorAll(".brand-extra-item");
+      const expandedText = this.showMoreToggle?.dataset.expandedText || "- Show less";
+
+      extraItems.forEach((item) => {
+        (item as HTMLElement).classList.remove("hidden");
+      });
+
+      if (this.showMoreToggle) {
+        this.showMoreToggle.textContent = expandedText;
+      }
+
+      this.isExpanded = true;
+    }
+
+    private setupClearButtons(): void {
+      // Desktop clear button
+      const clearBtn = document.querySelector("[data-clear-filters]");
+      clearBtn?.addEventListener("click", () => {
+        this.clearFiltersAndNavigate();
+      });
+
+      // Mobile clear button
+      const clearBtnMobile = document.querySelector("[data-clear-filters-mobile]");
+      clearBtnMobile?.addEventListener("click", () => {
+        this.clearFiltersAndNavigate();
+      });
+    }
+
+    private clearFiltersAndNavigate(): void {
+      // Clear the menu state when clearing filters
+      sessionStorage.removeItem("filter-menu-expanded");
+      
+      const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
+      const params = new URLSearchParams();
+
+      if (currentPageSize !== "24") {
+        params.set("pageSize", currentPageSize);
+      }
+
+      const queryString = params.toString();
+      const basePath = window.location.pathname;
+      const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
+
+      // Add transition effect
+      const grid = document.getElementById("filterable-product-grid");
+      if (grid) {
+        grid.style.opacity = "0.5";
+      }
+
+      sessionStorage.setItem("filtering-in-progress", "true");
+
+      setTimeout(() => {
+        window.location.href = newUrl;
+      }, 150);
+    }
+
+    private setupMobileDrawer(): void {
+      const toggle = document.getElementById("mobile-filter-toggle");
+      const drawer = document.getElementById("mobile-filter-drawer");
+      const overlay = document.getElementById("mobile-filter-overlay");
+      const close = document.getElementById("mobile-filter-close");
+
+      toggle?.addEventListener("click", () => {
+        overlay?.classList.remove("pointer-events-none", "opacity-0");
+        drawer?.classList.remove("translate-y-full");
+        document.body.style.overflow = "hidden";
+      });
+
+      const closeDrawer = () => {
+        overlay?.classList.add("opacity-0");
+        drawer?.classList.add("translate-y-full");
+        setTimeout(() => overlay?.classList.add("pointer-events-none"), 300);
+        document.body.style.overflow = "";
+      };
+
+      overlay?.addEventListener("click", closeDrawer);
+      close?.addEventListener("click", closeDrawer);
+    }
+  }
+
+  document.addEventListener("astro:page-load", () => {
+    new EnhancedFilters();
+  });
+</script>
