@@ -385,11 +385,30 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
     }
   }
 
-  function initFilters() {
-    new EnhancedFilters();
+  (function() {
+  let attempts = 0;
+  const maxAttempts = 50;
+  
+  function tryInit() {
+    attempts++;
+    
+    const showMoreToggle = document.getElementById("show-more-toggle");
+    const form = document.querySelector(".lg\\:block form");
+    
+    if (showMoreToggle && form) {
+      // Elements exist, initialize
+      new EnhancedFilters();
+    } else if (attempts < maxAttempts) {
+      // Try again in 100ms
+      setTimeout(tryInit, 100);
+    }
   }
-
-  document.addEventListener("DOMContentLoaded", initFilters);
-  document.addEventListener("astro:page-load", initFilters);
-
+  
+  // Start trying immediately
+  tryInit();
+  
+  // Also try on various events
+  document.addEventListener("DOMContentLoaded", tryInit);
+  document.addEventListener("astro:page-load", tryInit);
+})();
 </script>
