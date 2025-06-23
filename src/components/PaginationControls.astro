@@ -79,10 +79,9 @@ const getPageURL = (page: number) =>
     <!-- Previous Button -->
     {
       prevURL ? (
-        <button
-          type="button"
-          data-pagination-page={currentPage - 1}
-          data-pagination-url={prevURL}
+        <a
+          href={prevURL}
+          data-astro-reload
           class="flex items-center p-2 text-sm text-ui-card-text bg-ui-card-surface border border-ui-card-border rounded-full hover:bg-ui-card-hover transition-colors"
           aria-label={`Go to page ${currentPage - 1}`}
         >
@@ -99,7 +98,7 @@ const getPageURL = (page: number) =>
               d="M15 19l-7-7 7-7"
             />
           </svg>
-        </button>
+        </a>
       ) : (
         <span class="flex items-center p-2 text-sm text-content-meta bg-surface-secondary border border-ui-border rounded-full cursor-not-allowed">
           <svg
@@ -127,26 +126,23 @@ const getPageURL = (page: number) =>
             <span class="px-3 py-1 text-content-meta" aria-hidden="true">
               ...
             </span>
-          ) : (
-            <button
-              type="button"
-              data-pagination-page={page}
-              data-pagination-url={getPageURL(page)}
-              class={`px-3 py-1 text-sm border rounded-full transition-colors ${
-                page === currentPage
-                  ? "bg-ui-button-surface text-ui-button-text border-ui-button-border font-medium pointer-events-none"
-                  : "text-ui-card-text bg-ui-card-surface border-ui-card-border hover:bg-ui-card-hover"
-              }`}
-              aria-label={
-                page === currentPage
-                  ? `Current page, page ${page}`
-                  : `Go to page ${page}`
-              }
-              aria-current={page === currentPage ? "page" : undefined}
-              disabled={page === currentPage}
+          ) : page === currentPage ? (
+            <span
+              class="px-3 py-1 text-sm border rounded-full bg-ui-button-surface text-ui-button-text border-ui-button-border font-medium"
+              aria-label={`Current page, page ${page}`}
+              aria-current="page"
             >
               {page}
-            </button>
+            </span>
+          ) : (
+            <a
+              href={getPageURL(page)}
+              data-astro-reload
+              class="px-3 py-1 text-sm border rounded-full transition-colors text-ui-card-text bg-ui-card-surface border-ui-card-border hover:bg-ui-card-hover"
+              aria-label={`Go to page ${page}`}
+            >
+              {page}
+            </a>
           )
         )
       }
@@ -162,10 +158,9 @@ const getPageURL = (page: number) =>
     <!-- Next Button -->
     {
       nextURL ? (
-        <button
-          type="button"
-          data-pagination-page={currentPage + 1}
-          data-pagination-url={nextURL}
+        <a
+          href={nextURL}
+          data-astro-reload
           class="flex items-center px-3 py-2 text-sm text-ui-card-text bg-ui-card-surface border border-ui-card-border rounded-full hover:bg-ui-card-hover transition-colors"
           aria-label={`Go to page ${currentPage + 1}`}
         >
@@ -182,7 +177,7 @@ const getPageURL = (page: number) =>
               d="M9 5l7 7-7 7"
             />
           </svg>
-        </button>
+        </a>
       ) : (
         <span class="flex items-center px-3 py-2 text-sm text-content-meta bg-surface-secondary border border-ui-border rounded-full cursor-not-allowed">
           <svg
