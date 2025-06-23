@@ -1,5 +1,5 @@
 ---
-// src/components/ProductFilters.astro - Enhanced UX with fixed issues
+// src/components/ProductFilters.astro - True AJAX filtering with no page reloads
 import type { FilterOptions } from "@/lib/square/types";
 
 interface Props {
@@ -22,12 +22,10 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
 
 <!-- Desktop Filter Sidebar -->
 <div class="lg:block bg-surface-primary">
-  <form method="GET" action="" class="hidden lg:block p-2 overflow-y-auto">
-    <input type="hidden" name="pageSize" value={currentPageSize} />
-
+  <div class="hidden lg:block p-2 overflow-y-auto" id="desktop-filter-container">
     <!-- Results Count -->
     <div class="mb-4 pb-4 border-b-2 border-border-primary">
-      <p class="text-lg text-content-body font-medium">
+      <p class="text-lg text-content-body font-medium" id="results-counter">
         {filteredCount === totalProducts 
           ? `${totalProducts} products`
           : `${filteredCount} of ${totalProducts} products`
@@ -65,6 +63,7 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
                     name="brands"
                     value={brand.name}
                     checked={currentBrands.includes(brand.name)}
+                    data-filter-checkbox
                     class="elco-checkbox mr-2 w-4 h-4 rounded-sm border-2 border-ui-input-border text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
                   />
                   <span class="flex-1 text-content-body group-hover:text-content-emphasis">
@@ -92,7 +91,7 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
         </div>
       )
     }
-  </form>
+  </div>
 </div>
 
 <!-- Mobile Filter Button -->
@@ -131,10 +130,7 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
   id="mobile-filter-drawer"
   class="lg:hidden fixed bottom-0 left-0 right-0 bg-surface-secondary border-t border-ui-border z-[500] max-h-[80vh] overflow-y-auto transform translate-y-full transition-transform duration-300"
 >
-  <form method="GET" action="" class="p-4">
-    <!-- Preserve existing URL parameters -->
-    <input type="hidden" name="pageSize" value={currentPageSize} />
-
+  <div class="p-4" id="mobile-filter-container">
     <!-- Mobile Header -->
     <div
       class="flex items-center justify-between mb-4 pb-4 border-b border-ui-border"
@@ -165,7 +161,7 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
 
     <!-- Results Count -->
     <div class="mb-4 p-3 bg-surface-tertiary rounded-sm">
-      <p class="text-sm text-content-meta">
+      <p class="text-sm text-content-meta" id="mobile-results-counter">
         {filteredCount} of {totalProducts} products
       </p>
     </div>
@@ -183,6 +179,7 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
                   name="brands"
                   value={brand.name}
                   checked={currentBrands.includes(brand.name)}
+                  data-filter-checkbox
                   class="elco-checkbox mr-3 rounded-sm border-ui-input-border text-ui-accent focus:ring-ui-accent w-5 h-5"
                 />
                 <span class="text-content-body group-hover:text-content-emphasis">
@@ -210,57 +207,283 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
         )
       }
       <button
-        type="submit"
+        type="button"
+        id="apply-mobile-filters"
         class="flex-1 py-3 px-4 bg-ui-button-surface text-ui-button-text rounded-sm hover:bg-ui-button-primary-hover transition-colors font-medium"
       >
         Apply Filters
       </button>
     </div>
-  </form>
+  </div>
 </div>
 
 <script>
-  class EnhancedFilters {
-    private form: HTMLFormElement | null;
+  class AjaxFilters {
     private showMoreToggle: HTMLButtonElement | null;
     private isExpanded: boolean = false;
+    private isLoading: boolean = false;
+    private currentCategoryPath: string;
 
     constructor() {
-      this.form = document.querySelector(".lg\\:block form") as HTMLFormElement;
       this.showMoreToggle = document.getElementById("show-more-toggle") as HTMLButtonElement;
-      this.setupDesktopFiltering();
+      this.currentCategoryPath = window.location.pathname;
+      
+      this.setupAjaxFiltering();
       this.setupShowMoreToggle();
       this.setupMobileDrawer();
       this.setupClearButtons();
-
-      // Initialize collapsed state
+      this.setupAppliedFiltersAjax();
       this.initializeCollapsedState();
     }
 
     private initializeCollapsedState(): void {
-      // Always start collapsed
       this.collapseFilters();
     }
 
-    private setupDesktopFiltering(): void {
-      if (!this.form) return;
-
-      const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
-      checkboxes.forEach((checkbox) => {
+    private setupAjaxFiltering(): void {
+      // Desktop checkboxes
+      const desktopCheckboxes = document.querySelectorAll('#desktop-filter-container [data-filter-checkbox]');
+      desktopCheckboxes.forEach((checkbox) => {
         checkbox.addEventListener("change", () => {
-          const grid = document.getElementById("filterable-product-grid");
-          if (grid) {
-            grid.style.transition = "opacity 0.3s ease";
-            grid.style.opacity = "0.5";
-          }
-
-          sessionStorage.setItem("filtering-in-progress", "true");
-
-          setTimeout(() => {
-            this.form!.submit();
-          }, 150);
+          this.handleFilterChange();
         });
       });
+
+      // Mobile checkboxes 
+      const mobileCheckboxes = document.querySelectorAll('#mobile-filter-container [data-filter-checkbox]');
+      mobileCheckboxes.forEach((checkbox) => {
+        checkbox.addEventListener("change", () => {
+          // For mobile, just update the apply button state
+          this.updateMobileApplyButton();
+        });
+      });
+
+      // Mobile apply button
+      const applyButton = document.getElementById("apply-mobile-filters");
+      applyButton?.addEventListener("click", () => {
+        this.handleFilterChange();
+        this.closeMobileDrawer();
+      });
+    }
+
+    private async handleFilterChange(): Promise<void> {
+      if (this.isLoading) return;
+
+      this.isLoading = true;
+      this.showLoadingState();
+
+      try {
+        const selectedBrands = this.getSelectedBrands();
+        const newUrl = this.buildFilterUrl(selectedBrands);
+        
+        // Fetch filtered content
+        const response = await fetch(newUrl.toString(), {
+          headers: {
+            'Accept': 'text/html',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const html = await response.text();
+        await this.updateContent(html);
+        
+        // Update URL without page reload
+        history.pushState(null, '', newUrl);
+
+      } catch (error) {
+        console.error('Filter error:', error);
+        this.showErrorState();
+      } finally {
+        this.isLoading = false;
+        this.hideLoadingState();
+      }
+    }
+
+    private getSelectedBrands(): string[] {
+      const checkboxes = document.querySelectorAll('[data-filter-checkbox]:checked');
+      return Array.from(checkboxes).map(cb => (cb as HTMLInputElement).value);
+    }
+
+    private buildFilterUrl(brands: string[]): URL {
+      const url = new URL(window.location.href);
+      url.search = '';
+      
+      const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
+      if (currentPageSize !== "24") {
+        url.searchParams.set("pageSize", currentPageSize);
+      }
+
+      brands.forEach(brand => {
+        url.searchParams.append("brands", brand);
+      });
+
+      return url;
+    }
+
+    private async updateContent(html: string): Promise<void> {
+      const parser = new DOMParser();
+      const newDoc = parser.parseFromString(html, 'text/html');
+      
+      // Extract new product grid
+      const newGrid = newDoc.querySelector('#filterable-product-grid');
+      const currentGrid = document.querySelector('#filterable-product-grid');
+      
+      if (newGrid && currentGrid) {
+        // Use your existing fade animation
+        (currentGrid as HTMLElement).style.opacity = '0';
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Replace content
+        currentGrid.innerHTML = newGrid.innerHTML;
+        
+        // Fade back in with your existing animation
+        (currentGrid as HTMLElement).style.opacity = '1';
+        
+        // Update results counter
+        this.updateResultsCounter(newDoc);
+        
+        // Update applied filters
+        await this.updateAppliedFilters(newDoc);
+      }
+    }
+
+    private updateResultsCounter(newDoc: Document): void {
+      // Update desktop results counter
+      const newCounter = newDoc.querySelector('#results-counter');
+      const currentCounter = document.querySelector('#results-counter');
+      
+      if (newCounter && currentCounter) {
+        currentCounter.textContent = newCounter.textContent;
+      }
+      
+      // Update mobile results counter
+      const newMobileCounter = newDoc.querySelector('#mobile-results-counter');
+      const currentMobileCounter = document.querySelector('#mobile-results-counter');
+      
+      if (newMobileCounter && currentMobileCounter) {
+        currentMobileCounter.textContent = newMobileCounter.textContent;
+      }
+      
+      // Also update any other results counters on the page
+      const allResultsElements = document.querySelectorAll('.text-lg.text-content-body.font-medium');
+      const newResultsElements = newDoc.querySelectorAll('.text-lg.text-content-body.font-medium');
+      
+      allResultsElements.forEach((element, index) => {
+        if (newResultsElements[index] && element.textContent?.includes('products')) {
+          element.textContent = newResultsElements[index].textContent;
+        }
+      });
+    }
+
+    private async updateAppliedFilters(newDoc: Document): Promise<void> {
+      // Update applied filters section
+      const newAppliedFilters = newDoc.querySelector('.mb-1.p-2.bg-surface-primary');
+      const currentAppliedFilters = document.querySelector('.mb-1.p-2.bg-surface-primary');
+      
+      if (newAppliedFilters && currentAppliedFilters) {
+        currentAppliedFilters.innerHTML = newAppliedFilters.innerHTML;
+      } else if (!newAppliedFilters && currentAppliedFilters) {
+        // No applied filters in new content - remove the current ones
+        currentAppliedFilters.remove();
+      } else if (newAppliedFilters && !currentAppliedFilters) {
+        // New applied filters but none currently - insert before product grid
+        const grid = document.querySelector('#filterable-product-grid');
+        if (grid) {
+          grid.parentNode?.insertBefore(newAppliedFilters.cloneNode(true), grid);
+        }
+      }
+    }
+
+    private showLoadingState(): void {
+      const resultsCounter = document.querySelector('#results-counter');
+      if (resultsCounter && !resultsCounter.textContent?.includes("Filtering")) {
+        resultsCounter.setAttribute('data-original-text', resultsCounter.textContent || '');
+        resultsCounter.textContent = "Filtering...";
+      }
+
+      // Show your existing skeletons
+      const grid = document.querySelector('#filterable-product-grid') as HTMLElement;
+      if (grid) {
+        grid.style.opacity = '0.6';
+        grid.style.pointerEvents = 'none';
+      }
+    }
+
+    private hideLoadingState(): void {
+      const resultsCounter = document.querySelector('#results-counter');
+      const originalText = resultsCounter?.getAttribute('data-original-text');
+      if (originalText && resultsCounter) {
+        resultsCounter.textContent = originalText;
+        resultsCounter.removeAttribute('data-original-text');
+      }
+
+      const grid = document.querySelector('#filterable-product-grid') as HTMLElement;
+      if (grid) {
+        grid.style.pointerEvents = '';
+      }
+    }
+
+    private setupAppliedFiltersAjax(): void {
+      // Intercept applied filter links to use AJAX
+      document.addEventListener('click', async (e) => {
+        const target = e.target as HTMLElement;
+        const link = target.closest('a[href*="category/"]') as HTMLAnchorElement;
+        
+        // Only handle applied filter links (they contain filter parameters)
+        if (link && (link.href.includes('brands=') || link.href.includes('pageSize='))) {
+          e.preventDefault();
+          
+          try {
+            this.showLoadingState();
+            
+            const response = await fetch(link.href, {
+              headers: {
+                'Accept': 'text/html',
+                'X-Requested-With': 'XMLHttpRequest'
+              }
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const html = await response.text();
+            await this.updateContent(html);
+            
+            // Update URL and checkboxes
+            history.pushState(null, '', link.href);
+            this.syncCheckboxesFromURL();
+            
+          } catch (error) {
+            console.error('Applied filter error:', error);
+            this.showErrorState();
+          } finally {
+            this.hideLoadingState();
+          }
+        }
+      });
+    }
+
+    private syncCheckboxesFromURL(): void {
+      const urlParams = new URLSearchParams(window.location.search);
+      const activeBrands = urlParams.getAll('brands');
+      
+      // Update all checkboxes to match URL state
+      const checkboxes = document.querySelectorAll('[data-filter-checkbox]');
+      checkboxes.forEach(checkbox => {
+        const input = checkbox as HTMLInputElement;
+        input.checked = activeBrands.includes(input.value);
+      });
+    }
+
+    private showErrorState(): void {
+      const resultsCounter = document.querySelector('#results-counter');
+      if (resultsCounter) {
+        resultsCounter.textContent = "Error loading filters. Please try again.";
+      }
     }
 
     private setupShowMoreToggle(): void {
@@ -309,42 +532,26 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
     }
 
     private setupClearButtons(): void {
-      // Desktop clear button
       const clearBtn = document.querySelector("[data-clear-filters]");
       clearBtn?.addEventListener("click", () => {
-        this.clearFiltersAndNavigate();
+        this.clearAllFilters();
       });
 
-      // Mobile clear button
       const clearBtnMobile = document.querySelector("[data-clear-filters-mobile]");
       clearBtnMobile?.addEventListener("click", () => {
-        this.clearFiltersAndNavigate();
+        this.clearAllFilters();
       });
     }
 
-    private clearFiltersAndNavigate(): void {
-      const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
-      const params = new URLSearchParams();
+    private async clearAllFilters(): Promise<void> {
+      // Uncheck all checkboxes
+      const checkboxes = document.querySelectorAll('[data-filter-checkbox]');
+      checkboxes.forEach(cb => {
+        (cb as HTMLInputElement).checked = false;
+      });
 
-      if (currentPageSize !== "24") {
-        params.set("pageSize", currentPageSize);
-      }
-
-      const queryString = params.toString();
-      const basePath = window.location.pathname;
-      const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
-
-      // Add transition effect
-      const grid = document.getElementById("filterable-product-grid");
-      if (grid) {
-        grid.style.opacity = "0.5";
-      }
-
-      sessionStorage.setItem("filtering-in-progress", "true");
-
-      setTimeout(() => {
-        window.location.href = newUrl;
-      }, 150);
+      // Apply the clear
+      await this.handleFilterChange();
     }
 
     private setupMobileDrawer(): void {
@@ -354,24 +561,48 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
       const close = document.getElementById("mobile-filter-close");
 
       toggle?.addEventListener("click", () => {
-        overlay?.classList.remove("pointer-events-none", "opacity-0");
-        drawer?.classList.remove("translate-y-full");
-        document.body.style.overflow = "hidden";
+        this.openMobileDrawer();
       });
 
-      const closeDrawer = () => {
-        overlay?.classList.add("opacity-0");
-        drawer?.classList.add("translate-y-full");
-        setTimeout(() => overlay?.classList.add("pointer-events-none"), 300);
-        document.body.style.overflow = "";
-      };
+      overlay?.addEventListener("click", () => {
+        this.closeMobileDrawer();
+      });
+      
+      close?.addEventListener("click", () => {
+        this.closeMobileDrawer();
+      });
+    }
 
-      overlay?.addEventListener("click", closeDrawer);
-      close?.addEventListener("click", closeDrawer);
+    private openMobileDrawer(): void {
+      const overlay = document.getElementById("mobile-filter-overlay");
+      const drawer = document.getElementById("mobile-filter-drawer");
+      
+      overlay?.classList.remove("pointer-events-none", "opacity-0");
+      drawer?.classList.remove("translate-y-full");
+      document.body.style.overflow = "hidden";
+    }
+
+    private closeMobileDrawer(): void {
+      const overlay = document.getElementById("mobile-filter-overlay");
+      const drawer = document.getElementById("mobile-filter-drawer");
+      
+      overlay?.classList.add("opacity-0");
+      drawer?.classList.add("translate-y-full");
+      setTimeout(() => overlay?.classList.add("pointer-events-none"), 300);
+      document.body.style.overflow = "";
+    }
+
+    private updateMobileApplyButton(): void {
+      const applyButton = document.getElementById("apply-mobile-filters");
+      const selectedCount = document.querySelectorAll('#mobile-filter-container [data-filter-checkbox]:checked').length;
+      
+      if (applyButton) {
+        applyButton.textContent = selectedCount > 0 ? `Apply Filters (${selectedCount})` : "Apply Filters";
+      }
     }
   }
 
   document.addEventListener("astro:page-load", () => {
-    new EnhancedFilters();
+    new AjaxFilters();
   });
 </script>
