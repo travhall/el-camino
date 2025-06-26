@@ -1,4 +1,4 @@
-// src/lib/square/categories.ts - WITH BRAND EXTRACTION
+// src/lib/square/categories.ts - WITH COMPREHENSIVE DEBUGGING
 import { squareClient } from "./client";
 import { batchGetImageUrls } from "./imageUtils";
 import type {
@@ -56,19 +56,32 @@ export async function fetchCategories(): Promise<Category[]> {
       }
 
       const rawObjects = response.result.objects;
-      return rawObjects
+      const categories = rawObjects
         .filter((item) => item.type === "CATEGORY")
         .map((item, index) => {
           // Extract ordinal from parentCategory (BigInt)
           const parentOrdinal = item.categoryData?.parentCategory?.ordinal;
           const orderValue = parentOrdinal ? Number(parentOrdinal) : 999;
 
-          // FIX: Handle both camelCase and snake_case field names from Square API
-          const rootCategoryId = 
-            item.categoryData?.rootCategory || 
-            (item.categoryData as any)?.root_category;
+          // ENHANCED: Try multiple ways to get rootCategoryId
+          let rootCategoryId = null;
+          
+          // Method 1: Standard camelCase
+          if (item.categoryData?.rootCategory) {
+            rootCategoryId = item.categoryData.rootCategory;
+          }
+          
+          // Method 2: snake_case fallback
+          if (!rootCategoryId && (item.categoryData as any)?.root_category) {
+            rootCategoryId = (item.categoryData as any).root_category;
+          }
+          
+          // Method 3: parent category ID fallback for subcategories  
+          if (!rootCategoryId && item.categoryData?.parentCategory?.id && !item.categoryData?.isTopLevel) {
+            rootCategoryId = item.categoryData.parentCategory.id;
+          }
 
-          return {
+          const category = {
             id: item.id,
             name: item.categoryData?.name || "",
             slug: createSlug(item.categoryData?.name || ""),
@@ -78,7 +91,23 @@ export async function fetchCategories(): Promise<Category[]> {
             apiIndex: rawObjects.indexOf(item),
             rawOrder: orderValue,
           };
+
+          // DEBUG: Log problematic categories
+          if (["Trucks", "Bearings Bolts & More", "Bottoms", "Hats"].includes(category.name)) {
+            console.log(`[DEBUG] Category ${category.name}:`, {
+              id: category.id,
+              isTopLevel: category.isTopLevel,
+              parentCategoryId: category.parentCategoryId,
+              rootCategoryId: category.rootCategoryId,
+              slug: category.slug
+            });
+          }
+
+          return category;
         });
+
+      console.log(`[DEBUG] Total categories processed: ${categories.length}`);
+      return categories;
     } catch (error) {
       const appError = processSquareError(error, "fetchCategories");
       return handleError<Category[]>(appError, []);
@@ -95,6 +124,8 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
       // Sort by Square's ordinal instead of hardcoded order
       let topLevelCategories = allCategories.filter((cat) => cat.isTopLevel);
 
+      console.log(`[DEBUG] Top level categories found: ${topLevelCategories.map(c => c.name).join(', ')}`);
+
       // REMOVE hardcoded getSortIndex, use Square's ordering
       topLevelCategories.sort((a, b) => {
         const orderA = a.rawOrder ?? 999;
@@ -108,10 +139,16 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
         return orderA - orderB;
       });
 
-      return topLevelCategories.map((topCat) => {
+      const hierarchy = topLevelCategories.map((topCat) => {
         let subcategories = allCategories.filter(
           (subCat) => subCat.rootCategoryId === topCat.id && !subCat.isTopLevel
         );
+
+        // DEBUG: Log subcategory matching for Skateboards and Apparel
+        if (["Skateboards", "Apparel"].includes(topCat.name)) {
+          console.log(`[DEBUG] ${topCat.name} (${topCat.id}) subcategories:`, 
+            subcategories.map(sub => `${sub.name} (${sub.id})`));
+        }
 
         // Sort subcategories by ordinal too
         subcategories.sort((a, b) => {
@@ -130,6 +167,9 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
           subcategories,
         };
       });
+
+      console.log(`[DEBUG] Hierarchy built with ${hierarchy.length} top-level categories`);
+      return hierarchy;
     } catch (error) {
       const appError = processSquareError(error, "fetchCategoryHierarchy");
       return handleError<CategoryHierarchy[]>(appError, []);
@@ -146,7 +186,6 @@ export async function fetchProductsByCategory(
 
   return productCache.getOrCompute(cacheKey, async () => {
     try {
-      // FIX: Use the newer searchCatalogItems method with proper request structure
       const searchRequest: any = {
         categoryIds: [categoryId],
         limit: Math.min(limit, 100),
@@ -156,8 +195,8 @@ export async function fetchProductsByCategory(
         searchRequest.cursor = cursor;
       }
 
-      // FIXED: Use the newer searchCatalogItems API method correctly
-      const { result } = await squareClient.catalogApi.searchCatalogItems(searchRequest);
+      const { result } =
+        await squareClient.catalogApi.searchCatalogItems(searchRequest);
 
       if (!result?.items?.length) {
         return {
@@ -221,9 +260,10 @@ export async function fetchProductsByCategory(
         };
       });
 
-      // console.log(
-      //   `[fetchProductsByCategory] Fetched ${products.length} products, ${products.filter((p) => p.brand).length} with brands`
-      // );
+      // Debug logging for problematic categories
+      if (["ET2B3DF2QDKJODWEGIJFKZRO", "BDVCRKM5GTQKUZCYAUGRYAK6", "67ZJ6CT7SHAHSUNNLYI4OQZM", "K2SJBMCJETKSKXORVELEPSZW"].includes(categoryId)) {
+        console.log(`[DEBUG] fetchProductsByCategory for ${categoryId}: found ${products.length} products`);
+      }
 
       return {
         products,
