@@ -146,6 +146,7 @@ export async function fetchProductsByCategory(
 
   return productCache.getOrCompute(cacheKey, async () => {
     try {
+      // FIX: Use the newer searchCatalogItems method with proper request structure
       const searchRequest: any = {
         categoryIds: [categoryId],
         limit: Math.min(limit, 100),
@@ -155,8 +156,8 @@ export async function fetchProductsByCategory(
         searchRequest.cursor = cursor;
       }
 
-      const { result } =
-        await squareClient.catalogApi.searchCatalogItems(searchRequest);
+      // FIXED: Use the newer searchCatalogItems API method correctly
+      const { result } = await squareClient.catalogApi.searchCatalogItems(searchRequest);
 
       if (!result?.items?.length) {
         return {
