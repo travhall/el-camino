@@ -63,13 +63,18 @@ export async function fetchCategories(): Promise<Category[]> {
           const parentOrdinal = item.categoryData?.parentCategory?.ordinal;
           const orderValue = parentOrdinal ? Number(parentOrdinal) : 999;
 
+          // FIX: Handle both camelCase and snake_case field names from Square API
+          const rootCategoryId = 
+            item.categoryData?.rootCategory || 
+            (item.categoryData as any)?.root_category;
+
           return {
             id: item.id,
             name: item.categoryData?.name || "",
             slug: createSlug(item.categoryData?.name || ""),
             isTopLevel: item.categoryData?.isTopLevel || false,
             parentCategoryId: item.categoryData?.parentCategory?.id,
-            rootCategoryId: item.categoryData?.rootCategory,
+            rootCategoryId: rootCategoryId,
             apiIndex: rawObjects.indexOf(item),
             rawOrder: orderValue,
           };
