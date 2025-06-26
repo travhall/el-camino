@@ -85,12 +85,12 @@ const navItems = [
 <!-- Skip to content link -->
 <a
   href="#main-content"
-  class="skip-link font-bold bg-surface-secondary border border-border-primary rounded absolute left-2 -top-16 focus-visible:top-2 p-2 z-50 transition-all"
+  class="skip-link font-bold bg-(--surface-secondary) border border-(--border-primary) rounded absolute left-2 -top-16 focus-visible:top-2 p-2 z-50 transition-all"
   >Skip to main content</a
 >
 
 <nav
-  class="flex flex-col lg:flex-row w-full lg:gap-2 justify-center border-4 border-border-secondary lg:border-0 bg-surface-secondary lg:relative lg:top-auto fixed -translate-x-full lg:translate-x-0 transition-transform duration-400 ease-in-out inset-0 top-[3rem] z-40 [&.nav-open]:translate-x-0 overflow-y-auto lg:overflow-visible"
+  class="flex flex-col lg:flex-row w-full lg:gap-2 justify-center border-4 border-(--border-secondary) lg:border-0 bg-(--surface-secondary) lg:relative lg:top-auto fixed -translate-x-full lg:translate-x-0 transition-transform duration-400 ease-in-out inset-0 top-12 z-40 [&.nav-open]:translate-x-0 overflow-y-auto lg:overflow-visible"
   role="navigation"
   aria-label="Main navigation"
 >
@@ -105,7 +105,7 @@ const navItems = [
                 ? "/news"
                 : `/category/${item.category.slug}`
           }
-          class="nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-[1] p-2 lg:p-4 text-ui-nav-text transition-all duration-300 ease-in-out relative lg:hover:text-ui-nav-hover before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left nav-link"
+          class="nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 lg:p-4 text-(--ui-nav-text) transition-all duration-300 ease-in-out relative hover:text-ui-nav-hover before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left nav-link"
           style={`--item-index: ${index};`}
           data-has-children={item.subcategories.length > 0}
           aria-expanded={item.subcategories.length > 0 ? "false" : undefined}
@@ -152,7 +152,7 @@ const navItems = [
         {/* Dropdown menu */}
         {item.subcategories.length > 0 && (
           <div class="dropdown-menu lg:hidden lg:group-hover:block absolute left-0 top-full z-50 min-w-[200px] origin-top lg:opacity-100 lg:transition-none">
-            <div class="bg-ui-nav-surface border border-ui-nav-border/20 shadow-lg rounded-sm p-1 overflow-hidden">
+            <div class="bg-(--ui-nav-surface) border border-(--ui-nav-border)/20 shadow-lg rounded-sm p-1 overflow-hidden">
               {item.subcategories.map((subcategory) => (
                 <a
                   href={
@@ -160,7 +160,7 @@ const navItems = [
                       ? `/shop/${subcategory.slug}`
                       : `/category/${item.category.slug}/${subcategory.slug}`
                   }
-                  class="block p-2 text-2xl lg:text-base text-ui-nav-text lg:hover:text-ui-nav-text before:absolute before:top-0 before:left-0 before:w-full before:h-full before:bg-ui-nav-hover/20 before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left relative"
+                  class="block p-2 text-2xl lg:text-base text-(--ui-nav-text) hover:text-(--ui-nav-text) before:absolute before:top-0 before:left-0 before:w-full before:h-full before:bg-(--ui-nav-hover)/20 before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left relative"
                 >
                   {subcategory.name}
                 </a>
@@ -174,10 +174,12 @@ const navItems = [
 
   {/* Mobile footer */}
   <div
-    class="flex flex-col gap-2 p-4 pt-12 border-t-4 border-border-secondary mt-6 lg:hidden nav-link"
+    class="flex flex-col gap-2 p-4 pt-12 border-t-4 border-(--border-secondary) mt-6 lg:hidden nav-link"
     style="--item-index: 6;"
   >
-    <address class="flex flex-col gap-2 uppercase not-italic text-ui-nav-text">
+    <address
+      class="flex flex-col gap-2 uppercase not-italic text-(--ui-nav-text)"
+    >
       <span class="font-semibold">{siteConfig.name}</span>
       <span>{contact.address.street}</span>
       <span
@@ -199,7 +201,7 @@ const navItems = [
             <a
               href={item.url}
               aria-label={item.platform}
-              class="text-ui-nav-text hover:text-ui-nav-hover"
+              class="text-(--ui-nav-text) hover:text-ui-nav-hover"
               target="_blank"
               rel="noopener"
             >

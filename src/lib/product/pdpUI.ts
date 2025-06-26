@@ -204,25 +204,25 @@ export class PDPUIManager {
         // Update selected state
         if (isSelected) {
           btn.classList.remove(
-            "bg-ui-input-surface",
-            "text-ui-input-text",
-            "border-ui-input-border/50"
+            "bg-(--ui-input-surface)",
+            "text-(--ui-input-text)",
+            "border-(--ui-input-border)/50"
           );
           btn.classList.add(
-            "bg-ui-button-surface",
-            "text-ui-button-text",
-            "border-ui-button-border/50"
+            "bg-(--ui-button-surface)",
+            "text-(--ui-button-text)",
+            "border-(--ui-button-border)/50"
           );
         } else {
           btn.classList.add(
-            "bg-ui-input-surface",
-            "text-ui-input-text",
-            "border-ui-input-border/50"
+            "bg-(--ui-input-surface)",
+            "text-(--ui-input-text)",
+            "border-(--ui-input-border)/50"
           );
           btn.classList.remove(
-            "bg-ui-button-surface",
-            "text-ui-button-text",
-            "border-ui-button-border/50"
+            "bg-(--ui-button-surface)",
+            "text-(--ui-button-text)",
+            "border-(--ui-button-border)/50"
           );
         }
       });
@@ -239,25 +239,25 @@ export class PDPUIManager {
 
       if (variationId === selectedVariationId) {
         btn.classList.add(
-          "bg-ui-button-surface",
-          "text-ui-button-text",
-          "border-ui-button-border/50"
+          "bg-(--ui-button-surface)",
+          "text-(--ui-button-text)",
+          "border-(--ui-button-border)/50"
         );
         btn.classList.remove(
-          "bg-ui-input-surface",
-          "text-ui-input-text",
-          "border-ui-input-border/50"
+          "bg-(--ui-input-surface)",
+          "text-(--ui-input-text)",
+          "border-(--ui-input-border)/50"
         );
       } else {
         btn.classList.remove(
-          "bg-ui-button-surface",
-          "text-ui-button-text",
-          "border-ui-button-border/50"
+          "bg-(--ui-button-surface)",
+          "text-(--ui-button-text)",
+          "border-(--ui-button-border)/50"
         );
         btn.classList.add(
-          "bg-ui-input-surface",
-          "text-ui-input-text",
-          "border-ui-input-border/50"
+          "bg-(--ui-input-surface)",
+          "text-(--ui-input-text)",
+          "border-(--ui-input-border)/50"
         );
       }
     });

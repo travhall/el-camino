@@ -21,13 +21,13 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
 ---
 
 <!-- Desktop Filter Sidebar -->
-<div class="lg:block bg-surface-primary">
+<div class="lg:block bg-(--surface-primary)">
   <form method="GET" action="" class="hidden lg:block p-2 overflow-y-auto">
     <input type="hidden" name="pageSize" value={currentPageSize} />
 
     <!-- Results Count -->
-    <div class="mb-4 pb-4 border-b-2 border-border-primary">
-      <p class="text-lg text-content-body font-medium">
+    <div class="mb-4 pb-4 border-b-2 border-(--border-primary)">
+      <p class="text-lg text-(--content-body) font-medium">
         {filteredCount === totalProducts 
           ? `${totalProducts} products`
           : `${filteredCount} of ${totalProducts} products`
@@ -40,12 +40,12 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
       filterOptions.brands.length > 0 && (
         <div class="mb-4">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-xl font-medium font-display text-content-heading">Brand</h3>
+            <h3 class="text-xl font-medium font-display text-(--content-heading)">Brand</h3>
             {currentBrands.length > 0 && (
               <button
                 type="button"
                 data-clear-filters
-                class="text-sm text-content-meta hover:text-content-emphasis transition-colors"
+                class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors"
               >
                 Clear
               </button>
@@ -58,19 +58,19 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
               const isHidden = index >= DEFAULT_VISIBLE_BRANDS;
               return (
                 <label
-                  class={`flex items-center group cursor-pointer p-1 rounded-sm hover:bg-surface-secondary transition-colors ${isHidden ? "brand-extra-item hidden" : ""}`}
+                  class={`flex items-center group cursor-pointer p-1 rounded-sm hover:bg-(--surface-secondary) transition-colors ${isHidden ? "brand-extra-item hidden" : ""}`}
                 >
                   <input
                     type="checkbox"
                     name="brands"
                     value={brand.name}
                     checked={currentBrands.includes(brand.name)}
-                    class="elco-checkbox mr-2 w-4 h-4 rounded-sm border-2 border-ui-input-border text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                    class="elco-checkbox mr-2 w-4 h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
                   />
-                  <span class="flex-1 text-content-body group-hover:text-content-emphasis">
+                  <span class="flex-1 text-(--content-body) group-hover:text-(--content-emphasis)">
                     {brand.name}
                   </span>
-                  <span class="text-sm text-content-meta mr-2">
+                  <span class="text-sm text-(--content-meta) mr-2">
                     ({brand.count})
                   </span>
                 </label>
@@ -98,7 +98,7 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
 <!-- Mobile Filter Button -->
 <button
   id="mobile-filter-toggle"
-  class="lg:hidden fixed bottom-4 right-4 bg-ui-nav-surface text-ui-button-primary-text rounded-md flex flex-row gap-2 p-4 shadow-lg z-[250] transition-transform"
+  class="lg:hidden fixed bottom-4 right-4 bg-(--ui-nav-surface) text-ui-button-primary-text rounded-md flex flex-row gap-2 p-4 shadow-lg z-250 transition-transform"
   aria-label="Open Filters"
 >
   Filters
@@ -112,7 +112,7 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
   </svg>
   {
     currentBrands.length > 0 && (
-      <span class="absolute -top-1 -right-1 bg-ui-button-surface text-ui-button-text font-bold text-sm rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1">
+      <span class="absolute -top-1 -right-1 bg-(--ui-button-surface) text-(--ui-button-text) font-bold text-sm rounded-full min-w-5 h-5 flex items-center justify-center px-1">
         {currentBrands.length}
       </span>
     )
@@ -122,14 +122,14 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
 <!-- Mobile Drawer Overlay -->
 <div
   id="mobile-filter-overlay"
-  class="lg:hidden fixed inset-0 bg-surface-tertiary/80 dark:bg-surface-primary/80 backdrop-blur-sm z-40 transition-opacity duration-300 opacity-0 pointer-events-none"
+  class="lg:hidden fixed inset-0 bg-(--surface-tertiary)/80 dark:bg-(--surface-primary)/80 backdrop-blur-sm z-40 transition-opacity duration-300 opacity-0 pointer-events-none"
 >
 </div>
 
 <!-- Mobile Filter Drawer -->
 <div
   id="mobile-filter-drawer"
-  class="lg:hidden fixed bottom-0 left-0 right-0 bg-surface-secondary border-t border-ui-border z-[500] max-h-[80vh] overflow-y-auto transform translate-y-full transition-transform duration-300"
+  class="lg:hidden fixed bottom-0 left-0 right-0 bg-(--surface-secondary) border-t border-ui-border z-500 max-h-[80vh] overflow-y-auto transform translate-y-full transition-transform duration-300"
 >
   <form method="GET" action="" class="p-4">
     <!-- Preserve existing URL parameters -->
@@ -139,13 +139,13 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
     <div
       class="flex items-center justify-between mb-4 pb-4 border-b border-ui-border"
     >
-      <h2 class="text-lg font-semibold text-content-heading">
+      <h2 class="text-lg font-semibold text-(--content-heading)">
         Filter Products
       </h2>
       <button
         type="button"
         id="mobile-filter-close"
-        class="p-1 text-content-meta hover:text-content-emphasis"
+        class="p-1 text-(--content-meta) hover:text-(--content-emphasis)"
         aria-label="Close Filters"
       >
         <svg
@@ -164,32 +164,32 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
     </div>
 
     <!-- Results Count -->
-    <div class="mb-4 p-3 bg-surface-tertiary rounded-sm">
-      <p class="text-sm text-content-meta">
+    <div class="mb-4 p-3 bg-(--surface-tertiary) rounded-sm">
+      <p class="text-sm text-(--content-meta)">
         {filteredCount} of {totalProducts} products
       </p>
     </div>
 
     <!-- Mobile Brand Filter Section -->
     <div class="mb-6">
-      <h3 class="text-base font-medium text-content-heading mb-3">Brand</h3>
+      <h3 class="text-base font-medium text-(--content-heading) mb-3">Brand</h3>
       <div class="space-y-3 max-h-64 overflow-y-auto">
         {
           filterOptions.brands.map((brand) => (
-            <label class="flex items-center justify-between group cursor-pointer p-3 rounded-sm hover:bg-surface-tertiary transition-colors">
+            <label class="flex items-center justify-between group cursor-pointer p-3 rounded-sm hover:bg-(--surface-tertiary) transition-colors">
               <div class="flex items-center">
                 <input
                   type="checkbox"
                   name="brands"
                   value={brand.name}
                   checked={currentBrands.includes(brand.name)}
-                  class="elco-checkbox mr-3 rounded-sm border-ui-input-border text-ui-accent focus:ring-ui-accent w-5 h-5"
+                  class="elco-checkbox mr-3 rounded-sm border-(--ui-input-border) text-ui-accent focus:ring-ui-accent w-5 h-5"
                 />
-                <span class="text-content-body group-hover:text-content-emphasis">
+                <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
                   {brand.name}
                 </span>
               </div>
-              <span class="text-sm text-content-meta">({brand.count})</span>
+              <span class="text-sm text-(--content-meta)">({brand.count})</span>
             </label>
           ))
         }
@@ -203,7 +203,7 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
           <button
             type="button"
             data-clear-filters-mobile
-            class="flex-1 py-3 px-4 border border-ui-button-border text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
+            class="flex-1 py-3 px-4 border border-(--ui-button-border) text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
           >
             Clear Filters
           </button>
@@ -211,7 +211,7 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
       }
       <button
         type="submit"
-        class="flex-1 py-3 px-4 bg-ui-button-surface text-ui-button-text rounded-sm hover:bg-ui-button-primary-hover transition-colors font-medium"
+        class="flex-1 py-3 px-4 bg-(--ui-button-surface) text-(--ui-button-text) rounded-sm hover:bg-ui-button-primary-hover transition-colors font-medium"
       >
         Apply Filters
       </button>

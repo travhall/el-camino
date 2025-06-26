@@ -1,5 +1,5 @@
 import { defineConfig } from "astro/config";
-import tailwind from "@astrojs/tailwind";
+import tailwindcss from "@tailwindcss/vite"; // NEW: Tailwind v4 plugin
 import icon from "astro-icon";
 import netlify from "@astrojs/netlify";
 import node from "@astrojs/node";
@@ -9,7 +9,7 @@ import path from "path";
 const isPreview = process.env.PREVIEW === "true";
 
 export default defineConfig({
-  integrations: [tailwind(), icon({ iconDir: "src/assets/icons" })],
+  integrations: [icon({ iconDir: "src/assets/icons" })], // REMOVED: tailwind() integration
   output: "server",
   adapter: isPreview
     ? node({
@@ -56,6 +56,7 @@ export default defineConfig({
     compress: true,
   },
   vite: {
+    plugins: [tailwindcss()], // NEW: Add Tailwind v4 plugin here
     envPrefix: ["PUBLIC_", "SQUARE_", "NEXT_PUBLIC_"],
     define: {
       "import.meta.env.SQUARE_ACCESS_TOKEN": JSON.stringify(

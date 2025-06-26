@@ -171,7 +171,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     >
       <!-- Product Image -->
       <div
-        class="aspect-video lg:aspect-square border-4 border-surface-secondary overflow-hidden bg-surface-secondary relative"
+        class="aspect-video lg:aspect-square border-4 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative"
       >
         <img
           id="product-image"
@@ -199,7 +199,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
       <!-- Product Info -->
       <div class="product-info mt-4 xl:mt-8">
         <h1
-          class="flex flex-col font-display font-bold text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl leading-[0.8] text-content-heading text-balance"
+          class="flex flex-col font-display font-bold text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl leading-[0.8] text-(--content-heading) text-balance"
         >
           <!-- Brand display -->
           {
@@ -214,7 +214,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
         <div class="mt-2">
           <p
             id="price-display"
-            class="text-3xl lg:text-4xl xl:text-5xl font-display font-bold text-content-emphasis mb-2"
+            class="text-3xl lg:text-4xl xl:text-5xl font-display font-bold text-(--content-emphasis) mb-2"
           >
             {formattedPrice}
             {/* Unit display */}
@@ -245,7 +245,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
                 return (
                   <div class="mt-6">
-                    <h3 class="text-sm font-medium text-content-heading mb-2">
+                    <h3 class="text-sm font-medium text-(--content-heading) mb-2">
                       {displayName}
                     </h3>
                     <div class="flex flex-wrap gap-2">
@@ -263,7 +263,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
                             data-attribute-value={value}
                             class:list={[
                               "px-4 py-2 border rounded-[4px] attribute-button",
-                              "bg-ui-input-surface text-ui-input-text border-ui-input-border/50",
+                              "bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50",
                               !isAvailable && "opacity-75",
                             ]}
                             disabled={!isAvailable}
@@ -291,10 +291,10 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
               return (
                 <div class="mt-4">
-                  <h3 class="text-sm font-medium text-content-heading mb-2">
+                  <h3 class="text-sm font-medium text-(--content-heading) mb-2">
                     {displayName}
                   </h3>
-                  <div class="inline-block px-4 py-2 bg-ui-button-surface text-ui-button-text border-ui-button-border/50 rounded-[4px]">
+                  <div class="inline-block px-4 py-2 bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50 rounded-[4px]">
                     {attributeValues[0]}
                   </div>
                 </div>
@@ -306,7 +306,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
         {
           hasMultipleVariations && attributeTypes.length === 0 && (
             <div class="mt-6">
-              <h3 class="text-sm font-medium text-content-heading mb-2">
+              <h3 class="text-sm font-medium text-(--content-heading) mb-2">
                 Options
               </h3>
               <div id="variation-buttons" class="flex flex-wrap gap-2">
@@ -323,8 +323,8 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
                     class:list={[
                       "px-4 py-2 border rounded-[4px]",
                       variation.variationId === defaultVariationId
-                        ? "bg-ui-button-surface text-ui-button-text border-ui-button-border/50"
-                        : "bg-ui-input-surface text-ui-input-text border-ui-input-border/50",
+                        ? "bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50"
+                        : "bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50",
                       !variation.inStock && "opacity-75",
                     ]}
                     disabled={!variation.inStock}
@@ -345,11 +345,11 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
                 <label for="quantity-input" class="text-sm font-medium">
                   Quantity
                 </label>
-                <div class="flex border border-ui-input-border/50 rounded-[4px] overflow-hidden">
+                <div class="flex border border-(--ui-input-border)/50 rounded-[4px] overflow-hidden">
                   <button
                     type="button"
                     id="decrease-quantity"
-                    class="w-10 h-10 flex items-center justify-center border-r border-ui-input-border/50 bg-ui-input-surface text-ui-input-text"
+                    class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text)"
                     disabled={true}
                   >
                     -
@@ -360,19 +360,19 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
                     min="1"
                     max={selectedVariationQuantity}
                     value="1"
-                    class="w-14 h-10 text-center bg-ui-input-surface text-ui-input-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    class="w-14 h-10 text-center bg-(--ui-input-surface) text-(--ui-input-text) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <button
                     type="button"
                     id="increase-quantity"
-                    class="w-10 h-10 flex items-center justify-center border-l border-ui-input-border/50 bg-ui-input-surface text-ui-input-text"
+                    class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text)"
                     disabled={selectedVariationQuantity <= 1}
                   >
                     +
                   </button>
                 </div>
                 <div id="availability-indicator" class="text-sm">
-                  <span class="text-content-meta" id="remaining-count">
+                  <span class="text-(--content-meta)" id="remaining-count">
                     {selectedVariationQuantity} available
                   </span>
                   <span id="cart-quantity" class="ml-1 hidden">
@@ -425,7 +425,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
           <p class="italic">Available for pick up at El Camino</p>
           <button
             id="location-hours-link"
-            class="relative inline-flex self-start lg:hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left"
+            class="relative inline-flex self-start hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left"
             type="button"
           >
             Store Location &amp; Hours
@@ -439,14 +439,14 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
               <div id="description-container">
                 <p
                   id="product-description"
-                  class="text-base text-content-body line-clamp-2 text-pretty transition-all duration-300 ease-in-out"
+                  class="text-base text-(--content-body) line-clamp-2 text-pretty transition-all duration-300 ease-in-out"
                 >
                   {product.description}
                 </p>
                 <button
                   id="description-toggle"
                   type="button"
-                  class="mt-2 text-sm relative inline-flex self-start lg:hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left hidden"
+                  class="mt-2 text-sm relative inline-flex self-start hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left hidden"
                 >
                   <span id="toggle-text">Read more</span>
                 </button>

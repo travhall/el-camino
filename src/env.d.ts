@@ -12,3 +12,11 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Fix JSX IntrinsicElements error
+declare global {
+  namespace JSX {
+    type Element = astroHTML.JSX.Element;
+    type IntrinsicElements = astroHTML.JSX.IntrinsicElements;
+  }
+}

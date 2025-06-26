@@ -6,7 +6,7 @@ import Layout from "@/layouts/Layout.astro";
 <Layout title="Your Shopping Cart | El Camino">
   <section class="p-1 pb-0">
     <h1
-      class="font-display font-black p-3 pb-0 -mb-6 text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-content-heading"
+      class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading) p-3 pb-0 -mb-4"
     >
       Cart
     </h1>
@@ -17,10 +17,10 @@ import Layout from "@/layouts/Layout.astro";
       class="text-center min-h-[50dvh] flex items-center justify-center py-12"
     >
       <div
-        class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-content-heading"
+        class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-(--content-heading)"
       >
       </div>
-      <p class="mt-2 text-content-meta">Loading cart...</p>
+      <p class="mt-2 text-(--content-meta)">Loading cart...</p>
     </div>
 
     <!-- Cart Content -->
@@ -29,15 +29,15 @@ import Layout from "@/layouts/Layout.astro";
     <!-- Processing Indicator -->
     <div
       id="loading-overlay"
-      class="fixed inset-0 bg-surface-primary/50 min-h-[50dvh] items-center justify-center hidden z-50"
+      class="fixed inset-0 bg-(--surface-primary)/50 min-h-[50dvh] items-center justify-center hidden z-50"
     >
-      <div class="bg-surface-secondary p-4 rounded-sm">
+      <div class="bg-(--surface-secondary) p-4 rounded-sm">
         <div class="flex items-center justify-center">
           <div
-            class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-content-heading mr-3"
+            class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-(--content-heading) mr-3"
           >
           </div>
-          <p class="text-lg text-content-body">Processing...</p>
+          <p class="text-lg text-(--content-body)">Processing...</p>
         </div>
       </div>
     </div>
@@ -141,10 +141,10 @@ import Layout from "@/layouts/Layout.astro";
   function createEmptyCart(): string {
     return `
       <div class="flex flex-col min-h-[50dvh] items-center justify-center" id="empty-cart">
-        <p class="text-lg mb-6 text-content-body">Your cart is empty</p>
+        <p class="text-lg mb-6 text-(--content-body)">Your cart is empty</p>
         <a
           href="/all-products"
-          class="block text-center bg-ui-button-surface/0 lg:hover:bg-ui-button-surface/10 border-ui-button-surface text-ui-button-surface font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-2 px-4"
+          class="block text-center bg-(--ui-button-surface)/0 hover:bg-(--ui-button-surface)/10 border-(--ui-button-surface) text-(--ui-button-surface) font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-2 px-4"
         >
           Continue Shopping
         </a>
@@ -155,12 +155,12 @@ import Layout from "@/layouts/Layout.astro";
   function createOrderSummary(total: number): string {
     return `
       <div class="md:col-span-1">
-        <div class="bg-surface-secondary p-4 sticky top-4">
-          <h2 class="font-display text-2xl mb-2 text-content-heading">Order Summary</h2>
+        <div class="bg-(--surface-secondary) p-4 sticky top-4">
+          <h2 class="font-display text-2xl mb-2 text-(--content-heading)">Order Summary</h2>
           <div class="order-summary lg:space-y-2 mb-2">
-            <div class="flex justify-between text-content-body">
+            <div class="flex justify-between text-(--content-body)">
               <span>Subtotal</span>
-              <span class="font-display font-bold text-3xl text-content-caption" id="subtotal">${MoneyUtils.format(MoneyUtils.fromFloat(total))}</span>
+              <span class="font-display font-bold text-3xl text-(--content-caption)" id="subtotal">${MoneyUtils.format(MoneyUtils.fromFloat(total))}</span>
             </div>
           </div>
           <div class="space-y-2">
@@ -168,13 +168,13 @@ import Layout from "@/layouts/Layout.astro";
             <button
               type="button"
               id="checkout-button"
-              class="w-full block text-center font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-ui-button-text bg-ui-button-surface border-ui-button-border lg:hover:bg-ui-button-surface/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-ui-button-ring transition-all ease-in-out duration-300"
+              class="w-full block text-center font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
             >
               Proceed to Checkout
             </button>
             <a
               href="/all-products"
-              class="w-full block text-center font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-ui-button-surface bg-ui-button-surface border-ui-button-border bg-ui-button-surface/0 lg:hover:bg-ui-button-surface/20 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-ui-button-ring transition-all ease-in-out duration-300"
+              class="w-full block text-center font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-(--ui-button-surface) bg-(--ui-button-surface) border-(--ui-button-border) bg-(--ui-button-surface)/0 hover:bg-(--ui-button-surface)/20 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
             >
               Continue Shopping
             </a>
@@ -192,37 +192,37 @@ import Layout from "@/layouts/Layout.astro";
     const canIncrement = !isOutOfStock && item.quantity < inventory;
 
     return `
-      <div class="bg-surface-secondary p-4 flex gap-4 self-start" data-item-container="${itemKey}">
-        <div class="flex-shrink-0">
+      <div class="bg-(--surface-secondary) p-4 flex gap-4 self-start" data-item-container="${itemKey}">
+        <div class="shrink-0">
           <img 
             src="${item.image || "/images/placeholder.png"}"
             alt="${item.title}"
-            class="w-16 h-16 lg:w-24 lg:h-24 object-cover rounded border border-border-secondary" 
+            class="w-16 h-16 lg:w-24 lg:h-24 object-cover rounded border border-(--border-secondary)" 
             onerror="this.src='/images/placeholder.png'"
           />
         </div>
-        <div class="flex-grow flex flex-col justify-between min-w-0">
+        <div class="grow flex flex-col justify-between min-w-0">
           <div class="flex flex-row justify-between">
             <div class="flex flex-col mb-2 lg:mb-0">
-              <h3 class="font-display text-2xl text-content-heading leading-tight">
-                <a href="/product/${item.id}" class="lg:hover:text-content-emphasis transition-colors">
+              <h3 class="font-display text-2xl text-(--content-heading) leading-tight">
+                <a href="/product/${item.id}" class="hover:text-(--content-emphasis) transition-colors">
                   ${item.title}
                 </a>
               </h3>
               ${
                 item.variationName
                   ? `
-                <p class="text-content-meta text-sm mt-1">${item.variationName}</p>
+                <p class="text-(--content-meta) text-sm mt-1">${item.variationName}</p>
               `
                   : ""
               }
             </div>
             <div>
               <div class="text-right">
-                <div class="text-content-meta text-xs">
+                <div class="text-(--content-meta) text-xs">
                   ${MoneyUtils.format(MoneyUtils.fromFloat(item.price))} each
                 </div>
-                <div class="font-display font-bold text-2xl text-content-emphasis">
+                <div class="font-display font-bold text-2xl text-(--content-emphasis)">
                   ${MoneyUtils.format(MoneyUtils.fromFloat(itemSubtotal))}
                 </div>
               </div>
@@ -231,11 +231,11 @@ import Layout from "@/layouts/Layout.astro";
 
           <div class="flex justify-between items-end gap-4">
             <div class="flex items-center gap-2">
-              <label for="quantity-${itemKey}" class="text-sm text-content-body hidden lg:block">Qty:</label>
-              <div class="flex items-center border border-border-primary rounded">
+              <label for="quantity-${itemKey}" class="text-sm text-(--content-body) hidden lg:block">Qty:</label>
+              <div class="flex items-center border border-(--border-primary) rounded">
                 <button 
                   type="button" 
-                  class="quantity-decrease px-2 py-1 lg:hover:bg-surface-primary transition-colors ${item.quantity <= 1 ? "opacity-50 cursor-not-allowed" : ""}" 
+                  class="quantity-decrease px-2 py-1 hover:bg-(--surface-primary) transition-colors ${item.quantity <= 1 ? "opacity-50 cursor-not-allowed" : ""}" 
                   data-item-key="${itemKey}"
                   data-action="decrease"
                   ${item.quantity <= 1 ? "disabled" : ""}
@@ -245,7 +245,7 @@ import Layout from "@/layouts/Layout.astro";
                 <input 
                   type="number" 
                   id="quantity-${itemKey}" 
-                  class="quantity-input w-16 text-center py-1 border-0 bg-surface-primary text-content-body focus:ring-1 focus:ring-content-emphasis [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                  class="quantity-input w-16 text-center py-1 border-0 bg-(--surface-primary) text-(--content-body) focus:ring-1 focus:ring-(--content-emphasis) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                   value="${item.quantity}" 
                   min="1" 
                   max="${inventory}" 
@@ -253,7 +253,7 @@ import Layout from "@/layouts/Layout.astro";
                 />
                 <button 
                   type="button" 
-                  class="quantity-increase px-2 py-1 lg:hover:bg-surface-primary transition-colors ${!canIncrement ? "opacity-50 cursor-not-allowed" : ""}" 
+                  class="quantity-increase px-2 py-1 hover:bg-(--surface-primary) transition-colors ${!canIncrement ? "opacity-50 cursor-not-allowed" : ""}" 
                   data-item-key="${itemKey}"
                   data-action="increase"
                   ${!canIncrement ? "disabled" : ""}
@@ -261,7 +261,7 @@ import Layout from "@/layouts/Layout.astro";
                   +
                 </button>
               </div>
-              <div class="text-xs text-content-meta">
+              <div class="text-xs text-(--content-meta)">
                 ${inventory} available
               </div>
             </div>
@@ -269,7 +269,7 @@ import Layout from "@/layouts/Layout.astro";
             <div class="flex items-center gap-4">
               <button 
                 type="button" 
-                class="remove-btn text-sm relative lg:hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left" 
+                class="remove-btn text-sm relative hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left" 
                 data-item-key="${itemKey}"
                 data-item-title="${item.title}"
                 data-action="remove"
@@ -519,7 +519,7 @@ import Layout from "@/layouts/Layout.astro";
               <button
                 type="button"
                 id="clear-cart-button"
-                class="text-sm relative lg:hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-ui-nav-hover before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out lg:hover:before:scale-x-100 lg:hover:before:origin-left -mt-1 mb-1 justify-self-end"
+                class="text-sm relative hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left -mt-1 mb-1 justify-self-end"
               >
                 Clear Cart
               </button>

@@ -17,21 +17,21 @@ const { classes, ...rest } = Astro.props;
 >
   <!-- Toggle switch track and thumb -->
   <div
-    class="theme-toggle-track relative inline-flex items-center h-7 w-12 rounded-full transition-all duration-300 ease-out border border-elco-fig-leaf-900 dark:border-elco-honey-cream-50"
+    class="theme-toggle-track relative inline-flex items-center h-7 w-12 rounded-full transition-all duration-300 ease-out border border-(--content-body)"
   >
     <!-- Toggle thumb -->
     <div
-      class="theme-toggle-thumb absolute left-0.5 top-0.5 h-[1.375rem] w-[1.375rem] rounded-full transition-all duration-300 ease-out transform translate-x-0 flex items-center justify-center bg-elco-fig-leaf-900 dark:bg-elco-honey-cream-50"
+      class="theme-toggle-thumb absolute left-0.5 top-0.5 h-[1.375rem] w-[1.375rem] rounded-full transition-all duration-300 ease-out transform translate-x-0 flex items-center justify-center bg-(--content-body)"
     >
       <!-- Theme icons -->
       <Icon
         name="uil:moon"
-        class="theme-icon-moon h-4 w-4 text-ui-button-text transition-all duration-200 opacity-100 dark:opacity-0"
+        class="theme-icon-moon h-4 w-4 text-(--ui-button-text) transition-all duration-200 opacity-100 dark:opacity-0"
         aria-hidden="true"
       />
       <Icon
         name="uil:sun"
-        class="theme-icon-sun absolute h-4 w-4 text-ui-button-text transition-all duration-200 opacity-0 dark:opacity-100"
+        class="theme-icon-sun absolute h-4 w-4 text-(--ui-button-text) transition-all duration-200 opacity-0 dark:opacity-100"
         aria-hidden="true"
       />
     </div>
@@ -45,13 +45,15 @@ const { classes, ...rest } = Astro.props;
 </button>
 
 <style>
+  @reference "../styles/global.css";
+
   .theme-toggle-button[aria-checked="true"] .theme-toggle-thumb {
     @apply transform translate-x-5;
   }
 
   /* Focus states for keyboard navigation */
   /* .theme-toggle-button:focus .theme-toggle-track {
-    @apply ring-2 ring-ui-button-ring/50 border-ui-button-ring;
+    @apply ring-2 ring-(--ui-button-ring)/50 border-ui-button-ring;
   } */
 
   :root.dark .theme-toggle-thumb {
