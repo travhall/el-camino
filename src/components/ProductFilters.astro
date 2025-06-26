@@ -1,5 +1,5 @@
 ---
-// src/components/ProductFilters.astro - Single working form with CSS fixes
+// src/components/ProductFilters.astro - FOUC Fix
 import type { FilterOptions } from "@/lib/square/types";
 
 interface Props {
@@ -19,7 +19,25 @@ const currentPageSize = currentParams.get("pageSize") || "24";
 // Configuration for show more/less functionality
 const DEFAULT_VISIBLE_BRANDS = 6;
 const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
+
+// FOUC Fix: Determine initial expanded state server-side
+// Check if there are any selected brands beyond the default visible count
+const hasSelectedBrandsBelow = currentBrands.some(brand => {
+  const brandIndex = filterOptions.brands.findIndex(b => b.name === brand);
+  return brandIndex >= DEFAULT_VISIBLE_BRANDS;
+});
+
+// Start expanded if user has selected brands that would be hidden
+const shouldStartExpanded = hasSelectedBrandsBelow;
 ---
+
+<!-- FOUC Prevention: Inline critical CSS -->
+<style is:inline>
+  /* Prevent flickering during initial load */
+  .brand-filter-list {
+    transition: none;
+  }
+</style>
 
 <!-- Single Responsive Form Container -->
 <div class="relative lg:block bg-(--surface-primary)">
@@ -97,13 +115,16 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
             )}
           </div>
 
-          <!-- Brand List -->
-          <div class="space-y-3 lg:space-y-1 max-h-64 lg:max-h-none overflow-y-auto lg:overflow-visible" data-brand-list>
+          <!-- Brand List with FOUC Fix -->
+          <div class="space-y-3 lg:space-y-1 max-h-64 lg:max-h-none overflow-y-auto lg:overflow-visible brand-filter-list" data-brand-list>
             {filterOptions.brands.map((brand, index) => {
               const isHidden = index >= DEFAULT_VISIBLE_BRANDS;
+              // FOUC Fix: Apply server-side visibility logic
+              const serverHiddenClass = isHidden && !shouldStartExpanded ? "lg:hidden" : "";
+              
               return (
                 <label
-                  class={`flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors ${isHidden ? "brand-extra-item hidden lg:hidden" : ""}`}
+                  class={`flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors ${isHidden ? `brand-extra-item ${serverHiddenClass}` : ""}`}
                 >
                   <div class="flex items-center">
                     <input
@@ -129,8 +150,12 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
                 class="hidden lg:block w-full text-left text-sm text-ui-accent hover:text-ui-accent-hover transition-colors p-1 font-medium"
                 data-collapsed-text={`+ Show ${filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more`}
                 data-expanded-text="- Show less"
+                data-initial-expanded={shouldStartExpanded.toString()}
               >
-                + Show {filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more
+                {shouldStartExpanded 
+                  ? "- Show less"
+                  : `+ Show ${filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more`
+                }
               </button>
             )}
           </div>
@@ -245,15 +270,34 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
     }
 
     private initializeMenuState(): void {
+      // FOUC Fix: Check server-side initial state first
+      const initialExpanded = this.showMoreToggle?.dataset.initialExpanded === "true";
       const wasExpanded = sessionStorage.getItem("filter-menu-expanded") === "true";
-      wasExpanded ? this.expandFilters() : this.collapseFilters();
+      
+      // Use sessionStorage if available, otherwise use server-side state
+      const shouldExpand = sessionStorage.getItem("filter-menu-expanded") !== null ? wasExpanded : initialExpanded;
+      
+      this.isExpanded = shouldExpand;
+      
+      // Re-enable transitions after initial state is set
+      setTimeout(() => {
+        const filterList = document.querySelector('.brand-filter-list') as HTMLElement;
+        if (filterList) {
+          filterList.style.transition = '';
+        }
+      }, 100);
     }
 
     private collapseFilters(): void {
       const extraItems = document.querySelectorAll(".brand-extra-item");
       const collapsedText = this.showMoreToggle?.dataset.collapsedText || "+ Show more";
 
-      extraItems.forEach((item) => (item as HTMLElement).classList.add("hidden"));
+      extraItems.forEach((item) => {
+        const element = item as HTMLElement;
+        element.classList.add("lg:hidden");
+        // element.classList.remove("lg:block");
+      });
+
       if (this.showMoreToggle) this.showMoreToggle.textContent = collapsedText;
       this.isExpanded = false;
     }
@@ -262,7 +306,12 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
       const extraItems = document.querySelectorAll(".brand-extra-item");
       const expandedText = this.showMoreToggle?.dataset.expandedText || "- Show less";
 
-      extraItems.forEach((item) => (item as HTMLElement).classList.remove("hidden"));
+      extraItems.forEach((item) => {
+        const element = item as HTMLElement;
+        element.classList.remove("lg:hidden");
+        // element.classList.add("lg:block");
+      });
+
       if (this.showMoreToggle) this.showMoreToggle.textContent = expandedText;
       this.isExpanded = true;
     }
@@ -304,3 +353,16 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
     new ResponsiveFilters();
   });
 </script>
+
+<!-- Post-load CSS to ensure smooth transitions -->
+<style>
+  /* Smooth transitions for show/hide after initial load */
+  .brand-extra-item {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  
+  /* Prevent layout shift during transitions */
+  .brand-filter-list {
+    min-height: fit-content;
+  }
+</style>
