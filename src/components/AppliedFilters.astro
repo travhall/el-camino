@@ -3,9 +3,10 @@
 
 export interface Props {
   categoryPath?: string;
+  classes?: string;
 }
 
-const { categoryPath = "" } = Astro.props;
+const { categoryPath = "", classes } = Astro.props;
 
 // Parse current filters from URL
 const currentParams = new URLSearchParams(Astro.url.search);
@@ -50,8 +51,8 @@ function buildClearAllUrl(): string {
 }
 ---
 
-<div class="mb-1 p-2 bg-(--surface-primary)">
-  <div class="flex items-center gap-3">
+<div class:list={["mb-1 lg:p-2 bg-(--surface-primary)", classes]}>
+  <div class="flex flex-wrap items-center gap-3">
     <div class="flex flex-wrap gap-2">
       {
         currentBrands.map((brand) => (

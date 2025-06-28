@@ -44,7 +44,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   <!-- Mobile Filter Button -->
   <button
     id="mobile-filter-toggle"
-    class="lg:hidden fixed bottom-4 right-4 bg-(--ui-nav-surface) text-ui-button-primary-text rounded-md flex flex-row gap-2 p-4 shadow-lg z-250"
+    class="lg:hidden fixed bottom-4 right-4 bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) rounded-md flex flex-row gap-2 p-4 shadow-lg z-250"
     aria-label="Open Filters"
   >
     Filters
@@ -61,19 +61,19 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   <!-- Mobile Overlay -->
   <div
     id="mobile-filter-overlay"
-    class="lg:hidden fixed inset-0 bg-(--surface-tertiary)/80 backdrop-blur-sm z-40 opacity-0 pointer-events-none transition-opacity duration-300"
+    class="lg:hidden fixed inset-0 bg-(--ui-modal-overlay)/80 backdrop-blur-sm z-40 opacity-0 pointer-events-none transition-opacity duration-300"
   ></div>
 
   <!-- Single Form - Desktop Static, Mobile Drawer -->
   <div
     id="filter-container"
-    class="lg:static lg:transform-none lg:opacity-100 lg:pointer-events-auto lg:max-h-none fixed bottom-0 left-0 right-0 bg-(--surface-secondary) lg:bg-(--surface-primary) border-t border-ui-border lg:border-t-0 z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+    class="lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-[28rem] lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-primary) z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
   >
-    <form method="GET" action={categoryPath || ""} class="p-4 lg:p-2" id="filter-form">
+    <form method="GET" action={categoryPath || ""} class="px-4 lg:p-2" id="filter-form">
       <input type="hidden" name="pageSize" value={currentPageSize} />
 
       <!-- Mobile Header -->
-      <div class="flex items-center justify-between mb-4 pb-4 border-b border-ui-border lg:hidden">
+      <div class="flex items-center justify-between mb-4 p-6 -mx-4 bg-(--surface-secondary) border-t-(--border-tertiary) sticky top-0 lg:hidden">
         <h2 class="text-lg font-semibold text-(--content-heading)">Filter Products</h2>
         <button type="button" id="mobile-filter-close" class="p-1 text-(--content-meta) hover:text-(--content-emphasis)" aria-label="Close Filters">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,7 +83,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       </div>
 
       <!-- Results Count -->
-      <div class="mb-4 lg:pb-4 lg:border-b-2 lg:border-(--border-primary)">
+      <div class="mb-4">
         <div class="lg:hidden p-3 bg-(--surface-tertiary) rounded-sm">
           <p class="text-sm text-(--content-meta)">
             {filteredCount} of {totalProducts} products
@@ -91,7 +91,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         </div>
         <div class="hidden lg:block">
           <p class="text-lg text-(--content-body) font-medium">
-            {filteredCount === totalProducts 
+            {filteredCount === totalProducts
               ? `${totalProducts} products`
               : `${filteredCount} of ${totalProducts} products`
             }
@@ -103,7 +103,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       {filterOptions.brands.length > 0 && (
         <div class="mb-6 lg:mb-4">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-base lg:text-xl font-medium font-display text-(--content-heading)">Brand</h3>
+            <h3 class="text-xl font-medium font-display text-(--content-heading)">Brand</h3>
             {currentBrands.length > 0 && (
               <button
                 type="button"
@@ -121,7 +121,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
               const isHidden = index >= DEFAULT_VISIBLE_BRANDS;
               // FOUC Fix: Apply server-side visibility logic
               const serverHiddenClass = isHidden && !shouldStartExpanded ? "lg:hidden" : "";
-              
+
               return (
                 <label
                   class={`flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors ${isHidden ? `brand-extra-item ${serverHiddenClass}` : ""}`}
@@ -163,7 +163,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       )}
 
       <!-- Mobile Actions -->
-      <div class="flex gap-3 pt-4 border-t border-ui-border lg:hidden">
+      <div class="flex gap-3 p-6 -mx-4 bg-(--surface-secondary) border-t-(--border-tertiary) sticky bottom-0 lg:hidden">
         {currentBrands.length > 0 && (
           <button
             type="button"
@@ -276,9 +276,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
       // Use sessionStorage if available, otherwise use server-side state
       const shouldExpand = sessionStorage.getItem("filter-menu-expanded") !== null ? wasExpanded : initialExpanded;
-      
+
       this.isExpanded = shouldExpand;
-      
+
       // Re-enable transitions after initial state is set
       setTimeout(() => {
         const filterList = document.querySelector('.brand-filter-list') as HTMLElement;
@@ -358,7 +358,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   .brand-extra-item {
     transition: opacity 0.2s ease, transform 0.2s ease;
   }
-  
+
   /* Prevent layout shift during transitions */
   .brand-filter-list {
     min-height: fit-content;
