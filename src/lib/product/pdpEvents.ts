@@ -1,12 +1,7 @@
 // src/lib/product/pdpEvents.ts
 import { cart } from "@/lib/cart";
 import { PDPUIManager } from "./pdpUI";
-import {
-  processSquareError,
-  logError,
-  createError,
-  ErrorType,
-} from "@/lib/square/errorUtils";
+import { processSquareError, logError } from "@/lib/square/errorUtils";
 
 // Global declarations
 declare global {

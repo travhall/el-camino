@@ -59,6 +59,7 @@ export default defineConfig({
     plugins: [tailwindcss()], // NEW: Add Tailwind v4 plugin here
     envPrefix: ["PUBLIC_", "SQUARE_", "NEXT_PUBLIC_"],
     define: {
+      global: "globalThis",
       "import.meta.env.SQUARE_ACCESS_TOKEN": JSON.stringify(
         process.env.SQUARE_ACCESS_TOKEN
       ),
@@ -85,6 +86,9 @@ export default defineConfig({
           },
         },
       },
+    },
+    ssr: {
+      noExternal: ["square"],
     },
   },
 });

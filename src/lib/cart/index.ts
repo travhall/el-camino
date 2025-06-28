@@ -1,7 +1,7 @@
 // src/lib/cart/index.ts
 import type { CartItem, CartEvent, CartState } from "./types";
 import type { OrderRequest, ProductAvailabilityInfo } from "../square/types";
-import { checkItemInventory, checkBulkInventory } from "../square/inventory";
+import { checkBulkInventory } from "../square/inventory";
 import { Client, Environment } from "square";
 import { ProductAvailabilityState, getAvailabilityInfo } from "../square/types";
 
