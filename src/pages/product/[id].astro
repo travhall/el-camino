@@ -467,7 +467,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
   let pdpController: PDPController | null = null;
 
   /**
-   * Initialize controller from DOM data
+   * Initialize controller from DOM data - with resilient error handling
    */
   function initializePDP(): boolean {
     const dataInput = document.getElementById(
@@ -477,17 +477,38 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
     try {
       const productData = JSON.parse(dataInput.value);
-      pdpController = new PDPController(productData);
-      return true;
+
+      // Check if we have the minimum required elements for PDP controller
+      const hasAttributeButtons =
+        document.querySelectorAll(".attribute-button").length > 0;
+      const hasVariationButtons =
+        document.querySelectorAll("[data-variation-id]").length > 0;
+      const hasQuantityControls =
+        document.getElementById("quantity-input") !== null;
+
+      // Only initialize PDP controller if we have interactive elements that need it
+      if (hasAttributeButtons || hasVariationButtons || hasQuantityControls) {
+        pdpController = new PDPController(productData);
+        console.log("PDP controller initialized successfully");
+        return true;
+      } else {
+        console.log(
+          "PDP controller not needed - no interactive elements found"
+        );
+        return true; // This is OK, not an error
+      }
     } catch (error) {
       const appError = processSquareError(error, "initializePDP");
       logError(appError);
-      return false;
+      console.log(
+        "PDP controller failed to initialize, but page will continue working"
+      );
+      return true; // Don't fail the whole page for this
     }
   }
 
   /**
-   * Initialize product description read more/less functionality
+   * Initialize product description read more/less functionality - CSS override fix
    */
   function initializeDescriptionToggle(): void {
     const container = document.getElementById("description-container");
@@ -497,30 +518,23 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
     if (!container || !description || !toggleButton || !toggleText) return;
 
-    // More reliable overflow detection using scrollHeight vs clientHeight
-    // First ensure line-clamp is applied, then check for actual overflow
-    description.classList.add("line-clamp-2");
+    const textContent = description.textContent || "";
 
-    // Force layout recalculation
-    description.offsetHeight;
+    // Force hide with inline style instead of class (overrides CSS specificity)
+    toggleButton.style.display = "none";
 
-    // Check if content is actually being clipped
-    const isOverflowing = description.scrollHeight > description.clientHeight;
-
-    // Show toggle button only if content is actually truncated
-    if (isOverflowing) {
-      toggleButton.classList.remove("hidden");
+    // Only show if text is long enough
+    if (textContent.length > 120) {
+      toggleButton.style.display = "inline-flex";
 
       let isExpanded = false;
 
       toggleButton.addEventListener("click", () => {
         if (isExpanded) {
-          // Collapse
           description.classList.add("line-clamp-2");
           toggleText.textContent = "Read more";
           isExpanded = false;
         } else {
-          // Expand
           description.classList.remove("line-clamp-2");
           toggleText.textContent = "Read less";
           isExpanded = true;
@@ -533,9 +547,16 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
    * ✅ ASTRO VIEW TRANSITIONS: Initialize on page load
    */
   document.addEventListener("astro:page-load", () => {
-    if (!initializePDP()) {
-      console.error("Failed to initialize PDP controller");
+    // Only try to initialize PDP if we're on a product page
+    const isProductPage = document.getElementById("variation-data") !== null;
+
+    if (isProductPage) {
+      if (!initializePDP()) {
+        console.error("Failed to initialize PDP controller");
+      }
     }
+
+    // Description toggle can run on any page safely
     initializeDescriptionToggle();
   });
 

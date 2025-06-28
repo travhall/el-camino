@@ -14,7 +14,7 @@ const structuredData = getStructuredData();
 
 const businessHours = getBusinessHours();
 const todayIndex = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-// const today = businessHours[todayIndex === 0 ? 6 : todayIndex - 1]; // Map Sunday to index 6
+const today = businessHours[todayIndex === 0 ? 6 : todayIndex - 1]; // Map Sunday to index 6
 
 const currentYear = new Date().getFullYear();
 const { contact, social, tagline } = siteConfig;
@@ -96,7 +96,7 @@ try {
           {
             businessHours.map((day) => (
               <div
-                class={`flex justify-between text-xs ${
+                class={`flex justify-between ${
                   day === today
                     ? "text-(--content-emphasis) font-medium"
                     : "text-(--content-body)"
