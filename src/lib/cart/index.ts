@@ -1,8 +1,7 @@
-// src/lib/cart/index.ts
+// src/lib/cart/index.ts - COMPLETE FIXED VERSION
 import type { CartItem, CartEvent, CartState } from "./types";
 import type { OrderRequest, ProductAvailabilityInfo } from "../square/types";
 import { checkBulkInventory } from "../square/inventory";
-import { Client, Environment } from "square";
 import { ProductAvailabilityState, getAvailabilityInfo } from "../square/types";
 
 const CART_STORAGE_KEY = "cart";
@@ -10,11 +9,12 @@ const VIEW_TRANSITION_EVENT = "astro:after-swap";
 const PAGE_LOAD_EVENT = "astro:page-load";
 const DOM_READY_DELAY = 50;
 
-const squareClient = new Client({
-  accessToken: import.meta.env.SQUARE_ACCESS_TOKEN || "",
-  environment: Environment.Sandbox,
-  squareVersion: "2024-02-28",
-});
+// ❌ REMOVED: Frontend Square client - this was causing CORS errors
+// const squareClient = new Client({
+//   accessToken: import.meta.env.SQUARE_ACCESS_TOKEN || "",
+//   environment: Environment.Sandbox,
+//   squareVersion: "2024-02-28",
+// });
 
 interface ICartManager {
   getItems(): CartItem[];
@@ -359,6 +359,9 @@ class CartManager implements ICartManager {
     return Math.max(0, info.remaining);
   }
 
+  /**
+   * ✅ FIXED: Use backend API instead of direct Square API calls
+   */
   public async addItem(
     item: CartItem
   ): Promise<{ success: boolean; message?: string }> {
@@ -374,26 +377,26 @@ class CartManager implements ICartManager {
         item.quantity && item.quantity > 0 ? item.quantity : 1;
       console.log(`Requested quantity: ${requestedQuantity}`);
 
-      // Check if item is in stock
+      // Check if item is in stock using backend API
       let availableQuantity = 0;
 
       try {
-        // Try to get real inventory data
-        const { result } =
-          await squareClient.inventoryApi.retrieveInventoryCount(
-            item.variationId
-          );
+        // ✅ FIXED: Use backend API endpoint instead of direct Square API
+        const response = await fetch(
+          `/api/check-inventory?variationId=${item.variationId}`
+        );
 
-        // Get the counts and find IN_STOCK state
-        const counts = result.counts || [];
-        console.log(`Retrieved inventory counts:`, counts);
+        if (!response.ok) {
+          throw new Error(`Inventory API returned ${response.status}`);
+        }
 
-        const inStockCount = counts.find((count) => count.state === "IN_STOCK");
+        const data = await response.json();
 
-        // Parse quantity as number (Square returns string)
-        availableQuantity = inStockCount?.quantity
-          ? parseInt(inStockCount.quantity, 10)
-          : 0;
+        if (data.success) {
+          availableQuantity = data.quantity || 0;
+        } else {
+          throw new Error(data.error || "Unknown inventory check error");
+        }
 
         console.log(
           `Item ${item.variationId} available quantity: ${availableQuantity}`
@@ -559,7 +562,7 @@ class CartManager implements ICartManager {
       // Get all variation IDs
       const variationIds = items.map((item) => item.variationId);
 
-      // Check inventory
+      // Check inventory - use backend inventory system
       const stockLevels = await checkBulkInventory(variationIds);
 
       let cartUpdated = false;
@@ -649,27 +652,30 @@ class CartManager implements ICartManager {
     }
 
     try {
-      const lineItems = Array.from(this.items.values()).map((item) => ({
-        quantity: item.quantity.toString(),
-        catalogObjectId: item.variationId, // Use variationId instead of catalogObjectId
-        itemType: "ITEM",
-      }));
-
-      const orderRequest: OrderRequest = {
-        idempotencyKey: crypto.randomUUID(),
-        order: {
-          lineItems,
-          locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
+      // ✅ Use backend API for order creation
+      const response = await fetch("/api/create-order", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      };
+        body: JSON.stringify({
+          items: Array.from(this.items.values()),
+        }),
+      });
 
-      const response = await squareClient.ordersApi.createOrder(orderRequest);
-
-      if (!response.result.order?.id) {
-        throw new Error("Failed to create order: No order ID returned");
+      if (!response.ok) {
+        throw new Error(`Order creation failed with status ${response.status}`);
       }
 
-      return response.result.order.id;
+      const data = await response.json();
+
+      if (!data.success || !data.orderId) {
+        throw new Error(
+          data.error || "Failed to create order: No order ID returned"
+        );
+      }
+
+      return data.orderId;
     } catch (error) {
       console.error("Error creating order:", error);
       throw error;

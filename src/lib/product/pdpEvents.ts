@@ -158,12 +158,16 @@ export class PDPEventManager {
     });
   }
 
+  /**
+   * Enhanced add to cart handler using Button component's loading states
+   */
   private async handleAddToCart(button: HTMLButtonElement): Promise<void> {
     if (button.disabled || this.isProcessing) return;
 
     this.isProcessing = true;
-    const originalText = button.textContent || "Add to Cart";
-    this.uiManager.setButtonText("Adding...");
+
+    // Enable Button component's loading state
+    this.setButtonLoading(button, true);
 
     try {
       const productData = button.dataset.product;
@@ -217,7 +221,76 @@ export class PDPEventManager {
       window.showNotification("Failed to add to cart", "error");
     } finally {
       this.isProcessing = false;
-      this.uiManager.setButtonText(originalText);
+      // Disable Button component's loading state
+      this.setButtonLoading(button, false);
+    }
+  }
+
+  /**
+   * Set loading state on the Button component
+   * This works with the enhanced Button.astro component's loading prop
+   */
+  private setButtonLoading(button: HTMLButtonElement, loading: boolean): void {
+    if (loading) {
+      // Enable loading state - Button component will handle spinner and text
+      button.setAttribute("data-loading", "true");
+      button.disabled = true;
+
+      // Find the button content and replace with spinner + loading text
+      const loadingText =
+        button.getAttribute("data-loading-text") || "Adding to Cart...";
+      const originalContent = button.innerHTML;
+
+      // Store original content for restoration
+      if (!button.hasAttribute("data-original-content")) {
+        button.setAttribute("data-original-content", originalContent);
+      }
+
+      // Set loading content with spinner (matching Button.astro structure)
+      button.innerHTML = `
+        <span class="flex items-center justify-center">
+          <svg
+            class="animate-spin -ml-1 mr-2 h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          ${loadingText}
+        </span>
+      `;
+
+      // Add loading styles to match Button component
+      button.classList.add("opacity-75", "cursor-not-allowed");
+    } else {
+      // Disable loading state
+      button.removeAttribute("data-loading");
+
+      // Restore original content
+      const originalContent = button.getAttribute("data-original-content");
+      if (originalContent) {
+        button.innerHTML = originalContent;
+        button.removeAttribute("data-original-content");
+      }
+
+      // Remove loading styles
+      button.classList.remove("opacity-75", "cursor-not-allowed");
+
+      // Re-enable button if not otherwise disabled
+      const isOutOfStock = button.textContent?.includes("Sold Out") || false;
+      button.disabled = isOutOfStock;
     }
   }
 
@@ -239,5 +312,13 @@ export class PDPEventManager {
   cleanup(): void {
     // Reset processing state for next page
     this.isProcessing = false;
+
+    // Clean up any loading states
+    const addToCartButton = document.getElementById(
+      "add-to-cart-button"
+    ) as HTMLButtonElement;
+    if (addToCartButton && addToCartButton.hasAttribute("data-loading")) {
+      this.setButtonLoading(addToCartButton, false);
+    }
   }
 }
