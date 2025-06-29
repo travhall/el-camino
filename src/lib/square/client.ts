@@ -104,23 +104,33 @@ export async function fetchProducts(): Promise<Product[]> {
               title: item.itemData?.name || "",
               description: item.itemData?.description || "",
               imageId: item.itemData?.imageIds?.[0] || null,
+              measurementUnitId:
+                variation?.itemVariationData?.measurementUnitId || null, // NEW: Extract measurement unit ID
               price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
               brand: brandValue, // Add brand extraction
             };
           });
 
-        // Then fetch all images in parallel
+        // Extract unique IDs for batch fetching
         const imageIds = productsWithBasicInfo
           .map((p) => p.imageId)
           .filter(Boolean) as string[];
 
-        const imageUrlMap: Record<string, string> = {};
-        if (imageIds.length > 0) {
-          const batchedImages = await batchGetImageUrls(imageIds);
-          Object.assign(imageUrlMap, batchedImages);
-        }
+        const measurementUnitIds = productsWithBasicInfo
+          .map((p) => p.measurementUnitId)
+          .filter(Boolean) as string[];
 
-        // Assemble final products with brand data
+        // Batch fetch images and measurement units in parallel
+        const [imageUrlMap, measurementUnitsMap] = await Promise.all([
+          imageIds.length > 0
+            ? batchGetImageUrls(imageIds)
+            : Promise.resolve({} as Record<string, string>),
+          measurementUnitIds.length > 0
+            ? fetchMeasurementUnits(measurementUnitIds)
+            : Promise.resolve({} as Record<string, string>),
+        ]);
+
+        // Assemble final products with brand data and units
         const products = productsWithBasicInfo.map((p) => ({
           id: p.id,
           catalogObjectId: p.catalogObjectId,
@@ -134,10 +144,15 @@ export async function fetchProducts(): Promise<Product[]> {
           price: p.price,
           url: createProductUrl({ title: p.title }),
           brand: p.brand || undefined, // Only include if brand exists
+          unit: p.measurementUnitId
+            ? measurementUnitsMap[p.measurementUnitId] || undefined
+            : undefined, // NEW: Include unit
         }));
 
         console.log(
-          `[fetchProducts] Fetched ${products.length} products, ${products.filter((p) => p.brand).length} with brands`
+          `[fetchProducts] Fetched ${products.length} products, ${
+            products.filter((p) => p.brand).length
+          } with brands, ${products.filter((p) => p.unit).length} with units`
         );
 
         return products;
@@ -147,6 +162,50 @@ export async function fetchProducts(): Promise<Product[]> {
       }
     })
   );
+}
+
+// Add the fetchMeasurementUnits function (copied from categories.ts)
+async function fetchMeasurementUnits(
+  unitIds: string[]
+): Promise<Record<string, string>> {
+  const results = await Promise.allSettled(
+    unitIds.map(async (unitId) => {
+      try {
+        const { result } = await squareClient.catalogApi.retrieveCatalogObject(
+          unitId
+        );
+
+        if (result.object?.type === "MEASUREMENT_UNIT") {
+          const unitData = result.object.measurementUnitData;
+          let unitName = "";
+
+          if (unitData?.measurementUnit?.customUnit?.name) {
+            unitName = unitData.measurementUnit.customUnit.name;
+          } else if (unitData?.measurementUnit?.customUnit?.abbreviation) {
+            unitName = unitData.measurementUnit.customUnit.abbreviation;
+          } else if (unitData?.measurementUnit?.type) {
+            unitName = unitData.measurementUnit.type
+              .toLowerCase()
+              .replace(/_/g, " ");
+          }
+
+          return { unitId, unitName };
+        }
+        return { unitId, unitName: "" };
+      } catch {
+        return { unitId, unitName: "" };
+      }
+    })
+  );
+
+  const unitMap: Record<string, string> = {};
+  results.forEach((result) => {
+    if (result.status === "fulfilled" && result.value.unitName) {
+      unitMap[result.value.unitId] = result.value.unitName;
+    }
+  });
+
+  return unitMap;
 }
 
 export async function fetchProduct(id: string): Promise<Product | null> {

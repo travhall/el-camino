@@ -1,4 +1,4 @@
-// src/lib/square/filterUtils.ts - Fixed pagination/filtering URL parameter handling
+// src/lib/square/filterUtils.ts - Enhanced with availability filtering
 import type {
   Product,
   ProductFilters,
@@ -6,6 +6,7 @@ import type {
   BrandOption,
 } from "./types";
 import { createFilterSlug } from "./types";
+import { getProductStockStatus } from "./inventory"; // Import inventory checking
 
 /**
  * Extract filter options from product array
@@ -35,26 +36,55 @@ export function extractFilterOptions(products: Product[]): FilterOptions {
 
 /**
  * Filter products based on active filters
- * Pure function - no side effects
+ * ENHANCED: Now includes availability filtering
  */
-export function filterProducts(
+export async function filterProducts(
   products: Product[],
   filters: ProductFilters
-): Product[] {
-  return products.filter((product) => {
-    // Brand filtering
-    if (filters.brands.length > 0) {
+): Promise<Product[]> {
+  let filteredProducts = products;
+
+  // Brand filtering
+  if (filters.brands.length > 0) {
+    filteredProducts = filteredProducts.filter((product) => {
       if (!product.brand) return false;
       return filters.brands.includes(product.brand);
-    }
+    });
+  }
 
-    return true;
-  });
+  // Availability filtering - NEW
+  if (filters.availability === true) {
+    // Use Promise.all to check stock status for all products in parallel
+    const stockChecks = await Promise.all(
+      filteredProducts.map(async (product) => {
+        try {
+          const stockStatus = await getProductStockStatus(product);
+          return {
+            product,
+            isInStock: !stockStatus.isOutOfStock,
+          };
+        } catch (error) {
+          // If stock check fails, assume in stock to avoid hiding products unnecessarily
+          return {
+            product,
+            isInStock: true,
+          };
+        }
+      })
+    );
+
+    // Filter to only in-stock products
+    filteredProducts = stockChecks
+      .filter(({ isInStock }) => isInStock)
+      .map(({ product }) => product);
+  }
+
+  return filteredProducts;
 }
 
 /**
  * Parse filters from URL search params
- * Updated to handle multiple brand parameters from HTML forms
+ * ENHANCED: Now handles availability parameter
  */
 export function parseFiltersFromURL(
   searchParams: URLSearchParams
@@ -62,12 +92,18 @@ export function parseFiltersFromURL(
   // Use getAll() to handle multiple brand parameters: ?brands=A&brands=B
   const brands = searchParams.getAll("brands").filter(Boolean);
 
-  return { brands };
+  // Parse availability parameter
+  const availability = searchParams.get("availability") === "true";
+
+  return {
+    brands,
+    availability: availability || undefined, // Only include if true
+  };
 }
 
 /**
  * Convert filters to URL search params
- * FIXED: Now creates multiple parameters instead of comma-separated
+ * ENHANCED: Now includes availability parameter
  */
 export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
   const params = new URLSearchParams();
@@ -79,6 +115,11 @@ export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
     });
   }
 
+  // Add availability parameter
+  if (filters.availability === true) {
+    params.set("availability", "true");
+  }
+
   return params;
 }
 
@@ -88,7 +129,9 @@ export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
  */
 export function updateURLWithFilters(filters: ProductFilters): void {
   const params = filtersToURLParams(filters);
-  const newURL = `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`;
+  const newURL = `${window.location.pathname}${
+    params.toString() ? "?" + params.toString() : ""
+  }`;
 
   // Use pushState for bookmarkable URLs
   window.history.pushState({}, "", newURL);
@@ -96,16 +139,18 @@ export function updateURLWithFilters(filters: ProductFilters): void {
 
 /**
  * Get active filters count for UI badges
+ * ENHANCED: Now includes availability filter
  */
 export function getActiveFiltersCount(filters: ProductFilters): number {
-  return filters.brands.length;
+  return filters.brands.length + (filters.availability ? 1 : 0);
 }
 
 /**
  * Check if any filters are active
+ * ENHANCED: Now includes availability filter
  */
 export function hasActiveFilters(filters: ProductFilters): boolean {
-  return filters.brands.length > 0;
+  return filters.brands.length > 0 || filters.availability === true;
 }
 
 /**
@@ -177,7 +222,7 @@ export function parseURLParams(searchParams: URLSearchParams): ParsedURLParams {
 
 /**
  * Build URL with pagination and filter parameters
- * FIXED: Now creates multiple brand parameters instead of comma-separated
+ * ENHANCED: Now includes availability parameter
  */
 export function buildPaginatedURL(
   basePath: string,
@@ -192,6 +237,11 @@ export function buildPaginatedURL(
     filters.brands.forEach((brand) => {
       params.append("brands", brand);
     });
+  }
+
+  // Add availability parameter
+  if (filters.availability === true) {
+    params.set("availability", "true");
   }
 
   // Add pagination parameters

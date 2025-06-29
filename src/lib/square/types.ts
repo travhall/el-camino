@@ -392,7 +392,7 @@ export interface NavigationError extends AppError {
  */
 export interface ProductFilters {
   brands: string[];
-  // Future: categories, price ranges, etc.
+  availability?: boolean;
 }
 
 export interface FilterOptions {
@@ -407,6 +407,7 @@ export interface BrandOption {
 
 export interface FilterState {
   activeBrands: Set<string>;
+  availabilityOnly?: boolean;
 }
 
 /**

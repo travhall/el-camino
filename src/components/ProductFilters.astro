@@ -1,5 +1,5 @@
 ---
-// src/components/ProductFilters.astro - FOUC Fix
+// src/components/ProductFilters.astro - Enhanced with Availability filter
 import type { FilterOptions } from "@/lib/square/types";
 
 interface Props {
@@ -14,6 +14,7 @@ const { filterOptions, totalProducts, filteredCount, categoryPath = "" } = Astro
 // Parse current filters from URL for server-side rendering
 const currentParams = new URLSearchParams(Astro.url.search);
 const currentBrands = currentParams.getAll("brands") || [];
+const currentAvailability = currentParams.get("availability") === "true";
 const currentPageSize = currentParams.get("pageSize") || "24";
 
 // Configuration for show more/less functionality
@@ -162,9 +163,27 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         </div>
       )}
 
+      <!-- Availability Filter Section -->
+      <div class="mb-6 lg:mb-4">
+        <h3 class="text-xl font-medium font-display text-(--content-heading) mb-3">Availability</h3>
+
+        <label class="flex items-center group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors">
+          <input
+            type="checkbox"
+            name="availability"
+            value="true"
+            checked={currentAvailability}
+            class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+          />
+          <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
+            In stock only
+          </span>
+        </label>
+      </div>
+
       <!-- Mobile Actions -->
       <div class="flex gap-3 p-6 -mx-4 bg-(--surface-secondary) border-t-(--border-tertiary) sticky bottom-0 lg:hidden">
-        {currentBrands.length > 0 && (
+        {(currentBrands.length > 0 || currentAvailability) && (
           <button
             type="button"
             data-clear-filters-mobile
@@ -318,19 +337,42 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const clearBtn = document.querySelector("[data-clear-filters]");
       const clearBtnMobile = document.querySelector("[data-clear-filters-mobile]");
 
-      [clearBtn, clearBtnMobile].forEach(btn => {
-        btn?.addEventListener("click", () => this.clearFiltersAndNavigate());
+      // Clear brand filters only
+      [clearBtn].forEach(btn => {
+        btn?.addEventListener("click", () => this.clearBrandFilters());
       });
+
+      // Clear all filters (mobile)
+      clearBtnMobile?.addEventListener("click", () => this.clearAllFilters());
     }
 
-    private clearFiltersAndNavigate(): void {
+    private clearBrandFilters(): void {
       sessionStorage.removeItem("filter-menu-expanded");
 
-      const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
+      const currentParams = new URLSearchParams(window.location.search);
+      const currentPageSize = currentParams.get("pageSize") || "24";
+      const currentAvailability = currentParams.get("availability");
+      
       const params = new URLSearchParams();
+      if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
+      if (currentAvailability) params.set("availability", currentAvailability);
 
+      this.navigateWithParams(params);
+    }
+
+    private clearAllFilters(): void {
+      sessionStorage.removeItem("filter-menu-expanded");
+
+      const currentParams = new URLSearchParams(window.location.search);
+      const currentPageSize = currentParams.get("pageSize") || "24";
+      
+      const params = new URLSearchParams();
       if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
 
+      this.navigateWithParams(params);
+    }
+
+    private navigateWithParams(params: URLSearchParams): void {
       const queryString = params.toString();
       const basePath = window.location.pathname;
       const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;

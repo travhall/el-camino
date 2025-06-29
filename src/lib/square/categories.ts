@@ -396,9 +396,9 @@ export async function fetchProductsByCategoryWithPagination(
         return [];
       }
     })
-    .then((allProducts) => {
-      // Do pagination on cached products
-      const filteredProducts = filterProducts(allProducts, filters);
+    .then(async (allProducts) => {
+      // UPDATED: Now async to handle availability filtering
+      const filteredProducts = await filterProducts(allProducts, filters);
       const startIndex = (page - 1) * pageSize;
       const endIndex = startIndex + pageSize;
       const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
