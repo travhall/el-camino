@@ -1,5 +1,5 @@
 // src/lib/wordpress/api.ts
-import type { WordPressPage, WordPressPost } from "./types";
+import type { WordPressPage, WordPressPost, WordPressTerm } from "./types";
 import { imageCache } from "@/lib/square/cacheUtils";
 import {
   createError,
@@ -128,12 +128,12 @@ async function fetchWithCache<T>(
 }
 
 /**
- * Process WordPress post data with error handling
+ * Process WordPress post data with error handling - UPDATED to handle tags
  */
 function processPost(post: any): WordPressPost {
   try {
     // Extract first category for display (WordPress.com returns categories as object with names as keys)
-    let firstCategory = null;
+    let firstCategory: WordPressTerm | null = null;
     if (post.categories && typeof post.categories === "object") {
       const categoryNames = Object.keys(post.categories);
       if (categoryNames.length > 0) {
@@ -145,6 +145,21 @@ function processPost(post: any): WordPressPost {
           description: categoryData.description || "",
         };
       }
+    }
+
+    // NEW: Extract tags for display (WordPress.com returns tags as object with names as keys)
+    let extractedTags: WordPressTerm[] = [];
+    if (post.tags && typeof post.tags === "object") {
+      const tagNames = Object.keys(post.tags);
+      extractedTags = tagNames.map((tagName) => {
+        const tagData = post.tags[tagName];
+        return {
+          name: tagData.name || tagName,
+          slug: tagData.slug || tagName.toLowerCase().replace(/\s+/g, "-"),
+          taxonomy: "post_tag",
+          description: tagData.description || "",
+        };
+      });
     }
 
     return {
@@ -167,10 +182,14 @@ function processPost(post: any): WordPressPost {
             }
           : {}),
 
-        // Categories - convert WordPress.com structure to expected format
-        ...(firstCategory
+        // Categories and Tags - UPDATED to include both
+        // NOTE: In WordPress REST API, both categories and tags come under wp:term
+        // Structure: "wp:term": [ [term1, term2, term3] ]
+        ...(firstCategory || extractedTags.length > 0
           ? {
-              "wp:term": [[firstCategory]],
+              "wp:term": [
+                [...(firstCategory ? [firstCategory] : []), ...extractedTags],
+              ],
             }
           : {}),
 
@@ -408,6 +427,79 @@ export async function getLegalPages(): Promise<WordPressPage[]> {
   } catch (error) {
     const appError = processWordPressError(error, "getLegalPages");
     return handleError<WordPressPage[]>(appError, []);
+  }
+}
+
+// =============================================================================
+// NEW: TAG-RELATED API FUNCTIONS
+// =============================================================================
+
+/**
+ * Get posts by tag slug (for future tag archive pages)
+ */
+export async function getPostsByTag(tagSlug: string): Promise<WordPressPost[]> {
+  try {
+    const allPosts = await getPosts();
+
+    // Filter posts that have the specified tag
+    return allPosts.filter((post) => {
+      const embeddedData = post._embedded;
+      if (!embeddedData?.["wp:term"]?.[0]) return false;
+
+      return embeddedData["wp:term"][0].some(
+        (term) => term.taxonomy === "post_tag" && term.slug === tagSlug
+      );
+    });
+  } catch (error) {
+    const appError = processWordPressError(error, `getPostsByTag:${tagSlug}`);
+    return handleError<WordPressPost[]>(appError, []);
+  }
+}
+
+/**
+ * Get all unique tags from all posts
+ */
+export async function getAllTags(): Promise<
+  Array<{ name: string; slug: string; count: number }>
+> {
+  try {
+    const cacheKey = "all_tags";
+
+    return wordpressCache.getOrCompute(cacheKey, async () => {
+      const allPosts = await getPosts();
+      const tagCounts = new Map<
+        string,
+        { name: string; slug: string; count: number }
+      >();
+
+      allPosts.forEach((post) => {
+        const embeddedData = post._embedded;
+        if (embeddedData?.["wp:term"]?.[0]) {
+          embeddedData["wp:term"][0]
+            .filter((term) => term.taxonomy === "post_tag")
+            .forEach((tag) => {
+              const existing = tagCounts.get(tag.slug);
+              if (existing) {
+                existing.count++;
+              } else {
+                tagCounts.set(tag.slug, {
+                  name: tag.name,
+                  slug: tag.slug,
+                  count: 1,
+                });
+              }
+            });
+        }
+      });
+
+      return Array.from(tagCounts.values()).sort((a, b) => b.count - a.count);
+    });
+  } catch (error) {
+    const appError = processWordPressError(error, "getAllTags");
+    return handleError<Array<{ name: string; slug: string; count: number }>>(
+      appError,
+      []
+    );
   }
 }
 

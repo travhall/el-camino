@@ -31,7 +31,7 @@ export interface WordPressPage {
 
 export interface WordPressEmbedded {
   "wp:featuredmedia"?: [WordPressFeaturedMedia];
-  "wp:term"?: [[WordPressTerm]];
+  "wp:term"?: [WordPressTerm[]]; // FIXED: Array containing one array of terms
   author?: [WordPressAuthor];
 }
 
@@ -75,6 +75,7 @@ export interface ExtractedWordPressData {
   category: WordPressTerm | null;
   featuredMedia: WordPressFeaturedMedia | null;
   author: WordPressAuthor | null;
+  tags: WordPressTerm[]; // NEW: Add tags array
 }
 
 export interface WordPressFallbackContent {
@@ -119,6 +120,7 @@ export interface ArticleStructuredData {
   articleSection?: string;
   description: string;
   wordCount?: number;
+  keywords?: string[]; // NEW: Add keywords for SEO
 }
 
 /**
@@ -146,13 +148,18 @@ export function isValidWordPressPage(page: any): page is WordPressPage {
 }
 
 /**
- * Safe data extraction with fallbacks
+ * Safe data extraction with fallbacks - UPDATED to include tags
  */
 export function extractEmbeddedData(
   post: WordPressPost
 ): ExtractedWordPressData {
   if (!post._embedded) {
-    return { category: null, featuredMedia: null, author: null };
+    return {
+      category: null,
+      featuredMedia: null,
+      author: null,
+      tags: [], // NEW: Default empty tags array
+    };
   }
 
   try {
@@ -160,10 +167,19 @@ export function extractEmbeddedData(
       category: post._embedded["wp:term"]?.[0]?.[0] || null,
       featuredMedia: post._embedded["wp:featuredmedia"]?.[0] || null,
       author: post._embedded.author?.[0] || null,
+      tags:
+        post._embedded["wp:term"]?.[0]?.filter(
+          (term) => term.taxonomy === "post_tag"
+        ) || [], // NEW: Extract tags
     };
   } catch (error) {
     console.warn("Error extracting embedded data:", error);
-    return { category: null, featuredMedia: null, author: null };
+    return {
+      category: null,
+      featuredMedia: null,
+      author: null,
+      tags: [], // NEW: Fallback empty tags
+    };
   }
 }
 
@@ -199,7 +215,7 @@ export function generateFallbackContent(
 }
 
 /**
- * Generate structured data for SEO
+ * Generate structured data for SEO - UPDATED to include tags as keywords
  */
 export function generateStructuredData(
   post: WordPressPost,
@@ -210,6 +226,12 @@ export function generateStructuredData(
   const wordCount = post.content.rendered
     ? sanitizeHtmlContent(post.content.rendered).split(/\s+/).length
     : undefined;
+
+  // NEW: Extract tag names for SEO keywords
+  const keywords =
+    embeddedData.tags.length > 0
+      ? embeddedData.tags.map((tag) => tag.name)
+      : undefined;
 
   return {
     "@context": "https://schema.org",
@@ -233,6 +255,7 @@ export function generateStructuredData(
     articleSection: embeddedData.category?.name,
     description: fallbackContent.excerpt,
     wordCount,
+    keywords, // NEW: Include tags as keywords
   };
 }
 
@@ -357,4 +380,60 @@ export function formatPublishDate(dateString: string): {
       relative: "Recently",
     };
   }
+}
+
+/**
+ * NEW: Helper functions for tag handling
+ */
+
+/**
+ * Check if post has tags
+ */
+export function hasTagsAvailable(post: WordPressPost): boolean {
+  const embeddedData = extractEmbeddedData(post);
+  return embeddedData.tags.length > 0;
+}
+
+/**
+ * Get formatted tag list for display
+ */
+export function getFormattedTags(tags: WordPressTerm[]): Array<{
+  name: string;
+  slug: string;
+  url: string;
+}> {
+  return tags.map((tag) => ({
+    name: tag.name,
+    slug: tag.slug,
+    url: `/news/tag/${tag.slug}`, // Future tag archive URL
+  }));
+}
+
+/**
+ * Get most popular tags from a collection of posts
+ */
+export function getPopularTags(
+  posts: WordPressPost[],
+  limit: number = 10
+): Array<{
+  tag: WordPressTerm;
+  count: number;
+}> {
+  const tagCounts = new Map<string, { tag: WordPressTerm; count: number }>();
+
+  posts.forEach((post) => {
+    const embeddedData = extractEmbeddedData(post);
+    embeddedData.tags.forEach((tag) => {
+      const existing = tagCounts.get(tag.slug);
+      if (existing) {
+        existing.count++;
+      } else {
+        tagCounts.set(tag.slug, { tag, count: 1 });
+      }
+    });
+  });
+
+  return Array.from(tagCounts.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
 }
