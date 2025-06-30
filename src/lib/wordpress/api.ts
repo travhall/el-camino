@@ -130,16 +130,23 @@ async function fetchWithCache<T>(
 /**
  * Process WordPress post data with error handling
  */
-function processPost(post: {
-  ID?: number;
-  date?: string;
-  slug?: string;
-  title?: string;
-  excerpt?: string;
-  content?: string;
-  featured_image?: string;
-}): WordPressPost {
+function processPost(post: any): WordPressPost {
   try {
+    // Extract first category for display (WordPress.com returns categories as object with names as keys)
+    let firstCategory = null;
+    if (post.categories && typeof post.categories === "object") {
+      const categoryNames = Object.keys(post.categories);
+      if (categoryNames.length > 0) {
+        const categoryData = post.categories[categoryNames[0]];
+        firstCategory = {
+          name: categoryData.name || categoryNames[0],
+          slug: categoryData.slug || "",
+          taxonomy: "category",
+          description: categoryData.description || "",
+        };
+      }
+    }
+
     return {
       id: post.ID || 0,
       date: post.date || new Date().toISOString(),
@@ -147,16 +154,44 @@ function processPost(post: {
       title: { rendered: post.title || "Untitled" },
       excerpt: { rendered: post.excerpt || "" },
       content: { rendered: post.content || "" },
-      _embedded: post.featured_image
-        ? {
-            "wp:featuredmedia": [
-              {
-                source_url: post.featured_image,
-                alt_text: post.title || "Featured image",
-              },
-            ],
-          }
-        : undefined,
+      _embedded: {
+        // Featured media
+        ...(post.featured_image
+          ? {
+              "wp:featuredmedia": [
+                {
+                  source_url: post.featured_image,
+                  alt_text: post.title || "Featured image",
+                },
+              ],
+            }
+          : {}),
+
+        // Categories - convert WordPress.com structure to expected format
+        ...(firstCategory
+          ? {
+              "wp:term": [[firstCategory]],
+            }
+          : {}),
+
+        // Author - map WordPress.com author structure
+        ...(post.author
+          ? {
+              author: [
+                {
+                  name: post.author.name || post.author.login || "Anonymous",
+                  avatar_urls: {
+                    "96": post.author.avatar_URL || "",
+                    "48": post.author.avatar_URL || "",
+                    "24": post.author.avatar_URL || "",
+                  },
+                  description: post.author.description || "",
+                  url: post.author.URL || "",
+                },
+              ],
+            }
+          : {}),
+      },
     };
   } catch (error) {
     const appError = processWordPressError(
@@ -180,14 +215,7 @@ function processPost(post: {
 /**
  * Process WordPress page data with error handling
  */
-function processPage(page: {
-  ID?: number;
-  date?: string;
-  slug?: string;
-  title?: string;
-  content?: string;
-  featured_image?: string;
-}): WordPressPage {
+function processPage(page: any): WordPressPage {
   try {
     return {
       id: page.ID || 0,
@@ -195,16 +223,37 @@ function processPage(page: {
       slug: page.slug || "",
       title: { rendered: page.title || "Untitled" },
       content: { rendered: page.content || "" },
-      _embedded: page.featured_image
-        ? {
-            "wp:featuredmedia": [
-              {
-                source_url: page.featured_image,
-                alt_text: page.title || "Featured image",
-              },
-            ],
-          }
-        : undefined,
+      _embedded: {
+        // Featured media
+        ...(page.featured_image
+          ? {
+              "wp:featuredmedia": [
+                {
+                  source_url: page.featured_image,
+                  alt_text: page.title || "Featured image",
+                },
+              ],
+            }
+          : {}),
+
+        // Author for pages
+        ...(page.author
+          ? {
+              author: [
+                {
+                  name: page.author.name || page.author.login || "Anonymous",
+                  avatar_urls: {
+                    "96": page.author.avatar_URL || "",
+                    "48": page.author.avatar_URL || "",
+                    "24": page.author.avatar_URL || "",
+                  },
+                  description: page.author.description || "",
+                  url: page.author.URL || "",
+                },
+              ],
+            }
+          : {}),
+      },
     };
   } catch (error) {
     const appError = processWordPressError(
@@ -234,7 +283,7 @@ function processPage(page: {
 export async function getPosts(): Promise<WordPressPost[]> {
   try {
     const data = await fetchWithCache<any>(
-      "/posts?fields=ID,title,date,excerpt,content,slug,featured_image",
+      "/posts?fields=ID,title,date,excerpt,content,slug,featured_image,author,categories,tags",
       "all_posts"
     );
 
@@ -244,7 +293,7 @@ export async function getPosts(): Promise<WordPressPost[]> {
 
     return data.posts
       .map(processPost)
-      .filter((post: any): post is WordPressPost => post.id > 0); // Filter out failed processing
+      .filter((post: any): post is WordPressPost => post.id > 0);
   } catch (error) {
     const appError = processWordPressError(error, "getPosts");
     return handleError<WordPressPost[]>(appError, []);
@@ -262,7 +311,7 @@ export async function getPost(slug: string): Promise<WordPressPost | null> {
   try {
     const cacheKey = `post_${slug}`;
     const post = await fetchWithCache<any>(
-      `/posts/slug:${slug}?fields=ID,title,date,excerpt,content,slug,featured_image`,
+      `/posts/slug:${slug}?fields=ID,title,date,excerpt,content,slug,featured_image,author,categories,tags`,
       cacheKey
     );
 

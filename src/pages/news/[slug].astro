@@ -49,54 +49,63 @@ const fullTitle = `${pageTitle} | El Camino`;
 ---
 
 <Layout title={fullTitle}>
-  <article class="max-w-4xl mx-auto px-4 py-16">
-    <header class="mb-8">
-      {
-        category?.name && (
-          <span class="font-display text-lg text-(--content-meta) mb-4 block">
-            {category.name}
-          </span>
-        )
-      }
+  <article class="p-2">
+    <header class="mb-8 flex flex-col lg:flex-row-reverse items-center gap-6">
+      <div class="place-self-center w-full lg:w-[50vw] p-4">
+        {
+          category?.name && (
+            <span class="font-display text-lg text-(--content-meta) inline-block">
+              {category.name}
+            </span>
+          )
+        }
 
-      <h1
-        class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading) my-4 lg:my-0"
-        set:html={post.title.rendered}
-      />
+        <h1
+          class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading) text-balance mb-8"
+          set:html={post.title.rendered}
+        />
 
-      {
-        author && (
-          <div class="flex items-center gap-4 text-(--content-meta) mb-6">
-            {author.avatar_urls?.["96"] && (
-              <img
-                src={author.avatar_urls["96"]}
-                alt={author.name}
-                class="w-12 h-12 rounded-full"
-              />
-            )}
-            <div>
-              <span class="font-medium text-(--content-body) block">
-                {author.name}
-              </span>
-              <time datetime={post.date} class="text-sm">
-                {formatDate(post.date)}
-              </time>
+        {
+          author && (
+            <div class="flex items-center gap-4 text-(--content-meta) mb-6">
+              {author.avatar_urls?.["96"] && (
+                <img
+                  src={author.avatar_urls["96"]}
+                  alt={author.name}
+                  class="w-12 h-12 rounded-full"
+                />
+              )}
+              <div>
+                <span class="font-medium text-(--content-body) block">
+                  {author.name}
+                </span>
+                <time datetime={post.date} class="text-sm">
+                  {formatDate(post.date)}
+                </time>
+              </div>
             </div>
-          </div>
-        )
-      }
+          )
+        }
+      </div>
 
-      {
-        imageUrl && (
-          <img
-            src={imageUrl}
-            alt={featuredMedia?.alt_text || post.title.rendered}
-            class="w-full h-auto aspect-video object-cover rounded-sm"
-          />
-        )
-      }
+      <div
+        class="aspect-square border-4 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative w-full lg:w-[50vw]"
+      >
+        {
+          imageUrl && (
+            <img
+              src={imageUrl}
+              alt={featuredMedia?.alt_text || post.title.rendered}
+              class="w-full h-auto object-cover"
+            />
+          )
+        }
+      </div>
     </header>
 
-    <div class="prose prose-lg max-w-none" set:html={post.content.rendered} />
+    <div
+      class="prose prose-lg max-w-6xl mx-auto"
+      set:html={post.content.rendered}
+    />
   </article>
 </Layout>
