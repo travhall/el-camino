@@ -79,7 +79,7 @@
   --surface-tertiary: var(--color-elco-beeswax-300);
   --border-primary: var(--color-elco-beeswax-200);
   --border-secondary: var(--color-elco-beeswax-100);
-  --border-tertiary: var(--color-elco-beeswax-200);
+  --border-tertiary: var(--color-elco-beeswax-50);
 
   --ui-nav-surface: var(--color-elco-beeswax-200);
   --ui-nav-text: var(--color-elco-fig-leaf-900);
@@ -146,7 +146,7 @@
   --surface-tertiary: var(--color-elco-fig-leaf-700);
   --border-primary: var(--color-elco-fig-leaf-800);
   --border-secondary: var(--color-elco-fig-leaf-900);
-  --border-tertiary: var(--color-elco-fig-leaf-800);
+  --border-tertiary: var(--color-elco-fig-leaf-700);
 
   --ui-nav-surface: var(--color-elco-fig-leaf-800);
   --ui-nav-text: var(--color-elco-sweet-tea-50);
@@ -445,4 +445,576 @@ h6 {
   .brand-extra-item {
     transition: none !important;
   }
+}
+
+/* WordPress Block Styles - Add to src/styles/global.css */
+
+/* =============================================================================
+   WORDPRESS CONTENT WRAPPER (.prose replacement)
+   ============================================================================= */
+
+.prose {
+  font-family: var(--font-sans);
+  color: var(--content-body);
+  line-height: 1.7;
+  max-width: none; /* Allow full width control from parent */
+}
+
+/* Base block spacing */
+.prose > * {
+  margin-bottom: 1.5rem;
+}
+
+.prose > *:last-child {
+  margin-bottom: 0;
+}
+
+/* =============================================================================
+   WORDPRESS CORE BLOCKS
+   ============================================================================= */
+
+/* Headings */
+.prose .wp-block-heading,
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  font-family: var(--font-display);
+  color: var(--content-heading);
+  font-weight: 700;
+  line-height: 1.2;
+  text-wrap: balance;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.prose h1,
+.prose .wp-block-heading.has-h1-font-size {
+  @apply text-4xl md:text-6xl;
+}
+
+.prose h2,
+.prose .wp-block-heading.has-h2-font-size {
+  @apply text-3xl md:text-5xl;
+}
+
+.prose h3,
+.prose .wp-block-heading.has-h3-font-size {
+  @apply text-2xl md:text-4xl;
+}
+
+.prose h4,
+.prose .wp-block-heading.has-h4-font-size {
+  @apply text-xl md:text-3xl;
+}
+
+.prose h5,
+.prose .wp-block-heading.has-h5-font-size {
+  @apply text-lg md:text-2xl;
+}
+
+.prose h6,
+.prose .wp-block-heading.has-h6-font-size {
+  @apply text-base md:text-xl;
+}
+
+/* Paragraphs */
+.prose .wp-block-paragraph,
+.prose p {
+  color: var(--content-body);
+  @apply text-base md:text-lg leading-relaxed;
+  margin-bottom: 1.5rem;
+}
+
+.prose .wp-block-paragraph.has-drop-cap:first-letter {
+  font-family: var(--font-display);
+  font-size: 4em;
+  line-height: 0.8;
+  float: left;
+  margin: 0.1em 0.1em 0 0;
+  color: var(--content-emphasis);
+}
+
+/* Lists */
+.prose .wp-block-list,
+.prose ul,
+.prose ol {
+  @apply pl-6 text-base md:text-lg leading-relaxed;
+  margin-bottom: 1.5rem;
+}
+
+.prose .wp-block-list ul,
+.prose ul {
+  @apply list-disc;
+}
+
+.prose .wp-block-list ol,
+.prose ol {
+  @apply list-decimal;
+}
+
+.prose .wp-block-list li,
+.prose li {
+  margin-bottom: 0.5rem;
+}
+
+.prose .wp-block-list li:last-child,
+.prose li:last-child {
+  margin-bottom: 0;
+}
+
+/* Quotes */
+.prose .wp-block-quote,
+.prose blockquote {
+  border-left: 4px solid var(--content-meta);
+  padding-left: 1.5rem;
+  margin: 2rem 0;
+  font-style: italic;
+  color: var(--content-meta);
+  @apply text-lg md:text-xl leading-relaxed;
+}
+
+.prose .wp-block-quote p,
+.prose blockquote p {
+  color: inherit;
+  margin-bottom: 1rem;
+}
+
+.prose .wp-block-quote cite,
+.prose blockquote cite {
+  display: block;
+  margin-top: 1rem;
+  font-style: normal;
+  font-size: 0.9em;
+  color: var(--content-caption);
+}
+
+.prose .wp-block-quote.is-large,
+.prose .wp-block-quote.is-style-large {
+  border-left: none;
+  padding-left: 0;
+  text-align: center;
+  @apply text-xl md:text-2xl;
+}
+
+.prose .wp-block-quote.is-large p,
+.prose .wp-block-quote.is-style-large p {
+  font-size: inherit;
+}
+
+/* Images */
+.prose .wp-block-image {
+  margin: 2rem 0;
+}
+
+.prose .wp-block-image img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.25rem;
+  border: 1px solid var(--border-secondary);
+}
+
+.prose .wp-block-image.alignleft {
+  float: left;
+  margin: 0 1.5rem 1rem 0;
+  max-width: 50%;
+}
+
+.prose .wp-block-image.alignright {
+  float: right;
+  margin: 0 0 1rem 1.5rem;
+  max-width: 50%;
+}
+
+.prose .wp-block-image.aligncenter,
+.prose .wp-block-image.alignfull,
+.prose .wp-block-image.alignwide {
+  text-align: center;
+  clear: both;
+}
+
+.prose .wp-block-image figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--content-caption);
+  text-align: center;
+  font-style: italic;
+}
+
+/* Gallery */
+.prose .wp-block-gallery {
+  margin: 2rem 0;
+}
+
+.prose .wp-block-gallery.has-nested-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.prose .wp-block-gallery.columns-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.prose .wp-block-gallery.columns-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.prose .wp-block-gallery.columns-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 768px) {
+  .prose .wp-block-gallery.columns-3,
+  .prose .wp-block-gallery.columns-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .prose .wp-block-gallery {
+    grid-template-columns: 1fr;
+  }
+}
+
+.prose .wp-block-gallery .wp-block-image {
+  margin: 0;
+}
+
+.prose .wp-block-gallery .wp-block-image img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.prose .wp-block-gallery.is-cropped .wp-block-image img {
+  height: 200px;
+  object-fit: cover;
+}
+
+/* Code */
+.prose .wp-block-code,
+.prose pre {
+  background-color: var(--surface-secondary);
+  color: var(--content-body);
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  @apply text-sm md:text-base;
+  margin: 1.5rem 0;
+}
+
+.prose .wp-block-code code,
+.prose pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  border-radius: 0;
+}
+
+.prose code {
+  background-color: var(--surface-secondary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  @apply text-sm;
+  color: var(--content-emphasis);
+}
+
+/* Separators */
+.prose .wp-block-separator,
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--border-primary);
+  margin: 3rem 0;
+}
+
+.prose .wp-block-separator.is-style-wide {
+  border-top-width: 2px;
+}
+
+.prose .wp-block-separator.is-style-dots {
+  border: none;
+  text-align: center;
+  margin: 3rem 0;
+}
+
+.prose .wp-block-separator.is-style-dots::before {
+  content: "···";
+  color: var(--content-meta);
+  font-size: 1.5rem;
+  letter-spacing: 1rem;
+}
+
+/* Buttons */
+.prose .wp-block-button {
+  margin: 1.5rem 0;
+}
+
+.prose .wp-block-button .wp-block-button__link {
+  background-color: var(--ui-button-surface);
+  color: var(--ui-button-text);
+  border: 2px solid var(--ui-button-border);
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.25rem;
+  text-decoration: none;
+  display: inline-block;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.prose .wp-block-button .wp-block-button__link:hover {
+  background-color: var(--ui-button-border);
+  transform: translateY(-1px);
+}
+
+.prose .wp-block-button.is-style-outline .wp-block-button__link {
+  background-color: transparent;
+  color: var(--ui-button-outline-text);
+  border-color: var(--ui-button-outline-border);
+}
+
+/* Links */
+.prose a {
+  color: var(--content-emphasis);
+  text-decoration: underline;
+  text-decoration-color: var(--content-meta);
+  text-underline-offset: 0.2em;
+  transition: all 0.2s ease;
+}
+
+.prose a:hover {
+  color: var(--content-heading);
+  text-decoration-color: currentColor;
+}
+
+/* Tables */
+.prose .wp-block-table,
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  border: 1px solid var(--border-primary);
+}
+
+.prose .wp-block-table th,
+.prose .wp-block-table td,
+.prose table th,
+.prose table td {
+  padding: 0.75rem;
+  border: 1px solid var(--border-primary);
+  text-align: left;
+}
+
+.prose .wp-block-table th,
+.prose table th {
+  background-color: var(--surface-secondary);
+  font-weight: 600;
+  color: var(--content-heading);
+}
+
+.prose .wp-block-table.is-style-stripes tbody tr:nth-child(odd) {
+  background-color: var(--surface-secondary);
+}
+
+/* Embeds & Media */
+.prose .wp-block-embed,
+.prose .wp-block-video,
+.prose .wp-block-audio {
+  margin: 2rem 0;
+}
+
+.prose .wp-block-embed iframe,
+.prose .wp-block-video video,
+.prose .wp-block-audio audio {
+  max-width: 100%;
+  border-radius: 0.25rem;
+}
+
+.prose .wp-block-embed figcaption,
+.prose .wp-block-video figcaption,
+.prose .wp-block-audio figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--content-caption);
+  text-align: center;
+  font-style: italic;
+}
+
+/* Columns */
+.prose .wp-block-columns {
+  display: grid;
+  gap: 2rem;
+  margin: 2rem 0;
+}
+
+.prose .wp-block-columns.has-2-columns {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.prose .wp-block-columns.has-3-columns {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.prose .wp-block-columns.has-4-columns {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 768px) {
+  .prose .wp-block-columns {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+}
+
+.prose .wp-block-column {
+  /* Individual column styling */
+}
+
+/* Group */
+.prose .wp-block-group {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+}
+
+.prose .wp-block-group.has-background {
+  background-color: var(--surface-secondary);
+}
+
+/* Cover */
+.prose .wp-block-cover {
+  margin: 2rem 0;
+  min-height: 300px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.prose .wp-block-cover img,
+.prose .wp-block-cover video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.prose .wp-block-cover .wp-block-cover__inner-container {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  color: white;
+  padding: 2rem;
+}
+
+.prose .wp-block-cover::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+
+/* Pullquote */
+.prose .wp-block-pullquote {
+  border: none;
+  background: var(--surface-secondary);
+  padding: 2rem;
+  margin: 3rem 0;
+  text-align: center;
+  border-radius: 0.5rem;
+}
+
+.prose .wp-block-pullquote blockquote {
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+.prose .wp-block-pullquote cite {
+  display: block;
+  margin-top: 1rem;
+  font-style: normal;
+  color: var(--content-meta);
+}
+
+/* =============================================================================
+   RESPONSIVE UTILITIES
+   ============================================================================= */
+
+/* Clear floats */
+.prose::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Responsive text sizes */
+@media (max-width: 640px) {
+  .prose {
+    font-size: 16px;
+  }
+
+  .prose h1,
+  .prose .wp-block-heading.has-h1-font-size {
+    @apply text-3xl;
+  }
+
+  .prose h2,
+  .prose .wp-block-heading.has-h2-font-size {
+    @apply text-2xl;
+  }
+}
+
+/* =============================================================================
+   ACCESSIBILITY IMPROVEMENTS
+   ============================================================================= */
+
+/* .prose img {
+  max-width: 100%;
+  height: auto;
+}
+
+.prose .wp-block-image img[alt=""] {
+  border: 2px dashed var(--content-meta);
+  opacity: 0.5;
+} */
+
+.prose .screen-reader-text {
+  @apply sr-only;
+}
+
+/* =============================================================================
+   DARK MODE ADJUSTMENTS
+   ============================================================================= */
+
+.dark .prose .wp-block-code,
+.dark .prose pre {
+  background-color: var(--surface-tertiary);
+}
+
+.dark .prose .wp-block-image img {
+  border-color: var(--border-tertiary);
+}
+
+.dark .prose .wp-block-group.has-background {
+  background-color: var(--surface-tertiary);
+}
+
+.dark .prose .wp-block-pullquote {
+  background-color: var(--surface-tertiary);
 }

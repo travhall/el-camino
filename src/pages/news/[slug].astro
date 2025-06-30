@@ -1,5 +1,5 @@
 ---
-// src/pages/news/[slug].astro
+// src/pages/news/[slug].astro - Updated with better WordPress content handling
 import Layout from "@/layouts/Layout.astro";
 import { getPost, getPosts } from "@/lib/wordpress/api";
 import { formatDate } from "@/utils/dates";
@@ -37,6 +37,27 @@ try {
   return new Response(error, { status: 500 });
 }
 
+let prevPost: WordPressPost | null = null;
+let nextPost: WordPressPost | null = null;
+
+if (post) {
+  try {
+    // Get all posts to find previous/next
+    const allPosts = await getPosts();
+    const currentIndex = allPosts.findIndex((p) => p.slug === post.slug);
+
+    if (currentIndex > 0) {
+      nextPost = allPosts[currentIndex - 1]; // Newer post (published later)
+    }
+
+    if (currentIndex < allPosts.length - 1) {
+      prevPost = allPosts[currentIndex + 1]; // Older post (published earlier)
+    }
+  } catch (e) {
+    console.warn("Could not load navigation posts:", e);
+  }
+}
+
 const category = post._embedded?.["wp:term"]?.[0]?.[0];
 const featuredMedia = post._embedded?.["wp:featuredmedia"]?.[0];
 const author = post._embedded?.author?.[0];
@@ -46,9 +67,39 @@ const imageUrl = featuredMedia?.source_url;
 // Get the title and content from the page
 const pageTitle = post.title.rendered;
 const fullTitle = `${pageTitle} | El Camino`;
+
+// Generate structured data for SEO
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  headline: pageTitle,
+  image: imageUrl,
+  author: {
+    "@type": "Person",
+    name: author?.name || "El Camino",
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "El Camino Skate Shop",
+    logo: {
+      "@type": "ImageObject",
+      url: `${Astro.site}logo.png`,
+    },
+  },
+  datePublished: post.date,
+  dateModified: post.date,
+  articleSection: category?.name,
+  description: post.excerpt.rendered.replace(/<[^>]*>/g, "").substring(0, 160),
+};
 ---
 
 <Layout title={fullTitle}>
+  <!-- Structured Data for SEO -->
+  <script
+    type="application/ld+json"
+    set:html={JSON.stringify(structuredData)}
+  />
+
   <article class="p-2">
     <header
       class="mb-1 flex flex-col lg:flex-row-reverse items-center gap-4 lg:gap-8"
@@ -75,6 +126,7 @@ const fullTitle = `${pageTitle} | El Camino`;
                   src={author.avatar_urls["96"]}
                   alt={author.name}
                   class="w-12 h-12 rounded-full"
+                  loading="lazy"
                 />
               )}
               <div>
@@ -99,14 +151,164 @@ const fullTitle = `${pageTitle} | El Camino`;
               src={imageUrl}
               alt={featuredMedia?.alt_text || post.title.rendered}
               class="w-full h-full object-cover"
+              loading="eager"
+              fetchpriority="high"
             />
           )
         }
       </div>
     </header>
 
-    <section class="max-w-5xl mx-auto p-4 lg:p-8 bg-(--surface-secondary)">
-      <div class="prose prose-lg" set:html={post.content.rendered} />
+    <!-- Main Content Section with WordPress Block Styling -->
+    <section
+      class="max-w-5xl mx-auto p-4 lg:p-8 xl:p-12 bg-(--surface-secondary)"
+    >
+      <!-- Main WordPress content with proper block styling -->
+      <div class="prose prose-lg max-w-none" set:html={post.content.rendered} />
+
+      <!-- Article footer with sharing/navigation -->
+      <footer class="mt-12 pt-8 border-t border-(--border-primary)">
+        {category && (
+          <div class="mb-4">
+            <span class="text-(--content-meta) text-sm">Filed under: </span>
+            <span class="text-(--content-emphasis) font-medium">{category.name}</span>
+          </div>
+        )}
+        
+        <div class="flex justify-between items-center mb-8">
+          <a 
+            href="/news"
+            class="text-(--content-emphasis) hover:text-(--content-heading) transition-colors"
+          >
+            ← Back to News
+          </a>
+          
+          <button 
+            class="text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-sm"
+            onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href)"
+          >
+            Share Article
+          </button>
+        </div>
+
+        <!-- Article Navigation -->
+        {(prevPost || nextPost) && (
+          <nav class="border-t border-(--border-primary) pt-8" aria-label="Article navigation">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Previous Article -->
+              <div class="flex justify-start">
+                {prevPost && (
+                  <a 
+                    href={`/news/${prevPost.slug}`}
+                    class="group flex flex-col w-full max-w-sm p-4 bg-(--surface-tertiary) hover:bg-(--ui-card-hover) border border-(--border-secondary) rounded-lg transition-all duration-200 hover:shadow-lg"
+                  >
+                    <span class="text-(--content-meta) text-sm font-medium mb-2 flex items-center">
+                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Previous Article
+                    </span>
+                    <h3 class="text-(--content-heading) font-display font-semibold text-lg leading-tight group-hover:text-(--content-emphasis) transition-colors line-clamp-2">
+                      {prevPost.title.rendered}
+                    </h3>
+                    {prevPost.excerpt.rendered && (
+                      <p class="text-(--content-meta) text-sm mt-2 line-clamp-2">
+                        {prevPost.excerpt.rendered.replace(/<[^>]*>/g, '').substring(0, 100)}...
+                      </p>
+                    )}
+                  </a>
+                )}
+              </div>
+
+              <!-- Next Article -->
+              <div class="flex justify-end">
+                {nextPost && (
+                  <a 
+                    href={`/news/${nextPost.slug}`}
+                    class="group flex flex-col w-full max-w-sm p-4 bg-(--surface-tertiary) hover:bg-(--ui-card-hover) border border-(--border-secondary) rounded-lg transition-all duration-200 hover:shadow-lg text-right"
+                  >
+                    <span class="text-(--content-meta) text-sm font-medium mb-2 flex items-center justify-end">
+                      Next Article
+                      <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                    <h3 class="text-(--content-heading) font-display font-semibold text-lg leading-tight group-hover:text-(--content-emphasis) transition-colors line-clamp-2">
+                      {nextPost.title.rendered}
+                    </h3>
+                    {nextPost.excerpt.rendered && (
+                      <p class="text-(--content-meta) text-sm mt-2 line-clamp-2">
+                        {nextPost.excerpt.rendered.replace(/<[^>]*>/g, '').substring(0, 100)}...
+                      </p>
+                    )}
+                  </a>
+                )}
+              </div>
+            </div>
+          </nav>
+        )}
+      </footer>
     </section>
   </article>
 </Layout>
+
+<style>
+  /* Component-specific WordPress content optimizations */
+  .prose {
+    /* Ensure WordPress images work well with your layout */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+
+  /* Handle WordPress alignment classes within your design */
+  .prose .alignfull {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    max-width: 100vw;
+  }
+
+  .prose .alignwide {
+    width: calc(100% + 4rem);
+    margin-left: -2rem;
+    margin-right: -2rem;
+  }
+
+  nav[aria-label="Article navigation"] a {
+    text-decoration: none;
+  }
+  
+  nav[aria-label="Article navigation"] .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  @media (max-width: 768px) {
+    .prose .alignwide {
+      width: 100%;
+      margin-left: 0;
+      margin-right: 0;
+    }
+    nav[aria-label="Article navigation"] .grid-cols-1 > div {
+      max-width: 100%;
+    }
+    
+    nav[aria-label="Article navigation"] a {
+      text-align: left !important;
+    }
+    
+    nav[aria-label="Article navigation"] .justify-end {
+      justify-content: flex-start !important;
+    }
+    
+    nav[aria-label="Article navigation"] .text-right {
+      text-align: left !important;
+    }
+    
+    nav[aria-label="Article navigation"] .justify-end .flex {
+      justify-content: flex-start !important;
+    }
+  }
+</style>
