@@ -1,5 +1,5 @@
 ---
-// src/components/NewsFilters.astro - SIMPLIFIED TAG TOGGLES
+// src/components/NewsFilters.astro - ENHANCED MOBILE TAG UX
 import type { NewsFilterOptions } from "@/lib/wordpress/types";
 
 interface Props {
@@ -53,7 +53,7 @@ const shouldStartCategoriesExpanded = hasSelectedCategoriesBelow;
 const shouldStartTagsExpanded = hasSelectedTagsBelow;
 ---
 
-<!-- Custom Styles for Radio Buttons and Chips -->
+<!-- Custom Styles for Radio Buttons and Enhanced Tag States -->
 <style>
   .elco-radio {
     appearance: none;
@@ -90,6 +90,26 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
   .elco-radio:hover:not(:checked) {
     border-color: var(--ui-button-border);
     border-width: 2px;
+  }
+
+  /* Enhanced Tag States */
+  /* .tag-unselected {
+    background-color: var(--surface-tertiary);
+    color: var(--content-body);
+    border: 1px solid var(--border-tertiary);
+  } */
+
+  /* .tag-unselected:hover {
+    background-color: var(--ui-button-surface);
+    color: var(--ui-button-text);
+    border-color: var(--ui-button-border);
+  } */
+
+  .tag-pending {
+    background-color: var(--ui-button-surface);
+    color: var(--ui-button-text);
+    border: 2px solid var(--ui-accent);
+    box-shadow: 0 0 0 1px var(--ui-accent);
   }
 </style>
 
@@ -129,7 +149,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
   <!-- Single Form - Desktop Static, Mobile Drawer -->
   <div
     id="news-filter-container"
-    class="lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-[28rem] lg:w-auto bg-(--surface-secondary) z-50 overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+    class="lg:static lg:transform-none max-h-[85dvh] lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-[28rem] lg:w-auto bg-(--surface-secondary) z-50 overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
   >
     <form
       method="GET"
@@ -245,7 +265,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         )
       }
 
-      <!-- SIMPLIFIED TAGS SECTION - NO GROUPINGS, IN-PLACE TOGGLES -->
+      <!-- ENHANCED TAGS SECTION - DUAL MODE UX -->
       {
         filterOptions.tags.length > 0 && (
           <div class="mb-6 lg:mb-4">
@@ -262,31 +282,32 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
               )}
             </div>
 
-            <!-- All Tags in Natural Order - Simple In-Place Toggles -->
+            <!-- All Tags with Enhanced States -->
             <div class="space-y-3">
               <!-- First 8 tags (always visible) -->
               <div class="flex flex-wrap gap-2">
                 {filterOptions.tags.slice(0, 8).map(tag => {
-                  const isSelected = currentTags.includes(tag.slug);
+                  const isApplied = currentTags.includes(tag.slug);
                   return (
                     <button
                       type="button"
                       class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                        isSelected 
-                          ? 'bg-(--state-error-surface) text-(--state-error-text) border border-(--state-error-border) hover:bg-(--state-error-surface)/80' 
-                          : 'bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text) hover:border-(--ui-button-border)'
+                        isApplied ? 'tag-applied bg-(--ui-button-surface) hover:bg-(--ui-button-surface)/60 text-(--ui-button-text)' : 'tag-unselected bg-(--surface-tertiary) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text)'
                       }`}
                       data-tag-chip={tag.slug}
-                      data-action={isSelected ? 'remove' : 'add'}
+                      data-applied={isApplied}
+                      data-pending="false"
                     >
-                      {tag.name}
-                      {isSelected ? (
-                        <svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      ) : (
-                        <span class="text-xs opacity-75">({tag.count})</span>
-                      )}
+                      <span data-tag-name>{tag.name}</span>
+                      <span data-tag-content>
+                        {isApplied ? (
+                          <svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                          </svg>
+                        ) : (
+                          <span class="text-xs opacity-75">({tag.count})</span>
+                        )}
+                      </span>
                     </button>
                   );
                 })}
@@ -311,26 +332,27 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
                   <div class={`mt-2 ${shouldStartTagsExpanded ? '' : 'hidden'}`} data-extra-tags>
                     <div class="flex flex-wrap gap-2">
                       {filterOptions.tags.slice(8).map(tag => {
-                        const isSelected = currentTags.includes(tag.slug);
+                        const isApplied = currentTags.includes(tag.slug);
                         return (
                           <button
                             type="button"
                             class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                              isSelected 
-                                ? 'bg-(--state-error-surface) text-(--state-error-text) border border-(--state-error-border) hover:bg-(--state-error-surface)/80' 
-                                : 'bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text) hover:border-(--ui-button-border)'
+                              isApplied ? 'tag-applied bg-(--ui-button-surface) hover:bg-(--ui-button-surface)/60 text-(--ui-button-text)' : 'tag-unselected bg-(--surface-tertiary) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text)'
                             }`}
                             data-tag-chip={tag.slug}
-                            data-action={isSelected ? 'remove' : 'add'}
+                            data-applied={isApplied}
+                            data-pending="false"
                           >
-                            {tag.name}
-                            {isSelected ? (
-                              <svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-                              </svg>
-                            ) : (
-                              <span class="text-xs opacity-75">({tag.count})</span>
-                            )}
+                            <span data-tag-name>{tag.name}</span>
+                            <span data-tag-content>
+                              {isApplied ? (
+                                <svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                              ) : (
+                                <span class="text-xs opacity-75">({tag.count})</span>
+                              )}
+                            </span>
                           </button>
                         );
                       })}
@@ -382,7 +404,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         </div>
       </div>
 
-      <!-- Mobile Actions -->
+      <!-- Enhanced Mobile Actions -->
       <div
         class="flex gap-3 p-6 -mx-4 bg-(--surface-secondary) border-t-(--border-tertiary) sticky bottom-0 lg:hidden"
       >
@@ -401,7 +423,9 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         }
         <button
           type="submit"
+          id="mobile-apply-filters"
           class="flex-1 py-3 px-4 bg-(--ui-button-surface) text-(--ui-button-text) rounded-sm hover:bg-ui-button-primary-hover transition-colors font-medium"
+          data-default-text="Apply Filters"
         >
           Apply Filters
         </button>
@@ -419,6 +443,9 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     private tagToggle: HTMLButtonElement | null;
     private isCategoriesExpanded: boolean = false;
     private isTagsExpanded: boolean = false;
+    private pendingTags: Set<string> = new Set();
+    private isMobile: boolean = false;
+    private tagCounts: Map<string, number> = new Map();
 
     constructor() {
       this.form = document.getElementById(
@@ -432,8 +459,38 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       this.tagToggle = document.getElementById(
         "show-more-tags-toggle"
       ) as HTMLButtonElement;
+      
+      this.checkMobileState();
+      this.storeTagCounts();
       this.setupEventListeners();
       this.initializeMenuState();
+    }
+
+    private storeTagCounts(): void {
+      // Store original tag counts on initialization
+      const tagButtons = document.querySelectorAll('[data-tag-chip]');
+      tagButtons.forEach(button => {
+        const tagSlug = (button as HTMLElement).dataset.tagChip!;
+        const countSpan = button.querySelector('span.opacity-75');
+        if (countSpan) {
+          const match = countSpan.textContent?.match(/\((\d+)\)/);
+          if (match) {
+            this.tagCounts.set(tagSlug, parseInt(match[1]));
+          }
+        }
+      });
+    }
+
+    private checkMobileState(): void {
+      this.isMobile = window.innerWidth < 1024;
+      window.addEventListener('resize', () => {
+        this.isMobile = window.innerWidth < 1024;
+        if (!this.isMobile) {
+          // Clear pending state when switching to desktop
+          this.pendingTags.clear();
+          this.updateApplyButton();
+        }
+      });
     }
 
     private setupEventListeners(): void {
@@ -476,11 +533,11 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     private setupDesktopFiltering(): void {
       if (!this.form) return;
 
-      const inputs = this.form.querySelectorAll("input, select");
+      const inputs = this.form.querySelectorAll("input:not([data-tag-chip]), select");
       inputs.forEach((input) => {
         input.addEventListener("change", () => {
           // Only auto-submit on desktop for non-tag inputs
-          if (window.innerWidth >= 1024 && !input.hasAttribute('data-tag-chip')) {
+          if (!this.isMobile) {
             setTimeout(() => {
               this.form!.submit();
             }, 150);
@@ -494,17 +551,16 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const tagToggle = document.getElementById('show-more-tags-toggle');
       const extraTags = document.querySelector('[data-extra-tags]');
       
-      // Handle tag chip clicks - SIMPLIFIED LOGIC
+      // Handle tag chip clicks - DUAL MODE LOGIC
       tagChips.forEach(chip => {
         chip.addEventListener('click', (e) => {
           const button = e.currentTarget as HTMLButtonElement;
           const tagSlug = button.dataset.tagChip!;
-          const action = button.dataset.action;
           
-          if (action === 'add') {
-            this.addTag(tagSlug);
-          } else if (action === 'remove') {
-            this.removeTag(tagSlug);
+          if (this.isMobile) {
+            this.handleMobileTagClick(tagSlug, button);
+          } else {
+            this.handleDesktopTagClick(tagSlug, button);
           }
         });
       });
@@ -529,6 +585,113 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       });
     }
 
+    private handleMobileTagClick(tagSlug: string, button: HTMLButtonElement): void {
+      const isApplied = button.dataset.applied === 'true';
+      const isPending = button.dataset.pending === 'true';
+      
+      if (isApplied) {
+        // Applied tag: add to pending removal
+        if (isPending) {
+          // Cancel pending removal
+          this.pendingTags.delete(`remove-${tagSlug}`);
+          this.updateTagButton(button, 'applied', tagSlug);
+        } else {
+          // Mark for removal
+          this.pendingTags.add(`remove-${tagSlug}`);
+          this.updateTagButton(button, 'pending-remove', tagSlug);
+        }
+      } else {
+        // Unselected tag: add to pending addition
+        if (isPending) {
+          // Cancel pending addition
+          this.pendingTags.delete(`add-${tagSlug}`);
+          this.updateTagButton(button, 'unselected', tagSlug);
+        } else {
+          // Mark for addition
+          this.pendingTags.add(`add-${tagSlug}`);
+          this.updateTagButton(button, 'pending-add', tagSlug);
+        }
+      }
+      
+      this.updateApplyButton();
+    }
+
+    private handleDesktopTagClick(tagSlug: string, button: HTMLButtonElement): void {
+      const isApplied = button.dataset.applied === 'true';
+      
+      if (isApplied) {
+        this.removeTag(tagSlug);
+      } else {
+        this.addTag(tagSlug);
+      }
+    }
+
+    private updateTagButton(button: HTMLButtonElement, state: string, tagSlug: string): void {
+      const tagContent = button.querySelector('[data-tag-content]');
+      if (!tagContent) return;
+
+      // Update visual state
+      button.className = button.className
+        .replace(/tag-(unselected|pending|applied)/g, '')
+        .trim();
+      
+      switch (state) {
+        case 'unselected':
+          button.classList.add('tag-unselected');
+          button.dataset.pending = 'false';
+          tagContent.innerHTML = `<span class="text-xs opacity-75">(${this.getTagCount(tagSlug)})</span>`;
+          break;
+        case 'pending-add':
+          button.classList.add('tag-pending');
+          button.dataset.pending = 'true';
+          tagContent.innerHTML = `<svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+          break;
+        case 'pending-remove':
+          button.classList.add('tag-pending');
+          button.dataset.pending = 'true';
+          tagContent.innerHTML = `<span class="text-xs opacity-75">(${this.getTagCount(tagSlug)})</span>`;
+          break;
+        case 'applied':
+          button.classList.add('tag-applied');
+          button.dataset.pending = 'false';
+          tagContent.innerHTML = `<svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+          break;
+      }
+    }
+
+    private getTagCount(tagSlug: string): number {
+      // Get tag count from initial data
+      const allTags = document.querySelectorAll('[data-tag-chip]');
+      for (const tag of allTags) {
+        if ((tag as HTMLElement).dataset.tagChip === tagSlug) {
+          const countSpan = tag.querySelector('span.opacity-75');
+          if (countSpan) {
+            const match = countSpan.textContent?.match(/\((\d+)\)/);
+            return match ? parseInt(match[1]) : 0;
+          }
+        }
+      }
+      return 0;
+    }
+
+    private updateApplyButton(): void {
+      const applyButton = document.getElementById('mobile-apply-filters') as HTMLButtonElement;
+      if (!applyButton) return;
+
+      const pendingCount = this.pendingTags.size;
+      const defaultText = applyButton.dataset.defaultText || 'Apply Filters';
+      
+      if (pendingCount > 0) {
+        applyButton.textContent = `Apply Filters (${pendingCount})`;
+        applyButton.classList.add('bg-(--ui-accent)', 'text-white');
+        applyButton.classList.remove('bg-(--ui-button-surface)');
+      } else {
+        applyButton.textContent = defaultText;
+        applyButton.classList.remove('bg-(--ui-accent)', 'text-white');
+        applyButton.classList.add('bg-(--ui-button-surface)');
+      }
+    }
+
     private addTag(tagSlug: string): void {
       // Add hidden input
       const hiddenInput = document.createElement('input');
@@ -540,8 +703,8 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const hiddenContainer = this.form?.querySelector('.hidden');
       hiddenContainer?.appendChild(hiddenInput);
       
-      // Submit form (desktop) or mark for mobile submission
-      if (window.innerWidth >= 1024) {
+      // Submit form immediately on desktop
+      if (!this.isMobile) {
         setTimeout(() => {
           this.form?.submit();
         }, 150);
@@ -553,12 +716,31 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const hiddenInput = document.querySelector(`[data-tag-input="${tagSlug}"]`);
       hiddenInput?.remove();
       
-      // Submit form (desktop) or mark for mobile submission
-      if (window.innerWidth >= 1024) {
+      // Submit form immediately on desktop
+      if (!this.isMobile) {
         setTimeout(() => {
           this.form?.submit();
         }, 150);
       }
+    }
+
+    private applyPendingChanges(): void {
+      // Process all pending changes
+      this.pendingTags.forEach(change => {
+        if (change.startsWith('add-')) {
+          const tagSlug = change.replace('add-', '');
+          this.addTag(tagSlug);
+        } else if (change.startsWith('remove-')) {
+          const tagSlug = change.replace('remove-', '');
+          this.removeTag(tagSlug);
+        }
+      });
+      
+      // Clear pending state
+      this.pendingTags.clear();
+      
+      // Submit form
+      this.form?.submit();
     }
 
     private setupShowMoreToggles(): void {
@@ -580,6 +762,16 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const initialTagsExpanded =
         this.tagToggle?.dataset.initialExpanded === "true";
       this.isTagsExpanded = initialTagsExpanded;
+
+      // Setup mobile apply button handler
+      const applyButton = document.getElementById('mobile-apply-filters');
+      applyButton?.addEventListener('click', (e) => {
+        if (this.isMobile && this.pendingTags.size > 0) {
+          e.preventDefault();
+          this.applyPendingChanges();
+        }
+        // Otherwise, let form submit normally
+      });
     }
 
     private collapseCategories(): void {
@@ -635,8 +827,20 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const hiddenInputs = this.form?.querySelectorAll('[data-tag-input]');
       hiddenInputs?.forEach(input => input.remove());
       
-      // Submit form (desktop) or mark for mobile submission
-      if (window.innerWidth >= 1024) {
+      // Clear pending state
+      this.pendingTags.clear();
+      this.updateApplyButton();
+      
+      // Reset all tag buttons to unselected state
+      const tagButtons = document.querySelectorAll('[data-tag-chip]');
+      tagButtons.forEach(button => {
+        const tagSlug = (button as HTMLElement).dataset.tagChip!;
+        this.updateTagButton(button as HTMLButtonElement, 'unselected', tagSlug);
+        (button as HTMLElement).dataset.applied = 'false';
+      });
+      
+      // Submit form immediately on desktop
+      if (!this.isMobile) {
         setTimeout(() => {
           this.form?.submit();
         }, 150);
