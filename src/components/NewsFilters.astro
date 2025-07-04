@@ -1,5 +1,5 @@
 ---
-// src/components/NewsFilters.astro - ENHANCED VERSION
+// src/components/NewsFilters.astro - SIMPLIFIED TAG TOGGLES
 import type { NewsFilterOptions } from "@/lib/wordpress/types";
 
 interface Props {
@@ -245,7 +245,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         )
       }
 
-      <!-- ENHANCED TAGS SECTION WITH CHIP PATTERN -->
+      <!-- SIMPLIFIED TAGS SECTION - NO GROUPINGS, IN-PLACE TOGGLES -->
       {
         filterOptions.tags.length > 0 && (
           <div class="mb-6 lg:mb-4">
@@ -262,52 +262,34 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
               )}
             </div>
 
-            <!-- Selected Tags (Show first) -->
-            {currentTags.length > 0 && (
-              <div class="mb-3">
-                <h4 class="text-sm font-medium text-(--content-heading) mb-2">Selected:</h4>
-                <div class="flex flex-wrap gap-2">
-                  {currentTags.map(tagSlug => {
-                    const tag = filterOptions.tags.find(t => t.slug === tagSlug);
-                    return tag && (
-                      <button
-                        type="button"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-(--state-error-surface) text-(--state-error-text) rounded-full text-sm font-medium hover:bg-(--state-error-surface)/80 transition-colors shadow-sm border border-(--state-error-border)"
-                        data-tag-chip={tag.slug}
-                        data-action="remove"
-                      >
-                        {tag.name}
+            <!-- All Tags in Natural Order - Simple In-Place Toggles -->
+            <div class="space-y-3">
+              <!-- First 8 tags (always visible) -->
+              <div class="flex flex-wrap gap-2">
+                {filterOptions.tags.slice(0, 8).map(tag => {
+                  const isSelected = currentTags.includes(tag.slug);
+                  return (
+                    <button
+                      type="button"
+                      class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        isSelected 
+                          ? 'bg-(--state-error-surface) text-(--state-error-text) border border-(--state-error-border) hover:bg-(--state-error-surface)/80' 
+                          : 'bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text) hover:border-(--ui-button-border)'
+                      }`}
+                      data-tag-chip={tag.slug}
+                      data-action={isSelected ? 'remove' : 'add'}
+                    >
+                      {tag.name}
+                      {isSelected ? (
                         <svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <!-- Available Tags (Chip toggles) -->
-            <div class="space-y-3">
-              <!-- Popular tags (always visible) -->
-              <div>
-                <h4 class="text-sm font-medium text-(--content-meta) mb-2">Popular:</h4>
-                <div class="flex flex-wrap gap-2">
-                  {filterOptions.tags.slice(0, 8).map(tag => {
-                    const isSelected = currentTags.includes(tag.slug);
-                    return !isSelected && (
-                      <button
-                        type="button"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) rounded-full text-sm hover:bg-(--ui-button-surface) hover:text-(--ui-button-text) hover:border-(--ui-button-border) transition-colors"
-                        data-tag-chip={tag.slug}
-                        data-action="add"
-                      >
-                        {tag.name}
+                      ) : (
                         <span class="text-xs opacity-75">({tag.count})</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               <!-- More tags (expandable) -->
@@ -317,23 +299,38 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
                     type="button"
                     id="show-more-tags-toggle"
                     class="text-sm text-ui-accent hover:text-ui-accent-hover transition-colors font-medium"
+                    data-collapsed-text={`+ Show ${filterOptions.tags.length - 8} more tags`}
+                    data-expanded-text="- Show less"
+                    data-initial-expanded={shouldStartTagsExpanded.toString()}
                   >
-                    + Show {filterOptions.tags.length - 8} more tags
+                    {shouldStartTagsExpanded
+                      ? "- Show less"
+                      : `+ Show ${filterOptions.tags.length - 8} more tags`}
                   </button>
                   
-                  <div class="hidden mt-2" data-extra-tags>
+                  <div class={`mt-2 ${shouldStartTagsExpanded ? '' : 'hidden'}`} data-extra-tags>
                     <div class="flex flex-wrap gap-2">
                       {filterOptions.tags.slice(8).map(tag => {
                         const isSelected = currentTags.includes(tag.slug);
-                        return !isSelected && (
+                        return (
                           <button
                             type="button"
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) rounded-full text-sm hover:bg-(--ui-button-surface) hover:text-(--ui-button-text) hover:border-(--ui-button-border) transition-colors"
+                            class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                              isSelected 
+                                ? 'bg-(--state-error-surface) text-(--state-error-text) border border-(--state-error-border) hover:bg-(--state-error-surface)/80' 
+                                : 'bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text) hover:border-(--ui-button-border)'
+                            }`}
                             data-tag-chip={tag.slug}
-                            data-action="add"
+                            data-action={isSelected ? 'remove' : 'add'}
                           >
                             {tag.name}
-                            <span class="text-xs opacity-75">({tag.count})</span>
+                            {isSelected ? (
+                              <svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                              </svg>
+                            ) : (
+                              <span class="text-xs opacity-75">({tag.count})</span>
+                            )}
                           </button>
                         );
                       })}
@@ -353,7 +350,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         )
       }
 
-      <!-- ENHANCED DATE RANGE SECTION WITH CUSTOM RADIO BUTTONS -->
+      <!-- Date Range Section -->
       <div class="mb-6 lg:mb-4">
         <h3
           class="text-xl font-medium font-display text-(--content-heading) mb-3"
@@ -482,8 +479,8 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const inputs = this.form.querySelectorAll("input, select");
       inputs.forEach((input) => {
         input.addEventListener("change", () => {
-          // Only auto-submit on desktop
-          if (window.innerWidth >= 1024) {
+          // Only auto-submit on desktop for non-tag inputs
+          if (window.innerWidth >= 1024 && !input.hasAttribute('data-tag-chip')) {
             setTimeout(() => {
               this.form!.submit();
             }, 150);
@@ -497,7 +494,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const tagToggle = document.getElementById('show-more-tags-toggle');
       const extraTags = document.querySelector('[data-extra-tags]');
       
-      // Handle tag chip clicks
+      // Handle tag chip clicks - SIMPLIFIED LOGIC
       tagChips.forEach(chip => {
         chip.addEventListener('click', (e) => {
           const button = e.currentTarget as HTMLButtonElement;
@@ -516,13 +513,17 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       tagToggle?.addEventListener('click', () => {
         if (extraTags) {
           const isHidden = extraTags.classList.contains('hidden');
+          const collapsedText = tagToggle.dataset.collapsedText || '+ Show more tags';
+          const expandedText = tagToggle.dataset.expandedText || '- Show less';
+          
           if (isHidden) {
             extraTags.classList.remove('hidden');
-            tagToggle.textContent = '- Show less';
+            tagToggle.textContent = expandedText;
+            this.isTagsExpanded = true;
           } else {
             extraTags.classList.add('hidden');
-            const extraCount = document.querySelectorAll('[data-extra-tags] button').length;
-            tagToggle.textContent = `+ Show ${extraCount} more tags`;
+            tagToggle.textContent = collapsedText;
+            this.isTagsExpanded = false;
           }
         }
       });
@@ -575,7 +576,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         this.categoryToggle?.dataset.initialExpanded === "true";
       this.isCategoriesExpanded = initialCategoriesExpanded;
 
-      // Initialize tag state
+      // Initialize tag state  
       const initialTagsExpanded =
         this.tagToggle?.dataset.initialExpanded === "true";
       this.isTagsExpanded = initialTagsExpanded;
