@@ -53,63 +53,11 @@ const shouldStartCategoriesExpanded = hasSelectedCategoriesBelow;
 const shouldStartTagsExpanded = hasSelectedTagsBelow;
 ---
 
-<!-- Custom Styles for Radio Buttons and Enhanced Tag States -->
-<style>
-  .elco-radio {
-    appearance: none;
-    border-radius: 50%;
-    position: relative;
-    cursor: pointer;
-    background-color: var(--ui-input-surface);
-    border: 2px solid var(--ui-input-border);
-  }
-
-  .elco-radio:checked {
-    background-color: var(--ui-button-surface);
-    border-color: var(--ui-button-border);
-    border-width: 3px;
-  }
-
-  .elco-radio:checked::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 6px;
-    height: 6px;
-    background-color: var(--ui-button-text);
-    border-radius: 50%;
-  }
-
-  .elco-radio:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--ui-button-surface), 0 0 0 2px var(--ui-button-text);
-  }
-
-  .elco-radio:hover:not(:checked) {
-    border-color: var(--ui-button-border);
-    border-width: 2px;
-  }
-
-  /* Enhanced Tag States */
-  /* .tag-unselected {
-    background-color: var(--surface-tertiary);
-    color: var(--content-body);
-    border: 1px solid var(--border-tertiary);
-  } */
-
-  /* .tag-unselected:hover {
-    background-color: var(--ui-button-surface);
-    color: var(--ui-button-text);
-    border-color: var(--ui-button-border);
-  } */
-
-  .tag-pending {
-    background-color: var(--ui-button-surface);
-    color: var(--ui-button-text);
-    border: 2px solid var(--ui-accent);
-    box-shadow: 0 0 0 1px var(--ui-accent);
+<!-- FOUC Prevention: Inline critical CSS -->
+<style is:inline>
+  /* Prevent flickering during initial load */
+  .news-filter-list {
+    transition: none;
   }
 </style>
 
@@ -215,7 +163,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
             </div>
 
             <div
-              class="space-y-3 lg:space-y-1 lg:max-h-none overflow-visible"
+              class="space-y-3 lg:space-y-1 lg:max-h-none overflow-visible news-filter-list"
               data-category-list
             >
               {filterOptions.categories.map((category, index) => {

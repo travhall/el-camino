@@ -385,6 +385,15 @@ h6 {
   transition: all 0.2s ease;
 }
 
+.brand-extra-item {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Prevent layout shift during transitions */
+.brand-filter-list {
+  min-height: fit-content;
+}
+
 .elco-checkbox {
   appearance: none;
   -webkit-appearance: none;
@@ -433,6 +442,51 @@ h6 {
 .elco-checkbox:disabled:hover {
   border-color: var(--ui-input-border);
   background-color: var(--ui-input-surface);
+}
+
+.elco-radio {
+  appearance: none;
+  border-radius: 50%;
+  position: relative;
+  cursor: pointer;
+  background-color: var(--ui-input-surface);
+  border: 2px solid var(--ui-input-border);
+}
+
+.elco-radio:checked {
+  background-color: var(--ui-button-surface);
+  border-color: var(--ui-button-border);
+  border-width: 3px;
+}
+
+.elco-radio:checked::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background-color: var(--ui-button-text);
+  border-radius: 50%;
+}
+
+.elco-radio:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ui-button-surface),
+    0 0 0 2px var(--ui-button-text);
+}
+
+.elco-radio:hover:not(:checked) {
+  border-color: var(--ui-button-border);
+  border-width: 2px;
+}
+
+.tag-pending {
+  background-color: var(--ui-button-surface);
+  color: var(--ui-button-text);
+  border: 2px solid var(--ui-accent);
+  box-shadow: 0 0 0 1px var(--ui-accent);
 }
 
 .banner-card img {
