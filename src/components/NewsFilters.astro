@@ -1,0 +1,654 @@
+---
+// src/components/NewsFilters.astro - ENHANCED VERSION
+import type { NewsFilterOptions } from "@/lib/wordpress/types";
+
+interface Props {
+  filterOptions: NewsFilterOptions;
+  totalPosts: number;
+  filteredCount: number;
+  newsPath?: string;
+}
+
+const {
+  filterOptions,
+  totalPosts,
+  filteredCount,
+  newsPath = "/news",
+} = Astro.props;
+
+// Parse current filters from URL for server-side rendering
+const currentParams = new URLSearchParams(Astro.url.search);
+const currentCategories = currentParams.getAll("categories") || [];
+const currentTags = currentParams.getAll("tags") || [];
+const currentDateRange = currentParams.get("dateRange") || "";
+
+// Calculate active filter count for mobile badge (no search/sort)
+const activeFilterCount =
+  currentCategories.length +
+  currentTags.length +
+  (currentDateRange ? 1 : 0);
+
+// Configuration for show more/less functionality
+const DEFAULT_VISIBLE_CATEGORIES = 6;
+const DEFAULT_VISIBLE_TAGS = 8;
+
+const shouldShowCategoryToggle =
+  filterOptions.categories.length > DEFAULT_VISIBLE_CATEGORIES;
+const shouldShowTagToggle = filterOptions.tags.length > DEFAULT_VISIBLE_TAGS;
+
+// Check if there are selected items beyond visible count
+const hasSelectedCategoriesBelow = currentCategories.some((category) => {
+  const categoryIndex = filterOptions.categories.findIndex(
+    (c) => c.slug === category
+  );
+  return categoryIndex >= DEFAULT_VISIBLE_CATEGORIES;
+});
+
+const hasSelectedTagsBelow = currentTags.some((tag) => {
+  const tagIndex = filterOptions.tags.findIndex((t) => t.slug === tag);
+  return tagIndex >= DEFAULT_VISIBLE_TAGS;
+});
+
+const shouldStartCategoriesExpanded = hasSelectedCategoriesBelow;
+const shouldStartTagsExpanded = hasSelectedTagsBelow;
+---
+
+<!-- Custom Styles for Radio Buttons and Chips -->
+<style>
+  .elco-radio {
+    appearance: none;
+    border-radius: 50%;
+    position: relative;
+    cursor: pointer;
+    background-color: var(--ui-input-surface);
+    border: 2px solid var(--ui-input-border);
+  }
+
+  .elco-radio:checked {
+    background-color: var(--ui-button-surface);
+    border-color: var(--ui-button-border);
+    border-width: 3px;
+  }
+
+  .elco-radio:checked::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    background-color: var(--ui-button-text);
+    border-radius: 50%;
+  }
+
+  .elco-radio:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--ui-button-surface), 0 0 0 2px var(--ui-button-text);
+  }
+
+  .elco-radio:hover:not(:checked) {
+    border-color: var(--ui-button-border);
+    border-width: 2px;
+  }
+</style>
+
+<!-- SIDEBAR PATTERN: Single Responsive Form Container -->
+<div class="relative lg:block bg-(--surface-primary)">
+  <!-- Mobile Filter Button -->
+  <button
+    id="mobile-news-filter-toggle"
+    class="lg:hidden fixed bottom-4 right-4 bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) rounded-md flex flex-row gap-2 p-4 shadow-lg z-40"
+    aria-label="Open Filters"
+  >
+    Filter
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"
+      ></path>
+    </svg>
+    {
+      activeFilterCount > 0 && (
+        <span class="absolute -top-1 -right-1 bg-(--ui-button-surface) text-(--ui-button-text) font-bold text-sm rounded-full min-w-5 h-5 flex items-center justify-center px-1">
+          {activeFilterCount}
+        </span>
+      )
+    }
+  </button>
+
+  <!-- Mobile Overlay -->
+  <div
+    id="mobile-news-filter-overlay"
+    class="lg:hidden fixed inset-0 bg-(--ui-modal-overlay)/80 backdrop-blur-sm z-40 opacity-0 pointer-events-none transition-opacity duration-300"
+  >
+  </div>
+
+  <!-- Single Form - Desktop Static, Mobile Drawer -->
+  <div
+    id="news-filter-container"
+    class="lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-[28rem] lg:w-auto bg-(--surface-secondary) z-50 overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+  >
+    <form
+      method="GET"
+      action={newsPath}
+      class="px-4 lg:p-2"
+      id="news-filter-form"
+    >
+      <!-- Mobile Header -->
+      <div
+        class="flex items-center justify-between mb-4 p-6 -mx-4 bg-(--surface-secondary) border border-b-(--border-tertiary) sticky top-0 z-50 lg:hidden"
+      >
+        <h2 class="text-lg font-semibold text-(--content-heading)">
+          Filter Articles
+        </h2>
+        <button
+          type="button"
+          id="mobile-news-filter-close"
+          class="p-1 text-(--content-meta) hover:text-(--content-emphasis)"
+          aria-label="Close Filters"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+        <div class="min-w-fit mb-4">
+            <p class="text-sm lg:text-base text-(--content-meta) font-medium">
+                {
+                filteredCount === totalPosts
+                    ? `${totalPosts} articles`
+                    : `${filteredCount} of ${totalPosts} articles`
+                }
+            </p>
+        </div>
+
+      <!-- Categories Filter Section -->
+      {
+        filterOptions.categories.length > 0 && (
+          <div class="mb-6 lg:mb-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-xl font-medium font-display text-(--content-heading)">
+                Categories
+              </h3>
+              {currentCategories.length > 0 && (
+                <button
+                  type="button"
+                  data-clear-categories
+                  class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors"
+                >
+                  Clear ({currentCategories.length})
+                </button>
+              )}
+            </div>
+
+            <div
+              class="space-y-3 lg:space-y-1 lg:max-h-none overflow-visible"
+              data-category-list
+            >
+              {filterOptions.categories.map((category, index) => {
+                const isHidden = index >= DEFAULT_VISIBLE_CATEGORIES;
+                const serverHiddenClass =
+                  isHidden && !shouldStartCategoriesExpanded ? "lg:hidden" : "";
+
+                return (
+                  <label
+                    class={`flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors ${isHidden ? `category-extra-item ${serverHiddenClass}` : ""}`}
+                  >
+                    <div class="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="categories"
+                        value={category.slug}
+                        checked={currentCategories.includes(category.slug)}
+                        class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                      />
+                      <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
+                        {category.name}
+                      </span>
+                    </div>
+                    <span class="text-sm text-(--content-meta) lg:mr-2">
+                      ({category.count})
+                    </span>
+                  </label>
+                );
+              })}
+
+              {shouldShowCategoryToggle && (
+                <button
+                  type="button"
+                  id="show-more-categories-toggle"
+                  class="hidden lg:block w-full text-left text-sm text-ui-accent hover:text-ui-accent-hover transition-colors p-1 font-medium"
+                  data-collapsed-text={`+ Show ${filterOptions.categories.length - DEFAULT_VISIBLE_CATEGORIES} more`}
+                  data-expanded-text="- Show less"
+                  data-initial-expanded={shouldStartCategoriesExpanded.toString()}
+                >
+                  {shouldStartCategoriesExpanded
+                    ? "- Show less"
+                    : `+ Show ${filterOptions.categories.length - DEFAULT_VISIBLE_CATEGORIES} more`}
+                </button>
+              )}
+            </div>
+          </div>
+        )
+      }
+
+      <!-- ENHANCED TAGS SECTION WITH CHIP PATTERN -->
+      {
+        filterOptions.tags.length > 0 && (
+          <div class="mb-6 lg:mb-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-xl font-medium font-display text-(--content-heading)">Tags</h3>
+              {currentTags.length > 0 && (
+                <button
+                  type="button"
+                  data-clear-tags
+                  class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors"
+                >
+                  Clear ({currentTags.length})
+                </button>
+              )}
+            </div>
+
+            <!-- Selected Tags (Show first) -->
+            {currentTags.length > 0 && (
+              <div class="mb-3">
+                <h4 class="text-sm font-medium text-(--content-heading) mb-2">Selected:</h4>
+                <div class="flex flex-wrap gap-2">
+                  {currentTags.map(tagSlug => {
+                    const tag = filterOptions.tags.find(t => t.slug === tagSlug);
+                    return tag && (
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-(--state-error-surface) text-(--state-error-text) rounded-full text-sm font-medium hover:bg-(--state-error-surface)/80 transition-colors shadow-sm border border-(--state-error-border)"
+                        data-tag-chip={tag.slug}
+                        data-action="remove"
+                      >
+                        {tag.name}
+                        <svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <!-- Available Tags (Chip toggles) -->
+            <div class="space-y-3">
+              <!-- Popular tags (always visible) -->
+              <div>
+                <h4 class="text-sm font-medium text-(--content-meta) mb-2">Popular:</h4>
+                <div class="flex flex-wrap gap-2">
+                  {filterOptions.tags.slice(0, 8).map(tag => {
+                    const isSelected = currentTags.includes(tag.slug);
+                    return !isSelected && (
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) rounded-full text-sm hover:bg-(--ui-button-surface) hover:text-(--ui-button-text) hover:border-(--ui-button-border) transition-colors"
+                        data-tag-chip={tag.slug}
+                        data-action="add"
+                      >
+                        {tag.name}
+                        <span class="text-xs opacity-75">({tag.count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <!-- More tags (expandable) -->
+              {filterOptions.tags.length > 8 && (
+                <div data-expandable-tags>
+                  <button
+                    type="button"
+                    id="show-more-tags-toggle"
+                    class="text-sm text-ui-accent hover:text-ui-accent-hover transition-colors font-medium"
+                  >
+                    + Show {filterOptions.tags.length - 8} more tags
+                  </button>
+                  
+                  <div class="hidden mt-2" data-extra-tags>
+                    <div class="flex flex-wrap gap-2">
+                      {filterOptions.tags.slice(8).map(tag => {
+                        const isSelected = currentTags.includes(tag.slug);
+                        return !isSelected && (
+                          <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) rounded-full text-sm hover:bg-(--ui-button-surface) hover:text-(--ui-button-text) hover:border-(--ui-button-border) transition-colors"
+                            data-tag-chip={tag.slug}
+                            data-action="add"
+                          >
+                            {tag.name}
+                            <span class="text-xs opacity-75">({tag.count})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <!-- Hidden inputs for form submission -->
+            <div class="hidden">
+              {currentTags.map(tagSlug => (
+                <input type="hidden" name="tags" value={tagSlug} data-tag-input={tagSlug} />
+              ))}
+            </div>
+          </div>
+        )
+      }
+
+      <!-- ENHANCED DATE RANGE SECTION WITH CUSTOM RADIO BUTTONS -->
+      <div class="mb-6 lg:mb-4">
+        <h3
+          class="text-xl font-medium font-display text-(--content-heading) mb-3"
+        >
+          Published
+        </h3>
+        <div class="space-y-3 lg:space-y-1">
+          {
+            [
+              { value: "", label: "Any time" },
+              { value: "week", label: "Past week" },
+              { value: "month", label: "Past month" },
+              { value: "year", label: "Past year" },
+            ].map(({ value, label }) => (
+              <label class="flex items-center group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors">
+                <input
+                  type="radio"
+                  name="dateRange"
+                  value={value}
+                  checked={currentDateRange === value}
+                  class="elco-radio mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                />
+                <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
+                  {label}
+                </span>
+              </label>
+            ))
+          }
+        </div>
+      </div>
+
+      <!-- Mobile Actions -->
+      <div
+        class="flex gap-3 p-6 -mx-4 bg-(--surface-secondary) border-t-(--border-tertiary) sticky bottom-0 lg:hidden"
+      >
+        {
+          (currentCategories.length > 0 ||
+            currentTags.length > 0 ||
+            currentDateRange) && (
+            <button
+              type="button"
+              data-clear-all-news-filters
+              class="flex-1 py-3 px-4 border border-(--ui-button-border) text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
+            >
+              Clear Filters
+            </button>
+          )
+        }
+        <button
+          type="submit"
+          class="flex-1 py-3 px-4 bg-(--ui-button-surface) text-(--ui-button-text) rounded-sm hover:bg-ui-button-primary-hover transition-colors font-medium"
+        >
+          Apply Filters
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  class NewsFiltersManager {
+    private form: HTMLFormElement | null;
+    private container: HTMLElement | null;
+    private overlay: HTMLElement | null;
+    private categoryToggle: HTMLButtonElement | null;
+    private tagToggle: HTMLButtonElement | null;
+    private isCategoriesExpanded: boolean = false;
+    private isTagsExpanded: boolean = false;
+
+    constructor() {
+      this.form = document.getElementById(
+        "news-filter-form"
+      ) as HTMLFormElement;
+      this.container = document.getElementById("news-filter-container");
+      this.overlay = document.getElementById("mobile-news-filter-overlay");
+      this.categoryToggle = document.getElementById(
+        "show-more-categories-toggle"
+      ) as HTMLButtonElement;
+      this.tagToggle = document.getElementById(
+        "show-more-tags-toggle"
+      ) as HTMLButtonElement;
+      this.setupEventListeners();
+      this.initializeMenuState();
+    }
+
+    private setupEventListeners(): void {
+      this.setupMobileDrawer();
+      this.setupDesktopFiltering();
+      this.setupShowMoreToggles();
+      this.setupClearButtons();
+      this.setupTagChips();
+    }
+
+    private setupMobileDrawer(): void {
+      const toggle = document.getElementById("mobile-news-filter-toggle");
+      const close = document.getElementById("mobile-news-filter-close");
+
+      toggle?.addEventListener("click", () => this.openMobileDrawer());
+      close?.addEventListener("click", () => this.closeMobileDrawer());
+      this.overlay?.addEventListener("click", () => this.closeMobileDrawer());
+    }
+
+    private openMobileDrawer(): void {
+      this.overlay?.classList.remove("pointer-events-none", "opacity-0");
+      this.container?.classList.remove(
+        "translate-y-full",
+        "opacity-0",
+        "pointer-events-none"
+      );
+      document.body.style.overflow = "hidden";
+    }
+
+    private closeMobileDrawer(): void {
+      this.overlay?.classList.add("opacity-0");
+      this.container?.classList.add("translate-y-full", "opacity-0");
+      setTimeout(() => {
+        this.overlay?.classList.add("pointer-events-none");
+        this.container?.classList.add("pointer-events-none");
+      }, 300);
+      document.body.style.overflow = "";
+    }
+
+    private setupDesktopFiltering(): void {
+      if (!this.form) return;
+
+      const inputs = this.form.querySelectorAll("input, select");
+      inputs.forEach((input) => {
+        input.addEventListener("change", () => {
+          // Only auto-submit on desktop
+          if (window.innerWidth >= 1024) {
+            setTimeout(() => {
+              this.form!.submit();
+            }, 150);
+          }
+        });
+      });
+    }
+
+    private setupTagChips(): void {
+      const tagChips = document.querySelectorAll('[data-tag-chip]');
+      const tagToggle = document.getElementById('show-more-tags-toggle');
+      const extraTags = document.querySelector('[data-extra-tags]');
+      
+      // Handle tag chip clicks
+      tagChips.forEach(chip => {
+        chip.addEventListener('click', (e) => {
+          const button = e.currentTarget as HTMLButtonElement;
+          const tagSlug = button.dataset.tagChip!;
+          const action = button.dataset.action;
+          
+          if (action === 'add') {
+            this.addTag(tagSlug);
+          } else if (action === 'remove') {
+            this.removeTag(tagSlug);
+          }
+        });
+      });
+
+      // Handle show more tags toggle
+      tagToggle?.addEventListener('click', () => {
+        if (extraTags) {
+          const isHidden = extraTags.classList.contains('hidden');
+          if (isHidden) {
+            extraTags.classList.remove('hidden');
+            tagToggle.textContent = '- Show less';
+          } else {
+            extraTags.classList.add('hidden');
+            const extraCount = document.querySelectorAll('[data-extra-tags] button').length;
+            tagToggle.textContent = `+ Show ${extraCount} more tags`;
+          }
+        }
+      });
+    }
+
+    private addTag(tagSlug: string): void {
+      // Add hidden input
+      const hiddenInput = document.createElement('input');
+      hiddenInput.type = 'hidden';
+      hiddenInput.name = 'tags';
+      hiddenInput.value = tagSlug;
+      hiddenInput.setAttribute('data-tag-input', tagSlug);
+      
+      const hiddenContainer = this.form?.querySelector('.hidden');
+      hiddenContainer?.appendChild(hiddenInput);
+      
+      // Submit form (desktop) or mark for mobile submission
+      if (window.innerWidth >= 1024) {
+        setTimeout(() => {
+          this.form?.submit();
+        }, 150);
+      }
+    }
+
+    private removeTag(tagSlug: string): void {
+      // Remove hidden input
+      const hiddenInput = document.querySelector(`[data-tag-input="${tagSlug}"]`);
+      hiddenInput?.remove();
+      
+      // Submit form (desktop) or mark for mobile submission
+      if (window.innerWidth >= 1024) {
+        setTimeout(() => {
+          this.form?.submit();
+        }, 150);
+      }
+    }
+
+    private setupShowMoreToggles(): void {
+      this.categoryToggle?.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.isCategoriesExpanded
+          ? this.collapseCategories()
+          : this.expandCategories();
+      });
+    }
+
+    private initializeMenuState(): void {
+      // Initialize category state
+      const initialCategoriesExpanded =
+        this.categoryToggle?.dataset.initialExpanded === "true";
+      this.isCategoriesExpanded = initialCategoriesExpanded;
+
+      // Initialize tag state
+      const initialTagsExpanded =
+        this.tagToggle?.dataset.initialExpanded === "true";
+      this.isTagsExpanded = initialTagsExpanded;
+    }
+
+    private collapseCategories(): void {
+      const extraItems = document.querySelectorAll(".category-extra-item");
+      const collapsedText =
+        this.categoryToggle?.dataset.collapsedText || "+ Show more";
+
+      extraItems.forEach((item) => {
+        const element = item as HTMLElement;
+        element.classList.add("lg:hidden");
+      });
+
+      if (this.categoryToggle) this.categoryToggle.textContent = collapsedText;
+      this.isCategoriesExpanded = false;
+    }
+
+    private expandCategories(): void {
+      const extraItems = document.querySelectorAll(".category-extra-item");
+      const expandedText =
+        this.categoryToggle?.dataset.expandedText || "- Show less";
+
+      extraItems.forEach((item) => {
+        const element = item as HTMLElement;
+        element.classList.remove("lg:hidden");
+      });
+
+      if (this.categoryToggle) this.categoryToggle.textContent = expandedText;
+      this.isCategoriesExpanded = true;
+    }
+
+    private setupClearButtons(): void {
+      const clearCategories = document.querySelector("[data-clear-categories]");
+      const clearTags = document.querySelector("[data-clear-tags]");
+      const clearAllMobile = document.querySelector(
+        "[data-clear-all-news-filters]"
+      );
+
+      clearCategories?.addEventListener("click", () =>
+        this.clearCategoryFilters()
+      );
+      clearTags?.addEventListener("click", () => this.clearTagFilters());
+      clearAllMobile?.addEventListener("click", () => this.clearAllFilters());
+    }
+
+    private clearCategoryFilters(): void {
+      const checkboxes = this.form?.querySelectorAll(
+        'input[name="categories"]:checked'
+      );
+      checkboxes?.forEach((cb) => ((cb as HTMLInputElement).checked = false));
+    }
+
+    private clearTagFilters(): void {
+      const hiddenInputs = this.form?.querySelectorAll('[data-tag-input]');
+      hiddenInputs?.forEach(input => input.remove());
+      
+      // Submit form (desktop) or mark for mobile submission
+      if (window.innerWidth >= 1024) {
+        setTimeout(() => {
+          this.form?.submit();
+        }, 150);
+      }
+    }
+
+    private clearAllFilters(): void {
+      window.location.href = window.location.pathname;
+    }
+  }
+
+  // Initialize
+  document.addEventListener("astro:page-load", () => {
+    new NewsFiltersManager();
+  });
+</script>

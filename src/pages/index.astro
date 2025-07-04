@@ -1,23 +1,29 @@
 ---
-// src/pages/index.astro
+// src/pages/index.astro - Updated with featured article priority
 import Layout from "@/layouts/Layout.astro";
 import ArticleGrid from "@/components/ArticleGrid.astro";
-import { getPosts } from "@/lib/wordpress/api";
+import { getNewsPagePosts } from "@/lib/wordpress/api";
 import type { WordPressPost } from "@/lib/wordpress/types";
 
 let posts: WordPressPost[] = [];
 let error: string | null = null;
 
 try {
-  posts = await getPosts();
+  const newsData = await getNewsPagePosts();
+  const { featuredPost, regularPosts } = newsData;
+
+  // HOME PAGE: Featured article first, then most recent regular posts
+  if (featuredPost) {
+    posts = [featuredPost, ...regularPosts.slice(0, 5)]; // Total 6 posts for home
+  } else {
+    posts = regularPosts.slice(0, 6); // Just most recent if no featured
+  }
 } catch (e) {
   error = e instanceof Error ? e.message : "An error occurred loading posts";
 }
 ---
 
-<Layout 
-  title="Welcome Home, we're glad you're here | El Camino"
->
+<Layout title="Welcome Home, we're glad you're here | El Camino">
   <section>
     <ArticleGrid posts={posts} error={error} showSidebar={true} />
   </section>

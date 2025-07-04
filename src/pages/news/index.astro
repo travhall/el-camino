@@ -1,53 +1,150 @@
 ---
-// src/pages/news/index.astro
+// src/pages/news/index.astro - ENHANCED WITH SEPARATED COMPONENTS
 import Layout from "@/layouts/Layout.astro";
 import ArticleGrid from "@/components/ArticleGrid.astro";
-import { getPosts } from "@/lib/wordpress/api";
-import type { WordPressPost } from "@/lib/wordpress/types";
+import NewsSearchSort from "@/components/NewsSearchSort.astro";
+import NewsFilters from "@/components/NewsFilters.astro";
+import {
+  getNewsPagePosts,
+  getAllCategories,
+  getAllTags,
+} from "@/lib/wordpress/api";
+import { buildSearchIndex, buildFilterOptions } from "@/lib/wordpress/types";
+import type {
+  WordPressPost,
+  NewsFilterOptions,
+  NewsSearchIndex,
+} from "@/lib/wordpress/types";
 
-const PAGE_SIZE = 12;
-const currentPage = Number(Astro.url.searchParams.get("page")) || 1;
-const sortDirection = (Astro.url.searchParams.get("sort") || "desc") as
-  | "asc"
-  | "desc";
+// Fetch all data at build time
+const [newsData, categories, tags] = await Promise.all([
+  getNewsPagePosts(),
+  getAllCategories(),
+  getAllTags(),
+]);
 
-let posts: WordPressPost[] = [];
-let error: string | null = null;
+const { featuredPost, regularPosts, allPosts } = newsData;
 
-try {
-  posts = await getPosts();
-} catch (e) {
-  error = e instanceof Error ? e.message : "An error occurred loading posts";
-}
+// Build filter options and search index
+const filterOptions: NewsFilterOptions = buildFilterOptions(
+  allPosts,
+  categories,
+  tags
+);
+const searchIndex: NewsSearchIndex = buildSearchIndex(allPosts);
 
-const hasPosts = posts.length > 0;
-
-// Sort posts based on date
-if (sortDirection === "asc") {
-  posts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-} else {
-  posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-}
-
-// Paginate posts
-const paginatedPosts = posts.slice(
-  (currentPage - 1) * PAGE_SIZE,
-  currentPage * PAGE_SIZE
+// Always start with most recent first
+let displayPosts = [...allPosts].sort(
+  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
 );
 
-// Enhanced: Preload critical images for performance
-const criticalImages = paginatedPosts
-  .slice(0, 4)
-  .map((post) => post._embedded?.["wp:featuredmedia"]?.[0]?.source_url)
-  .filter((img): img is string => !!img);
+// Enhanced URL parameter parsing
+const currentParams = new URLSearchParams(Astro.url.search);
+const searchQuery = currentParams.get("search")?.toLowerCase() || "";
+const sortOrder = currentParams.get("sort") || "newest";
+const categoryFilters = currentParams.getAll("categories");
+const tagFilters = currentParams.getAll("tags");
+const dateRange = currentParams.get("dateRange") || "";
+
+const hasFilters =
+  searchQuery ||
+  categoryFilters.length > 0 ||
+  tagFilters.length > 0 ||
+  dateRange ||
+  sortOrder !== "newest";
+
+// Apply all filters with proper precedence
+if (hasFilters) {
+  // 1. Text search (if provided)
+  if (searchQuery) {
+    displayPosts = displayPosts.filter(
+      (post) =>
+        post.title.rendered.toLowerCase().includes(searchQuery) ||
+        post.excerpt.rendered.toLowerCase().includes(searchQuery) ||
+        post.content.rendered.toLowerCase().includes(searchQuery)
+    );
+  }
+
+  // 2. Category filtering
+  if (categoryFilters.length > 0) {
+    displayPosts = displayPosts.filter((post) => {
+      const postCategories =
+        post._embedded?.["wp:term"]?.[0]
+          ?.filter((term) => term.taxonomy === "category")
+          ?.map((cat) => cat.slug) || [];
+      return categoryFilters.some((filter) => postCategories.includes(filter));
+    });
+  }
+
+  // 3. Tag filtering
+  if (tagFilters.length > 0) {
+    displayPosts = displayPosts.filter((post) => {
+      const postTags =
+        post._embedded?.["wp:term"]?.[0]
+          ?.filter((term) => term.taxonomy === "post_tag")
+          ?.map((tag) => tag.slug) || [];
+      return tagFilters.some((filter) => postTags.includes(filter));
+    });
+  }
+
+  // 4. Date range filtering
+  if (dateRange) {
+    const now = new Date();
+    const cutoffDate = new Date();
+
+    switch (dateRange) {
+      case "week":
+        cutoffDate.setDate(now.getDate() - 7);
+        break;
+      case "month":
+        cutoffDate.setMonth(now.getMonth() - 1);
+        break;
+      case "year":
+        cutoffDate.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+
+    if (dateRange !== "") {
+      displayPosts = displayPosts.filter(
+        (post) => new Date(post.date) >= cutoffDate
+      );
+    }
+  }
+
+  // 5. Apply sorting
+  switch (sortOrder) {
+    case "oldest":
+      displayPosts.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      break;
+    case "alphabetical":
+      displayPosts.sort((a, b) =>
+        a.title.rendered.localeCompare(b.title.rendered)
+      );
+      break;
+    case "alphabetical-desc":
+      displayPosts.sort((a, b) =>
+        b.title.rendered.localeCompare(a.title.rendered)
+      );
+      break;
+    default: // newest
+      displayPosts.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+  }
+}
+
+const totalPosts = allPosts.length;
+const filteredCount = displayPosts.length;
 ---
 
 <Layout title="The Latest News | El Camino">
-  <!-- Enhanced: Critical image preloading -->
   <Fragment slot="head">
-    {criticalImages.map((img) => <link rel="preload" href={img} as="image" />)}
-
-    <!-- Enhanced: RSS feed for SEO -->
+    <script define:vars={{ allPosts, searchIndex, filterOptions }}>
+      window.newsData = { allPosts, searchIndex, filterOptions };
+    </script>
+    {hasFilters && <meta name="robots" content="noindex, follow" />}
     <link
       rel="alternate"
       type="application/rss+xml"
@@ -56,48 +153,72 @@ const criticalImages = paginatedPosts
     />
   </Fragment>
 
-  <section>
-    <div class="flex flex-row justify-between w-full items-baseline p-4 pb-0">
-      <h1
-        class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading) my-4 lg:my-0"
+  <!-- ENHANCED LAYOUT: Search/Sort + Filter + Content -->
+  <div class="min-h-screen bg-(--surface-primary)">
+    <!-- News Header -->
+    <div class="p-4 pb-0">
+      <div
+        class="flex flex-col md:flex-row md:justify-between gap-4 items-center lg:items-baseline"
       >
-        News
-      </h1>
-
-      <div class="flex justify-end">
-        <select
-          class="bg-transparent border-0 px-4 py-2"
-          onchange="window.location.href = this.value"
+        <h1
+          class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading)"
         >
-          <option value="?sort=desc" selected={sortDirection === "desc"}>
-            Most Recent
-          </option>
-          <option value="?sort=asc" selected={sortDirection === "asc"}>
-            Oldest First
-          </option>
-        </select>
+          News
+        </h1>
+
+        <!-- Search and Sort Bar -->
+        <NewsSearchSort
+          currentSearch={searchQuery}
+          currentSort={sortOrder}
+          totalPosts={totalPosts}
+          filteredCount={filteredCount}
+        />
       </div>
     </div>
 
-    <!-- Uses your existing ArticleGrid - no changes needed -->
-    <ArticleGrid posts={paginatedPosts} error={error} />
-  </section>
+    <!-- Grid Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-1">
+      <!-- Filter Sidebar -->
+      <aside class="lg:col-span-1">
+        <NewsFilters
+          filterOptions={filterOptions}
+          totalPosts={totalPosts}
+          filteredCount={filteredCount}
+          newsPath="/news"
+        />
+      </aside>
+
+      <!-- Main Content -->
+      <main class="lg:col-span-3 xl:col-span-4">
+        <!-- Article Grid or Empty State -->
+        {
+          displayPosts.length > 0 ? (
+            <ArticleGrid posts={displayPosts} showSidebar={false} />
+          ) : (
+            <div class="text-center py-16">
+              <div class="text-6xl mb-4 opacity-20">📰</div>
+              <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
+                {hasFilters
+                  ? "No articles match your criteria"
+                  : "No articles found"}
+              </h2>
+              <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
+                {hasFilters
+                  ? "Try adjusting your search, filters, or browse all articles."
+                  : "Check back soon for new articles!"}
+              </p>
+              {hasFilters && (
+                <a
+                  href="/news"
+                  class="font-sans font-semibold text-sm text-center py-2 px-4 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all"
+                >
+                  Clear All Filters
+                </a>
+              )}
+            </div>
+          )
+        }
+      </main>
+    </div>
+  </div>
 </Layout>
-
-<!-- Enhanced: Performance monitoring -->
-<script>
-  document.addEventListener("astro:page-load", () => {
-    // Track page load performance
-    if ("PerformanceObserver" in window) {
-      const observer = new PerformanceObserver((list) => {
-        list.getEntries().forEach((entry) => {
-          if (entry.entryType === "largest-contentful-paint") {
-            console.log("News page LCP:", entry.startTime);
-          }
-        });
-      });
-
-      observer.observe({ entryTypes: ["largest-contentful-paint"] });
-    }
-  });
-</script>

@@ -1,6 +1,6 @@
 // src/lib/wordpress/api.ts
 import type { WordPressPage, WordPressPost, WordPressTerm } from "./types";
-import { imageCache } from "@/lib/square/cacheUtils";
+import { extractEmbeddedData } from "./types";
 import {
   createError,
   handleError,
@@ -542,4 +542,138 @@ export function getWordPressCacheStats(): {
  */
 export function pruneWordPressCache(): number {
   return wordpressCache.prune();
+}
+
+/**
+ * Get all categories with post counts
+ */
+export async function getAllCategories(): Promise<
+  Array<{ name: string; slug: string; count: number }>
+> {
+  try {
+    const cacheKey = "all_categories";
+
+    return wordpressCache.getOrCompute(cacheKey, async () => {
+      const allPosts = await getPosts();
+      const categoryCounts = new Map<
+        string,
+        { name: string; slug: string; count: number }
+      >();
+
+      allPosts.forEach((post) => {
+        const embeddedData = extractEmbeddedData(post);
+        if (embeddedData.category) {
+          const existing = categoryCounts.get(embeddedData.category.slug);
+          if (existing) {
+            existing.count++;
+          } else {
+            categoryCounts.set(embeddedData.category.slug, {
+              name: embeddedData.category.name,
+              slug: embeddedData.category.slug,
+              count: 1,
+            });
+          }
+        }
+      });
+
+      return Array.from(categoryCounts.values())
+        .filter((cat) => cat.slug !== "featured") // Exclude featured from filters
+        .sort((a, b) => b.count - a.count);
+    });
+  } catch (error) {
+    const appError = processWordPressError(error, "getAllCategories");
+    return handleError<Array<{ name: string; slug: string; count: number }>>(
+      appError,
+      []
+    );
+  }
+}
+
+/**
+ * Get posts by category slug
+ */
+export async function getPostsByCategory(
+  categorySlug: string
+): Promise<WordPressPost[]> {
+  try {
+    const allPosts = await getPosts();
+    return allPosts.filter((post) => {
+      const embeddedData = extractEmbeddedData(post);
+      return embeddedData.category?.slug === categorySlug;
+    });
+  } catch (error) {
+    const appError = processWordPressError(
+      error,
+      `getPostsByCategory:${categorySlug}`
+    );
+    return handleError<WordPressPost[]>(appError, []);
+  }
+}
+
+/**
+ * Check if post is featured (has "featured" category)
+ */
+export function isFeaturedPost(post: WordPressPost): boolean {
+  const embeddedData = extractEmbeddedData(post);
+
+  // Check if post has featured category
+  if (embeddedData.category?.slug === "featured") {
+    return true;
+  }
+
+  // Also check in all terms in case featured is not the primary category
+  if (post._embedded?.["wp:term"]?.[0]) {
+    return post._embedded["wp:term"][0].some(
+      (term) => term.taxonomy === "category" && term.slug === "featured"
+    );
+  }
+
+  return false;
+}
+
+/**
+ * Get the featured post (first post with "featured" category)
+ */
+export async function getFeaturedPost(): Promise<WordPressPost | null> {
+  try {
+    const allPosts = await getPosts();
+    return allPosts.find(isFeaturedPost) || null;
+  } catch (error) {
+    const appError = processWordPressError(error, "getFeaturedPost");
+    return handleError<WordPressPost | null>(appError, null);
+  }
+}
+
+/**
+ * Get posts for news page with smart featured handling
+ */
+export async function getNewsPagePosts(): Promise<{
+  featuredPost: WordPressPost | null;
+  regularPosts: WordPressPost[];
+  allPosts: WordPressPost[];
+}> {
+  try {
+    const allPosts = await getPosts();
+    const featuredPost = allPosts.find(isFeaturedPost) || null;
+
+    // Remove featured post from regular posts to avoid duplication
+    const regularPosts = allPosts.filter((post) => !isFeaturedPost(post));
+
+    return {
+      featuredPost,
+      regularPosts,
+      allPosts, // For filtering - includes featured post
+    };
+  } catch (error) {
+    const appError = processWordPressError(error, "getNewsPagePosts");
+    return handleError<{
+      featuredPost: WordPressPost | null;
+      regularPosts: WordPressPost[];
+      allPosts: WordPressPost[];
+    }>(appError, {
+      featuredPost: null,
+      regularPosts: [],
+      allPosts: [],
+    });
+  }
 }

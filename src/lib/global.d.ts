@@ -4,7 +4,16 @@ declare global {
     squareLoaded: boolean;
     loadSquareScript: () => Promise<void>;
     Square: any;
-    showNotification: (message: string, type?: "success" | "error" | "info", duration?: number) => void;
+    showNotification: (
+      message: string,
+      type?: "success" | "error" | "info",
+      duration?: number
+    ) => void;
+    newsData?: {
+      allPosts: any[];
+      searchIndex: any;
+      filterOptions: any;
+    };
   }
 }
 

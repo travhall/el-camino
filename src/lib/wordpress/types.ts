@@ -437,3 +437,125 @@ export function getPopularTags(
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);
 }
+
+export interface NewsFilterOptions {
+  categories: Array<{ name: string; slug: string; count: number }>;
+  tags: Array<{ name: string; slug: string; count: number }>;
+  authors: Array<{ name: string; slug: string; count: number }>;
+  dateRanges: Array<{ name: string; value: string; count: number }>;
+}
+
+export interface NewsFilterState {
+  search: string;
+  sort: "newest" | "oldest" | "alphabetical" | "alphabetical-desc";
+  categories: string[];
+  tags: string[];
+  authors: string[];
+  dateRange: string;
+}
+
+export interface ProcessedNewsData {
+  allPosts: WordPressPost[];
+  featuredPost: WordPressPost | null;
+  regularPosts: WordPressPost[];
+  filterOptions: NewsFilterOptions;
+  searchIndex: NewsSearchIndex;
+}
+
+export interface NewsSearchIndex {
+  posts: Array<{
+    id: number;
+    slug: string;
+    searchableContent: string;
+    title: string;
+    excerpt: string;
+  }>;
+}
+
+/**
+ * Build search index for client-side search
+ */
+export function buildSearchIndex(posts: WordPressPost[]): NewsSearchIndex {
+  return {
+    posts: posts.map((post) => ({
+      id: post.id,
+      slug: post.slug,
+      title: post.title.rendered,
+      excerpt: sanitizeHtmlContent(post.excerpt.rendered),
+      searchableContent: [
+        post.title.rendered,
+        sanitizeHtmlContent(post.excerpt.rendered),
+        sanitizeHtmlContent(post.content.rendered),
+      ]
+        .join(" ")
+        .toLowerCase(),
+    })),
+  };
+}
+
+/**
+ * Build filter options from posts data
+ */
+export function buildFilterOptions(
+  posts: WordPressPost[],
+  categories: Array<{ name: string; slug: string; count: number }>,
+  tags: Array<{ name: string; slug: string; count: number }>
+): NewsFilterOptions {
+  // Build author counts
+  const authorCounts = new Map<
+    string,
+    { name: string; slug: string; count: number }
+  >();
+
+  posts.forEach((post) => {
+    const embeddedData = extractEmbeddedData(post);
+    if (embeddedData.author) {
+      const authorSlug = embeddedData.author.name
+        .toLowerCase()
+        .replace(/\s+/g, "-");
+      const existing = authorCounts.get(authorSlug);
+      if (existing) {
+        existing.count++;
+      } else {
+        authorCounts.set(authorSlug, {
+          name: embeddedData.author.name,
+          slug: authorSlug,
+          count: 1,
+        });
+      }
+    }
+  });
+
+  // Build date range counts
+  const now = new Date();
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+
+  const dateRanges = [
+    {
+      name: "Past week",
+      value: "week",
+      count: posts.filter((post) => new Date(post.date) >= oneWeekAgo).length,
+    },
+    {
+      name: "Past month",
+      value: "month",
+      count: posts.filter((post) => new Date(post.date) >= oneMonthAgo).length,
+    },
+    {
+      name: "Past year",
+      value: "year",
+      count: posts.filter((post) => new Date(post.date) >= oneYearAgo).length,
+    },
+  ].filter((range) => range.count > 0);
+
+  return {
+    categories,
+    tags,
+    authors: Array.from(authorCounts.values()).sort(
+      (a, b) => b.count - a.count
+    ),
+    dateRanges,
+  };
+}
