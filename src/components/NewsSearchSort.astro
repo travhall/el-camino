@@ -100,33 +100,7 @@ const {
 
 <script>
   document.addEventListener("astro:page-load", () => {
-    // Handle search form submission with debouncing
-    const searchInputs = document.querySelectorAll('input[name="search"]');
-
-    searchInputs.forEach((input) => {
-      let searchTimeout: NodeJS.Timeout;
-
-      input.addEventListener("input", (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          const form = (e.target as HTMLInputElement).closest("form");
-          if (form) {
-            // Preserve existing URL parameters
-            const currentParams = new URLSearchParams(window.location.search);
-            const searchValue = (e.target as HTMLInputElement).value.trim();
-
-            if (searchValue) {
-              currentParams.set("search", searchValue);
-            } else {
-              currentParams.delete("search");
-            }
-
-            const newUrl = `${window.location.pathname}${currentParams.toString() ? "?" + currentParams.toString() : ""}`;
-            window.location.href = newUrl;
-          }
-        }, 500);
-      });
-    });
+    // REMOVED: Auto-submit search functionality - search now only submits when button is clicked
 
     // Handle clear search button
     const clearButtons = document.querySelectorAll(".clear-search-btn");
@@ -139,7 +113,7 @@ const {
       });
     });
 
-    // Handle sort dropdown changes
+    // Handle sort dropdown changes (keep this functionality)
     const sortSelects = document.querySelectorAll('select[name="sort"]');
     sortSelects.forEach((select) => {
       select.addEventListener("change", (e) => {
