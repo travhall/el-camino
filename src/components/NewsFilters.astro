@@ -382,6 +382,12 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
   </div>
 </div>
 
+<script define:vars={{ filterOptions }}>
+  // Make filter options available to JavaScript
+  window.newsFilterOptions = filterOptions;
+</script>
+
+
 <script>
   class NewsFiltersManager {
     private form: HTMLFormElement | null;
@@ -396,37 +402,34 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     private tagCounts: Map<string, number> = new Map();
 
     constructor() {
-      this.form = document.getElementById(
-        "news-filter-form"
-      ) as HTMLFormElement;
+      this.form = document.getElementById("news-filter-form") as HTMLFormElement;
       this.container = document.getElementById("news-filter-container");
       this.overlay = document.getElementById("mobile-news-filter-overlay");
-      this.categoryToggle = document.getElementById(
-        "show-more-categories-toggle"
-      ) as HTMLButtonElement;
-      this.tagToggle = document.getElementById(
-        "show-more-tags-toggle"
-      ) as HTMLButtonElement;
+      this.categoryToggle = document.getElementById("show-more-categories-toggle") as HTMLButtonElement;
+      this.tagToggle = document.getElementById("show-more-tags-toggle") as HTMLButtonElement;
       
       this.checkMobileState();
-      this.storeTagCounts();
+      
+      // FIXED: Store tag counts from server data, not DOM
+      this.storeTagCountsFromServerData();
+      
       this.setupEventListeners();
       this.initializeMenuState();
     }
 
-    private storeTagCounts(): void {
-      // Store original tag counts on initialization
-      const tagButtons = document.querySelectorAll('[data-tag-chip]');
-      tagButtons.forEach(button => {
-        const tagSlug = (button as HTMLElement).dataset.tagChip!;
-        const countSpan = button.querySelector('span.opacity-75');
-        if (countSpan) {
-          const match = countSpan.textContent?.match(/\((\d+)\)/);
-          if (match) {
-            this.tagCounts.set(tagSlug, parseInt(match[1]));
-          }
-        }
-      });
+    private storeTagCountsFromServerData(): void {
+      // FIXED: Use server-side filter options data instead of DOM parsing
+      const filterOptions = (window as any).newsFilterOptions;
+      if (filterOptions && filterOptions.tags) {
+        filterOptions.tags.forEach((tag: any) => {
+          this.tagCounts.set(tag.slug, tag.count);
+        });
+      }
+    }
+
+    private getTagCount(tagSlug: string): number {
+      // FIXED: Always return from stored server data
+      return this.tagCounts.get(tagSlug) || 0;
     }
 
     private checkMobileState(): void {
@@ -434,7 +437,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       window.addEventListener('resize', () => {
         this.isMobile = window.innerWidth < 1024;
         if (!this.isMobile) {
-          // Clear pending state when switching to desktop
           this.pendingTags.clear();
           this.updateApplyButton();
         }
@@ -460,11 +462,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
 
     private openMobileDrawer(): void {
       this.overlay?.classList.remove("pointer-events-none", "opacity-0");
-      this.container?.classList.remove(
-        "translate-y-full",
-        "opacity-0",
-        "pointer-events-none"
-      );
+      this.container?.classList.remove("translate-y-full", "opacity-0", "pointer-events-none");
       document.body.style.overflow = "hidden";
     }
 
@@ -484,7 +482,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const inputs = this.form.querySelectorAll("input:not([data-tag-chip]), select");
       inputs.forEach((input) => {
         input.addEventListener("change", () => {
-          // Only auto-submit on desktop for non-tag inputs
           if (!this.isMobile) {
             setTimeout(() => {
               this.form!.submit();
@@ -499,7 +496,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const tagToggle = document.getElementById('show-more-tags-toggle');
       const extraTags = document.querySelector('[data-extra-tags]');
       
-      // Handle tag chip clicks - DUAL MODE LOGIC
       tagChips.forEach(chip => {
         chip.addEventListener('click', (e) => {
           const button = e.currentTarget as HTMLButtonElement;
@@ -513,7 +509,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         });
       });
 
-      // Handle show more tags toggle
       tagToggle?.addEventListener('click', () => {
         if (extraTags) {
           const isHidden = extraTags.classList.contains('hidden');
@@ -538,24 +533,18 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const isPending = button.dataset.pending === 'true';
       
       if (isApplied) {
-        // Applied tag: add to pending removal
         if (isPending) {
-          // Cancel pending removal
           this.pendingTags.delete(`remove-${tagSlug}`);
           this.updateTagButton(button, 'applied', tagSlug);
         } else {
-          // Mark for removal
           this.pendingTags.add(`remove-${tagSlug}`);
           this.updateTagButton(button, 'pending-remove', tagSlug);
         }
       } else {
-        // Unselected tag: add to pending addition
         if (isPending) {
-          // Cancel pending addition
           this.pendingTags.delete(`add-${tagSlug}`);
           this.updateTagButton(button, 'unselected', tagSlug);
         } else {
-          // Mark for addition
           this.pendingTags.add(`add-${tagSlug}`);
           this.updateTagButton(button, 'pending-add', tagSlug);
         }
@@ -569,8 +558,10 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       
       if (isApplied) {
         this.removeTag(tagSlug);
+        this.updateTagButton(button, 'unselected', tagSlug);
       } else {
         this.addTag(tagSlug);
+        this.updateTagButton(button, 'applied', tagSlug);
       }
     }
 
@@ -578,16 +569,20 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const tagContent = button.querySelector('[data-tag-content]');
       if (!tagContent) return;
 
-      // Update visual state
+      // Clear existing state classes
       button.className = button.className
         .replace(/tag-(unselected|pending|applied)/g, '')
         .trim();
+      
+      // FIXED: Always use stored count data
+      const tagCount = this.getTagCount(tagSlug);
       
       switch (state) {
         case 'unselected':
           button.classList.add('tag-unselected');
           button.dataset.pending = 'false';
-          tagContent.innerHTML = `<span class="text-xs opacity-75">(${this.getTagCount(tagSlug)})</span>`;
+          button.dataset.applied = 'false';
+          tagContent.innerHTML = `<span class="text-xs opacity-75">(${tagCount})</span>`;
           break;
         case 'pending-add':
           button.classList.add('tag-pending');
@@ -597,29 +592,15 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         case 'pending-remove':
           button.classList.add('tag-pending');
           button.dataset.pending = 'true';
-          tagContent.innerHTML = `<span class="text-xs opacity-75">(${this.getTagCount(tagSlug)})</span>`;
+          tagContent.innerHTML = `<span class="text-xs opacity-75">(${tagCount})</span>`;
           break;
         case 'applied':
           button.classList.add('tag-applied');
           button.dataset.pending = 'false';
+          button.dataset.applied = 'true';
           tagContent.innerHTML = `<svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>`;
           break;
       }
-    }
-
-    private getTagCount(tagSlug: string): number {
-      // Get tag count from initial data
-      const allTags = document.querySelectorAll('[data-tag-chip]');
-      for (const tag of allTags) {
-        if ((tag as HTMLElement).dataset.tagChip === tagSlug) {
-          const countSpan = tag.querySelector('span.opacity-75');
-          if (countSpan) {
-            const match = countSpan.textContent?.match(/\((\d+)\)/);
-            return match ? parseInt(match[1]) : 0;
-          }
-        }
-      }
-      return 0;
     }
 
     private updateApplyButton(): void {
@@ -641,7 +622,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     }
 
     private addTag(tagSlug: string): void {
-      // Add hidden input
       const hiddenInput = document.createElement('input');
       hiddenInput.type = 'hidden';
       hiddenInput.name = 'tags';
@@ -651,7 +631,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       const hiddenContainer = this.form?.querySelector('.hidden');
       hiddenContainer?.appendChild(hiddenInput);
       
-      // Submit form immediately on desktop
       if (!this.isMobile) {
         setTimeout(() => {
           this.form?.submit();
@@ -660,11 +639,9 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     }
 
     private removeTag(tagSlug: string): void {
-      // Remove hidden input
       const hiddenInput = document.querySelector(`[data-tag-input="${tagSlug}"]`);
       hiddenInput?.remove();
       
-      // Submit form immediately on desktop
       if (!this.isMobile) {
         setTimeout(() => {
           this.form?.submit();
@@ -673,7 +650,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     }
 
     private applyPendingChanges(): void {
-      // Process all pending changes
       this.pendingTags.forEach(change => {
         if (change.startsWith('add-')) {
           const tagSlug = change.replace('add-', '');
@@ -684,52 +660,39 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         }
       });
       
-      // Clear pending state
       this.pendingTags.clear();
-      
-      // Submit form
       this.form?.submit();
     }
 
     private setupShowMoreToggles(): void {
       this.categoryToggle?.addEventListener("click", (e) => {
         e.preventDefault();
-        this.isCategoriesExpanded
-          ? this.collapseCategories()
-          : this.expandCategories();
+        this.isCategoriesExpanded ? this.collapseCategories() : this.expandCategories();
       });
     }
 
     private initializeMenuState(): void {
-      // Initialize category state
-      const initialCategoriesExpanded =
-        this.categoryToggle?.dataset.initialExpanded === "true";
+      const initialCategoriesExpanded = this.categoryToggle?.dataset.initialExpanded === "true";
       this.isCategoriesExpanded = initialCategoriesExpanded;
 
-      // Initialize tag state  
-      const initialTagsExpanded =
-        this.tagToggle?.dataset.initialExpanded === "true";
+      const initialTagsExpanded = this.tagToggle?.dataset.initialExpanded === "true";
       this.isTagsExpanded = initialTagsExpanded;
 
-      // Setup mobile apply button handler
       const applyButton = document.getElementById('mobile-apply-filters');
       applyButton?.addEventListener('click', (e) => {
         if (this.isMobile && this.pendingTags.size > 0) {
           e.preventDefault();
           this.applyPendingChanges();
         }
-        // Otherwise, let form submit normally
       });
     }
 
     private collapseCategories(): void {
       const extraItems = document.querySelectorAll(".category-extra-item");
-      const collapsedText =
-        this.categoryToggle?.dataset.collapsedText || "+ Show more";
+      const collapsedText = this.categoryToggle?.dataset.collapsedText || "+ Show more";
 
       extraItems.forEach((item) => {
-        const element = item as HTMLElement;
-        element.classList.add("lg:hidden");
+        (item as HTMLElement).classList.add("lg:hidden");
       });
 
       if (this.categoryToggle) this.categoryToggle.textContent = collapsedText;
@@ -738,12 +701,10 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
 
     private expandCategories(): void {
       const extraItems = document.querySelectorAll(".category-extra-item");
-      const expandedText =
-        this.categoryToggle?.dataset.expandedText || "- Show less";
+      const expandedText = this.categoryToggle?.dataset.expandedText || "- Show less";
 
       extraItems.forEach((item) => {
-        const element = item as HTMLElement;
-        element.classList.remove("lg:hidden");
+        (item as HTMLElement).classList.remove("lg:hidden");
       });
 
       if (this.categoryToggle) this.categoryToggle.textContent = expandedText;
@@ -753,25 +714,20 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     private setupClearButtons(): void {
       const clearCategories = document.querySelector("[data-clear-categories]");
       const clearTags = document.querySelector("[data-clear-tags]");
-      const clearAllMobile = document.querySelector(
-        "[data-clear-all-news-filters]"
-      );
+      const clearAllMobile = document.querySelector("[data-clear-all-news-filters]");
 
-      clearCategories?.addEventListener("click", () =>
-        this.clearCategoryFilters()
-      );
+      clearCategories?.addEventListener("click", () => this.clearCategoryFilters());
       clearTags?.addEventListener("click", () => this.clearTagFilters());
       clearAllMobile?.addEventListener("click", () => this.clearAllFilters());
     }
 
     private clearCategoryFilters(): void {
-      const checkboxes = this.form?.querySelectorAll(
-        'input[name="categories"]:checked'
-      );
+      const checkboxes = this.form?.querySelectorAll('input[name="categories"]:checked');
       checkboxes?.forEach((cb) => ((cb as HTMLInputElement).checked = false));
     }
 
     private clearTagFilters(): void {
+      // Remove all hidden tag inputs
       const hiddenInputs = this.form?.querySelectorAll('[data-tag-input]');
       hiddenInputs?.forEach(input => input.remove());
       
@@ -779,15 +735,16 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       this.pendingTags.clear();
       this.updateApplyButton();
       
-      // Reset all tag buttons to unselected state
+      // FIXED: Reset all tag buttons using stored count data
       const tagButtons = document.querySelectorAll('[data-tag-chip]');
       tagButtons.forEach(button => {
-        const tagSlug = (button as HTMLElement).dataset.tagChip!;
-        this.updateTagButton(button as HTMLButtonElement, 'unselected', tagSlug);
-        (button as HTMLElement).dataset.applied = 'false';
+        const buttonElement = button as HTMLButtonElement;
+        const tagSlug = buttonElement.dataset.tagChip!;
+        
+        // Use the updateTagButton method which now uses stored counts
+        this.updateTagButton(buttonElement, 'unselected', tagSlug);
       });
       
-      // Submit form immediately on desktop
       if (!this.isMobile) {
         setTimeout(() => {
           this.form?.submit();
