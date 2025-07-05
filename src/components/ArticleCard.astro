@@ -26,7 +26,6 @@ const {
 } = Astro.props;
 
 const imageUrl = embeddedData.featuredMedia?.source_url || "";
-const avatarUrl = embeddedData.author?.avatar_urls?.["96"] || "";
 const linkText = `Read article: ${fallbackContent.title}`;
 
 // Image dimensions based on card type
@@ -34,6 +33,7 @@ const imageWidth = featured ? 800 : 600;
 const imageHeight = featured ? 533 : 400;
 ---
 
+<!-- CLAUDE: We want to refactor so this entire card is clickable, and remove the button. Hovering the entire card should trigger the hovers now -->
 <article
   class:list={[
     "relative overflow-hidden bg-(--ui-card-surface) text-(--ui-card-text) border-(--ui-card-border) flex flex-col aspect-[3/4.5] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3",
@@ -73,10 +73,10 @@ const imageHeight = featured ? 533 : 400;
         "bg-(--ui-card-surface)/90 md:bg-(--ui-card-surface) first-of-type:m-0 md:border-t-4 md:border-l-4 md:border-(--ui-card-border) md:w-5/6 lg:w-2/3 right-0",
     ]}
   >
-    <!-- Category Badge -->
+    <!-- Category Badge CLAUDE: The "Featured" article badge should default to the other category when available. "Featured" should be the fallback if no other category is available. -->
     {
       embeddedData.category?.name && (
-        <span class="font-display font-semibold text-base tracking-wide uppercase text-(--content-meta)">
+        <span class="font-display font-semibold text-base tracking-wide uppercase text-(--ui-button-text) bg-(--ui-button-surface) px-2 py-0.5 rounded-xs mb-2 self-start">
           {embeddedData.category.name}
         </span>
       )
@@ -88,6 +88,10 @@ const imageHeight = featured ? 533 : 400;
       set:html={post.title.rendered}
     />
 
+    <time datetime={post.date} class="text-xs">
+      {formatDate(post.date)}
+    </time>
+
     <!-- Article Excerpt -->
     <div
       class:list={[
@@ -98,44 +102,17 @@ const imageHeight = featured ? 533 : 400;
       set:html={post.excerpt.rendered}
     />
 
-    <!-- Author & Meta Information -->
-    <div class="mt-auto flex flex-col gap-4">
-      {
-        embeddedData.author && (
-          <div class="flex items-center text-(--content-meta) sr-only">
-            {avatarUrl && (
-              <Image
-                src={avatarUrl}
-                alt={`Profile photo of ${embeddedData.author.name}`}
-                width={32}
-                height={32}
-                format="avif"
-                quality={85}
-                class="w-8 h-8 rounded-full mr-2 ring-2 ring-ui-card-border"
-                loading="lazy"
-              />
-            )}
-            <span class="font-medium">{embeddedData.author.name}</span>
-            <span class="mx-2">•</span>
-            <time datetime={post.date} class="text-sm">
-              {formatDate(post.date)}
-            </time>
-          </div>
-        )
-      }
-
-      <!-- Read More Button -->
-      <a
-        href={`/news/${post.slug}`}
-        class="self-start mt-4"
-        aria-label={linkText}
-      >
-        <Button type="button" variant="primary" size="md" tabindex="-1">
-          Read More
-          <span class="sr-only">: {fallbackContent.title}</span>
-        </Button>
-      </a>
-    </div>
+    <!-- Read More Button - CLAUDE: Remove the link/button and replace this block with article tags, use the styles for tags in NewsFilters.astro -->
+    <a
+      href={`/news/${post.slug}`}
+      class="self-start mt-4"
+      aria-label={linkText}
+    >
+      <Button type="button" variant="primary" size="md" tabindex="-1">
+        Read More
+        <span class="sr-only">: {fallbackContent.title}</span>
+      </Button>
+    </a>
   </div>
 </article>
 
