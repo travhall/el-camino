@@ -1,5 +1,5 @@
 ---
-// src/components/NewsFilters.astro - ENHANCED MOBILE TAG UX
+// src/components/NewsFilters.astro - STREAMLINED VERSION
 import type { NewsFilterOptions } from "@/lib/wordpress/types";
 
 interface Props {
@@ -53,9 +53,8 @@ const shouldStartCategoriesExpanded = hasSelectedCategoriesBelow;
 const shouldStartTagsExpanded = hasSelectedTagsBelow;
 ---
 
-<!-- FOUC Prevention: Inline critical CSS -->
+<!-- Minimal critical CSS -->
 <style is:inline>
-  /* Prevent flickering during initial load */
   .news-filter-list {
     transition: none;
   }
@@ -382,54 +381,40 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
   </div>
 </div>
 
+<!-- Server-side data for JavaScript -->
 <script define:vars={{ filterOptions }}>
-  // Make filter options available to JavaScript
   window.newsFilterOptions = filterOptions;
 </script>
 
-
 <script>
   class NewsFiltersManager {
-    private form: HTMLFormElement | null;
-    private container: HTMLElement | null;
-    private overlay: HTMLElement | null;
-    private categoryToggle: HTMLButtonElement | null;
-    private tagToggle: HTMLButtonElement | null;
+    private form!: HTMLFormElement | null;
+    private container!: HTMLElement | null;
+    private overlay!: HTMLElement | null;
+    private categoryToggle!: HTMLButtonElement | null;
+    private tagToggle!: HTMLButtonElement | null;
+
+    // Core state
     private isCategoriesExpanded: boolean = false;
     private isTagsExpanded: boolean = false;
     private pendingTags: Set<string> = new Set();
     private isMobile: boolean = false;
     private tagCounts: Map<string, number> = new Map();
 
+    // Simple debouncing
+    private submitTimeout: number | null = null;
+
     constructor() {
-      this.form = document.getElementById("news-filter-form") as HTMLFormElement;
-      this.container = document.getElementById("news-filter-container");
-      this.overlay = document.getElementById("mobile-news-filter-overlay");
-      this.categoryToggle = document.getElementById("show-more-categories-toggle") as HTMLButtonElement;
-      this.tagToggle = document.getElementById("show-more-tags-toggle") as HTMLButtonElement;
+      this.form = document.getElementById('news-filter-form') as HTMLFormElement;
+      this.container = document.getElementById('news-filter-container');
+      this.overlay = document.getElementById('mobile-news-filter-overlay');
+      this.categoryToggle = document.getElementById('show-more-categories-toggle') as HTMLButtonElement;
+      this.tagToggle = document.getElementById('show-more-tags-toggle') as HTMLButtonElement;
       
       this.checkMobileState();
-      
-      // FIXED: Store tag counts from server data, not DOM
       this.storeTagCountsFromServerData();
-      
       this.setupEventListeners();
       this.initializeMenuState();
-    }
-
-    private storeTagCountsFromServerData(): void {
-      // FIXED: Use server-side filter options data instead of DOM parsing
-      const filterOptions = (window as any).newsFilterOptions;
-      if (filterOptions && filterOptions.tags) {
-        filterOptions.tags.forEach((tag: any) => {
-          this.tagCounts.set(tag.slug, tag.count);
-        });
-      }
-    }
-
-    private getTagCount(tagSlug: string): number {
-      // FIXED: Always return from stored server data
-      return this.tagCounts.get(tagSlug) || 0;
     }
 
     private checkMobileState(): void {
@@ -441,6 +426,20 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
           this.updateApplyButton();
         }
       });
+    }
+
+    // FIXED: Use server-side data instead of DOM parsing
+    private storeTagCountsFromServerData(): void {
+      const filterOptions = (window as any).newsFilterOptions;
+      if (filterOptions?.tags) {
+        filterOptions.tags.forEach((tag: any) => {
+          this.tagCounts.set(tag.slug, tag.count);
+        });
+      }
+    }
+
+    private getTagCount(tagSlug: string): number {
+      return this.tagCounts.get(tagSlug) || 0;
     }
 
     private setupEventListeners(): void {
@@ -483,12 +482,20 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       inputs.forEach((input) => {
         input.addEventListener("change", () => {
           if (!this.isMobile) {
-            setTimeout(() => {
-              this.form!.submit();
-            }, 150);
+            this.debouncedSubmit();
           }
         });
       });
+    }
+
+    // Simple debounced submission
+    private debouncedSubmit(): void {
+      if (this.submitTimeout) {
+        clearTimeout(this.submitTimeout);
+      }
+      this.submitTimeout = window.setTimeout(() => {
+        this.form?.submit();
+      }, 150);
     }
 
     private setupTagChips(): void {
@@ -563,18 +570,18 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         this.addTag(tagSlug);
         this.updateTagButton(button, 'applied', tagSlug);
       }
+      
+      if (!this.isMobile) {
+        this.debouncedSubmit();
+      }
     }
 
+    // FIXED: Enhanced tag button updating with stored count data
     private updateTagButton(button: HTMLButtonElement, state: string, tagSlug: string): void {
       const tagContent = button.querySelector('[data-tag-content]');
       if (!tagContent) return;
 
-      // Clear existing state classes
-      button.className = button.className
-        .replace(/tag-(unselected|pending|applied)/g, '')
-        .trim();
-      
-      // FIXED: Always use stored count data
+      button.className = button.className.replace(/tag-(unselected|pending|applied)/g, '').trim();
       const tagCount = this.getTagCount(tagSlug);
       
       switch (state) {
@@ -630,23 +637,11 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       
       const hiddenContainer = this.form?.querySelector('.hidden');
       hiddenContainer?.appendChild(hiddenInput);
-      
-      if (!this.isMobile) {
-        setTimeout(() => {
-          this.form?.submit();
-        }, 150);
-      }
     }
 
     private removeTag(tagSlug: string): void {
       const hiddenInput = document.querySelector(`[data-tag-input="${tagSlug}"]`);
       hiddenInput?.remove();
-      
-      if (!this.isMobile) {
-        setTimeout(() => {
-          this.form?.submit();
-        }, 150);
-      }
     }
 
     private applyPendingChanges(): void {
@@ -721,34 +716,33 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       clearAllMobile?.addEventListener("click", () => this.clearAllFilters());
     }
 
+    // FIXED: Category clear submits form on desktop
     private clearCategoryFilters(): void {
       const checkboxes = this.form?.querySelectorAll('input[name="categories"]:checked');
       checkboxes?.forEach((cb) => ((cb as HTMLInputElement).checked = false));
+      
+      if (!this.isMobile) {
+        this.debouncedSubmit();
+      }
     }
 
+    // FIXED: Tag clear using stored count data
     private clearTagFilters(): void {
-      // Remove all hidden tag inputs
       const hiddenInputs = this.form?.querySelectorAll('[data-tag-input]');
       hiddenInputs?.forEach(input => input.remove());
       
-      // Clear pending state
       this.pendingTags.clear();
       this.updateApplyButton();
       
-      // FIXED: Reset all tag buttons using stored count data
       const tagButtons = document.querySelectorAll('[data-tag-chip]');
       tagButtons.forEach(button => {
         const buttonElement = button as HTMLButtonElement;
         const tagSlug = buttonElement.dataset.tagChip!;
-        
-        // Use the updateTagButton method which now uses stored counts
         this.updateTagButton(buttonElement, 'unselected', tagSlug);
       });
       
       if (!this.isMobile) {
-        setTimeout(() => {
-          this.form?.submit();
-        }, 150);
+        this.debouncedSubmit();
       }
     }
 
