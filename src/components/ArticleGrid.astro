@@ -1,5 +1,5 @@
 ---
-// src/components/ArticleGrid.astro - Compatible with clickable ArticleCard
+// src/components/ArticleGrid.astro - Enhanced with filterable grid/list support
 import ArticleCard from "./ArticleCard.astro";
 import ArticleCardSkeleton from "./ArticleCardSkeleton.astro";
 import Sidebar from "./Sidebar.astro";
@@ -13,7 +13,9 @@ interface Props {
   posts: WordPressPost[];
   error?: string | null;
   isLoading?: boolean;
-  showSidebar?: boolean;
+  showSidebar?: boolean; // Legacy support for home page
+  filterable?: boolean; // New: enables filterable news page layout
+  view?: "grid" | "list"; // New: controls grid vs list view for filterable mode
 }
 
 const {
@@ -21,20 +23,54 @@ const {
   error = null,
   isLoading = !posts.length,
   showSidebar = false,
+  filterable = false,
+  view = "grid",
 } = Astro.props;
 
-// If sidebar is shown, limit to 6 posts for homepage layout
+// If sidebar is shown (home page), limit to 6 posts
 const displayPosts = showSidebar ? posts.slice(0, 6) : posts;
 
 // Loading skeleton count
 const skeletonCount = showSidebar ? 6 : 12;
 
-// MINIMAL OPTIMIZATION: Only preprocess the data extraction
+// Preprocess the data extraction
 const processedPosts = displayPosts.map((post) => ({
   post,
   embeddedData: extractEmbeddedData(post),
   fallbackContent: generateFallbackContent(post),
 }));
+
+// Determine card variant based on layout mode
+const getCardVariant = (index: number) => {
+  if (filterable) {
+    return view; // "grid" or "list"
+  }
+  return "masonry"; // Home page masonry layout
+};
+
+// Get container classes based on layout mode
+const getContainerClasses = () => {
+  if (filterable) {
+    if (view === "list") {
+      return "flex flex-col gap-4 p-4";
+    } else {
+      // Grid view for news page - simpler than masonry
+      return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4";
+    }
+  }
+  // Original masonry layout for home page
+  return "article-grid flex flex-col sm:grid sm:justify-center sm:grid-cols-6 2xl:grid-cols-8 sm:auto-rows-auto md:auto-rows-[12vw] lg:auto-rows-[10vw] xl:auto-rows-[9vw] 2xl:auto-rows-[9.5vw] w-full gap-1 p-1 pb-0";
+};
+
+// Get skeleton variant for loading states
+const getSkeletonVariant = () => {
+  if (filterable && view === "list") {
+    return "list";
+  } else if (filterable && view === "grid") {
+    return "grid";
+  }
+  return "masonry";
+};
 ---
 
 {
@@ -44,14 +80,18 @@ const processedPosts = displayPosts.map((post) => ({
     </div>
   )
 }
-<div
-  class="article-grid flex flex-col sm:grid sm:justify-center sm:grid-cols-6 2xl:grid-cols-8 sm:auto-rows-auto md:auto-rows-[12vw] lg:auto-rows-[10vw] xl:auto-rows-[9vw] 2xl:auto-rows-[9.5vw] w-full gap-1 p-1 pb-0"
->
+
+<div class={getContainerClasses()}>
   {
     isLoading ? (
       Array(skeletonCount)
         .fill(null)
-        .map((_, i) => <ArticleCardSkeleton featured={i === 0} />)
+        .map((_, i) => (
+          <ArticleCardSkeleton
+            featured={!filterable && i === 0}
+            variant={getSkeletonVariant()}
+          />
+        ))
     ) : processedPosts.length > 0 ? (
       <>
         {processedPosts.map(
@@ -60,16 +100,21 @@ const processedPosts = displayPosts.map((post) => ({
               post={post}
               embeddedData={embeddedData}
               fallbackContent={fallbackContent}
-              featured={index === 0}
+              featured={!filterable && index === 0}
               priority={index === 0}
+              variant={getCardVariant(index)}
             />
           )
         )}
-        {showSidebar && <Sidebar />}
-        {showSidebar && (
-          <div class="bg-(--surface-secondary) col-span-full md:col-span-4 2xl:col-span-6 2xl:row-span-2 p-4 -mt-1 md:mt-0">
-            News CTA Placeholder
-          </div>
+
+        {/* Home page sidebar and CTA (only for non-filterable mode) */}
+        {showSidebar && !filterable && (
+          <>
+            <Sidebar />
+            <div class="bg-(--surface-secondary) col-span-full md:col-span-4 2xl:col-span-6 2xl:row-span-2 p-4 -mt-1 md:mt-0">
+              News CTA Placeholder
+            </div>
+          </>
         )}
       </>
     ) : (
@@ -79,3 +124,94 @@ const processedPosts = displayPosts.map((post) => ({
     )
   }
 </div>
+
+<style>
+  /* Enhanced styles for different layout modes */
+
+  /* List view specific styles */
+  .flex.flex-col.gap-4 .group:hover {
+    transform: translateX(4px);
+  }
+
+  /* Grid view specific styles */
+  .grid.gap-4 .group:hover {
+    transform: translateY(-4px);
+  }
+
+  /* Masonry layout styles (preserved from original) */
+  .article-grid .group:hover {
+    z-index: 10;
+  }
+
+  /* Responsive adjustments for different views */
+  @media (max-width: 768px) {
+    .grid.gap-4 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .grid.gap-4 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>
+
+<script>
+  // Enhanced functionality for different layout modes
+  document.addEventListener("astro:page-load", () => {
+    // Performance optimization: Intersection Observer for lazy loading
+    if ("IntersectionObserver" in window) {
+      const imageObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const img = entry.target as HTMLImageElement;
+              if (img.dataset.src) {
+                img.src = img.dataset.src;
+                img.removeAttribute("data-src");
+                imageObserver.unobserve(img);
+              }
+            }
+          });
+        },
+        { rootMargin: "50px" }
+      );
+
+      // Observe images with data-src attribute
+      document
+        .querySelectorAll("img[data-src]")
+        .forEach((img) => imageObserver.observe(img));
+    }
+
+    // Keyboard navigation support for accessibility
+    const cards = document.querySelectorAll("a[class*='group']");
+    cards.forEach((card, index) => {
+      card.addEventListener("keydown", (e: Event) => {
+        const keyEvent = e as KeyboardEvent;
+        if (keyEvent.key === "ArrowDown" && cards[index + 1]) {
+          (cards[index + 1] as HTMLElement).focus();
+          keyEvent.preventDefault();
+        } else if (keyEvent.key === "ArrowUp" && cards[index - 1]) {
+          (cards[index - 1] as HTMLElement).focus();
+          keyEvent.preventDefault();
+        }
+      });
+    });
+
+    // Layout-specific enhancements
+    const container = document.querySelector(
+      "[class*='grid'], [class*='flex']"
+    );
+    if (container) {
+      // Add smooth transitions for layout changes
+      container.addEventListener("transitionstart", () => {
+        container.classList.add("transitioning");
+      });
+
+      container.addEventListener("transitionend", () => {
+        container.classList.remove("transitioning");
+      });
+    }
+  });
+</script>

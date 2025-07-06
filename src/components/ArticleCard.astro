@@ -1,5 +1,5 @@
 ---
-// src/components/ArticleCard.astro
+// src/components/ArticleCard.astro - Enhanced with grid/list view support
 import type {
   WordPressPost,
   ExtractedWordPressData,
@@ -16,6 +16,8 @@ interface Props {
   priority?: boolean;
   embeddedData: ExtractedWordPressData;
   fallbackContent: WordPressFallbackContent;
+  // New props for different layouts
+  variant?: "masonry" | "grid" | "list";
 }
 
 const {
@@ -24,34 +26,128 @@ const {
   priority = false,
   embeddedData,
   fallbackContent,
+  variant = "masonry",
 } = Astro.props;
 
 const imageUrl = embeddedData.featuredMedia?.source_url || "";
 
-// Image dimensions based on card type
-const imageWidth = featured ? 800 : 600;
-const imageHeight = featured ? 533 : 400;
+// Image dimensions based on variant and card type
+const getImageDimensions = () => {
+  switch (variant) {
+    case "list":
+      return { width: 160, height: 120 };
+    case "grid":
+      return { width: 400, height: 240 };
+    case "masonry":
+    default:
+      return { width: featured ? 800 : 600, height: featured ? 533 : 400 };
+  }
+};
 
-// Get the proper display category (non-Featured preferred, Featured as fallback)
+const { width: imageWidth, height: imageHeight } = getImageDimensions();
+
+// Get the proper display category
 const displayCategory = getDisplayCategory(post);
 
-// Extract tags for display (limit to first 3 for space)
-const displayTags = embeddedData.tags.slice(0, 3);
-const remainingTagCount = embeddedData.tags.length - 3;
+// Extract tags for display (show all tags, let them wrap)
+const displayTags = embeddedData.tags;
+
+// Define CSS classes based on variant
+const getCardClasses = () => {
+  const baseClasses =
+    "relative overflow-hidden bg-(--ui-card-surface) text-(--ui-card-text) border-(--ui-card-border) group";
+
+  switch (variant) {
+    case "list":
+      return `${baseClasses} flex flex-row min-h-[140px] transition-all duration-300 hover:shadow-lg`;
+
+    case "grid":
+      return `${baseClasses} flex flex-col transition-all duration-300 hover:shadow-lg`;
+
+    case "masonry":
+    default:
+      return `${baseClasses} flex flex-col aspect-[3/4.5] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 ${
+        featured
+          ? "banner-card contain-layout"
+          : "article-card transition-all duration-300"
+      }`;
+  }
+};
+
+const getImageClasses = () => {
+  const baseClasses = "object-cover transition-all duration-300";
+
+  switch (variant) {
+    case "list":
+      return `${baseClasses} w-40 h-full flex-shrink-0 group-hover:scale-105`;
+
+    case "grid":
+      return `${baseClasses} w-full h-48 group-hover:scale-105`;
+
+    case "masonry":
+    default:
+      return `${baseClasses} w-full h-full ${
+        featured
+          ? "opacity-90 lg:group-hover:scale-105"
+          : "opacity-10 lg:group-hover:scale-105 lg:group-hover:opacity-95"
+      }`;
+  }
+};
+
+const getContentClasses = () => {
+  switch (variant) {
+    case "list":
+      return "flex flex-col justify-between p-4 flex-1 min-w-0 gap-2";
+
+    case "grid":
+      return "flex flex-col p-4 flex-1 gap-2";
+
+    case "masonry":
+    default:
+      return `flex flex-col gap-2 px-6 py-12 xl:p-12 absolute bottom-0 m-1 bg-(--ui-card-surface)/00 backdrop-blur-0 lg:group-hover:bg-(--ui-card-surface)/80 lg:group-hover:backdrop-blur transition-all duration-300 ${
+        featured &&
+        "bg-(--ui-card-surface)/90 md:bg-(--ui-card-surface) first-of-type:m-0 md:border-t-4 md:border-l-4 md:border-(--ui-card-border) md:w-5/6 lg:w-2/3 right-0"
+      }`;
+  }
+};
+
+const getTitleClasses = () => {
+  switch (variant) {
+    case "list":
+      return "font-display font-bold text-base lg:text-lg leading-tight text-(--content-heading) line-clamp-2 mb-1";
+
+    case "grid":
+      return "font-display font-bold text-lg lg:text-xl leading-tight text-(--content-heading) line-clamp-2 mb-2";
+
+    case "masonry":
+    default:
+      return "font-display font-black text-6xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-(--content-heading) mb-2";
+  }
+};
+
+const getExcerptClasses = () => {
+  switch (variant) {
+    case "list":
+      return "text-sm leading-snug text-(--content-body) line-clamp-2 mb-2";
+
+    case "grid":
+      return "text-sm leading-snug text-(--content-body) line-clamp-3 mb-2";
+
+    case "masonry":
+    default:
+      return `text-sm md:text-base leading-snug text-(--content-body) mb-2 ${
+        featured ? "line-clamp-3 md:line-clamp-2" : "line-clamp-3"
+      }`;
+  }
+};
 ---
 
-<!-- Entire card is now clickable -->
 <a
   href={`/news/${post.slug}`}
-  class:list={[
-    "relative overflow-hidden bg-(--ui-card-surface) text-(--ui-card-text) border-(--ui-card-border) flex flex-col aspect-[3/4.5] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 group",
-    featured
-      ? "banner-card contain-layout"
-      : "article-card transition-all duration-300",
-  ]}
+  class={getCardClasses()}
   aria-label={`Read article: ${fallbackContent.title}`}
 >
-  <!-- Featured Image with Updated Hover Effects -->
+  <!-- Featured Image -->
   {
     imageUrl && (
       <Image
@@ -61,12 +157,7 @@ const remainingTagCount = embeddedData.tags.length - 3;
         height={imageHeight}
         format="avif"
         quality={85}
-        class:list={[
-          "object-cover w-full h-full transition-all duration-300",
-          featured
-            ? "opacity-90 lg:group-hover:scale-105"
-            : "opacity-10 lg:group-hover:scale-105 lg:group-hover:opacity-95",
-        ]}
+        class={getImageClasses()}
         loading={priority ? "eager" : "lazy"}
         fetchpriority={priority ? "high" : "auto"}
         decoding={priority ? "sync" : "async"}
@@ -74,17 +165,11 @@ const remainingTagCount = embeddedData.tags.length - 3;
     )
   }
 
-  <!-- Content Overlay with Updated Hover Effects -->
-  <div
-    class:list={[
-      "flex flex-col gap-2 px-6 py-12 xl:p-12 absolute bottom-0 m-1 bg-(--ui-card-surface)/00 backdrop-blur-0 lg:group-hover:bg-(--ui-card-surface)/80 lg:group-hover:backdrop-blur transition-all duration-300",
-      featured &&
-        "bg-(--ui-card-surface)/90 md:bg-(--ui-card-surface) first-of-type:m-0 md:border-t-4 md:border-l-4 md:border-(--ui-card-border) md:w-5/6 lg:w-2/3 right-0",
-    ]}
-  >
-    <!-- Category Badge with Fixed Logic -->
+  <!-- Content Container -->
+  <div class={getContentClasses()}>
+    <!-- Category Badge (only for grid and masonry) -->
     {
-      displayCategory && (
+      variant !== "list" && displayCategory && (
         <span class="font-display font-semibold text-base tracking-wide uppercase text-(--ui-button-text) bg-(--ui-button-surface) px-2 py-0.5 rounded-xs mb-2 self-start">
           {displayCategory}
         </span>
@@ -92,38 +177,37 @@ const remainingTagCount = embeddedData.tags.length - 3;
     }
 
     <!-- Article Title -->
-    <h2
-      class="font-display font-black text-6xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-(--content-heading) mb-2"
-      set:html={post.title.rendered}
-    />
+    <h2 class={getTitleClasses()} set:html={post.title.rendered} />
 
-    <time datetime={post.date} class="text-xs">
-      {formatDate(post.date)}
-    </time>
+    <!-- Date (compact for list/grid views) -->
+    {
+      variant !== "masonry" && (
+        <time datetime={post.date} class="text-xs text-(--content-meta) mb-2">
+          {formatDate(post.date)}
+        </time>
+      )
+    }
+
+    <!-- Date (original position for masonry) -->
+    {
+      variant === "masonry" && (
+        <time datetime={post.date} class="text-xs">
+          {formatDate(post.date)}
+        </time>
+      )
+    }
 
     <!-- Article Excerpt -->
-    <div
-      class:list={[
-        "text-sm md:text-base leading-snug text-(--content-body) mb-2",
-        featured && "line-clamp-3 md:line-clamp-2",
-        !featured && "line-clamp-3",
-      ]}
-      set:html={post.excerpt.rendered}
-    />
+    <div class={getExcerptClasses()} set:html={post.excerpt.rendered} />
 
-    <!-- Article Tags with Independent Hover (using Tag component) -->
+    <!-- Article Tags (let them wrap naturally) -->
     {
       displayTags.length > 0 && (
-        <div class="flex flex-wrap gap-2 mt-4 items-center">
-          <h3 class="text-sm">Tagged:</h3>
+        <div class="flex flex-wrap gap-2 mt-auto items-center">
+          {variant === "masonry" && <h3 class="text-sm">Tagged:</h3>}
           {displayTags.map((tag) => (
             <Tag tag={tag} variant="default" size="sm" clickable={false} />
           ))}
-          {remainingTagCount > 0 && (
-            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium text-(--content-meta) bg-(--surface-secondary)">
-              +{remainingTagCount} more
-            </span>
-          )}
         </div>
       )
     }
@@ -131,8 +215,9 @@ const remainingTagCount = embeddedData.tags.length - 3;
 </a>
 
 <script>
-  // Client-side fallback for failed images
+  // Enhanced script with variant-aware functionality
   document.addEventListener("astro:page-load", () => {
+    // Client-side fallback for failed images
     const images = document.querySelectorAll<HTMLImageElement>(
       "img[src*='wordpress'], img[src*='gravatar']"
     );
@@ -140,21 +225,17 @@ const remainingTagCount = embeddedData.tags.length - 3;
     images.forEach((img) => {
       img.addEventListener("error", () => {
         if (img.classList.contains("w-8")) {
-          // Avatar image - hide it
           img.style.display = "none";
         } else {
-          // Featured image - show placeholder
           img.style.opacity = "0.5";
           img.alt = "Article image not available";
         }
       });
     });
-  });
 
-  // Progressive enhancement for image loading (preserve existing functionality)
-  document.addEventListener("astro:page-load", () => {
+    // Progressive enhancement for image loading
     const articleCards = document.querySelectorAll(
-      "a.article-card, a.banner-card"
+      "a[class*='article-'], a[class*='banner-card']"
     );
 
     articleCards.forEach((card) => {
@@ -182,10 +263,8 @@ const remainingTagCount = embeddedData.tags.length - 3;
         card.classList.add("loaded");
       }
     });
-  });
 
-  // Intersection Observer for analytics (updated for link elements)
-  document.addEventListener("astro:page-load", () => {
+    // Intersection Observer for analytics
     if ("IntersectionObserver" in window) {
       const observer = new IntersectionObserver(
         (entries) => {
@@ -216,11 +295,9 @@ const remainingTagCount = embeddedData.tags.length - 3;
         { threshold: 0.5, rootMargin: "0px 0px -100px 0px" }
       );
 
-      document
-        .querySelectorAll("a.article-card, a.banner-card")
-        .forEach((card) => {
-          observer.observe(card);
-        });
+      articleCards.forEach((card) => {
+        observer.observe(card);
+      });
     }
   });
 </script>

@@ -1,8 +1,9 @@
 ---
-// src/components/NewsSearchSort.astro
+// src/components/NewsSearchSort.astro - Enhanced with grid/list view toggles
 interface Props {
   currentSearch?: string;
   currentSort?: string;
+  currentView?: string;
   totalPosts: number;
   filteredCount: number;
 }
@@ -10,15 +11,14 @@ interface Props {
 const {
   currentSearch = "",
   currentSort = "newest",
+  currentView = "grid",
   totalPosts,
   filteredCount,
 } = Astro.props;
 ---
 
-<div class="w-full max-w-3xl">
-  <div
-    class="flex flex-col-reverse md:flex-row gap-2 lg:gap-4 lg:mb-1 mt-2 lg:mt-0"
-  >
+<div class="w-full max-w-4xl">
+  <div class="flex flex-row gap-2 lg:gap-4 lg:mb-1 mt-2 lg:mt-0">
     <!-- Search Field -->
     <form method="GET" class="w-full">
       <div class="relative flex">
@@ -73,35 +73,91 @@ const {
       </div>
     </form>
 
-    <!-- Sort Dropdown -->
-    <form method="GET" class="min-w-fit hidden md:flex justify-end">
-      <select
-        name="sort"
-        class="px-3 py-2 text-sm border border-(--ui-input-border)/50 rounded-xs bg-(--ui-input-surface) text-(--ui-input-text) focus:ring-2 focus:ring-ui-accent focus:border-ui-accent"
-        onchange="this.form.submit()"
+    <!-- Controls: Sort + View Toggle -->
+    <div class="flex gap-2 lg:gap-4 min-w-fit">
+      <!-- Sort Dropdown -->
+      <form method="GET" class="hidden md:flex">
+        <select
+          name="sort"
+          class="px-3 py-2 text-sm border border-(--ui-input-border)/50 rounded-xs bg-(--ui-input-surface) text-(--ui-input-text) focus:ring-2 focus:ring-ui-accent focus:border-ui-accent"
+          onchange="this.form.submit()"
+        >
+          <option value="newest" selected={currentSort === "newest"}
+            >Most Recent</option
+          >
+          <option value="oldest" selected={currentSort === "oldest"}
+            >Oldest First</option
+          >
+          <option value="alphabetical" selected={currentSort === "alphabetical"}
+            >A-Z</option
+          >
+          <option
+            value="alphabetical-desc"
+            selected={currentSort === "alphabetical-desc"}>Z-A</option
+          >
+        </select>
+      </form>
+
+      <!-- View Toggle Buttons -->
+      <div
+        class="flex border border-(--ui-input-border)/50 rounded-xs overflow-hidden bg-(--ui-input-surface)"
       >
-        <option value="newest" selected={currentSort === "newest"}
-          >Most Recent</option
+        <button
+          type="button"
+          class={`px-3 py-2 text-sm transition-all view-toggle ${
+            currentView === "grid"
+              ? "bg-(--ui-button-surface) text-(--ui-button-text)"
+              : "text-(--content-meta) hover:text-(--content-body)"
+          }`}
+          data-view="grid"
+          aria-label="Grid view"
+          title="Grid view"
         >
-        <option value="oldest" selected={currentSort === "oldest"}
-          >Oldest First</option
+          <svg
+            class="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+            ></path>
+          </svg>
+        </button>
+        <button
+          type="button"
+          class={`px-3 py-2 text-sm transition-all view-toggle ${
+            currentView === "list"
+              ? "bg-(--ui-button-surface) text-(--ui-button-text)"
+              : "text-(--content-meta) hover:text-(--content-body)"
+          }`}
+          data-view="list"
+          aria-label="List view"
+          title="List view"
         >
-        <option value="alphabetical" selected={currentSort === "alphabetical"}
-          >A-Z</option
-        >
-        <option
-          value="alphabetical-desc"
-          selected={currentSort === "alphabetical-desc"}>Z-A</option
-        >
-      </select>
-    </form>
+          <svg
+            class="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
   document.addEventListener("astro:page-load", () => {
-    // REMOVED: Auto-submit search functionality - search now only submits when button is clicked
-
     // Handle clear search button
     const clearButtons = document.querySelectorAll(".clear-search-btn");
     clearButtons.forEach((btn) => {
@@ -113,7 +169,7 @@ const {
       });
     });
 
-    // Handle sort dropdown changes (keep this functionality)
+    // Handle sort dropdown changes
     const sortSelects = document.querySelectorAll('select[name="sort"]');
     sortSelects.forEach((select) => {
       select.addEventListener("change", (e) => {
@@ -130,5 +186,81 @@ const {
         window.location.href = newUrl;
       });
     });
+
+    // Handle view toggle buttons with localStorage persistence
+    const viewToggleButtons = document.querySelectorAll(".view-toggle");
+    viewToggleButtons.forEach((button) => {
+      button.addEventListener("click", (e) => {
+        const viewType = (e.currentTarget as HTMLElement).dataset.view;
+        const currentParams = new URLSearchParams(window.location.search);
+
+        if (viewType) {
+          // Store preference in localStorage
+          localStorage.setItem("newsViewPreference", viewType);
+
+          if (viewType !== "grid") {
+            currentParams.set("view", viewType);
+          } else {
+            currentParams.delete("view");
+          }
+
+          const newUrl = `${window.location.pathname}${currentParams.toString() ? "?" + currentParams.toString() : ""}`;
+          window.location.href = newUrl;
+        }
+      });
+    });
+
+    // Keyboard shortcuts for view switching
+    document.addEventListener("keydown", (e: KeyboardEvent) => {
+      // Only if not typing in an input
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
+
+      if (e.key === "g" && !e.ctrlKey && !e.metaKey) {
+        // Switch to grid view
+        const currentParams = new URLSearchParams(window.location.search);
+        currentParams.delete("view");
+        const newUrl = `${window.location.pathname}${currentParams.toString() ? "?" + currentParams.toString() : ""}`;
+        window.location.href = newUrl;
+        e.preventDefault();
+      } else if (e.key === "l" && !e.ctrlKey && !e.metaKey) {
+        // Switch to list view
+        const currentParams = new URLSearchParams(window.location.search);
+        currentParams.set("view", "list");
+        const newUrl = `${window.location.pathname}${currentParams.toString() ? "?" + currentParams.toString() : ""}`;
+        window.location.href = newUrl;
+        e.preventDefault();
+      }
+    });
+
+    // Visual feedback for active view
+    const updateViewButtonStates = () => {
+      const currentParams = new URLSearchParams(window.location.search);
+      const currentView = currentParams.get("view") || "grid";
+
+      viewToggleButtons.forEach((button) => {
+        const buttonView = (button as HTMLElement).dataset.view;
+        const isActive = buttonView === currentView;
+
+        if (isActive) {
+          button.classList.add(
+            "bg-(--ui-button-surface)",
+            "text-(--ui-button-text)"
+          );
+          button.classList.remove("text-(--content-meta)");
+        } else {
+          button.classList.remove(
+            "bg-(--ui-button-surface)",
+            "text-(--ui-button-text)"
+          );
+          button.classList.add("text-(--content-meta)");
+        }
+      });
+    };
+
+    updateViewButtonStates();
   });
 </script>

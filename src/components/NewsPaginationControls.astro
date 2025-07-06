@@ -1,0 +1,386 @@
+---
+// src/components/NewsPaginationControls.astro - Adapted from PaginationControls for news
+interface Props {
+  currentPage: number;
+  totalPages: number;
+  totalPosts: number;
+  postsPerPage: number;
+  baseURL: string;
+}
+
+const { currentPage, totalPages, totalPosts, postsPerPage, baseURL } =
+  Astro.props;
+
+// Don't render if only one page
+if (totalPages <= 1) {
+  return null;
+}
+
+const hasNextPage = currentPage < totalPages;
+const hasPrevPage = currentPage > 1;
+
+// Generate page numbers with smart truncation (same logic as original)
+function generatePageNumbers(
+  current: number,
+  total: number
+): (number | "ellipsis")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  const pages: (number | "ellipsis")[] = [];
+  pages.push(1);
+
+  if (current <= 4) {
+    for (let i = 2; i <= Math.min(5, total - 1); i++) {
+      pages.push(i);
+    }
+    if (total > 6) pages.push("ellipsis");
+    if (total > 1) pages.push(total);
+  } else if (current >= total - 3) {
+    if (total > 6) pages.push("ellipsis");
+    for (let i = Math.max(2, total - 4); i <= total; i++) {
+      pages.push(i);
+    }
+  } else {
+    pages.push("ellipsis");
+    for (let i = current - 1; i <= current + 1; i++) {
+      pages.push(i);
+    }
+    pages.push("ellipsis");
+    pages.push(total);
+  }
+
+  return pages;
+}
+
+const pageNumbers = generatePageNumbers(currentPage, totalPages);
+
+// URL generation that preserves current filters and view
+const buildNewsURL = (page: number): string => {
+  const currentParams = new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search : ""
+  );
+
+  if (page > 1) {
+    currentParams.set("page", page.toString());
+  } else {
+    currentParams.delete("page");
+  }
+
+  const queryString = currentParams.toString();
+  return queryString ? `${baseURL}?${queryString}` : baseURL;
+};
+
+// Calculate result range for display
+const startResult = (currentPage - 1) * postsPerPage + 1;
+const endResult = Math.min(currentPage * postsPerPage, totalPosts);
+---
+
+<nav
+  class="flex flex-col items-center justify-center mt-8 mb-4 gap-4"
+  aria-label="News Pagination Navigation"
+  role="navigation"
+  id="news-pagination-controls"
+>
+  <!-- Results Summary -->
+  <div class="text-sm text-(--content-meta) text-center">
+    Showing {startResult}-{endResult} of {totalPosts} articles
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="flex items-center space-x-2 md:space-x-1">
+    <!-- Previous Button -->
+    {
+      hasPrevPage ? (
+        <a
+          href="#"
+          data-news-page={currentPage - 1}
+          class="flex items-center p-2 text-sm text-(--ui-card-text) bg-(--ui-card-surface) border border-(--ui-card-border) rounded-full hover:bg-ui-card-hover transition-colors"
+          aria-label={`Go to page ${currentPage - 1}`}
+        >
+          <svg
+            class="w-4 h-4 mr-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </a>
+      ) : (
+        <span class="flex items-center p-2 text-sm text-(--content-meta) bg-(--surface-secondary) border border-ui-border rounded-full cursor-not-allowed">
+          <svg
+            class="w-4 h-4 mr-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </span>
+      )
+    }
+
+    <!-- Page Numbers (Hidden on small screens) -->
+    <div class="hidden md:flex items-center space-x-1">
+      {
+        pageNumbers.map((page) =>
+          page === "ellipsis" ? (
+            <span class="px-3 py-1 text-(--content-meta)" aria-hidden="true">
+              ...
+            </span>
+          ) : page === currentPage ? (
+            <span
+              class="px-3 py-1 text-sm border rounded-full bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border) font-medium"
+              aria-label={`Current page, page ${page}`}
+              aria-current="page"
+            >
+              {page}
+            </span>
+          ) : (
+            <a
+              href="#"
+              data-news-page={page}
+              class="px-3 py-1 text-sm border rounded-full transition-colors text-(--ui-card-text) bg-(--ui-card-surface) border-(--ui-card-border) hover:bg-ui-card-hover"
+              aria-label={`Go to page ${page}`}
+            >
+              {page}
+            </a>
+          )
+        )
+      }
+    </div>
+
+    <!-- Page Info (Mobile) -->
+    <div
+      class="flex md:hidden items-center px-3 py-2 text-sm text-(--content-body) bg-(--surface-secondary) border border-ui-border rounded-full"
+    >
+      {currentPage} of {totalPages}
+    </div>
+
+    <!-- Next Button -->
+    {
+      hasNextPage ? (
+        <a
+          href="#"
+          data-news-page={currentPage + 1}
+          class="flex items-center px-3 py-2 text-sm text-(--ui-card-text) bg-(--ui-card-surface) border border-(--ui-card-border) rounded-full hover:bg-ui-card-hover transition-colors"
+          aria-label={`Go to page ${currentPage + 1}`}
+        >
+          <svg
+            class="w-4 h-4 ml-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </a>
+      ) : (
+        <span class="flex items-center px-3 py-2 text-sm text-(--content-meta) bg-(--surface-secondary) border border-ui-border rounded-full cursor-not-allowed">
+          <svg
+            class="w-4 h-4 ml-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </span>
+      )
+    }
+  </div>
+</nav>
+
+<script>
+  class NewsAjaxPagination {
+    constructor() {
+      this.setupPaginationHandlers();
+    }
+
+    private setupPaginationHandlers(): void {
+      const paginationContainer = document.getElementById(
+        "news-pagination-controls"
+      );
+      if (!paginationContainer) return;
+
+      paginationContainer.addEventListener("click", async (e) => {
+        const target = e.target as HTMLElement;
+        const link = target.closest("[data-news-page]") as HTMLAnchorElement;
+
+        if (!link) return;
+
+        e.preventDefault();
+
+        const page = parseInt(link.dataset.newsPage || "1", 10);
+        await this.loadPage(page);
+      });
+    }
+
+    private async loadPage(page: number): Promise<void> {
+      try {
+        this.showLoadingState();
+
+        // Build URL with current filters + new page
+        const currentParams = new URLSearchParams(window.location.search);
+
+        if (page > 1) {
+          currentParams.set("page", page.toString());
+        } else {
+          currentParams.delete("page");
+        }
+
+        const newUrl = `${window.location.pathname}${currentParams.toString() ? "?" + currentParams.toString() : ""}`;
+
+        const response = await fetch(newUrl, {
+          headers: {
+            Accept: "text/html",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const html = await response.text();
+        await this.updatePageContent(html);
+
+        // Update URL without page reload
+        history.pushState(null, "", newUrl);
+
+        // Scroll to top of results
+        document.querySelector("main")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      } catch (error) {
+        console.error("News pagination error:", error);
+        this.showErrorState();
+        // Fallback to normal navigation
+        window.location.href = this.buildFallbackURL(page);
+      } finally {
+        this.hideLoadingState();
+      }
+    }
+
+    private buildFallbackURL(page: number): string {
+      const currentParams = new URLSearchParams(window.location.search);
+
+      if (page > 1) {
+        currentParams.set("page", page.toString());
+      } else {
+        currentParams.delete("page");
+      }
+
+      return `${window.location.pathname}${currentParams.toString() ? "?" + currentParams.toString() : ""}`;
+    }
+
+    private async updatePageContent(html: string): Promise<void> {
+      const parser = new DOMParser();
+      const newDoc = parser.parseFromString(html, "text/html");
+
+      // Update main content area
+      const newMain = newDoc.querySelector("main");
+      const currentMain = document.querySelector("main");
+
+      if (newMain && currentMain) {
+        currentMain.style.opacity = "0";
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        currentMain.innerHTML = newMain.innerHTML;
+        currentMain.style.opacity = "1";
+      }
+
+      // Update pagination controls
+      const newPagination = newDoc.querySelector("#news-pagination-controls");
+      const currentPagination = document.querySelector(
+        "#news-pagination-controls"
+      );
+
+      if (newPagination && currentPagination) {
+        currentPagination.innerHTML = newPagination.innerHTML;
+        this.setupPaginationHandlers(); // Re-bind events
+      }
+
+      // Update search results summary
+      const newSearchSort = newDoc.querySelector(
+        ".text-sm.text-(--content-meta)"
+      );
+      const currentSearchSort = document.querySelector(
+        ".text-sm.text-(--content-meta)"
+      );
+
+      if (newSearchSort && currentSearchSort) {
+        currentSearchSort.textContent = newSearchSort.textContent;
+      }
+    }
+
+    private showLoadingState(): void {
+      const main = document.querySelector("main") as HTMLElement;
+      if (main) {
+        main.style.opacity = "0.6";
+        main.style.pointerEvents = "none";
+      }
+
+      // Add loading indicator
+      const pagination = document.querySelector("#news-pagination-controls");
+      if (pagination) {
+        const loader = document.createElement("div");
+        loader.id = "pagination-loader";
+        loader.className = "flex items-center justify-center mt-4";
+        loader.innerHTML = `
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-(--ui-accent)"></div>
+          <span class="ml-2 text-sm text-(--content-meta)">Loading...</span>
+        `;
+        pagination.appendChild(loader);
+      }
+    }
+
+    private hideLoadingState(): void {
+      const main = document.querySelector("main") as HTMLElement;
+      if (main) {
+        main.style.opacity = "1";
+        main.style.pointerEvents = "";
+      }
+
+      // Remove loading indicator
+      const loader = document.querySelector("#pagination-loader");
+      if (loader) {
+        loader.remove();
+      }
+    }
+
+    private showErrorState(): void {
+      const loader = document.querySelector("#pagination-loader");
+      if (loader) {
+        loader.innerHTML = `
+          <span class="text-sm text-(--state-error-text)">Failed to load page. Redirecting...</span>
+        `;
+        setTimeout(() => loader.remove(), 2000);
+      }
+    }
+  }
+
+  document.addEventListener("astro:page-load", () => {
+    new NewsAjaxPagination();
+  });
+</script>
