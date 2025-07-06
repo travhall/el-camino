@@ -1,10 +1,11 @@
 ---
-// src/pages/news/[slug].astro - Updated with tags display
+// src/pages/news/[slug].astro - Updated with Tag component
 import Layout from "@/layouts/Layout.astro";
 import { getPost, getPosts } from "@/lib/wordpress/api";
 import { formatDate } from "@/utils/dates";
 import type { WordPressPost } from "@/lib/wordpress/types";
 import { extractEmbeddedData } from "@/lib/wordpress/types";
+import Tag from "@/components/Tag.astro";
 
 export async function getStaticPaths() {
   const posts = await getPosts();
@@ -64,7 +65,7 @@ const embeddedData = extractEmbeddedData(post);
 const category = embeddedData.category;
 const featuredMedia = embeddedData.featuredMedia;
 const author = embeddedData.author;
-const tags = embeddedData.tags; // NEW: Extract tags
+const tags = embeddedData.tags;
 
 const imageUrl = featuredMedia?.source_url;
 
@@ -94,7 +95,7 @@ const structuredData = {
   dateModified: post.date,
   articleSection: category?.name,
   description: post.excerpt.rendered.replace(/<[^>]*>/g, "").substring(0, 160),
-  keywords: tags.length > 0 ? tags.map(tag => tag.name) : undefined, // NEW: Include tags as keywords
+  keywords: tags.length > 0 ? tags.map(tag => tag.name) : undefined,
 };
 ---
 
@@ -171,21 +172,23 @@ const structuredData = {
       <!-- Main WordPress content with proper block styling -->
       <div class="prose prose-lg max-w-none" set:html={post.content.rendered} />
 
-      <!-- NEW: Article Tags Section -->
+      <!-- UPDATED: Article Tags Section using Tag Component -->
       {
         tags.length > 0 && (
-          <div class="mt-8 pt-6 border-t border-(--border-secondary)">
+          <div class="mt-8 pt-6 border-t border-(--border-secondary) tags-section">
             <h3 class="text-(--content-meta) text-sm font-medium uppercase tracking-wide mb-3">
               Tagged
             </h3>
             <div class="flex flex-wrap gap-2">
               {tags.map((tag) => (
-                <span
-                  class="inline-flex items-center px-3 py-1 text-sm font-medium bg-(--surface-tertiary) text-(--content-body) border border-(--border-secondary) rounded-full hover:bg-(--ui-button-primary-hover) hover:text-(--ui-button-primary-text) transition-colors duration-200 cursor-pointer"
-                  title={`View all posts tagged with "${tag.name}"`}
-                >
-                  {tag.name}
-                </span>
+                <div data-tag-clickable={tag.slug}>
+                  <Tag
+                    tag={tag}
+                    variant="default"
+                    size="sm"
+                    clickable={true}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -211,7 +214,7 @@ const structuredData = {
           
           <button 
             class="text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-sm"
-            onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href)"
+            id="share-article-button"
           >
             Share Article
           </button>
@@ -311,10 +314,10 @@ const structuredData = {
     overflow: hidden;
   }
 
-  /* NEW: Tag styling enhancements */
-  .tags-section span:hover {
+  /* Enhanced tag styling for article detail */
+  .tags-section [data-tag-clickable]:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
   }
 
   @media (max-width: 768px) {
@@ -346,57 +349,181 @@ const structuredData = {
 </style>
 
 <script>
-  // NEW: Tag click analytics and future functionality
+  // Enhanced tag click handling with future-ready tag archive navigation
   document.addEventListener("astro:page-load", () => {
-    const tagElements = document.querySelectorAll('.tags-section span');
+    const tagElements = document.querySelectorAll('[data-tag-clickable]');
     
-    tagElements.forEach((tag) => {
-      tag.addEventListener('click', (e) => {
-        const tagName = tag.textContent?.replace('#', '') || '';
-        
-        // Analytics tracking
-        if (typeof window !== "undefined" && (window as any).gtag) {
-          (window as any).gtag("event", "tag_click", {
-            tag_name: tagName,
-            page_title: document.title,
-          });
-        }
-        
-        // Future: Navigate to tag archive page
-        // window.location.href = `/news/tag/${tagName.toLowerCase().replace(/\s+/g, '-')}`;
-        
-        // For now, show a message
-        console.log(`Tag clicked: ${tagName}`);
-        // TODO: Replace with actual tag archive navigation once implemented
-      });
+    tagElements.forEach((tagContainer) => {
+      const htmlTagContainer = tagContainer as HTMLElement;
+      const tagSlug = htmlTagContainer.dataset.tagClickable;
+      const tagElement = htmlTagContainer.querySelector('a, span') as HTMLElement;
+      
+      if (tagElement && tagSlug) {
+        tagElement.addEventListener('click', (e) => {
+          e.preventDefault(); // Prevent default link behavior for now
+          
+          const tagName = tagElement.textContent?.replace('#', '').trim() || '';
+          
+          // Analytics tracking
+          if (typeof window !== "undefined" && (window as any).gtag) {
+            (window as any).gtag("event", "tag_click", {
+              tag_name: tagName,
+              tag_slug: tagSlug,
+              page_title: document.title,
+              context: 'article_detail'
+            });
+          }
+          
+          // Future: Navigate to tag archive page
+          // window.location.href = `/news/tag/${tagSlug}`;
+          
+          // For now, show a message indicating future functionality
+          console.log(`Tag clicked: ${tagName} (${tagSlug})`);
+          console.log('Tag archive pages coming soon!');
+          
+          // Optional: Show temporary user feedback
+          const originalText = tagElement.textContent;
+          tagElement.style.opacity = '0.7';
+          setTimeout(() => {
+            tagElement.style.opacity = '1';
+          }, 150);
+        });
+
+        // Add hover analytics
+        tagElement.addEventListener('mouseenter', () => {
+          if (typeof window !== "undefined" && (window as any).gtag) {
+            (window as any).gtag("event", "tag_hover", {
+              tag_slug: tagSlug,
+              context: 'article_detail'
+            });
+          }
+        });
+      }
     });
   });
 
   // Enhanced sharing functionality
   document.addEventListener("astro:page-load", () => {
-    const shareButton = document.querySelector('button[onclick*="navigator.share"]');
+    const shareButton = document.getElementById('share-article-button') as HTMLButtonElement;
+    
     if (shareButton) {
-      shareButton.addEventListener('click', async () => {
+      shareButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
         try {
-          if (navigator.share) {
-            await navigator.share({
-              title: document.title,
-              url: window.location.href,
-              text: document.querySelector('meta[name="description"]')?.getAttribute('content') || ''
-            });
+          const shareData = {
+            title: document.title,
+            url: window.location.href,
+            text: document.querySelector('meta[name="description"]')?.getAttribute('content') || ''
+          };
+
+          if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+            await navigator.share(shareData);
+            
+            // Analytics for successful share
+            if (typeof window !== "undefined" && (window as any).gtag) {
+              (window as any).gtag("event", "article_shared", {
+                method: 'native_share',
+                article_title: document.title
+              });
+            }
           } else {
+            // Fallback to clipboard
             await navigator.clipboard.writeText(window.location.href);
-            // Show a temporary message
+            
+            // Show feedback
             const originalText = shareButton.textContent;
             shareButton.textContent = 'Link Copied!';
+            shareButton.classList.add('text-(--ui-accent)');
+            
             setTimeout(() => {
               shareButton.textContent = originalText;
+              shareButton.classList.remove('text-(--ui-accent)');
             }, 2000);
+
+            // Analytics for clipboard copy
+            if (typeof window !== "undefined" && (window as any).gtag) {
+              (window as any).gtag("event", "article_shared", {
+                method: 'clipboard',
+                article_title: document.title
+              });
+            }
           }
         } catch (error) {
           console.warn('Sharing failed:', error);
+          
+          // Fallback feedback
+          const originalText = shareButton.textContent;
+          shareButton.textContent = 'Share Failed';
+          shareButton.classList.add('text-(--state-error-text)');
+          
+          setTimeout(() => {
+            shareButton.textContent = originalText;
+            shareButton.classList.remove('text-(--state-error-text)');
+          }, 2000);
         }
       });
+    }
+  });
+
+  // Article reading progress analytics
+  document.addEventListener("astro:page-load", () => {
+    const article = document.querySelector('article');
+    const content = article?.querySelector('.prose') as HTMLElement;
+    
+    if (content) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const progress = Math.round(entry.intersectionRatio * 100);
+              
+              // Track reading progress milestones
+              if (progress >= 25 && !content.dataset.tracked25) {
+                content.dataset.tracked25 = 'true';
+                if (typeof window !== "undefined" && (window as any).gtag) {
+                  (window as any).gtag("event", "article_progress", {
+                    progress: 25,
+                    article_title: document.title
+                  });
+                }
+              }
+              if (progress >= 50 && !content.dataset.tracked50) {
+                content.dataset.tracked50 = 'true';
+                if (typeof window !== "undefined" && (window as any).gtag) {
+                  (window as any).gtag("event", "article_progress", {
+                    progress: 50,
+                    article_title: document.title
+                  });
+                }
+              }
+              if (progress >= 75 && !content.dataset.tracked75) {
+                content.dataset.tracked75 = 'true';
+                if (typeof window !== "undefined" && (window as any).gtag) {
+                  (window as any).gtag("event", "article_progress", {
+                    progress: 75,
+                    article_title: document.title
+                  });
+                }
+              }
+              if (progress >= 90 && !content.dataset.tracked90) {
+                content.dataset.tracked90 = 'true';
+                if (typeof window !== "undefined" && (window as any).gtag) {
+                  (window as any).gtag("event", "article_completed", {
+                    article_title: document.title
+                  });
+                }
+              }
+            }
+          });
+        },
+        { 
+          threshold: [0.25, 0.5, 0.75, 0.9],
+          rootMargin: '0px 0px -100px 0px'
+        }
+      );
+      
+      observer.observe(content);
     }
   });
 </script>

@@ -1,0 +1,66 @@
+---
+// src/components/Tag.astro - Reusable tag component
+export interface TagProps {
+  tag: {
+    name: string;
+    slug: string;
+    count?: number;
+  };
+  variant?: "default" | "filter" | "applied" | "pending";
+  size?: "sm" | "md";
+  clickable?: boolean;
+  showCount?: boolean;
+  href?: string;
+}
+
+const {
+  tag,
+  variant = "default",
+  size = "sm",
+  clickable = false,
+  showCount = false,
+  href,
+} = Astro.props as TagProps;
+
+// Base classes
+const baseClasses =
+  "inline-flex items-center gap-1.5 rounded-full font-medium transition-colors";
+
+// Size classes
+const sizeClasses = {
+  sm: "px-3 py-1.5 text-sm",
+  md: "px-4 py-2 text-base",
+};
+
+// Variant classes
+const variantClasses = {
+  default:
+    "bg-(--surface-tertiary) text-(--content-body) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text)",
+  filter:
+    "bg-(--surface-tertiary) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text)",
+  applied:
+    "bg-(--ui-button-surface) hover:bg-(--ui-button-surface)/60 text-(--ui-button-text)",
+  pending: "bg-(--ui-accent) text-white hover:bg-(--ui-accent)/80",
+};
+
+const Element = clickable || href ? "a" : "span";
+const elementProps = href ? { href } : {};
+---
+
+<Element
+  class:list={[
+    baseClasses,
+    sizeClasses[size],
+    variantClasses[variant],
+    clickable && "cursor-pointer",
+  ]}
+  {...elementProps}
+>
+  <span>{tag.name}</span>
+  {
+    showCount && tag.count !== undefined && (
+      <span class="text-xs opacity-75">({tag.count})</span>
+    )
+  }
+  <slot />
+</Element>

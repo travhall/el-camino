@@ -73,9 +73,10 @@ export interface WordPressAuthor {
 // Enhanced data extraction with error boundaries
 export interface ExtractedWordPressData {
   category: WordPressTerm | null;
+  categories: WordPressTerm[]; // NEW: All categories for this post
   featuredMedia: WordPressFeaturedMedia | null;
   author: WordPressAuthor | null;
-  tags: WordPressTerm[]; // NEW: Add tags array
+  tags: WordPressTerm[]; // Add tags array
 }
 
 export interface WordPressFallbackContent {
@@ -120,7 +121,7 @@ export interface ArticleStructuredData {
   articleSection?: string;
   description: string;
   wordCount?: number;
-  keywords?: string[]; // NEW: Add keywords for SEO
+  keywords?: string[]; // Add keywords for SEO
 }
 
 /**
@@ -148,7 +149,30 @@ export function isValidWordPressPage(page: any): page is WordPressPage {
 }
 
 /**
- * Safe data extraction with fallbacks - UPDATED to include tags
+ * Get the primary category for display, preferring non-Featured categories
+ */
+export function getPrimaryCategory(
+  categories: WordPressTerm[]
+): WordPressTerm | null {
+  if (!categories || categories.length === 0) {
+    return null;
+  }
+
+  // First, try to find a non-Featured category
+  const nonFeaturedCategory = categories.find(
+    (cat) => cat.name.toLowerCase() !== "featured"
+  );
+
+  if (nonFeaturedCategory) {
+    return nonFeaturedCategory;
+  }
+
+  // If only Featured categories exist, return the first one
+  return categories[0];
+}
+
+/**
+ * Enhanced data extraction with better category handling - UPDATED to include all categories and tags
  */
 export function extractEmbeddedData(
   post: WordPressPost
@@ -156,31 +180,64 @@ export function extractEmbeddedData(
   if (!post._embedded) {
     return {
       category: null,
+      categories: [],
       featuredMedia: null,
       author: null,
-      tags: [], // NEW: Default empty tags array
+      tags: [],
     };
   }
 
   try {
+    // Extract all terms
+    const allTerms = post._embedded["wp:term"]?.[0] || [];
+
+    // Separate categories and tags
+    const categories = allTerms.filter((term) => term.taxonomy === "category");
+    const tags = allTerms.filter((term) => term.taxonomy === "post_tag");
+
+    // Get primary category (prefer non-Featured categories)
+    const primaryCategory = getPrimaryCategory(categories);
+
     return {
-      category: post._embedded["wp:term"]?.[0]?.[0] || null,
+      category: primaryCategory,
+      categories: categories,
       featuredMedia: post._embedded["wp:featuredmedia"]?.[0] || null,
       author: post._embedded.author?.[0] || null,
-      tags:
-        post._embedded["wp:term"]?.[0]?.filter(
-          (term) => term.taxonomy === "post_tag"
-        ) || [], // NEW: Extract tags
+      tags: tags,
     };
   } catch (error) {
     console.warn("Error extracting embedded data:", error);
     return {
       category: null,
+      categories: [],
       featuredMedia: null,
       author: null,
-      tags: [], // NEW: Fallback empty tags
+      tags: [],
     };
   }
+}
+
+/**
+ * Check if post has "Featured" category
+ */
+export function isFeaturedPost(post: WordPressPost): boolean {
+  const embeddedData = extractEmbeddedData(post);
+  return embeddedData.categories.some(
+    (cat) => cat.name.toLowerCase() === "featured"
+  );
+}
+
+/**
+ * Get display-friendly category name with fallback logic
+ */
+export function getDisplayCategory(post: WordPressPost): string | null {
+  const embeddedData = extractEmbeddedData(post);
+
+  if (!embeddedData.category) {
+    return null;
+  }
+
+  return embeddedData.category.name;
 }
 
 /**
@@ -227,7 +284,7 @@ export function generateStructuredData(
     ? sanitizeHtmlContent(post.content.rendered).split(/\s+/).length
     : undefined;
 
-  // NEW: Extract tag names for SEO keywords
+  // Extract tag names for SEO keywords
   const keywords =
     embeddedData.tags.length > 0
       ? embeddedData.tags.map((tag) => tag.name)
@@ -255,7 +312,7 @@ export function generateStructuredData(
     articleSection: embeddedData.category?.name,
     description: fallbackContent.excerpt,
     wordCount,
-    keywords, // NEW: Include tags as keywords
+    keywords,
   };
 }
 
@@ -383,7 +440,7 @@ export function formatPublishDate(dateString: string): {
 }
 
 /**
- * NEW: Helper functions for tag handling
+ * Helper functions for tag handling
  */
 
 /**

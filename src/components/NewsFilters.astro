@@ -1,6 +1,7 @@
 ---
-// src/components/NewsFilters.astro - STREAMLINED VERSION
+// src/components/NewsFilters.astro - UPDATED TO USE TAG COMPONENT
 import type { NewsFilterOptions } from "@/lib/wordpress/types";
+import Tag from "./Tag.astro";
 
 interface Props {
   filterOptions: NewsFilterOptions;
@@ -212,7 +213,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         )
       }
 
-      <!-- ENHANCED TAGS SECTION - DUAL MODE UX -->
+      <!-- ENHANCED TAGS SECTION - NOW USING TAG COMPONENT -->
       {
         filterOptions.tags.length > 0 && (
           <div class="mb-6 lg:mb-4">
@@ -229,7 +230,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
               )}
             </div>
 
-            <!-- All Tags with Enhanced States -->
+            <!-- All Tags with Enhanced States using Tag Component -->
             <div class="space-y-3">
               <!-- First 8 tags (always visible) -->
               <div class="flex flex-wrap gap-2">
@@ -238,23 +239,23 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
                   return (
                     <button
                       type="button"
-                      class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                        isApplied ? 'tag-applied bg-(--ui-button-surface) hover:bg-(--ui-button-surface)/60 text-(--ui-button-text)' : 'tag-unselected bg-(--surface-tertiary) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text)'
-                      }`}
+                      class="tag-filter-button"
                       data-tag-chip={tag.slug}
                       data-applied={isApplied}
                       data-pending="false"
                     >
-                      <span data-tag-name>{tag.name}</span>
-                      <span data-tag-content>
-                        {isApplied ? (
+                      <Tag
+                        tag={tag}
+                        variant={isApplied ? 'applied' : 'filter'}
+                        size="sm"
+                        showCount={!isApplied}
+                      >
+                        {isApplied && (
                           <svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
                           </svg>
-                        ) : (
-                          <span class="text-xs opacity-75">({tag.count})</span>
                         )}
-                      </span>
+                      </Tag>
                     </button>
                   );
                 })}
@@ -283,23 +284,23 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
                         return (
                           <button
                             type="button"
-                            class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                              isApplied ? 'tag-applied bg-(--ui-button-surface) hover:bg-(--ui-button-surface)/60 text-(--ui-button-text)' : 'tag-unselected bg-(--surface-tertiary) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text)'
-                            }`}
+                            class="tag-filter-button"
                             data-tag-chip={tag.slug}
                             data-applied={isApplied}
                             data-pending="false"
                           >
-                            <span data-tag-name>{tag.name}</span>
-                            <span data-tag-content>
-                              {isApplied ? (
+                            <Tag
+                              tag={tag}
+                              variant={isApplied ? 'applied' : 'filter'}
+                              size="sm"
+                              showCount={!isApplied}
+                            >
+                              {isApplied && (
                                 <svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
                                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
-                              ) : (
-                                <span class="text-xs opacity-75">({tag.count})</span>
                               )}
-                            </span>
+                            </Tag>
                           </button>
                         );
                       })}
@@ -428,7 +429,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       });
     }
 
-    // FIXED: Use server-side data instead of DOM parsing
     private storeTagCountsFromServerData(): void {
       const filterOptions = (window as any).newsFilterOptions;
       if (filterOptions?.tags) {
@@ -478,7 +478,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     private setupDesktopFiltering(): void {
       if (!this.form) return;
 
-      const inputs = this.form.querySelectorAll("input:not([data-tag-chip]), select");
+      const inputs = this.form.querySelectorAll("input:not(.tag-filter-button), select");
       inputs.forEach((input) => {
         input.addEventListener("change", () => {
           if (!this.isMobile) {
@@ -488,7 +488,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       });
     }
 
-    // Simple debounced submission
     private debouncedSubmit(): void {
       if (this.submitTimeout) {
         clearTimeout(this.submitTimeout);
@@ -499,19 +498,19 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     }
 
     private setupTagChips(): void {
-      const tagChips = document.querySelectorAll('[data-tag-chip]');
+      const tagButtons = document.querySelectorAll('.tag-filter-button');
       const tagToggle = document.getElementById('show-more-tags-toggle');
       const extraTags = document.querySelector('[data-extra-tags]');
       
-      tagChips.forEach(chip => {
-        chip.addEventListener('click', (e) => {
-          const button = e.currentTarget as HTMLButtonElement;
-          const tagSlug = button.dataset.tagChip!;
+      tagButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+          const tagButton = e.currentTarget as HTMLButtonElement;
+          const tagSlug = tagButton.dataset.tagChip!;
           
           if (this.isMobile) {
-            this.handleMobileTagClick(tagSlug, button);
+            this.handleMobileTagClick(tagSlug, tagButton);
           } else {
-            this.handleDesktopTagClick(tagSlug, button);
+            this.handleDesktopTagClick(tagSlug, tagButton);
           }
         });
       });
@@ -576,37 +575,45 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       }
     }
 
-    // FIXED: Enhanced tag button updating with stored count data
     private updateTagButton(button: HTMLButtonElement, state: string, tagSlug: string): void {
-      const tagContent = button.querySelector('[data-tag-content]');
-      if (!tagContent) return;
-
-      button.className = button.className.replace(/tag-(unselected|pending|applied)/g, '').trim();
-      const tagCount = this.getTagCount(tagSlug);
-      
+      // Update button data attributes
       switch (state) {
         case 'unselected':
-          button.classList.add('tag-unselected');
           button.dataset.pending = 'false';
           button.dataset.applied = 'false';
-          tagContent.innerHTML = `<span class="text-xs opacity-75">(${tagCount})</span>`;
           break;
         case 'pending-add':
-          button.classList.add('tag-pending');
-          button.dataset.pending = 'true';
-          tagContent.innerHTML = `<svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>`;
-          break;
         case 'pending-remove':
-          button.classList.add('tag-pending');
           button.dataset.pending = 'true';
-          tagContent.innerHTML = `<span class="text-xs opacity-75">(${tagCount})</span>`;
           break;
         case 'applied':
-          button.classList.add('tag-applied');
           button.dataset.pending = 'false';
           button.dataset.applied = 'true';
-          tagContent.innerHTML = `<svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>`;
           break;
+      }
+
+      // The Tag component handles visual styling through its variant prop
+      // We'll update the DOM to reflect the new state
+      const tagComponent = button.querySelector('[class*="inline-flex"]');
+      if (tagComponent) {
+        // Update classes based on state
+        tagComponent.className = tagComponent.className.replace(/tag-(unselected|pending|applied)/g, '').trim();
+        
+        switch (state) {
+          case 'unselected':
+            tagComponent.classList.add('bg-(--surface-tertiary)', 'text-(--content-body)', 'hover:bg-(--ui-button-surface)', 'hover:text-(--ui-button-text)');
+            tagComponent.classList.remove('bg-(--ui-button-surface)', 'bg-(--ui-accent)', 'text-white');
+            break;
+          case 'pending-add':
+          case 'pending-remove':
+            tagComponent.classList.add('bg-(--ui-accent)', 'text-white');
+            tagComponent.classList.remove('bg-(--surface-tertiary)', 'bg-(--ui-button-surface)');
+            break;
+          case 'applied':
+            tagComponent.classList.add('bg-(--ui-button-surface)', 'text-(--ui-button-text)');
+            tagComponent.classList.remove('bg-(--surface-tertiary)', 'bg-(--ui-accent)', 'text-white');
+            break;
+        }
       }
     }
 
@@ -716,7 +723,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       clearAllMobile?.addEventListener("click", () => this.clearAllFilters());
     }
 
-    // FIXED: Category clear submits form on desktop
     private clearCategoryFilters(): void {
       const checkboxes = this.form?.querySelectorAll('input[name="categories"]:checked');
       checkboxes?.forEach((cb) => ((cb as HTMLInputElement).checked = false));
@@ -726,7 +732,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       }
     }
 
-    // FIXED: Tag clear using stored count data
     private clearTagFilters(): void {
       const hiddenInputs = this.form?.querySelectorAll('[data-tag-input]');
       hiddenInputs?.forEach(input => input.remove());
@@ -734,7 +739,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
       this.pendingTags.clear();
       this.updateApplyButton();
       
-      const tagButtons = document.querySelectorAll('[data-tag-chip]');
+      const tagButtons = document.querySelectorAll('.tag-filter-button');
       tagButtons.forEach(button => {
         const buttonElement = button as HTMLButtonElement;
         const tagSlug = buttonElement.dataset.tagChip!;
