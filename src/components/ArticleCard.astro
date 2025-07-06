@@ -55,14 +55,14 @@ const displayTags = embeddedData.tags;
 // Define CSS classes based on variant
 const getCardClasses = () => {
   const baseClasses =
-    "relative overflow-hidden bg-(--ui-card-surface) text-(--ui-card-text) border-(--ui-card-border) group";
+    "relative overflow-hidden bg-(--ui-card-surface) hover:bg-(--ui-card-surface-hover) text-(--ui-card-text) border-(--ui-card-border) group";
 
   switch (variant) {
     case "list":
-      return `${baseClasses} flex flex-row min-h-[140px] transition-all duration-300 hover:shadow-lg`;
+      return `${baseClasses} flex flex-row gap-4 p-1 transition-all duration-300 hover:shadow-lg`;
 
     case "grid":
-      return `${baseClasses} flex flex-col transition-all duration-300 hover:shadow-lg`;
+      return `${baseClasses} flex flex-col p-1 transition-all duration-300 hover:shadow-lg`;
 
     case "masonry":
     default:
@@ -79,7 +79,7 @@ const getImageClasses = () => {
 
   switch (variant) {
     case "list":
-      return `${baseClasses} w-40 h-full flex-shrink-0 group-hover:scale-105`;
+      return `${baseClasses} w-56 h-auto aspect-video group-hover:scale-105`;
 
     case "grid":
       return `${baseClasses} w-full h-48 group-hover:scale-105`;
@@ -97,7 +97,7 @@ const getImageClasses = () => {
 const getContentClasses = () => {
   switch (variant) {
     case "list":
-      return "flex flex-col justify-between p-4 flex-1 min-w-0 gap-2";
+      return "flex flex-col p-4 lg:p-8 flex-1 min-w-0 gap-2";
 
     case "grid":
       return "flex flex-col p-4 flex-1 gap-2";
@@ -114,10 +114,10 @@ const getContentClasses = () => {
 const getTitleClasses = () => {
   switch (variant) {
     case "list":
-      return "font-display font-bold text-base lg:text-lg leading-tight text-(--content-heading) line-clamp-2 mb-1";
+      return "font-display font-bold text-3xl lg:text-4xl leading-[0.8] text-(--content-heading) line-clamp-2";
 
     case "grid":
-      return "font-display font-bold text-lg lg:text-xl leading-tight text-(--content-heading) line-clamp-2 mb-2";
+      return "font-display font-bold text-3xl lg:text-4xl leading-[0.8] text-(--content-heading) line-clamp-2";
 
     case "masonry":
     default:
@@ -128,7 +128,7 @@ const getTitleClasses = () => {
 const getExcerptClasses = () => {
   switch (variant) {
     case "list":
-      return "text-sm leading-snug text-(--content-body) line-clamp-2 mb-2";
+      return "text-sm leading-snug text-(--content-body) line-clamp-2 mb-2 max-w-[72ch]";
 
     case "grid":
       return "text-sm leading-snug text-(--content-body) line-clamp-3 mb-2";
@@ -170,7 +170,7 @@ const getExcerptClasses = () => {
     <!-- Category Badge (only for grid and masonry) -->
     {
       variant !== "list" && displayCategory && (
-        <span class="font-display font-semibold text-base tracking-wide uppercase text-(--ui-button-text) bg-(--ui-button-surface) px-2 py-0.5 rounded-xs mb-2 self-start">
+        <span class="font-display font-semibold text-sm tracking-wide uppercase text-(--ui-button-text) bg-(--ui-button-surface) px-2 py-0.5 rounded-xs mb-2 self-start">
           {displayCategory}
         </span>
       )
@@ -180,22 +180,9 @@ const getExcerptClasses = () => {
     <h2 class={getTitleClasses()} set:html={post.title.rendered} />
 
     <!-- Date (compact for list/grid views) -->
-    {
-      variant !== "masonry" && (
-        <time datetime={post.date} class="text-xs text-(--content-meta) mb-2">
-          {formatDate(post.date)}
-        </time>
-      )
-    }
-
-    <!-- Date (original position for masonry) -->
-    {
-      variant === "masonry" && (
-        <time datetime={post.date} class="text-xs">
-          {formatDate(post.date)}
-        </time>
-      )
-    }
+    <time datetime={post.date} class="text-xs text-(--content-meta) mb-1">
+      {formatDate(post.date)}
+    </time>
 
     <!-- Article Excerpt -->
     <div class={getExcerptClasses()} set:html={post.excerpt.rendered} />
