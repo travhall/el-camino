@@ -59,10 +59,10 @@ const getCardClasses = () => {
 
   switch (variant) {
     case "list":
-      return `${baseClasses} flex flex-row gap-4 p-1 transition-all duration-300 hover:shadow-lg`;
+      return `${baseClasses} flex flex-row gap-4 p-1 transition-all duration-300`;
 
     case "grid":
-      return `${baseClasses} flex flex-col p-1 transition-all duration-300 hover:shadow-lg`;
+      return `${baseClasses} flex flex-col p-1 transition-all duration-300`;
 
     case "masonry":
     default:
@@ -79,7 +79,7 @@ const getImageClasses = () => {
 
   switch (variant) {
     case "list":
-      return `${baseClasses} w-56 h-auto aspect-video group-hover:scale-105`;
+      return `${baseClasses} hidden md:block w-56 lg:w-72 h-auto aspect-video group-hover:scale-105`;
 
     case "grid":
       return `${baseClasses} w-full h-48 group-hover:scale-105`;
@@ -97,7 +97,7 @@ const getImageClasses = () => {
 const getContentClasses = () => {
   switch (variant) {
     case "list":
-      return "flex flex-col p-4 lg:p-8 flex-1 min-w-0 gap-2";
+      return "flex flex-col p-4 flex-1 min-w-0 gap-2";
 
     case "grid":
       return "flex flex-col p-4 flex-1 gap-2";
@@ -167,14 +167,12 @@ const getExcerptClasses = () => {
 
   <!-- Content Container -->
   <div class={getContentClasses()}>
-    <!-- Category Badge (only for grid and masonry) -->
-    {
-      variant !== "list" && displayCategory && (
-        <span class="font-display font-semibold text-sm tracking-wide uppercase text-(--ui-button-text) bg-(--ui-button-surface) px-2 py-0.5 rounded-xs mb-2 self-start">
-          {displayCategory}
-        </span>
-      )
-    }
+    <!-- Category Badge -->
+    <span
+      class="font-display font-semibold text-sm tracking-wide uppercase text-(--ui-button-text) bg-(--ui-button-surface) px-2 py-0.5 rounded-xs mb-2 self-start"
+    >
+      {displayCategory}
+    </span>
 
     <!-- Article Title -->
     <h2 class={getTitleClasses()} set:html={post.title.rendered} />
@@ -190,8 +188,7 @@ const getExcerptClasses = () => {
     <!-- Article Tags (let them wrap naturally) -->
     {
       displayTags.length > 0 && (
-        <div class="flex flex-wrap gap-2 mt-auto items-center">
-          {variant === "masonry" && <h3 class="text-sm">Tagged:</h3>}
+        <div class="flex flex-wrap gap-2 mt-auto pt-2 items-center">
           {displayTags.map((tag) => (
             <Tag tag={tag} variant="default" size="sm" clickable={false} />
           ))}
