@@ -7,6 +7,7 @@ import Footer from "@/components/Footer.astro";
 import MiniCart from "@/components/MiniCart.astro";
 import Modal from "@/components/Modal.astro";
 import Notification from "@/components/Notification.astro";
+import SpeculationRules from "@/components/SpeculationRules.astro";
 import "@/styles/global.css";
 // import CartDebug from "@/components/CartDebug.astro";
 
@@ -24,6 +25,10 @@ const seoData = {
 
 // Get structured data from site config
 const orgSchema = getStructuredData();
+
+// Get current path for context-aware prefetching
+const currentPath = Astro.url.pathname;
+const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
 ---
 
 <!doctype html>
@@ -46,6 +51,7 @@ const orgSchema = getStructuredData();
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
 
+    <!-- Enhanced font preloading with fetchpriority -->
     <link
       rel="preload"
       href="/fonts/AlumniSans.woff2"
@@ -77,10 +83,19 @@ const orgSchema = getStructuredData();
       astroGenerator={true}
     />
 
-    <!-- Preconnect to WordPress & Square for faster image loading -->
-    <link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" />
+    <!-- Enhanced preconnect strategy -->
+    <link
+      rel="preconnect"
+      href="https://elcaminoskateshop.wordpress.com"
+      crossorigin
+    />
+    <link rel="preconnect" href="https://connect.squareup.com" crossorigin />
     <link rel="dns-prefetch" href="https://elcaminoskateshop.wordpress.com" />
     <link rel="dns-prefetch" href="https://connect.squareup.com" />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+
+    <!-- Speculation Rules for Advanced Prefetching -->
+    <SpeculationRules currentPath={currentPath} eager={isHighTrafficPage} />
 
     <script type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
     {

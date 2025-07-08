@@ -20,9 +20,17 @@ export default defineConfig({
         functionPerRoute: true,
         binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
       }),
-  experimental: {
-    clientPrerender: true,
+
+  // ENHANCED: Prefetch configuration for navigation performance
+  prefetch: {
+    prefetchAll: false, // Selective prefetching for performance
+    defaultStrategy: "hover", // Balance performance with resource usage
   },
+
+  experimental: {
+    clientPrerender: true, // Enable Speculation Rules API support (already enabled)
+  },
+
   image: {
     service: { entrypoint: "astro/assets/services/sharp" },
     domains: [

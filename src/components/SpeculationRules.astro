@@ -1,0 +1,180 @@
+---
+// src/components/SpeculationRules.astro - Advanced prefetching with Speculation Rules API
+export interface Props {
+  currentPath?: string;
+  eager?: boolean;
+}
+
+const { currentPath = "/", eager = false } = Astro.props;
+
+// Generate context-aware speculation rules
+function generateSpeculationRules(path: string, isEager: boolean) {
+  const rules: any = {
+    prefetch: [
+      {
+        where: { href_matches: "/*" },
+        eagerness: isEager ? "moderate" : "conservative",
+      },
+    ],
+  };
+
+  // Add prerendering for high-confidence paths
+  if (path === "/") {
+    // From homepage, users likely visit shop or news
+    rules.prerender = [
+      {
+        where: { href_matches: "/the-shop" },
+        eagerness: "conservative",
+      },
+      {
+        where: { href_matches: "/news*" },
+        eagerness: "conservative",
+      },
+    ];
+  } else if (path.startsWith("/category/")) {
+    // From category pages, users likely visit products
+    rules.prerender = [
+      {
+        where: { href_matches: "/product/*" },
+        eagerness: "moderate",
+      },
+    ];
+  } else if (path.startsWith("/product/")) {
+    // From product pages, users might go to cart or other products
+    rules.prerender = [
+      {
+        where: { href_matches: "/cart" },
+        eagerness: "conservative",
+      },
+    ];
+  }
+
+  return rules;
+}
+
+const speculationRules = generateSpeculationRules(currentPath, eager);
+---
+
+<!-- Speculation Rules Script for Advanced Prefetching -->
+<script type="speculationrules" set:html={JSON.stringify(speculationRules)} />
+
+<!-- Fallback Script for Browsers Without Speculation Rules Support -->
+<script>
+  // Check Speculation Rules support and provide fallback
+  (function () {
+    const supportsSpeculationRules =
+      "HTMLScriptElement" in window &&
+      "supports" in HTMLScriptElement &&
+      HTMLScriptElement.supports &&
+      HTMLScriptElement.supports("speculationrules");
+
+    if (supportsSpeculationRules) {
+      console.log("[Speculation Rules] Advanced prefetching enabled");
+
+      // Track speculation rules effectiveness
+      if ("PerformanceObserver" in window) {
+        try {
+          const observer = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) {
+              // Cast to PerformanceNavigationTiming to access initiatorType
+              const navEntry = entry as any;
+              if (navEntry.initiatorType === "speculation") {
+                console.log(
+                  "[Speculation Rules] Prerender completed:",
+                  entry.name
+                );
+              }
+            }
+          });
+          observer.observe({ entryTypes: ["navigation"] });
+        } catch (e) {
+          // Silent fail for unsupported browsers
+        }
+      }
+    } else {
+      console.log("[Speculation Rules] Not supported, using fallback prefetch");
+
+      // Enhanced fallback prefetch for unsupported browsers
+      const contextualPrefetch = {
+        currentPath: window.location.pathname,
+
+        init() {
+          this.setupHoverPrefetch();
+          this.setupViewportPrefetch();
+        },
+
+        setupHoverPrefetch() {
+          document.addEventListener("mouseover", (e: Event) => {
+            if (!e.target) return;
+
+            const link = (e.target as HTMLElement).closest(
+              'a[data-astro-prefetch="hover"]'
+            ) as HTMLAnchorElement;
+            if (link && !link.dataset.prefetched) {
+              this.prefetchLink(link.href);
+              link.dataset.prefetched = "true";
+            }
+          });
+        },
+
+        setupViewportPrefetch() {
+          if ("IntersectionObserver" in window) {
+            const observer = new IntersectionObserver((entries) => {
+              entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                  const link = entry.target as HTMLAnchorElement;
+                  if (!link.dataset.prefetched) {
+                    this.prefetchLink(link.href);
+                    link.dataset.prefetched = "true";
+                    observer.unobserve(link);
+                  }
+                }
+              });
+            });
+
+            document
+              .querySelectorAll('a[data-astro-prefetch="viewport"]')
+              .forEach((link) => {
+                observer.observe(link);
+              });
+          }
+        },
+
+        prefetchLink(url: string) {
+          if (
+            !url ||
+            url.includes("#") ||
+            url.startsWith("mailto:") ||
+            url.startsWith("tel:")
+          ) {
+            return;
+          }
+
+          const prefetchLink = document.createElement("link");
+          prefetchLink.rel = "prefetch";
+          prefetchLink.href = url;
+          prefetchLink.crossOrigin = "anonymous";
+          document.head.appendChild(prefetchLink);
+
+          console.log("[Fallback Prefetch] Prefetching:", url);
+        },
+      };
+
+      // Initialize fallback when DOM is ready
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () =>
+          contextualPrefetch.init()
+        );
+      } else {
+        contextualPrefetch.init();
+      }
+    }
+  })();
+</script>
+
+<style>
+  /* Hide speculation rules script from view */
+  script[type="speculationrules"] {
+    display: none !important;
+  }
+</style>

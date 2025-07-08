@@ -1,21 +1,36 @@
 ---
-// src/components/Nav.astro - Clean, optimized version with performance cache
+// src/components/Nav.astro - Enhanced with strategic prefetching
 import { siteConfig } from "@/lib/site-config";
 import type { CategoryHierarchy } from "@/lib/square/types";
-import { fetchCategoryHierarchy } from "@/lib/square/categories";
+import { fetchCategoryHierarchyForNav } from "@/lib/square/navigationUtils";
 import { Icon } from "astro-icon/components";
 
 const { contact, social } = siteConfig;
 
 let categoryHierarchy: CategoryHierarchy[];
 try {
-  categoryHierarchy = await fetchCategoryHierarchy();
+  // Use navigation-optimized category fetching
+  categoryHierarchy = await fetchCategoryHierarchyForNav();
 } catch (error) {
   console.warn("Category fetch failed:", error);
   categoryHierarchy = [];
 }
 
-// Static navigation items
+// Determine prefetch strategy for categories
+function getPrefetchStrategyForCategory(categoryName: string): string {
+  const highPriorityCategories = ["Decks", "Apparel", "Skateboards", "Trucks"];
+  const mediumPriorityCategories = ["Wheels", "Bearings", "Hardware"];
+
+  if (highPriorityCategories.includes(categoryName)) {
+    return "hover"; // Prefetch on hover for popular categories
+  } else if (mediumPriorityCategories.includes(categoryName)) {
+    return "tap"; // Prefetch on interaction for medium priority
+  }
+
+  return "hover"; // Default hover strategy
+}
+
+// Static navigation items with prefetch configuration
 const staticNavItems = [
   {
     category: {
@@ -26,40 +41,8 @@ const staticNavItems = [
       parentCategoryId: undefined,
       rootCategoryId: undefined,
     },
-    subcategories: [
-      // {
-      //   id: "skate-team",
-      //   name: "Skate Team",
-      //   slug: "skate-team",
-      //   isTopLevel: false,
-      //   parentCategoryId: "the-shop",
-      //   rootCategoryId: "the-shop",
-      // },
-      // {
-      //   id: "tattoos",
-      //   name: "Tattoos",
-      //   slug: "tattoos",
-      //   isTopLevel: false,
-      //   parentCategoryId: "the-shop",
-      //   rootCategoryId: "the-shop",
-      // },
-      // {
-      //   id: "gallery",
-      //   name: "The Gallery",
-      //   slug: "gallery",
-      //   isTopLevel: false,
-      //   parentCategoryId: "the-shop",
-      //   rootCategoryId: "the-shop",
-      // },
-      // {
-      //   id: "community",
-      //   name: "Community",
-      //   slug: "community",
-      //   isTopLevel: false,
-      //   parentCategoryId: "the-shop",
-      //   rootCategoryId: "the-shop",
-      // },
-    ],
+    subcategories: [],
+    prefetchStrategy: "viewport", // High priority - prefetch when visible
   },
   {
     category: {
@@ -71,15 +54,25 @@ const staticNavItems = [
       rootCategoryId: undefined,
     },
     subcategories: [],
+    prefetchStrategy: "viewport", // High priority - prefetch when visible
   },
 ];
 
-// Combine navigation items
+// Enhanced navigation items with prefetch strategies
 const navItems = [
   staticNavItems[0], // "The Shop" first
-  ...categoryHierarchy, // Categories with products
+  ...categoryHierarchy.map((item) => ({
+    ...item,
+    // Assign prefetch strategy based on category importance
+    prefetchStrategy: getPrefetchStrategyForCategory(item.category.name),
+  })),
   staticNavItems[1], // "News" last
 ];
+
+// Get current path for context-aware prefetching
+const currentPath = Astro.url.pathname;
+const isProductPage = currentPath.includes("/product/");
+const isCategoryPage = currentPath.includes("/category/");
 ---
 
 <!-- Skip to content link -->
@@ -93,6 +86,11 @@ const navItems = [
   class="flex flex-col lg:flex-row w-full lg:gap-2 justify-center border-4 border-(--border-secondary) lg:border-0 bg-(--surface-secondary) lg:relative lg:top-auto fixed -translate-x-full lg:translate-x-0 transition-transform duration-400 ease-in-out inset-0 top-12 z-40 [&.nav-open]:translate-x-0 overflow-y-auto lg:overflow-visible"
   role="navigation"
   aria-label="Main navigation"
+  data-nav-context={JSON.stringify({
+    currentPath,
+    isProductPage,
+    isCategoryPage,
+  })}
 >
   {
     navItems.map((item, index) => (
@@ -108,6 +106,9 @@ const navItems = [
           class="nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 lg:p-4 text-(--ui-nav-text) transition-all duration-300 ease-in-out relative hover:text-ui-nav-hover before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left nav-link"
           style={`--item-index: ${index};`}
           data-has-children={item.subcategories.length > 0}
+          data-category-name={item.category.name}
+          data-prefetch-strategy={item.prefetchStrategy || "hover"}
+          data-astro-prefetch={item.prefetchStrategy || "hover"}
           aria-expanded={item.subcategories.length > 0 ? "false" : undefined}
           aria-haspopup={item.subcategories.length > 0 ? "menu" : undefined}
         >
@@ -149,7 +150,7 @@ const navItems = [
           )}
         </a>
 
-        {/* Dropdown menu */}
+        {/* Enhanced dropdown menu with prefetching */}
         {item.subcategories.length > 0 && (
           <div class="dropdown-menu lg:hidden lg:group-hover:block absolute left-0 top-full z-50 min-w-[200px] origin-top lg:opacity-100 lg:transition-none">
             <div class="bg-(--ui-nav-surface) border border-(--ui-nav-border)/20 shadow-lg rounded-sm p-1 overflow-hidden">
@@ -161,6 +162,8 @@ const navItems = [
                       : `/category/${item.category.slug}/${subcategory.slug}`
                   }
                   class="block p-2 text-2xl lg:text-base text-(--ui-nav-text) hover:text-(--ui-nav-text) before:absolute before:top-0 before:left-0 before:w-full before:h-full before:bg-(--ui-nav-hover)/20 before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left relative"
+                  data-astro-prefetch="hover"
+                  data-subcategory={subcategory.name}
                 >
                   {subcategory.name}
                 </a>
@@ -172,7 +175,7 @@ const navItems = [
     ))
   }
 
-  {/* Mobile footer */}
+  {/* Mobile footer with preconnect optimization */}
   <div
     class="flex flex-col gap-2 p-4 pt-12 border-t-4 border-(--border-secondary) mt-6 lg:hidden nav-link"
     style="--item-index: 6;"
@@ -272,17 +275,27 @@ const navItems = [
 </style>
 
 <script>
+  import {
+    getNavigationContext,
+    trackNavigationPerformance,
+    initNavigationTracking,
+    prefetchHighPriorityTargets,
+  } from "@/lib/square/navigationUtils";
+
   interface NavElementData {
     link: HTMLElement;
     dropdown: HTMLElement;
     index: number;
     isOpen: boolean;
+    prefetchStrategy: string;
+    categoryName: string;
   }
 
-  class NavigationController {
+  class EnhancedNavigationController {
     private navElements: Map<Element, NavElementData> = new Map();
     private isAnimating: boolean = false;
     private focusTimeout: number | null = null;
+    private navigationStartTime: number = 0;
 
     constructor() {
       this.init();
@@ -292,6 +305,22 @@ const navItems = [
       this.cacheElements();
       this.setupEventDelegation();
       this.setupResizeHandler();
+      this.initializePrefetching();
+
+      // Initialize navigation tracking
+      initNavigationTracking();
+    }
+
+    private initializePrefetching(): void {
+      const context = getNavigationContext();
+
+      // Prefetch high-priority targets based on current context
+      prefetchHighPriorityTargets(context);
+
+      // Log prefetch initialization in development
+      if (import.meta.env.DEV) {
+        console.log("[Navigation] Prefetch initialized for context:", context);
+      }
     }
 
     private cacheElements(): void {
@@ -303,11 +332,18 @@ const navItems = [
         const hasChildren = link?.getAttribute("data-has-children") === "true";
 
         if (hasChildren && link && dropdown) {
+          const prefetchStrategy =
+            link.getAttribute("data-prefetch-strategy") || "hover";
+          const categoryName =
+            link.getAttribute("data-category-name") || "Unknown";
+
           this.navElements.set(group, {
             link,
             dropdown,
             index,
             isOpen: false,
+            prefetchStrategy,
+            categoryName,
           });
         }
       });
@@ -326,6 +362,33 @@ const navItems = [
       nav.addEventListener("touchstart", this.handleTouch.bind(this), {
         passive: true,
       });
+
+      // Track navigation timing
+      nav.addEventListener("click", this.trackNavigationStart.bind(this), {
+        passive: true,
+      });
+    }
+
+    private trackNavigationStart(event: Event): void {
+      const target = event.target as HTMLElement;
+      const clickedLink = target.closest(".nav-item") as HTMLAnchorElement;
+
+      if (clickedLink && clickedLink.href) {
+        this.navigationStartTime = performance.now();
+        const categoryName =
+          clickedLink.getAttribute("data-category-name") || "Unknown";
+        const prefetchStrategy =
+          clickedLink.getAttribute("data-prefetch-strategy") || "hover";
+
+        // Log navigation attempt in development
+        if (import.meta.env.DEV) {
+          console.log("[Navigation] Starting navigation:", {
+            category: categoryName,
+            strategy: prefetchStrategy,
+            url: clickedLink.href,
+          });
+        }
+      }
     }
 
     private handleClick(event: Event): void {
@@ -335,7 +398,7 @@ const navItems = [
       }
 
       const target = event.target as HTMLElement;
-      const clickedLink = target.closest(".nav-item") as HTMLElement;
+      const clickedLink = target.closest(".nav-item") as HTMLAnchorElement;
       if (!clickedLink) return;
 
       const group = clickedLink.closest(".category-group");
@@ -469,21 +532,19 @@ const navItems = [
     }
   }
 
-  function initializeNavigation(): NavigationController {
-    // const startTime = performance.now();
+  function initializeEnhancedNavigation(): EnhancedNavigationController {
+    const navController = new EnhancedNavigationController();
 
-    const navController = new NavigationController();
-
-    // const endTime = performance.now();
-    // console.log(
-    //   `Navigation initialized in ${(endTime - startTime).toFixed(2)}ms`
-    // );
+    // Log initialization in development
+    if (import.meta.env.DEV) {
+      console.log("[Navigation] Enhanced navigation controller initialized");
+    }
 
     return navController;
   }
 
   // Keep existing Astro page transition handling
-  let navController: NavigationController | null = null;
+  let navController: EnhancedNavigationController | null = null;
 
   document.addEventListener("astro:before-swap", () => {
     if (navController) {
@@ -493,15 +554,15 @@ const navItems = [
   });
 
   document.addEventListener("astro:after-swap", () => {
-    navController = initializeNavigation();
+    navController = initializeEnhancedNavigation();
   });
 
   // Initial load
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
-      navController = initializeNavigation();
+      navController = initializeEnhancedNavigation();
     });
   } else {
-    navController = initializeNavigation();
+    navController = initializeEnhancedNavigation();
   }
 </script>
