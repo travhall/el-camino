@@ -14,7 +14,7 @@ export async function getStaticPaths() {
     props: { 
       tagName: tag.name,
       tagSlug: tag.slug,
-      postCount: tag.count 
+      // Remove postCount from props - we'll calculate it dynamically
     },
   }));
 }
@@ -22,14 +22,16 @@ export async function getStaticPaths() {
 interface Props {
   tagName: string;
   tagSlug: string;
-  postCount: number;
 }
 
 const { slug } = Astro.params;
-const { tagName, postCount } = Astro.props;
+const { tagName } = Astro.props;
 
 // Fetch posts for this tag
 const posts = await getPostsByTag(slug);
+
+// Use actual post count instead of build-time count
+const actualPostCount = posts.length;
 
 // Pagination configuration
 const POSTS_PER_PAGE = 12;
@@ -44,7 +46,7 @@ const paginatedPosts = posts.slice(
 // SEO data
 const siteUrl = Astro.site?.origin || "https://elcaminoskate.com";
 const canonicalUrl = `${siteUrl}/news/tag/${slug}`;
-const description = `Browse ${postCount} articles tagged with ${tagName} from El Camino Skate Shop.`;
+const description = `Browse ${actualPostCount} articles tagged with ${tagName} from El Camino Skate Shop.`;
 ---
 
 <Layout title={`${tagName} Articles | El Camino News`}>
@@ -97,7 +99,7 @@ const description = `Browse ${postCount} articles tagged with ${tagName} from El
             #{tagName}
           </h1>
           <p class="text-(--content-meta) mt-2 text-lg">
-            {postCount} {postCount === 1 ? 'article' : 'articles'}
+            {actualPostCount} {actualPostCount === 1 ? 'article' : 'articles'}
           </p>
         </div>
 
