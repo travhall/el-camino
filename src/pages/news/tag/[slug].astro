@@ -24,11 +24,30 @@ interface Props {
   tagSlug: string;
 }
 
+
 const { slug } = Astro.params;
-const { tagName } = Astro.props;
+const { tagName: propsTagName } = Astro.props;
 
 // Fetch posts for this tag
 const posts = await getPostsByTag(slug);
+
+// Get tagName from actual posts if props tagName is undefined
+let displayTagName = propsTagName;
+
+if (!displayTagName && posts.length > 0) {
+  // Extract tagName from first post's tags
+  const firstPost = posts[0];
+  const embeddedData = firstPost._embedded;
+  if (embeddedData?.["wp:term"]?.[0]) {
+    const matchingTag = embeddedData["wp:term"][0].find(
+      (term) => term.taxonomy === "post_tag" && term.slug === slug
+    );
+    displayTagName = matchingTag?.name || slug;
+  }
+}
+
+// Fallback to slug if still no name
+const tagName = displayTagName || slug;
 
 // Use actual post count instead of build-time count
 const actualPostCount = posts.length;
