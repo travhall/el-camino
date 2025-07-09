@@ -1,0 +1,166 @@
+---
+// src/pages/news/tag/[slug].astro
+import Layout from "@/layouts/Layout.astro";
+import ArticleGrid from "@/components/ArticleGrid.astro";
+import NewsPaginationControls from "@/components/NewsPaginationControls.astro";
+import { getPostsByTag, getAllTags } from "@/lib/wordpress/api";
+import type { WordPressPost } from "@/lib/wordpress/types";
+
+export async function getStaticPaths() {
+  const allTags = await getAllTags();
+  
+  return allTags.map((tag) => ({
+    params: { slug: tag.slug },
+    props: { 
+      tagName: tag.name,
+      tagSlug: tag.slug,
+      postCount: tag.count 
+    },
+  }));
+}
+
+interface Props {
+  tagName: string;
+  tagSlug: string;
+  postCount: number;
+}
+
+const { slug } = Astro.params;
+const { tagName, postCount } = Astro.props;
+
+// Fetch posts for this tag
+const posts = await getPostsByTag(slug);
+
+// Pagination configuration
+const POSTS_PER_PAGE = 12;
+const currentPage = Number(Astro.url.searchParams.get("page")) || 1;
+const totalPages = Math.ceil(posts.length / POSTS_PER_PAGE);
+
+const paginatedPosts = posts.slice(
+  (currentPage - 1) * POSTS_PER_PAGE,
+  currentPage * POSTS_PER_PAGE
+);
+
+// SEO data
+const siteUrl = Astro.site?.origin || "https://elcaminoskate.com";
+const canonicalUrl = `${siteUrl}/news/tag/${slug}`;
+const description = `Browse ${postCount} articles tagged with ${tagName} from El Camino Skate Shop.`;
+---
+
+<Layout title={`${tagName} Articles | El Camino News`}>
+  <Fragment slot="head">
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    
+    <!-- Pagination SEO -->
+    {currentPage > 1 && (
+      <link rel="prev" href={`/news/tag/${slug}${currentPage === 2 ? '' : `?page=${currentPage - 1}`}`} />
+    )}
+    {currentPage < totalPages && (
+      <link rel="next" href={`/news/tag/${slug}?page=${currentPage + 1}`} />
+    )}
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+      {JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": `${tagName} Articles`,
+        "description": description,
+        "url": canonicalUrl,
+        "mainEntity": {
+          "@type": "ItemList",
+          "numberOfItems": posts.length,
+          "itemListElement": posts.map((post, index) => ({
+            "@type": "ListItem",
+            "position": index + 1,
+            "item": {
+              "@type": "Article",
+              "headline": post.title.rendered,
+              "url": `${siteUrl}/news/${post.slug}`,
+              "datePublished": post.date,
+            }
+          }))
+        }
+      })}
+    </script>
+  </Fragment>
+
+  <div class="min-h-screen bg-(--surface-primary)">
+    <!-- Tag Archive Header -->
+    <div class="p-4 pb-0">
+      <!-- Breadcrumbs -->
+      <!-- <nav aria-label="Breadcrumb" class="text-sm text-(--content-meta) mb-4">
+        <ol class="flex items-center space-x-2">
+          <li><a href="/news" class="hover:text-(--content-body)">News</a></li>
+          <li class="before:content-['/'] before:mx-2">Tags</li>
+          <li class="before:content-['/'] before:mx-2 text-(--content-body)">{tagName}</li>
+        </ol>
+      </nav> -->
+
+      <!-- Tag Header -->
+      <div class="flex flex-col lg:flex-row lg:justify-between lg:items-baseline gap-4">
+        <div>
+          <h1 class="font-display font-black text-6xl lg:text-7xl xl:text-8xl leading-[0.8] text-(--content-heading)">
+            #{tagName}
+          </h1>
+          <p class="text-(--content-meta) mt-2 text-lg">
+            {postCount} {postCount === 1 ? 'article' : 'articles'}
+          </p>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <a 
+            href="/news"
+            class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 flex items-center gap-1"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Back to News
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Articles Grid -->
+    <div class="p-1">
+      {posts.length > 0 ? (
+        <>
+          <ArticleGrid 
+            posts={paginatedPosts} 
+            showSidebar={false}
+            filterable={true}
+            view="grid"
+          />
+          
+          {totalPages > 1 && (
+            <NewsPaginationControls 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalPosts={posts.length}
+              postsPerPage={POSTS_PER_PAGE}
+              baseURL={`/news/tag/${slug}`}
+            />
+          )}
+        </>
+      ) : (
+        <div class="text-center py-16">
+          <div class="text-6xl mb-4 opacity-20">🏷️</div>
+          <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
+            No articles found for #{tagName}
+          </h2>
+          <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
+            This tag doesn't have any articles yet. Check back later!
+          </p>
+          <a
+            href="/news"
+            class="font-sans font-semibold text-sm text-center py-2 px-4 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all"
+          >
+            Browse All Articles
+          </a>
+        </div>
+      )}
+    </div>
+  </div>
+</Layout>

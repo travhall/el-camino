@@ -441,7 +441,6 @@ export async function getPostsByTag(tagSlug: string): Promise<WordPressPost[]> {
   try {
     const allPosts = await getPosts();
 
-    // Filter posts that have the specified tag
     return allPosts.filter((post) => {
       const embeddedData = post._embedded;
       if (!embeddedData?.["wp:term"]?.[0]) return false;

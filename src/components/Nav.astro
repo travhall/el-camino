@@ -281,6 +281,8 @@ const isCategoryPage = currentPath.includes("/category/");
     initNavigationTracking,
     prefetchHighPriorityTargets,
   } from "@/lib/square/navigationUtils";
+  import { initMobileOptimization } from "@/lib/performance/mobileOptimization";
+  import { productionMonitor } from "@/lib/performance/productionMonitoring";
 
   interface NavElementData {
     link: HTMLElement;
@@ -309,6 +311,9 @@ const isCategoryPage = currentPath.includes("/category/");
 
       // Initialize navigation tracking
       initNavigationTracking();
+
+      // Initialize mobile optimization
+      initMobileOptimization();
     }
 
     private initializePrefetching(): void {
@@ -379,6 +384,13 @@ const isCategoryPage = currentPath.includes("/category/");
           clickedLink.getAttribute("data-category-name") || "Unknown";
         const prefetchStrategy =
           clickedLink.getAttribute("data-prefetch-strategy") || "hover";
+
+        // Track with production monitor
+        productionMonitor.track("navigation", {
+          category: categoryName,
+          strategy: prefetchStrategy,
+          startTime: this.navigationStartTime,
+        });
 
         // Log navigation attempt in development
         if (import.meta.env.DEV) {
@@ -565,4 +577,7 @@ const isCategoryPage = currentPath.includes("/category/");
   } else {
     navController = initializeEnhancedNavigation();
   }
+
+  import { getMobileMetrics } from "@/lib/performance/mobileOptimization";
+  console.log("Mobile metrics:", getMobileMetrics());
 </script>

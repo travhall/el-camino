@@ -177,7 +177,7 @@ const getExcerptClasses = () => {
     <!-- Article Title -->
     <h2 class={getTitleClasses()} set:html={post.title.rendered} />
 
-    <!-- Date (compact for list/grid views) -->
+    <!-- Date  -->
     <time datetime={post.date} class="text-xs text-(--content-meta) mb-1">
       {formatDate(post.date)}
     </time>
@@ -185,12 +185,29 @@ const getExcerptClasses = () => {
     <!-- Article Excerpt -->
     <div class={getExcerptClasses()} set:html={post.excerpt.rendered} />
 
+    <!-- Read More Link ('masonry' cards only) -->
+    {
+      variant === "masonry" && (
+        <div class="overflow-hidden">
+          <span class="font-display -ml-[100%] group-hover:ml-0 py-2 self-start text-2xl text-(--ui-button-surface) font-semibold transition-all duration-200 blur-2xl group-hover:blur-none">
+            Read More
+          </span>
+        </div>
+      )
+    }
+
     <!-- Article Tags (let them wrap naturally) -->
     {
       displayTags.length > 0 && (
         <div class="flex flex-wrap gap-2 mt-auto pt-2 items-center">
           {displayTags.map((tag) => (
-            <Tag tag={tag} variant="default" size="sm" clickable={false} />
+            <Tag
+              tag={tag}
+              variant="default"
+              size="sm"
+              clickable={true}
+              useButton={true}
+            />
           ))}
         </div>
       )

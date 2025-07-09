@@ -1,5 +1,5 @@
 ---
-// src/components/Tag.astro - Reusable tag component
+// src/components/Tag.astro - Enhanced with button option for nested anchor scenarios
 export interface TagProps {
   tag: {
     name: string;
@@ -11,6 +11,7 @@ export interface TagProps {
   clickable?: boolean;
   showCount?: boolean;
   href?: string;
+  useButton?: boolean; // New prop for nested anchor scenarios
 }
 
 const {
@@ -20,6 +21,7 @@ const {
   clickable = false,
   showCount = false,
   href,
+  useButton = false,
 } = Astro.props as TagProps;
 
 // Base classes
@@ -28,23 +30,40 @@ const baseClasses =
 
 // Size classes
 const sizeClasses = {
-  sm: "px-3 py-1.5 text-xs",
-  md: "px-4 py-2 text-sm",
+  sm: "px-3 py-1.5 !text-xs",
+  md: "px-4 py-2 !text-sm",
 };
 
-// Variant classes
+// Determine element type first
+const shouldUseButton = useButton || (clickable && !href);
+const shouldUseAnchor = !useButton && (clickable || href);
+
+// Variant classes with !important for button elements
 const variantClasses = {
-  default:
-    "bg-(--surface-tertiary) text-(--content-body) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text)",
-  filter:
-    "bg-(--surface-tertiary) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text)",
-  applied:
-    "bg-(--ui-button-surface) hover:bg-(--ui-button-surface)/60 text-(--ui-button-text)",
-  pending: "bg-(--ui-accent) text-white hover:bg-(--ui-accent)/80",
+  default: shouldUseButton
+    ? "!bg-(--surface-tertiary) !text-(--content-body) hover:!bg-(--ui-button-surface) hover:!text-(--ui-button-text)"
+    : "bg-(--surface-tertiary) text-(--content-body) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text)",
+  filter: shouldUseButton
+    ? "!bg-(--surface-tertiary) hover:!bg-(--ui-button-surface) hover:!text-(--ui-button-text)"
+    : "bg-(--surface-tertiary) hover:bg-(--ui-button-surface) hover:text-(--ui-button-text)",
+  applied: shouldUseButton
+    ? "!bg-(--ui-button-surface) hover:!bg-(--ui-button-surface)/60 !text-(--ui-button-text)"
+    : "bg-(--ui-button-surface) hover:bg-(--ui-button-surface)/60 text-(--ui-button-text)",
+  pending: shouldUseButton
+    ? "!bg-(--ui-accent) !text-white hover:!bg-(--ui-accent)/80"
+    : "bg-(--ui-accent) text-white hover:bg-(--ui-accent)/80",
 };
 
-const Element = clickable || href ? "a" : "span";
-const elementProps = href ? { href } : {};
+const Element = shouldUseButton ? "button" : shouldUseAnchor ? "a" : "span";
+
+const elementProps = shouldUseButton
+  ? {
+      type: "button" as const,
+      "data-tag-url": `/news/tag/${tag.slug}`,
+    }
+  : shouldUseAnchor && href
+    ? { href }
+    : {};
 ---
 
 <Element
@@ -52,7 +71,8 @@ const elementProps = href ? { href } : {};
     baseClasses,
     sizeClasses[size],
     variantClasses[variant],
-    clickable && "cursor-pointer",
+    (clickable || shouldUseButton) && "cursor-pointer",
+    shouldUseButton && "tag-nav-button",
   ]}
   {...elementProps}
 >
@@ -64,3 +84,32 @@ const elementProps = href ? { href } : {};
   }
   <slot />
 </Element>
+
+<style>
+  /* Override Tailwind's button reset with higher specificity */
+  button.tag-nav-button {
+    border: none;
+    background: revert;
+    font: inherit;
+    text-decoration: none;
+    outline: inherit;
+  }
+</style>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    const tagButtons = document.querySelectorAll(".tag-nav-button");
+
+    tagButtons.forEach((button) => {
+      button.addEventListener("click", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const url = button.getAttribute("data-tag-url");
+        if (url) {
+          window.location.href = url;
+        }
+      });
+    });
+  });
+</script>
