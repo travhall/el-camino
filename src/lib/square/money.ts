@@ -1,6 +1,6 @@
 // src/lib/square/money.ts
 import type { Money } from './types';
-import type { Money as SquareMoney } from 'square';
+import type { Money as SquareMoney } from 'square/legacy';
 
 export class MoneyUtils {
     static readonly DEFAULT_CURRENCY = 'USD';

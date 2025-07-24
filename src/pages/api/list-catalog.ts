@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { squareClient, jsonStringifyReplacer } from "@/lib/square/client";
-import type { CatalogObject } from "square";
+import type { CatalogObject } from "square/legacy";
 
 export const GET: APIRoute = async () => {
   try {

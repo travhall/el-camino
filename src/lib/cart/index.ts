@@ -465,6 +465,7 @@ class CartManager implements ICartManager {
         // Save changes
         this.saveCart();
         this.dispatchCartEvent("itemAdded", { item });
+        this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
 
         return {
           success: true,
@@ -500,6 +501,7 @@ class CartManager implements ICartManager {
       // Save changes and dispatch events
       this.saveCart();
       this.dispatchCartEvent("itemAdded", { item });
+      this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
 
       return {
         success: true,
@@ -528,6 +530,7 @@ class CartManager implements ICartManager {
       this.queueUpdate(() => {
         this.saveCart();
         this.dispatchCartEvent("itemRemoved", { item });
+        this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
       });
     }
   }
@@ -547,7 +550,10 @@ class CartManager implements ICartManager {
     }
     item.quantity = quantity;
     this.items.set(id, item);
-    this.queueUpdate(() => this.saveCart());
+    this.queueUpdate(() => {
+      this.saveCart();
+      this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+    });
 
     return { success: true };
   }
@@ -631,6 +637,7 @@ class CartManager implements ICartManager {
     this.items.clear();
     this.queueUpdate(() => {
       this.dispatchCartEvent("cartCleared");
+      this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
       this.saveCart();
     });
   }

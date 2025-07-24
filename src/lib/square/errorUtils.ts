@@ -1,5 +1,5 @@
 // src/lib/square/errorUtils.ts
-import { ApiError } from "square";
+import { ApiError } from "square/legacy";
 
 /**
  * Standard error types for the application

@@ -1,5 +1,5 @@
 // /src/lib/square/client.ts
-import { Client, Environment } from "square";
+import { Client, Environment } from "square/legacy";
 import type { Product } from "./types";
 import { getImageUrl, batchGetImageUrls } from "./imageUtils";
 import { defaultCircuitBreaker, logApiError } from "./apiUtils";
