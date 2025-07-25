@@ -1,6 +1,6 @@
 ---
 // src/components/wordpress/WordPressBlockParser.astro
-// Main component that parses WordPress content and renders custom block components
+// FIXED: Groups consecutive image blocks into unified galleries
 
 import JetpackSlideshow from "./blocks/JetpackSlideshow.astro";
 import WPGallery from "./blocks/WPGallery.astro";
@@ -12,13 +12,18 @@ import WPButton from "./blocks/WPButton.astro";
 
 interface Props {
   content: string;
-  enhanceBlocks?: boolean; // Toggle for enhanced vs basic rendering
-  debug?: boolean; // Enable debug logging
+  enhanceBlocks?: boolean;
+  debug?: boolean;
+  groupImages?: boolean; // NEW: Option to group consecutive images into galleries
 }
 
-const { content, enhanceBlocks = true, debug = false } = Astro.props;
+const {
+  content,
+  enhanceBlocks = true,
+  debug = false,
+  groupImages = true,
+} = Astro.props;
 
-// Parse content to identify and extract block data
 function parseWordPressBlocks(htmlContent: string): Array<{
   type: string;
   html: string;
@@ -29,14 +34,6 @@ function parseWordPressBlocks(htmlContent: string): Array<{
     return [{ type: "raw", html: htmlContent, data: {}, originalIndex: 0 }];
   }
 
-  const blocks: Array<{
-    type: string;
-    html: string;
-    data: any;
-    originalIndex: number;
-  }> = [];
-
-  // Block patterns to match (ordered by specificity)
   const blockPatterns = [
     {
       type: "jetpack-slideshow",
@@ -59,7 +56,7 @@ function parseWordPressBlocks(htmlContent: string): Array<{
     {
       type: "quote",
       regex:
-        /<blockquote[^>]*class="[^"]*wp-block-quote[^"]*"[^>]*>[\s\S]*?<\/blockquote>/g,
+        /<(?:blockquote|figure)[^>]*class="[^"]*wp-block-quote[^"]*"[^>]*>[\s\S]*?<\/(?:blockquote|figure)>/g,
       parser: parseQuote,
     },
     {
@@ -104,7 +101,12 @@ function parseWordPressBlocks(htmlContent: string): Array<{
 
   // Process matches and split content
   let currentIndex = 0;
-  const finalBlocks: typeof blocks = [];
+  const rawBlocks: Array<{
+    type: string;
+    html: string;
+    data: any;
+    originalIndex: number;
+  }> = [];
 
   for (const { type, match, parser } of allMatches) {
     const matchStart = match.index || 0;
@@ -114,7 +116,7 @@ function parseWordPressBlocks(htmlContent: string): Array<{
     if (matchStart > currentIndex) {
       const textContent = htmlContent.slice(currentIndex, matchStart).trim();
       if (textContent) {
-        finalBlocks.push({
+        rawBlocks.push({
           type: "text",
           html: textContent,
           data: {},
@@ -126,7 +128,7 @@ function parseWordPressBlocks(htmlContent: string): Array<{
     // Add the block
     try {
       const blockData = parser(match[0]);
-      finalBlocks.push({
+      rawBlocks.push({
         type,
         html: match[0],
         data: blockData,
@@ -134,8 +136,11 @@ function parseWordPressBlocks(htmlContent: string): Array<{
       });
     } catch (error) {
       console.warn(`Error parsing ${type} block:`, error);
+      if (debug) {
+        console.log("Failed to parse block HTML:", match[0]);
+      }
       // Fallback to text content
-      finalBlocks.push({
+      rawBlocks.push({
         type: "text",
         html: match[0],
         data: {},
@@ -150,7 +155,7 @@ function parseWordPressBlocks(htmlContent: string): Array<{
   if (currentIndex < htmlContent.length) {
     const textContent = htmlContent.slice(currentIndex).trim();
     if (textContent) {
-      finalBlocks.push({
+      rawBlocks.push({
         type: "text",
         html: textContent,
         data: {},
@@ -159,16 +164,125 @@ function parseWordPressBlocks(htmlContent: string): Array<{
     }
   }
 
-  return finalBlocks.length > 0
-    ? finalBlocks
+  // NEW: Group consecutive images and single-image galleries into unified galleries
+  if (groupImages) {
+    return groupImageBlocks(rawBlocks, debug);
+  }
+
+  return rawBlocks.length > 0
+    ? rawBlocks
     : [{ type: "raw", html: htmlContent, data: {}, originalIndex: 0 }];
 }
 
-// Block parsers
+// NEW: Groups consecutive image blocks into unified galleries
+function groupImageBlocks(
+  blocks: Array<{
+    type: string;
+    html: string;
+    data: any;
+    originalIndex: number;
+  }>,
+  debug: boolean = false
+): Array<{
+  type: string;
+  html: string;
+  data: any;
+  originalIndex: number;
+}> {
+  const groupedBlocks: typeof blocks = [];
+  let i = 0;
+
+  while (i < blocks.length) {
+    const currentBlock = blocks[i];
+
+    // Check if current block is an image or single-image gallery
+    const isImageBlock = currentBlock.type === "image" && currentBlock.data.src;
+    const isSingleImageGallery =
+      currentBlock.type === "gallery" &&
+      currentBlock.data.images &&
+      currentBlock.data.images.length === 1;
+
+    if (isImageBlock || isSingleImageGallery) {
+      // Start collecting consecutive image blocks
+      const imageGroup: Array<{ src: string; alt: string; caption?: string }> =
+        [];
+      let j = i;
+
+      // Collect all consecutive image blocks
+      while (j < blocks.length) {
+        const block = blocks[j];
+        const blockIsImage = block.type === "image" && block.data.src;
+        const blockIsSingleGallery =
+          block.type === "gallery" &&
+          block.data.images &&
+          block.data.images.length === 1;
+
+        if (blockIsImage) {
+          const newImage = {
+            src: block.data.src,
+            alt: block.data.alt || "",
+            caption: block.data.caption,
+          };
+          // Check for duplicates by src URL
+          if (!imageGroup.find((img) => img.src === newImage.src)) {
+            imageGroup.push(newImage);
+          }
+        } else if (blockIsSingleGallery) {
+          const newImage = block.data.images[0];
+          // Check for duplicates by src URL
+          if (!imageGroup.find((img) => img.src === newImage.src)) {
+            imageGroup.push(newImage);
+          }
+        } else {
+          break; // Stop collecting when we hit a non-image block
+        }
+
+        j++;
+      }
+
+      // Only group if we have more than one image
+      if (imageGroup.length > 1) {
+        if (debug) {
+          console.log(
+            `🔗 Grouping ${imageGroup.length} consecutive images into unified gallery`
+          );
+        }
+
+        // Create unified gallery block
+        groupedBlocks.push({
+          type: "gallery",
+          html: blocks
+            .slice(i, j)
+            .map((b) => b.html)
+            .join("\n"),
+          data: {
+            images: imageGroup,
+            columns: Math.min(imageGroup.length, 4), // Max 4 columns
+            linkTo: "file", // Enable lightbox
+          },
+          originalIndex: currentBlock.originalIndex,
+        });
+
+        i = j; // Skip all the grouped blocks
+      } else {
+        // Single image, keep as is
+        groupedBlocks.push(currentBlock);
+        i++;
+      }
+    } else {
+      // Non-image block, keep as is
+      groupedBlocks.push(currentBlock);
+      i++;
+    }
+  }
+
+  return groupedBlocks;
+}
+
+// Parsing functions (updated for better image extraction)
 function parseJetpackSlideshow(html: string) {
   const images: Array<{ src: string; alt: string; caption?: string }> = [];
 
-  // Try multiple image extraction patterns for slideshows
   const imgPatterns = [
     /<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g,
     /<img[^>]+alt="([^"]*)"[^>]*src="([^"]+)"[^>]*>/g,
@@ -190,7 +304,6 @@ function parseJetpackSlideshow(html: string) {
         alt = "";
       }
 
-      // Avoid duplicates
       if (!images.find((img) => img.src === src)) {
         images.push({ src, alt });
       }
@@ -198,7 +311,6 @@ function parseJetpackSlideshow(html: string) {
     pattern.lastIndex = 0;
   }
 
-  // Extract slideshow settings from data attributes
   const autoplay =
     html.includes('data-autoplay="true"') || html.includes("autoplay");
   const delayMatch = html.match(/data-delay="(\d+)"/);
@@ -210,71 +322,112 @@ function parseJetpackSlideshow(html: string) {
 function parseGallery(html: string) {
   const images: Array<{ src: string; alt: string; caption?: string }> = [];
 
-  // Try multiple image extraction patterns
-  const imgPatterns = [
-    /<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g,
-    /<img[^>]+alt="([^"]*)"[^>]*src="([^"]+)"[^>]*>/g,
-    /<img[^>]+src="([^"]+)"[^>]*>/g,
-  ];
+  const hasNestedImages = html.includes("has-nested-images");
 
-  for (const pattern of imgPatterns) {
-    let match;
-    while ((match = pattern.exec(html)) !== null) {
-      // Handle different match group orders
-      let src, alt;
-      if (pattern.source.includes('src="([^"]+)"[^>]*alt')) {
-        src = match[1];
-        alt = match[2] || "";
-      } else if (pattern.source.includes('alt="([^"]*)"[^>]*src')) {
-        alt = match[1] || "";
-        src = match[2];
-      } else {
-        src = match[1];
-        alt = "";
+  if (hasNestedImages) {
+    // Modern WordPress 5.9+ structure
+    const nestedFigurePattern =
+      /<figure[^>]*class="[^"]*wp-block-image[^"]*"[^>]*>([\s\S]*?)<\/figure>/g;
+    let figureMatch;
+
+    while ((figureMatch = nestedFigurePattern.exec(html)) !== null) {
+      const figureContent = figureMatch[1];
+      const imgMatch = figureContent.match(
+        /<img[^>]+src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*>/
+      );
+
+      if (imgMatch) {
+        let src = imgMatch[1];
+        const alt = imgMatch[2] || "";
+
+        // Clean URL parameters
+        src = src.replace(/\?w=\d+(&h=\d+)?$/, "").replace(/\?$/, "");
+        images.push({ src, alt });
       }
+    }
+  } else {
+    // Legacy gallery structure
+    const imgPattern = /<img[^>]+src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*>/g;
+    let match;
 
-      // Avoid duplicates
+    while ((match = imgPattern.exec(html)) !== null) {
+      let src = match[1];
+      const alt = match[2] || "";
+
+      src = src.replace(/\?w=\d+(&h=\d+)?$/, "").replace(/\?$/, "");
+
       if (!images.find((img) => img.src === src)) {
         images.push({ src, alt });
       }
     }
-    // Reset regex lastIndex for next pattern
-    pattern.lastIndex = 0;
   }
 
-  // Extract gallery settings
-  const columns = html.match(/columns-(\d+)/)?.[1] || "3";
-  const linkTo = html.includes('data-link="file"') ? "file" : "none";
+  const columnsMatch = html.match(/columns-(\d+)/);
+  const columns = columnsMatch ? parseInt(columnsMatch[1], 10) : 3;
+  const linkTo =
+    html.includes('data-link="file"') ||
+    html.includes('data-link-destination="media"')
+      ? "file"
+      : "none";
 
-  return { images, columns: parseInt(columns, 10), linkTo };
+  return { images, columns, linkTo };
 }
 
 function parseQuote(html: string) {
-  const quoteMatch = html.match(/<p[^>]*>(.*?)<\/p>/s);
-  const citeMatch = html.match(/<cite[^>]*>(.*?)<\/cite>/s);
+  let quote = "";
+  let cite = "";
 
-  return {
-    quote: quoteMatch?.[1] || "",
-    cite: citeMatch?.[1] || "",
-    style: html.includes("is-style-large") ? "large" : "default",
-  };
+  const quotePatterns = [
+    /<p[^>]*>(.*?)<\/p>/s,
+    /<blockquote[^>]*[^>]*>(.*?)<\/blockquote>/s,
+    />([^<]+(?:<(?!\/)[^>]*>[^<]*<\/[^>]+>[^<]*)*)</s,
+  ];
+
+  for (const pattern of quotePatterns) {
+    const match = html.match(pattern);
+    if (match && match[1].trim()) {
+      quote = match[1]
+        .trim()
+        .replace(/<\/?[^>]+(>|$)/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (quote.length > 0) break;
+    }
+  }
+
+  const citePatterns = [
+    /<cite[^>]*>(.*?)<\/cite>/s,
+    /<footer[^>]*>(.*?)<\/footer>/s,
+    /—\s*([^<\n]+)/s,
+  ];
+
+  for (const pattern of citePatterns) {
+    const citeMatch = html.match(pattern);
+    if (citeMatch && citeMatch[1].trim()) {
+      cite = citeMatch[1]
+        .trim()
+        .replace(/<\/?[^>]+(>|$)/g, "")
+        .replace(/^—\s*/, "");
+      break;
+    }
+  }
+
+  const style = html.includes("is-style-large") ? "large" : "default";
+  return { quote, cite, style };
 }
 
 function parseEmbed(html: string) {
   const iframeMatch = html.match(/<iframe[^>]+src="([^"]+)"[^>]*>/);
   const linkMatch = html.match(/<a[^>]+href="([^"]+)"[^>]*>/);
-
-  let embedType = "generic";
   let url = iframeMatch?.[1] || linkMatch?.[1] || "";
 
-  // Extract actual URL from WordPress embed wrapper
   if (!url) {
-    // Try to find URL in data attributes or other places
     const dataMatch = html.match(/data-src="([^"]+)"/);
     const scriptMatch = html.match(/src:\s*["']([^"']+)["']/);
     url = dataMatch?.[1] || scriptMatch?.[1] || "";
   }
 
+  let embedType = "generic";
   if (url.includes("youtube.com") || url.includes("youtu.be")) {
     embedType = "youtube";
   } else if (url.includes("vimeo.com")) {
@@ -289,11 +442,17 @@ function parseEmbed(html: string) {
 }
 
 function parseImage(html: string) {
-  const imgMatch = html.match(/<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/);
+  const imgMatch = html.match(
+    /<img[^>]+src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*>/
+  );
   const captionMatch = html.match(/<figcaption[^>]*>(.*?)<\/figcaption>/s);
 
+  let src = imgMatch?.[1] || "";
+  // Clean URL parameters
+  src = src.replace(/\?w=\d+(&h=\d+)?$/, "").replace(/\?$/, "");
+
   return {
-    src: imgMatch?.[1] || "",
+    src,
     alt: imgMatch?.[2] || "",
     caption: captionMatch?.[1] || "",
     alignment: html.includes("alignwide")
@@ -336,11 +495,13 @@ function parseButton(html: string) {
 // Parse the content
 const parsedBlocks = parseWordPressBlocks(content);
 
-// Debug logging
+// Enhanced debug logging
 if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
   console.group("🔧 WordPress Block Parser Debug");
   console.log("📄 Original content length:", content.length);
   console.log("🧱 Total blocks found:", parsedBlocks.length);
+  console.log("🔗 Image grouping enabled:", groupImages);
+
   console.table(
     parsedBlocks.map((block, i) => ({
       Index: i,
@@ -348,18 +509,22 @@ if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
       "Has Data": Object.keys(block.data).length > 0,
       "HTML Length": block.html.length,
       Images: block.data.images?.length || 0,
+      Quote: block.data.quote ? "✓" : "",
+      URL: block.data.url ? "✓" : "",
     }))
   );
 
-  // Log any blocks that might have parsing issues
-  const emptyBlocks = parsedBlocks.filter(
+  const successfulBlocks = parsedBlocks.filter(
     (b) =>
-      b.type !== "text" && b.type !== "raw" && Object.keys(b.data).length === 0
+      b.type !== "text" && b.type !== "raw" && Object.keys(b.data).length > 0
   );
-  if (emptyBlocks.length > 0) {
-    console.warn(
-      "⚠️ Blocks with no parsed data:",
-      emptyBlocks.map((b) => b.type)
+
+  if (successfulBlocks.length > 0) {
+    console.log(
+      "✅ Successfully parsed blocks:",
+      successfulBlocks.map(
+        (b) => `${b.type}(${b.data.images?.length || "N/A"} imgs)`
+      )
     );
   }
 
@@ -376,7 +541,6 @@ if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
 
       switch (block.type) {
         case "jetpack-slideshow":
-          // Ensure we have images before rendering slideshow
           if (block.data.images && block.data.images.length > 0) {
             return (
               <div class={blockClasses}>
@@ -384,7 +548,6 @@ if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
               </div>
             );
           } else {
-            // Fallback to raw HTML if no images detected
             return (
               <div
                 class={`wp-content-block ${blockClasses}`}
@@ -401,6 +564,12 @@ if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
               </div>
             );
           } else {
+            if (import.meta.env.DEV || debug) {
+              console.warn("Gallery block failed to parse:", {
+                html: block.html.substring(0, 200),
+                data: block.data,
+              });
+            }
             return (
               <div
                 class={`wp-content-block ${blockClasses}`}
@@ -417,6 +586,12 @@ if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
               </div>
             );
           } else {
+            if (import.meta.env.DEV || debug) {
+              console.warn("Quote block failed to parse:", {
+                html: block.html.substring(0, 200),
+                data: block.data,
+              });
+            }
             return (
               <div
                 class={`wp-content-block ${blockClasses}`}
@@ -506,11 +681,10 @@ if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
 <style>
   .wordpress-content {
     /* Base styling for WordPress content container */
-    /* Spacing between blocks handled by mb-6 classes */
   }
 
   .wp-content-block {
-    /* Style for unprocessed content blocks - prose-like styling */
+    /* Prose-like styling for unprocessed content blocks */
     max-width: none;
     line-height: 1.75;
     font-size: 1.125rem;
@@ -627,13 +801,16 @@ if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
     margin: 0;
   }
 
-  /* Ensure proper spacing for WordPress blocks */
-  .wordpress-content :global(.wp-block-heading) {
-    margin-top: 2rem;
-    margin-bottom: 1rem;
+  /* Enhanced gallery styles for fallback content */
+  .wp-content-block :global(.wp-block-gallery) {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
 
-  .wordpress-content :global(.wp-block-paragraph) {
-    margin-bottom: 1rem;
+  .wp-content-block :global(.wp-block-gallery img) {
+    width: 100%;
+    height: auto;
+    border-radius: 0.25rem;
   }
 </style>
