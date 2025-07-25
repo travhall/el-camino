@@ -1,0 +1,74 @@
+---
+// src/components/wordpress/blocks/WPColumns.astro
+// Custom columns component for wp-block-columns
+
+interface Props {
+  columns: Array<{
+    content: string;
+    width: string;
+  }>;
+}
+
+const { columns = [] } = Astro.props;
+---
+
+<div class="wp-columns my-8">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {
+      columns.map((column) => (
+        <div
+          class="wp-column"
+          style={column.width !== "auto" ? `flex-basis: ${column.width}` : ""}
+        >
+          <div
+            class="column-content text-base leading-relaxed max-w-none"
+            set:html={column.content}
+          />
+        </div>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .column-content :global(h1, h2, h3, h4, h5, h6) {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    color: var(--content-heading);
+  }
+
+  .column-content :global(h1) {
+    font-size: 1.5rem;
+  }
+  .column-content :global(h2) {
+    font-size: 1.25rem;
+  }
+  .column-content :global(h3) {
+    font-size: 1.125rem;
+  }
+
+  .column-content :global(p) {
+    margin-bottom: 1rem;
+    color: var(--content-body);
+  }
+
+  .column-content :global(ul, ol) {
+    margin-bottom: 1rem;
+    padding-left: 1.25rem;
+  }
+
+  .column-content :global(li) {
+    margin-bottom: 0.25rem;
+  }
+
+  .column-content :global(a) {
+    color: var(--ui-accent);
+    text-decoration: underline;
+  }
+
+  .column-content :global(strong) {
+    font-weight: 600;
+    color: var(--content-emphasis);
+  }
+</style>

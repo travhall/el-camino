@@ -1,0 +1,639 @@
+---
+// src/components/wordpress/WordPressBlockParser.astro
+// Main component that parses WordPress content and renders custom block components
+
+import JetpackSlideshow from "./blocks/JetpackSlideshow.astro";
+import WPGallery from "./blocks/WPGallery.astro";
+import WPQuote from "./blocks/WPQuote.astro";
+import WPEmbed from "./blocks/WPEmbed.astro";
+import WPImage from "./blocks/WPImage.astro";
+import WPColumns from "./blocks/WPColumns.astro";
+import WPButton from "./blocks/WPButton.astro";
+
+interface Props {
+  content: string;
+  enhanceBlocks?: boolean; // Toggle for enhanced vs basic rendering
+  debug?: boolean; // Enable debug logging
+}
+
+const { content, enhanceBlocks = true, debug = false } = Astro.props;
+
+// Parse content to identify and extract block data
+function parseWordPressBlocks(htmlContent: string): Array<{
+  type: string;
+  html: string;
+  data: any;
+  originalIndex: number;
+}> {
+  if (!htmlContent || !enhanceBlocks) {
+    return [{ type: "raw", html: htmlContent, data: {}, originalIndex: 0 }];
+  }
+
+  const blocks: Array<{
+    type: string;
+    html: string;
+    data: any;
+    originalIndex: number;
+  }> = [];
+
+  // Block patterns to match (ordered by specificity)
+  const blockPatterns = [
+    {
+      type: "jetpack-slideshow",
+      regex:
+        /<div[^>]*class="[^"]*wp-block-jetpack-slideshow[^"]*"[^>]*>[\s\S]*?<\/div>/g,
+      parser: parseJetpackSlideshow,
+    },
+    {
+      type: "gallery",
+      regex:
+        /<figure[^>]*class="[^"]*wp-block-gallery[^"]*"[^>]*>[\s\S]*?<\/figure>/g,
+      parser: parseGallery,
+    },
+    {
+      type: "embed",
+      regex:
+        /<figure[^>]*class="[^"]*wp-block-embed[^"]*"[^>]*>[\s\S]*?<\/figure>/g,
+      parser: parseEmbed,
+    },
+    {
+      type: "quote",
+      regex:
+        /<blockquote[^>]*class="[^"]*wp-block-quote[^"]*"[^>]*>[\s\S]*?<\/blockquote>/g,
+      parser: parseQuote,
+    },
+    {
+      type: "image",
+      regex:
+        /<figure[^>]*class="[^"]*wp-block-image[^"]*"[^>]*>[\s\S]*?<\/figure>/g,
+      parser: parseImage,
+    },
+    {
+      type: "columns",
+      regex:
+        /<div[^>]*class="[^"]*wp-block-columns[^"]*"[^>]*>[\s\S]*?<\/div>/g,
+      parser: parseColumns,
+    },
+    {
+      type: "button",
+      regex: /<div[^>]*class="[^"]*wp-block-button[^"]*"[^>]*>[\s\S]*?<\/div>/g,
+      parser: parseButton,
+    },
+  ];
+
+  // Find all blocks with their positions
+  const allMatches: Array<{
+    type: string;
+    match: RegExpMatchArray;
+    parser: Function;
+  }> = [];
+
+  for (const pattern of blockPatterns) {
+    const matches = Array.from(htmlContent.matchAll(pattern.regex));
+    for (const match of matches) {
+      allMatches.push({
+        type: pattern.type,
+        match,
+        parser: pattern.parser,
+      });
+    }
+  }
+
+  // Sort by position in original content
+  allMatches.sort((a, b) => (a.match.index || 0) - (b.match.index || 0));
+
+  // Process matches and split content
+  let currentIndex = 0;
+  const finalBlocks: typeof blocks = [];
+
+  for (const { type, match, parser } of allMatches) {
+    const matchStart = match.index || 0;
+    const matchEnd = matchStart + match[0].length;
+
+    // Add any text content before this block
+    if (matchStart > currentIndex) {
+      const textContent = htmlContent.slice(currentIndex, matchStart).trim();
+      if (textContent) {
+        finalBlocks.push({
+          type: "text",
+          html: textContent,
+          data: {},
+          originalIndex: currentIndex,
+        });
+      }
+    }
+
+    // Add the block
+    try {
+      const blockData = parser(match[0]);
+      finalBlocks.push({
+        type,
+        html: match[0],
+        data: blockData,
+        originalIndex: matchStart,
+      });
+    } catch (error) {
+      console.warn(`Error parsing ${type} block:`, error);
+      // Fallback to text content
+      finalBlocks.push({
+        type: "text",
+        html: match[0],
+        data: {},
+        originalIndex: matchStart,
+      });
+    }
+
+    currentIndex = matchEnd;
+  }
+
+  // Add any remaining text content
+  if (currentIndex < htmlContent.length) {
+    const textContent = htmlContent.slice(currentIndex).trim();
+    if (textContent) {
+      finalBlocks.push({
+        type: "text",
+        html: textContent,
+        data: {},
+        originalIndex: currentIndex,
+      });
+    }
+  }
+
+  return finalBlocks.length > 0
+    ? finalBlocks
+    : [{ type: "raw", html: htmlContent, data: {}, originalIndex: 0 }];
+}
+
+// Block parsers
+function parseJetpackSlideshow(html: string) {
+  const images: Array<{ src: string; alt: string; caption?: string }> = [];
+
+  // Try multiple image extraction patterns for slideshows
+  const imgPatterns = [
+    /<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g,
+    /<img[^>]+alt="([^"]*)"[^>]*src="([^"]+)"[^>]*>/g,
+    /<img[^>]+src="([^"]+)"[^>]*>/g,
+  ];
+
+  for (const pattern of imgPatterns) {
+    let match;
+    while ((match = pattern.exec(html)) !== null) {
+      let src, alt;
+      if (pattern.source.includes('src="([^"]+)"[^>]*alt')) {
+        src = match[1];
+        alt = match[2] || "";
+      } else if (pattern.source.includes('alt="([^"]*)"[^>]*src')) {
+        alt = match[1] || "";
+        src = match[2];
+      } else {
+        src = match[1];
+        alt = "";
+      }
+
+      // Avoid duplicates
+      if (!images.find((img) => img.src === src)) {
+        images.push({ src, alt });
+      }
+    }
+    pattern.lastIndex = 0;
+  }
+
+  // Extract slideshow settings from data attributes
+  const autoplay =
+    html.includes('data-autoplay="true"') || html.includes("autoplay");
+  const delayMatch = html.match(/data-delay="(\d+)"/);
+  const delay = delayMatch ? parseInt(delayMatch[1], 10) : 3000;
+
+  return { images, autoplay, delay };
+}
+
+function parseGallery(html: string) {
+  const images: Array<{ src: string; alt: string; caption?: string }> = [];
+
+  // Try multiple image extraction patterns
+  const imgPatterns = [
+    /<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g,
+    /<img[^>]+alt="([^"]*)"[^>]*src="([^"]+)"[^>]*>/g,
+    /<img[^>]+src="([^"]+)"[^>]*>/g,
+  ];
+
+  for (const pattern of imgPatterns) {
+    let match;
+    while ((match = pattern.exec(html)) !== null) {
+      // Handle different match group orders
+      let src, alt;
+      if (pattern.source.includes('src="([^"]+)"[^>]*alt')) {
+        src = match[1];
+        alt = match[2] || "";
+      } else if (pattern.source.includes('alt="([^"]*)"[^>]*src')) {
+        alt = match[1] || "";
+        src = match[2];
+      } else {
+        src = match[1];
+        alt = "";
+      }
+
+      // Avoid duplicates
+      if (!images.find((img) => img.src === src)) {
+        images.push({ src, alt });
+      }
+    }
+    // Reset regex lastIndex for next pattern
+    pattern.lastIndex = 0;
+  }
+
+  // Extract gallery settings
+  const columns = html.match(/columns-(\d+)/)?.[1] || "3";
+  const linkTo = html.includes('data-link="file"') ? "file" : "none";
+
+  return { images, columns: parseInt(columns, 10), linkTo };
+}
+
+function parseQuote(html: string) {
+  const quoteMatch = html.match(/<p[^>]*>(.*?)<\/p>/s);
+  const citeMatch = html.match(/<cite[^>]*>(.*?)<\/cite>/s);
+
+  return {
+    quote: quoteMatch?.[1] || "",
+    cite: citeMatch?.[1] || "",
+    style: html.includes("is-style-large") ? "large" : "default",
+  };
+}
+
+function parseEmbed(html: string) {
+  const iframeMatch = html.match(/<iframe[^>]+src="([^"]+)"[^>]*>/);
+  const linkMatch = html.match(/<a[^>]+href="([^"]+)"[^>]*>/);
+
+  let embedType = "generic";
+  let url = iframeMatch?.[1] || linkMatch?.[1] || "";
+
+  // Extract actual URL from WordPress embed wrapper
+  if (!url) {
+    // Try to find URL in data attributes or other places
+    const dataMatch = html.match(/data-src="([^"]+)"/);
+    const scriptMatch = html.match(/src:\s*["']([^"']+)["']/);
+    url = dataMatch?.[1] || scriptMatch?.[1] || "";
+  }
+
+  if (url.includes("youtube.com") || url.includes("youtu.be")) {
+    embedType = "youtube";
+  } else if (url.includes("vimeo.com")) {
+    embedType = "vimeo";
+  } else if (url.includes("twitter.com") || url.includes("x.com")) {
+    embedType = "twitter";
+  } else if (url.includes("instagram.com")) {
+    embedType = "instagram";
+  }
+
+  return { url, embedType, originalHtml: html };
+}
+
+function parseImage(html: string) {
+  const imgMatch = html.match(/<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/);
+  const captionMatch = html.match(/<figcaption[^>]*>(.*?)<\/figcaption>/s);
+
+  return {
+    src: imgMatch?.[1] || "",
+    alt: imgMatch?.[2] || "",
+    caption: captionMatch?.[1] || "",
+    alignment: html.includes("alignwide")
+      ? "wide"
+      : html.includes("alignfull")
+        ? "full"
+        : "default",
+  };
+}
+
+function parseColumns(html: string) {
+  const columnRegex =
+    /<div[^>]*class="[^"]*wp-block-column[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
+  const columns = [];
+  let match;
+
+  while ((match = columnRegex.exec(html)) !== null) {
+    columns.push({
+      content: match[1],
+      width: match[0].match(/style="[^"]*flex-basis:([^;]+);/)?.[1] || "auto",
+    });
+  }
+
+  return { columns };
+}
+
+function parseButton(html: string) {
+  const linkMatch = html.match(
+    /<a[^>]+href="([^"]+)"[^>]*class="[^"]*wp-block-button__link[^"]*"[^>]*>(.*?)<\/a>/s
+  );
+
+  return {
+    url: linkMatch?.[1] || "",
+    text: linkMatch?.[2]?.replace(/<[^>]*>/g, "") || "",
+    style: html.includes("is-style-outline") ? "outline" : "fill",
+    color: html.match(/background-color:([^;]+);/)?.[1] || "",
+  };
+}
+
+// Parse the content
+const parsedBlocks = parseWordPressBlocks(content);
+
+// Debug logging
+if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
+  console.group("🔧 WordPress Block Parser Debug");
+  console.log("📄 Original content length:", content.length);
+  console.log("🧱 Total blocks found:", parsedBlocks.length);
+  console.table(
+    parsedBlocks.map((block, i) => ({
+      Index: i,
+      Type: block.type,
+      "Has Data": Object.keys(block.data).length > 0,
+      "HTML Length": block.html.length,
+      Images: block.data.images?.length || 0,
+    }))
+  );
+
+  // Log any blocks that might have parsing issues
+  const emptyBlocks = parsedBlocks.filter(
+    (b) =>
+      b.type !== "text" && b.type !== "raw" && Object.keys(b.data).length === 0
+  );
+  if (emptyBlocks.length > 0) {
+    console.warn(
+      "⚠️ Blocks with no parsed data:",
+      emptyBlocks.map((b) => b.type)
+    );
+  }
+
+  console.groupEnd();
+}
+---
+
+<!-- Render parsed blocks -->
+<div class="wordpress-content">
+  {
+    parsedBlocks.map((block, index) => {
+      const isLastBlock = index === parsedBlocks.length - 1;
+      const blockClasses = isLastBlock ? "" : "mb-6";
+
+      switch (block.type) {
+        case "jetpack-slideshow":
+          // Ensure we have images before rendering slideshow
+          if (block.data.images && block.data.images.length > 0) {
+            return (
+              <div class={blockClasses}>
+                <JetpackSlideshow {...block.data} />
+              </div>
+            );
+          } else {
+            // Fallback to raw HTML if no images detected
+            return (
+              <div
+                class={`wp-content-block ${blockClasses}`}
+                set:html={block.html}
+              />
+            );
+          }
+
+        case "gallery":
+          if (block.data.images && block.data.images.length > 0) {
+            return (
+              <div class={blockClasses}>
+                <WPGallery {...block.data} />
+              </div>
+            );
+          } else {
+            return (
+              <div
+                class={`wp-content-block ${blockClasses}`}
+                set:html={block.html}
+              />
+            );
+          }
+
+        case "quote":
+          if (block.data.quote) {
+            return (
+              <div class={blockClasses}>
+                <WPQuote {...block.data} />
+              </div>
+            );
+          } else {
+            return (
+              <div
+                class={`wp-content-block ${blockClasses}`}
+                set:html={block.html}
+              />
+            );
+          }
+
+        case "embed":
+          if (block.data.url) {
+            return (
+              <div class={blockClasses}>
+                <WPEmbed {...block.data} />
+              </div>
+            );
+          } else {
+            return (
+              <div
+                class={`wp-content-block ${blockClasses}`}
+                set:html={block.html}
+              />
+            );
+          }
+
+        case "image":
+          if (block.data.src) {
+            return (
+              <div class={blockClasses}>
+                <WPImage {...block.data} />
+              </div>
+            );
+          } else {
+            return (
+              <div
+                class={`wp-content-block ${blockClasses}`}
+                set:html={block.html}
+              />
+            );
+          }
+
+        case "columns":
+          if (block.data.columns && block.data.columns.length > 0) {
+            return (
+              <div class={blockClasses}>
+                <WPColumns {...block.data} />
+              </div>
+            );
+          } else {
+            return (
+              <div
+                class={`wp-content-block ${blockClasses}`}
+                set:html={block.html}
+              />
+            );
+          }
+
+        case "button":
+          if (block.data.url && block.data.text) {
+            return (
+              <div class={blockClasses}>
+                <WPButton {...block.data} />
+              </div>
+            );
+          } else {
+            return (
+              <div
+                class={`wp-content-block ${blockClasses}`}
+                set:html={block.html}
+              />
+            );
+          }
+
+        case "text":
+        case "raw":
+        default:
+          return (
+            <div
+              class={`wp-content-block ${blockClasses}`}
+              set:html={block.html}
+            />
+          );
+      }
+    })
+  }
+</div>
+
+<style>
+  .wordpress-content {
+    /* Base styling for WordPress content container */
+    /* Spacing between blocks handled by mb-6 classes */
+  }
+
+  .wp-content-block {
+    /* Style for unprocessed content blocks - prose-like styling */
+    max-width: none;
+    line-height: 1.75;
+    font-size: 1.125rem;
+    color: var(--content-body);
+  }
+
+  .wp-content-block :global(h1) {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: var(--content-heading);
+    line-height: 1.1;
+  }
+
+  .wp-content-block :global(h2) {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: var(--content-heading);
+    line-height: 1.2;
+  }
+
+  .wp-content-block :global(h3) {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--content-heading);
+    line-height: 1.3;
+  }
+
+  .wp-content-block :global(h4, h5, h6) {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    color: var(--content-heading);
+  }
+
+  .wp-content-block :global(p) {
+    margin-bottom: 1rem;
+    color: var(--content-body);
+  }
+
+  .wp-content-block :global(ul, ol) {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+  }
+
+  .wp-content-block :global(li) {
+    margin-bottom: 0.5rem;
+  }
+
+  .wp-content-block :global(blockquote) {
+    margin: 2rem 0;
+    padding-left: 1rem;
+    border-left: 4px solid var(--ui-accent);
+    font-style: italic;
+    color: var(--content-emphasis);
+  }
+
+  .wp-content-block :global(a) {
+    color: var(--ui-accent);
+    text-decoration: underline;
+  }
+
+  .wp-content-block :global(a:hover) {
+    color: var(--ui-accent);
+    opacity: 0.8;
+  }
+
+  .wp-content-block :global(strong) {
+    font-weight: 600;
+    color: var(--content-emphasis);
+  }
+
+  .wp-content-block :global(em) {
+    font-style: italic;
+  }
+
+  .wp-content-block :global(code) {
+    background-color: var(--surface-secondary);
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
+    font-size: 0.875em;
+  }
+
+  .wp-content-block :global(pre) {
+    background-color: var(--surface-secondary);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  .wp-content-block :global(pre code) {
+    background-color: transparent;
+    padding: 0;
+  }
+
+  /* Override WordPress default styles */
+  .wordpress-content :global(.wp-block-image) {
+    margin: 0;
+  }
+
+  .wordpress-content :global(.wp-block-gallery) {
+    margin: 0;
+  }
+
+  .wordpress-content :global(.wp-block-quote) {
+    margin: 0;
+  }
+
+  /* Ensure proper spacing for WordPress blocks */
+  .wordpress-content :global(.wp-block-heading) {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .wordpress-content :global(.wp-block-paragraph) {
+    margin-bottom: 1rem;
+  }
+</style>

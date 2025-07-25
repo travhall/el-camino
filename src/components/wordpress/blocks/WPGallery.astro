@@ -1,0 +1,327 @@
+---
+// src/components/wordpress/blocks/WPGallery.astro
+// Custom gallery component for wp-block-gallery
+
+import { Image } from 'astro:assets';
+
+interface Props {
+  images: Array<{
+    src: string;
+    alt: string;
+    caption?: string;
+  }>;
+  columns?: number;
+  linkTo?: 'file' | 'attachment' | 'none';
+  cropImages?: boolean;
+  spacing?: 'none' | 'small' | 'medium' | 'large';
+}
+
+const {
+  images = [],
+  columns = 3,
+  linkTo = 'none',
+  cropImages = true,
+  spacing = 'small'
+} = Astro.props;
+
+// Generate unique ID for this gallery
+const galleryId = `gallery-${Math.random().toString(36).substr(2, 9)}`;
+
+// Responsive column classes
+const getColumnClasses = (cols: number) => {
+  const columnMap = {
+    1: 'grid-cols-1',
+    2: 'grid-cols-1 sm:grid-cols-2',
+    3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+    4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+    5: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5',
+    6: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6',
+  };
+  return columnMap[cols as keyof typeof columnMap] || columnMap[3];
+};
+
+// Spacing classes
+const spacingClasses = {
+  none: 'gap-0',
+  small: 'gap-1',
+  medium: 'gap-4',
+  large: 'gap-8'
+};
+
+// Image aspect ratio
+const imageClasses = cropImages 
+  ? 'aspect-square object-cover' 
+  : 'aspect-auto object-contain';
+---
+
+<div 
+  class="wp-gallery"
+  data-gallery-id={galleryId}
+  role="group"
+  aria-label={`Image gallery with ${images.length} images`}
+>
+  <div class={`grid ${getColumnClasses(columns)} ${spacingClasses[spacing]}`}>
+    {images.map((image, index) => (
+      <figure 
+        class="gallery-item relative group overflow-hidden rounded-sm bg-(--surface-secondary)"
+        data-index={index}
+      >
+        {linkTo === 'file' ? (
+          <a 
+            href={image.src}
+            class="gallery-link block"
+            data-lightbox="gallery"
+            data-gallery-id={galleryId}
+            aria-label={`View full size image: ${image.alt}`}
+          >
+            <Image
+              src={image.src}
+              alt={image.alt}
+              width={400}
+              height={cropImages ? 400 : 300}
+              class={`w-full h-full ${imageClasses} transition-transform duration-300 group-hover:scale-105`}
+              loading={index < 6 ? "eager" : "lazy"}
+              format="avif"
+              quality={85}
+            />
+            
+            <!-- Hover overlay -->
+            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+              <svg class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+              </svg>
+            </div>
+          </a>
+        ) : (
+          <div class="gallery-image">
+            <Image
+              src={image.src}
+              alt={image.alt}
+              width={400}
+              height={cropImages ? 400 : 300}
+              class={`w-full h-full ${imageClasses}`}
+              loading={index < 6 ? "eager" : "lazy"}
+              format="avif"
+              quality={85}
+            />
+          </div>
+        )}
+
+        {image.caption && (
+          <figcaption class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white p-3 text-sm leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <p set:html={image.caption} />
+          </figcaption>
+        )}
+      </figure>
+    ))}
+  </div>
+
+  <!-- Gallery Navigation (for lightbox mode) -->
+  {linkTo === 'file' && (
+    <div class="gallery-lightbox fixed inset-0 bg-black/95 z-50 items-center justify-center" style="display: none;">
+      <button class="lightbox-close absolute top-4 right-4 text-white text-2xl p-2 hover:bg-white/20 rounded-full">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <button class="lightbox-prev absolute left-4 top-1/2 -translate-y-1/2 text-white text-2xl p-3 hover:bg-white/20 rounded-full">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
+      <button class="lightbox-next absolute right-4 top-1/2 -translate-y-1/2 text-white text-2xl p-3 hover:bg-white/20 rounded-full">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+
+      <div class="lightbox-content max-w-7xl max-h-full p-8">
+        <img class="lightbox-image max-w-full max-h-full object-contain" alt="" />
+        <div class="lightbox-caption text-white text-center mt-4 text-lg"></div>
+      </div>
+
+      <div class="lightbox-counter absolute bottom-4 left-1/2 -translate-x-1/2 text-white bg-black/50 px-4 py-2 rounded-full">
+        <span class="current">1</span> / <span class="total">{images.length}</span>
+      </div>
+    </div>
+  )}
+</div>
+
+<script>
+  document.addEventListener('astro:page-load', () => {
+    const galleries = document.querySelectorAll('.wp-gallery');
+
+    galleries.forEach((gallery) => {
+      const galleryElement = gallery as HTMLElement;
+      const galleryId = galleryElement.dataset.galleryId;
+      const lightboxLinks = gallery.querySelectorAll('[data-lightbox="gallery"]') as NodeListOf<HTMLAnchorElement>;
+      const lightbox = gallery.querySelector('.gallery-lightbox') as HTMLElement;
+
+      if (!lightbox || lightboxLinks.length === 0) return;
+
+      const lightboxImage = lightbox.querySelector('.lightbox-image') as HTMLImageElement;
+      const lightboxCaption = lightbox.querySelector('.lightbox-caption') as HTMLElement;
+      const lightboxClose = lightbox.querySelector('.lightbox-close') as HTMLButtonElement;
+      const lightboxPrev = lightbox.querySelector('.lightbox-prev') as HTMLButtonElement;
+      const lightboxNext = lightbox.querySelector('.lightbox-next') as HTMLButtonElement;
+      const currentSpan = lightbox.querySelector('.lightbox-counter .current') as HTMLSpanElement;
+
+      let currentImageIndex = 0;
+      const images = Array.from(lightboxLinks).map(link => {
+        const img = link.querySelector('img');
+        const caption = link.closest('.gallery-item')?.querySelector('figcaption');
+        return {
+          src: link.href,
+          alt: img?.alt || '',
+          caption: caption?.textContent || ''
+        };
+      });
+
+      function showLightboxImage(index: number) {
+        if (index < 0 || index >= images.length) return;
+
+        const image = images[index];
+        lightboxImage.src = image.src;
+        lightboxImage.alt = image.alt;
+        lightboxCaption.textContent = image.caption;
+        currentSpan.textContent = (index + 1).toString();
+        currentImageIndex = index;
+
+        // Analytics
+        if (typeof window !== 'undefined' && (window as any).gtag) {
+          (window as any).gtag('event', 'gallery_image_view', {
+            gallery_id: galleryId,
+            image_index: index,
+            total_images: images.length
+          });
+        }
+      }
+
+      function openLightbox(index: number) {
+        showLightboxImage(index);
+        lightbox.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        lightboxImage.focus();
+      }
+
+      function closeLightbox() {
+        lightbox.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+
+      // Event listeners
+      lightboxLinks.forEach((link, index) => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          openLightbox(index);
+        });
+      });
+
+      lightboxClose.addEventListener('click', closeLightbox);
+
+      lightboxPrev.addEventListener('click', () => {
+        const prevIndex = (currentImageIndex - 1 + images.length) % images.length;
+        showLightboxImage(prevIndex);
+      });
+
+      lightboxNext.addEventListener('click', () => {
+        const nextIndex = (currentImageIndex + 1) % images.length;
+        showLightboxImage(nextIndex);
+      });
+
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (lightbox.style.display !== 'none' && lightbox.style.display !== '') {
+          switch (e.key) {
+            case 'Escape':
+              closeLightbox();
+              break;
+            case 'ArrowLeft':
+              lightboxPrev.click();
+              break;
+            case 'ArrowRight':
+              lightboxNext.click();
+              break;
+          }
+        }
+      });
+
+      // Close on backdrop click
+      lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) {
+          closeLightbox();
+        }
+      });
+
+      // Touch gestures for mobile
+      let touchStartX = 0;
+      let touchEndX = 0;
+
+      lightbox.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      });
+
+      lightbox.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        const threshold = 50;
+
+        if (Math.abs(diff) > threshold) {
+          if (diff > 0) {
+            lightboxNext.click(); // Swipe left = next
+          } else {
+            lightboxPrev.click(); // Swipe right = previous
+          }
+        }
+      });
+    });
+  });
+</script>
+
+<style>
+  /* Gallery item hover effects */
+  .gallery-item {
+    transition: transform 0.2s ease;
+  }
+
+  .gallery-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Lightbox styles */
+  .gallery-lightbox {
+    backdrop-filter: blur(4px);
+  }
+
+  .lightbox-image {
+    transition: opacity 0.3s ease;
+  }
+
+  /* Focus styles for accessibility */
+  .gallery-link:focus {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 2px;
+  }
+
+  .lightbox-close:focus,
+  .lightbox-prev:focus,
+  .lightbox-next:focus {
+    outline: 2px solid white;
+    outline-offset: 2px;
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .gallery-item,
+    .lightbox-image {
+      transition: none;
+    }
+    
+    .gallery-item img {
+      transition: none;
+    }
+  }
+</style>

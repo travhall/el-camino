@@ -1,0 +1,44 @@
+---
+// src/components/wordpress/blocks/WPImage.astro
+// Enhanced image component for wp-block-image
+
+import { Image } from "astro:assets";
+
+interface Props {
+  src: string;
+  alt: string;
+  caption?: string;
+  alignment?: "default" | "wide" | "full";
+}
+
+const { src, alt, caption, alignment = "default" } = Astro.props;
+
+const alignmentClasses = {
+  default: "max-w-4xl mx-auto",
+  wide: "max-w-6xl mx-auto",
+  full: "w-full",
+};
+---
+
+<figure class={`wp-image my-8 ${alignmentClasses[alignment]}`}>
+  <div class="overflow-hidden rounded-lg bg-(--surface-secondary)">
+    <Image
+      src={src}
+      alt={alt}
+      width={800}
+      height={600}
+      class="w-full h-auto object-cover"
+      format="avif"
+      quality={85}
+      loading="lazy"
+    />
+  </div>
+
+  {
+    caption && (
+      <figcaption class="mt-3 text-center text-(--content-meta) text-sm leading-relaxed">
+        <span set:html={caption} />
+      </figcaption>
+    )
+  }
+</figure>

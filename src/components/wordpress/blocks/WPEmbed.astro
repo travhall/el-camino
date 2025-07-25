@@ -1,0 +1,108 @@
+---
+// src/components/wordpress/blocks/WPEmbed.astro
+// Custom embed component for wp-block-embed
+
+interface Props {
+  url: string;
+  embedType: 'youtube' | 'vimeo' | 'twitter' | 'instagram' | 'generic';
+  originalHtml: string;
+}
+
+const { url, embedType, originalHtml } = Astro.props;
+
+// Extract video ID for YouTube/Vimeo
+function getVideoId(url: string, type: string): string | null {
+  if (type === 'youtube') {
+    // Handle multiple YouTube URL formats
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+      /youtube\.com\/embed\/([^&\n?#]+)/,
+      /youtube\.com\/v\/([^&\n?#]+)/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+  }
+  
+  if (type === 'vimeo') {
+    const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    return match?.[1] || null;
+  }
+  
+  return null;
+}
+
+const videoId = getVideoId(url, embedType);
+---
+
+<div class="wp-embed my-8">
+  {embedType === 'youtube' && videoId ? (
+    <div class="aspect-video bg-(--surface-secondary) rounded-lg overflow-hidden">
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}`}
+        title="YouTube video player"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+        class="w-full h-full"
+        loading="lazy"
+      />
+    </div>
+  ) : embedType === 'vimeo' && videoId ? (
+    <div class="aspect-video bg-(--surface-secondary) rounded-lg overflow-hidden">
+      <iframe
+        src={`https://player.vimeo.com/video/${videoId}`}
+        title="Vimeo video player"
+        frameborder="0"
+        allow="autoplay; fullscreen; picture-in-picture"
+        allowfullscreen
+        class="w-full h-full"
+        loading="lazy"
+      />
+    </div>
+  ) : embedType === 'twitter' ? (
+    <div class="max-w-lg mx-auto">
+      <!-- Twitter embeds require their script, so we'll show a link -->
+      <div class="border border-(--border-secondary) rounded-lg p-4 bg-(--surface-secondary)">
+        <div class="flex items-center gap-3 mb-3">
+          <svg class="w-6 h-6 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+          </svg>
+          <span class="font-semibold text-(--content-heading)">Twitter Post</span>
+        </div>
+        <a 
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          class="text-(--ui-accent) hover:underline"
+        >
+          View on Twitter →
+        </a>
+      </div>
+    </div>
+  ) : embedType === 'instagram' ? (
+    <div class="max-w-lg mx-auto">
+      <div class="border border-(--border-secondary) rounded-lg p-4 bg-(--surface-secondary)">
+        <div class="flex items-center gap-3 mb-3">
+          <svg class="w-6 h-6 text-pink-500" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987 6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.637.001 12.017.001zM8.23 18.148c-2.016 0-3.651-1.635-3.651-3.651V9.505c0-2.016 1.635-3.651 3.651-3.651h7.54c2.016 0 3.651 1.635 3.651 3.651v4.992c0 2.016-1.635 3.651-3.651 3.651H8.23z"/>
+          </svg>
+          <span class="font-semibold text-(--content-heading)">Instagram Post</span>
+        </div>
+        <a 
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          class="text-(--ui-accent) hover:underline"
+        >
+          View on Instagram →
+        </a>
+      </div>
+    </div>
+  ) : (
+    <!-- Fallback to original HTML -->
+    <div class="embed-fallback" set:html={originalHtml} />
+  )}
+</div>
