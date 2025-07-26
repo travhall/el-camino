@@ -1,0 +1,98 @@
+---
+// Test page for WordPress High-ROI Business Components
+import Layout from "@/layouts/Layout.astro";
+import WPProductShowcase from "@/components/wordpress/blocks/WPProductShowcase.astro";
+import WPEventBlock from "@/components/wordpress/blocks/WPEventBlock.astro";
+
+// Get some real product IDs for testing
+import { fetchProducts } from "@/lib/square/client";
+const allProducts = await fetchProducts();
+const sampleProductIds = allProducts.slice(0, 3).map(p => p.id);
+
+console.log("Sample product IDs for testing:", sampleProductIds);
+---
+
+<Layout title="WordPress Components Test | El Camino">
+  <div class="max-w-4xl mx-auto p-6 space-y-8">
+    <h1 class="font-display font-bold text-4xl text-(--content-heading) mb-8">
+      WordPress High-ROI Business Components Test
+    </h1>
+
+    <!-- Product Showcase Component Test -->
+    <section>
+      <h2 class="font-display font-bold text-2xl text-(--content-heading) mb-4">
+        Product Showcase Component
+      </h2>
+      
+      <WPProductShowcase
+        productSkus={sampleProductIds}
+        layout="grid"
+        columns={3}
+        title="Featured Products"
+        description="Check out these awesome products from our catalog"
+        showPrice={true}
+        showStock={true}
+        showCartButton={true}
+      />
+    </section>
+
+    <!-- Event Block Component Test -->
+    <section>
+      <h2 class="font-display font-bold text-2xl text-(--content-heading) mb-4">
+        Event Block Component
+      </h2>
+      
+      <WPEventBlock
+        title="Saturday Skate Session"
+        date="2025-08-15"
+        time="2:00 PM - 6:00 PM"
+        location="El Camino Skate Shop"
+        description="Join us for our weekly skate session! All skill levels welcome. Come meet the team and try out some new gear."
+        rsvpUrl="https://example.com/rsvp"
+        featuredProducts={sampleProductIds.slice(0, 2)}
+        imageUrl="https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop"
+        registrationRequired={false}
+      />
+    </section>
+
+    <!-- Product Showcase Carousel Test -->
+    <section>
+      <h2 class="font-display font-bold text-2xl text-(--content-heading) mb-4">
+        Product Showcase Carousel
+      </h2>
+      
+      <WPProductShowcase
+        productSkus={sampleProductIds}
+        layout="carousel"
+        columns={4}
+        title="Staff Picks"
+        description="Our team's favorite gear this month"
+        showPrice={true}
+        showStock={true}
+        showCartButton={true}
+      />
+    </section>
+
+    <!-- Testing with Invalid Product IDs -->
+    <section>
+      <h2 class="font-display font-bold text-2xl text-(--content-heading) mb-4">
+        Error Handling Test
+      </h2>
+      
+      <WPProductShowcase
+        productSkus={["INVALID_ID_1", "INVALID_ID_2"]}
+        layout="grid"
+        columns={2}
+        title="Missing Products Test"
+        description="This should show error handling for missing products"
+      />
+    </section>
+
+    <!-- Navigation back -->
+    <div class="mt-8 pt-8 border-t border-(--border-secondary)">
+      <a href="/" class="text-(--ui-accent) hover:underline">
+        ← Back to Home
+      </a>
+    </div>
+  </div>
+</Layout>

@@ -9,6 +9,8 @@ import WPEmbed from "./blocks/WPEmbed.astro";
 import WPImage from "./blocks/WPImage.astro";
 import WPColumns from "./blocks/WPColumns.astro";
 import WPButton from "./blocks/WPButton.astro";
+import WPProductShowcase from "./blocks/WPProductShowcase.astro";
+import WPEventBlock from "./blocks/WPEventBlock.astro";
 
 interface Props {
   content: string;
@@ -35,6 +37,16 @@ function parseWordPressBlocks(htmlContent: string): Array<{
   }
 
   const blockPatterns = [
+    {
+      type: "product-showcase",
+      regex: /<div[^>]*class="[^"]*wp-block-product-showcase[^"]*"[^>]*>[\s\S]*?<\/div>/g,
+      parser: parseProductShowcase,
+    },
+    {
+      type: "event",
+      regex: /<div[^>]*class="[^"]*wp-block-event[^"]*"[^>]*>[\s\S]*?<\/div>/g,
+      parser: parseEventBlock,
+    },
     {
       type: "jetpack-slideshow",
       regex:
@@ -492,6 +504,73 @@ function parseButton(html: string) {
   };
 }
 
+function parseProductShowcase(html: string) {
+  // Extract both product IDs and SKUs for backward compatibility and future enhancement
+  const productIds = extractProductIds(html);
+  const productSkus = extractProductSkus(html);
+  
+  // Display options
+  const layout = html.includes('data-layout="carousel"') ? 'carousel' : 
+                 html.includes('data-layout="list"') ? 'list' : 'grid';
+  const showPrice = !html.includes('data-hide-price="true"');
+  const showStock = !html.includes('data-hide-stock="true"');
+  const showCartButton = !html.includes('data-hide-cart="true"');
+  const columns = parseInt(html.match(/data-columns="(\d+)"/)?.[1] || '3');
+  
+  return {
+    // Prioritize product IDs (current implementation), fall back to SKUs (future enhancement)
+    productSkus: productIds.length > 0 ? productIds : productSkus,
+    layout,
+    showPrice,
+    showStock,
+    showCartButton,
+    columns,
+    title: html.match(/data-title="([^"]+)"/)?.[1] || '',
+    description: html.match(/data-description="([^"]+)"/)?.[1] || '',
+    fallbackIds: productIds, // For migration support
+  };
+}
+
+function extractProductSkus(html: string): string[] {
+  const skuMatch = html.match(/data-product-skus="([^"]+)"/);
+  return skuMatch ? skuMatch[1].split(',').map(sku => sku.trim()) : [];
+}
+
+function extractProductIds(html: string): string[] {
+  const idMatch = html.match(/data-product-ids="([^"]+)"/);
+  return idMatch ? idMatch[1].split(',').map(id => id.trim()) : [];
+}
+
+function parseEventBlock(html: string) {
+  // Extract event data from HTML attributes
+  const title = html.match(/data-title="([^"]+)"/)?.[1] || '';
+  const date = html.match(/data-date="([^"]+)"/)?.[1] || '';
+  const time = html.match(/data-time="([^"]+)"/)?.[1] || '';
+  const location = html.match(/data-location="([^"]+)"/)?.[1] || '';
+  const description = html.match(/data-description="([^"]+)"/)?.[1] || '';
+  const rsvpUrl = html.match(/data-rsvp-url="([^"]+)"/)?.[1] || '';
+  const imageUrl = html.match(/data-image="([^"]+)"/)?.[1] || '';
+  const registrationRequired = html.includes('data-registration-required="true"');
+  
+  // Extract featured products (product IDs)
+  const featuredProductsMatch = html.match(/data-featured-products="([^"]+)"/);
+  const featuredProducts = featuredProductsMatch 
+    ? featuredProductsMatch[1].split(',').map(id => id.trim()) 
+    : [];
+  
+  return {
+    title,
+    date,
+    time,
+    location,
+    description,
+    rsvpUrl,
+    imageUrl,
+    registrationRequired,
+    featuredProducts
+  };
+}
+
 // Parse the content
 const parsedBlocks = parseWordPressBlocks(content);
 
@@ -540,6 +619,40 @@ if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
       const blockClasses = isLastBlock ? "" : "mb-6";
 
       switch (block.type) {
+        case "product-showcase":
+          if (block.data.productSkus && block.data.productSkus.length > 0) {
+            return (
+              <div class={blockClasses}>
+                <WPProductShowcase {...block.data} />
+              </div>
+            );
+          } else if (import.meta.env.DEV) {
+            return (
+              <div class={`${blockClasses} bg-yellow-50 border border-yellow-200 p-4`}>
+                <p class="text-yellow-800">Product Showcase: No product IDs specified</p>
+                <p class="text-xs text-yellow-600 mt-1">Add data-product-ids="ID1,ID2" to configure</p>
+              </div>
+            );
+          }
+          break;
+
+        case "event":
+          if (block.data.title && block.data.date) {
+            return (
+              <div class={blockClasses}>
+                <WPEventBlock {...block.data} />
+              </div>
+            );
+          } else if (import.meta.env.DEV) {
+            return (
+              <div class={`${blockClasses} bg-yellow-50 border border-yellow-200 p-4`}>
+                <p class="text-yellow-800">Event Block: Missing title or date</p>
+                <p class="text-xs text-yellow-600 mt-1">Add data-title="Event Name" data-date="2025-08-15" to configure</p>
+              </div>
+            );
+          }
+          break;
+
         case "jetpack-slideshow":
           if (block.data.images && block.data.images.length > 0) {
             return (
