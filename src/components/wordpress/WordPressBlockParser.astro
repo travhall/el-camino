@@ -11,6 +11,7 @@ import WPColumns from "./blocks/WPColumns.astro";
 import WPButton from "./blocks/WPButton.astro";
 import WPProductShowcase from "./blocks/WPProductShowcase.astro";
 import WPEventBlock from "./blocks/WPEventBlock.astro";
+import WPTeamMember from "./blocks/WPTeamMember.astro";
 
 interface Props {
   content: string;
@@ -46,6 +47,11 @@ function parseWordPressBlocks(htmlContent: string): Array<{
       type: "event",
       regex: /<div[^>]*class="[^"]*wp-block-event[^"]*"[^>]*>[\s\S]*?<\/div>/g,
       parser: parseEventBlock,
+    },
+    {
+      type: "team-member",
+      regex: /<div[^>]*class="[^"]*wp-block-team-member[^"]*"[^>]*>[\s\S]*?<\/div>/g,
+      parser: parseTeamMember,
     },
     {
       type: "jetpack-slideshow",
@@ -571,6 +577,67 @@ function parseEventBlock(html: string) {
   };
 }
 
+function parseTeamMember(html: string) {
+  // Extract team member data from HTML attributes
+  const name = html.match(/data-name="([^"]+)"/)?.[1] || '';
+  const role = html.match(/data-role="([^"]+)"/)?.[1] || '';
+  const bio = html.match(/data-bio="([^"]+)"/)?.[1] || '';
+  const imageUrl = html.match(/data-image="([^"]+)"/)?.[1] || '';
+  const yearsSkating = html.match(/data-years-skating="(\d+)"/)?.[1];
+  const hometown = html.match(/data-hometown="([^"]+)"/)?.[1] || '';
+  
+  // Social links
+  const socialLinks: any = {};
+  const instagram = html.match(/data-instagram="([^"]+)"/)?.[1];
+  const youtube = html.match(/data-youtube="([^"]+)"/)?.[1];
+  const tiktok = html.match(/data-tiktok="([^"]+)"/)?.[1];
+  const website = html.match(/data-website="([^"]+)"/)?.[1];
+  
+  if (instagram) socialLinks.instagram = instagram;
+  if (youtube) socialLinks.youtube = youtube;
+  if (tiktok) socialLinks.tiktok = tiktok;
+  if (website) socialLinks.website = website;
+  
+  // Setup details
+  const setupDetails: any = {};
+  const deck = html.match(/data-setup-deck="([^"]+)"/)?.[1];
+  const trucks = html.match(/data-setup-trucks="([^"]+)"/)?.[1];
+  const wheels = html.match(/data-setup-wheels="([^"]+)"/)?.[1];
+  const bearings = html.match(/data-setup-bearings="([^"]+)"/)?.[1];
+  const grip = html.match(/data-setup-grip="([^"]+)"/)?.[1];
+  
+  if (deck) setupDetails.deck = deck;
+  if (trucks) setupDetails.trucks = trucks;
+  if (wheels) setupDetails.wheels = wheels;
+  if (bearings) setupDetails.bearings = bearings;
+  if (grip) setupDetails.grip = grip;
+  
+  // Achievements (comma-separated)
+  const achievementsMatch = html.match(/data-achievements="([^"]+)"/);
+  const achievements = achievementsMatch 
+    ? achievementsMatch[1].split(',').map(achievement => achievement.trim()) 
+    : [];
+  
+  // Favorite products (product IDs for now)
+  const favoriteProductsMatch = html.match(/data-favorite-products="([^"]+)"/);
+  const favoriteProducts = favoriteProductsMatch 
+    ? favoriteProductsMatch[1].split(',').map(id => id.trim()) 
+    : [];
+  
+  return {
+    name,
+    role,
+    bio,
+    imageUrl,
+    socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined,
+    setupDetails: Object.keys(setupDetails).length > 0 ? setupDetails : undefined,
+    achievements,
+    favoriteProducts,
+    yearsSkating: yearsSkating ? parseInt(yearsSkating, 10) : undefined,
+    hometown: hometown || undefined
+  };
+}
+
 // Parse the content
 const parsedBlocks = parseWordPressBlocks(content);
 
@@ -648,6 +715,23 @@ if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
               <div class={`${blockClasses} bg-yellow-50 border border-yellow-200 p-4`}>
                 <p class="text-yellow-800">Event Block: Missing title or date</p>
                 <p class="text-xs text-yellow-600 mt-1">Add data-title="Event Name" data-date="2025-08-15" to configure</p>
+              </div>
+            );
+          }
+          break;
+
+        case "team-member":
+          if (block.data.name && block.data.role) {
+            return (
+              <div class={blockClasses}>
+                <WPTeamMember {...block.data} />
+              </div>
+            );
+          } else if (import.meta.env.DEV) {
+            return (
+              <div class={`${blockClasses} bg-yellow-50 border border-yellow-200 p-4`}>
+                <p class="text-yellow-800">Team Member Block: Missing name or role</p>
+                <p class="text-xs text-yellow-600 mt-1">Add data-name="John Doe" data-role="Pro Rider" to configure</p>
               </div>
             );
           }

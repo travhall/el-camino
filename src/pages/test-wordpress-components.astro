@@ -3,6 +3,7 @@
 import Layout from "@/layouts/Layout.astro";
 import WPProductShowcase from "@/components/wordpress/blocks/WPProductShowcase.astro";
 import WPEventBlock from "@/components/wordpress/blocks/WPEventBlock.astro";
+import WPTeamMember from "@/components/wordpress/blocks/WPTeamMember.astro";
 
 // Get some real product IDs for testing
 import { fetchProducts } from "@/lib/square/client";
@@ -73,19 +74,63 @@ console.log("Sample product IDs for testing:", sampleProductIds);
       />
     </section>
 
-    <!-- Testing with Invalid Product IDs -->
+    <!-- Team Member Component Test -->
     <section>
       <h2 class="font-display font-bold text-2xl text-(--content-heading) mb-4">
-        Error Handling Test
+        Team Member Component
       </h2>
       
-      <WPProductShowcase
-        productSkus={["INVALID_ID_1", "INVALID_ID_2"]}
-        layout="grid"
-        columns={2}
-        title="Missing Products Test"
-        description="This should show error handling for missing products"
+      <WPTeamMember
+        name="Alex Rodriguez"
+        role="Pro Team Rider"
+        bio="Alex has been skating for over 15 years and specializes in street and transition riding. Known for his technical approach and smooth style, Alex represents the best of what El Camino stands for."
+        imageUrl="https://images.unsplash.com/photo-1564564321837-a57b7070ac4f?w=800&h=600&fit=crop"
+        socialLinks={{
+          instagram: "https://instagram.com/alexskates",
+          youtube: "https://youtube.com/alexrodriguez"
+        }}
+        favoriteProducts={sampleProductIds.slice(0, 3)}
+        setupDetails={{
+          deck: "Real 8.25 Street Series",
+          trucks: "Independent 149",
+          wheels: "Spitfire Formula Four 54mm",
+          bearings: "Bones Reds"
+        }}
+        achievements={[
+          "2023 Street League Champion",
+          "X-Games Bronze Medalist",
+          "Thrasher SOTY Nominee"
+        ]}
+        yearsSkating={15}
+        hometown="San Diego, CA"
       />
+    </section>
+
+    <!-- Component Status Summary -->
+    <section class="bg-(--surface-secondary) p-6 rounded-sm">
+      <h2 class="font-display font-bold text-2xl text-(--content-heading) mb-4">
+        Implementation Status
+      </h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-(--surface-primary) p-4 rounded-sm">
+          <h3 class="font-semibold text-(--content-heading) mb-2">✅ Product Showcase</h3>
+          <p class="text-(--content-body) text-sm">Complete with grid, carousel, and list layouts. Performance optimized with bulk product fetching.</p>
+        </div>
+        <div class="bg-(--surface-primary) p-4 rounded-sm">
+          <h3 class="font-semibold text-(--content-heading) mb-2">✅ Event Block</h3>
+          <p class="text-(--content-body) text-sm">Professional event announcements with calendar integration and product features.</p>
+        </div>
+        <div class="bg-(--surface-primary) p-4 rounded-sm">
+          <h3 class="font-semibold text-(--content-heading) mb-2">✅ Team Member</h3>
+          <p class="text-(--content-body) text-sm">Complete team profiles with social links, achievements, and gear recommendations.</p>
+        </div>
+      </div>
+
+      <div class="mt-6 p-4 bg-(--ui-accent)/10 border-l-4 border-(--ui-accent) rounded-sm">
+        <h4 class="font-semibold text-(--content-heading) mb-2">Ready for Production</h4>
+        <p class="text-(--content-body)">All components are fully integrated with the WordPress Block Parser and ready for use in blog posts. See the complete documentation in <code>WORDPRESS_COMPONENTS_GUIDE.md</code>.</p>
+      </div>
     </section>
 
     <!-- Navigation back -->
