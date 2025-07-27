@@ -183,20 +183,38 @@ const aspectRatioClasses = {
 
 <script>
   // Enhanced slideshow functionality - Fixed to work with dynamic loading
-  function initializeSlideshow(slideshowElement: HTMLElement): (() => void) | undefined {
+  function initializeSlideshow(
+    slideshowElement: HTMLElement
+  ): (() => void) | undefined {
     const slideshowId = (slideshowElement as HTMLElement).dataset.slideshowId;
-    const autoplay = (slideshowElement as HTMLElement).dataset.autoplay === "true";
-    const delay = parseInt((slideshowElement as HTMLElement).dataset.delay || "3000", 10);
+    const autoplay =
+      (slideshowElement as HTMLElement).dataset.autoplay === "true";
+    const delay = parseInt(
+      (slideshowElement as HTMLElement).dataset.delay || "3000",
+      10
+    );
 
     const slides = slideshowElement.querySelectorAll(
       ".slide:not(.slide-loading)"
     ) as NodeListOf<HTMLElement>;
-    const dots = slideshowElement.querySelectorAll(".slide-dot") as NodeListOf<HTMLButtonElement>;
-    const prevButton = slideshowElement.querySelector(".slide-prev") as HTMLButtonElement | null;
-    const nextButton = slideshowElement.querySelector(".slide-next") as HTMLButtonElement | null;
-    const autoplayToggle = slideshowElement.querySelector(".autoplay-toggle") as HTMLButtonElement | null;
-    const currentSlideSpan = slideshowElement.querySelector(".current-slide") as HTMLSpanElement | null;
-    const loadingElement = slideshowElement.querySelector(".slide-loading") as HTMLElement | null;
+    const dots = slideshowElement.querySelectorAll(
+      ".slide-dot"
+    ) as NodeListOf<HTMLButtonElement>;
+    const prevButton = slideshowElement.querySelector(
+      ".slide-prev"
+    ) as HTMLButtonElement | null;
+    const nextButton = slideshowElement.querySelector(
+      ".slide-next"
+    ) as HTMLButtonElement | null;
+    const autoplayToggle = slideshowElement.querySelector(
+      ".autoplay-toggle"
+    ) as HTMLButtonElement | null;
+    const currentSlideSpan = slideshowElement.querySelector(
+      ".current-slide"
+    ) as HTMLSpanElement | null;
+    const loadingElement = slideshowElement.querySelector(
+      ".slide-loading"
+    ) as HTMLElement | null;
 
     if (slides.length === 0) return;
 
@@ -273,8 +291,12 @@ const aspectRatioClasses = {
       autoplayInterval = setInterval(nextSlide, delay);
 
       if (autoplayToggle) {
-        const playIcon = autoplayToggle.querySelector(".play-icon") as HTMLElement | null;
-        const pauseIcon = autoplayToggle.querySelector(".pause-icon") as HTMLElement | null;
+        const playIcon = autoplayToggle.querySelector(
+          ".play-icon"
+        ) as HTMLElement | null;
+        const pauseIcon = autoplayToggle.querySelector(
+          ".pause-icon"
+        ) as HTMLElement | null;
         if (playIcon) playIcon.classList.add("hidden");
         if (pauseIcon) pauseIcon.classList.remove("hidden");
       }
@@ -287,8 +309,12 @@ const aspectRatioClasses = {
       }
 
       if (autoplayToggle) {
-        const playIcon = autoplayToggle.querySelector(".play-icon") as HTMLElement | null;
-        const pauseIcon = autoplayToggle.querySelector(".pause-icon") as HTMLElement | null;
+        const playIcon = autoplayToggle.querySelector(
+          ".play-icon"
+        ) as HTMLElement | null;
+        const pauseIcon = autoplayToggle.querySelector(
+          ".pause-icon"
+        ) as HTMLElement | null;
         if (playIcon) playIcon.classList.remove("hidden");
         if (pauseIcon) pauseIcon.classList.add("hidden");
       }
@@ -407,7 +433,9 @@ const aspectRatioClasses = {
 
   // Initialize slideshows when content loads
   document.addEventListener("astro:page-load", () => {
-    const slideshows = document.querySelectorAll(".jetpack-slideshow") as NodeListOf<HTMLElement>;
+    const slideshows = document.querySelectorAll(
+      ".jetpack-slideshow"
+    ) as NodeListOf<HTMLElement>;
     const cleanupFunctions: (() => void)[] = [];
 
     slideshows.forEach((slideshow: HTMLElement) => {
@@ -428,7 +456,9 @@ const aspectRatioClasses = {
   if (typeof window !== "undefined") {
     // Small delay to ensure DOM is ready
     setTimeout(() => {
-      const slideshows = document.querySelectorAll(".jetpack-slideshow") as NodeListOf<HTMLElement>;
+      const slideshows = document.querySelectorAll(
+        ".jetpack-slideshow"
+      ) as NodeListOf<HTMLElement>;
       slideshows.forEach((slideshow: HTMLElement) => {
         if (!(slideshow as HTMLElement).dataset.initialized) {
           (slideshow as HTMLElement).dataset.initialized = "true";

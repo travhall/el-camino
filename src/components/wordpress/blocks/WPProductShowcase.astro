@@ -1,5 +1,5 @@
 ---
-// src/components/wordpress/blocks/WPProductShowcase.astro - PERFORMANCE OPTIMIZED
+// src/components/wordpress/blocks/WPProductShowcase.astro - PRODUCTION READY
 import ProductCard from "@/components/ProductCard.astro";
 import { fetchProducts } from "@/lib/square/client";
 
@@ -34,34 +34,84 @@ let errors = [];
 try {
   const allProducts = await fetchProducts(); // Single cached call for entire site
 
-  // Primary: Match by product ID and fallback SKU approach for future enhancement
+  // Enhanced matching with multiple strategies
   products = productSkus
-    .map((sku) => {
-      // Current approach: match by ID (since SKUs aren't implemented yet)
-      // Future enhancement: add actual SKU matching when SKU field is added to Product type
-      const product = allProducts.find(
+    .map((identifier) => {
+      const searchIdentifier = identifier.trim();
+      let matchedProduct = null;
+
+      // 1. Exact human-readable SKU match (case insensitive)
+      matchedProduct = allProducts.find(
         (p) =>
-          p.id === sku ||
-          p.catalogObjectId === sku ||
-          // Future SKU matching (when implemented):
-          // p.sku === sku ||
-          // p.variations?.some(v => v.sku === sku) ||
-          // For now, also try matching by title fragments for easier content management
-          p.title.toLowerCase().includes(sku.toLowerCase())
+          p.humanReadableSku &&
+          p.humanReadableSku.toLowerCase() === searchIdentifier.toLowerCase()
       );
 
-      if (!product) {
-        errors.push(`Product not found: ${sku}`);
-        return null;
+      // 2. Exact Square SKU match
+      if (!matchedProduct) {
+        matchedProduct = allProducts.find(
+          (p) => p.sku && p.sku === searchIdentifier
+        );
+      }
+
+      // 3. Product ID match (backward compatibility)
+      if (!matchedProduct) {
+        matchedProduct = allProducts.find((p) => {
+          return (
+            p.id === searchIdentifier || p.catalogObjectId === searchIdentifier
+          );
+        });
+      }
+
+      // 4. Variation SKU match
+      if (!matchedProduct) {
+        matchedProduct = allProducts.find((p) =>
+          p.variations?.some((v) => v.sku === searchIdentifier)
+        );
+      }
+
+      // 5. Partial title match (case insensitive)
+      if (!matchedProduct) {
+        matchedProduct = allProducts.find((p) =>
+          p.title.toLowerCase().includes(searchIdentifier.toLowerCase())
+        );
+      }
+
+      // 6. Fuzzy brand + title match
+      if (!matchedProduct) {
+        const searchParts = searchIdentifier.toLowerCase().split("-");
+        if (searchParts.length >= 2) {
+          const [brandPart, ...titleParts] = searchParts;
+          matchedProduct = allProducts.find((p) => {
+            const productTitle = p.title.toLowerCase();
+            const productBrand = (p.brand || "").toLowerCase();
+            return (
+              (productBrand.includes(brandPart) ||
+                productTitle.includes(brandPart)) &&
+              titleParts.some((part) => productTitle.includes(part))
+            );
+          });
+        }
+      }
+
+      if (!matchedProduct) {
+        errors.push(`Product not found: ${searchIdentifier}`);
       }
 
       // Validate product has required properties for ProductCard
-      if (!product.image || !product.title || !product.price) {
-        errors.push(`Product ${sku} missing required data (image, title, or price)`);
+      if (
+        matchedProduct &&
+        (!matchedProduct.image ||
+          !matchedProduct.title ||
+          !matchedProduct.price)
+      ) {
+        errors.push(
+          `Product ${searchIdentifier} missing required data (image, title, or price)`
+        );
         return null;
       }
 
-      return product;
+      return matchedProduct;
     })
     .filter(Boolean);
 
@@ -77,7 +127,9 @@ try {
 
         // Validate product has required properties for ProductCard
         if (!product.image || !product.title || !product.price) {
-          errors.push(`Product ${id} missing required data (image, title, or price)`);
+          errors.push(
+            `Product ${id} missing required data (image, title, or price)`
+          );
           return null;
         }
 
@@ -126,7 +178,11 @@ const gridClass =
           <div class={`grid ${gridClass} gap-4`}>
             {products.map((product) => (
               <div class="showcase-product-card">
-                <ProductCard product={product} priority={false} skipInventoryCheck={true} />
+                <ProductCard
+                  product={product}
+                  priority={false}
+                  skipInventoryCheck={true}
+                />
               </div>
             ))}
           </div>
@@ -137,7 +193,11 @@ const gridClass =
             <div class="flex gap-4 pb-4" style="width: max-content;">
               {products.map((product) => (
                 <div class="showcase-product-card flex-shrink-0 w-80">
-                  <ProductCard product={product} priority={false} skipInventoryCheck={true} />
+                  <ProductCard
+                    product={product}
+                    priority={false}
+                    skipInventoryCheck={true}
+                  />
                 </div>
               ))}
             </div>
@@ -148,7 +208,11 @@ const gridClass =
           <div class="space-y-4">
             {products.map((product) => (
               <div class="showcase-product-card">
-                <ProductCard product={product} priority={false} skipInventoryCheck={true} />
+                <ProductCard
+                  product={product}
+                  priority={false}
+                  skipInventoryCheck={true}
+                />
               </div>
             ))}
           </div>
@@ -157,9 +221,9 @@ const gridClass =
     )
   }
 
-  <!-- Enhanced Error Handling -->
+  <!-- Error Handling (Development Only) -->
   {
-    errors.length > 0 && (
+    errors.length > 0 && import.meta.env.DEV && (
       <div class="mt-4 p-4 bg-state-warning-surface text-state-warning-text rounded-sm">
         <h4 class="font-semibold mb-2">Product Showcase Notice:</h4>
         <ul class="text-sm">
@@ -167,11 +231,6 @@ const gridClass =
             <li>• {error}</li>
           ))}
         </ul>
-        {import.meta.env.DEV && (
-          <p class="text-xs mt-2 opacity-75">
-            Available IDs: {productSkus.join(", ") || "None specified"}
-          </p>
-        )}
       </div>
     )
   }
@@ -219,23 +278,5 @@ const gridClass =
 
   .showcase-product-card:hover {
     transform: translateY(-2px);
-  }
-
-  /* Loading skeleton for slow connections */
-  .showcase-product-card:empty {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    background: var(--surface-tertiary);
-    border-radius: 0.25rem;
-    height: 300px;
-  }
-
-  @keyframes pulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
   }
 </style>

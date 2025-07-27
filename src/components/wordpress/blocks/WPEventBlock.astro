@@ -1,6 +1,5 @@
 ---
 // src/components/wordpress/blocks/WPEventBlock.astro
-import Button from "@/components/Button.astro";
 import WPProductShowcase from "./WPProductShowcase.astro";
 
 interface Props {
@@ -161,28 +160,26 @@ const eventStructuredData = {
       <!-- Action Buttons -->
       <div class="flex flex-wrap gap-3">
         {isUpcoming && rsvpUrl && (
-          <Button
+          <a
             href={rsvpUrl}
-            variant="primary"
-            size="md"
+            class="bg-ui-accent hover:bg-ui-accent-hover text-white px-6 py-3 rounded-sm font-semibold transition-colors inline-block"
             target="_blank"
             rel="noopener noreferrer"
           >
             {registrationRequired ? 'Register Now' : 'RSVP'}
-          </Button>
+          </a>
         )}
         
         {isUpcoming && (
-          <Button
+          <a
             href={`data:text/calendar;charset=utf8,${encodeURIComponent(
               `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${startDateISO.replace(/[-:]/g, '').split('.')[0]}Z\nSUMMARY:${title}\nDESCRIPTION:${description}\nLOCATION:${location || 'El Camino Skate Shop'}\nEND:VEVENT\nEND:VCALENDAR`
             )}`}
-            variant="secondary"
-            size="md"
+            class="bg-surface-tertiary hover:bg-ui-accent hover:text-white text-content-heading px-6 py-3 rounded-sm font-semibold transition-colors inline-block"
             download={`${title.replace(/\s+/g, '-')}-event.ics`}
           >
             Add to Calendar
-          </Button>
+          </a>
         )}
       </div>
     </div>

@@ -1,6 +1,6 @@
 ---
 // src/components/wordpress/WordPressBlockParser.astro
-// FIXED: Groups consecutive image blocks into unified galleries
+// Clean WordPress block parser with all debugging removed
 
 import JetpackSlideshow from "./blocks/JetpackSlideshow.astro";
 import WPGallery from "./blocks/WPGallery.astro";
@@ -17,7 +17,7 @@ interface Props {
   content: string;
   enhanceBlocks?: boolean;
   debug?: boolean;
-  groupImages?: boolean; // NEW: Option to group consecutive images into galleries
+  groupImages?: boolean;
 }
 
 const {
@@ -55,38 +55,32 @@ function parseWordPressBlocks(htmlContent: string): Array<{
     },
     {
       type: "jetpack-slideshow",
-      regex:
-        /<div[^>]*class="[^"]*wp-block-jetpack-slideshow[^"]*"[^>]*>[\s\S]*?<\/div>/g,
+      regex: /<div[^>]*class="[^"]*wp-block-jetpack-slideshow[^"]*"[^>]*>[\s\S]*?<\/div>/g,
       parser: parseJetpackSlideshow,
     },
     {
       type: "gallery",
-      regex:
-        /<figure[^>]*class="[^"]*wp-block-gallery[^"]*"[^>]*>[\s\S]*?<\/figure>/g,
+      regex: /<figure[^>]*class="[^"]*wp-block-gallery[^"]*"[^>]*>[\s\S]*?<\/figure>/g,
       parser: parseGallery,
     },
     {
       type: "embed",
-      regex:
-        /<figure[^>]*class="[^"]*wp-block-embed[^"]*"[^>]*>[\s\S]*?<\/figure>/g,
+      regex: /<figure[^>]*class="[^"]*wp-block-embed[^"]*"[^>]*>[\s\S]*?<\/figure>/g,
       parser: parseEmbed,
     },
     {
       type: "quote",
-      regex:
-        /<(?:blockquote|figure)[^>]*class="[^"]*wp-block-quote[^"]*"[^>]*>[\s\S]*?<\/(?:blockquote|figure)>/g,
+      regex: /<(?:blockquote|figure)[^>]*class="[^"]*wp-block-quote[^"]*"[^>]*>[\s\S]*?<\/(?:blockquote|figure)>/g,
       parser: parseQuote,
     },
     {
       type: "image",
-      regex:
-        /<figure[^>]*class="[^"]*wp-block-image[^"]*"[^>]*>[\s\S]*?<\/figure>/g,
+      regex: /<figure[^>]*class="[^"]*wp-block-image[^"]*"[^>]*>[\s\S]*?<\/figure>/g,
       parser: parseImage,
     },
     {
       type: "columns",
-      regex:
-        /<div[^>]*class="[^"]*wp-block-columns[^"]*"[^>]*>[\s\S]*?<\/div>/g,
+      regex: /<div[^>]*class="[^"]*wp-block-columns[^"]*"[^>]*>[\s\S]*?<\/div>/g,
       parser: parseColumns,
     },
     {
@@ -99,391 +93,296 @@ function parseWordPressBlocks(htmlContent: string): Array<{
   // Find all blocks with their positions
   const allMatches: Array<{
     type: string;
-    match: RegExpMatchArray;
-    parser: Function;
+    match: string;
+    start: number;
+    end: number;
+    data: any;
   }> = [];
 
-  for (const pattern of blockPatterns) {
+  blockPatterns.forEach((pattern) => {
     const matches = Array.from(htmlContent.matchAll(pattern.regex));
-    for (const match of matches) {
-      allMatches.push({
-        type: pattern.type,
-        match,
-        parser: pattern.parser,
-      });
-    }
-  }
+    matches.forEach((match) => {
+      if (match.index !== undefined) {
+        try {
+          const data = pattern.parser(match[0]);
+          allMatches.push({
+            type: pattern.type,
+            match: match[0],
+            start: match.index,
+            end: match.index + match[0].length,
+            data,
+          });
+        } catch (error) {
+          console.warn(`Error parsing ${pattern.type} block:`, error);
+          // Fallback to text content
+          allMatches.push({
+            type: "raw",
+            match: match[0],
+            start: match.index,
+            end: match.index + match[0].length,
+            data: {},
+          });
+        }
+      }
+    });
+  });
 
-  // Sort by position in original content
-  allMatches.sort((a, b) => (a.match.index || 0) - (b.match.index || 0));
+  // Sort matches by position
+  allMatches.sort((a, b) => a.start - b.start);
 
-  // Process matches and split content
-  let currentIndex = 0;
-  const rawBlocks: Array<{
+  // Process non-overlapping matches and extract remaining content
+  const processedBlocks: Array<{
     type: string;
     html: string;
     data: any;
     originalIndex: number;
   }> = [];
 
-  for (const { type, match, parser } of allMatches) {
-    const matchStart = match.index || 0;
-    const matchEnd = matchStart + match[0].length;
+  let lastEnd = 0;
+  let usedRanges: Array<{ start: number; end: number }> = [];
 
-    // Add any text content before this block
-    if (matchStart > currentIndex) {
-      const textContent = htmlContent.slice(currentIndex, matchStart).trim();
-      if (textContent) {
-        rawBlocks.push({
-          type: "text",
-          html: textContent,
-          data: {},
-          originalIndex: currentIndex,
-        });
+  allMatches.forEach((match) => {
+    // Check if this match overlaps with any used range
+    const overlaps = usedRanges.some(
+      (range) =>
+        (match.start >= range.start && match.start < range.end) ||
+        (match.end > range.start && match.end <= range.end) ||
+        (match.start <= range.start && match.end >= range.end)
+    );
+
+    if (!overlaps) {
+      // Add any content before this match
+      if (match.start > lastEnd) {
+        const textContent = htmlContent.slice(lastEnd, match.start).trim();
+        if (textContent) {
+          processedBlocks.push({
+            type: "raw",
+            html: textContent,
+            data: {},
+            originalIndex: lastEnd,
+          });
+        }
       }
-    }
 
-    // Add the block
-    try {
-      const blockData = parser(match[0]);
-      rawBlocks.push({
-        type,
-        html: match[0],
-        data: blockData,
-        originalIndex: matchStart,
+      // Add the matched block
+      processedBlocks.push({
+        type: match.type,
+        html: match.match,
+        data: match.data,
+        originalIndex: match.start,
       });
-    } catch (error) {
-      console.warn(`Error parsing ${type} block:`, error);
-      if (debug) {
-        console.log("Failed to parse block HTML:", match[0]);
-      }
-      // Fallback to text content
-      rawBlocks.push({
-        type: "text",
-        html: match[0],
-        data: {},
-        originalIndex: matchStart,
-      });
+
+      usedRanges.push({ start: match.start, end: match.end });
+      lastEnd = match.end;
     }
+  });
 
-    currentIndex = matchEnd;
-  }
-
-  // Add any remaining text content
-  if (currentIndex < htmlContent.length) {
-    const textContent = htmlContent.slice(currentIndex).trim();
-    if (textContent) {
-      rawBlocks.push({
-        type: "text",
-        html: textContent,
+  // Add any remaining content
+  if (lastEnd < htmlContent.length) {
+    const remainingContent = htmlContent.slice(lastEnd).trim();
+    if (remainingContent) {
+      processedBlocks.push({
+        type: "raw",
+        html: remainingContent,
         data: {},
-        originalIndex: currentIndex,
+        originalIndex: lastEnd,
       });
     }
   }
 
-  // NEW: Group consecutive images and single-image galleries into unified galleries
+  // Group consecutive images into galleries if enabled
   if (groupImages) {
-    return groupImageBlocks(rawBlocks, debug);
-  }
+    const finalBlocks: typeof processedBlocks = [];
+    let i = 0;
 
-  return rawBlocks.length > 0
-    ? rawBlocks
-    : [{ type: "raw", html: htmlContent, data: {}, originalIndex: 0 }];
-}
-
-// NEW: Groups consecutive image blocks into unified galleries
-function groupImageBlocks(
-  blocks: Array<{
-    type: string;
-    html: string;
-    data: any;
-    originalIndex: number;
-  }>,
-  debug: boolean = false
-): Array<{
-  type: string;
-  html: string;
-  data: any;
-  originalIndex: number;
-}> {
-  const groupedBlocks: typeof blocks = [];
-  let i = 0;
-
-  while (i < blocks.length) {
-    const currentBlock = blocks[i];
-
-    // Check if current block is an image or single-image gallery
-    const isImageBlock = currentBlock.type === "image" && currentBlock.data.src;
-    const isSingleImageGallery =
-      currentBlock.type === "gallery" &&
-      currentBlock.data.images &&
-      currentBlock.data.images.length === 1;
-
-    if (isImageBlock || isSingleImageGallery) {
-      // Start collecting consecutive image blocks
-      const imageGroup: Array<{ src: string; alt: string; caption?: string }> =
-        [];
-      let j = i;
-
-      // Collect all consecutive image blocks
-      while (j < blocks.length) {
-        const block = blocks[j];
-        const blockIsImage = block.type === "image" && block.data.src;
-        const blockIsSingleGallery =
-          block.type === "gallery" &&
-          block.data.images &&
-          block.data.images.length === 1;
-
-        if (blockIsImage) {
-          const newImage = {
-            src: block.data.src,
-            alt: block.data.alt || "",
-            caption: block.data.caption,
-          };
-          // Check for duplicates by src URL
-          if (!imageGroup.find((img) => img.src === newImage.src)) {
-            imageGroup.push(newImage);
+    while (i < processedBlocks.length) {
+      const currentBlock = processedBlocks[i];
+      
+      // Check if current block is an image or single-image gallery
+      const isImageBlock = currentBlock.type === "image" && currentBlock.data.src;
+      const isSingleImageGallery = currentBlock.type === "gallery" && 
+                                   currentBlock.data.images && 
+                                   currentBlock.data.images.length === 1;
+      
+      if (isImageBlock || isSingleImageGallery) {
+        // Start collecting consecutive image blocks
+        const imageGroup: Array<{ src: string; alt: string; caption?: string }> = [];
+        let j = i;
+        
+        // Collect all consecutive image blocks
+        while (j < processedBlocks.length) {
+          const block = processedBlocks[j];
+          const blockIsImage = block.type === "image" && block.data.src;
+          const blockIsSingleGallery = block.type === "gallery" && 
+                                      block.data.images && 
+                                      block.data.images.length === 1;
+          
+          if (blockIsImage) {
+            const newImage = {
+              src: block.data.src,
+              alt: block.data.alt || "",
+              caption: block.data.caption
+            };
+            // Check for duplicates by src URL
+            if (!imageGroup.find(img => img.src === newImage.src)) {
+              imageGroup.push(newImage);
+            }
+          } else if (blockIsSingleGallery) {
+            const newImage = block.data.images[0];
+            // Check for duplicates by src URL
+            if (!imageGroup.find(img => img.src === newImage.src)) {
+              imageGroup.push(newImage);
+            }
+          } else {
+            break; // Stop collecting when we hit a non-image block
           }
-        } else if (blockIsSingleGallery) {
-          const newImage = block.data.images[0];
-          // Check for duplicates by src URL
-          if (!imageGroup.find((img) => img.src === newImage.src)) {
-            imageGroup.push(newImage);
-          }
+          
+          j++;
+        }
+        
+        // Only group if we have more than one image
+        if (imageGroup.length > 1) {
+          // Create unified gallery block
+          finalBlocks.push({
+            type: "gallery",
+            html: processedBlocks.slice(i, j).map(b => b.html).join('\n'),
+            data: {
+              images: imageGroup,
+              columns: Math.min(imageGroup.length, 4), // Max 4 columns
+              linkTo: "file" // Enable lightbox
+            },
+            originalIndex: currentBlock.originalIndex
+          });
+          
+          i = j; // Skip all the grouped blocks
         } else {
-          break; // Stop collecting when we hit a non-image block
+          // Single image, keep as is
+          finalBlocks.push(currentBlock);
+          i++;
         }
-
-        j++;
-      }
-
-      // Only group if we have more than one image
-      if (imageGroup.length > 1) {
-        if (debug) {
-          console.log(
-            `🔗 Grouping ${imageGroup.length} consecutive images into unified gallery`
-          );
-        }
-
-        // Create unified gallery block
-        groupedBlocks.push({
-          type: "gallery",
-          html: blocks
-            .slice(i, j)
-            .map((b) => b.html)
-            .join("\n"),
-          data: {
-            images: imageGroup,
-            columns: Math.min(imageGroup.length, 4), // Max 4 columns
-            linkTo: "file", // Enable lightbox
-          },
-          originalIndex: currentBlock.originalIndex,
-        });
-
-        i = j; // Skip all the grouped blocks
       } else {
-        // Single image, keep as is
-        groupedBlocks.push(currentBlock);
+        // Non-image block, keep as is
+        finalBlocks.push(currentBlock);
         i++;
       }
-    } else {
-      // Non-image block, keep as is
-      groupedBlocks.push(currentBlock);
-      i++;
     }
+
+    return finalBlocks;
   }
 
-  return groupedBlocks;
+  return processedBlocks;
 }
 
-// Parsing functions (updated for better image extraction)
+// Block parser functions
 function parseJetpackSlideshow(html: string) {
-  const images: Array<{ src: string; alt: string; caption?: string }> = [];
+  const imagePattern = /<img[^>]*src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*>/g;
+  const images = [];
+  let match;
 
-  const imgPatterns = [
-    /<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g,
-    /<img[^>]+alt="([^"]*)"[^>]*src="([^"]+)"[^>]*>/g,
-    /<img[^>]+src="([^"]+)"[^>]*>/g,
-  ];
-
-  for (const pattern of imgPatterns) {
-    let match;
-    while ((match = pattern.exec(html)) !== null) {
-      let src, alt;
-      if (pattern.source.includes('src="([^"]+)"[^>]*alt')) {
-        src = match[1];
-        alt = match[2] || "";
-      } else if (pattern.source.includes('alt="([^"]*)"[^>]*src')) {
-        alt = match[1] || "";
-        src = match[2];
-      } else {
-        src = match[1];
-        alt = "";
-      }
-
-      if (!images.find((img) => img.src === src)) {
-        images.push({ src, alt });
-      }
-    }
-    pattern.lastIndex = 0;
+  while ((match = imagePattern.exec(html)) !== null) {
+    images.push({
+      src: match[1],
+      alt: match[2] || "",
+      caption: "",
+    });
   }
 
-  const autoplay =
-    html.includes('data-autoplay="true"') || html.includes("autoplay");
-  const delayMatch = html.match(/data-delay="(\d+)"/);
-  const delay = delayMatch ? parseInt(delayMatch[1], 10) : 3000;
-
-  return { images, autoplay, delay };
+  return { images };
 }
 
 function parseGallery(html: string) {
   const images: Array<{ src: string; alt: string; caption?: string }> = [];
-
+  
+  // FIXED: Handle WordPress 5.9+ "has-nested-images" structure
   const hasNestedImages = html.includes("has-nested-images");
-
+  
   if (hasNestedImages) {
-    // Modern WordPress 5.9+ structure
-    const nestedFigurePattern =
-      /<figure[^>]*class="[^"]*wp-block-image[^"]*"[^>]*>([\s\S]*?)<\/figure>/g;
+    // Modern WordPress 5.9+ structure: Extract from nested figure.wp-block-image elements
+    const nestedFigurePattern = /<figure[^>]*class="[^"]*wp-block-image[^"]*"[^>]*>([\s\S]*?)<\/figure>/g;
     let figureMatch;
-
+    
     while ((figureMatch = nestedFigurePattern.exec(html)) !== null) {
       const figureContent = figureMatch[1];
-      const imgMatch = figureContent.match(
-        /<img[^>]+src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*>/
-      );
-
+      const imgMatch = figureContent.match(/<img[^>]+src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*>/);
+      
       if (imgMatch) {
         let src = imgMatch[1];
         const alt = imgMatch[2] || "";
-
-        // Clean URL parameters
+        
+        // Clean up WordPress.com size parameters
         src = src.replace(/\?w=\d+(&h=\d+)?$/, "").replace(/\?$/, "");
         images.push({ src, alt });
       }
     }
   } else {
-    // Legacy gallery structure
+    // Legacy gallery structure: Direct img extraction
     const imgPattern = /<img[^>]+src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*>/g;
     let match;
-
+    
     while ((match = imgPattern.exec(html)) !== null) {
       let src = match[1];
       const alt = match[2] || "";
-
+      
+      // Clean URL parameters
       src = src.replace(/\?w=\d+(&h=\d+)?$/, "").replace(/\?$/, "");
-
+      
       if (!images.find((img) => img.src === src)) {
         images.push({ src, alt });
       }
     }
   }
 
+  // Extract gallery settings
   const columnsMatch = html.match(/columns-(\d+)/);
   const columns = columnsMatch ? parseInt(columnsMatch[1], 10) : 3;
-  const linkTo =
-    html.includes('data-link="file"') ||
-    html.includes('data-link-destination="media"')
-      ? "file"
-      : "none";
+  const linkTo = html.includes('data-link="file"') || 
+                 html.includes('data-link-destination="media"') ? "file" : "file"; // Default to file for lightbox
 
   return { images, columns, linkTo };
 }
 
 function parseQuote(html: string) {
-  let quote = "";
-  let cite = "";
+  const quoteMatch = html.match(/<(?:blockquote|p)[^>]*>(.*?)<\/(?:blockquote|p)>/s);
+  const citeMatch = html.match(/<cite[^>]*>(.*?)<\/cite>/s) || 
+                   html.match(/—\s*(.+?)$/m);
 
-  const quotePatterns = [
-    /<p[^>]*>(.*?)<\/p>/s,
-    /<blockquote[^>]*[^>]*>(.*?)<\/blockquote>/s,
-    />([^<]+(?:<(?!\/)[^>]*>[^<]*<\/[^>]+>[^<]*)*)</s,
-  ];
-
-  for (const pattern of quotePatterns) {
-    const match = html.match(pattern);
-    if (match && match[1].trim()) {
-      quote = match[1]
-        .trim()
-        .replace(/<\/?[^>]+(>|$)/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      if (quote.length > 0) break;
-    }
-  }
-
-  const citePatterns = [
-    /<cite[^>]*>(.*?)<\/cite>/s,
-    /<footer[^>]*>(.*?)<\/footer>/s,
-    /—\s*([^<\n]+)/s,
-  ];
-
-  for (const pattern of citePatterns) {
-    const citeMatch = html.match(pattern);
-    if (citeMatch && citeMatch[1].trim()) {
-      cite = citeMatch[1]
-        .trim()
-        .replace(/<\/?[^>]+(>|$)/g, "")
-        .replace(/^—\s*/, "");
-      break;
-    }
-  }
-
-  const style = html.includes("is-style-large") ? "large" : "default";
-  return { quote, cite, style };
+  return {
+    quote: quoteMatch?.[1]?.replace(/<[^>]*>/g, "").trim() || "",
+    cite: citeMatch?.[1]?.replace(/<[^>]*>/g, "").trim() || "",
+  };
 }
 
 function parseEmbed(html: string) {
-  const iframeMatch = html.match(/<iframe[^>]+src="([^"]+)"[^>]*>/);
-  const linkMatch = html.match(/<a[^>]+href="([^"]+)"[^>]*>/);
-  let url = iframeMatch?.[1] || linkMatch?.[1] || "";
+  const iframeMatch = html.match(/<iframe[^>]*src="([^"]+)"[^>]*>/);
+  const linkMatch = html.match(/<a[^>]*href="([^"]+)"[^>]*>/);
 
-  if (!url) {
-    const dataMatch = html.match(/data-src="([^"]+)"/);
-    const scriptMatch = html.match(/src:\s*["']([^"']+)["']/);
-    url = dataMatch?.[1] || scriptMatch?.[1] || "";
-  }
+  const url = iframeMatch?.[1] || linkMatch?.[1] || "";
+  const type = url.includes("youtube") || url.includes("youtu.be") ? "youtube" :
+               url.includes("vimeo") ? "vimeo" :
+               url.includes("twitter") || url.includes("x.com") ? "twitter" :
+               url.includes("instagram") ? "instagram" : "generic";
 
-  let embedType = "generic";
-  if (url.includes("youtube.com") || url.includes("youtu.be")) {
-    embedType = "youtube";
-  } else if (url.includes("vimeo.com")) {
-    embedType = "vimeo";
-  } else if (url.includes("twitter.com") || url.includes("x.com")) {
-    embedType = "twitter";
-  } else if (url.includes("instagram.com")) {
-    embedType = "instagram";
-  }
-
-  return { url, embedType, originalHtml: html };
+  return { url, type, html };
 }
 
 function parseImage(html: string) {
-  const imgMatch = html.match(
-    /<img[^>]+src="([^"]+)"[^>]*(?:alt="([^"]*)")?[^>]*>/
-  );
+  const srcMatch = html.match(/<img[^>]*src="([^"]+)"[^>]*>/);
+  const altMatch = html.match(/<img[^>]*alt="([^"]*)"[^>]*>/);
   const captionMatch = html.match(/<figcaption[^>]*>(.*?)<\/figcaption>/s);
 
-  let src = imgMatch?.[1] || "";
-  // Clean URL parameters
+  let src = srcMatch?.[1] || "";
+  // Clean URL parameters to match gallery parsing
   src = src.replace(/\?w=\d+(&h=\d+)?$/, "").replace(/\?$/, "");
 
   return {
     src,
-    alt: imgMatch?.[2] || "",
-    caption: captionMatch?.[1] || "",
-    alignment: html.includes("alignwide")
-      ? "wide"
-      : html.includes("alignfull")
-        ? "full"
-        : "default",
+    alt: altMatch?.[1] || "",
+    caption: captionMatch?.[1]?.replace(/<[^>]*>/g, "").trim() || "",
   };
 }
 
 function parseColumns(html: string) {
-  const columnRegex =
-    /<div[^>]*class="[^"]*wp-block-column[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
+  const columnRegex = /<div[^>]*class="[^"]*wp-block-column[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
   const columns = [];
   let match;
 
@@ -511,408 +410,263 @@ function parseButton(html: string) {
 }
 
 function parseProductShowcase(html: string) {
-  // Extract both product IDs and SKUs for backward compatibility and future enhancement
+  // Extract both product IDs and SKUs from data attributes
   const productIds = extractProductIds(html);
   const productSkus = extractProductSkus(html);
+
+  // WordPress.com compatibility: Extract from HTML comments as fallback
+  const commentSkus = extractFromComments(html, 'data-product-skus');
+  const commentIds = extractFromComments(html, 'data-product-ids');
+  const commentTitle = extractFromComments(html, 'data-title');
+  const commentLayout = extractFromComments(html, 'data-layout');
+  const commentColumns = extractFromComments(html, 'data-columns');
+
+  // Display options with comment fallbacks
+  const layout = html.includes('data-layout="carousel"') ? 'carousel' :
+                 html.includes('data-layout="list"') ? 'list' : 
+                 commentLayout === 'carousel' ? 'carousel' :
+                 commentLayout === 'list' ? 'list' : 'grid';
+                 
+  const columns = parseInt(html.match(/data-columns="(\d+)"/)?.[1] || (typeof commentColumns === 'string' ? commentColumns : '3') || '3');
   
-  // Display options
-  const layout = html.includes('data-layout="carousel"') ? 'carousel' : 
-                 html.includes('data-layout="list"') ? 'list' : 'grid';
-  const showPrice = !html.includes('data-hide-price="true"');
-  const showStock = !html.includes('data-hide-stock="true"');
-  const showCartButton = !html.includes('data-hide-cart="true"');
-  const columns = parseInt(html.match(/data-columns="(\d+)"/)?.[1] || '3');
+  // Combine all sources, prioritizing data attributes, then comments
+  const finalSkus = productSkus.length > 0 ? productSkus : 
+                   Array.isArray(commentSkus) && commentSkus.length > 0 ? commentSkus : 
+                   productIds.length > 0 ? productIds : 
+                   Array.isArray(commentIds) && commentIds.length > 0 ? commentIds : [];
   
+  const finalTitle = html.match(/data-title="([^"]+)"/)?.[1] || commentTitle || '';
+
   return {
-    // Prioritize product IDs (current implementation), fall back to SKUs (future enhancement)
-    productSkus: productIds.length > 0 ? productIds : productSkus,
+    productSkus: finalSkus,
     layout,
-    showPrice,
-    showStock,
-    showCartButton,
+    showPrice: true,
+    showStock: true,
+    showCartButton: true,
     columns,
-    title: html.match(/data-title="([^"]+)"/)?.[1] || '',
-    description: html.match(/data-description="([^"]+)"/)?.[1] || '',
-    fallbackIds: productIds, // For migration support
+    title: finalTitle,
+    description: html.match(/data-description="([^"]+)"/)?.[1] || "",
+    fallbackIds: productIds.length > 0 ? productIds : (Array.isArray(commentIds) ? commentIds : []),
   };
 }
 
-function extractProductSkus(html: string): string[] {
-  const skuMatch = html.match(/data-product-skus="([^"]+)"/);
-  return skuMatch ? skuMatch[1].split(',').map(sku => sku.trim()) : [];
-}
-
-function extractProductIds(html: string): string[] {
-  const idMatch = html.match(/data-product-ids="([^"]+)"/);
-  return idMatch ? idMatch[1].split(',').map(id => id.trim()) : [];
-}
-
 function parseEventBlock(html: string) {
-  // Extract event data from HTML attributes
-  const title = html.match(/data-title="([^"]+)"/)?.[1] || '';
-  const date = html.match(/data-date="([^"]+)"/)?.[1] || '';
-  const time = html.match(/data-time="([^"]+)"/)?.[1] || '';
-  const location = html.match(/data-location="([^"]+)"/)?.[1] || '';
-  const description = html.match(/data-description="([^"]+)"/)?.[1] || '';
-  const rsvpUrl = html.match(/data-rsvp-url="([^"]+)"/)?.[1] || '';
-  const imageUrl = html.match(/data-image="([^"]+)"/)?.[1] || '';
-  const registrationRequired = html.includes('data-registration-required="true"');
-  
-  // Extract featured products (product IDs)
-  const featuredProductsMatch = html.match(/data-featured-products="([^"]+)"/);
-  const featuredProducts = featuredProductsMatch 
-    ? featuredProductsMatch[1].split(',').map(id => id.trim()) 
-    : [];
-  
   return {
-    title,
-    date,
-    time,
-    location,
-    description,
-    rsvpUrl,
-    imageUrl,
-    registrationRequired,
-    featuredProducts
+    title: html.match(/data-title="([^"]+)"/)?.[1] || "",
+    date: html.match(/data-date="([^"]+)"/)?.[1] || "",
+    time: html.match(/data-time="([^"]+)"/)?.[1] || "",
+    location: html.match(/data-location="([^"]+)"/)?.[1] || "",
+    description: html.match(/data-description="([^"]+)"/)?.[1] || "",
+    rsvpUrl: html.match(/data-rsvp-url="([^"]+)"/)?.[1] || "",
+    featuredProducts: html.match(/data-featured-products="([^"]+)"/)?.[1]?.split(',').map(p => p.trim()) || [],
+    imageUrl: html.match(/data-image="([^"]+)"/)?.[1] || "",
+    registrationRequired: html.includes('data-registration-required="true"'),
   };
 }
 
 function parseTeamMember(html: string) {
-  // Extract team member data from HTML attributes
-  const name = html.match(/data-name="([^"]+)"/)?.[1] || '';
-  const role = html.match(/data-role="([^"]+)"/)?.[1] || '';
-  const bio = html.match(/data-bio="([^"]+)"/)?.[1] || '';
-  const imageUrl = html.match(/data-image="([^"]+)"/)?.[1] || '';
-  const yearsSkating = html.match(/data-years-skating="(\d+)"/)?.[1];
-  const hometown = html.match(/data-hometown="([^"]+)"/)?.[1] || '';
-  
-  // Social links
-  const socialLinks: any = {};
-  const instagram = html.match(/data-instagram="([^"]+)"/)?.[1];
-  const youtube = html.match(/data-youtube="([^"]+)"/)?.[1];
-  const tiktok = html.match(/data-tiktok="([^"]+)"/)?.[1];
-  const website = html.match(/data-website="([^"]+)"/)?.[1];
-  
-  if (instagram) socialLinks.instagram = instagram;
-  if (youtube) socialLinks.youtube = youtube;
-  if (tiktok) socialLinks.tiktok = tiktok;
-  if (website) socialLinks.website = website;
-  
-  // Setup details
-  const setupDetails: any = {};
-  const deck = html.match(/data-setup-deck="([^"]+)"/)?.[1];
-  const trucks = html.match(/data-setup-trucks="([^"]+)"/)?.[1];
-  const wheels = html.match(/data-setup-wheels="([^"]+)"/)?.[1];
-  const bearings = html.match(/data-setup-bearings="([^"]+)"/)?.[1];
-  const grip = html.match(/data-setup-grip="([^"]+)"/)?.[1];
-  
-  if (deck) setupDetails.deck = deck;
-  if (trucks) setupDetails.trucks = trucks;
-  if (wheels) setupDetails.wheels = wheels;
-  if (bearings) setupDetails.bearings = bearings;
-  if (grip) setupDetails.grip = grip;
-  
-  // Achievements (comma-separated)
-  const achievementsMatch = html.match(/data-achievements="([^"]+)"/);
-  const achievements = achievementsMatch 
-    ? achievementsMatch[1].split(',').map(achievement => achievement.trim()) 
-    : [];
-  
-  // Favorite products (product IDs for now)
-  const favoriteProductsMatch = html.match(/data-favorite-products="([^"]+)"/);
-  const favoriteProducts = favoriteProductsMatch 
-    ? favoriteProductsMatch[1].split(',').map(id => id.trim()) 
-    : [];
+  const achievements = html.match(/data-achievements="([^"]+)"/)?.[1]?.split(',').map(a => a.trim()) || [];
+  const favoriteProducts = html.match(/data-favorite-products="([^"]+)"/)?.[1]?.split(',').map(p => p.trim()) || [];
   
   return {
-    name,
-    role,
-    bio,
-    imageUrl,
-    socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined,
-    setupDetails: Object.keys(setupDetails).length > 0 ? setupDetails : undefined,
-    achievements,
+    name: html.match(/data-name="([^"]+)"/)?.[1] || "",
+    role: html.match(/data-role="([^"]+)"/)?.[1] || "",
+    bio: html.match(/data-bio="([^"]+)"/)?.[1] || "",
+    imageUrl: html.match(/data-image="([^"]+)"/)?.[1] || "",
+    socialLinks: {
+      instagram: html.match(/data-instagram="([^"]+)"/)?.[1] || "",
+      youtube: html.match(/data-youtube="([^"]+)"/)?.[1] || "",
+      tiktok: html.match(/data-tiktok="([^"]+)"/)?.[1] || "",
+      website: html.match(/data-website="([^"]+)"/)?.[1] || "",
+    },
     favoriteProducts,
-    yearsSkating: yearsSkating ? parseInt(yearsSkating, 10) : undefined,
-    hometown: hometown || undefined
+    setupDetails: {
+      deck: html.match(/data-setup-deck="([^"]+)"/)?.[1] || "",
+      trucks: html.match(/data-setup-trucks="([^"]+)"/)?.[1] || "",
+      wheels: html.match(/data-setup-wheels="([^"]+)"/)?.[1] || "",
+      bearings: html.match(/data-setup-bearings="([^"]+)"/)?.[1] || "",
+      grip: html.match(/data-setup-grip="([^"]+)"/)?.[1] || "",
+    },
+    achievements,
+    yearsSkating: parseInt(html.match(/data-years-skating="(\d+)"/)?.[1] || "0"),
+    hometown: html.match(/data-hometown="([^"]+)"/)?.[1] || "",
   };
 }
 
-// Parse the content
-const parsedBlocks = parseWordPressBlocks(content);
+// Extract data from HTML comments (WordPress.com compatibility)
+function extractFromComments(html: string, attribute: string): string | string[] {
+  const commentPattern = new RegExp(`<!--\\s*${attribute}="([^"]+)"\\s*-->`, 'g');
+  const match = commentPattern.exec(html);
+  
+  if (match && attribute.includes('product-')) {
+    // For product lists, return array
+    return match[1].split(',').map(item => item.trim());
+  }
+  
+  // For single values, return string
+  return match ? match[1] : '';
+}
 
-// Enhanced debug logging
-if ((import.meta.env.DEV || debug) && parsedBlocks.length > 0) {
-  console.group("🔧 WordPress Block Parser Debug");
-  console.log("📄 Original content length:", content.length);
-  console.log("🧱 Total blocks found:", parsedBlocks.length);
-  console.log("🔗 Image grouping enabled:", groupImages);
+function extractProductSkus(html: string): string[] {
+  const patterns = [
+    /data-product-skus\s*=\s*"([^"]+)"/s,
+    /data-product-skus\s*=\s*'([^']+)'/s,
+    /data-product-skus\s*=\s*([^>\s]+)/s,
+  ];
 
-  console.table(
-    parsedBlocks.map((block, i) => ({
-      Index: i,
-      Type: block.type,
-      "Has Data": Object.keys(block.data).length > 0,
-      "HTML Length": block.html.length,
-      Images: block.data.images?.length || 0,
-      Quote: block.data.quote ? "✓" : "",
-      URL: block.data.url ? "✓" : "",
-    }))
-  );
-
-  const successfulBlocks = parsedBlocks.filter(
-    (b) =>
-      b.type !== "text" && b.type !== "raw" && Object.keys(b.data).length > 0
-  );
-
-  if (successfulBlocks.length > 0) {
-    console.log(
-      "✅ Successfully parsed blocks:",
-      successfulBlocks.map(
-        (b) => `${b.type}(${b.data.images?.length || "N/A"} imgs)`
-      )
-    );
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match) {
+      return match[1].split(",").map((sku) => sku.trim());
+    }
   }
 
-  console.groupEnd();
+  return [];
 }
+
+function extractProductIds(html: string): string[] {
+  const patterns = [
+    /data-product-ids\s*=\s*"([^"]+)"/s,
+    /data-product-ids\s*=\s*'([^']+)'/s,
+    /data-product-ids\s*=\s*([^>\s]+)/s,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match) {
+      return match[1].split(",").map((id) => id.trim());
+    }
+  }
+
+  return [];
+}
+
+// Parse content
+const parsedBlocks = parseWordPressBlocks(content);
 ---
 
 <!-- Render parsed blocks -->
 <div class="wordpress-content">
-  {
-    parsedBlocks.map((block, index) => {
-      const isLastBlock = index === parsedBlocks.length - 1;
-      const blockClasses = isLastBlock ? "" : "mb-6";
+  {parsedBlocks.map((block, index) => {
+    const isLastBlock = index === parsedBlocks.length - 1;
+    const blockClasses = isLastBlock ? "" : "mb-6";
 
-      switch (block.type) {
-        case "product-showcase":
-          if (block.data.productSkus && block.data.productSkus.length > 0) {
-            return (
-              <div class={blockClasses}>
-                <WPProductShowcase {...block.data} />
-              </div>
-            );
-          } else if (import.meta.env.DEV) {
-            return (
-              <div class={`${blockClasses} bg-yellow-50 border border-yellow-200 p-4`}>
-                <p class="text-yellow-800">Product Showcase: No product IDs specified</p>
-                <p class="text-xs text-yellow-600 mt-1">Add data-product-ids="ID1,ID2" to configure</p>
-              </div>
-            );
-          }
-          break;
+    switch (block.type) {
+      case "product-showcase":
+        const hasProductData = (block.data.productSkus && block.data.productSkus.length > 0) ||
+                              (block.data.fallbackIds && block.data.fallbackIds.length > 0);
 
-        case "event":
-          if (block.data.title && block.data.date) {
-            return (
-              <div class={blockClasses}>
-                <WPEventBlock {...block.data} />
-              </div>
-            );
-          } else if (import.meta.env.DEV) {
-            return (
-              <div class={`${blockClasses} bg-yellow-50 border border-yellow-200 p-4`}>
-                <p class="text-yellow-800">Event Block: Missing title or date</p>
-                <p class="text-xs text-yellow-600 mt-1">Add data-title="Event Name" data-date="2025-08-15" to configure</p>
-              </div>
-            );
-          }
-          break;
+        return hasProductData ? (
+          <div class={blockClasses}>
+            <WPProductShowcase {...block.data} />
+          </div>
+        ) : (
+          import.meta.env.DEV && (
+            <div class="bg-yellow-50 border border-yellow-200 p-4">
+              <p class="text-yellow-800">Product Showcase: No product SKUs specified</p>
+              <p class="text-xs text-yellow-600 mt-1">
+                Add data-product-skus="BRAND-PRODUCT-NAME,ANOTHER-SKU" or data-product-ids="ID1,ID2" to configure
+              </p>
+            </div>
+          )
+        );
 
-        case "team-member":
-          if (block.data.name && block.data.role) {
-            return (
-              <div class={blockClasses}>
-                <WPTeamMember {...block.data} />
-              </div>
-            );
-          } else if (import.meta.env.DEV) {
-            return (
-              <div class={`${blockClasses} bg-yellow-50 border border-yellow-200 p-4`}>
-                <p class="text-yellow-800">Team Member Block: Missing name or role</p>
-                <p class="text-xs text-yellow-600 mt-1">Add data-name="John Doe" data-role="Pro Rider" to configure</p>
-              </div>
-            );
-          }
-          break;
+      case "event":
+        return block.data.title && block.data.date ? (
+          <div class={blockClasses}>
+            <WPEventBlock {...block.data} />
+          </div>
+        ) : null;
 
-        case "jetpack-slideshow":
-          if (block.data.images && block.data.images.length > 0) {
-            return (
-              <div class={blockClasses}>
-                <JetpackSlideshow {...block.data} />
-              </div>
-            );
-          } else {
-            return (
-              <div
-                class={`wp-content-block ${blockClasses}`}
-                set:html={block.html}
-              />
-            );
-          }
+      case "team-member":
+        return block.data.name && block.data.role ? (
+          <div class={blockClasses}>
+            <WPTeamMember {...block.data} />
+          </div>
+        ) : null;
 
-        case "gallery":
-          if (block.data.images && block.data.images.length > 0) {
-            return (
-              <div class={blockClasses}>
-                <WPGallery {...block.data} />
-              </div>
-            );
-          } else {
-            if (import.meta.env.DEV || debug) {
-              console.warn("Gallery block failed to parse:", {
-                html: block.html.substring(0, 200),
-                data: block.data,
-              });
-            }
-            return (
-              <div
-                class={`wp-content-block ${blockClasses}`}
-                set:html={block.html}
-              />
-            );
-          }
+      case "jetpack-slideshow":
+        return block.data.images && block.data.images.length > 0 ? (
+          <div class={blockClasses}>
+            <JetpackSlideshow {...block.data} />
+          </div>
+        ) : (
+          <div class={`wp-content-block ${blockClasses}`} set:html={block.html} />
+        );
 
-        case "quote":
-          if (block.data.quote) {
-            return (
-              <div class={blockClasses}>
-                <WPQuote {...block.data} />
-              </div>
-            );
-          } else {
-            if (import.meta.env.DEV || debug) {
-              console.warn("Quote block failed to parse:", {
-                html: block.html.substring(0, 200),
-                data: block.data,
-              });
-            }
-            return (
-              <div
-                class={`wp-content-block ${blockClasses}`}
-                set:html={block.html}
-              />
-            );
-          }
+      case "gallery":
+        return block.data.images && block.data.images.length > 0 ? (
+          <div class={blockClasses}>
+            <WPGallery {...block.data} />
+          </div>
+        ) : (
+          <div class={`wp-content-block ${blockClasses}`} set:html={block.html} />
+        );
 
-        case "embed":
-          if (block.data.url) {
-            return (
-              <div class={blockClasses}>
-                <WPEmbed {...block.data} />
-              </div>
-            );
-          } else {
-            return (
-              <div
-                class={`wp-content-block ${blockClasses}`}
-                set:html={block.html}
-              />
-            );
-          }
+      case "quote":
+        return block.data.quote ? (
+          <div class={blockClasses}>
+            <WPQuote {...block.data} />
+          </div>
+        ) : (
+          <div class={`wp-content-block ${blockClasses}`} set:html={block.html} />
+        );
 
-        case "image":
-          if (block.data.src) {
-            return (
-              <div class={blockClasses}>
-                <WPImage {...block.data} />
-              </div>
-            );
-          } else {
-            return (
-              <div
-                class={`wp-content-block ${blockClasses}`}
-                set:html={block.html}
-              />
-            );
-          }
+      case "embed":
+        return block.data.url ? (
+          <div class={blockClasses}>
+            <WPEmbed {...block.data} />
+          </div>
+        ) : (
+          <div class={`wp-content-block ${blockClasses}`} set:html={block.html} />
+        );
 
-        case "columns":
-          if (block.data.columns && block.data.columns.length > 0) {
-            return (
-              <div class={blockClasses}>
-                <WPColumns {...block.data} />
-              </div>
-            );
-          } else {
-            return (
-              <div
-                class={`wp-content-block ${blockClasses}`}
-                set:html={block.html}
-              />
-            );
-          }
+      case "image":
+        return block.data.src ? (
+          <div class={blockClasses}>
+            <WPImage {...block.data} />
+          </div>
+        ) : (
+          <div class={`wp-content-block ${blockClasses}`} set:html={block.html} />
+        );
 
-        case "button":
-          if (block.data.url && block.data.text) {
-            return (
-              <div class={blockClasses}>
-                <WPButton {...block.data} />
-              </div>
-            );
-          } else {
-            return (
-              <div
-                class={`wp-content-block ${blockClasses}`}
-                set:html={block.html}
-              />
-            );
-          }
+      case "columns":
+        return block.data.columns && block.data.columns.length > 0 ? (
+          <div class={blockClasses}>
+            <WPColumns {...block.data} />
+          </div>
+        ) : (
+          <div class={`wp-content-block ${blockClasses}`} set:html={block.html} />
+        );
 
-        case "text":
-        case "raw":
-        default:
-          return (
-            <div
-              class={`wp-content-block ${blockClasses}`}
-              set:html={block.html}
-            />
-          );
-      }
-    })
-  }
+      case "button":
+        return block.data.url && block.data.text ? (
+          <div class={blockClasses}>
+            <WPButton {...block.data} />
+          </div>
+        ) : (
+          <div class={`wp-content-block ${blockClasses}`} set:html={block.html} />
+        );
+
+      default:
+        return (
+          <div class={`wp-content-block ${blockClasses}`} set:html={block.html} />
+        );
+    }
+  })}
 </div>
 
 <style>
   .wordpress-content {
-    /* Base styling for WordPress content container */
-  }
-
-  .wp-content-block {
-    /* Prose-like styling for unprocessed content blocks */
-    max-width: none;
-    line-height: 1.75;
-    font-size: 1.125rem;
     color: var(--content-body);
+    line-height: 1.7;
   }
 
-  .wp-content-block :global(h1) {
+  .wp-content-block :global(h1, h2, h3) {
     margin-top: 2rem;
     margin-bottom: 1rem;
-    font-size: 2.25rem;
-    font-weight: 800;
-    color: var(--content-heading);
-    line-height: 1.1;
-  }
-
-  .wp-content-block :global(h2) {
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-    font-size: 1.875rem;
     font-weight: 700;
     color: var(--content-heading);
-    line-height: 1.2;
-  }
-
-  .wp-content-block :global(h3) {
-    margin-top: 1.5rem;
-    margin-bottom: 0.75rem;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--content-heading);
-    line-height: 1.3;
   }
 
   .wp-content-block :global(h4, h5, h6) {

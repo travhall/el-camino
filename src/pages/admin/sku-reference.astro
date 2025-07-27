@@ -1,0 +1,201 @@
+---
+// /src/pages/admin/sku-reference.astro
+// SKU Reference page for content creators
+import Layout from "@/layouts/Layout.astro";
+import { generateSkuReference } from "@/utils/generateSkuReference";
+
+// Generate SKU reference at build time
+const { success, skus, categorized, error } = await generateSkuReference();
+
+const pageTitle = "Product SKU Reference - Content Creator Guide";
+---
+
+<Layout title={pageTitle}>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-4xl font-bold text-content-heading mb-4">
+        Product SKU Reference
+      </h1>
+      <p class="text-lg text-content-body mb-6">
+        Use these human-readable SKUs in your WordPress product showcases. 
+        Copy and paste the SKU codes below into your blog posts.
+      </p>
+      
+      <!-- Usage Example -->
+      <div class="bg-surface-secondary p-6 rounded-sm mb-6">
+        <h2 class="text-xl font-semibold text-content-heading mb-3">Usage Example</h2>
+        <div class="text-sm text-content-body mb-3">
+          Copy and paste this HTML into your WordPress blog post editor:
+        </div>
+        <pre class="bg-surface-tertiary p-4 rounded text-sm overflow-x-auto font-mono"><code>&lt;div class="wp-block-product-showcase"&gt;
+&lt;!-- data-product-skus="SPITFIRE-CLASSIC-SOCKS,THRASHER-THORNS-HOODY" --&gt;
+&lt;!-- data-title="Featured Products" --&gt;
+&lt;!-- data-layout="grid" --&gt;
+&lt;!-- data-columns="2" --&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    {error && (
+      <div class="bg-state-error-surface text-state-error-text p-6 rounded-sm mb-8">
+        <h2 class="text-xl font-semibold mb-2">Error Loading Products</h2>
+        <p>{error}</p>
+      </div>
+    )}
+
+    {success && (
+      <div>
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div class="bg-surface-secondary p-6 rounded-sm text-center">
+            <div class="text-3xl font-bold text-ui-accent">{skus.length}</div>
+            <div class="text-content-meta">Available Products</div>
+          </div>
+          <div class="bg-surface-secondary p-6 rounded-sm text-center">
+            <div class="text-3xl font-bold text-ui-accent">{Object.keys(categorized).length}</div>
+            <div class="text-content-meta">Categories</div>
+          </div>
+          <div class="bg-surface-secondary p-6 rounded-sm text-center">
+            <div class="text-3xl font-bold text-ui-accent">{skus.filter(s => s.brand).length}</div>
+            <div class="text-content-meta">Branded Products</div>
+          </div>
+        </div>
+
+        <!-- Copy All SKUs Button -->
+        <div class="mb-8">
+          <button 
+            id="copy-all-skus"
+            class="bg-ui-accent hover:bg-ui-accent-hover text-white px-6 py-3 rounded-sm font-semibold transition-colors"
+            data-skus={skus.map(s => s.humanReadableSku).join(',')}
+          >
+            📋 Copy All SKUs to Clipboard
+          </button>
+          <span id="copy-feedback" class="ml-3 text-state-success-text hidden">Copied!</span>
+        </div>
+
+        <!-- Product Categories -->
+        {Object.entries(categorized).map(([category, categorySkus]) => (
+          <div class="mb-8">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-2xl font-bold text-content-heading">{category}</h2>
+              <button 
+                class="copy-category-skus bg-surface-tertiary hover:bg-ui-accent hover:text-white px-4 py-2 rounded-sm text-sm transition-colors"
+                data-skus={categorySkus.map(s => s.humanReadableSku).join(',')}
+              >
+                📋 Copy Category SKUs
+              </button>
+            </div>
+            
+            <div class="bg-surface-secondary rounded-sm overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full">
+                  <thead class="bg-surface-tertiary">
+                    <tr>
+                      <th class="px-6 py-3 text-left text-sm font-semibold text-content-heading uppercase tracking-wide">SKU</th>
+                      <th class="px-6 py-3 text-left text-sm font-semibold text-content-heading uppercase tracking-wide">Product</th>
+                      <th class="px-6 py-3 text-left text-sm font-semibold text-content-heading uppercase tracking-wide">Price</th>
+                      <th class="px-6 py-3 text-left text-sm font-semibold text-content-heading uppercase tracking-wide">Brand</th>
+                      <th class="px-6 py-3 text-left text-sm font-semibold text-content-heading uppercase tracking-wide">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-border-secondary">
+                    {categorySkus.map((sku) => (
+                      <tr class="hover:bg-surface-tertiary">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                          <code class="bg-ui-accent/10 text-ui-accent px-2 py-1 rounded text-sm font-mono font-semibold">
+                            {sku.humanReadableSku}
+                          </code>
+                        </td>
+                        <td class="px-6 py-4">
+                          <div class="text-sm font-medium text-content-heading">{sku.title}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-content-body">
+                          ${sku.price.toFixed(2)}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-content-body">
+                          {sku.brand || 'N/A'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                          <button 
+                            class="copy-sku-btn text-ui-accent hover:text-ui-accent-hover font-semibold"
+                            data-sku={sku.humanReadableSku}
+                          >
+                            📋 Copy SKU
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</Layout>
+
+<script>
+  // Copy functionality
+  async function copyToClipboard(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      return false;
+    }
+  }
+
+  function showCopyFeedback(element: Element) {
+    const feedback = document.createElement('span');
+    feedback.textContent = ' ✓ Copied!';
+    feedback.className = 'text-state-success-text text-sm';
+    element.appendChild(feedback);
+    setTimeout(() => feedback.remove(), 2000);
+  }
+
+  // Copy all SKUs
+  document.getElementById('copy-all-skus')?.addEventListener('click', async (e) => {
+    const button = e.target as HTMLButtonElement;
+    const skus = button.dataset.skus || '';
+    const success = await copyToClipboard(skus);
+    
+    if (success) {
+      const feedback = document.getElementById('copy-feedback');
+      if (feedback) {
+        feedback.classList.remove('hidden');
+        setTimeout(() => feedback.classList.add('hidden'), 2000);
+      }
+    }
+  });
+
+  // Copy category SKUs
+  document.querySelectorAll('.copy-category-skus').forEach(button => {
+    button.addEventListener('click', async (e) => {
+      const btn = e.target as HTMLButtonElement;
+      const skus = btn.dataset.skus || '';
+      const success = await copyToClipboard(skus);
+      
+      if (success) {
+        showCopyFeedback(btn);
+      }
+    });
+  });
+
+  // Copy individual SKUs
+  document.querySelectorAll('.copy-sku-btn').forEach(button => {
+    button.addEventListener('click', async (e) => {
+      const btn = e.target as HTMLButtonElement;
+      const sku = btn.dataset.sku || '';
+      const success = await copyToClipboard(sku);
+      
+      if (success) {
+        showCopyFeedback(btn);
+      }
+    });
+  });
+</script>

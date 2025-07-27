@@ -4,16 +4,22 @@
 
 The WordPress High-ROI Business Components seamlessly bridge content and commerce, allowing you to showcase products, promote events, and highlight team members directly within your blog posts.
 
+**NEW**: All components now support **human-readable SKUs** for easier content creation! Use descriptive SKUs like `SPITFIRE-CLASSIC-SOCKS` instead of cryptic IDs.
+
+## Quick Reference
+
+**🔗 SKU Reference Tool**: Visit `/admin/sku-reference` to see all available product SKUs with copy-to-clipboard functionality.
+
 ## Component 1: Product Showcase
 
 **Purpose**: Display Square catalog products within blog posts for direct content-to-purchase conversion.
 
 ### Usage Examples
 
-#### Basic Product Grid
+#### Basic Product Grid (NEW SKU Format)
 ```html
 <div class="wp-block-product-showcase" 
-     data-product-ids="6RMQNPV2IHKOLRGRHD3DCYCY,D4NIZKNJKOKEEOYNCTFPKEHX"
+     data-product-skus="SPITFIRE-CLASSIC-87-SWIRL,THRASHER-THORNS-HOODY"
      data-title="New Arrivals">
 </div>
 ```
@@ -21,7 +27,7 @@ The WordPress High-ROI Business Components seamlessly bridge content and commerc
 #### Carousel Layout
 ```html
 <div class="wp-block-product-showcase" 
-     data-product-ids="OC527UX6LJVAQNN6EPAQXRZ5,2PY4RRFOPWE5DN4WUCCAGLC5,UW557YXC3NELPRHSIUFOJJB6"
+     data-product-skus="KROOKED-838-MANDERSON-JUST,REAL-838-NICOLE-HAUSE,KROOKED-UNA-FARRAR-PUNX"
      data-layout="carousel"
      data-columns="3"
      data-title="Featured Decks"
@@ -32,39 +38,36 @@ The WordPress High-ROI Business Components seamlessly bridge content and commerc
 #### List Layout for Setup Guides
 ```html
 <div class="wp-block-product-showcase" 
-     data-product-ids="REAL_DECK_ID,INDEPENDENT_TRUCKS_ID,SPITFIRE_WHEELS_ID"
+     data-product-skus="REAL-838-NICOLE-HAUSE,SLAPPY-ST1-HOLLOW-LOW,SPITFIRE-CLASSIC-87-SWIRL"
      data-layout="list"
      data-title="Complete Beginner Setup"
      data-description="Everything you need to get started">
 </div>
 ```
 
-### Available Product IDs
+### Available Product SKUs (Examples)
 
-Use these actual Product IDs from your Square catalog:
+**Visit `/admin/sku-reference` for the complete, up-to-date list with copy functionality.**
 
-**Apparel:**
-- `6RMQNPV2IHKOLRGRHD3DCYCY` - Spitfire Classic 87 Swirl 3-pack Socks
-- `D4NIZKNJKOKEEOYNCTFPKEHX` - Thrasher Thorns Hoody
-- `XU4Q7N27XEHVS2WOMYHPIWCX` - Toy Machine Bronson T Shirt
-
-**Decks:**
-- `OC527UX6LJVAQNN6EPAQXRZ5` - Krooked 8.38 Manderson Just Cause Deck
-- `2PY4RRFOPWE5DN4WUCCAGLC5` - Real 8.38 Nicole Hause by Marbie Deck
-- `UW557YXC3NELPRHSIUFOJJB6` - Krooked Una Farrar Punx 8.38 Deck
-
-**Hardware:**
-- `MGH3BFO3YVLGUSIFXKFIRDZW` - Slappy ST1 Hollow Low Trucks Black 8.25
-- `N7TNN7V7DMBI3RBTK6ZYVVIO` - Ace AF-1 Hollow 44 Limited Kevin "Spanky" Long Trucks
+**Sample SKUs:**
+- `SPITFIRE-CLASSIC-SOCKS` - Spitfire Classic 87 Swirl 3-pack Socks
+- `THRASHER-THORNS-HOODY` - Thrasher Thorns Hoody  
+- `KROOKED-MANDERSON-DECK` - Krooked 8.38 Manderson Just Cause Deck
+- `REAL-NICOLE-DECK` - Real 8.38 Nicole Hause by Marbie Deck
+- `SLAPPY-HOLLOW-TRUCKS` - Slappy ST1 Hollow Low Trucks Black 8.25
 
 ### Configuration Options
 
 | Attribute | Values | Default | Description |
 |-----------|--------|---------|-------------|
+| `data-product-skus` | Comma-separated SKUs | None | **NEW**: Human-readable product SKUs |
+| `data-product-ids` | Comma-separated IDs | None | Legacy: Cryptic product IDs (still supported) |
 | `data-layout` | `grid`, `carousel`, `list` | `grid` | Display layout |
 | `data-columns` | `1`, `2`, `3`, `4`, `5`, `6` | `3` | Grid columns |
 | `data-title` | Any text | None | Showcase title |
 | `data-description` | Any text | None | Showcase description |
+
+**Recommendation**: Use `data-product-skus` for new content. The system will automatically fall back to `data-product-ids` for backward compatibility.
 
 ---
 
@@ -107,7 +110,7 @@ Use these actual Product IDs from your Square catalog:
      data-time="6:00 PM - 9:00 PM"
      data-location="El Camino Skate Shop"
      data-description="Celebrate the launch of our new brand partnership!"
-     data-featured-products="6RMQNPV2IHKOLRGRHD3DCYCY,D4NIZKNJKOKEEOYNCTFPKEHX"
+     data-featured-products="SPITFIRE-CLASSIC-SOCKS,THRASHER-THORNS-HOODY"
      data-image="https://your-cdn.com/launch-party.jpg">
 </div>
 ```
@@ -124,7 +127,7 @@ Use these actual Product IDs from your Square catalog:
 | `data-rsvp-url` | ❌ | Registration/RSVP link |
 | `data-registration-required` | ❌ | Set to "true" if registration required |
 | `data-image` | ❌ | Event featured image URL |
-| `data-featured-products` | ❌ | Comma-separated product IDs |
+| `data-featured-products` | ❌ | **NEW**: Comma-separated product SKUs (or legacy IDs) |
 
 ---
 
@@ -167,7 +170,7 @@ Use these actual Product IDs from your Square catalog:
      data-image="https://your-cdn.com/alex-profile.jpg"
      data-instagram="https://instagram.com/alexskates"
      data-youtube="https://youtube.com/alexrodriguez"
-     data-favorite-products="OC527UX6LJVAQNN6EPAQXRZ5,MGH3BFO3YVLGUSIFXKFIRDZW,6RMQNPV2IHKOLRGRHD3DCYCY"
+     data-favorite-products="KROOKED-MANDERSON-DECK,SLAPPY-HOLLOW-TRUCKS,SPITFIRE-CLASSIC-SOCKS"
      data-setup-deck="Real 8.25 Street Series"
      data-setup-trucks="Independent 149"
      data-setup-wheels="Spitfire Formula Four 54mm"
@@ -190,7 +193,7 @@ Use these actual Product IDs from your Square catalog:
 | `data-youtube` | ❌ | YouTube channel URL |
 | `data-tiktok` | ❌ | TikTok profile URL |
 | `data-website` | ❌ | Personal website URL |
-| `data-favorite-products` | ❌ | Comma-separated product IDs |
+| `data-favorite-products` | ❌ | **NEW**: Comma-separated product SKUs (or legacy IDs) |
 | `data-setup-deck` | ❌ | Current deck setup |
 | `data-setup-trucks` | ❌ | Current trucks |
 | `data-setup-wheels` | ❌ | Current wheels |

@@ -65,6 +65,62 @@ function extractBrandValue(customAttributeValues: any): string {
   return "";
 }
 
+/**
+ * Generate human-readable SKU from product data
+ * Creates content-creator friendly identifiers like "SPITFIRE-CLASSIC-SOCKS" 
+ */
+function generateHumanReadableSku(
+  title: string, 
+  brand?: string, 
+  variationName?: string
+): string {
+  // Use brand if available, otherwise extract from title
+  const brandPart = brand || extractBrandFromTitle(title);
+  
+  // Clean and format the main product name
+  const titlePart = title
+    .replace(new RegExp(`^${brandPart}\\s*`, 'i'), '') // Remove brand from start
+    .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special chars
+    .split(' ')
+    .filter(word => word.length > 0)
+    .map(word => word.toUpperCase())
+    .slice(0, 3) // Limit to 3 words for readability
+    .join('-');
+  
+  // Add variation details if present and meaningful
+  const variationPart = variationName && variationName.trim() && variationName !== title
+    ? `-${variationName.replace(/[^a-zA-Z0-9\s]/g, '').split(' ').slice(0, 2).join('-').toUpperCase()}`
+    : '';
+  
+  return `${brandPart.toUpperCase()}-${titlePart}${variationPart}`;
+}
+
+/**
+ * Extract likely brand name from product title
+ */
+function extractBrandFromTitle(title: string): string {
+  // Common skate brands to detect
+  const knownBrands = [
+    'spitfire', 'thrasher', 'krooked', 'real', 'baker', 'toy machine',
+    'independent', 'thunder', 'ace', 'venture', 'bones', 'girl', 'chocolate',
+    'anti-hero', 'creature', 'santa cruz', 'powell peralta', 'element',
+    'plan b', 'flip', 'zero', 'mystery', 'blind', 'world industries',
+    'skeleton key', 'jacuzzi unlimited', 'sci-fi fantasy', 'bronze',
+    'slappy', 'huf', 'vans', 'nike sb', 'adidas', 'converse'
+  ];
+  
+  const titleLower = title.toLowerCase();
+  
+  for (const brand of knownBrands) {
+    if (titleLower.startsWith(brand.toLowerCase())) {
+      return brand.replace(/\s+/g, ''); // Remove spaces for SKU
+    }
+  }
+  
+  // Fallback: use first word
+  return title.split(' ')[0] || 'UNKNOWN';
+}
+
 export async function fetchProducts(): Promise<Product[]> {
   const cacheKey = "products:all";
 
@@ -130,29 +186,47 @@ export async function fetchProducts(): Promise<Product[]> {
             : Promise.resolve({} as Record<string, string>),
         ]);
 
-        // Assemble final products with brand data and units
-        const products = productsWithBasicInfo.map((p) => ({
-          id: p.id,
-          catalogObjectId: p.catalogObjectId,
-          variationId: p.variationId,
-          title: p.title,
-          description: p.description,
-          image:
-            p.imageId && imageUrlMap[p.imageId]
-              ? imageUrlMap[p.imageId]
-              : "/images/placeholder.png",
-          price: p.price,
-          url: createProductUrl({ title: p.title }),
-          brand: p.brand || undefined, // Only include if brand exists
-          unit: p.measurementUnitId
-            ? measurementUnitsMap[p.measurementUnitId] || undefined
-            : undefined, // NEW: Include unit
-        }));
+        // Assemble final products with brand data, units, and SKUs
+        const products = productsWithBasicInfo.map((p) => {
+          // Get the variation data to extract SKU
+          const item = response.result.objects?.find(obj => obj.id === p.id);
+          const variation = item?.itemData?.variations?.[0];
+          const actualSku = variation?.itemVariationData?.sku || '';
+          
+          // Generate human-readable SKU for content creators
+          const humanReadableSku = generateHumanReadableSku(
+            p.title, 
+            p.brand, 
+            variation?.itemVariationData?.name || undefined
+          );
+          
+          return {
+            id: p.id,
+            catalogObjectId: p.catalogObjectId,
+            variationId: p.variationId,
+            title: p.title,
+            description: p.description,
+            image:
+              p.imageId && imageUrlMap[p.imageId]
+                ? imageUrlMap[p.imageId]
+                : "/images/placeholder.png",
+            price: p.price,
+            url: createProductUrl({ title: p.title }),
+            brand: p.brand || undefined, // Only include if brand exists
+            unit: p.measurementUnitId
+              ? measurementUnitsMap[p.measurementUnitId] || undefined
+              : undefined, // NEW: Include unit
+            sku: actualSku || undefined, // Square's actual SKU if present
+            humanReadableSku: humanReadableSku, // Always generate for content creators
+          };
+        });
 
         console.log(
           `[fetchProducts] Fetched ${products.length} products, ${
             products.filter((p) => p.brand).length
-          } with brands, ${products.filter((p) => p.unit).length} with units`
+          } with brands, ${products.filter((p) => p.unit).length} with units, ${
+            products.filter((p) => p.sku).length
+          } with SKUs, ${products.length} with human-readable SKUs`
         );
 
         return products;

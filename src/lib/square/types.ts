@@ -19,6 +19,9 @@ export interface Product {
   selectedVariationId?: string;
   brand?: string;
   unit?: string;
+  // SKU fields for content creator friendliness
+  sku?: string; // Primary product SKU (from default variation)
+  humanReadableSku?: string; // Content-creator friendly identifier
   // New: Available attributes for this product
   availableAttributes?: Record<string, string[]>;
 }
@@ -70,6 +73,7 @@ export interface ProductVariation {
   quantity?: number; // Add this
   image?: string; // Add this
   unit?: string; // Add this
+  sku?: string; // SKU for this specific variation
   attributes?: Record<string, string>; // Add this
 }
 
