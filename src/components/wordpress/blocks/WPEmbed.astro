@@ -19,18 +19,18 @@ function getVideoId(url: string, type: string): string | null {
       /youtube\.com\/embed\/([^&\n?#]+)/,
       /youtube\.com\/v\/([^&\n?#]+)/
     ];
-    
+
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match) return match[1];
     }
   }
-  
+
   if (type === 'vimeo') {
     const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
     return match?.[1] || null;
   }
-  
+
   return null;
 }
 

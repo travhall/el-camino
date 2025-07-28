@@ -1,6 +1,6 @@
 ---
-// src/components/wordpress/blocks/WPProductShowcase.astro - PRODUCTION READY
-import ProductCard from "@/components/ProductCard.astro";
+// src/components/wordpress/blocks/WPProductShowcase.astro - USING BlogProductCard
+import BlogProductCard from "@/components/wordpress/blocks/BlogProductCard.astro";
 import { fetchProducts } from "@/lib/square/client";
 
 interface Props {
@@ -98,7 +98,7 @@ try {
         errors.push(`Product not found: ${searchIdentifier}`);
       }
 
-      // Validate product has required properties for ProductCard
+      // Validate product has required properties
       if (
         matchedProduct &&
         (!matchedProduct.image ||
@@ -125,7 +125,7 @@ try {
           return null;
         }
 
-        // Validate product has required properties for ProductCard
+        // Validate product has required properties
         if (!product.image || !product.title || !product.price) {
           errors.push(
             `Product ${id} missing required data (image, title, or price)`
@@ -142,24 +142,26 @@ try {
   errors.push("Failed to load product data");
 }
 
-// Grid classes with responsive design
+// BLOG-OPTIMIZED: Grid classes for smaller cards
 const gridClasses = {
   1: "grid-cols-1",
-  2: "grid-cols-1 md:grid-cols-2",
-  3: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
-  4: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
-  5: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5",
-  6: "grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6",
+  2: "grid-cols-2",
+  3: "grid-cols-2 sm:grid-cols-3",
+  4: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4",
+  5: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5",
+  6: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6",
 };
 
 const gridClass =
   gridClasses[columns as keyof typeof gridClasses] || gridClasses[3];
 ---
 
-<div class="wp-product-showcase bg-(--surface-secondary) p-6 rounded-sm mb-6">
+<div
+  class="wp-product-showcase bg-(--surface-secondary) p-4 sm:p-6 rounded-sm mb-6"
+>
   {
     title && (
-      <h3 class="font-display font-bold text-2xl lg:text-3xl text-(--content-heading) mb-2">
+      <h3 class="font-display font-bold text-xl lg:text-2xl text-(--content-heading) mb-3">
         {title}
       </h3>
     )
@@ -167,7 +169,7 @@ const gridClass =
 
   {
     description && (
-      <p class="text-(--content-body) mb-6 text-lg">{description}</p>
+      <p class="text-(--content-body) mb-4 text-base">{description}</p>
     )
   }
 
@@ -175,28 +177,26 @@ const gridClass =
     products.length > 0 && (
       <div class={`product-showcase-${layout}`}>
         {layout === "grid" && (
-          <div class={`grid ${gridClass} gap-4`}>
+          <div class={`grid ${gridClass} gap-3`}>
             {products.map((product) => (
-              <div class="showcase-product-card">
-                <ProductCard
-                  product={product}
-                  priority={false}
-                  skipInventoryCheck={true}
-                />
-              </div>
+              <BlogProductCard
+                product={product}
+                priority={false}
+                variant="compact"
+              />
             ))}
           </div>
         )}
 
         {layout === "carousel" && (
-          <div class="product-carousel overflow-x-auto">
-            <div class="flex gap-4 pb-4" style="width: max-content;">
+          <div class="product-carousel overflow-x-auto -mx-2">
+            <div class="flex gap-3 px-2 pb-2">
               {products.map((product) => (
-                <div class="showcase-product-card flex-shrink-0 w-80">
-                  <ProductCard
+                <div class="flex-shrink-0 w-40 sm:w-44">
+                  <BlogProductCard
                     product={product}
                     priority={false}
-                    skipInventoryCheck={true}
+                    variant="inline"
                   />
                 </div>
               ))}
@@ -205,13 +205,13 @@ const gridClass =
         )}
 
         {layout === "list" && (
-          <div class="space-y-4">
+          <div class="space-y-3">
             {products.map((product) => (
-              <div class="showcase-product-card">
-                <ProductCard
+              <div class="grid grid-cols-[120px_1fr] sm:grid-cols-[140px_1fr] gap-4 p-3 bg-(--surface-primary) rounded-sm">
+                <BlogProductCard
                   product={product}
                   priority={false}
-                  skipInventoryCheck={true}
+                  variant="minimal"
                 />
               </div>
             ))}
@@ -224,9 +224,9 @@ const gridClass =
   <!-- Error Handling (Development Only) -->
   {
     errors.length > 0 && import.meta.env.DEV && (
-      <div class="mt-4 p-4 bg-state-warning-surface text-state-warning-text rounded-sm">
+      <div class="mt-4 p-3 bg-state-warning-surface text-state-warning-text rounded-sm text-sm">
         <h4 class="font-semibold mb-2">Product Showcase Notice:</h4>
-        <ul class="text-sm">
+        <ul>
           {errors.map((error) => (
             <li>• {error}</li>
           ))}
@@ -238,8 +238,8 @@ const gridClass =
   {
     products.length === 0 && errors.length === 0 && (
       <div class="text-center py-8">
-        <div class="text-4xl mb-2 opacity-20">🛹</div>
-        <p class="text-(--content-meta)">
+        <div class="text-3xl mb-2 opacity-20">🛹</div>
+        <p class="text-(--content-meta) text-sm">
           No products configured for this showcase.
         </p>
         {import.meta.env.DEV && (
@@ -259,24 +259,21 @@ const gridClass =
   }
 
   .product-carousel::-webkit-scrollbar {
-    height: 6px;
+    height: 4px;
   }
 
   .product-carousel::-webkit-scrollbar-track {
     background: var(--surface-tertiary);
-    border-radius: 3px;
+    border-radius: 2px;
   }
 
   .product-carousel::-webkit-scrollbar-thumb {
     background: var(--ui-accent);
-    border-radius: 3px;
+    border-radius: 2px;
   }
 
-  .showcase-product-card {
-    transition: transform 0.2s ease;
-  }
-
-  .showcase-product-card:hover {
-    transform: translateY(-2px);
+  /* Ensure carousel doesn't break out of container */
+  .product-carousel {
+    max-width: 100%;
   }
 </style>

@@ -1,0 +1,145 @@
+---
+// src/components/wordpress/blocks/BlogProductCard.astro - PURPOSE-BUILT for blog/showcase contexts
+import type { Product } from "@/lib/square/types";
+import { MoneyUtils } from "@/lib/square/money";
+
+interface Props {
+  product: Product;
+  priority?: boolean;
+  variant?: "compact" | "inline" | "minimal";
+}
+
+const { product, priority = false, variant = "compact" } = Astro.props;
+
+// Format price - always use current price, no inventory checking for blog context
+const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
+
+// Variant-specific classes
+const containerClasses = {
+  compact:
+    "bg-(--surface-primary) rounded-sm overflow-hidden hover:shadow-sm transition-all duration-200",
+  inline: "bg-transparent",
+  minimal: "bg-transparent",
+};
+
+const imageClasses = {
+  compact: "aspect-square",
+  inline: "aspect-square",
+  minimal: "aspect-[4/3]",
+};
+
+const textSizes = {
+  compact: {
+    title: "text-sm font-medium leading-tight",
+    brand: "text-xs uppercase tracking-wide",
+    price: "text-lg font-display font-semibold",
+  },
+  inline: {
+    title: "text-xs font-medium leading-tight",
+    brand: "text-xs uppercase tracking-wide opacity-75",
+    price: "text-base font-display font-semibold",
+  },
+  minimal: {
+    title: "text-xs font-light leading-tight",
+    brand: "text-xs uppercase tracking-wide opacity-60",
+    price: "text-sm font-display font-medium",
+  },
+};
+
+const spacing = {
+  compact: "p-3 gap-2",
+  inline: "p-2 gap-1",
+  minimal: "p-2 gap-1",
+};
+---
+
+<a
+  href={product.url}
+  class={`group flex flex-col ${containerClasses[variant]} ${spacing[variant]}`}
+  itemscope
+  itemtype="http://schema.org/Product"
+>
+  <!-- Compact Image Container -->
+  <div
+    class={`relative ${imageClasses[variant]} overflow-hidden bg-(--surface-secondary)`}
+  >
+    <img
+      src={product.image}
+      alt={product.title}
+      class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+      loading={priority ? "eager" : "lazy"}
+      itemprop="image"
+    />
+  </div>
+
+  <!-- Compact Product Info -->
+  <div class="flex flex-col min-h-0">
+    {
+      product.brand && (
+        <p
+          class={`text-(--content-meta) ${textSizes[variant].brand} mb-1`}
+          itemprop="brand"
+        >
+          {product.brand}
+        </p>
+      )
+    }
+
+    <h3
+      class={`text-(--content-heading) ${textSizes[variant].title} line-clamp-2 mb-1 flex-1`}
+      itemprop="name"
+    >
+      {product.title}
+    </h3>
+
+    <div class="mt-auto">
+      <span
+        class={`text-(--product-price) ${textSizes[variant].price}`}
+        itemprop="offers"
+        itemscope
+        itemtype="http://schema.org/Offer"
+      >
+        <meta itemprop="price" content={product.price.toString()} />
+        <meta itemprop="priceCurrency" content="USD" />
+        <meta itemprop="availability" content="https://schema.org/InStock" />
+        {formattedPrice}
+        {
+          product.unit && (
+            <span class="text-sm opacity-75 ml-1">{product.unit}</span>
+          )
+        }
+      </span>
+    </div>
+  </div>
+</a>
+
+<style>
+  /* Ensure consistent card heights */
+  .group {
+    height: 100%;
+  }
+
+  /* Smooth hover effects */
+  .group:hover {
+    transform: translateY(-1px);
+  }
+
+  /* Line clamping for consistent heights */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Prevent layout shift on hover */
+  @media (prefers-reduced-motion: reduce) {
+    .group:hover {
+      transform: none;
+    }
+
+    .group img {
+      transition: none;
+    }
+  }
+</style>
