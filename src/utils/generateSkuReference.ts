@@ -1,8 +1,11 @@
 // /src/utils/generateSkuReference.ts
-// Utility to generate human-readable SKU reference for content creators
+// FIXED: Now uses actual Square categories instead of derived ones
 
 import { fetchProducts } from "@/lib/square/client";
+import { fetchCategoryHierarchy } from "@/lib/square/categories";
+import { squareClient } from "@/lib/square/client";
 import type { Product } from "@/lib/square/types";
+import type { CategoryHierarchy } from "@/lib/square/types";
 
 export interface SkuReference {
   humanReadableSku: string;
@@ -10,12 +13,15 @@ export interface SkuReference {
   title: string;
   brand?: string;
   price: number;
-  category: string; // Derived from title/brand
+  category: string; // Now uses actual Square categories
+  subcategory?: string; // For subcategories within main categories
   id: string; // For fallback compatibility
+  categoryId?: string; // Square category ID for reference
+  subcategoryId?: string; // Square subcategory ID if applicable
 }
 
 /**
- * Generate a comprehensive SKU reference guide for content creators
+ * Generate a comprehensive SKU reference guide using actual Square categories
  */
 export async function generateSkuReference(): Promise<{
   success: boolean;
@@ -24,7 +30,13 @@ export async function generateSkuReference(): Promise<{
   error?: string;
 }> {
   try {
-    const products = await fetchProducts();
+    console.log('[generateSkuReference] Starting with actual Square categories...');
+    
+    // Fetch products and categories in parallel
+    const [products, categoryHierarchy] = await Promise.all([
+      fetchProducts(),
+      fetchCategoryHierarchy()
+    ]);
     
     if (!products || products.length === 0) {
       return {
@@ -35,26 +47,85 @@ export async function generateSkuReference(): Promise<{
       };
     }
 
-    // Convert products to SKU references
+    if (!categoryHierarchy || categoryHierarchy.length === 0) {
+      console.warn('[generateSkuReference] No categories found, using fallback categorization');
+    }
+
+    console.log(`[generateSkuReference] Processing ${products.length} products with ${categoryHierarchy.length} categories`);
+
+    // Build category lookup maps for efficient matching
+    const categoryMap = new Map<string, string>(); // id -> name
+    const subcategoryMap = new Map<string, { name: string; parentName: string }>(); // id -> { name, parentName }
+    
+    categoryHierarchy.forEach(hierarchy => {
+      categoryMap.set(hierarchy.category.id, hierarchy.category.name);
+      
+      hierarchy.subcategories.forEach(subcategory => {
+        subcategoryMap.set(subcategory.id, {
+          name: subcategory.name,
+          parentName: hierarchy.category.name
+        });
+      });
+    });
+
+    // Get product-to-category mappings by searching for each product
+    const productCategoryMappings = await getProductCategoryMappings(products);
+
+    // Convert products to SKU references with actual Square categories
     const skus: SkuReference[] = products
       .filter(product => product.humanReadableSku) // Only include products with generated SKUs
-      .map(product => ({
-        humanReadableSku: product.humanReadableSku!,
-        actualSku: product.sku,
-        title: product.title,
-        brand: product.brand,
-        price: product.price,
-        category: categorizeProduct(product),
-        id: product.id
-      }));
+      .map(product => {
+        const categoryInfo = productCategoryMappings.get(product.id);
+        let category = 'Uncategorized';
+        let subcategory: string | undefined;
+        let categoryId: string | undefined;
+        let subcategoryId: string | undefined;
 
-    // Group by category for easier browsing
+        if (categoryInfo) {
+          categoryId = categoryInfo.categoryId;
+          
+          // Check if it's a subcategory first
+          const subcategoryInfo = subcategoryMap.get(categoryInfo.categoryId);
+          if (subcategoryInfo) {
+            category = subcategoryInfo.parentName;
+            subcategory = subcategoryInfo.name;
+            subcategoryId = categoryInfo.categoryId;
+          } else {
+            // It's a top-level category
+            const topLevelName = categoryMap.get(categoryInfo.categoryId);
+            if (topLevelName) {
+              category = topLevelName;
+            }
+          }
+        } else {
+          // Fallback to product title-based categorization if no Square category found
+          category = fallbackCategorizeProduct(product);
+        }
+
+        return {
+          humanReadableSku: product.humanReadableSku!,
+          actualSku: product.sku,
+          title: product.title,
+          brand: product.brand,
+          price: product.price,
+          category: category,
+          subcategory: subcategory,
+          id: product.id,
+          categoryId: categoryId,
+          subcategoryId: subcategoryId
+        };
+      });
+
+    // Group by category, preserving Square hierarchy
     const categorized = skus.reduce((acc, sku) => {
-      const category = sku.category;
-      if (!acc[category]) {
-        acc[category] = [];
+      const categoryKey = sku.subcategory ? 
+        `${sku.category} > ${sku.subcategory}` : 
+        sku.category;
+      
+      if (!acc[categoryKey]) {
+        acc[categoryKey] = [];
       }
-      acc[category].push(sku);
+      acc[categoryKey].push(sku);
       return acc;
     }, {} as Record<string, SkuReference[]>);
 
@@ -62,6 +133,8 @@ export async function generateSkuReference(): Promise<{
     Object.keys(categorized).forEach(category => {
       categorized[category].sort((a, b) => a.humanReadableSku.localeCompare(b.humanReadableSku));
     });
+
+    console.log(`[generateSkuReference] Successfully categorized ${skus.length} products into ${Object.keys(categorized).length} categories`);
 
     return {
       success: true,
@@ -80,66 +153,141 @@ export async function generateSkuReference(): Promise<{
 }
 
 /**
- * Categorize products for easier browsing
+ * Get category assignments for products by searching Square catalog
+ * Handles both legacy categoryId and modern categories array
  */
-function categorizeProduct(product: Product): string {
+async function getProductCategoryMappings(products: Product[]): Promise<Map<string, { categoryId: string }>> {
+  const mappings = new Map<string, { categoryId: string }>();
+  
+  try {
+    // Use Square's catalog API to get all items with their category information
+    const { result } = await squareClient.catalogApi.listCatalog(undefined, "ITEM");
+    
+    if (result?.objects) {
+      result.objects.forEach(item => {
+        if (item.type === "ITEM") {
+          let categoryId: string | undefined;
+          
+          // Method 1: Use new categories array (preferred)
+          if (item.itemData?.categories && item.itemData.categories.length > 0) {
+            // Take the first category if multiple exist
+            categoryId = item.itemData.categories[0].id;
+          }
+          // Method 2: Fall back to deprecated categoryId field
+          else if (item.itemData?.categoryId) {
+            categoryId = item.itemData.categoryId;
+          }
+          
+          if (categoryId) {
+            mappings.set(item.id, { categoryId });
+          }
+        }
+      });
+    }
+    
+    console.log(`[getProductCategoryMappings] Found category mappings for ${mappings.size} products`);
+    
+  } catch (error) {
+    console.warn('Failed to fetch product category mappings:', error);
+    
+    // Fallback: Try alternative approach using search
+    try {
+      console.log('[getProductCategoryMappings] Trying alternative search approach...');
+      
+      const searchResponse = await squareClient.catalogApi.searchCatalogObjects({
+        objectTypes: ["ITEM"],
+        includeRelatedObjects: true
+      });
+      
+      if (searchResponse.result?.objects) {
+        searchResponse.result.objects.forEach(item => {
+          if (item.type === "ITEM") {
+            let categoryId: string | undefined;
+            
+            if (item.itemData?.categories && item.itemData.categories.length > 0) {
+              categoryId = item.itemData.categories[0].id;
+            } else if (item.itemData?.categoryId) {
+              categoryId = item.itemData.categoryId;
+            }
+            
+            if (categoryId) {
+              mappings.set(item.id, { categoryId });
+            }
+          }
+        });
+      }
+      
+      console.log(`[getProductCategoryMappings] Alternative search found ${mappings.size} category mappings`);
+      
+    } catch (searchError) {
+      console.warn('Alternative search also failed:', searchError);
+    }
+  }
+  
+  return mappings;
+}
+
+/**
+ * Fallback categorization when Square categories aren't available
+ * This matches the original logic but now only used as fallback
+ */
+function fallbackCategorizeProduct(product: Product): string {
   const title = product.title.toLowerCase();
   const brand = product.brand?.toLowerCase() || '';
 
   // Skateboard decks
   if (title.includes('deck') || title.includes('board')) {
-    return 'Decks';
+    return 'Skateboards > Decks';
   }
 
   // Trucks & Hardware
   if (title.includes('truck') || title.includes('trucks')) {
-    return 'Trucks';
+    return 'Skateboards > Trucks';
   }
 
   // Wheels & Bearings
-  if (title.includes('wheel') || title.includes('wheels') || title.includes('bearing')) {
-    return 'Wheels & Bearings';
+  if (title.includes('wheel') || title.includes('wheels')) {
+    return 'Skateboards > Wheels';
+  }
+  
+  if (title.includes('bearing')) {
+    return 'Skateboards > Bearings Bolts & More';
   }
 
   // Apparel
   if (title.includes('shirt') || title.includes('hoody') || title.includes('hoodie') || 
       title.includes('sweatshirt') || title.includes('tee') || title.includes('crewneck')) {
-    return 'Apparel - Tops';
+    return 'Apparel > Tees & Tops';
   }
 
   if (title.includes('pant') || title.includes('short') || title.includes('jean')) {
-    return 'Apparel - Bottoms';
+    return 'Apparel > Bottoms';
   }
 
   // Accessories
   if (title.includes('hat') || title.includes('cap') || title.includes('beanie')) {
-    return 'Accessories - Headwear';
+    return 'Apparel > Hats';
   }
 
   if (title.includes('sock') || title.includes('socks')) {
-    return 'Accessories - Socks';
+    return 'Apparel > Accessories';
   }
 
   if (title.includes('bag') || title.includes('backpack') || title.includes('tote')) {
-    return 'Accessories - Bags';
+    return 'Apparel > Accessories';
   }
 
   // Tools & Hardware
   if (title.includes('tool') || title.includes('wrench') || title.includes('key')) {
-    return 'Tools & Hardware';
+    return 'Skateboards > Bearings Bolts & More';
   }
 
-  // Collectibles & Media
-  if (title.includes('vinyl') || title.includes('book') || title.includes('poster')) {
-    return 'Collectibles & Media';
-  }
-
-  // Default categorization by brand
+  // Default to brand if available, otherwise uncategorized
   if (brand) {
     return `${brand.charAt(0).toUpperCase()}${brand.slice(1)} Products`;
   }
 
-  return 'Other Products';
+  return 'Uncategorized';
 }
 
 /**
@@ -147,7 +295,7 @@ function categorizeProduct(product: Product): string {
  */
 export function generateSkuMarkdown(categorized: Record<string, SkuReference[]>): string {
   let markdown = `# Product SKU Reference Guide\n\n`;
-  markdown += `*Generated automatically from Square catalog*\n\n`;
+  markdown += `*Generated automatically from Square catalog with actual category structure*\n\n`;
   markdown += `Use these human-readable SKUs in your WordPress content:\n\n`;
   markdown += `\`\`\`html\n`;
   markdown += `<div class="wp-block-product-showcase" \n`;
@@ -171,6 +319,7 @@ export function generateSkuMarkdown(categorized: Record<string, SkuReference[]>)
   });
 
   markdown += `---\n\n`;
+  markdown += `*Categories reflect actual Square catalog structure*\n`;
   markdown += `*Last updated: ${new Date().toLocaleDateString()}*\n`;
   
   return markdown;

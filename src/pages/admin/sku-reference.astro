@@ -9,13 +9,26 @@ const { success, skus, categorized, error } = await generateSkuReference();
 
 const pageTitle = "Product SKU Reference - Content Creator Guide";
 
-// Build filter options for client-side filtering
+// Build filter options for client-side filtering with hierarchical categories
 const filterOptions = {
-  categories: Object.keys(categorized).map(cat => ({
-    name: cat,
-    slug: cat.toLowerCase().replace(/\s+/g, '-'),
-    count: categorized[cat].length
-  })),
+  categories: Object.keys(categorized)
+    .sort((a, b) => {
+      // Sort top-level categories first, then subcategories
+      const aIsSubcat = a.includes(' > ');
+      const bIsSubcat = b.includes(' > ');
+      if (aIsSubcat !== bIsSubcat) {
+        return aIsSubcat ? 1 : -1; // Top-level first
+      }
+      return a.localeCompare(b);
+    })
+    .map(cat => ({
+      name: cat,
+      slug: cat.toLowerCase().replace(/\s+/g, '-').replace(/>/g, ''),
+      count: categorized[cat].length,
+      isSubcategory: cat.includes(' > '),
+      parentCategory: cat.includes(' > ') ? cat.split(' > ')[0] : null,
+      subcategoryName: cat.includes(' > ') ? cat.split(' > ')[1] : null
+    })),
   brands: [...new Set(skus.map(s => s.brand).filter(Boolean))].map(brand => ({
     name: brand!,
     slug: brand!.toLowerCase().replace(/\s+/g, '-'),
@@ -131,18 +144,21 @@ const filterOptions = {
                 </button>
               </div>
 
-              <!-- Category Filter -->
+              <!-- Category Filter with Hierarchical Display -->
               <div class="mb-6">
                 <h4 class="font-medium text-(--content-heading) mb-2">Categories</h4>
-                <div class="space-y-2 max-h-48 overflow-y-auto">
+                <div class="space-y-1 max-h-48 overflow-y-auto">
                   {filterOptions.categories.map(category => (
-                    <label class="flex items-center cursor-pointer">
+                    <label class={`flex items-center cursor-pointer ${category.isSubcategory ? 'ml-4 text-sm' : 'font-medium'}`}>
                       <input
                         type="checkbox"
                         class="category-filter elco-checkbox mr-2"
                         data-category={category.slug}
+                        data-full-category={category.name}
                       />
-                      <span class="text-sm text-(--content-body) flex-1">{category.name}</span>
+                      <span class={`text-(--content-body) flex-1 ${category.isSubcategory ? 'text-sm opacity-90' : ''}`}>
+                        {category.isSubcategory ? `↳ ${category.subcategoryName}` : category.name}
+                      </span>
                       <span class="text-xs text-(--content-meta)">({category.count})</span>
                     </label>
                   ))}
@@ -476,9 +492,15 @@ const filterOptions = {
   </div>
 </Layout>
 
-<script define:vars={{ skus, filterOptions }}>
-  // Enhanced SKU Reference with improved UX
-  let allSkus = skus;
+<script define:vars={{ skus, filterOptions, categorized }}>
+  // Enhanced SKU Reference with improved UX and hierarchical categories
+  let allSkus = skus.map(sku => ({
+    ...sku,
+    // Add category from categorized data for filtering
+    category: Object.keys(categorized).find(cat => 
+      categorized[cat].some(catSku => catSku.humanReadableSku === sku.humanReadableSku)
+    ) || 'Uncategorized'
+  }));
   let filteredSkus = [...allSkus];
   let selectedProducts = new Set();
   let currentSort = 'name';
@@ -711,14 +733,14 @@ const filterOptions = {
       );
     }
 
-    // Category filter
+    // Category filter with hierarchical support
     const selectedCategories = Array.from(categoryFilters)
       .filter(f => f.checked)
-      .map(f => f.dataset.category);
+      .map(f => f.dataset.fullCategory);
     
     if (selectedCategories.length > 0) {
       results = results.filter(sku => 
-        selectedCategories.includes(sku.category.toLowerCase().replace(/\s+/g, '-'))
+        selectedCategories.includes(sku.category)
       );
     }
 
@@ -805,7 +827,7 @@ const filterOptions = {
           ${sku.brand || 'N/A'}
         </td>
         <td class="px-4 py-3 text-sm font-medium text-(--content-body)">
-          ${sku.category}
+          <span class="text-xs text-(--content-meta)">${sku.category}</span>
         </td>
       </tr>
     `).join('');
