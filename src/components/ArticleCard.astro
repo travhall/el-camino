@@ -147,9 +147,9 @@ const getExcerptClasses = () => {
   class={getCardClasses()}
   aria-label={`Read article: ${fallbackContent.title}`}
 >
-  <!-- Featured Image -->
+  <!-- Featured Image with Placeholder Support -->
   {
-    imageUrl && (
+    imageUrl ? (
       <Image
         src={imageUrl}
         alt={fallbackContent.imageAlt}
@@ -157,6 +157,17 @@ const getExcerptClasses = () => {
         height={imageHeight}
         format="avif"
         quality={85}
+        class={getImageClasses()}
+        loading={priority ? "eager" : "lazy"}
+        fetchpriority={priority ? "high" : "auto"}
+        decoding={priority ? "sync" : "async"}
+      />
+    ) : (
+      <img
+        src="/images/placeholder.png"
+        alt="Article placeholder"
+        width={imageWidth}
+        height={imageHeight}
         class={getImageClasses()}
         loading={priority ? "eager" : "lazy"}
         fetchpriority={priority ? "high" : "auto"}
