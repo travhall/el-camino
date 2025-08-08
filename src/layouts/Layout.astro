@@ -130,6 +130,23 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
         };
       }
     </script>
+    
+    <!-- Clean news parameters when outside news section -->
+    <script is:inline>
+      document.addEventListener('astro:page-load', function() {
+        if (!window.location.pathname.startsWith('/news')) {
+          const url = new URL(window.location);
+          if (url.searchParams.has('view')) {
+            url.searchParams.delete('view');
+            const newUrl = url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '');
+            if (newUrl !== window.location.pathname + window.location.search) {
+              window.history.replaceState({}, '', newUrl);
+            }
+          }
+        }
+      });
+    </script>
+    
     <ClientRouter />
   </head>
   <body
@@ -150,6 +167,41 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <div id="portal-root"></div>
     <script>
       import("@/utils/performanceMonitoring");
+    </script>
+    
+    <!-- Global cleanup for news view parameters -->
+    <script>
+      document.addEventListener("astro:page-load", () => {
+        // Clean view parameters from non-news forms
+        const cleanNonNewsForms = () => {
+          const forms = document.querySelectorAll('form');
+          forms.forEach(form => {
+            const action = form.getAttribute('action') || '';
+            const isNewsForm = !action || action.startsWith('/news') || window.location.pathname.startsWith('/news');
+            
+            if (!isNewsForm) {
+              const viewInputs = form.querySelectorAll('input[name="view"]');
+              viewInputs.forEach(input => input.remove());
+            }
+          });
+        };
+        
+        // Clean immediately and after any dynamic content loads
+        cleanNonNewsForms();
+        setTimeout(cleanNonNewsForms, 100);
+      });
+      
+      // Clean view parameter from URLs when navigating away from news
+      document.addEventListener("astro:before-swap", (e) => {
+        if (window.location.pathname.startsWith('/news') && e.to && !e.to.pathname.startsWith('/news')) {
+          const currentParams = new URLSearchParams(window.location.search);
+          if (currentParams.has('view')) {
+            currentParams.delete('view');
+            const cleanUrl = e.to.pathname + (currentParams.toString() ? '?' + currentParams.toString() : '');
+            window.history.replaceState({}, '', cleanUrl);
+          }
+        }
+      });
     </script>
   </body>
 </html>

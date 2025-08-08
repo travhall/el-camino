@@ -103,6 +103,7 @@ const getSkeletonVariant = () => {
               featured={!filterable && index === 0}
               priority={index === 0}
               variant={getCardVariant(index)}
+              data-variant={getCardVariant(index)}
             />
           )
         )}
@@ -186,6 +187,43 @@ const getSkeletonVariant = () => {
         .forEach((img) => imageObserver.observe(img));
     }
 
+    // Dynamic view switching for filterable layouts
+    const container = document.querySelector("[class*='grid'], [class*='flex']");
+    if (container) {
+      // Listen for view change events from news page
+      container.addEventListener('viewchange', (e: Event) => {
+        const customEvent = e as CustomEvent;
+        const newView = customEvent.detail?.view;
+        
+        if (newView === 'list') {
+          // Switch to list view
+          container.className = 'flex flex-col gap-1';
+          // Update all article cards to list variant
+          const cards = container.querySelectorAll('[data-variant]');
+          cards.forEach(card => {
+            (card as HTMLElement).setAttribute('data-variant', 'list');
+          });
+        } else if (newView === 'grid') {
+          // Switch to grid view
+          container.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1';
+          // Update all article cards to grid variant
+          const cards = container.querySelectorAll('[data-variant]');
+          cards.forEach(card => {
+            (card as HTMLElement).setAttribute('data-variant', 'grid');
+          });
+        }
+      });
+
+      // Add smooth transitions for layout changes
+      container.addEventListener("transitionstart", () => {
+        container.classList.add("transitioning");
+      });
+
+      container.addEventListener("transitionend", () => {
+        container.classList.remove("transitioning");
+      });
+    }
+
     // Keyboard navigation support for accessibility
     const cards = document.querySelectorAll("a[class*='group']");
     cards.forEach((card, index) => {
@@ -200,20 +238,5 @@ const getSkeletonVariant = () => {
         }
       });
     });
-
-    // Layout-specific enhancements
-    const container = document.querySelector(
-      "[class*='grid'], [class*='flex']"
-    );
-    if (container) {
-      // Add smooth transitions for layout changes
-      container.addEventListener("transitionstart", () => {
-        container.classList.add("transitioning");
-      });
-
-      container.addEventListener("transitionend", () => {
-        container.classList.remove("transitioning");
-      });
-    }
   });
 </script>

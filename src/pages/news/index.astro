@@ -249,40 +249,42 @@ const paginatedPosts = displayPosts.slice(
 </Layout>
 
 <script>
-  // Enhanced functionality for view persistence with localStorage
   document.addEventListener("astro:page-load", () => {
+    // CRITICAL: Only run on news pages  
+    if (!window.location.pathname.startsWith('/news')) {
+      return;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     let currentView = urlParams.get("view") || "grid";
 
-    // Check localStorage preference if no URL param (without flash)
+    // Always restore localStorage preference if no explicit view parameter in URL
     if (!urlParams.has("view")) {
       const storedView = localStorage.getItem("newsViewPreference");
-      if (storedView && storedView !== "grid") {
-        currentView = storedView as "grid" | "list";
-        // Update URL without reload
-        urlParams.set("view", currentView);
+      if (storedView === "list") {
+        currentView = "list";
+        // Add view parameter to URL and reload to ensure server-side rendering is correct
+        urlParams.set("view", "list");
         const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
-        window.history.replaceState({}, "", newUrl);
+        window.location.replace(newUrl);
+        return; // Exit early since we're reloading
       }
     }
 
     // Store current view preference
     localStorage.setItem("newsViewPreference", currentView);
 
-    // Update "Clear All Filters" link to preserve view
-    const clearFiltersLink = document.querySelector('a[href="/news"]');
-    if (clearFiltersLink && currentView !== "grid") {
-      clearFiltersLink.setAttribute("href", `/news?view=${currentView}`);
-    }
-
-    // Add view parameter to all forms to preserve selection
+    // Add view parameter ONLY to news-related forms
     const preserveViewInForms = () => {
-      const forms = document.querySelectorAll("form");
-      forms.forEach((form) => {
-        // Add hidden input for view if it doesn't exist
-        let viewInput = form.querySelector(
-          'input[name="view"]'
-        ) as HTMLInputElement;
+      const newsForms = document.querySelectorAll("form[action*='/news'], form[action=''], form:not([action])");
+      newsForms.forEach((form) => {
+        // Only target forms that stay within news section
+        const action = form.getAttribute('action') || '';
+        if (action && !action.startsWith('/news') && action !== '') {
+          return; // Skip forms that go outside news
+        }
+        
+        let viewInput = form.querySelector('input[name="view"]') as HTMLInputElement;
         if (!viewInput && currentView !== "grid") {
           viewInput = document.createElement("input");
           viewInput.type = "hidden";
@@ -295,55 +297,18 @@ const paginatedPosts = displayPosts.slice(
 
     preserveViewInForms();
 
-    // Handle view transitions with smooth animations
-    const articleGrid = document.querySelector(
-      "[class*='grid'], [class*='flex']"
-    );
+    // Handle view transitions
+    const articleGrid = document.querySelector("[class*='grid'], [class*='flex']");
     if (articleGrid) {
       articleGrid.classList.add("transition-all", "duration-300");
     }
 
-    // Enhanced keyboard shortcuts
-    let shortcutHintShown = false;
-
+    // Keyboard shortcuts
     document.addEventListener("keydown", (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      )
-        return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      if (e.key === "h" && !shortcutHintShown) {
-        showShortcutHint();
-        shortcutHintShown = true;
-        e.preventDefault();
-      }
-    });
-
-    function showShortcutHint() {
-      const hint = document.createElement("div");
-      hint.className =
-        "fixed top-4 right-4 bg-(--surface-secondary) text-(--content-body) p-3 rounded-lg shadow-lg z-50 text-sm";
-      hint.innerHTML = `
-        <div class="font-semibold mb-2">Keyboard Shortcuts:</div>
-        <div>G - Grid view</div>
-        <div>L - List view</div>
-        <div>/ - Focus search</div>
-      `;
-
-      document.body.appendChild(hint);
-
-      setTimeout(() => {
-        hint.remove();
-      }, 5000);
-    }
-
-    // Focus search with '/' key
-    document.addEventListener("keydown", (e: KeyboardEvent) => {
       if (e.key === "/" && !(e.target instanceof HTMLInputElement)) {
-        const searchInput = document.querySelector(
-          'input[name="search"]'
-        ) as HTMLInputElement;
+        const searchInput = document.querySelector('input[name="search"]') as HTMLInputElement;
         if (searchInput) {
           searchInput.focus();
           e.preventDefault();
@@ -351,7 +316,7 @@ const paginatedPosts = displayPosts.slice(
       }
     });
 
-    // Analytics tracking for view changes
+    // Analytics tracking
     const trackViewChange = (view: string) => {
       if (typeof window !== "undefined" && (window as any).gtag) {
         (window as any).gtag("event", "news_view_change", {
@@ -363,28 +328,30 @@ const paginatedPosts = displayPosts.slice(
 
     trackViewChange(currentView);
 
-    // Accessibility improvements
-    const announceViewChange = (view: string) => {
-      const announcement = document.createElement("div");
-      announcement.setAttribute("aria-live", "polite");
-      announcement.setAttribute("aria-atomic", "true");
-      announcement.className = "sr-only";
-      announcement.textContent = `Switched to ${view} view`;
-
-      document.body.appendChild(announcement);
-
-      setTimeout(() => {
-        announcement.remove();
-      }, 1000);
-    };
-
-    // Listen for view changes via popstate (back/forward navigation)
+    // Listen for popstate navigation
     window.addEventListener("popstate", () => {
-      const newParams = new URLSearchParams(window.location.search);
-      const newView = newParams.get("view") || "grid";
-      localStorage.setItem("newsViewPreference", newView);
-      announceViewChange(newView);
-      trackViewChange(newView);
+      if (window.location.pathname.startsWith('/news')) {
+        const newParams = new URLSearchParams(window.location.search);
+        const newView = newParams.get("view") || "grid";
+        localStorage.setItem("newsViewPreference", newView);
+        trackViewChange(newView);
+      }
     });
+  });
+
+  // CRITICAL: Clean URL parameters when leaving news section
+  document.addEventListener("astro:before-swap", () => {
+    // If we're leaving news section, clean up any news-specific parameters in forms/links
+    if (window.location.pathname.startsWith('/news')) {
+      const forms = document.querySelectorAll('form');
+      forms.forEach(form => {
+        const action = form.getAttribute('action');
+        if (action && !action.startsWith('/news')) {
+          // Remove view inputs from forms going outside news
+          const viewInputs = form.querySelectorAll('input[name="view"]');
+          viewInputs.forEach(input => input.remove());
+        }
+      });
+    }
   });
 </script>

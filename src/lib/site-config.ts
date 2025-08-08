@@ -55,8 +55,8 @@ export const siteConfig: SiteConfig = {
       display: "310 Water Street, Eau Claire, WI 54703",
     },
     phone: {
-      number: "+15346261991",
-      display: "(534) 626-1991",
+      number: "+7159121169",
+      display: "(715) 912-1169",
     },
     email: "elcaminoboardshop@gmail.com",
   },

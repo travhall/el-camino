@@ -157,19 +157,30 @@ const {
 </div>
 
 <script>
+  import {
+    updateViewInCurrentURL,
+    navigateWithContext,
+    createNewsAwareURL,
+    isNewsPath
+  } from "@/utils/newsNavigation";
+
   document.addEventListener("astro:page-load", () => {
+    // Only run on news pages
+    if (!isNewsPath(window.location.pathname)) {
+      return;
+    }
     // Handle clear search button
     const clearButtons = document.querySelectorAll(".clear-search-btn");
     clearButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
         const currentParams = new URLSearchParams(window.location.search);
         currentParams.delete("search");
-        const newUrl = `${window.location.pathname}${currentParams.toString() ? "?" + currentParams.toString() : ""}`;
+        const newUrl = createNewsAwareURL(window.location.pathname, currentParams);
         window.location.href = newUrl;
       });
     });
 
-    // Handle sort dropdown changes
+    // Handle sort dropdown changes  
     const sortSelects = document.querySelectorAll('select[name="sort"]');
     sortSelects.forEach((select) => {
       select.addEventListener("change", (e) => {
@@ -182,30 +193,23 @@ const {
           currentParams.delete("sort");
         }
 
-        const newUrl = `${window.location.pathname}${currentParams.toString() ? "?" + currentParams.toString() : ""}`;
+        const newUrl = createNewsAwareURL(window.location.pathname, currentParams);
         window.location.href = newUrl;
       });
     });
 
-    // Handle view toggle buttons with localStorage persistence
+    // Handle view toggle buttons with news-aware navigation
     const viewToggleButtons = document.querySelectorAll(".view-toggle");
     viewToggleButtons.forEach((button) => {
       button.addEventListener("click", (e) => {
         const viewType = (e.currentTarget as HTMLElement).dataset.view;
-        const currentParams = new URLSearchParams(window.location.search);
-
+        
         if (viewType) {
-          // Store preference in localStorage
-          localStorage.setItem("newsViewPreference", viewType);
-
-          if (viewType !== "grid") {
-            currentParams.set("view", viewType);
-          } else {
-            currentParams.delete("view");
-          }
-
-          const newUrl = `${window.location.pathname}${currentParams.toString() ? "?" + currentParams.toString() : ""}`;
-          window.location.href = newUrl;
+          // Use new scoped utility to update view in current URL
+          updateViewInCurrentURL(viewType as "grid" | "list");
+          
+          // Reload page to reflect changes
+          window.location.reload();
         }
       });
     });
@@ -221,17 +225,13 @@ const {
 
       if (e.key === "g" && !e.ctrlKey && !e.metaKey) {
         // Switch to grid view
-        const currentParams = new URLSearchParams(window.location.search);
-        currentParams.delete("view");
-        const newUrl = `${window.location.pathname}${currentParams.toString() ? "?" + currentParams.toString() : ""}`;
-        window.location.href = newUrl;
+        updateViewInCurrentURL("grid");
+        window.location.reload();
         e.preventDefault();
       } else if (e.key === "l" && !e.ctrlKey && !e.metaKey) {
-        // Switch to list view
-        const currentParams = new URLSearchParams(window.location.search);
-        currentParams.set("view", "list");
-        const newUrl = `${window.location.pathname}${currentParams.toString() ? "?" + currentParams.toString() : ""}`;
-        window.location.href = newUrl;
+        // Switch to list view  
+        updateViewInCurrentURL("list");
+        window.location.reload();
         e.preventDefault();
       }
     });
