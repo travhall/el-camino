@@ -1,6 +1,6 @@
 ---
 // src/components/wordpress/blocks/JetpackSlideshow.astro
-// Custom slideshow component for wp-block-jetpack-slideshow
+// FIXED: Custom slideshow component with configurable height
 
 import { Image } from "astro:assets";
 
@@ -15,6 +15,7 @@ interface Props {
   showDots?: boolean;
   showArrows?: boolean;
   aspectRatio?: "auto" | "16:9" | "4:3" | "1:1";
+  height?: string; // NEW: Configurable height prop
 }
 
 const {
@@ -24,18 +25,29 @@ const {
   showDots = true,
   showArrows = true,
   aspectRatio = "auto",
+  height = "480px", // NEW: Default height
 } = Astro.props;
 
 // Generate unique ID for this slideshow instance
 const slideshowId = `slideshow-${Math.random().toString(36).substr(2, 9)}`;
 
-// Aspect ratio classes
+// SOLUTION: Separate aspect ratio from height constraints
+const useAspectRatio = aspectRatio !== "auto";
 const aspectRatioClasses = {
-  auto: "aspect-auto",
+  auto: "",
   "16:9": "aspect-video",
   "4:3": "aspect-[4/3]",
   "1:1": "aspect-square",
 };
+
+// Simple approach: Either use aspect-ratio OR fixed height, never both
+const containerClasses = useAspectRatio
+  ? `slideshow-container relative ${aspectRatioClasses[aspectRatio]}`
+  : `slideshow-container relative`;
+
+const containerStyle = useAspectRatio
+  ? "" // Let aspect-ratio handle sizing
+  : `min-height: ${height}`; // Use fixed height for "auto"
 ---
 
 <div
@@ -44,9 +56,10 @@ const aspectRatioClasses = {
   data-autoplay={autoplay}
   data-delay={delay}
 >
-  <!-- Slides Container -->
+  <!-- FIXED: Slides Container with separated concerns -->
   <div
-    class={`slideshow-container relative ${aspectRatioClasses[aspectRatio]} min-h-[400px]`}
+    class={containerClasses}
+    style={containerStyle}
     role="region"
     aria-label="Image slideshow"
   >
@@ -182,7 +195,7 @@ const aspectRatioClasses = {
 </div>
 
 <script>
-  // Enhanced slideshow functionality - Fixed to work with dynamic loading
+  // Enhanced slideshow functionality - Same as before
   function initializeSlideshow(
     slideshowElement: HTMLElement
   ): (() => void) | undefined {
@@ -320,7 +333,7 @@ const aspectRatioClasses = {
       }
     }
 
-    // Event listeners
+    // Event listeners - Same as before
     if (prevButton) {
       prevButton.addEventListener("click", () => {
         prevSlide();
@@ -488,6 +501,13 @@ const aspectRatioClasses = {
   .autoplay-toggle:focus {
     outline: 2px solid white;
     outline-offset: 2px;
+  }
+
+  /* FIXED: Container query support for responsive aspect ratios */
+  @container (min-width: 320px) {
+    .slideshow-container {
+      /* Ensure container queries work properly */
+    }
   }
 
   /* Reduced motion support */

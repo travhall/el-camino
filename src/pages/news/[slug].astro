@@ -163,7 +163,7 @@ const structuredData = {
 
     <!-- UPDATED: Enhanced WordPress content with block parsing -->
     <section
-      class="md:max-w-3xl lg:max-w-4xl xl:max-w-5xl self-center p-4 lg:p-8 xl:p-12 2xl:p-20 bg-(--surface-secondary)"
+      class="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl self-center p-4 lg:p-8 xl:p-12 2xl:p-20 bg-(--surface-secondary)"
     >
       <!-- WordPress content with enhanced block rendering -->
       <WordPressBlockParser
@@ -291,8 +291,74 @@ const structuredData = {
 </Layout>
 
 <script>
-  // All existing functionality (tag handling, sharing, analytics) remains the same
+  // Enhanced sharing functionality
   document.addEventListener("astro:page-load", () => {
-    // ... existing script content ...
+    const shareButton = document.getElementById("share-article-button");
+
+    if (shareButton) {
+      shareButton.addEventListener("click", async (e) => {
+        e.preventDefault();
+
+        try {
+          const shareData = {
+            title: document.title,
+            url: window.location.href,
+            text:
+              document
+                .querySelector('meta[name="description"]')
+                ?.getAttribute("content") || "",
+          };
+
+          if (
+            navigator.share &&
+            navigator.canShare &&
+            navigator.canShare(shareData)
+          ) {
+            await navigator.share(shareData);
+
+            // Analytics for successful share
+            if (typeof window !== "undefined" && (window as any).gtag) {
+              (window as any).gtag("event", "article_shared", {
+                method: "native_share",
+                article_title: document.title,
+              });
+            }
+          } else {
+            // Fallback to clipboard
+            await navigator.clipboard.writeText(window.location.href);
+
+            // Show feedback
+            const originalText = shareButton.textContent;
+            shareButton.textContent = "Link Copied!";
+            shareButton.classList.add("text-(--ui-accent)");
+
+            setTimeout(() => {
+              shareButton.textContent = originalText;
+              shareButton.classList.remove("text-(--ui-accent)");
+            }, 2000);
+
+            // Analytics for clipboard copy
+            if (typeof window !== "undefined" && (window as any).gtag) {
+              (window as any).gtag("event", "article_shared", {
+                method: "clipboard",
+                article_title: document.title,
+              });
+            }
+          }
+        } catch (error) {
+          console.warn("Sharing failed:", error);
+
+          // Fallback feedback
+          const originalText = shareButton.textContent;
+          shareButton.textContent = "Share Failed";
+          shareButton.classList.add("text-(--state-error-text)");
+
+          setTimeout(() => {
+            shareButton.textContent = originalText;
+            shareButton.classList.remove("text-(--state-error-text)");
+          }, 2000);
+        }
+      });
+    }
   });
 </script>
