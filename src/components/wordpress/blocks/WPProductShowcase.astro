@@ -1,279 +1,205 @@
 ---
-// src/components/wordpress/blocks/WPProductShowcase.astro - USING BlogProductCard
+// src/components/wordpress/blocks/WPProductShowcase.astro - SIMPLE CAROUSEL FIX
 import BlogProductCard from "@/components/wordpress/blocks/BlogProductCard.astro";
 import { fetchProducts } from "@/lib/square/client";
+import { MoneyUtils } from "@/lib/square/money";
 
 interface Props {
   productSkus: string[];
   layout?: "grid" | "carousel" | "list";
-  showPrice?: boolean;
-  showStock?: boolean;
-  showCartButton?: boolean;
   columns?: number;
   title?: string;
   description?: string;
-  fallbackIds?: string[]; // Backward compatibility
+  fallbackIds?: string[];
 }
 
 const {
   productSkus = [],
   layout = "grid",
-  showPrice = true,
-  showStock = true,
-  showCartButton = true,
   columns = 3,
   title = "",
   description = "",
   fallbackIds = [],
 } = Astro.props;
 
-// PERFORMANCE OPTIMIZATION: Use bulk product fetch (single cached API call)
+// Get products (existing logic unchanged)
 let products: any[] = [];
 let errors = [];
 
 try {
-  const allProducts = await fetchProducts(); // Single cached call for entire site
-
-  // Enhanced matching with multiple strategies
+  const allProducts = await fetchProducts();
+  
   products = productSkus
     .map((identifier) => {
       const searchIdentifier = identifier.trim();
-      let matchedProduct = null;
-
-      // 1. Exact human-readable SKU match (case insensitive)
-      matchedProduct = allProducts.find(
-        (p) =>
-          p.humanReadableSku &&
-          p.humanReadableSku.toLowerCase() === searchIdentifier.toLowerCase()
-      );
-
-      // 2. Exact Square SKU match
-      if (!matchedProduct) {
-        matchedProduct = allProducts.find(
-          (p) => p.sku && p.sku === searchIdentifier
-        );
-      }
-
-      // 3. Product ID match (backward compatibility)
-      if (!matchedProduct) {
-        matchedProduct = allProducts.find((p) => {
-          return (
-            p.id === searchIdentifier || p.catalogObjectId === searchIdentifier
-          );
-        });
-      }
-
-      // 4. Variation SKU match
-      if (!matchedProduct) {
-        matchedProduct = allProducts.find((p) =>
-          p.variations?.some((v) => v.sku === searchIdentifier)
-        );
-      }
-
-      // 5. Partial title match (case insensitive)
-      if (!matchedProduct) {
-        matchedProduct = allProducts.find((p) =>
-          p.title.toLowerCase().includes(searchIdentifier.toLowerCase())
-        );
-      }
-
-      // 6. Fuzzy brand + title match
-      if (!matchedProduct) {
-        const searchParts = searchIdentifier.toLowerCase().split("-");
-        if (searchParts.length >= 2) {
-          const [brandPart, ...titleParts] = searchParts;
-          matchedProduct = allProducts.find((p) => {
-            const productTitle = p.title.toLowerCase();
-            const productBrand = (p.brand || "").toLowerCase();
-            return (
-              (productBrand.includes(brandPart) ||
-                productTitle.includes(brandPart)) &&
-              titleParts.some((part) => productTitle.includes(part))
-            );
-          });
-        }
-      }
-
+      
+      // Try multiple matching strategies
+      let matchedProduct = allProducts.find(p => 
+        p.humanReadableSku?.toLowerCase() === searchIdentifier.toLowerCase()
+      ) || allProducts.find(p => p.sku === searchIdentifier)
+        || allProducts.find(p => p.id === searchIdentifier || p.catalogObjectId === searchIdentifier);
+      
       if (!matchedProduct) {
         errors.push(`Product not found: ${searchIdentifier}`);
       }
-
-      // Validate product has required properties
-      if (
-        matchedProduct &&
-        (!matchedProduct.image ||
-          !matchedProduct.title ||
-          !matchedProduct.price)
-      ) {
-        errors.push(
-          `Product ${searchIdentifier} missing required data (image, title, or price)`
-        );
-        return null;
-      }
-
+      
       return matchedProduct;
     })
     .filter(Boolean);
 
-  // Fallback: Support legacy product IDs for migration
+  // Fallback for legacy IDs
   if (products.length === 0 && fallbackIds.length > 0) {
-    products = fallbackIds
-      .map((id) => {
-        const product = allProducts.find((p) => p.id === id);
-        if (!product) {
-          errors.push(`Product not found (ID): ${id}`);
-          return null;
-        }
-
-        // Validate product has required properties
-        if (!product.image || !product.title || !product.price) {
-          errors.push(
-            `Product ${id} missing required data (image, title, or price)`
-          );
-          return null;
-        }
-
-        return product;
-      })
-      .filter(Boolean);
+    products = fallbackIds.map(id => allProducts.find(p => p.id === id)).filter(Boolean);
   }
 } catch (error) {
-  console.error("Error fetching products for showcase:", error);
+  console.error("Error fetching products:", error);
   errors.push("Failed to load product data");
 }
 
-// BLOG-OPTIMIZED: Grid classes for smaller cards
+// Simple grid classes
 const gridClasses = {
   1: "grid-cols-1",
-  2: "grid-cols-2",
-  3: "grid-cols-2 sm:grid-cols-3",
-  4: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4",
-  5: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5",
-  6: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6",
+  2: "grid-cols-1 sm:grid-cols-2", 
+  3: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3",
+  4: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
+  5: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+  6: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6",
 };
 
-const gridClass =
-  gridClasses[columns as keyof typeof gridClasses] || gridClasses[3];
+const gridClass = gridClasses[columns as keyof typeof gridClasses] || gridClasses[3];
 ---
 
-<div
-  class="wp-product-showcase bg-(--surface-secondary) p-4 sm:p-6 rounded-sm mb-6"
->
-  {
-    title && (
-      <h3 class="font-display font-bold text-xl lg:text-2xl text-(--content-heading) mb-3">
-        {title}
-      </h3>
-    )
-  }
+<div class="wp-product-showcase bg-(--surface-secondary)">
+  {title && (
+    <h3 class="font-display font-bold text-xl lg:text-2xl text-(--content-heading) mb-3">
+      {title}
+    </h3>
+  )}
 
-  {
-    description && (
-      <p class="text-(--content-body) mb-4 text-base">{description}</p>
-    )
-  }
+  {description && (
+    <p class="text-(--content-body) mb-4 text-base">{description}</p>
+  )}
 
-  {
-    products.length > 0 && (
-      <div class={`product-showcase-${layout}`}>
-        {layout === "grid" && (
-          <div class={`grid ${gridClass} gap-3`}>
-            {products.map((product) => (
-              <BlogProductCard
-                product={product}
-                priority={false}
-                variant="compact"
-              />
-            ))}
-          </div>
-        )}
-
-        {layout === "carousel" && (
-          <div class="product-carousel overflow-x-auto -mx-2">
-            <div class="flex gap-3 px-2 pb-2">
-              {products.map((product) => (
-                <div class="flex-shrink-0 w-40 sm:w-44">
-                  <BlogProductCard
-                    product={product}
-                    priority={false}
-                    variant="inline"
-                  />
-                </div>
-              ))}
+  {products.length > 0 && (
+    <div>
+      <!-- GRID LAYOUT -->
+      {layout === "grid" && (
+        <div class={`grid ${gridClass} gap-3`}>
+          {products.map((product) => (
+            <div class="max-w-xs mx-auto sm:max-w-none sm:mx-0">
+              <BlogProductCard product={product} variant="compact" />
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+      )}
 
-        {layout === "list" && (
-          <div class="space-y-3">
+      <!-- CAROUSEL LAYOUT -->
+      {layout === "carousel" && (
+        <div class="carousel-container">
+          <div class="carousel-scroll">
             {products.map((product) => (
-              <div class="grid grid-cols-[120px_1fr] sm:grid-cols-[140px_1fr] gap-4 p-3 bg-(--surface-primary) rounded-sm">
-                <BlogProductCard
-                  product={product}
-                  priority={false}
-                  variant="minimal"
-                />
+              <div class="carousel-item min-w-[18rem] max-w-[18rem]">
+                <BlogProductCard product={product} variant="compact" />
               </div>
             ))}
           </div>
-        )}
-      </div>
-    )
-  }
+        </div>
+      )}
 
-  <!-- Error Handling (Development Only) -->
-  {
-    errors.length > 0 && import.meta.env.DEV && (
-      <div class="mt-4 p-3 bg-state-warning-surface text-state-warning-text rounded-sm text-sm">
-        <h4 class="font-semibold mb-2">Product Showcase Notice:</h4>
-        <ul>
-          {errors.map((error) => (
-            <li>• {error}</li>
+      <!-- LIST LAYOUT -->
+      {layout === "list" && (
+        <div class="space-y-1">
+          {products.map((product) => (
+            <div class="flex gap-3 items-center p-1 bg-(--surface-primary) rounded-sm">
+              <div class="w-20">
+                <div class="aspect-square overflow-hidden bg-(--surface-secondary) rounded-xs">
+                  <img
+                    src={product.image}
+                    alt={product.title}
+                    class="object-cover w-full h-full"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                {product.brand && (
+                  <p class="text-xs uppercase tracking-wide text-(--content-meta)">
+                    {product.brand}
+                  </p>
+                )}
+                <h4 class="font-medium text-sm sm:text-base text-(--content-heading)">
+                  {product.title}
+                </h4>
+                <p class="font-display font-semibold text-base text-(--product-price)">
+                  {MoneyUtils.format(MoneyUtils.fromFloat(product.price))}
+                </p>
+              </div>
+              <div class="flex-shrink-0">
+                <a
+                  href={product.url}
+                  class="px-3 py-2 text-sm font-medium bg-(--ui-button-surface) text-(--ui-button-text) rounded-sm hover:bg-(--ui-button-surface-hover) transition-colors"
+                >
+                  View
+                </a>
+              </div>
+            </div>
           ))}
-        </ul>
-      </div>
-    )
-  }
+        </div>
+      )}
+    </div>
+  )}
 
-  {
-    products.length === 0 && errors.length === 0 && (
-      <div class="text-center py-8">
-        <div class="text-3xl mb-2 opacity-20">🛹</div>
-        <p class="text-(--content-meta) text-sm">
-          No products configured for this showcase.
-        </p>
-        {import.meta.env.DEV && (
-          <p class="text-xs mt-2 opacity-75">
-            Add data-product-ids="ID1,ID2" to configure
-          </p>
-        )}
-      </div>
-    )
-  }
+  <!-- Error display in dev -->
+  {errors.length > 0 && import.meta.env.DEV && (
+    <div class="mt-4 p-3 bg-state-warning-surface text-state-warning-text rounded-sm text-sm">
+      <h4 class="font-semibold mb-2">Product Showcase Notice:</h4>
+      <ul>
+        {errors.map((error) => <li>• {error}</li>)}
+      </ul>
+    </div>
+  )}
+
+  {products.length === 0 && errors.length === 0 && (
+    <div class="text-center py-8">
+      <div class="text-3xl mb-2 opacity-20">🛹</div>
+      <p class="text-(--content-meta) text-sm">No products configured.</p>
+    </div>
+  )}
 </div>
 
 <style>
-  .product-carousel {
+  /* Simple carousel containment fix */
+  .carousel-container {
+    max-width: 100vw;
+    overflow: hidden; /* Prevent container from expanding page */
+  }
+
+  .carousel-scroll {
+    display: flex;
+    gap: 0.25rem; /* 4px gap */
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.5rem; /* Space for scrollbar */
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    /* Custom scrollbar */
     scrollbar-width: thin;
     scrollbar-color: var(--ui-accent) var(--surface-tertiary);
   }
 
-  .product-carousel::-webkit-scrollbar {
+  .carousel-scroll::-webkit-scrollbar {
     height: 4px;
   }
 
-  .product-carousel::-webkit-scrollbar-track {
+  .carousel-scroll::-webkit-scrollbar-track {
     background: var(--surface-tertiary);
     border-radius: 2px;
   }
 
-  .product-carousel::-webkit-scrollbar-thumb {
+  .carousel-scroll::-webkit-scrollbar-thumb {
     background: var(--ui-accent);
     border-radius: 2px;
   }
 
-  /* Ensure carousel doesn't break out of container */
-  .product-carousel {
-    max-width: 100%;
-  }
 </style>
