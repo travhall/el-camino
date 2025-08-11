@@ -1,6 +1,6 @@
 ---
-// src/components/Sidebar.astro - Enhanced with shimmer loading
-import { fetchCategoryHierarchy } from "@/lib/square/categories";
+// src/components/Sidebar.astro - Enhanced with product filtering and shimmer loading
+import { getCategoriesForSidebar } from "@/lib/square/categoryUtils";
 import { squareClient } from "@/lib/square/client";
 import { Image } from "astro:assets";
 
@@ -10,47 +10,15 @@ interface Props {
 
 const { class: additionalClasses = "" } = Astro.props;
 
-// Fetch categories from Square
-const categoryHierarchy = await fetchCategoryHierarchy();
+// Get filtered categories (only those with products) using Square's ordering
+const categoriesWithImages = await getCategoriesForSidebar();
 
 // Square image URLs by category ID
 const categoryImageUrls: Record<string, string> = {};
 
-// Process categories to get images
-for (const item of categoryHierarchy) {
-  try {
-    // Only try to fetch if we have a category ID
-    if (item.category.id) {
-      // Retrieve the category object with related objects
-      const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-        item.category.id,
-        true
-      );
-
-      // Find image objects in related objects
-      if (result.relatedObjects && result.relatedObjects.length > 0) {
-        // Look for IMAGE type objects
-        const imageObjects = result.relatedObjects.filter(
-          (obj) => obj.type === "IMAGE"
-        );
-
-        // If we found any images, use the first one
-        if (imageObjects.length > 0 && imageObjects[0].imageData?.url) {
-          categoryImageUrls[item.category.id] = imageObjects[0].imageData.url;
-        }
-      }
-    }
-  } catch (error) {
-    console.error(
-      `Error fetching images for category ${item.category.id}:`,
-      error
-    );
-  }
-}
-
 // Enhanced function to get optimized image URL for a category
 function getCategoryImageUrl(category: { id: string; slug: string }): string {
-  // If we found an image URL in Square, optimize it
+  // Try to get image from Square if available
   if (category.id && categoryImageUrls[category.id]) {
     const squareImageUrl = categoryImageUrls[category.id];
     
@@ -74,32 +42,52 @@ function getCategoryImageUrl(category: { id: string; slug: string }): string {
   return `/images/category-${category.slug}.png`;
 }
 
-// Map categories with their optimized images
-const categoriesWithImages = categoryHierarchy.map((item) => ({
-  category: item.category.name,
-  url: `/category/${item.category.slug}`,
-  src: getCategoryImageUrl(item.category),
-  id: item.category.id,
-}));
+// Process categories to get images (for existing categories only)
+for (const item of categoriesWithImages) {
+  try {
+    // Only try to fetch if we have a category ID
+    if (item.id) {
+      // Retrieve the category object with related objects
+      const { result } = await squareClient.catalogApi.retrieveCatalogObject(
+        item.id,
+        true
+      );
 
-// Sort function remains the same
-function getSortedCategories() {
-  const orderMap: Record<string, number> = {
-    Skateboards: 0,
-    Apparel: 1,
-    Footwear: 2,
-    "Gift Cards & More": 3,
-  };
+      // Find image objects in related objects
+      if (result.relatedObjects && result.relatedObjects.length > 0) {
+        // Look for IMAGE type objects
+        const imageObjects = result.relatedObjects.filter(
+          (obj) => obj.type === "IMAGE"
+        );
 
-  return [...categoriesWithImages].sort((a, b) => {
-    const indexA = a.category in orderMap ? orderMap[a.category] : 999;
-    const indexB = b.category in orderMap ? orderMap[b.category] : 999;
-    return indexA - indexB;
-  });
+        // If we found any images, use the first one
+        if (imageObjects.length > 0 && imageObjects[0].imageData?.url) {
+          categoryImageUrls[item.id] = imageObjects[0].imageData.url;
+        }
+      }
+    }
+  } catch (error) {
+    console.error(
+      `Error fetching images for category ${item.id}:`,
+      error
+    );
+  }
 }
 
-// Get sorted categories
-const prodCats = getSortedCategories();
+// Create slug from category name for fallback images
+function createSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+// Update image URLs in categories using enhanced Square images or local fallbacks
+const prodCats = categoriesWithImages.map(item => ({
+  ...item,
+  src: getCategoryImageUrl({ id: item.id, slug: createSlug(item.category) })
+}));
 ---
 
 <aside

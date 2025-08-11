@@ -1,16 +1,16 @@
 ---
-// src/components/Nav.astro - Enhanced with strategic prefetching
+// src/components/Nav.astro - Enhanced with strategic prefetching and product filtering
 import { siteConfig } from "@/lib/site-config";
 import type { CategoryHierarchy } from "@/lib/square/types";
-import { fetchCategoryHierarchyForNav } from "@/lib/square/navigationUtils";
+import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
 import { Icon } from "astro-icon/components";
 
 const { contact, social } = siteConfig;
 
 let categoryHierarchy: CategoryHierarchy[];
 try {
-  // Use navigation-optimized category fetching
-  categoryHierarchy = await fetchCategoryHierarchyForNav();
+  // Use product-filtered category fetching to only show categories with products
+  categoryHierarchy = await fetchCategoryHierarchyWithProducts();
 } catch (error) {
   console.warn("Category fetch failed:", error);
   categoryHierarchy = [];
