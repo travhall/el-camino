@@ -102,14 +102,14 @@ const structuredData = {
     set:html={JSON.stringify(structuredData)}
   />
 
-  <article class="p-1 flex flex-col gap-1">
+  <article class="p-1 pb-0 flex flex-col gap-1">
     <header
       class="flex flex-col lg:flex-row-reverse items-start lg:items-center gap-4 lg:gap-8"
     >
       <div class="basis-1/2 p-4 mt-8">
         {
           category?.name && (
-            <span class="font-display font-semibold text-sm lg:text-lg tracking-wide uppercase text-(--ui-button-text) bg-(--ui-button-surface) px-2 py-0.5 rounded-xs mb-4 inline-block self-start">
+            <span class="font-display font-semibold text-sm lg:text-lg tracking-wide uppercase text-(--ui-button-text) bg-(--ui-button-surface) px-2 py-0.5 mb-4 inline-block self-start">
               {category.name}
             </span>
           )
@@ -189,10 +189,12 @@ const structuredData = {
     </section>
 
     <!-- Article footer -->
-    <footer class="md:p-4 pt-8 border-t border-(--border-primary)">
+    <footer
+      class="md:p-4 pt-8 border-t border-(--border-primary) bg-(--surface-secondary)"
+    >
       {
         category && (
-          <div class="mb-4">
+          <div class="mb-4 px-2">
             <span class="text-(--content-meta) text-sm">Filed under: </span>
             <span class="text-(--content-emphasis) font-medium">
               {category.name}
@@ -201,7 +203,7 @@ const structuredData = {
         )
       }
 
-      <div class="flex justify-between items-center mb-8">
+      <div class="flex justify-between items-center mb-8 px-2">
         <a
           href="/news"
           class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary)/50 hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
@@ -221,7 +223,7 @@ const structuredData = {
       {
         (prevPost || nextPost) && (
           <nav
-            class="border-t border-(--border-primary)"
+            class="border-t border-(--border-primary) pt-4"
             aria-label="Article navigation"
           >
             <div class="grid grid-cols-1 md:grid-cols-2 gap-1">
@@ -229,9 +231,9 @@ const structuredData = {
                 {prevPost && (
                   <a
                     href={`/news/${prevPost.slug}`}
-                    class="group flex flex-col w-full lg:max-w-sm p-4 bg-(--surface-tertiary) hover:bg-(--ui-card-surface-hover) border border-(--border-secondary) rounded-sm transition-all duration-200"
+                    class="group flex flex-col w-full p-4 bg-(--surface-tertiary) hover:bg-(--surface-primary) border border-(--border-secondary) transition-all duration-200"
                   >
-                    <span class="text-(--content-meta) text-sm font-medium mb-2 flex items-center">
+                    <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center">
                       <svg
                         class="w-4 h-4 mr-2"
                         fill="none"
@@ -247,7 +249,7 @@ const structuredData = {
                       </svg>
                       Previous Article
                     </span>
-                    <h3 class="text-(--content-heading) font-display font-semibold text-2xl md:text-3xl lg:text-4xl leading-tight group-hover:text-(--content-emphasis) transition-colors line-clamp-2">
+                    <h3 class="text-(--content-heading) font-display group-hover:font-black font-semibold text-4xl md:text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all line-clamp-2">
                       {prevPost.title.rendered}
                     </h3>
                   </a>
@@ -258,9 +260,9 @@ const structuredData = {
                 {nextPost && (
                   <a
                     href={`/news/${nextPost.slug}`}
-                    class="group flex flex-col w-full lg:max-w-sm p-4 bg-(--surface-tertiary) hover:bg-(--ui-card-surface-hover) border border-(--border-secondary) rounded-sm transition-all duration-200 text-right"
+                    class="group flex flex-col w-full p-4 bg-(--surface-tertiary) hover:bg-(--surface-primary) border border-(--border-secondary) transition-all duration-200 text-right"
                   >
-                    <span class="text-(--content-meta) text-sm font-medium mb-2 flex items-center justify-end">
+                    <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center justify-end">
                       Next Article
                       <svg
                         class="w-4 h-4 ml-2"
@@ -276,7 +278,7 @@ const structuredData = {
                         />
                       </svg>
                     </span>
-                    <h3 class="text-(--content-heading) font-display font-semibold text-2xl md:text-3xl lg:text-4xl leading-tight group-hover:text-(--content-emphasis) transition-colors line-clamp-2">
+                    <h3 class="text-(--content-heading) font-display group-hover:font-black font-semibold text-4xl md:text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all line-clamp-2">
                       {nextPost.title.rendered}
                     </h3>
                   </a>

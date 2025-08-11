@@ -28,28 +28,36 @@ let errors = [];
 
 try {
   const allProducts = await fetchProducts();
-  
+
   products = productSkus
     .map((identifier) => {
       const searchIdentifier = identifier.trim();
-      
+
       // Try multiple matching strategies
-      let matchedProduct = allProducts.find(p => 
-        p.humanReadableSku?.toLowerCase() === searchIdentifier.toLowerCase()
-      ) || allProducts.find(p => p.sku === searchIdentifier)
-        || allProducts.find(p => p.id === searchIdentifier || p.catalogObjectId === searchIdentifier);
-      
+      let matchedProduct =
+        allProducts.find(
+          (p) =>
+            p.humanReadableSku?.toLowerCase() === searchIdentifier.toLowerCase()
+        ) ||
+        allProducts.find((p) => p.sku === searchIdentifier) ||
+        allProducts.find(
+          (p) =>
+            p.id === searchIdentifier || p.catalogObjectId === searchIdentifier
+        );
+
       if (!matchedProduct) {
         errors.push(`Product not found: ${searchIdentifier}`);
       }
-      
+
       return matchedProduct;
     })
     .filter(Boolean);
 
   // Fallback for legacy IDs
   if (products.length === 0 && fallbackIds.length > 0) {
-    products = fallbackIds.map(id => allProducts.find(p => p.id === id)).filter(Boolean);
+    products = fallbackIds
+      .map((id) => allProducts.find((p) => p.id === id))
+      .filter(Boolean);
   }
 } catch (error) {
   console.error("Error fetching products:", error);
@@ -59,112 +67,93 @@ try {
 // Simple grid classes
 const gridClasses = {
   1: "grid-cols-1",
-  2: "grid-cols-1 sm:grid-cols-2", 
+  2: "grid-cols-1 sm:grid-cols-2",
   3: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3",
   4: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
   5: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
   6: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6",
 };
 
-const gridClass = gridClasses[columns as keyof typeof gridClasses] || gridClasses[3];
+const gridClass =
+  gridClasses[columns as keyof typeof gridClasses] || gridClasses[3];
 ---
 
 <div class="wp-product-showcase bg-(--surface-secondary)">
-  {title && (
-    <h3 class="font-display font-bold text-xl lg:text-2xl text-(--content-heading) mb-3">
-      {title}
-    </h3>
-  )}
+  {
+    title && (
+      <h3 class="font-display font-bold text-xl lg:text-2xl text-(--content-heading) mb-3">
+        {title}
+      </h3>
+    )
+  }
 
-  {description && (
-    <p class="text-(--content-body) mb-4 text-base">{description}</p>
-  )}
+  {
+    description && (
+      <p class="text-(--content-body) mb-4 text-base">{description}</p>
+    )
+  }
 
-  {products.length > 0 && (
-    <div>
-      <!-- GRID LAYOUT -->
-      {layout === "grid" && (
-        <div class={`grid ${gridClass} gap-3`}>
-          {products.map((product) => (
-            <div class="max-w-xs mx-auto sm:max-w-none sm:mx-0">
-              <BlogProductCard product={product} variant="compact" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      <!-- CAROUSEL LAYOUT -->
-      {layout === "carousel" && (
-        <div class="carousel-container">
-          <div class="carousel-scroll">
+  {
+    products.length > 0 && (
+      <div>
+        {/* GRID LAYOUT */}
+        {layout === "grid" && (
+          <div class={`grid ${gridClass} gap-1`}>
             {products.map((product) => (
-              <div class="carousel-item min-w-[18rem] max-w-[18rem]">
+              <div class="max-w-xs mx-auto sm:max-w-none sm:mx-0">
                 <BlogProductCard product={product} variant="compact" />
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      <!-- LIST LAYOUT -->
-      {layout === "list" && (
-        <div class="space-y-1">
-          {products.map((product) => (
-            <div class="flex gap-3 items-center p-1 bg-(--surface-primary) rounded-sm">
-              <div class="w-20">
-                <div class="aspect-square overflow-hidden bg-(--surface-secondary) rounded-xs">
-                  <img
-                    src={product.image}
-                    alt={product.title}
-                    class="object-cover w-full h-full"
-                    loading="lazy"
-                  />
+        {/* CAROUSEL LAYOUT */}
+        {layout === "carousel" && (
+          <div class="carousel-container">
+            <div class="carousel-scroll snap-x">
+              {products.map((product) => (
+                <div class="carousel-item min-w-[18rem] max-w-[18rem] snap-center">
+                  <BlogProductCard product={product} variant="compact" />
                 </div>
-              </div>
-              <div class="flex-1 min-w-0">
-                {product.brand && (
-                  <p class="text-xs uppercase tracking-wide text-(--content-meta)">
-                    {product.brand}
-                  </p>
-                )}
-                <h4 class="font-medium text-sm sm:text-base text-(--content-heading)">
-                  {product.title}
-                </h4>
-                <p class="font-display font-semibold text-base text-(--product-price)">
-                  {MoneyUtils.format(MoneyUtils.fromFloat(product.price))}
-                </p>
-              </div>
-              <div class="flex-shrink-0">
-                <a
-                  href={product.url}
-                  class="px-3 py-2 text-sm font-medium bg-(--ui-button-surface) text-(--ui-button-text) rounded-sm hover:bg-(--ui-button-surface-hover) transition-colors"
-                >
-                  View
-                </a>
-              </div>
+              ))}
             </div>
+          </div>
+        )}
+
+        {/* LIST LAYOUT */}
+        {layout === "list" && (
+          <div class="space-y-1">
+            {products.map((product) => (
+              <BlogProductCard product={product} variant="list" />
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  {/* Error display in dev */}
+  {
+    errors.length > 0 && import.meta.env.DEV && (
+      <div class="mt-4 p-3 bg-state-warning-surface text-state-warning-text rounded-sm text-sm">
+        <h4 class="font-semibold mb-2">Product Showcase Notice:</h4>
+        <ul>
+          {errors.map((error) => (
+            <li>• {error}</li>
           ))}
-        </div>
-      )}
-    </div>
-  )}
+        </ul>
+      </div>
+    )
+  }
 
-  <!-- Error display in dev -->
-  {errors.length > 0 && import.meta.env.DEV && (
-    <div class="mt-4 p-3 bg-state-warning-surface text-state-warning-text rounded-sm text-sm">
-      <h4 class="font-semibold mb-2">Product Showcase Notice:</h4>
-      <ul>
-        {errors.map((error) => <li>• {error}</li>)}
-      </ul>
-    </div>
-  )}
-
-  {products.length === 0 && errors.length === 0 && (
-    <div class="text-center py-8">
-      <div class="text-3xl mb-2 opacity-20">🛹</div>
-      <p class="text-(--content-meta) text-sm">No products configured.</p>
-    </div>
-  )}
+  {
+    products.length === 0 && errors.length === 0 && (
+      <div class="text-center py-8">
+        <div class="text-3xl mb-2 opacity-20">🛹</div>
+        <p class="text-(--content-meta) text-sm">No products configured.</p>
+      </div>
+    )
+  }
 </div>
 
 <style>
@@ -201,5 +190,4 @@ const gridClass = gridClasses[columns as keyof typeof gridClasses] || gridClasse
     background: var(--ui-accent);
     border-radius: 2px;
   }
-
 </style>
