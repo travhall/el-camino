@@ -94,7 +94,7 @@ const isCategoryPage = currentPath.includes("/category/");
 >
   {
     navItems.map((item, index) => (
-      <div class="category-group relative flex flex-col lg:flex-row first-of-type:pt-16 lg:first-of-type:pt-0 group transition-all">
+      <div class="category-group relative flex flex-col lg:flex-row group transition-all">
         <a
           href={
             item.category.id === "the-shop"
@@ -181,18 +181,18 @@ const isCategoryPage = currentPath.includes("/category/");
     style="--item-index: 6;"
   >
     <address
-      class="flex flex-col gap-2 uppercase not-italic text-(--ui-nav-text)"
+      class="flex flex-col text-lg gap-2 uppercase not-italic text-(--ui-nav-text)"
     >
       <span class="font-semibold">{siteConfig.name}</span>
       <span>{contact.address.street}</span>
-      <span
+      <span class="mb-1"
         >{contact.address.city}, {contact.address.state}
         {contact.address.zip}</span
       >
-      <a href={`tel:${contact.phone.number}`}>
+      <a href={`tel:${contact.phone.number}`} class="py-2 self-start">
         {contact.phone.display}
       </a>
-      <a href={`mailto:${contact.email}`}>
+      <a href={`mailto:${contact.email}`} class="py-2 self-start">
         {contact.email}
       </a>
     </address>
@@ -208,7 +208,7 @@ const isCategoryPage = currentPath.includes("/category/");
               target="_blank"
               rel="noopener"
             >
-              <Icon name={item.icon} class="w-5 h-auto" />
+              <Icon name={item.icon} class="w-8 h-auto" />
             </a>
           </li>
         ))
@@ -222,29 +222,44 @@ const isCategoryPage = currentPath.includes("/category/");
     view-transition-name: nav;
   }
 
-  /* Mobile animations */
+  /* Screen reader only class for accessibility */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Mobile animations - optimized for performance */
   @media (max-width: 1024px) {
     .nav-link {
       opacity: 0;
-      transform: translateX(2rem);
+      transform: translate3d(2rem, 0, 0);
+      will-change: opacity, transform;
     }
 
     nav.nav-open .nav-link {
-      animation: slideIn 0.5s ease forwards;
-      animation-delay: calc(var(--item-index) * 0.1s);
+      animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation-delay: calc(var(--item-index) * 0.08s);
     }
 
     .dropdown-menu {
       position: static;
       max-height: 0;
       opacity: 0;
-      transform: translateY(-10px);
-      transition: all 0.3s ease-in-out;
+      transform: translate3d(0, -10px, 0);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       overflow: hidden;
       background-color: rgba(var(--ui-nav-hover-rgb, 255, 255, 255), 0.05);
       border-left: 2px solid rgba(var(--ui-nav-border-rgb, 255, 255, 255), 0.1);
       padding-left: 0.5rem;
       border-radius: 0 0 4px 4px;
+      contain: layout style;
     }
 
     .dropdown-menu > div {
@@ -258,7 +273,7 @@ const isCategoryPage = currentPath.includes("/category/");
       display: block;
       max-height: 500px;
       opacity: 1;
-      transform: translateY(0);
+      transform: translate3d(0, 0, 0);
     }
 
     .category-group.open .mobile-caret {
@@ -268,21 +283,50 @@ const isCategoryPage = currentPath.includes("/category/");
     @keyframes slideIn {
       to {
         opacity: 1;
-        transform: translateX(0);
+        transform: translate3d(0, 0, 0);
       }
     }
+  }
+
+  /* Desktop optimizations */
+  @media (min-width: 1025px) {
+    .dropdown-menu {
+      contain: layout style;
+    }
+  }
+
+  /* Accessibility: Reduce motion */
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link,
+    .dropdown-menu,
+    .mobile-caret {
+      animation: none !important;
+      transition: none !important;
+    }
+
+    nav.nav-open .nav-link {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* Focus styles for better accessibility */
+  .nav-item:focus-visible {
+    outline: 2px solid var(--ui-focus-color, #0066cc);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  .skip-link:focus {
+    z-index: 9999;
   }
 </style>
 
 <script>
   import {
     getNavigationContext,
-    trackNavigationPerformance,
-    initNavigationTracking,
     prefetchHighPriorityTargets,
   } from "@/lib/square/navigationUtils";
-  import { initMobileOptimization } from "@/lib/performance/mobileOptimization";
-  import { productionMonitor } from "@/lib/performance/productionMonitoring";
 
   interface NavElementData {
     link: HTMLElement;
@@ -293,11 +337,12 @@ const isCategoryPage = currentPath.includes("/category/");
     categoryName: string;
   }
 
-  class EnhancedNavigationController {
+  class OptimizedNavigationController {
     private navElements: Map<Element, NavElementData> = new Map();
     private isAnimating: boolean = false;
     private focusTimeout: number | null = null;
-    private navigationStartTime: number = 0;
+    private resizeObserver: ResizeObserver | null = null;
+    private abortController: AbortController = new AbortController();
 
     constructor() {
       this.init();
@@ -306,25 +351,60 @@ const isCategoryPage = currentPath.includes("/category/");
     private init(): void {
       this.cacheElements();
       this.setupEventDelegation();
-      this.setupResizeHandler();
+      this.setupResizeObserver();
       this.initializePrefetching();
-
-      // Initialize navigation tracking
-      initNavigationTracking();
-
-      // Initialize mobile optimization
-      initMobileOptimization();
+      this.enhanceAccessibility();
     }
 
     private initializePrefetching(): void {
       const context = getNavigationContext();
-
-      // Prefetch high-priority targets based on current context
       prefetchHighPriorityTargets(context);
 
-      // Log prefetch initialization in development
       if (import.meta.env.DEV) {
         console.log("[Navigation] Prefetch initialized for context:", context);
+      }
+    }
+
+    private enhanceAccessibility(): void {
+      const nav = document.querySelector("nav");
+      if (!nav) return;
+
+      // Enhance skip link functionality
+      const skipLink = document.querySelector(
+        ".skip-link"
+      ) as HTMLAnchorElement;
+      if (skipLink) {
+        skipLink.addEventListener(
+          "click",
+          (e) => {
+            e.preventDefault();
+            const mainContent = document.getElementById("main-content");
+            if (mainContent) {
+              mainContent.focus();
+              mainContent.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }
+          },
+          { signal: this.abortController.signal }
+        );
+      }
+
+      // Add live region for screen reader announcements
+      const liveRegion = document.createElement("div");
+      liveRegion.setAttribute("aria-live", "polite");
+      liveRegion.setAttribute("aria-atomic", "true");
+      liveRegion.className = "sr-only";
+      liveRegion.id = "nav-announcements";
+      document.body.appendChild(liveRegion);
+    }
+
+    private announceToScreenReader(message: string): void {
+      const liveRegion = document.getElementById("nav-announcements");
+      if (liveRegion) {
+        liveRegion.textContent = message;
+        setTimeout(() => (liveRegion.textContent = ""), 1000);
       }
     }
 
@@ -350,6 +430,12 @@ const isCategoryPage = currentPath.includes("/category/");
             prefetchStrategy,
             categoryName,
           });
+
+          // Optimize for touch devices
+          if ("ontouchstart" in window) {
+            link.style.cursor = "pointer";
+            dropdown.style.contain = "layout style";
+          }
         }
       });
     }
@@ -358,49 +444,27 @@ const isCategoryPage = currentPath.includes("/category/");
       const nav = document.querySelector("nav");
       if (!nav) return;
 
+      // Use single event listener with delegation for better performance
       nav.addEventListener("click", this.handleClick.bind(this), {
         passive: false,
+        signal: this.abortController.signal,
       });
+
       nav.addEventListener("focusout", this.handleFocusOut.bind(this), {
         passive: true,
+        signal: this.abortController.signal,
       });
-      nav.addEventListener("touchstart", this.handleTouch.bind(this), {
+
+      // Optimized touch handling for mobile
+      nav.addEventListener("touchstart", this.handleTouchStart.bind(this), {
         passive: true,
+        signal: this.abortController.signal,
       });
 
-      // Track navigation timing
-      nav.addEventListener("click", this.trackNavigationStart.bind(this), {
-        passive: true,
+      // Keyboard navigation enhancements
+      nav.addEventListener("keydown", this.handleKeydown.bind(this), {
+        signal: this.abortController.signal,
       });
-    }
-
-    private trackNavigationStart(event: Event): void {
-      const target = event.target as HTMLElement;
-      const clickedLink = target.closest(".nav-item") as HTMLAnchorElement;
-
-      if (clickedLink && clickedLink.href) {
-        this.navigationStartTime = performance.now();
-        const categoryName =
-          clickedLink.getAttribute("data-category-name") || "Unknown";
-        const prefetchStrategy =
-          clickedLink.getAttribute("data-prefetch-strategy") || "hover";
-
-        // Track with production monitor
-        productionMonitor.track("navigation", {
-          category: categoryName,
-          strategy: prefetchStrategy,
-          startTime: this.navigationStartTime,
-        });
-
-        // Log navigation attempt in development
-        if (import.meta.env.DEV) {
-          console.log("[Navigation] Starting navigation:", {
-            category: categoryName,
-            strategy: prefetchStrategy,
-            url: clickedLink.href,
-          });
-        }
-      }
     }
 
     private handleClick(event: Event): void {
@@ -424,18 +488,62 @@ const isCategoryPage = currentPath.includes("/category/");
       this.toggleDropdown(group, elementData);
     }
 
+    private handleKeydown(event: KeyboardEvent): void {
+      const target = event.target as HTMLElement;
+      const navItem = target.closest(".nav-item") as HTMLElement;
+
+      if (!navItem) return;
+
+      switch (event.key) {
+        case "Enter":
+        case " ":
+          if (navItem.getAttribute("aria-haspopup") === "menu") {
+            event.preventDefault();
+            navItem.click();
+          }
+          break;
+        case "Escape":
+          this.closeAllDropdowns();
+          this.announceToScreenReader("All menus closed");
+          break;
+        case "ArrowDown":
+          if (navItem.getAttribute("aria-expanded") === "true") {
+            event.preventDefault();
+            this.focusFirstDropdownItem(navItem);
+          }
+          break;
+      }
+    }
+
+    private focusFirstDropdownItem(navItem: HTMLElement): void {
+      const group = navItem.closest(".category-group");
+      const dropdown = group?.querySelector(".dropdown-menu");
+      const firstLink = dropdown?.querySelector("a") as HTMLElement;
+      if (firstLink) {
+        firstLink.focus();
+      }
+    }
+
     private toggleDropdown(group: Element, elementData: NavElementData): void {
+      // Use requestAnimationFrame for smooth animations
       requestAnimationFrame(() => {
         this.isAnimating = true;
 
         this.closeOtherDropdowns(group);
 
-        const isOpen = elementData.isOpen;
-        this.setDropdownState(group, elementData, !isOpen);
+        const wasOpen = elementData.isOpen;
+        this.setDropdownState(group, elementData, !wasOpen);
 
+        // Announce state change for screen readers
+        const action = wasOpen ? "collapsed" : "expanded";
+        this.announceToScreenReader(
+          `${elementData.categoryName} menu ${action}`
+        );
+
+        // Use shorter animation timeout for better responsiveness
         setTimeout(() => {
           this.isAnimating = false;
-        }, 300);
+        }, 200);
       });
     }
 
@@ -465,18 +573,20 @@ const isCategoryPage = currentPath.includes("/category/");
       isOpen: boolean
     ): void {
       elementData.isOpen = isOpen;
-
       const { link, dropdown } = elementData;
 
-      if (isOpen) {
-        group.classList.add("open");
-        link.setAttribute("aria-expanded", "true");
-        (dropdown as HTMLElement).style.contain = "layout style";
-      } else {
-        group.classList.remove("open");
-        link.setAttribute("aria-expanded", "false");
-        (dropdown as HTMLElement).style.contain = "";
-      }
+      // Batch DOM updates for better performance
+      requestAnimationFrame(() => {
+        if (isOpen) {
+          group.classList.add("open");
+          link.setAttribute("aria-expanded", "true");
+          (dropdown as HTMLElement).style.contain = "layout style";
+        } else {
+          group.classList.remove("open");
+          link.setAttribute("aria-expanded", "false");
+          (dropdown as HTMLElement).style.contain = "";
+        }
+      });
     }
 
     private handleFocusOut(event: Event): void {
@@ -492,15 +602,17 @@ const isCategoryPage = currentPath.includes("/category/");
       }, 0);
     }
 
-    private handleTouch(event: Event): void {
+    private handleTouchStart(event: Event): void {
       const target = event.target as HTMLElement;
       const group = target.closest(".category-group");
       if (group && this.navElements.has(group)) {
+        // Optimize for touch by preparing for animation
         (group as HTMLElement).style.willChange = "transform";
 
+        // Clean up after interaction
         setTimeout(() => {
           (group as HTMLElement).style.willChange = "auto";
-        }, 1000);
+        }, 300);
       }
     }
 
@@ -516,47 +628,51 @@ const isCategoryPage = currentPath.includes("/category/");
       });
     }
 
-    private setupResizeHandler(): void {
-      let resizeTimeout: number;
-
-      window.addEventListener(
-        "resize",
-        () => {
-          if (resizeTimeout) {
-            clearTimeout(resizeTimeout);
+    private setupResizeObserver(): void {
+      // Use ResizeObserver for better performance than resize events
+      this.resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width > 1024) {
+            this.closeAllDropdowns();
           }
+        }
+      });
 
-          resizeTimeout = window.setTimeout(() => {
-            if (window.innerWidth > 1024) {
-              this.closeAllDropdowns();
-            }
-          }, 150);
-        },
-        { passive: true }
-      );
+      this.resizeObserver.observe(document.documentElement);
     }
 
     public destroy(): void {
       if (this.focusTimeout) {
         clearTimeout(this.focusTimeout);
       }
+
+      if (this.resizeObserver) {
+        this.resizeObserver.disconnect();
+      }
+
+      this.abortController.abort();
       this.navElements.clear();
+
+      // Clean up live region
+      const liveRegion = document.getElementById("nav-announcements");
+      if (liveRegion) {
+        liveRegion.remove();
+      }
     }
   }
 
-  function initializeEnhancedNavigation(): EnhancedNavigationController {
-    const navController = new EnhancedNavigationController();
+  function initializeOptimizedNavigation(): OptimizedNavigationController {
+    const navController = new OptimizedNavigationController();
 
-    // Log initialization in development
     if (import.meta.env.DEV) {
-      console.log("[Navigation] Enhanced navigation controller initialized");
+      console.log("[Navigation] Optimized navigation controller initialized");
     }
 
     return navController;
   }
 
   // Keep existing Astro page transition handling
-  let navController: EnhancedNavigationController | null = null;
+  let navController: OptimizedNavigationController | null = null;
 
   document.addEventListener("astro:before-swap", () => {
     if (navController) {
@@ -566,18 +682,15 @@ const isCategoryPage = currentPath.includes("/category/");
   });
 
   document.addEventListener("astro:after-swap", () => {
-    navController = initializeEnhancedNavigation();
+    navController = initializeOptimizedNavigation();
   });
 
   // Initial load
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
-      navController = initializeEnhancedNavigation();
+      navController = initializeOptimizedNavigation();
     });
   } else {
-    navController = initializeEnhancedNavigation();
+    navController = initializeOptimizedNavigation();
   }
-
-  import { getMobileMetrics } from "@/lib/performance/mobileOptimization";
-  console.log("Mobile metrics:", getMobileMetrics());
 </script>

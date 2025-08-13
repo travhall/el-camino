@@ -1,8 +1,51 @@
 ---
 // src/components/Modal.astro
+import { siteConfig, type SiteConfig } from '@/lib/site-config';
+
+// Serialize config for client-side use
+const serializedSiteConfig = JSON.stringify(siteConfig);
 ---
 
 <script>
+  // Import types for use in script
+  interface SiteConfig {
+    name: string;
+    contact: {
+      address: {
+        street: string;
+        city: string;
+        state: string;
+        zip: string;
+      };
+      phone: {
+        number: string;
+        display: string;
+      };
+      email: string;
+    };
+    hours: Array<{
+      day: string;
+      hours: string;
+      isOpen: boolean;
+    }>;
+  }
+
+  // Parse the site config from the data attribute when DOM is ready
+  let siteConfig: SiteConfig | null = null;
+  
+  function initializeSiteConfig() {
+    const siteConfigElement = document.querySelector('[data-site-config]');
+    if (siteConfigElement) {
+      const configData = siteConfigElement.getAttribute('data-site-config');
+      if (configData) {
+        try {
+          siteConfig = JSON.parse(configData);
+        } catch (error) {
+          console.error('Failed to parse site config:', error);
+        }
+      }
+    }
+  }
   // Add TypeScript declaration for modal functions
   declare global {
     interface Window {
@@ -156,6 +199,12 @@
         return;
       }
 
+      // Check if siteConfig is available
+      if (!siteConfig) {
+        console.error("Site config not available!");
+        return;
+      }
+
       // Prevent page scrolling
       document.body.style.overflow = "hidden";
 
@@ -172,11 +221,19 @@
       modal.className =
         "bg-(--ui-modal-surface) text-(--ui-modal-text) border border-(--ui-modal-border) rounded shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out";
 
+      // Generate hours HTML dynamically from config
+      const hoursHTML = siteConfig.hours.map((hour) => `
+        <div class="flex justify-between">
+          <span class="text-(--content-body)">${hour.day}</span>
+          <span class="text-(--content-${hour.isOpen ? 'body' : 'meta'})">${hour.hours}</span>
+        </div>
+      `).join('');
+
       modal.innerHTML = `
       <div class="p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 id="location-modal-title" class="font-display text-xl text-(--content-heading)">
-            El Camino Skate Shop
+            ${siteConfig.name}
           </h2>
           <button
             id="modal-close"
@@ -189,62 +246,35 @@
             </svg>
           </button>
         </div>
-        
+
         <div class="space-y-4">
           <!-- Address -->
           <div>
             <p class="text-(--content-body)">
-              310 Water Street<br>
-              Eau Claire, WI 54703
+              ${siteConfig.contact.address.street}<br>
+              ${siteConfig.contact.address.city}, ${siteConfig.contact.address.state} ${siteConfig.contact.address.zip}
             </p>
           </div>
-          
+
           <!-- Contact -->
           <div class="space-y-1">
             <p class="text-(--content-body)">
-              <a href="tel:+15346261991" class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left">
-                (534) 626-1991
+              <a href="tel:${siteConfig.contact.phone.number}" class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left">
+                ${siteConfig.contact.phone.display}
               </a>
             </p>
             <p class="text-(--content-body)">
-              <a href="mailto:elcaminoboardshop@gmail.com" class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left">
-                elcaminoboardshop@gmail.com
+              <a href="mailto:${siteConfig.contact.email}" class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left">
+                ${siteConfig.contact.email}
               </a>
             </p>
           </div>
-          
+
           <!-- Hours -->
           <div>
             <h3 class="font-display text-lg text-(--content-heading) mb-2">Hours of operation</h3>
             <div class="space-y-1">
-              <div class="flex justify-between">
-                <span class="text-(--content-body)">Monday</span>
-                <span class="text-(--content-meta)">Closed</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-(--content-body)">Tuesday</span>
-                <span class="text-(--content-meta)">Closed</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-(--content-body)">Wednesday</span>
-                <span class="text-(--content-body)">11am - 7pm</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-(--content-body)">Thursday</span>
-                <span class="text-(--content-body)">11am - 7pm</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-(--content-body)">Friday</span>
-                <span class="text-(--content-body)">11am - 7pm</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-(--content-body)">Saturday</span>
-                <span class="text-(--content-body)">11am - 7pm</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-(--content-body)">Sunday</span>
-                <span class="text-(--content-body)">11am - 5pm</span>
-              </div>
+              ${hoursHTML}
             </div>
           </div>
         </div>
@@ -329,9 +359,21 @@
     },
   };
 
-  // Assign to window object
-  window.showModal = modalManager.showModal.bind(modalManager);
-  window.showLocationModal = modalManager.showLocationModal.bind(modalManager);
+  // Function to initialize modal functions
+  function initializeModalFunctions() {
+    initializeSiteConfig();
+    
+    // Assign to window object
+    window.showModal = modalManager.showModal.bind(modalManager);
+    window.showLocationModal = modalManager.showLocationModal.bind(modalManager);
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeModalFunctions);
+  } else {
+    initializeModalFunctions();
+  }
 
   // Cleanup on page navigation
   const cleanup = () => {
@@ -344,3 +386,6 @@
     import.meta.hot.dispose(cleanup);
   }
 </script>
+
+<!-- Hidden element to pass site config data to client -->
+<div data-site-config={serializedSiteConfig} style="display: none;"></div>
