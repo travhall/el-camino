@@ -1,0 +1,1052 @@
+---
+// src/components/QuickView.astro - Fixed to mirror PDP functionality
+import { Icon } from "astro-icon/components";
+---
+
+<!-- Overlay -->
+<div
+  id="quick-view-overlay"
+  class="fixed inset-0 bg-(--ui-modal-overlay)/80 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-300"
+>
+</div>
+
+<!-- Slide Panel -->
+<div
+  id="quick-view-panel"
+  class="fixed top-0 left-0 h-screen w-96 max-w-full bg-(--surface-primary) border-4 border-(--surface-primary) z-50 transform -translate-x-full transition-transform duration-300 shadow-lg overflow-y-scroll"
+  role="dialog"
+  aria-labelledby="quick-view-title"
+>
+  <div class="container grid grid-rows-[auto_1fr_auto] h-full">
+    <!-- Header -->
+    <div
+      class="flex items-center justify-between p-4 border-b-4 border-(--border-secondary) bg-(--surface-secondary) sticky top-0"
+    >
+      <h2
+        id="quick-view-title"
+        class="font-display text-xl text-(--content-heading)"
+      >
+        Quick View
+      </h2>
+      <button
+        id="close-quick-view"
+        type="button"
+        class="p-2 hover:border-(--ui-nav-border) border rounded-sm transition-colors"
+        aria-label="Close quick view"
+      >
+        <Icon name="uil:times" class="w-6 h-6" />
+      </button>
+    </div>
+
+    <!-- Content Area -->
+    <div id="quick-view-content" class="flex-1 overflow-y-auto">
+      <!-- Loading State -->
+      <div
+        id="quick-view-loading"
+        class="text-center py-8 h-full place-content-center"
+      >
+        <div
+          class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-(--content-heading)"
+        >
+        </div>
+        <p class="mt-2 text-(--content-meta)">Loading product...</p>
+      </div>
+
+      <!-- Error State -->
+      <div
+        id="quick-view-error"
+        class="text-center py-8 px-4 h-full place-content-center hidden"
+      >
+        <Icon
+          name="uil:exclamation-triangle"
+          class="w-16 h-16 mx-auto text-(--content-meta) mb-4"
+        />
+        <p class="text-(--content-meta) mb-2">Failed to load product</p>
+        <button
+          id="quick-view-retry"
+          class="font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+        >
+          Try Again
+        </button>
+      </div>
+
+      <!-- Product Content -->
+      <div id="quick-view-product" class="hidden p-4">
+        <!-- Product Image -->
+        <div
+          id="quick-view-image-container"
+          class="aspect-square border-2 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative mb-4"
+        >
+          <img
+            id="quick-view-image"
+            src=""
+            alt=""
+            class="w-full h-full object-cover"
+            loading="lazy"
+          />
+
+          <!-- Stock Overlay -->
+          <div
+            id="quick-view-stock-overlay"
+            class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-sm font-bold rounded-sm hidden"
+          >
+            Sold Out
+          </div>
+        </div>
+
+        <!-- Product Info -->
+        <div class="space-y-4">
+          <!-- Brand & Title -->
+          <div>
+            <p
+              id="quick-view-brand"
+              class="text-xs uppercase text-(--content-meta) hidden"
+            >
+            </p>
+            <h3
+              id="quick-view-title-text"
+              class="text-(--product-heading) font-light leading-tight text-lg"
+            >
+            </h3>
+          </div>
+
+          <!-- Price -->
+          <div>
+            <span
+              id="quick-view-price"
+              class="font-display font-semibold text-2xl text-(--product-price)"
+            ></span>
+            <span
+              id="quick-view-unit"
+              class="text-sm text-(--content-meta) ml-1 hidden"></span>
+          </div>
+
+          <!-- Attributes -->
+          <div id="quick-view-attributes">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Quantity -->
+          <div id="quick-view-quantity-section" class="mt-4">
+            <label
+              class="text-sm font-medium text-(--content-heading) block mb-2"
+              >Quantity</label
+            >
+            <div
+              class="flex border border-(--ui-input-border)/50 rounded-[4px] overflow-hidden w-32"
+            >
+              <button
+                type="button"
+                id="quick-view-decrease"
+                class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text) disabled:opacity-50"
+                disabled
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="quick-view-quantity"
+                min="0"
+                value="1"
+                class="w-12 h-10 text-center bg-(--ui-input-surface) text-(--ui-input-text) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <button
+                type="button"
+                id="quick-view-increase"
+                class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text) disabled:opacity-50"
+              >
+                +
+              </button>
+            </div>
+            <div id="quick-view-availability-indicator" class="text-sm mt-1">
+              <span
+                class="text-(--content-meta)"
+                id="quick-view-remaining-count"
+              >
+                0 available
+              </span>
+              <span id="quick-view-cart-quantity" class="ml-1 hidden">
+                ( 0 in cart )
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div
+      id="quick-view-footer"
+      class="border-t-4 border-(--border-secondary) bg-(--surface-secondary) p-4 sticky bottom-0 hidden"
+    >
+      <div class="space-y-2">
+        <button
+          id="quick-view-add-to-cart"
+          class="w-full font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300 disabled:opacity-50"
+          disabled
+        >
+          <span class="add-to-cart-text">Add to Cart</span>
+          <div class="add-to-cart-loading hidden">
+            <div
+              class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"
+            >
+            </div>
+            Adding...
+          </div>
+        </button>
+        <button
+          id="quick-view-full-details"
+          class="w-full font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-(--ui-button-surface) border-(--ui-button-border) bg-(--ui-button-surface)/0 hover:bg-(--ui-button-surface)/20 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+        >
+          View Full Details
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { MoneyUtils } from "@/lib/square/money";
+  import { cart } from "@/lib/cart";
+  import {
+    createInitialSelectionState,
+    getAttributeDisplayName,
+    findVariationByAttributes,
+  } from "@/lib/square/variationParser";
+  import { processSquareError, logError } from "@/lib/square/errorUtils";
+  import type {
+    Product,
+    ProductVariation,
+    ProductAvailabilityInfo,
+  } from "@/lib/square/types";
+  import {
+    getAvailabilityInfo,
+    ProductAvailabilityState,
+    getDefaultQuantity,
+    getMaxQuantity,
+    isQuantityInputDisabled,
+    getButtonText,
+    isButtonDisabled,
+  } from "@/lib/square/types";
+
+  // QuickView Controller - EXACTLY mirrors PDP architecture
+  class QuickViewController {
+    private static instance: QuickViewController;
+    private currentProduct: Product | null = null;
+    private selectedAttributes: Record<string, string> = {};
+    private currentVariation: ProductVariation | null = null;
+    private productData: any = null;
+    private isProcessing: boolean = false;
+
+    static getInstance(): QuickViewController {
+      if (!QuickViewController.instance) {
+        QuickViewController.instance = new QuickViewController();
+      }
+      return QuickViewController.instance;
+    }
+
+    async openQuickView(productId: string): Promise<void> {
+      try {
+        this.showLoading();
+        this.openModal();
+
+        // Use existing API endpoint
+        const response = await fetch(`/api/quick-view-product?id=${productId}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const product = await response.json();
+        if (!product) {
+          throw new Error("Product not found");
+        }
+
+        this.currentProduct = product;
+        this.initializeProduct(product);
+        this.showProduct();
+      } catch (error) {
+        const appError = processSquareError(error, "openQuickView");
+        logError(appError);
+        this.showError();
+      }
+    }
+
+    private initializeProduct(product: Product): void {
+      // EXACTLY mirror PDP initialization
+      let defaultVariationId = product.variationId;
+      let variations = product.variations || [];
+
+      // Find first in-stock variation if default is out of stock (PDP pattern)
+      if (variations.length > 0) {
+        const defaultIsInStock = variations.find(
+          (v) => v.variationId === defaultVariationId
+        )?.inStock;
+        if (!defaultIsInStock) {
+          const firstInStockVariation = variations.find((v) => v.inStock);
+          if (firstInStockVariation) {
+            defaultVariationId = firstInStockVariation.variationId;
+          }
+        }
+      }
+
+      // Create initial selection state using PDP parser
+      const selectionState = createInitialSelectionState(variations);
+
+      // Set up product data structure (matching PDP)
+      this.productData = {
+        variations: variations,
+        availableAttributes: selectionState.availableAttributes,
+        selectedVariationId: defaultVariationId,
+        productId: product.id,
+      };
+
+      // Initialize current variation and attributes (PDP pattern)
+      this.currentVariation =
+        variations.find((v) => v.variationId === defaultVariationId) ||
+        variations[0] ||
+        null;
+
+      if (this.currentVariation?.attributes) {
+        this.selectedAttributes = { ...this.currentVariation.attributes };
+      }
+
+      this.renderProduct(product);
+      this.renderVariations(product);
+      this.updateProductUI();
+      this.updateAttributeButtonStates();
+    }
+
+    private renderProduct(product: Product): void {
+      // Update basic info
+      const image = document.getElementById(
+        "quick-view-image"
+      ) as HTMLImageElement;
+      if (image) {
+        image.src = product.image;
+        image.alt = product.title;
+      }
+
+      const brand = document.getElementById("quick-view-brand");
+      if (product.brand && brand) {
+        brand.textContent = product.brand;
+        brand.classList.remove("hidden");
+      } else if (brand) {
+        brand.classList.add("hidden");
+      }
+
+      const title = document.getElementById("quick-view-title-text");
+      if (title) title.textContent = product.title;
+
+      this.updateViewDetailsButton(product.url);
+    }
+
+    private renderVariations(product: Product): void {
+      if (!product.variations) return;
+
+      // Use existing variation parser - even for single variations
+      const selectionState = createInitialSelectionState(product.variations);
+      const container = document.getElementById("quick-view-attributes");
+      if (!container) return;
+
+      container.innerHTML = "";
+
+      const attributeTypes = Object.keys(selectionState.availableAttributes);
+
+      // EXACTLY mirror PDP: Multi-value attributes as buttons (when multiple variations)
+      if (product.variations.length > 1) {
+        attributeTypes
+          .filter(
+            (attributeType) =>
+              selectionState.availableAttributes[attributeType].length > 1
+          )
+          .forEach((attributeType) => {
+            const attributeValues =
+              selectionState.availableAttributes[attributeType];
+            const displayName = getAttributeDisplayName(attributeType);
+
+            const section = document.createElement("div");
+            section.className = "mt-4";
+
+            const heading = document.createElement("h4");
+            heading.className =
+              "text-sm font-medium text-(--content-heading) mb-2";
+            heading.textContent = displayName;
+
+            const buttonContainer = document.createElement("div");
+            buttonContainer.className = "flex flex-wrap gap-2";
+
+            attributeValues.forEach((value) => {
+              const button = document.createElement("button");
+              button.type = "button";
+              button.dataset.attributeType = attributeType;
+              button.dataset.attributeValue = value;
+              button.textContent = value;
+              button.className =
+                "px-2.5 py-1.5 border rounded-[4px] bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50";
+
+              button.addEventListener("click", () => {
+                this.handleAttributeSelection(attributeType, value);
+              });
+
+              buttonContainer.appendChild(button);
+            });
+
+            section.appendChild(heading);
+            section.appendChild(buttonContainer);
+            container.appendChild(section);
+          });
+      }
+
+      // EXACTLY mirror PDP: Single-value attributes as static displays (always show these)
+      attributeTypes
+        .filter(
+          (attributeType) =>
+            selectionState.availableAttributes[attributeType].length === 1
+        )
+        .forEach((attributeType) => {
+          const attributeValues =
+            selectionState.availableAttributes[attributeType];
+          const displayName = getAttributeDisplayName(attributeType);
+
+          const section = document.createElement("div");
+          section.className = "mt-4";
+
+          const heading = document.createElement("h4");
+          heading.className =
+            "text-sm font-medium text-(--content-heading) mb-2";
+          heading.textContent = displayName;
+
+          const staticDisplay = document.createElement("div");
+          staticDisplay.className =
+            "inline-block px-4 py-2 bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50 rounded-[4px]";
+          staticDisplay.textContent = attributeValues[0];
+
+          section.appendChild(heading);
+          section.appendChild(staticDisplay);
+          container.appendChild(section);
+        });
+    }
+
+    private handleAttributeSelection(
+      attributeType: string,
+      value: string
+    ): void {
+      // EXACTLY mirror PDP attribute selection
+      this.selectedAttributes[attributeType] = value;
+      this.updateCurrentVariation();
+      this.updateAttributeButtonStates();
+    }
+
+    private updateCurrentVariation(): void {
+      // EXACTLY mirror PDP variation update logic
+      try {
+        const matchingVariation = findVariationByAttributes(
+          this.productData.variations,
+          this.selectedAttributes
+        );
+
+        if (matchingVariation) {
+          this.currentVariation = matchingVariation;
+          this.updateProductUI();
+        } else {
+          this.showOutOfStockState();
+        }
+      } catch (error) {
+        const appError = processSquareError(error, "updateCurrentVariation");
+        logError(appError);
+      }
+    }
+
+    private showOutOfStockState(): void {
+      if (!this.currentVariation) return;
+
+      this.updatePrice(this.currentVariation.price);
+
+      // Get out of stock availability info
+      const outOfStockInfo = cart.getProductAvailability(
+        this.productData.productId,
+        "out-of-stock",
+        0
+      );
+      this.updateQuantityControlsWithAvailability(outOfStockInfo);
+      this.updateAddToCartButtonWithAvailability(outOfStockInfo);
+      this.updateImageOverlayWithAvailability(outOfStockInfo);
+    }
+
+    private updateProductUI(): void {
+      if (!this.currentVariation || !this.currentProduct) return;
+
+      // EXACTLY mirror PDP updateProductUI pattern
+      this.updatePrice(this.currentVariation.price);
+      this.updateUnit(this.currentVariation.unit || this.currentProduct.unit);
+
+      if (this.currentVariation.image) {
+        const image = document.getElementById(
+          "quick-view-image"
+        ) as HTMLImageElement;
+        if (image) image.src = this.currentVariation.image;
+      }
+
+      // Get availability info using cart manager (PDP pattern)
+      const availabilityInfo = cart.getProductAvailability(
+        this.productData.productId,
+        this.currentVariation.variationId,
+        this.currentVariation.quantity || 0
+      );
+
+      this.updateQuantityControlsWithAvailability(availabilityInfo);
+      this.updateAddToCartButtonWithAvailability(availabilityInfo);
+      this.updateImageOverlayWithAvailability(availabilityInfo);
+
+      // CRITICAL: Update button product data (PDP pattern)
+      this.updateButtonProductData(this.currentVariation);
+    }
+
+    private updateButtonProductData(variation: any): void {
+      // EXACTLY mirror PDP updateButtonProductData
+      const button = document.getElementById(
+        "quick-view-add-to-cart"
+      ) as HTMLButtonElement;
+      if (!button || !this.currentProduct) return;
+
+      try {
+        const productData = {
+          id: this.currentProduct.id,
+          catalogObjectId: this.currentProduct.catalogObjectId,
+          variationId: variation.variationId,
+          title: this.currentProduct.title,
+          price: variation.price,
+          image: this.currentProduct.image, // Start with product image
+          unit: variation.unit || this.currentProduct.unit || "",
+          variationName: variation.name || "",
+          quantity: 1, // Will be updated in addToCart with actual quantity
+        };
+
+        // EXACTLY mirror PDP: conditionally update image if variation has one
+        if (variation.image) productData.image = variation.image;
+
+        button.dataset.product = JSON.stringify(productData);
+      } catch (error) {
+        const appError = processSquareError(error, "updateButtonProductData");
+        logError(appError);
+      }
+    }
+
+    private updatePrice(price: number): void {
+      const priceEl = document.getElementById("quick-view-price");
+      if (priceEl) {
+        priceEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(price));
+      }
+    }
+
+    private updateUnit(unit?: string): void {
+      const unitEl = document.getElementById("quick-view-unit");
+      if (unit && unitEl) {
+        unitEl.textContent = unit;
+        unitEl.classList.remove("hidden");
+      } else if (unitEl) {
+        unitEl.classList.add("hidden");
+      }
+    }
+
+    private updateAttributeButtonStates(): void {
+      if (!this.productData?.variations) return;
+
+      // EXACTLY mirror PDP updateAttributeButtonStates pattern
+      Object.keys(this.productData.availableAttributes).forEach(
+        (attributeType) => {
+          const buttons = document.querySelectorAll(
+            `[data-attribute-type="${attributeType}"]`
+          );
+
+          buttons.forEach((btn) => {
+            const button = btn as HTMLButtonElement;
+            const value = button.dataset.attributeValue;
+            if (!value) return;
+
+            const isSelected = this.selectedAttributes[attributeType] === value;
+
+            // Test availability using PDP pattern
+            const isAvailable = this.canAddToCartForAttribute(
+              attributeType,
+              value
+            );
+
+            // CRITICAL: Never set disabled = true (UX best practice)
+            // Only use opacity styling like PDP
+
+            // Update selected state styling (PDP pattern)
+            if (isSelected) {
+              button.className =
+                "px-2.5 py-1.5 border rounded-[4px] bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)";
+            } else {
+              button.className =
+                "px-2.5 py-1.5 border rounded-[4px] bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50";
+            }
+
+            // Apply opacity for availability (but keep clickable)
+            if (!isAvailable) {
+              button.classList.add("opacity-50");
+            } else {
+              button.classList.remove("opacity-50");
+            }
+          });
+        }
+      );
+    }
+
+    private canAddToCartForAttribute(
+      attributeType: string,
+      value: string
+    ): boolean {
+      // EXACTLY mirror PDP canAddToCartFn pattern
+      const testAttributes = {
+        ...this.selectedAttributes,
+        [attributeType]: value,
+      };
+
+      const matchingVariation = findVariationByAttributes(
+        this.productData.variations,
+        testAttributes
+      );
+
+      return Boolean(
+        matchingVariation?.inStock &&
+          cart.canAddToCart(
+            this.productData.productId,
+            matchingVariation.variationId,
+            matchingVariation.quantity || 0
+          )
+      );
+    }
+
+    private updateQuantityControlsWithAvailability(
+      info: ProductAvailabilityInfo
+    ): void {
+      // EXACTLY mirror PDP quantity control updates - use fresh element references
+      const quantityInput = document.getElementById(
+        "quick-view-quantity"
+      ) as HTMLInputElement;
+      const decreaseBtn = document.getElementById(
+        "quick-view-decrease"
+      ) as HTMLButtonElement;
+      const increaseBtn = document.getElementById(
+        "quick-view-increase"
+      ) as HTMLButtonElement;
+      const remainingCount = document.getElementById(
+        "quick-view-remaining-count"
+      );
+      const cartQuantity = document.getElementById("quick-view-cart-quantity");
+
+      if (!quantityInput) return;
+
+      // Use PDP availability functions
+      const defaultQty = getDefaultQuantity(info.state);
+      const maxQty = getMaxQuantity(info);
+      const isDisabled = isQuantityInputDisabled(info.state);
+
+      quantityInput.value = defaultQty.toString();
+      quantityInput.max = maxQty.toString();
+      quantityInput.disabled = isDisabled;
+
+      if (decreaseBtn) {
+        decreaseBtn.disabled = isDisabled || defaultQty <= 1;
+      }
+      if (increaseBtn) {
+        increaseBtn.disabled = isDisabled || defaultQty >= maxQty;
+      }
+
+      // Update availability display (PDP pattern)
+      if (remainingCount) {
+        remainingCount.textContent = `${info.remaining} available`;
+      }
+
+      if (cartQuantity) {
+        if (info.inCart > 0) {
+          cartQuantity.textContent = `( ${info.inCart} in cart )`;
+          cartQuantity.classList.remove("hidden");
+        } else {
+          cartQuantity.classList.add("hidden");
+        }
+      }
+    }
+
+    private updateAddToCartButtonWithAvailability(
+      info: ProductAvailabilityInfo
+    ): void {
+      // EXACTLY mirror PDP add to cart button updates
+      const addToCartBtn = document.getElementById(
+        "quick-view-add-to-cart"
+      ) as HTMLButtonElement;
+      const textElement = addToCartBtn?.querySelector(".add-to-cart-text");
+
+      if (!addToCartBtn || !textElement) return;
+
+      const buttonText = getButtonText(info.state);
+      const isDisabled = isButtonDisabled(info.state);
+
+      textElement.textContent = buttonText;
+      addToCartBtn.disabled = isDisabled;
+
+      if (isDisabled) {
+        addToCartBtn.classList.add("opacity-50", "cursor-not-allowed");
+      } else {
+        addToCartBtn.classList.remove("opacity-50", "cursor-not-allowed");
+      }
+    }
+
+    private updateImageOverlayWithAvailability(
+      info: ProductAvailabilityInfo
+    ): void {
+      // EXACTLY mirror PDP image overlay updates
+      const stockOverlay = document.getElementById("quick-view-stock-overlay");
+      const productImage = document.getElementById("quick-view-image");
+
+      if (!stockOverlay || !productImage) return;
+
+      if (info.state === ProductAvailabilityState.OUT_OF_STOCK) {
+        stockOverlay.textContent = getButtonText(info.state);
+        stockOverlay.classList.remove("hidden");
+        productImage.classList.add("opacity-75");
+      } else {
+        stockOverlay.classList.add("hidden");
+        productImage.classList.remove("opacity-75");
+      }
+    }
+
+    private updateViewDetailsButton(productUrl?: string): void {
+      const button = document.getElementById(
+        "quick-view-full-details"
+      ) as HTMLButtonElement;
+      if (button && productUrl) {
+        button.onclick = () => {
+          this.closeModal();
+          window.location.href = productUrl;
+        };
+      }
+    }
+
+    async addToCart(): Promise<void> {
+      if (!this.currentProduct || !this.currentVariation || this.isProcessing)
+        return;
+
+      this.isProcessing = true;
+      const addToCartBtn = document.getElementById(
+        "quick-view-add-to-cart"
+      ) as HTMLButtonElement;
+      const addToCartText = addToCartBtn?.querySelector(".add-to-cart-text");
+      const addToCartLoading = addToCartBtn?.querySelector(
+        ".add-to-cart-loading"
+      );
+
+      try {
+        if (addToCartBtn) addToCartBtn.disabled = true;
+        addToCartText?.classList.add("hidden");
+        addToCartLoading?.classList.remove("hidden");
+
+        // Get quantity from input (not hardcoded) - use fresh element reference
+        const quantityInput = document.getElementById(
+          "quick-view-quantity"
+        ) as HTMLInputElement;
+        const quantity = quantityInput ? parseInt(quantityInput.value, 10) : 1;
+
+        // Validate quantity is valid number
+        if (isNaN(quantity) || quantity < 1) {
+          throw new Error("Please enter a valid quantity");
+        }
+
+        // Validate availability before adding (PDP pattern)
+        if (
+          !cart.canAddToCart(
+            this.currentProduct.id,
+            this.currentVariation.variationId,
+            this.currentVariation.quantity || 0,
+            quantity
+          )
+        ) {
+          throw new Error("Cannot add that quantity to cart");
+        }
+
+        // Get current button data (updated by updateButtonProductData)
+        const buttonData = addToCartBtn.dataset.product;
+        if (!buttonData) throw new Error("No product data found");
+
+        const cartItem = JSON.parse(buttonData);
+        cartItem.quantity = quantity; // Use actual quantity from input
+
+        const result = await cart.addItem(cartItem);
+
+        if (result.success) {
+          if (typeof window.showNotification === "function") {
+            window.showNotification(
+              result.message || "Added to cart",
+              "success"
+            );
+          }
+
+          // Update UI after cart addition (PDP pattern)
+          this.handleCartUpdate();
+
+          this.closeModal();
+        } else {
+          throw new Error(result.message || "Failed to add to cart");
+        }
+      } catch (error) {
+        const appError = processSquareError(error, "quickViewAddToCart");
+        logError(appError);
+
+        if (typeof window.showNotification === "function") {
+          window.showNotification(appError.message, "error");
+        }
+      } finally {
+        this.isProcessing = false;
+        if (addToCartBtn) addToCartBtn.disabled = false;
+        addToCartText?.classList.remove("hidden");
+        addToCartLoading?.classList.add("hidden");
+      }
+    }
+
+    private handleCartUpdate(): void {
+      // EXACTLY mirror PDP handleCartUpdate pattern
+      if (!this.currentVariation || !this.currentProduct) return;
+
+      const availabilityInfo = cart.getProductAvailability(
+        this.productData.productId,
+        this.currentVariation.variationId,
+        this.currentVariation.quantity || 0
+      );
+
+      this.updateQuantityControlsWithAvailability(availabilityInfo);
+      this.updateAddToCartButtonWithAvailability(availabilityInfo);
+      this.updateImageOverlayWithAvailability(availabilityInfo);
+      this.updateAttributeButtonStates();
+    }
+
+    private showLoading(): void {
+      this.hideAllStates();
+      document.getElementById("quick-view-loading")?.classList.remove("hidden");
+    }
+
+    private showError(): void {
+      this.hideAllStates();
+      document.getElementById("quick-view-error")?.classList.remove("hidden");
+    }
+
+    private showProduct(): void {
+      this.hideAllStates();
+      document.getElementById("quick-view-product")?.classList.remove("hidden");
+      document.getElementById("quick-view-footer")?.classList.remove("hidden");
+    }
+
+    private hideAllStates(): void {
+      ["quick-view-loading", "quick-view-error", "quick-view-product"].forEach(
+        (id) => {
+          document.getElementById(id)?.classList.add("hidden");
+        }
+      );
+      document.getElementById("quick-view-footer")?.classList.add("hidden");
+    }
+
+    private openModal(): void {
+      const overlay = document.getElementById("quick-view-overlay");
+      const panel = document.getElementById("quick-view-panel");
+
+      if (overlay && panel) {
+        overlay.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+
+        requestAnimationFrame(() => {
+          overlay.classList.remove("opacity-0");
+          panel.classList.remove("-translate-x-full");
+        });
+      }
+    }
+
+    closeModal(): void {
+      const overlay = document.getElementById("quick-view-overlay");
+      const panel = document.getElementById("quick-view-panel");
+
+      if (overlay && panel) {
+        overlay.classList.add("opacity-0");
+        panel.classList.add("-translate-x-full");
+        document.body.style.overflow = "unset";
+
+        setTimeout(() => overlay.classList.add("hidden"), 300);
+      }
+
+      this.resetState();
+    }
+
+    private resetState(): void {
+      this.currentProduct = null;
+      this.currentVariation = null;
+      this.selectedAttributes = {};
+      this.productData = null;
+      this.isProcessing = false;
+    }
+
+    private setupQuantityControls(): void {
+      // EXACTLY mirror PDP quantity control setup
+      const quantityInput = document.getElementById(
+        "quick-view-quantity"
+      ) as HTMLInputElement;
+      const decreaseBtn = document.getElementById(
+        "quick-view-decrease"
+      ) as HTMLButtonElement;
+      const increaseBtn = document.getElementById(
+        "quick-view-increase"
+      ) as HTMLButtonElement;
+
+      if (!quantityInput || !decreaseBtn || !increaseBtn) return;
+
+      // CRITICAL FIX: Remove existing event listeners to prevent duplicates
+      const newDecreaseBtn = decreaseBtn.cloneNode(true) as HTMLButtonElement;
+      const newIncreaseBtn = increaseBtn.cloneNode(true) as HTMLButtonElement;
+      const newQuantityInput = quantityInput.cloneNode(
+        true
+      ) as HTMLInputElement;
+
+      decreaseBtn.parentNode?.replaceChild(newDecreaseBtn, decreaseBtn);
+      increaseBtn.parentNode?.replaceChild(newIncreaseBtn, increaseBtn);
+      quantityInput.parentNode?.replaceChild(newQuantityInput, quantityInput);
+
+      // PDP quantity control patterns with fresh elements
+      newIncreaseBtn.addEventListener("click", () => {
+        const currentValue = parseInt(newQuantityInput.value, 10) || 0;
+        const maxValue = parseInt(newQuantityInput.max, 10) || 0;
+
+        if (currentValue < maxValue) {
+          newQuantityInput.value = String(currentValue + 1);
+          this.updateQuantityButtonStates();
+        }
+      });
+
+      newDecreaseBtn.addEventListener("click", () => {
+        const currentValue = parseInt(newQuantityInput.value, 10) || 0;
+        if (currentValue > 1) {
+          newQuantityInput.value = String(currentValue - 1);
+          this.updateQuantityButtonStates();
+        }
+      });
+
+      newQuantityInput.addEventListener("change", (e) => {
+        const target = e.target as HTMLInputElement;
+        let value = parseInt(target.value, 10);
+        const max = parseInt(target.max, 10) || 1;
+
+        if (isNaN(value) || value < 1) value = 1;
+        else if (value > max) value = max;
+
+        target.value = String(value);
+        this.updateQuantityButtonStates();
+      });
+    }
+
+    private updateQuantityButtonStates(): void {
+      // EXACTLY mirror PDP quantity button state updates - use fresh element references
+      const quantityInput = document.getElementById(
+        "quick-view-quantity"
+      ) as HTMLInputElement;
+      const decreaseBtn = document.getElementById(
+        "quick-view-decrease"
+      ) as HTMLButtonElement;
+      const increaseBtn = document.getElementById(
+        "quick-view-increase"
+      ) as HTMLButtonElement;
+
+      if (!quantityInput) return;
+
+      const value = parseInt(quantityInput.value, 10);
+      const max = parseInt(quantityInput.max, 10) || 0;
+
+      if (decreaseBtn) decreaseBtn.disabled = value <= 1;
+      if (increaseBtn) increaseBtn.disabled = value >= max;
+    }
+
+    setupEventHandlers(): void {
+      // Close button
+      const closeButton = document.getElementById("close-quick-view");
+      closeButton?.addEventListener("click", () => this.closeModal());
+
+      // Overlay click
+      const overlay = document.getElementById("quick-view-overlay");
+      overlay?.addEventListener("click", (e) => {
+        if (e.target === overlay) this.closeModal();
+      });
+
+      // Add to cart
+      const addToCartBtn = document.getElementById("quick-view-add-to-cart");
+      addToCartBtn?.addEventListener("click", () => this.addToCart());
+
+      // Retry button
+      const retryBtn = document.getElementById("quick-view-retry");
+      retryBtn?.addEventListener("click", () => {
+        if (this.currentProduct) {
+          this.openQuickView(this.currentProduct.id);
+        }
+      });
+
+      // Quantity controls
+      this.setupQuantityControls();
+
+      // Global click handler for quick view triggers
+      document.addEventListener(
+        "click",
+        (e) => {
+          const trigger = (e.target as Element)?.closest(
+            ".quick-view-trigger"
+          ) as HTMLElement;
+          if (trigger) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            const productId = trigger.dataset.productId;
+            if (productId) {
+              this.openQuickView(productId);
+            }
+            return false;
+          }
+        },
+        true
+      );
+
+      // Escape key
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          const panel = document.getElementById("quick-view-panel");
+          if (panel && !panel.classList.contains("-translate-x-full")) {
+            this.closeModal();
+          }
+        }
+      });
+
+      // Cart update events (PDP pattern)
+      window.addEventListener("cartUpdated", () => {
+        if (this.currentVariation && this.currentProduct) {
+          this.handleCartUpdate();
+        }
+      });
+    }
+  }
+
+  // Initialize Quick View
+  function initQuickView(): void {
+    const controller = QuickViewController.getInstance();
+    controller.setupEventHandlers();
+
+    // Global function for product cards
+    (window as any).openQuickView = (productId: string) => {
+      controller.openQuickView(productId);
+    };
+  }
+
+  // Initialize on page load
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initQuickView);
+  } else {
+    initQuickView();
+  }
+
+  // Astro view transitions
+  document.addEventListener("astro:page-load", initQuickView);
+</script>
