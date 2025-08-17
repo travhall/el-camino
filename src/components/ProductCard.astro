@@ -201,17 +201,73 @@ const isDynamicPriority = priority || index < 12;
 
 <script>
   document.addEventListener("astro:page-load", () => {
-    const images =
-      document.querySelectorAll<HTMLImageElement>(".image-enhanced");
+    // Mobile detection function
+    function isMobileDevice(): boolean {
+      return window.innerWidth < 1024; // lg breakpoint
+    }
 
-    images.forEach((img) => {
-      if (img.complete && img.naturalHeight !== 0) {
-        img.classList.add("opacity-100", "loaded");
-        const placeholderId = img.dataset.placeholderId;
-        if (placeholderId) {
-          document.getElementById(placeholderId)?.remove();
+    // Enhanced mobile interaction for product cards
+    function setupMobileQuickView(): void {
+      const productCards = document.querySelectorAll(
+        '[itemtype="http://schema.org/Product"]'
+      );
+
+      productCards.forEach((card) => {
+        const link = card as HTMLAnchorElement;
+        const productId = card
+          .querySelector(".quick-view-trigger")
+          ?.getAttribute("data-product-id");
+
+        if (!productId) return;
+
+        // Clone the link to remove existing listeners
+        const newLink = link.cloneNode(true) as HTMLAnchorElement;
+        link.parentNode?.replaceChild(newLink, link);
+
+        // Add mobile-specific behavior
+        newLink.addEventListener("click", (e) => {
+          if (isMobileDevice()) {
+            // On mobile: prevent navigation, open Quick View
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Trigger Quick View if function exists
+            if (typeof (window as any).openQuickView === "function") {
+              (window as any).openQuickView(productId);
+            } else {
+              // Fallback to PDP if Quick View not available
+              window.location.href = newLink.href;
+            }
+          }
+          // On desktop: let the link work normally (no preventDefault)
+        });
+
+        // Ensure Quick View button still works on desktop
+        const quickViewButton = newLink.querySelector(".quick-view-trigger");
+        if (quickViewButton) {
+          quickViewButton.addEventListener("click", (e) => {
+            // Always prevent link navigation when Quick View button clicked
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (typeof (window as any).openQuickView === "function") {
+              (window as any).openQuickView(productId);
+            }
+          });
         }
-      }
+      });
+    }
+
+    // Setup mobile behavior
+    setupMobileQuickView();
+
+    // Re-setup on window resize (desktop/mobile transitions)
+    let resizeTimeout: number;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(() => {
+        setupMobileQuickView();
+      }, 250);
     });
   });
 </script>
