@@ -17,6 +17,7 @@ export class PDPController {
   private currentVariation: any = null;
   private uiManager: PDPUIManager;
   private eventManager: PDPEventManager;
+  private isInitialLoad: boolean = true; // Track if this is initial page load
 
   constructor(private productData: ProductPageData) {
     this.uiManager = new PDPUIManager();
@@ -42,12 +43,16 @@ export class PDPController {
     // Setup all event handlers
     this.eventManager.setupAllEventHandlers();
 
-    // Initialize UI state
+    // Initialize UI state without updating URL (initial page load)
     if (this.currentVariation) {
-      this.updateProductUI(this.currentVariation);
+      console.log('[PDPController] Initializing UI without URL update for:', this.currentVariation.name);
+      this.updateUIOnly(this.currentVariation);
     }
 
     this.updateAttributeButtonStates();
+    
+    // Mark initial load complete after everything is set up
+    this.isInitialLoad = false;
   }
 
   private updateCurrentVariation(): void {
@@ -59,7 +64,14 @@ export class PDPController {
 
       if (matchingVariation) {
         this.currentVariation = matchingVariation;
-        this.updateProductUI(matchingVariation);
+        
+        // For user interactions, update both UI and URL
+        if (!this.isInitialLoad) {
+          this.updateVariantUrl(matchingVariation);
+        }
+        
+        // Always update UI regardless of initial load status
+        this.updateUIOnly(matchingVariation);
       } else {
         this.showOutOfStockState();
       }
@@ -69,11 +81,8 @@ export class PDPController {
     }
   }
 
-  private updateProductUI(variation: any): void {
+  private updateUIOnly(variation: any): void {
     if (!variation) return;
-
-    this.currentVariation = variation;
-    this.updateVariantUrl(variation);
 
     // Use UI manager for all display updates
     const availabilityInfo = cart.getProductAvailability(
@@ -90,6 +99,20 @@ export class PDPController {
     }
 
     this.updateButtonProductData(variation);
+  }
+
+  private updateProductUI(variation: any): void {
+    if (!variation) return;
+
+    this.currentVariation = variation;
+    
+    // Only update URL for user interactions, not initial page load
+    if (!this.isInitialLoad) {
+      this.updateVariantUrl(variation);
+    }
+
+    // Always update UI
+    this.updateUIOnly(variation);
   }
 
   private updateButtonProductData(variation: any): void {
@@ -121,6 +144,13 @@ export class PDPController {
   }
 
   private updateVariantUrl(selectedVariation: any): void {
+    // TEMPORARILY DISABLED - causing double back button issue
+    // TODO: Re-implement variant URL updates after navigation is stable
+    console.log('[PDPController] Variant URL update disabled for navigation fix');
+    return;
+    
+    console.log('[PDPController] updateVariantUrl called for user interaction:', selectedVariation.name);
+    
     const baseUrl = window.location.pathname.split("?")[0];
     if (selectedVariation.name) {
       const variantSlug = createVariantSlug(selectedVariation.name);
@@ -129,11 +159,10 @@ export class PDPController {
       // Use navigation manager for coordinated URL updates
       const navManager = getNavigationManager();
       if (navManager?.isEnabled()) {
-        // Use replaceState for back navigation to avoid creating extra history entries
-        const useReplace = navManager.isBackNavigation();
-        navManager.updateURL(newUrl, useReplace);
+        // Always use pushState for user interactions (this method only called for user interactions now)
+        navManager.updateURL(newUrl, false);
       } else {
-        // Fallback to direct pushState when navigation manager unavailable
+        // Fallback: always pushState for user interactions
         window.history.pushState({}, "", newUrl);
       }
     }
@@ -157,6 +186,7 @@ export class PDPController {
 
   private handleAttributeSelection(attributeType: string, value: string): void {
     this.selectedAttributes[attributeType] = value;
+    this.isInitialLoad = false; // Ensure this is treated as user interaction
     this.updateCurrentVariation();
     this.updateAttributeButtonStates();
   }
@@ -166,6 +196,7 @@ export class PDPController {
       (v) => v.variationId === variationId
     );
     if (variation) {
+      this.isInitialLoad = false; // Ensure this is treated as user interaction
       this.updateProductUI(variation);
     }
   }
@@ -213,5 +244,6 @@ export class PDPController {
     this.eventManager.cleanup();
     this.currentVariation = null;
     this.selectedAttributes = {};
+    this.isInitialLoad = true; // Reset for next instance
   }
 }

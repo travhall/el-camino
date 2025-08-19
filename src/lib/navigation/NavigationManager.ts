@@ -22,6 +22,8 @@ export class NavigationManager {
   private operationQueue: NavigationOperation[] = [];
   private isProcessing = false;
   private enabled = true; // Feature flag
+  private originalPushState: typeof history.pushState;
+  private originalReplaceState: typeof history.replaceState;
 
   constructor() {
     this.state = {
@@ -32,9 +34,21 @@ export class NavigationManager {
       isViewTransitionActive: false
     };
     
+    // TEMPORARILY DISABLED FOR TESTING
+    this.enabled = false;
+    
     if (typeof window !== 'undefined') {
+      // Store original methods before interception
+      this.originalPushState = history.pushState.bind(history);
+      this.originalReplaceState = history.replaceState.bind(history);
+      
       this.setupEventListeners();
-      this.interceptHistoryMethods();
+      // Don't intercept history methods when disabled
+      // this.interceptHistoryMethods();
+    } else {
+      // Initialize as no-ops for SSR compatibility
+      this.originalPushState = (() => {}) as any;
+      this.originalReplaceState = (() => {}) as any;
     }
   }
 
@@ -44,45 +58,27 @@ export class NavigationManager {
       this.state.isViewTransitionActive = true;
       this.state.navigationDirection = e.direction === 'back' ? 'back' : 'forward';
       this.state.previousPath = this.state.currentPath;
-      
-      if (this.enabled && import.meta.env.DEV) {
-        console.log(`[NavigationManager] View transition starting: ${e.direction}`);
-      }
     });
 
     document.addEventListener('astro:after-swap', () => {
       this.state.isViewTransitionActive = false;
       this.state.currentPath = window.location.pathname;
       this.processQueuedOperations();
-      
-      if (this.enabled && import.meta.env.DEV) {
-        console.log(`[NavigationManager] View transition complete, processed ${this.operationQueue.length} queued operations`);
-      }
-    });
-
-    // Handle view transition errors
-    document.addEventListener('astro:before-swap', (e: any) => {
-      if (e.to && this.enabled && import.meta.env.DEV) {
-        console.log(`[NavigationManager] Navigating to: ${e.to.pathname}`);
-      }
     });
   }
 
   private interceptHistoryMethods(): void {
     if (!this.enabled) return;
 
-    const originalPushState = history.pushState.bind(history);
-    const originalReplaceState = history.replaceState.bind(history);
-
     history.pushState = (state: any, title: string, url?: string | URL | null) => {
       this.queueOperation('pushState', () => {
-        originalPushState(state, title, url);
+        this.originalPushState(state, title, url);
       }, url?.toString() || '', state, title);
     };
 
     history.replaceState = (state: any, title: string, url?: string | URL | null) => {
       this.queueOperation('replaceState', () => {
-        originalReplaceState(state, title, url);
+        this.originalReplaceState(state, title, url);
       }, url?.toString() || '', state, title);
     };
   }
@@ -95,10 +91,6 @@ export class NavigationManager {
     title: string
   ): void {
     if (this.state.isViewTransitionActive || this.isProcessing) {
-      if (this.enabled && import.meta.env.DEV) {
-        console.log(`[NavigationManager] Queuing ${operation} for ${url}`);
-      }
-      
       this.operationQueue.push({
         type: operation,
         url,
@@ -116,18 +108,19 @@ export class NavigationManager {
     
     this.isProcessing = true;
     
-    if (this.enabled && import.meta.env.DEV) {
-      console.log(`[NavigationManager] Processing ${this.operationQueue.length} queued operations`);
-    }
+    // Process operations efficiently - just execute the last operation for each URL
+    const lastOperationPerUrl = new Map<string, NavigationOperation>();
+    this.operationQueue.forEach(op => {
+      lastOperationPerUrl.set(op.url, op);
+    });
     
-    // Process operations in order, but deduplicate similar URLs
-    const uniqueOperations = this.deduplicateOperations(this.operationQueue);
-    
-    uniqueOperations.forEach(operation => {
+    lastOperationPerUrl.forEach(operation => {
       try {
         operation.callback();
       } catch (error) {
-        console.error(`[NavigationManager] Error executing ${operation.type}:`, error);
+        if (import.meta.env.DEV) {
+          console.error(`[NavigationManager] Error executing ${operation.type}:`, error);
+        }
       }
     });
     
@@ -135,23 +128,10 @@ export class NavigationManager {
     this.isProcessing = false;
   }
 
-  private deduplicateOperations(operations: NavigationOperation[]): NavigationOperation[] {
-    if (operations.length <= 1) return operations;
-    
-    // Keep only the last operation for each unique URL
-    const urlMap = new Map<string, NavigationOperation>();
-    
-    operations.forEach(op => {
-      urlMap.set(op.url, op);
-    });
-    
-    return Array.from(urlMap.values());
-  }
-
   // Public API for components
   public updateURL(url: string, replace: boolean = false, state: any = {}): void {
-    if (!this.enabled) {
-      // Fallback to direct history methods when disabled
+    if (!this.enabled || !this.originalPushState || !this.originalReplaceState) {
+      // Fallback to direct history methods when disabled or not initialized
       if (replace) {
         history.replaceState(state, '', url);
       } else {
@@ -160,10 +140,11 @@ export class NavigationManager {
       return;
     }
 
+    // Use original methods to avoid double interception
     if (replace) {
-      history.replaceState(state, '', url);
+      this.originalReplaceState(state, '', url);
     } else {
-      history.pushState(state, '', url);
+      this.originalPushState(state, '', url);
     }
   }
 
@@ -194,15 +175,20 @@ export class NavigationManager {
   // Feature flag controls
   public enable(): void {
     this.enabled = true;
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && this.originalPushState && this.originalReplaceState) {
       this.interceptHistoryMethods();
     }
   }
 
   public disable(): void {
     this.enabled = false;
-    // Clear any queued operations
     this.operationQueue = [];
+    
+    // Restore original methods
+    if (typeof window !== 'undefined' && this.originalPushState && this.originalReplaceState) {
+      history.pushState = this.originalPushState;
+      history.replaceState = this.originalReplaceState;
+    }
   }
 
   public isEnabled(): boolean {
