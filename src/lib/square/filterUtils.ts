@@ -7,6 +7,7 @@ import type {
 } from "./types";
 import { createFilterSlug } from "./types";
 import { getProductStockStatus } from "./inventory"; // Import inventory checking
+import { getNavigationManager } from "@/lib/navigation/NavigationManager";
 
 /**
  * Extract filter options from product array
@@ -125,7 +126,7 @@ export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
 
 /**
  * Update URL with new filters
- * Follows existing navigation patterns
+ * Follows existing navigation patterns with NavigationManager coordination
  */
 export function updateURLWithFilters(filters: ProductFilters): void {
   const params = filtersToURLParams(filters);
@@ -133,8 +134,14 @@ export function updateURLWithFilters(filters: ProductFilters): void {
     params.toString() ? "?" + params.toString() : ""
   }`;
 
-  // Use pushState for bookmarkable URLs
-  window.history.pushState({}, "", newURL);
+  // Use navigation manager for coordinated URL updates
+  const navManager = getNavigationManager();
+  if (navManager?.isEnabled()) {
+    navManager.updateURL(newURL, false);
+  } else {
+    // Fallback to direct pushState when navigation manager unavailable
+    window.history.pushState({}, "", newURL);
+  }
 }
 
 /**
@@ -259,6 +266,7 @@ export function buildPaginatedURL(
 
 /**
  * Navigate to page 1 when filters change (standard UX pattern)
+ * Uses NavigationManager for coordinated navigation
  */
 export function updateURLWithFiltersResetPage(filters: ProductFilters): void {
   const currentParams = new URLSearchParams(window.location.search);
@@ -271,5 +279,12 @@ export function updateURLWithFiltersResetPage(filters: ProductFilters): void {
     pageSize
   );
 
-  window.history.pushState({}, "", newURL);
+  // Use navigation manager for coordinated URL updates
+  const navManager = getNavigationManager();
+  if (navManager?.isEnabled()) {
+    navManager.updateURL(newURL, false);
+  } else {
+    // Fallback to direct pushState when navigation manager unavailable
+    window.history.pushState({}, "", newURL);
+  }
 }

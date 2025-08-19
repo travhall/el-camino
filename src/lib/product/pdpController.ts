@@ -10,6 +10,7 @@ import {
 } from "@/lib/square/errorUtils";
 import { PDPUIManager } from "./pdpUI";
 import { PDPEventManager, type ProductPageData } from "./pdpEvents";
+import { getNavigationManager } from "@/lib/navigation/NavigationManager";
 
 export class PDPController {
   private selectedAttributes: Record<string, string> = {};
@@ -124,7 +125,17 @@ export class PDPController {
     if (selectedVariation.name) {
       const variantSlug = createVariantSlug(selectedVariation.name);
       const newUrl = `${baseUrl}?variant=${variantSlug}`;
-      window.history.pushState({}, "", newUrl);
+      
+      // Use navigation manager for coordinated URL updates
+      const navManager = getNavigationManager();
+      if (navManager?.isEnabled()) {
+        // Use replaceState for back navigation to avoid creating extra history entries
+        const useReplace = navManager.isBackNavigation();
+        navManager.updateURL(newUrl, useReplace);
+      } else {
+        // Fallback to direct pushState when navigation manager unavailable
+        window.history.pushState({}, "", newUrl);
+      }
     }
   }
 

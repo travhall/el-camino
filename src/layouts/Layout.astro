@@ -132,7 +132,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
       }
     </script>
 
-    <!-- Clean news parameters when outside news section -->
+    <!-- Clean news parameters when outside news section with NavigationManager coordination -->
     <script is:inline>
       document.addEventListener("astro:page-load", function () {
         if (!window.location.pathname.startsWith("/news")) {
@@ -145,7 +145,12 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
                 ? "?" + url.searchParams.toString()
                 : "");
             if (newUrl !== window.location.pathname + window.location.search) {
-              window.history.replaceState({}, "", newUrl);
+              // Use NavigationManager if available for coordination
+              if (window.navigationManager?.isEnabled()) {
+                window.navigationManager.updateURL(newUrl, true);
+              } else {
+                window.history.replaceState({}, "", newUrl);
+              }
             }
           }
         }
@@ -173,6 +178,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <div id="portal-root"></div>
     <script>
       import("@/utils/performanceMonitoring");
+      import("@/lib/navigation/init"); // Initialize NavigationManager globally
     </script>
 
     <!-- Global cleanup for news view parameters -->
@@ -200,7 +206,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
         setTimeout(cleanNonNewsForms, 100);
       });
 
-      // Clean view parameter from URLs when navigating away from news
+      // Clean view parameter from URLs when navigating away from news with NavigationManager coordination
       document.addEventListener("astro:before-swap", (e) => {
         if (
           window.location.pathname.startsWith("/news") &&
@@ -213,7 +219,13 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
             const cleanUrl =
               e.to.pathname +
               (currentParams.toString() ? "?" + currentParams.toString() : "");
-            window.history.replaceState({}, "", cleanUrl);
+            
+            // Use NavigationManager if available for coordination
+            if (window.navigationManager?.isEnabled()) {
+              window.navigationManager.updateURL(cleanUrl, true);
+            } else {
+              window.history.replaceState({}, "", cleanUrl);
+            }
           }
         }
       });
