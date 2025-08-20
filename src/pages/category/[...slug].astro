@@ -5,9 +5,9 @@ import AppliedFilters from "@/components/AppliedFilters.astro";
 import ProductGrid from "@/components/ProductGrid.astro";
 import PaginationControls from "@/components/PaginationControls.astro";
 import {
-  fetchCategoryHierarchy,
   fetchProductsByCategoryWithPagination,
 } from "@/lib/square/categories";
+import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
 import { parseURLParams } from "@/lib/square/filterUtils";
 import Layout from "@/layouts/Layout.astro";
 
@@ -15,7 +15,7 @@ const { slug } = Astro.params;
 if (!slug) return Astro.redirect("/404");
 
 // === EXISTING CATEGORY RESOLUTION ===
-const categoryHierarchy = await fetchCategoryHierarchy();
+const categoryHierarchy = await fetchCategoryHierarchyWithProducts();
 const slugParts = slug.split("/");
 const topLevelSlug = slugParts[0];
 const subCategorySlug = slugParts.length > 1 ? slugParts[1] : null;
