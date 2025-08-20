@@ -77,6 +77,12 @@ export interface ProductVariation {
   attributes?: Record<string, string>; // Add this
 }
 
+export interface InventoryStatus {
+  isOutOfStock: boolean;
+  hasLimitedOptions: boolean;
+  totalQuantity?: number;
+}
+
 export interface VariationSelectionState {
   selectedAttributes: Record<string, string>;
   availableAttributes: Record<string, string[]>;

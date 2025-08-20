@@ -1,6 +1,6 @@
 ---
 // src/components/ProductCard.astro - Enhanced with Quick View
-import type { Product } from "@/lib/square/types";
+import type { Product, InventoryStatus } from "@/lib/square/types";
 import { MoneyUtils } from "@/lib/square/money";
 import { getProductStockStatus } from "@/lib/square/inventory";
 import { Icon } from "astro-icon/components";
@@ -10,6 +10,7 @@ interface Props {
   priority?: boolean;
   index?: number;
   skipInventoryCheck?: boolean;
+  inventoryStatus?: InventoryStatus;
 }
 
 const {
@@ -17,13 +18,22 @@ const {
   priority = false,
   index = 0,
   skipInventoryCheck = false,
+  inventoryStatus,
 } = Astro.props;
 
-// Conditional inventory check
+// Use pre-computed inventory status if available, otherwise check individually
 let isOutOfStock = false;
-if (!skipInventoryCheck) {
+let hasLimitedOptions = false;
+
+if (inventoryStatus) {
+  // Use pre-computed status from batch call
+  isOutOfStock = inventoryStatus.isOutOfStock;
+  hasLimitedOptions = inventoryStatus.hasLimitedOptions;
+} else if (!skipInventoryCheck) {
+  // Fall back to individual check for backward compatibility
   const stockStatus = await getProductStockStatus(product);
   isOutOfStock = stockStatus.isOutOfStock;
+  hasLimitedOptions = stockStatus.hasLimitedOptions;
 }
 
 // Format price
@@ -108,11 +118,15 @@ const isDynamicPriority = priority || index < 12;
 
       <!-- Stock status overlay (Priority 1) -->
       {
-        isOutOfStock && (
+        isOutOfStock ? (
           <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-sm font-bold rounded-sm rounded-tl-none z-20">
             Sold Out
           </div>
-        )
+        ) : hasLimitedOptions ? (
+          <div class="absolute top-0 left-0 bg-state-warning-surface text-state-warning-text px-3 py-2 text-sm font-bold rounded-sm rounded-tl-none z-20">
+            Limited Stock
+          </div>
+        ) : null
       }
 
       <!-- Quick View Trigger (appears on hover) -->
@@ -203,10 +217,11 @@ const isDynamicPriority = priority || index < 12;
   document.addEventListener("astro:page-load", () => {
     // Simple event delegation - no DOM cloning needed
     document.addEventListener("click", (e) => {
-      const productCard = e.target?.closest('[itemtype="http://schema.org/Product"]');
+      const target = e.target as Element;
+      const productCard = target?.closest('[itemtype="http://schema.org/Product"]');
       if (!productCard) return;
 
-      const quickViewButton = e.target?.closest(".quick-view-trigger");
+      const quickViewButton = target?.closest(".quick-view-trigger");
       const productId = productCard.querySelector(".quick-view-trigger")?.getAttribute("data-product-id");
       
       if (!productId) return;

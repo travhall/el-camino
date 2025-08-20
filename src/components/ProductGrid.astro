@@ -2,7 +2,8 @@
 // src/components/ProductGrid.astro
 import ProductCard from "./ProductCard.astro";
 import ProductCardSkeleton from "./ProductCardSkeleton.astro";
-import type { Product } from "@/lib/square/types";
+import type { Product, InventoryStatus } from "@/lib/square/types";
+import { checkBulkInventory } from "@/lib/square/inventory";
 
 interface Props {
   products: Product[];
@@ -11,6 +12,72 @@ interface Props {
 }
 
 const { products, paginationMode = false, categoryPath = "" } = Astro.props;
+
+// Batch inventory check for all products
+let inventoryStatusMap: Record<string, InventoryStatus> = {};
+
+if (products.length > 0) {
+  try {
+    // Extract variation IDs from all products
+    const variationIds = products
+      .map(product => product.variationId)
+      .filter(Boolean);
+
+    if (variationIds.length > 0) {
+      // Single batch API call for all products
+      const inventoryMap = await checkBulkInventory(variationIds);
+
+      // Convert to inventory status for each product
+      products.forEach(product => {
+        if (product.variationId) {
+          const quantity = inventoryMap[product.variationId] || 0;
+          
+          // Calculate stock status like the original getProductStockStatus
+          let isOutOfStock = false;
+          let hasLimitedOptions = false;
+
+          if (product.variations && product.variations.length > 0) {
+            // Multi-variation product - check all variations
+            const variationQuantities = product.variations.map(v => 
+              inventoryMap[v.variationId] || 0
+            );
+            const inStockCount = variationQuantities.filter(q => q > 0).length;
+            const totalVariations = product.variations.length;
+
+            if (inStockCount === 0) {
+              isOutOfStock = true;
+              hasLimitedOptions = false;
+            } else if (inStockCount < totalVariations) {
+              isOutOfStock = false;
+              hasLimitedOptions = true;
+            }
+          } else {
+            // Single variation product
+            isOutOfStock = quantity <= 0;
+          }
+
+          inventoryStatusMap[product.variationId] = {
+            isOutOfStock,
+            hasLimitedOptions,
+            totalQuantity: quantity
+          };
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Batch inventory check failed:', error);
+    // Fall back to default status (assume in stock)
+    products.forEach(product => {
+      if (product.variationId) {
+        inventoryStatusMap[product.variationId] = {
+          isOutOfStock: false,
+          hasLimitedOptions: false,
+          totalQuantity: 0
+        };
+      }
+    });
+  }
+}
 ---
 
 <div
@@ -27,7 +94,12 @@ const { products, paginationMode = false, categoryPath = "" } = Astro.props;
         data-product-id={product.id}
         data-brand={product.brand || ""}
       >
-        <ProductCard product={product} priority={index < 8} />
+        <ProductCard 
+          product={product} 
+          priority={index < 8} 
+          inventoryStatus={inventoryStatusMap[product.variationId]}
+          skipInventoryCheck={true}
+        />
       </div>
     ))
   }

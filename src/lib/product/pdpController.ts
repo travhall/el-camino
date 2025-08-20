@@ -42,15 +42,12 @@ export class PDPController {
     // Setup all event handlers
     this.eventManager.setupAllEventHandlers();
 
-    // Initialize UI state without updating URL (initial page load)
+    // Initialize UI state
     if (this.currentVariation) {
-      this.updateUIOnly(this.currentVariation);
+      this.updateProductUI(this.currentVariation);
     }
 
     this.updateAttributeButtonStates();
-    
-    // Mark initial load complete after everything is set up
-    this.isInitialLoad = false;
   }
 
   private updateCurrentVariation(): void {
@@ -62,14 +59,7 @@ export class PDPController {
 
       if (matchingVariation) {
         this.currentVariation = matchingVariation;
-        
-        // For user interactions, update both UI and URL
-        if (!this.isInitialLoad) {
-          this.updateVariantUrl(matchingVariation);
-        }
-        
-        // Always update UI regardless of initial load status
-        this.updateUIOnly(matchingVariation);
+        this.updateProductUI(matchingVariation);
       } else {
         this.showOutOfStockState();
       }
@@ -103,14 +93,23 @@ export class PDPController {
     if (!variation) return;
 
     this.currentVariation = variation;
+    this.updateVariantUrl(variation);
     
-    // Only update URL for user interactions, not initial page load
-    if (!this.isInitialLoad) {
-      this.updateVariantUrl(variation);
+    // Use UI manager for all display updates
+    const availabilityInfo = cart.getProductAvailability(
+      this.productData.productId,
+      variation.variationId,
+      variation.quantity || 0
+    );
+
+    this.uiManager.updateAvailabilityDisplay(availabilityInfo);
+    this.uiManager.updatePriceDisplay(variation.price, variation.unit);
+
+    if (variation.image) {
+      this.uiManager.updateProductImage(variation.image);
     }
 
-    // Always update UI
-    this.updateUIOnly(variation);
+    this.updateButtonProductData(variation);
   }
 
   private updateButtonProductData(variation: any): void {
@@ -142,9 +141,14 @@ export class PDPController {
   }
 
   private updateVariantUrl(selectedVariation: any): void {
-    // TEMPORARILY DISABLED - causing double back button issue
-    // TODO: Re-implement variant URL updates after navigation is stable
-    return;
+    // Update URL for variant tracking without creating history entries
+    const baseUrl = window.location.pathname.split("?")[0];
+    if (selectedVariation.name) {
+      const variantSlug = createVariantSlug(selectedVariation.name);
+      const newUrl = `${baseUrl}?variant=${variantSlug}`;
+      // Use replaceState to update URL without adding history entry
+      window.history.replaceState({}, "", newUrl);
+    }
   }
 
   private showOutOfStockState(): void {

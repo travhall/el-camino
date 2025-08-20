@@ -490,9 +490,17 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
       // Only initialize PDP controller if we have interactive elements that need it
       if (hasAttributeButtons || hasVariationButtons || hasQuantityControls) {
+        console.log('Initializing PDP controller...');
+        console.log('Has attribute buttons:', hasAttributeButtons);
+        console.log('Has variation buttons:', hasVariationButtons);
+        console.log('Has quantity controls:', hasQuantityControls);
+        console.log('Product data:', productData);
+        
         pdpController = new PDPController(productData);
+        console.log('PDP controller created:', pdpController);
         return true;
       } else {
+        console.log('No interactive elements found - not initializing PDP');
         return true; // This is OK, not an error
       }
     } catch (error) {
@@ -544,19 +552,37 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
   /**
    * ✅ ASTRO VIEW TRANSITIONS: Initialize on page load
    */
-  document.addEventListener("astro:page-load", () => {
-    // Only try to initialize PDP if we're on a product page AND not already initialized
-    const isProductPage = document.getElementById("variation-data") !== null;
+  // Run immediately since view transitions are disabled
+  function initializePage() {
+    console.log('Page initialization started');
+    
+    const variationDataElement = document.getElementById("variation-data");
+    const isProductPage = variationDataElement !== null;
+    
+    console.log('variation-data element found:', variationDataElement);
+    console.log('isProductPage:', isProductPage);
 
-    if (isProductPage && !pdpController) {
+    if (isProductPage) {
+      console.log('Product page detected, calling initializePDP()');
       if (!initializePDP()) {
         console.error("Failed to initialize PDP controller");
       }
+    } else {
+      console.log('Not a product page, skipping PDP initialization');
     }
 
-    // Description toggle can run on any page safely
     initializeDescriptionToggle();
-  });
+  }
+
+  // Run on DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePage);
+  } else {
+    initializePage();
+  }
+
+  // Also handle view transitions when re-enabled
+  document.addEventListener("astro:page-load", initializePage);
 
   /**
    * ✅ ASTRO VIEW TRANSITIONS: Clean up on navigation
