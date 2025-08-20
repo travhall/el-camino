@@ -490,15 +490,9 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
       // Only initialize PDP controller if we have interactive elements that need it
       if (hasAttributeButtons || hasVariationButtons || hasQuantityControls) {
-        console.log('[Product Page] History length before PDP init:', history.length);
         pdpController = new PDPController(productData);
-        console.log('[Product Page] History length after PDP init:', history.length);
-        console.log("PDP controller initialized successfully - single instance");
         return true;
       } else {
-        console.log(
-          "PDP controller not needed - no interactive elements found"
-        );
         return true; // This is OK, not an error
       }
     } catch (error) {
@@ -551,17 +545,10 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
    * ✅ ASTRO VIEW TRANSITIONS: Initialize on page load
    */
   document.addEventListener("astro:page-load", () => {
-    // Only try to initialize PDP if we're on a product page
+    // Only try to initialize PDP if we're on a product page AND not already initialized
     const isProductPage = document.getElementById("variation-data") !== null;
 
-    if (isProductPage) {
-      // Cleanup any existing controller first to prevent duplicates
-      if (pdpController) {
-        console.log("Cleaning up existing PDP controller before reinitializing");
-        pdpController.cleanup();
-        pdpController = null;
-      }
-      
+    if (isProductPage && !pdpController) {
       if (!initializePDP()) {
         console.error("Failed to initialize PDP controller");
       }

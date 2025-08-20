@@ -268,12 +268,8 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
         const html = await response.text();
         await this.updatePageContent(html);
 
-        // Update URL without page reload using NavigationManager
-        if (window.navigationManager?.isEnabled()) {
-          window.navigationManager.updateURL(newUrl, false);
-        } else {
-          history.pushState(null, "", newUrl);
-        }
+        // Update URL without page reload
+        history.pushState(null, "", newUrl);
 
         // Scroll to top of results
         document.querySelector("main")?.scrollIntoView({

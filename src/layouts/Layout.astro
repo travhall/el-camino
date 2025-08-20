@@ -145,12 +145,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
                 ? "?" + url.searchParams.toString()
                 : "");
             if (newUrl !== window.location.pathname + window.location.search) {
-              // Use NavigationManager if available for coordination
-              if (window.navigationManager?.isEnabled()) {
-                window.navigationManager.updateURL(newUrl, true);
-              } else {
-                window.history.replaceState({}, "", newUrl);
-              }
+              window.history.replaceState({}, "", newUrl);
             }
           }
         }
@@ -179,7 +174,6 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <div id="portal-root"></div>
     <script>
       import("@/utils/performanceMonitoring");
-      import("@/lib/navigation/init"); // Initialize NavigationManager globally
     </script>
 
     <!-- Global cleanup for news view parameters -->
@@ -220,13 +214,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
             const cleanUrl =
               e.to.pathname +
               (currentParams.toString() ? "?" + currentParams.toString() : "");
-            
-            // Use NavigationManager if available for coordination
-            if (window.navigationManager?.isEnabled()) {
-              window.navigationManager.updateURL(cleanUrl, true);
-            } else {
-              window.history.replaceState({}, "", cleanUrl);
-            }
+            window.history.replaceState({}, "", cleanUrl);
           }
         }
       });

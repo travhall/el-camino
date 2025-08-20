@@ -129,13 +129,7 @@ export function updateViewInCurrentURL(view: 'grid' | 'list'): void {
   }
   
   const newURL = createNewsAwareURL(window.location.pathname, currentParams);
-  
-  // Use NavigationManager if available for coordination
-  if (window.navigationManager?.isEnabled()) {
-    window.navigationManager.updateURL(newURL, true);
-  } else {
-    window.history.replaceState({}, '', newURL);
-  }
+  window.history.replaceState({}, '', newURL);
   
   // Save preference
   saveViewPreference(view);

@@ -7,7 +7,6 @@ import type {
 } from "./types";
 import { createFilterSlug } from "./types";
 import { getProductStockStatus } from "./inventory"; // Import inventory checking
-import { getNavigationManager } from "@/lib/navigation/NavigationManager";
 
 /**
  * Extract filter options from product array
@@ -124,24 +123,12 @@ export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
   return params;
 }
 
-/**
- * Update URL with new filters
- * Follows existing navigation patterns with NavigationManager coordination
- */
 export function updateURLWithFilters(filters: ProductFilters): void {
   const params = filtersToURLParams(filters);
   const newURL = `${window.location.pathname}${
     params.toString() ? "?" + params.toString() : ""
   }`;
-
-  // Use navigation manager for coordinated URL updates
-  const navManager = getNavigationManager();
-  if (navManager?.isEnabled()) {
-    navManager.updateURL(newURL, false);
-  } else {
-    // Fallback to direct pushState when navigation manager unavailable
-    window.history.pushState({}, "", newURL);
-  }
+  window.history.pushState({}, "", newURL);
 }
 
 /**
@@ -264,10 +251,6 @@ export function buildPaginatedURL(
   return `${basePath}${queryString ? "?" + queryString : ""}`;
 }
 
-/**
- * Navigate to page 1 when filters change (standard UX pattern)
- * Uses NavigationManager for coordinated navigation
- */
 export function updateURLWithFiltersResetPage(filters: ProductFilters): void {
   const currentParams = new URLSearchParams(window.location.search);
   const pageSize = parseInt(currentParams.get("pageSize") || "24", 10);
@@ -275,16 +258,8 @@ export function updateURLWithFiltersResetPage(filters: ProductFilters): void {
   const newURL = buildPaginatedURL(
     window.location.pathname,
     filters,
-    1, // Always reset to page 1 when filters change
+    1,
     pageSize
   );
-
-  // Use navigation manager for coordinated URL updates
-  const navManager = getNavigationManager();
-  if (navManager?.isEnabled()) {
-    navManager.updateURL(newURL, false);
-  } else {
-    // Fallback to direct pushState when navigation manager unavailable
-    window.history.pushState({}, "", newURL);
-  }
+  window.history.pushState({}, "", newURL);
 }

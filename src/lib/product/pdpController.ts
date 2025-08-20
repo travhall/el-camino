@@ -10,7 +10,6 @@ import {
 } from "@/lib/square/errorUtils";
 import { PDPUIManager } from "./pdpUI";
 import { PDPEventManager, type ProductPageData } from "./pdpEvents";
-import { getNavigationManager } from "@/lib/navigation/NavigationManager";
 
 export class PDPController {
   private selectedAttributes: Record<string, string> = {};
@@ -45,7 +44,6 @@ export class PDPController {
 
     // Initialize UI state without updating URL (initial page load)
     if (this.currentVariation) {
-      console.log('[PDPController] Initializing UI without URL update for:', this.currentVariation.name);
       this.updateUIOnly(this.currentVariation);
     }
 
@@ -146,26 +144,7 @@ export class PDPController {
   private updateVariantUrl(selectedVariation: any): void {
     // TEMPORARILY DISABLED - causing double back button issue
     // TODO: Re-implement variant URL updates after navigation is stable
-    console.log('[PDPController] Variant URL update disabled for navigation fix');
     return;
-    
-    console.log('[PDPController] updateVariantUrl called for user interaction:', selectedVariation.name);
-    
-    const baseUrl = window.location.pathname.split("?")[0];
-    if (selectedVariation.name) {
-      const variantSlug = createVariantSlug(selectedVariation.name);
-      const newUrl = `${baseUrl}?variant=${variantSlug}`;
-      
-      // Use navigation manager for coordinated URL updates
-      const navManager = getNavigationManager();
-      if (navManager?.isEnabled()) {
-        // Always use pushState for user interactions (this method only called for user interactions now)
-        navManager.updateURL(newUrl, false);
-      } else {
-        // Fallback: always pushState for user interactions
-        window.history.pushState({}, "", newUrl);
-      }
-    }
   }
 
   private showOutOfStockState(): void {

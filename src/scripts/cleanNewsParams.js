@@ -10,12 +10,7 @@ document.addEventListener('astro:page-load', function() {
       const newUrl = url.pathname + (params.toString() ? '?' + params.toString() : '');
       
       if (newUrl !== window.location.pathname + window.location.search) {
-        // Use NavigationManager if available for coordination
-        if (window.navigationManager?.isEnabled()) {
-          window.navigationManager.updateURL(newUrl, true);
-        } else {
-          window.history.replaceState({}, '', newUrl);
-        }
+        window.history.replaceState({}, '', newUrl);
       }
     }
   }
