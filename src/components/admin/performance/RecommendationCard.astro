@@ -7,8 +7,8 @@
 
 export interface Props {
   title: string;
-  impact: 'Low' | 'Medium' | 'High';
-  effort: 'Low' | 'Medium' | 'High';
+  impact: "Low" | "Medium" | "High";
+  effort: "Low" | "Medium" | "High";
   description: string;
   action?: string;
   savings?: string;
@@ -17,60 +17,74 @@ export interface Props {
   class?: string;
 }
 
-const { 
-  title, 
-  impact, 
-  effort, 
-  description, 
-  action = 'Apply Fix',
+const {
+  title,
+  impact,
+  effort,
+  description,
+  action = "Apply Fix",
   savings,
-  category = 'Performance',
+  category = "Performance",
   priority = 1,
-  class: className = '' 
+  class: className = "",
 } = Astro.props;
 
 const impactConfig = {
-  Low: { color: 'bg-gray-100 text-gray-800', badge: '●' },
-  Medium: { color: 'bg-yellow-100 text-yellow-800', badge: '●●' },
-  High: { color: 'bg-green-100 text-green-800', badge: '●●●' }
+  Low: { color: "bg-gray-100 text-gray-800", badge: "●" },
+  Medium: { color: "bg-yellow-100 text-yellow-800", badge: "●●" },
+  High: { color: "bg-green-100 text-green-800", badge: "●●●" },
 };
 
 const effortConfig = {
-  Low: { color: 'bg-green-100 text-green-800', badge: '◐' },
-  Medium: { color: 'bg-yellow-100 text-yellow-800', badge: '◑' },
-  High: { color: 'bg-red-100 text-red-800', badge: '●' }
+  Low: { color: "bg-green-100 text-green-800", badge: "◐" },
+  Medium: { color: "bg-yellow-100 text-yellow-800", badge: "◑" },
+  High: { color: "bg-red-100 text-red-800", badge: "●" },
 };
 
-const priorityColors = ['border-red-200', 'border-yellow-200', 'border-blue-200'];
+const priorityColors = [
+  "border-red-200",
+  "border-yellow-200",
+  "border-blue-200",
+];
 ---
 
-<div class={`recommendation-card bg-(--surface-secondary) border ${priorityColors[priority - 1] || 'border-(--border-primary)'} rounded-sm p-6 transition-all duration-200 hover:shadow-md ${className}`}>
+<div
+  class={`recommendation-card bg-(--surface-secondary) border ${priorityColors[priority - 1] || "border-(--border-primary)"} rounded-sm p-6 transition-all duration-200 hover:shadow-md ${className}`}
+>
   <!-- Header -->
   <div class="flex items-start justify-between mb-4">
     <div class="flex-1">
       <div class="flex items-center gap-3 mb-2">
         <h3 class="font-semibold text-(--content-heading)">{title}</h3>
-        {priority === 1 && (
-          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            🔥 Critical
-          </span>
-        )}
+        {
+          priority === 1 && (
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              🔥 Critical
+            </span>
+          )
+        }
       </div>
-      
+
       <div class="flex items-center gap-4 text-sm">
         <!-- Impact Badge -->
         <div class="flex items-center gap-1">
           <span class="text-(--content-meta)">Impact:</span>
-          <span class={`px-2 py-1 rounded-full text-xs font-medium ${impactConfig[impact].color}`}>
-            {impactConfig[impact].badge} {impact}
+          <span
+            class={`px-2 py-1 rounded-full text-xs font-medium ${impactConfig[impact].color}`}
+          >
+            {impactConfig[impact].badge}
+            {impact}
           </span>
         </div>
-        
+
         <!-- Effort Badge -->
         <div class="flex items-center gap-1">
           <span class="text-(--content-meta)">Effort:</span>
-          <span class={`px-2 py-1 rounded-full text-xs font-medium ${effortConfig[effort].color}`}>
-            {effortConfig[effort].badge} {effort}
+          <span
+            class={`px-2 py-1 rounded-full text-xs font-medium ${effortConfig[effort].color}`}
+          >
+            {effortConfig[effort].badge}
+            {effort}
           </span>
         </div>
 
@@ -83,13 +97,22 @@ const priorityColors = ['border-red-200', 'border-yellow-200', 'border-blue-200'
 
     <!-- Action Menu -->
     <div class="flex items-center gap-2">
-      <button 
+      <button
         class="text-(--content-meta) hover:text-(--content-emphasis) p-1 rounded"
         onclick="toggleRecommendationDetails(this)"
         aria-label="More options"
       >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01" />
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 5v.01M12 12v.01M12 19v.01"></path>
         </svg>
       </button>
     </div>
@@ -101,23 +124,44 @@ const priorityColors = ['border-red-200', 'border-yellow-200', 'border-blue-200'
   </p>
 
   <!-- Savings Information -->
-  {savings && (
-    <div class="bg-(--surface-tertiary) p-3 rounded mb-4">
-      <div class="flex items-center gap-2">
-        <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-        </svg>
-        <span class="text-sm font-medium text-(--content-heading)">Estimated Savings:</span>
-        <span class="text-sm text-green-600 font-semibold">{savings}</span>
+  {
+    savings && (
+      <div class="bg-(--surface-tertiary) p-3 rounded mb-4">
+        <div class="flex items-center gap-2">
+          <svg
+            class="w-4 h-4 text-green-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+            />
+          </svg>
+          <span class="text-sm font-medium text-(--content-heading)">
+            Estimated Savings:
+          </span>
+          <span class="text-sm text-green-600 font-semibold">{savings}</span>
+        </div>
       </div>
-    </div>
-  )}
+    )
+  }
 
   <!-- Implementation Steps (Hidden by default) -->
-  <div class="recommendation-details hidden" id={`details-${title.replace(/\s+/g, '-').toLowerCase()}`}>
+  <div
+    class="recommendation-details hidden"
+    id={`details-${title.replace(/\s+/g, "-").toLowerCase()}`}
+  >
     <div class="border-t border-(--border-primary) pt-4 mt-4">
-      <h4 class="font-medium text-(--content-heading) mb-3">Implementation Steps:</h4>
-      <ol class="text-sm text-(--content-body) space-y-2 list-decimal list-inside">
+      <h4 class="font-medium text-(--content-heading) mb-3">
+        Implementation Steps:
+      </h4>
+      <ol
+        class="text-sm text-(--content-body) space-y-2 list-decimal list-inside"
+      >
         <li>Analyze current implementation</li>
         <li>Apply recommended optimization</li>
         <li>Validate performance improvement</li>
@@ -127,23 +171,34 @@ const priorityColors = ['border-red-200', 'border-yellow-200', 'border-blue-200'
   </div>
 
   <!-- Action Buttons -->
-  <div class="flex items-center justify-between pt-4 border-t border-(--border-primary)">
+  <div
+    class="flex items-center justify-between pt-4 border-t border-(--border-primary)"
+  >
     <div class="flex items-center gap-2 text-xs text-(--content-meta)">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <svg
+        class="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
       </svg>
       <span>Generated {new Date().toLocaleDateString()}</span>
     </div>
-    
+
     <div class="flex items-center gap-2">
-      <button 
+      <button
         class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors"
         onclick="dismissRecommendation(this)"
         data-title={title}
       >
         Dismiss
       </button>
-      <button 
+      <button
         class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4"
         onclick="applyRecommendation(this)"
         data-title={title}
@@ -163,7 +218,7 @@ const priorityColors = ['border-red-200', 'border-yellow-200', 'border-blue-200'
   }
 
   .recommendation-card::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -172,7 +227,7 @@ const priorityColors = ['border-red-200', 'border-yellow-200', 'border-blue-200'
     background: linear-gradient(
       to bottom,
       var(--ui-accent) 0%,
-      var(--ui-accent)/50 100%
+      var(--ui-accent) / 50 100%
     );
   }
 
@@ -218,81 +273,81 @@ const priorityColors = ['border-red-200', 'border-yellow-200', 'border-blue-200'
 
 <script>
   // Toggle recommendation details
-  window.toggleRecommendationDetails = function(button: HTMLButtonElement) {
-    const card = button.closest('.recommendation-card');
-    const details = card?.querySelector('.recommendation-details');
-    
+  window.toggleRecommendationDetails = function (button: HTMLButtonElement) {
+    const card = button.closest(".recommendation-card") as HTMLElement;
+    const details = card?.querySelector(".recommendation-details");
+
     if (details) {
-      details.classList.toggle('hidden');
-      
+      details.classList.toggle("hidden");
+
       // Rotate the menu icon
-      const icon = button.querySelector('svg');
+      const icon = button.querySelector("svg");
       if (icon) {
-        icon.style.transform = details.classList.contains('hidden') 
-          ? 'rotate(0deg)' 
-          : 'rotate(90deg)';
+        icon.style.transform = details.classList.contains("hidden")
+          ? "rotate(0deg)"
+          : "rotate(90deg)";
       }
     }
   };
 
   // Apply recommendation
-  window.applyRecommendation = function(button: HTMLButtonElement) {
-    const title = button.getAttribute('data-title');
-    const impact = button.getAttribute('data-impact');
-    const effort = button.getAttribute('data-effort');
-    
+  window.applyRecommendation = function (button: HTMLButtonElement) {
+    const title = button.getAttribute("data-title");
+    const impact = button.getAttribute("data-impact");
+    const effort = button.getAttribute("data-effort");
+
     // Dispatch event for parent components
-    const applyEvent = new CustomEvent('recommendation:apply', {
+    const applyEvent = new CustomEvent("recommendation:apply", {
       detail: {
         title,
         impact,
         effort,
-        timestamp: Date.now()
-      }
+        timestamp: Date.now(),
+      },
     });
-    
+
     document.dispatchEvent(applyEvent);
-    
+
     // Visual feedback
     const originalText = button.textContent;
-    button.textContent = 'Applying...';
+    button.textContent = "Applying...";
     button.disabled = true;
-    
+
     // Simulate async operation
     setTimeout(() => {
-      button.textContent = '✓ Applied';
-      button.classList.add('bg-green-600', 'text-white');
-      
+      button.textContent = "✓ Applied";
+      button.classList.add("bg-green-600", "text-white");
+
       setTimeout(() => {
-        const card = button.closest('.recommendation-card');
+        const card = button.closest(".recommendation-card") as HTMLElement;
         if (card) {
-          card.style.opacity = '0.5';
-          card.style.transform = 'scale(0.98)';
+          card.style.opacity = "0.5";
+          card.style.transform = "scale(0.98)";
         }
       }, 1000);
     }, 2000);
   };
 
   // Dismiss recommendation
-  window.dismissRecommendation = function(button: HTMLButtonElement) {
-    const title = button.getAttribute('data-title');
-    
-    const dismissEvent = new CustomEvent('recommendation:dismiss', {
+  window.dismissRecommendation = function (button: HTMLButtonElement) {
+    const title = button.getAttribute("data-title");
+
+    const dismissEvent = new CustomEvent("recommendation:dismiss", {
       detail: {
         title,
-        timestamp: Date.now()
-      }
+        timestamp: Date.now(),
+      },
     });
-    
+
     document.dispatchEvent(dismissEvent);
-    
+
     // Fade out animation
-    const card = button.closest('.recommendation-card');
+    const card = button.closest(".recommendation-card") as HTMLElement;
     if (card) {
-      card.style.transition = 'all 0.3s ease-out';
-      card.style.opacity = '0';
-      card.style.transform = 'translateX(100px)';
-      
+      card.style.transition = "all 0.3s ease-out";
+      card.style.opacity = "0";
+      card.style.transform = "translateX(100px)";
+
       setTimeout(() => {
         card.remove();
       }, 300);
@@ -300,21 +355,25 @@ const priorityColors = ['border-red-200', 'border-yellow-200', 'border-blue-200'
   };
 
   // Listen for recommendation events
-  document.addEventListener('recommendation:apply', (e: CustomEvent) => {
+  document.addEventListener("recommendation:dismiss", ((e: CustomEvent) => {
     const { title, impact, effort } = e.detail;
-    console.log(`Applying recommendation: ${title} (Impact: ${impact}, Effort: ${effort})`);
-    
+    console.log(
+      `Applying recommendation: ${title} (Impact: ${impact}, Effort: ${effort})`
+    );
+
     // Here you would integrate with your performance optimization system
     // For example, trigger automated fixes or navigate to detailed implementation guides
-  });
+  }) as EventListener);
 
-  document.addEventListener('recommendation:dismiss', (e: CustomEvent) => {
+  document.addEventListener("recommendation:dismiss", ((e: CustomEvent) => {
     const { title } = e.detail;
     console.log(`Dismissed recommendation: ${title}`);
-    
+
     // Store dismissal in localStorage to prevent showing again
-    const dismissed = JSON.parse(localStorage.getItem('dismissedRecommendations') || '[]');
+    const dismissed = JSON.parse(
+      localStorage.getItem("dismissedRecommendations") || "[]"
+    );
     dismissed.push(title);
-    localStorage.setItem('dismissedRecommendations', JSON.stringify(dismissed));
-  });
+    localStorage.setItem("dismissedRecommendations", JSON.stringify(dismissed));
+  }) as EventListener);
 </script>

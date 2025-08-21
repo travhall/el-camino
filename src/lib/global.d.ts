@@ -15,6 +15,10 @@ declare global {
       filterOptions: any;
     };
     responsiveFiltersInitialized?: boolean;
+    handleBudgetAlertAction?: (button: HTMLButtonElement) => void;
+    dismissRecommendation?: (button: HTMLButtonElement) => void;
+    applyRecommendation?: (button: HTMLButtonElement) => void;
+    toggleRecommendationDetails?: (button: HTMLButtonElement) => void;
   }
 }
 
