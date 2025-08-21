@@ -14,6 +14,7 @@ declare global {
       searchIndex: any;
       filterOptions: any;
     };
+    responsiveFiltersInitialized?: boolean;
   }
 }
 

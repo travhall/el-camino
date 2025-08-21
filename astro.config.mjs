@@ -32,7 +32,9 @@ export default defineConfig({
   },
 
   image: {
-    service: { entrypoint: "astro/assets/services/sharp" },
+    service: {
+      entrypoint: "astro/assets/services/squoosh",
+    },
     domains: [
       "elcaminoskateshop.wordpress.com",
       "api.elcaminoskateshop.com",

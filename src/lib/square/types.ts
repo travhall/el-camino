@@ -83,6 +83,10 @@ export interface InventoryStatus {
   totalQuantity?: number;
 }
 
+export interface ProductWithInventory extends Product {
+  inventoryStatus?: InventoryStatus;
+}
+
 export interface VariationSelectionState {
   selectedAttributes: Record<string, string>;
   availableAttributes: Record<string, string[]>;

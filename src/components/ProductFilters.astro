@@ -205,19 +205,28 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
 <script>
   class ResponsiveFilters {
-    private form: HTMLFormElement | null;
-    private container: HTMLElement | null;
-    private overlay: HTMLElement | null;
-    private showMoreToggle: HTMLButtonElement | null;
+    private form: HTMLFormElement | null = null;
+    private container: HTMLElement | null = null;
+    private overlay: HTMLElement | null = null;
+    private showMoreToggle: HTMLButtonElement | null = null;
     private isExpanded: boolean = false;
 
     constructor() {
-      this.form = document.getElementById("filter-form") as HTMLFormElement;
-      this.container = document.getElementById("filter-container");
-      this.overlay = document.getElementById("mobile-filter-overlay");
-      this.showMoreToggle = document.getElementById("show-more-toggle") as HTMLButtonElement;
-      this.setupEventListeners();
-      this.initializeMenuState();
+      // Add small delay to ensure DOM is fully ready
+      setTimeout(() => {
+        this.form = document.getElementById("filter-form") as HTMLFormElement;
+        this.container = document.getElementById("filter-container");
+        this.overlay = document.getElementById("mobile-filter-overlay");
+        this.showMoreToggle = document.getElementById("show-more-toggle") as HTMLButtonElement;
+        
+        if (!this.form) {
+          console.warn("ProductFilters: Form element not found. Filters may not work correctly.");
+          return;
+        }
+        
+        this.setupEventListeners();
+        this.initializeMenuState();
+      }, 100);
     }
 
     private setupEventListeners(): void {
@@ -230,6 +239,13 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     private setupMobileDrawer(): void {
       const toggle = document.getElementById("mobile-filter-toggle");
       const close = document.getElementById("mobile-filter-close");
+
+      if (!toggle) {
+        console.warn("ProductFilters: Mobile filter toggle button not found");
+      }
+      if (!close) {
+        console.warn("ProductFilters: Mobile filter close button not found");
+      }
 
       toggle?.addEventListener("click", () => this.openMobileDrawer());
       close?.addEventListener("click", () => this.closeMobileDrawer());
@@ -253,9 +269,18 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
 
     private setupDesktopFiltering(): void {
-      if (!this.form) return;
+      if (!this.form) {
+        console.warn("ProductFilters: Cannot setup desktop filtering - form not found");
+        return;
+      }
 
       const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
+      
+      if (checkboxes.length === 0) {
+        console.warn("ProductFilters: No checkboxes found in form");
+        return;
+      }
+
       checkboxes.forEach((checkbox) => {
         checkbox.addEventListener("change", () => {
           // Only auto-submit on desktop
@@ -271,7 +296,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             sessionStorage.setItem("filtering-in-progress", "true");
 
             setTimeout(() => {
-              this.form!.submit();
+              if (this.form) {
+                this.form.submit();
+              }
             }, 150);
           }
         });
@@ -338,9 +365,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const clearBtnMobile = document.querySelector("[data-clear-filters-mobile]");
 
       // Clear brand filters only
-      [clearBtn].forEach(btn => {
-        btn?.addEventListener("click", () => this.clearBrandFilters());
-      });
+      clearBtn?.addEventListener("click", () => this.clearBrandFilters());
 
       // Clear all filters (mobile)
       clearBtnMobile?.addEventListener("click", () => this.clearAllFilters());
@@ -388,8 +413,21 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
   }
 
-  // Initialize
-  document.addEventListener("astro:page-load", () => {
+  // Initialize - Support both DOMContentLoaded and astro:page-load
+  function initializeFilters() {
+    // Prevent double initialization
+    if (window.responsiveFiltersInitialized) return;
+    window.responsiveFiltersInitialized = true;
+    
     new ResponsiveFilters();
-  });
+  }
+
+  // Try both event types for compatibility
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeFilters);
+  } else {
+    initializeFilters();
+  }
+  
+  document.addEventListener("astro:page-load", initializeFilters);
 </script>

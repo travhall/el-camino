@@ -1,81 +1,50 @@
 ---
-// src/components/ProductGrid.astro
+// src/components/ProductGrid.astro - Enhanced with batch inventory optimization
 import ProductCard from "./ProductCard.astro";
 import ProductCardSkeleton from "./ProductCardSkeleton.astro";
-import type { Product, InventoryStatus } from "@/lib/square/types";
-import { checkBulkInventory } from "@/lib/square/inventory";
+import type { Product, ProductWithInventory } from "@/lib/square/types";
+import { batchInventoryService } from "@/lib/square/batchInventory";
 
 interface Props {
   products: Product[];
   paginationMode?: boolean;
   categoryPath?: string;
+  skipInventoryCheck?: boolean;
 }
 
-const { products, paginationMode = false, categoryPath = "" } = Astro.props;
+const { products, paginationMode = false, categoryPath = "", skipInventoryCheck = false } = Astro.props;
+
+console.log(`[ProductGrid] skipInventoryCheck: ${skipInventoryCheck}, products.length: ${products.length}`);
 
 // Batch inventory check for all products
-let inventoryStatusMap: Record<string, InventoryStatus> = {};
+let productsWithInventory: ProductWithInventory[] = products;
 
-if (products.length > 0) {
+if (!skipInventoryCheck && products.length > 0) {
+  console.log(`[ProductGrid] Starting batch inventory check for ${products.length} products`);
   try {
-    // Extract variation IDs from all products
-    const variationIds = products
-      .map(product => product.variationId)
-      .filter(Boolean);
-
-    if (variationIds.length > 0) {
-      // Single batch API call for all products
-      const inventoryMap = await checkBulkInventory(variationIds);
-
-      // Convert to inventory status for each product
-      products.forEach(product => {
-        if (product.variationId) {
-          const quantity = inventoryMap[product.variationId] || 0;
-          
-          // Calculate stock status like the original getProductStockStatus
-          let isOutOfStock = false;
-          let hasLimitedOptions = false;
-
-          if (product.variations && product.variations.length > 0) {
-            // Multi-variation product - check all variations
-            const variationQuantities = product.variations.map(v => 
-              inventoryMap[v.variationId] || 0
-            );
-            const inStockCount = variationQuantities.filter(q => q > 0).length;
-            const totalVariations = product.variations.length;
-
-            if (inStockCount === 0) {
-              isOutOfStock = true;
-              hasLimitedOptions = false;
-            } else if (inStockCount < totalVariations) {
-              isOutOfStock = false;
-              hasLimitedOptions = true;
-            }
-          } else {
-            // Single variation product
-            isOutOfStock = quantity <= 0;
-          }
-
-          inventoryStatusMap[product.variationId] = {
-            isOutOfStock,
-            hasLimitedOptions,
-            totalQuantity: quantity
-          };
-        }
-      });
-    }
+    const catalogObjectIds = products.map(p => p.catalogObjectId).filter(Boolean);
+    console.log(`[ProductGrid] Catalog object IDs: ${catalogObjectIds.length}`);
+    const inventoryMap = await batchInventoryService.getBatchInventoryStatus(catalogObjectIds);
+    
+    productsWithInventory = products.map(product => ({
+      ...product,
+      inventoryStatus: inventoryMap.get(product.catalogObjectId) || {
+        isOutOfStock: false,
+        hasLimitedOptions: false,
+        totalQuantity: 0,
+      }
+    }));
   } catch (error) {
     console.error('Batch inventory check failed:', error);
-    // Fall back to default status (assume in stock)
-    products.forEach(product => {
-      if (product.variationId) {
-        inventoryStatusMap[product.variationId] = {
-          isOutOfStock: false,
-          hasLimitedOptions: false,
-          totalQuantity: 0
-        };
+    // Fallback: all products assumed in stock
+    productsWithInventory = products.map(product => ({
+      ...product,
+      inventoryStatus: {
+        isOutOfStock: false,
+        hasLimitedOptions: false,
+        totalQuantity: 0,
       }
-    });
+    }));
   }
 }
 ---
@@ -83,12 +52,12 @@ if (products.length > 0) {
 <div
   id="filterable-product-grid"
   class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-2 lg:gap-1 transition-all duration-300"
-  data-products={JSON.stringify(products)}
+  data-products={JSON.stringify(productsWithInventory)}
   data-pagination-mode={paginationMode}
   data-category-path={categoryPath}
 >
   {
-    products.map((product, index) => (
+    productsWithInventory.map((product, index) => (
       <div
         class="product-card-wrapper grid"
         data-product-id={product.id}
@@ -97,7 +66,7 @@ if (products.length > 0) {
         <ProductCard 
           product={product} 
           priority={index < 8} 
-          inventoryStatus={inventoryStatusMap[product.variationId]}
+          inventoryStatus={product.inventoryStatus}
           skipInventoryCheck={true}
         />
       </div>
@@ -143,98 +112,40 @@ if (products.length > 0) {
     <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
       No products found
     </h2>
-    <p class="text-(--content-meta) mb-6 max-w-md">
+    <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
       Try adjusting your filters or browse all products.
     </p>
-    <button
-      id="clear-filters-cta"
-      class="font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] outline-0 focus-visible:ring focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/25 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+    <a
+      href={categoryPath}
+      class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
     >
       Clear Filters
-    </button>
+    </a>
   </div>
 </div>
 
 <script>
-  class ProductGrid {
-    private grid: HTMLElement | null;
-
-    constructor() {
-      this.grid = document.getElementById("filterable-product-grid");
-      if (!this.grid) return;
-
-      this.initializeGrid();
-      this.setupClearFilterAnimations();
-    }
-
-    private initializeGrid(): void {
-      if (!this.grid) return;
-
-      const wasFiltering = sessionStorage.getItem("filtering-in-progress");
-
-      if (wasFiltering) {
-        // Fade in from filtered state
-        this.grid.style.opacity = "0.5";
-        this.grid.style.transition = "opacity 0.4s ease";
-
-        // Smooth scroll to top of results (standard UX)
-        window.scrollTo({
-          top: 0,
-          behavior: "smooth",
-        });
-
-        requestAnimationFrame(() => {
-          this.grid!.style.opacity = "1";
-        });
-
-        sessionStorage.removeItem("filtering-in-progress");
-      } else {
-        this.grid.style.opacity = "1";
-        this.grid.style.transition = "opacity 0.3s ease";
-      }
-    }
-
-    private setupClearFilterAnimations(): void {
-      // Add animation delay to clear filter links
-      const clearLinks = document.querySelectorAll(
-        'a[href*="pageSize"]:not([data-animated])'
-      );
-      clearLinks.forEach((link) => {
-        link.setAttribute("data-animated", "true");
-        link.addEventListener("click", (e) => {
-          e.preventDefault();
-
-          if (this.grid) {
-            this.grid.style.opacity = "0.4";
-            sessionStorage.setItem("filtering-in-progress", "true");
-
-            setTimeout(() => {
-              window.location.href = (e.target as HTMLAnchorElement).href;
-            }, 150);
-          }
-        });
-      });
-    }
-  }
-
+  // Handle filter state restoration
   document.addEventListener("astro:page-load", () => {
-    new ProductGrid();
+    const grid = document.getElementById("filterable-product-grid");
+    const isFiltering = sessionStorage.getItem("filtering-in-progress");
+
+    if (isFiltering && grid) {
+      // Clear filtering state
+      sessionStorage.removeItem("filtering-in-progress");
+      
+      // Ensure grid is visible
+      grid.style.opacity = "1";
+      grid.style.transition = "opacity 0.3s ease";
+    }
+  });
+
+  // Initialize loading states on page load
+  document.addEventListener("DOMContentLoaded", () => {
+    const grid = document.getElementById("filterable-product-grid");
+    if (grid && sessionStorage.getItem("filtering-in-progress")) {
+      grid.style.opacity = "1";
+      sessionStorage.removeItem("filtering-in-progress");
+    }
   });
 </script>
-
-<style>
-  #filterable-product-grid {
-    transition: opacity 0.3s ease;
-  }
-
-  /* Ensure smooth transitions during filtering */
-  #filterable-product-grid.filtering {
-    pointer-events: none;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    #filterable-product-grid {
-      transition: none !important;
-    }
-  }
-</style>

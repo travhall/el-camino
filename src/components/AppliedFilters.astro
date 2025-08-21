@@ -1,5 +1,5 @@
 ---
-// src/components/AppliedFilters.astro - Separate component for applied filters
+// src/components/AppliedFilters.astro - Enhanced with availability filter support
 
 export interface Props {
   categoryPath?: string;
@@ -11,10 +11,11 @@ const { categoryPath = "", classes } = Astro.props;
 // Parse current filters from URL
 const currentParams = new URLSearchParams(Astro.url.search);
 const currentBrands = currentParams.getAll("brands") || [];
+const currentAvailability = currentParams.get("availability") === "true";
 const currentPageSize = currentParams.get("pageSize") || "24";
 
 // Only render if there are active filters
-if (currentBrands.length === 0) {
+if (currentBrands.length === 0 && !currentAvailability) {
   return null;
 }
 
@@ -25,6 +26,30 @@ function buildRemoveFilterUrl(brandToRemove: string): string {
 
   // Add remaining brands using the same format as the form
   otherBrands.forEach((brand) => {
+    params.append("brands", brand);
+  });
+
+  // Preserve availability filter
+  if (currentAvailability) {
+    params.set("availability", "true");
+  }
+
+  // Preserve page size
+  if (currentPageSize !== "24") {
+    params.set("pageSize", currentPageSize);
+  }
+
+  const queryString = params.toString();
+  const basePath = categoryPath || Astro.url.pathname;
+  return `${basePath}${queryString ? "?" + queryString : ""}`;
+}
+
+// Function to build URL for removing availability filter
+function buildRemoveAvailabilityUrl(): string {
+  const params = new URLSearchParams();
+
+  // Preserve brands
+  currentBrands.forEach((brand) => {
     params.append("brands", brand);
   });
 
@@ -77,6 +102,30 @@ function buildClearAllUrl(): string {
             </svg>
           </a>
         ))
+      }
+      {
+        currentAvailability && (
+          <a
+            href={buildRemoveAvailabilityUrl()}
+            class="inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--state-success-surface) hover:bg-(--state-success-surface)/75 transition-colors text-(--state-success-text) border-(--state-success-text)/50 group"
+            title="Remove availability filter"
+          >
+            <span>In stock only</span>
+            <svg
+              class="w-3 h-3 text-(--state-success-text)/70 group-hover:text-(--state-success-text)"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </a>
+        )
       }
     </div>
     <a
