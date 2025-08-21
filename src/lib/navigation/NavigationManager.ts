@@ -130,12 +130,14 @@ export class NavigationManager {
 
   // Public API for components
   public updateURL(url: string, replace: boolean = false, state: any = {}): void {
-    if (!this.enabled || !this.originalPushState || !this.originalReplaceState) {
-      // Fallback to direct history methods when disabled or not initialized
-      if (replace) {
-        history.replaceState(state, '', url);
-      } else {
-        history.pushState(state, '', url);
+    if (!this.enabled || typeof window === 'undefined') {
+      // Fallback to direct history methods when disabled or not in browser
+      if (typeof window !== 'undefined') {
+        if (replace) {
+          history.replaceState(state, '', url);
+        } else {
+          history.pushState(state, '', url);
+        }
       }
       return;
     }
@@ -175,7 +177,7 @@ export class NavigationManager {
   // Feature flag controls
   public enable(): void {
     this.enabled = true;
-    if (typeof window !== 'undefined' && this.originalPushState && this.originalReplaceState) {
+    if (typeof window !== 'undefined') {
       this.interceptHistoryMethods();
     }
   }
@@ -185,7 +187,7 @@ export class NavigationManager {
     this.operationQueue = [];
     
     // Restore original methods
-    if (typeof window !== 'undefined' && this.originalPushState && this.originalReplaceState) {
+    if (typeof window !== 'undefined') {
       history.pushState = this.originalPushState;
       history.replaceState = this.originalReplaceState;
     }
