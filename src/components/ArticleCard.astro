@@ -5,7 +5,7 @@ import type {
   ExtractedWordPressData,
   WordPressFallbackContent,
 } from "@/lib/wordpress/types";
-import { getDisplayCategory } from "@/lib/wordpress/types";
+import { getDisplayCategory, extractEmbeddedData, generateFallbackContent } from "@/lib/wordpress/types";
 import { formatDate } from "@/utils/dates";
 import { Image } from "astro:assets";
 import Tag from "./Tag.astro";
@@ -14,8 +14,9 @@ interface Props {
   post: WordPressPost;
   featured?: boolean;
   priority?: boolean;
-  embeddedData: ExtractedWordPressData;
-  fallbackContent: WordPressFallbackContent;
+  // OPTIMIZED: Make these optional and compute lazily if not provided
+  embeddedData?: ExtractedWordPressData;
+  fallbackContent?: WordPressFallbackContent;
   // New props for different layouts
   variant?: "masonry" | "grid" | "list";
 }
@@ -29,7 +30,11 @@ const {
   variant = "masonry",
 } = Astro.props;
 
-const imageUrl = embeddedData.featuredMedia?.source_url || "";
+// OPTIMIZED: Lazy computation - only process if not provided
+const actualEmbeddedData = embeddedData || extractEmbeddedData(post);
+const actualFallbackContent = fallbackContent || generateFallbackContent(post);
+
+const imageUrl = actualEmbeddedData.featuredMedia?.source_url || "";
 
 // Image dimensions based on variant and card type
 const getImageDimensions = () => {
@@ -50,7 +55,7 @@ const { width: imageWidth, height: imageHeight } = getImageDimensions();
 const displayCategory = getDisplayCategory(post);
 
 // Extract tags for display (show all tags, let them wrap)
-const displayTags = embeddedData.tags;
+const displayTags = actualEmbeddedData.tags;
 
 // Define CSS classes based on variant
 const getCardClasses = () => {
@@ -145,14 +150,14 @@ const getExcerptClasses = () => {
 <a
   href={`/news/${post.slug}`}
   class={getCardClasses()}
-  aria-label={`Read article: ${fallbackContent.title}`}
+  aria-label={`Read article: ${actualFallbackContent.title}`}
 >
   <!-- Featured Image with Placeholder Support -->
   {
     imageUrl ? (
       <Image
         src={imageUrl}
-        alt={fallbackContent.imageAlt}
+        alt={actualFallbackContent.imageAlt}
         width={imageWidth}
         height={imageHeight}
         format="avif"

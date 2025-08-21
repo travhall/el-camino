@@ -4,10 +4,6 @@ import ArticleCard from "./ArticleCard.astro";
 import ArticleCardSkeleton from "./ArticleCardSkeleton.astro";
 import Sidebar from "./Sidebar.astro";
 import type { WordPressPost } from "@/lib/wordpress/types";
-import {
-  extractEmbeddedData,
-  generateFallbackContent,
-} from "@/lib/wordpress/types";
 
 interface Props {
   posts: WordPressPost[];
@@ -32,13 +28,6 @@ const displayPosts = showSidebar ? posts.slice(0, 6) : posts;
 
 // Loading skeleton count
 const skeletonCount = showSidebar ? 6 : 12;
-
-// Preprocess the data extraction
-const processedPosts = displayPosts.map((post) => ({
-  post,
-  embeddedData: extractEmbeddedData(post),
-  fallbackContent: generateFallbackContent(post),
-}));
 
 // Determine card variant based on layout mode
 const getCardVariant = (index: number) => {
@@ -92,14 +81,11 @@ const getSkeletonVariant = () => {
             variant={getSkeletonVariant()}
           />
         ))
-    ) : processedPosts.length > 0 ? (
+    ) : displayPosts.length > 0 ? (
       <>
-        {processedPosts.map(
-          ({ post, embeddedData, fallbackContent }, index) => (
+        {displayPosts.map((post, index) => (
             <ArticleCard
               post={post}
-              embeddedData={embeddedData}
-              fallbackContent={fallbackContent}
               featured={!filterable && index === 0}
               priority={index === 0}
               variant={getCardVariant(index)}
@@ -161,10 +147,13 @@ const getSkeletonVariant = () => {
 </style>
 
 <script>
-  // Enhanced functionality for different layout modes
+  // Optimized functionality for better performance
   document.addEventListener("astro:page-load", () => {
-    // Performance optimization: Intersection Observer for lazy loading
-    if ("IntersectionObserver" in window) {
+    // SIMPLIFIED: Basic lazy loading without heavy intersection observer
+    // Only set up lazy loading if there are many images
+    const lazyImages = document.querySelectorAll("img[data-src]");
+    
+    if (lazyImages.length > 0 && "IntersectionObserver" in window) {
       const imageObserver = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
@@ -178,65 +167,42 @@ const getSkeletonVariant = () => {
             }
           });
         },
-        { rootMargin: "50px" }
+        { rootMargin: "100px" } // Increased margin for better performance
       );
 
-      // Observe images with data-src attribute
-      document
-        .querySelectorAll("img[data-src]")
-        .forEach((img) => imageObserver.observe(img));
+      // Only observe if there are more than 6 images (performance threshold)
+      if (lazyImages.length > 6) {
+        lazyImages.forEach((img) => imageObserver.observe(img));
+      } else {
+        // For small number of images, load immediately
+        lazyImages.forEach((img: Element) => {
+          const imgEl = img as HTMLImageElement;
+          if (imgEl.dataset.src) {
+            imgEl.src = imgEl.dataset.src;
+            imgEl.removeAttribute("data-src");
+          }
+        });
+      }
     }
 
-    // Dynamic view switching for filterable layouts
+    // SIMPLIFIED: Reduced event listener setup for better performance
     const container = document.querySelector("[class*='grid'], [class*='flex']");
-    if (container) {
-      // Listen for view change events from news page
+    if (container && container.classList.contains('filterable')) {
+      // Only add complex event listeners on filterable pages (not home page)
+      
       container.addEventListener('viewchange', (e: Event) => {
         const customEvent = e as CustomEvent;
         const newView = customEvent.detail?.view;
         
         if (newView === 'list') {
-          // Switch to list view
           container.className = 'flex flex-col gap-1';
-          // Update all article cards to list variant
-          const cards = container.querySelectorAll('[data-variant]');
-          cards.forEach(card => {
-            (card as HTMLElement).setAttribute('data-variant', 'list');
-          });
         } else if (newView === 'grid') {
-          // Switch to grid view
           container.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1';
-          // Update all article cards to grid variant
-          const cards = container.querySelectorAll('[data-variant]');
-          cards.forEach(card => {
-            (card as HTMLElement).setAttribute('data-variant', 'grid');
-          });
         }
-      });
-
-      // Add smooth transitions for layout changes
-      container.addEventListener("transitionstart", () => {
-        container.classList.add("transitioning");
-      });
-
-      container.addEventListener("transitionend", () => {
-        container.classList.remove("transitioning");
       });
     }
 
-    // Keyboard navigation support for accessibility
-    const cards = document.querySelectorAll("a[class*='group']");
-    cards.forEach((card, index) => {
-      card.addEventListener("keydown", (e: Event) => {
-        const keyEvent = e as KeyboardEvent;
-        if (keyEvent.key === "ArrowDown" && cards[index + 1]) {
-          (cards[index + 1] as HTMLElement).focus();
-          keyEvent.preventDefault();
-        } else if (keyEvent.key === "ArrowUp" && cards[index - 1]) {
-          (cards[index - 1] as HTMLElement).focus();
-          keyEvent.preventDefault();
-        }
-      });
-    });
+    // REMOVED: Heavy keyboard navigation setup for performance
+    // This was causing significant overhead on pages with many elements
   });
 </script>

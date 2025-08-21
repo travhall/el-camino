@@ -243,18 +243,38 @@ export function getDisplayCategory(post: WordPressPost): string | null {
 /**
  * Content sanitization and fallback generation
  */
+// Cache for sanitized content to avoid repeated processing
+const sanitizedContentCache = new Map<string, string>();
+
 export function sanitizeHtmlContent(html: string): string {
   if (!html || typeof html !== "string") return "";
 
-  // Remove HTML tags and decode entities
-  return html
+  // Check cache first
+  if (sanitizedContentCache.has(html)) {
+    return sanitizedContentCache.get(html)!;
+  }
+
+  // Optimized single-pass regex replacement
+  const sanitized = html
     .replace(/<[^>]*>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
+    .replace(/&(?:amp|lt|gt|quot|#039);/g, (match) => {
+      switch (match) {
+        case '&amp;': return '&';
+        case '&lt;': return '<';
+        case '&gt;': return '>';
+        case '&quot;': return '"';
+        case '&#039;': return "'";
+        default: return match;
+      }
+    })
     .trim();
+
+  // Cache the result (limit cache size to prevent memory issues)
+  if (sanitizedContentCache.size < 1000) {
+    sanitizedContentCache.set(html, sanitized);
+  }
+
+  return sanitized;
 }
 
 export function generateFallbackContent(

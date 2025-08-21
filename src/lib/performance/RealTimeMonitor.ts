@@ -56,11 +56,22 @@ export class RealTimeMonitor {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
 
+  // Memory management configuration
+  private readonly MAX_EVENTS = 250; // Reduced from 1000
+  private readonly MAX_INSIGHTS = 25; // Reduced from 50
+  private readonly CLEANUP_INTERVAL = 30 * 60 * 1000; // 30 minutes
+
   constructor() {
     this.initializeBaselines();
-    this.startRegressionDetection();
-    this.startInsightGeneration();
-    this.connectWebSocket();
+    // TEMPORARILY DISABLED: Heavy processing that may impact performance
+    // this.startRegressionDetection();
+    // this.startInsightGeneration();
+    // this.connectWebSocket();
+    this.startMemoryManagement(); // Keep memory cleanup
+    
+    if (import.meta.env.DEV) {
+      console.log('[RealTimeMonitor] Initialized with reduced features for better performance');
+    }
   }
 
   private initializeBaselines(): void {
@@ -176,9 +187,9 @@ export class RealTimeMonitor {
       }));
     }
 
-    // Trim events to keep only recent ones
-    if (this.events.length > 1000) {
-      this.events = this.events.slice(-500);
+    // Trim events to keep only recent ones (using new memory limits)
+    if (this.events.length > this.MAX_EVENTS) {
+      this.events = this.events.slice(-this.MAX_EVENTS);
     }
   }
 
@@ -264,10 +275,10 @@ export class RealTimeMonitor {
   }
 
   private startRegressionDetection(): void {
-    // Run regression analysis every 5 minutes
+    // Run regression analysis every 15 minutes (reduced from 5 minutes to lower overhead)
     setInterval(() => {
       this.analyzePerformanceRegressions();
-    }, 5 * 60 * 1000);
+    }, 15 * 60 * 1000);
   }
 
   private analyzePerformanceRegressions(): void {
@@ -336,9 +347,9 @@ export class RealTimeMonitor {
     this.generateImageOptimizationInsights();
     this.generateCacheInsights();
 
-    // Clean up old insights (keep only last 50)
-    if (this.insights.length > 50) {
-      this.insights = this.insights.slice(-25);
+    // Clean up old insights (using new memory limits)
+    if (this.insights.length > this.MAX_INSIGHTS) {
+      this.insights = this.insights.slice(-this.MAX_INSIGHTS);
     }
   }
 
@@ -544,10 +555,39 @@ export class RealTimeMonitor {
     return [...this.regressions];
   }
 
+  private startMemoryManagement(): void {
+    setInterval(() => {
+      this.performMemoryCleanup();
+    }, this.CLEANUP_INTERVAL);
+  }
+  
+  private performMemoryCleanup(): void {
+    const now = Date.now();
+    const oneHourAgo = now - 60 * 60 * 1000;
+    
+    // Clean old events
+    this.events = this.events
+      .filter(e => e.timestamp > oneHourAgo)
+      .slice(-this.MAX_EVENTS);
+    
+    // Clean old insights  
+    this.insights = this.insights
+      .filter(i => i.timestamp > oneHourAgo)
+      .slice(-this.MAX_INSIGHTS);
+    
+    // Clean old regressions
+    this.regressions = this.regressions
+      .filter(r => r.detectedAt > oneHourAgo);
+    
+    if (import.meta.env.DEV) {
+      console.log(`[RealTimeMonitor] Memory cleanup: ${this.events.length} events, ${this.insights.length} insights`);
+    }
+  }
+
   public clearOldData(): void {
     const oneHourAgo = Date.now() - 60 * 60 * 1000;
-    this.events = this.events.filter(e => e.timestamp > oneHourAgo);
-    this.insights = this.insights.filter(i => i.timestamp > oneHourAgo);
+    this.events = this.events.filter(e => e.timestamp > oneHourAgo).slice(-this.MAX_EVENTS);
+    this.insights = this.insights.filter(i => i.timestamp > oneHourAgo).slice(-this.MAX_INSIGHTS);
     this.regressions = this.regressions.filter(r => r.detectedAt > oneHourAgo);
   }
 
@@ -562,12 +602,12 @@ export class RealTimeMonitor {
   }
 }
 
-// Global instance
-export const realTimeMonitor = new RealTimeMonitor();
+// DISABLED: Global instance temporarily disabled to reduce performance overhead
+// export const realTimeMonitor = new RealTimeMonitor();
 
-// Auto-cleanup every hour
-if (typeof window !== 'undefined') {
-  setInterval(() => {
-    realTimeMonitor.clearOldData();
-  }, 60 * 60 * 1000);
-}
+// DISABLED: Auto-cleanup disabled
+// if (typeof window !== 'undefined') {
+//   setInterval(() => {
+//     realTimeMonitor.clearOldData();
+//   }, 60 * 60 * 1000);
+// }

@@ -80,6 +80,10 @@ class PerformanceManager {
   private initialized = false;
   private reportingEndpoint: string | null = null;
 
+  // Non-blocking storage properties
+  private storageQueue: Array<{metric: string, value: number, timestamp: number, url: string}> = [];
+  private storeTimeout: ReturnType<typeof setTimeout> | null = null;
+
   constructor() {
     if (typeof window !== 'undefined') {
       this.init();
@@ -312,33 +316,54 @@ class PerformanceManager {
   }
 
   private storeMetricLocally(metric: string, value: number): void {
-    try {
-      const stored = localStorage.getItem('performance_metrics') || '[]';
-      const metrics = JSON.parse(stored);
-      
-      metrics.push({
-        metric,
-        value,
-        timestamp: Date.now(),
-        url: window.location.pathname
-      });
+    // NON-BLOCKING: Queue for batch storage
+    this.storageQueue.push({ 
+      metric, 
+      value, 
+      timestamp: Date.now(),
+      url: window.location.pathname
+    });
+    
+    if (this.storeTimeout) clearTimeout(this.storeTimeout);
+    this.storeTimeout = setTimeout(() => this.flushStorageQueue(), 1000);
+  }
 
-      // Keep only last 100 entries
-      if (metrics.length > 100) {
-        metrics.splice(0, metrics.length - 100);
+  private flushStorageQueue(): void {
+    if (this.storageQueue.length === 0) return;
+    
+    // Use requestIdleCallback to avoid blocking main thread
+    const flush = () => {
+      try {
+        const stored = localStorage.getItem('performance_metrics') || '[]';
+        const metrics = JSON.parse(stored);
+        metrics.push(...this.storageQueue);
+        
+        // Keep only last 100 entries
+        if (metrics.length > 100) {
+          metrics.splice(0, metrics.length - 100);
+        }
+        
+        localStorage.setItem('performance_metrics', JSON.stringify(metrics));
+        this.storageQueue = [];
+      } catch (error) {
+        console.warn('[PerformanceManager] Storage failed:', error);
+        this.storageQueue = [];
       }
+    };
 
-      localStorage.setItem('performance_metrics', JSON.stringify(metrics));
-    } catch (error) {
-      console.warn('[PerformanceManager] Failed to store metrics locally:', error);
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(flush);
+    } else {
+      // Fallback for browsers without requestIdleCallback
+      setTimeout(flush, 0);
     }
   }
 
   private startPeriodicReporting(): void {
-    // Report comprehensive metrics every 30 seconds
+    // Report comprehensive metrics every 5 minutes (reduced from 30 seconds to lower overhead)
     setInterval(() => {
       this.reportComprehensiveMetrics();
-    }, 30000);
+    }, 5 * 60 * 1000);
   }
 
   private reportComprehensiveMetrics(): void {
@@ -414,6 +439,15 @@ class PerformanceManager {
   public exportMetrics(): string {
     return JSON.stringify(this.getAllMetrics(), null, 2);
   }
+
+  public cleanup(): void {
+    // Flush any pending storage operations
+    if (this.storeTimeout) {
+      clearTimeout(this.storeTimeout);
+      this.storeTimeout = null;
+    }
+    this.flushStorageQueue();
+  }
 }
 
 // Global instance
@@ -422,6 +456,16 @@ export const performanceManager = new PerformanceManager();
 // Initialize immediately if in browser
 if (typeof window !== 'undefined') {
   performanceManager;
+  
+  // Ensure storage queue is flushed on page unload
+  window.addEventListener('beforeunload', () => {
+    performanceManager.cleanup();
+  });
+  
+  // Also flush on Astro page transitions
+  document.addEventListener('astro:before-preparation', () => {
+    performanceManager.cleanup();
+  });
 }
 
 export default PerformanceManager;

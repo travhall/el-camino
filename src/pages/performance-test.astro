@@ -156,6 +156,13 @@ import PerformanceDashboard from "../components/PerformanceDashboard.astro";
           >
             Simulate Offline
           </button>
+          
+          <button 
+            id="validate-optimizations-btn"
+            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-600/90 transition-colors"
+          >
+            Validate Optimizations
+          </button>
         </div>
       </section>
 
@@ -241,6 +248,22 @@ Loading debug information...
       // Simulate offline
       document.getElementById('simulate-offline-btn')?.addEventListener('click', () => {
         this.simulateOffline();
+      });
+
+      // Validate optimizations
+      document.getElementById('validate-optimizations-btn')?.addEventListener('click', async () => {
+        console.log('🔍 Running Performance Optimization Validation...');
+        
+        try {
+          // Import and run validation
+          const { validateOptimizations } = await import('../scripts/validate-optimizations');
+          await validateOptimizations();
+          
+          alert('✅ Validation complete! Check the browser console for detailed results.');
+        } catch (error) {
+          console.error('❌ Validation failed:', error);
+          alert('❌ Validation failed. Check the console for details.');
+        }
       });
     }
 

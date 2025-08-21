@@ -1,5 +1,6 @@
 import { squareClient } from './client';
 import { processSquareError, logError } from './errorUtils';
+import { requestDeduplicator } from './requestDeduplication';
 import type { InventoryStatus } from './types';
 
 export interface BatchInventoryOptions {
@@ -20,6 +21,23 @@ export class BatchInventoryService {
   async getBatchInventoryStatus(
     catalogObjectIds: string[],
     options: BatchInventoryOptions = {}
+  ): Promise<Map<string, InventoryStatus>> {
+    // CREATE: Deterministic cache key for request deduplication
+    const sortedIds = [...catalogObjectIds].sort();
+    const cacheKey = `batch-inventory:${sortedIds.join(',')}:${JSON.stringify(options)}`;
+    
+    // USE: Existing request deduplication pattern
+    return requestDeduplicator.dedupe(cacheKey, () =>
+      this.performBatchInventoryCheck(catalogObjectIds, options)
+    );
+  }
+
+  /**
+   * Perform the actual batch inventory check (internal method)
+   */
+  private async performBatchInventoryCheck(
+    catalogObjectIds: string[],
+    options: BatchInventoryOptions
   ): Promise<Map<string, InventoryStatus>> {
     console.log(`[BatchInventory] Starting batch check for ${catalogObjectIds.length} products`);
     
