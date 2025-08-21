@@ -1,0 +1,155 @@
+---
+/**
+ * Connection Status Indicator
+ * File: src/components/ConnectionStatus.astro
+ */
+
+interface Props {
+  position?: 'top' | 'bottom';
+  showSpeed?: boolean;
+}
+
+const { position = 'top', showSpeed = false } = Astro.props;
+---
+
+<div id="connection-status" class={`connection-status connection-status-${position}`} data-show-speed={showSpeed}>
+  <div class="status-indicator">
+    <span class="status-icon"></span>
+    <span class="status-text">Checking connection...</span>
+    <span class="status-speed" style="display: none;"></span>
+  </div>
+</div>
+
+<script>
+  import { connectionManager } from '@/lib/connection/ConnectionManager';
+
+  class ConnectionStatusIndicator {
+    private element: HTMLElement;
+    private showSpeed: boolean;
+
+    constructor() {
+      this.element = document.getElementById('connection-status')!;
+      this.showSpeed = this.element.dataset.showSpeed === 'true';
+      this.init();
+    }
+
+    private init(): void {
+      connectionManager.onStateChange((state) => {
+        this.updateDisplay(state);
+      });
+
+      // Initial display
+      this.updateDisplay(connectionManager.getState());
+    }
+
+    private updateDisplay(state: any): void {
+      const icon = this.element.querySelector('.status-icon') as HTMLElement;
+      const text = this.element.querySelector('.status-text') as HTMLElement;
+      const speed = this.element.querySelector('.status-speed') as HTMLElement;
+
+      // Update icon and text based on connection quality
+      switch (state.quality) {
+        case 'fast':
+          icon.textContent = '🟢';
+          text.textContent = 'Fast connection';
+          this.element.className = this.element.className.replace(/status-\w+/g, '') + ' status-fast';
+          break;
+        case 'slow':
+          icon.textContent = '🟡';
+          text.textContent = 'Slow connection';
+          this.element.className = this.element.className.replace(/status-\w+/g, '') + ' status-slow';
+          break;
+        case 'offline':
+          icon.textContent = '🔴';
+          text.textContent = 'Offline';
+          this.element.className = this.element.className.replace(/status-\w+/g, '') + ' status-offline';
+          break;
+      }
+
+      // Show speed information if enabled
+      if (this.showSpeed && state.downlink) {
+        speed.textContent = `${state.downlink.toFixed(1)} Mbps`;
+        speed.style.display = 'inline';
+      } else {
+        speed.style.display = 'none';
+      }
+
+      // Auto-hide for fast connections after 2 seconds
+      if (state.quality === 'fast') {
+        setTimeout(() => {
+          this.element.style.opacity = '0.7';
+        }, 2000);
+      } else {
+        this.element.style.opacity = '1';
+      }
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => new ConnectionStatusIndicator());
+  } else {
+    new ConnectionStatusIndicator();
+  }
+</script>
+
+<style>
+  .connection-status {
+    position: fixed;
+    right: 1rem;
+    z-index: 40;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .connection-status-top {
+    top: 1rem;
+  }
+
+  .connection-status-bottom {
+    bottom: 1rem;
+  }
+
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .status-fast .status-indicator {
+    background: rgba(16, 185, 129, 0.95);
+    color: white;
+  }
+
+  .status-slow .status-indicator {
+    background: rgba(245, 158, 11, 0.95);
+    color: white;
+  }
+
+  .status-offline .status-indicator {
+    background: rgba(239, 68, 68, 0.95);
+    color: white;
+  }
+
+  .status-speed {
+    font-size: 0.75rem;
+    opacity: 0.8;
+  }
+
+  @media (max-width: 640px) {
+    .connection-status {
+      right: 0.5rem;
+    }
+    
+    .status-indicator {
+      padding: 0.375rem 0.5rem;
+      font-size: 0.8rem;
+    }
+  }
+</style>

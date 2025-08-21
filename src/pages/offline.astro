@@ -1,0 +1,123 @@
+---
+/**
+ * Offline Fallback Page - Connection Required
+ * File: src/pages/offline.astro
+ */
+import Layout from '@/layouts/Layout.astro';
+import ConnectionStatus from '@/components/ConnectionStatus.astro';
+---
+
+<Layout title="Connection Required - El Camino">
+  <ConnectionStatus position="top" showSpeed={true} />
+  
+  <main class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
+    <div class="max-w-md mx-auto px-6 text-center">
+      <div class="mb-8">
+        <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+          <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
+          </svg>
+        </div>
+        
+        <h1 class="text-3xl font-bold mb-4">Connection Required</h1>
+        <p class="text-gray-300 mb-6">
+          This page requires an internet connection to access our latest skate gear and checkout features.
+        </p>
+      </div>
+
+      <div class="space-y-4">
+        <button 
+          id="retry-connection"
+          class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg"
+        >
+          Try Again
+        </button>
+
+        <div class="border-t border-gray-700 pt-4">
+          <h2 class="text-lg font-semibold mb-3">What you can do:</h2>
+          <ul class="text-gray-300 space-y-2 text-sm text-left">
+            <li class="flex items-center">
+              <svg class="w-4 h-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+              Check your internet connection
+            </li>
+            <li class="flex items-center">
+              <svg class="w-4 h-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+              Browse our cached product pages
+            </li>
+            <li class="flex items-center">
+              <svg class="w-4 h-4 mr-2 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+              </svg>
+              Cart & checkout require connection
+            </li>
+          </ul>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-gray-700">
+          <a 
+            href="/" 
+            class="inline-flex items-center text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Back to Home
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  // Auto-retry connection
+  let retryAttempts = 0;
+  const maxRetries = 3;
+
+  document.getElementById('retry-connection')?.addEventListener('click', () => {
+    retryAttempts++;
+    window.location.reload();
+  });
+
+  // Auto-redirect when connection restored
+  window.addEventListener('online', () => {
+    // Small delay to ensure connection is stable
+    setTimeout(() => {
+      window.location.href = document.referrer || '/';
+    }, 1000);
+  });
+
+  // Update retry button based on attempts
+  function updateRetryButton() {
+    const button = document.getElementById('retry-connection');
+    if (button && retryAttempts >= maxRetries) {
+      button.textContent = 'Check Connection & Retry';
+      button.className += ' bg-yellow-600 hover:bg-yellow-700';
+    }
+  }
+
+  // Check connection status periodically
+  setInterval(() => {
+    if (navigator.onLine) {
+      // Connection restored, redirect
+      window.location.href = document.referrer || '/';
+    }
+  }, 5000);
+</script>
+
+<style>
+  /* Ensure proper styling for offline page */
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  
+  main {
+    min-height: 100vh;
+  }
+</style>

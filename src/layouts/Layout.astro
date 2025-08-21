@@ -9,6 +9,8 @@ import MiniCart from "@/components/MiniCart.astro";
 import Modal from "@/components/Modal.astro";
 import Notification from "@/components/Notification.astro";
 import SpeculationRules from "@/components/SpeculationRules.astro";
+import ConnectionAwareExperience from "@/components/ConnectionAwareExperience.astro";
+import ConnectionStatus from "@/components/ConnectionStatus.astro";
 import { pwaInfo } from "virtual:pwa-info";
 import "@/styles/global.css";
 // import CartDebug from "@/components/CartDebug.astro";
@@ -170,14 +172,18 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
   <body
     class="bg-(--surface-primary) text-(--content-body) grid grid-rows-[auto_1fr_auto] min-h-screen relative"
   >
-    <Header />
-    <main
-      class="bg-(--surface-primary) text-(--content-body) border-b-4 border-(--border-secondary) z-10 relative"
-      id="main-content"
-    >
-      <slot />
-    </main>
-    <Footer />
+    <ConnectionAwareExperience>
+      <Header />
+      <main
+        class="bg-(--surface-primary) text-(--content-body) border-b-4 border-(--border-secondary) z-10 relative"
+        id="main-content"
+      >
+        <slot />
+      </main>
+      <Footer />
+    </ConnectionAwareExperience>
+    
+    <ConnectionStatus position="top" />
     <QuickView />
     <MiniCart />
     <Notification />

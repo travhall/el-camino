@@ -151,23 +151,73 @@ class PWAManager {
 
   private setupInstallPrompt(): void {
     let deferredPrompt: any = null;
+    let pageViews = parseInt(localStorage.getItem('pwa-page-views') || '0');
+    let visitCount = parseInt(localStorage.getItem('pwa-visit-count') || '0');
+
+    // Track page views and visits
+    pageViews++;
+    if (document.referrer === '' || !document.referrer.includes(location.hostname)) {
+      visitCount++;
+      localStorage.setItem('pwa-visit-count', visitCount.toString());
+    }
+    localStorage.setItem('pwa-page-views', pageViews.toString());
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      this.showInstallBanner();
+      
+      // Smart install criteria
+      const shouldShow = this.shouldShowInstallPrompt(pageViews, visitCount);
+      if (shouldShow) {
+        setTimeout(() => this.showContextualInstallBanner(deferredPrompt), 2000);
+      }
     });
 
     window.addEventListener('appinstalled', () => {
       console.log('[PWA] App was installed');
       deferredPrompt = null;
       this.hideInstallBanner();
+      localStorage.setItem('pwa-installed', 'true');
     });
   }
 
-  private showInstallBanner(): void {
-    // Create install banner if it doesn't exist
+  private shouldShowInstallPrompt(pageViews: number, visitCount: number): boolean {
+    // Never show if already installed
+    if (localStorage.getItem('pwa-installed') === 'true') return false;
+    
+    // Never show if recently dismissed
+    const lastDismissed = localStorage.getItem('pwa-install-dismissed');
+    if (lastDismissed && Date.now() - parseInt(lastDismissed) < 7 * 24 * 60 * 60 * 1000) {
+      return false;
+    }
+
+    // Never show during checkout
+    if (location.pathname.includes('/checkout') || location.pathname.includes('/cart')) {
+      return false;
+    }
+
+    // Show conditions based on strategy
+    const isReturnVisitor = visitCount >= 2;
+    const hasEngagement = pageViews >= 3;
+    const isSlowConnection = (navigator as any).connection?.effectiveType === 'slow-2g' || 
+                           (navigator as any).connection?.effectiveType === '2g';
+
+    return isReturnVisitor || hasEngagement || isSlowConnection;
+  }
+
+  private showContextualInstallBanner(deferredPrompt: any): void {
     if (document.getElementById('pwa-install-banner')) return;
+
+    const connectionState = (navigator as any).connection;
+    const isSlowConnection = connectionState?.effectiveType === 'slow-2g' || 
+                           connectionState?.effectiveType === '2g';
+    
+    let message = "Install El Camino for faster browsing and exclusive notifications";
+    if (isSlowConnection) {
+      message = "Install for better performance on slow connections";
+    } else if (parseInt(localStorage.getItem('pwa-visit-count') || '0') >= 2) {
+      message = "Welcome back! Install for instant access to El Camino";
+    }
 
     const banner = document.createElement('div');
     banner.id = 'pwa-install-banner';
@@ -182,7 +232,7 @@ class PWAManager {
             </div>
             <div>
               <h3 class="font-semibold">Install El Camino Skate Shop</h3>
-              <p class="text-sm opacity-90">Get the full app experience with offline access</p>
+              <p class="text-sm opacity-90">${message}</p>
             </div>
           </div>
           <div class="flex gap-2">
@@ -208,28 +258,24 @@ class PWAManager {
     `;
 
     document.body.appendChild(banner);
+    setTimeout(() => banner.style.transform = 'translateY(0)', 100);
 
-    // Animate in
-    setTimeout(() => {
-      banner.style.transform = 'translateY(0)';
-    }, 100);
-
-    // Handle install button
+    // Handle install
     document.getElementById('pwa-install-app')?.addEventListener('click', async () => {
-      const deferredPrompt = (window as any).deferredPrompt;
       if (deferredPrompt) {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === 'accepted') {
           console.log('[PWA] User accepted install prompt');
         }
-        (window as any).deferredPrompt = null;
+        deferredPrompt = null;
         this.hideInstallBanner();
       }
     });
 
-    // Handle dismiss button
+    // Handle dismiss
     document.getElementById('pwa-install-dismiss')?.addEventListener('click', () => {
+      localStorage.setItem('pwa-install-dismissed', Date.now().toString());
       this.hideInstallBanner();
     });
   }

@@ -36,6 +36,65 @@ export default defineConfig({
             type: 'image/svg+xml'
           }
         ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{css,js,html,svg,png,ico,txt}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.squarecdn\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'square-images',
+              expiration: {
+                maxEntries: 60,
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+              },
+              cacheKeyWillBeUsed: async ({ request }) => {
+                // Add format optimization to cache key
+                const url = new URL(request.url);
+                url.searchParams.set('f', 'auto');
+                return url.toString();
+              }
+            }
+          },
+          {
+            urlPattern: /\.(css|js|woff2?)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'static-assets',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+              }
+            }
+          },
+          {
+            urlPattern: /\/products\/.*/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'product-pages',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 5 * 60, // 5 minutes
+              },
+              networkTimeoutSeconds: 3,
+              plugins: [{
+                cacheKeyWillBeUsed: async ({ request }) => {
+                  // Remove cache-busting params for consistent caching
+                  const url = new URL(request.url);
+                  url.searchParams.delete('_');
+                  return url.toString();
+                }
+              }]
+            }
+          },
+          {
+            urlPattern: /\/(cart|checkout|api)\/.*/,
+            handler: 'NetworkOnly'
+          }
+        ],
+        navigationFallback: '/offline',
+        navigationFallbackDenylist: [/\/(cart|checkout|api)\/.*/]
       }
     })
   ],
