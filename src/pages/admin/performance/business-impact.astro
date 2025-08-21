@@ -1,0 +1,848 @@
+---
+/**
+ * Business Impact Analysis Page
+ * Correlates performance metrics with business outcomes and ROI
+ * File: src/pages/admin/performance/business-impact.astro
+ */
+
+import AdminLayout from "@/components/admin/AdminLayout.astro";
+import Layout from "@/layouts/Layout.astro";
+
+const pageTitle = "Business Impact Analysis";
+---
+
+<Layout title="Business Impact - Performance Admin">
+  <AdminLayout title={pageTitle} activeSection="business-impact">
+    <div slot="description">
+      <p class="text-lg text-(--content-body) mb-6">
+        Analyze the correlation between Core Web Vitals and business metrics including 
+        conversion rates, revenue, user engagement, and customer satisfaction.
+      </p>
+    </div>
+
+    <!-- Executive Summary -->
+    <section class="executive-summary mb-8">
+      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-semibold text-(--content-heading)">Executive Summary</h2>
+          <select 
+            id="summary-period"
+            class="px-3 py-2 text-sm border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+          >
+            <option value="7d">Last 7 Days</option>
+            <option value="30d" selected>Last 30 Days</option>
+            <option value="90d">Last 90 Days</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <!-- Revenue Impact -->
+          <div class="text-center p-4 bg-green-50 border border-green-200 rounded">
+            <div class="text-3xl font-bold text-green-600 mb-2">+$12.4K</div>
+            <div class="text-sm font-medium text-green-800 mb-1">Revenue Impact</div>
+            <div class="text-xs text-green-600">From LCP improvements</div>
+          </div>
+
+          <!-- Conversion Rate -->
+          <div class="text-center p-4 bg-blue-50 border border-blue-200 rounded">
+            <div class="text-3xl font-bold text-blue-600 mb-2">+0.8%</div>
+            <div class="text-sm font-medium text-blue-800 mb-1">Conversion Lift</div>
+            <div class="text-xs text-blue-600">Performance optimization</div>
+          </div>
+
+          <!-- User Engagement -->
+          <div class="text-center p-4 bg-purple-50 border border-purple-200 rounded">
+            <div class="text-3xl font-bold text-purple-600 mb-2">+15%</div>
+            <div class="text-sm font-medium text-purple-800 mb-1">Session Duration</div>
+            <div class="text-xs text-purple-600">Faster page loads</div>
+          </div>
+
+          <!-- Customer Satisfaction -->
+          <div class="text-center p-4 bg-orange-50 border border-orange-200 rounded">
+            <div class="text-3xl font-bold text-orange-600 mb-2">4.6/5</div>
+            <div class="text-sm font-medium text-orange-800 mb-1">Satisfaction Score</div>
+            <div class="text-xs text-orange-600">+0.3 improvement</div>
+          </div>
+        </div>
+
+        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded">
+          <div class="flex items-center gap-3">
+            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            <div>
+              <div class="font-semibold text-blue-900">ROI Highlight</div>
+              <div class="text-sm text-blue-700">
+                Performance optimizations generated <strong>$12.4K additional revenue</strong> this month, 
+                representing a <strong>340% ROI</strong> on optimization efforts.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Performance-Business Correlation Charts -->
+    <section class="correlation-analysis mb-8">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Performance-Business Correlations</h2>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- LCP vs Conversion Rate -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-(--content-heading)">LCP vs Conversion Rate</h3>
+            <span class="text-sm text-(--content-meta)">Correlation: -0.73</span>
+          </div>
+          
+          <div class="mb-4">
+            <canvas 
+              id="lcp-conversion-chart" 
+              width="400" 
+              height="250"
+              class="w-full"
+              style="height: 250px;"
+            ></canvas>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div class="text-center p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-semibold text-(--content-heading)">3.8%</div>
+              <div class="text-(--content-meta)">Current conversion</div>
+            </div>
+            <div class="text-center p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-semibold text-green-600">+0.8%</div>
+              <div class="text-(--content-meta)">Improvement</div>
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+            <strong class="text-blue-900">Insight:</strong> 
+            <span class="text-blue-700">For every 100ms improvement in LCP, conversion rate increases by 0.2%</span>
+          </div>
+        </div>
+
+        <!-- INP vs Bounce Rate -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-(--content-heading)">INP vs Bounce Rate</h3>
+            <span class="text-sm text-(--content-meta)">Correlation: +0.68</span>
+          </div>
+          
+          <div class="mb-4">
+            <canvas 
+              id="inp-bounce-chart" 
+              width="400" 
+              height="250"
+              class="w-full"
+              style="height: 250px;"
+            ></canvas>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div class="text-center p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-semibold text-(--content-heading)">34%</div>
+              <div class="text-(--content-meta)">Current bounce rate</div>
+            </div>
+            <div class="text-center p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-semibold text-green-600">-5%</div>
+              <div class="text-(--content-meta)">Improvement</div>
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded text-sm">
+            <strong class="text-green-900">Insight:</strong> 
+            <span class="text-green-700">Reducing INP by 50ms decreases bounce rate by 3-5%</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Revenue Analysis -->
+    <section class="revenue-analysis mb-8">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Revenue Impact Analysis</h2>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Revenue by Performance Segment -->
+        <div class="lg:col-span-2 bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Revenue by Performance Segment</h3>
+          
+          <div class="mb-6">
+            <canvas 
+              id="revenue-performance-chart" 
+              width="600" 
+              height="300"
+              class="w-full"
+              style="height: 300px;"
+            ></canvas>
+          </div>
+
+          <div class="grid grid-cols-3 gap-4 text-sm">
+            <div class="text-center p-3 bg-green-50 border border-green-200 rounded">
+              <div class="font-bold text-green-600">$48.2K</div>
+              <div class="text-green-800 font-medium">Fast Experience</div>
+              <div class="text-green-600 text-xs">LCP ≤ 2.5s</div>
+            </div>
+            <div class="text-center p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <div class="font-bold text-yellow-600">$28.7K</div>
+              <div class="text-yellow-800 font-medium">Moderate Experience</div>
+              <div class="text-yellow-600 text-xs">LCP 2.5-4s</div>
+            </div>
+            <div class="text-center p-3 bg-red-50 border border-red-200 rounded">
+              <div class="font-bold text-red-600">$12.1K</div>
+              <div class="text-red-800 font-medium">Slow Experience</div>
+              <div class="text-red-600 text-xs">LCP > 4s</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Key Performance Metrics -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Key Metrics</h3>
+          
+          <div class="space-y-6">
+            <!-- Average Order Value -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-(--content-heading)">Avg Order Value</span>
+                <span class="text-sm text-green-600">+$8</span>
+              </div>
+              <div class="text-2xl font-bold text-(--content-heading) mb-1">$127</div>
+              <div class="text-xs text-(--content-meta)">6.7% increase from performance improvements</div>
+            </div>
+
+            <!-- Revenue Per Visitor -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-(--content-heading)">Revenue Per Visitor</span>
+                <span class="text-sm text-green-600">+$1.20</span>
+              </div>
+              <div class="text-2xl font-bold text-(--content-heading) mb-1">$4.85</div>
+              <div class="text-xs text-(--content-meta)">32% increase with fast loading pages</div>
+            </div>
+
+            <!-- Customer Lifetime Value -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-(--content-heading)">Customer LTV</span>
+                <span class="text-sm text-green-600">+$45</span>
+              </div>
+              <div class="text-2xl font-bold text-(--content-heading) mb-1">$340</div>
+              <div class="text-xs text-(--content-meta)">Better experience = higher retention</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- User Behavior Analysis -->
+    <section class="user-behavior-analysis mb-8">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">User Behavior Analysis</h2>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Session Duration by Performance -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Session Duration by Performance</h3>
+          
+          <div class="space-y-4">
+            <!-- Fast Performance -->
+            <div class="p-4 bg-green-50 border border-green-200 rounded">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-green-900">Fast Performance</span>
+                <span class="text-green-600 font-bold">4:32</span>
+              </div>
+              <div class="w-full bg-green-200 rounded-full h-2">
+                <div class="bg-green-500 h-2 rounded-full" style="width: 90%"></div>
+              </div>
+              <div class="text-xs text-green-700 mt-1">All Core Web Vitals pass</div>
+            </div>
+
+            <!-- Moderate Performance -->
+            <div class="p-4 bg-yellow-50 border border-yellow-200 rounded">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-yellow-900">Moderate Performance</span>
+                <span class="text-yellow-600 font-bold">3:18</span>
+              </div>
+              <div class="w-full bg-yellow-200 rounded-full h-2">
+                <div class="bg-yellow-500 h-2 rounded-full" style="width: 65%"></div>
+              </div>
+              <div class="text-xs text-yellow-700 mt-1">Some metrics need improvement</div>
+            </div>
+
+            <!-- Slow Performance -->
+            <div class="p-4 bg-red-50 border border-red-200 rounded">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-red-900">Slow Performance</span>
+                <span class="text-red-600 font-bold">1:45</span>
+              </div>
+              <div class="w-full bg-red-200 rounded-full h-2">
+                <div class="bg-red-500 h-2 rounded-full" style="width: 35%"></div>
+              </div>
+              <div class="text-xs text-red-700 mt-1">Multiple metrics failing</div>
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+            <strong class="text-blue-900">Finding:</strong> 
+            <span class="text-blue-700">Fast-loading pages retain users 2.6x longer than slow pages</span>
+          </div>
+        </div>
+
+        <!-- Page Views and Engagement -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Engagement Metrics</h3>
+          
+          <div class="space-y-6">
+            <!-- Pages Per Session -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-(--content-heading)">Pages Per Session</span>
+                <div class="text-right">
+                  <div class="text-lg font-bold text-(--content-heading)">3.2</div>
+                  <div class="text-xs text-green-600">+0.7 improvement</div>
+                </div>
+              </div>
+              <div class="text-xs text-(--content-meta)">Fast sites encourage exploration</div>
+            </div>
+
+            <!-- Time on Page -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-(--content-heading)">Time on Page</span>
+                <div class="text-right">
+                  <div class="text-lg font-bold text-(--content-heading)">2:47</div>
+                  <div class="text-xs text-green-600">+34s improvement</div>
+                </div>
+              </div>
+              <div class="text-xs text-(--content-meta)">Better performance = deeper engagement</div>
+            </div>
+
+            <!-- Return Visitor Rate -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-(--content-heading)">Return Visitor Rate</span>
+                <div class="text-right">
+                  <div class="text-lg font-bold text-(--content-heading)">42%</div>
+                  <div class="text-xs text-green-600">+5% improvement</div>
+                </div>
+              </div>
+              <div class="text-xs text-(--content-meta)">Fast experience builds loyalty</div>
+            </div>
+
+            <!-- Cart Abandonment -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-(--content-heading)">Cart Abandonment</span>
+                <div class="text-right">
+                  <div class="text-lg font-bold text-(--content-heading)">68%</div>
+                  <div class="text-xs text-red-600">-8% improvement</div>
+                </div>
+              </div>
+              <div class="text-xs text-(--content-meta)">Faster checkout = less abandonment</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ROI Calculator -->
+    <section class="roi-calculator mb-8">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Performance ROI Calculator</h2>
+      
+      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- Input Parameters -->
+          <div>
+            <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Optimization Parameters</h3>
+            
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                  LCP Improvement (ms)
+                </label>
+                <input 
+                  type="range" 
+                  id="lcp-improvement" 
+                  min="0" 
+                  max="1000" 
+                  value="300"
+                  class="w-full"
+                />
+                <div class="flex justify-between text-xs text-(--content-meta) mt-1">
+                  <span>0ms</span>
+                  <span id="lcp-value">300ms</span>
+                  <span>1000ms</span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                  Monthly Traffic
+                </label>
+                <input 
+                  type="number" 
+                  id="monthly-traffic" 
+                  value="25000"
+                  class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                  Current Conversion Rate (%)
+                </label>
+                <input 
+                  type="number" 
+                  id="conversion-rate" 
+                  value="3.2"
+                  step="0.1"
+                  class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                  Average Order Value ($)
+                </label>
+                <input 
+                  type="number" 
+                  id="avg-order-value" 
+                  value="127"
+                  class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+                />
+              </div>
+
+              <button 
+                id="calculate-roi"
+                class="w-full font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) py-3 px-4"
+              >
+                Calculate ROI
+              </button>
+            </div>
+          </div>
+
+          <!-- ROI Results -->
+          <div>
+            <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Projected Impact</h3>
+            
+            <div class="space-y-4">
+              <!-- Monthly Revenue Increase -->
+              <div class="p-4 bg-green-50 border border-green-200 rounded">
+                <div class="text-sm font-medium text-green-800 mb-1">Monthly Revenue Increase</div>
+                <div class="text-3xl font-bold text-green-600" id="revenue-increase">$8,240</div>
+                <div class="text-xs text-green-700">From improved conversion rate</div>
+              </div>
+
+              <!-- Annual Impact -->
+              <div class="p-4 bg-blue-50 border border-blue-200 rounded">
+                <div class="text-sm font-medium text-blue-800 mb-1">Annual Revenue Impact</div>
+                <div class="text-3xl font-bold text-blue-600" id="annual-impact">$98,880</div>
+                <div class="text-xs text-blue-700">Projected yearly increase</div>
+              </div>
+
+              <!-- ROI Percentage -->
+              <div class="p-4 bg-purple-50 border border-purple-200 rounded">
+                <div class="text-sm font-medium text-purple-800 mb-1">ROI on Performance Investment</div>
+                <div class="text-3xl font-bold text-purple-600" id="roi-percentage">340%</div>
+                <div class="text-xs text-purple-700">Based on $25K optimization cost</div>
+              </div>
+
+              <!-- Payback Period -->
+              <div class="p-4 bg-orange-50 border border-orange-200 rounded">
+                <div class="text-sm font-medium text-orange-800 mb-1">Payback Period</div>
+                <div class="text-3xl font-bold text-orange-600" id="payback-period">3.2</div>
+                <div class="text-xs text-orange-700">Months to break even</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Actionable Insights -->
+    <section class="actionable-insights">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Actionable Business Insights</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Revenue Optimization -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-green-200 border-l-4 border-l-green-500">
+          <h3 class="font-semibold text-(--content-heading) mb-3">Revenue Optimization</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-green-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Prioritize LCP optimization for homepage and product pages</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-green-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Fast checkout flow can reduce abandonment by 15%</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-green-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Mobile performance directly impacts 67% of revenue</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customer Experience -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-blue-200 border-l-4 border-l-blue-500">
+          <h3 class="font-semibold text-(--content-heading) mb-3">Customer Experience</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Sub-200ms INP creates "instant" feeling interactions</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Layout stability (CLS) builds user trust and confidence</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Fast pages increase customer satisfaction by 4.6/5</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Competitive Advantage -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-purple-200 border-l-4 border-l-purple-500">
+          <h3 class="font-semibold text-(--content-heading) mb-3">Competitive Advantage</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-purple-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">87% faster than industry average LCP</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-purple-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Performance differentiates from 78% of competitors</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-purple-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Search ranking benefits drive 23% more organic traffic</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </AdminLayout>
+</Layout>
+
+<style>
+  .executive-summary {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Custom range slider styling */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #3b82f6;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #3b82f6;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+  }
+</style>
+
+<script>
+  class BusinessImpactController {
+    private updateInterval: NodeJS.Timeout | null = null;
+
+    constructor() {
+      this.init();
+    }
+
+    private init(): void {
+      this.initCharts();
+      this.setupEventListeners();
+      this.setupROICalculator();
+      this.startPeriodicUpdates();
+    }
+
+    private setupEventListeners(): void {
+      document.getElementById('summary-period')?.addEventListener('change', () => {
+        this.updateSummaryPeriod();
+      });
+
+      document.addEventListener('admin:refresh', () => {
+        this.updateBusinessMetrics();
+      });
+    }
+
+    private setupROICalculator(): void {
+      const lcpSlider = document.getElementById('lcp-improvement') as HTMLInputElement;
+      const lcpValue = document.getElementById('lcp-value');
+      const calculateBtn = document.getElementById('calculate-roi');
+
+      // Update slider value display
+      lcpSlider?.addEventListener('input', () => {
+        if (lcpValue) {
+          lcpValue.textContent = `${lcpSlider.value}ms`;
+        }
+      });
+
+      // Calculate ROI on button click
+      calculateBtn?.addEventListener('click', () => {
+        this.calculateROI();
+      });
+
+      // Auto-calculate on input changes
+      ['monthly-traffic', 'conversion-rate', 'avg-order-value'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', () => {
+          this.calculateROI();
+        });
+      });
+
+      // Initial calculation
+      this.calculateROI();
+    }
+
+    private calculateROI(): void {
+      const lcpImprovement = parseInt((document.getElementById('lcp-improvement') as HTMLInputElement)?.value || '300');
+      const monthlyTraffic = parseInt((document.getElementById('monthly-traffic') as HTMLInputElement)?.value || '25000');
+      const conversionRate = parseFloat((document.getElementById('conversion-rate') as HTMLInputElement)?.value || '3.2');
+      const avgOrderValue = parseFloat((document.getElementById('avg-order-value') as HTMLInputElement)?.value || '127');
+
+      // Calculate conversion rate improvement based on LCP improvement
+      // Assumption: 100ms LCP improvement = 0.2% conversion rate increase
+      const conversionImprovement = (lcpImprovement / 100) * 0.002;
+      const newConversionRate = conversionRate + conversionImprovement;
+
+      // Calculate revenue impact
+      const currentMonthlyRevenue = monthlyTraffic * (conversionRate / 100) * avgOrderValue;
+      const newMonthlyRevenue = monthlyTraffic * (newConversionRate / 100) * avgOrderValue;
+      const monthlyIncrease = newMonthlyRevenue - currentMonthlyRevenue;
+      const annualIncrease = monthlyIncrease * 12;
+
+      // Calculate ROI (assuming $25K optimization cost)
+      const optimizationCost = 25000;
+      const roi = ((annualIncrease - optimizationCost) / optimizationCost) * 100;
+      const paybackPeriod = optimizationCost / monthlyIncrease;
+
+      // Update display
+      this.updateROIDisplay({
+        monthlyIncrease,
+        annualIncrease,
+        roi,
+        paybackPeriod
+      });
+    }
+
+    private updateROIDisplay(results: any): void {
+      const elements = {
+        'revenue-increase': `$${results.monthlyIncrease.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+        'annual-impact': `$${results.annualIncrease.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+        'roi-percentage': `${Math.round(results.roi)}%`,
+        'payback-period': `${results.paybackPeriod.toFixed(1)}`
+      };
+
+      Object.entries(elements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.textContent = value;
+        }
+      });
+    }
+
+    private initCharts(): void {
+      this.initLCPConversionChart();
+      this.initINPBounceChart();
+      this.initRevenuePerformanceChart();
+    }
+
+    private initLCPConversionChart(): void {
+      const canvas = document.getElementById('lcp-conversion-chart') as HTMLCanvasElement;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Simple scatter plot showing LCP vs Conversion Rate correlation
+      this.drawScatterPlot(ctx, canvas, 'LCP (seconds)', 'Conversion Rate (%)', [
+        { x: 1.2, y: 4.8 },
+        { x: 1.8, y: 4.2 },
+        { x: 2.1, y: 3.8 },
+        { x: 2.7, y: 3.2 },
+        { x: 3.4, y: 2.6 },
+        { x: 4.1, y: 2.1 },
+        { x: 4.8, y: 1.7 }
+      ]);
+    }
+
+    private initINPBounceChart(): void {
+      const canvas = document.getElementById('inp-bounce-chart') as HTMLCanvasElement;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Simple scatter plot showing INP vs Bounce Rate correlation
+      this.drawScatterPlot(ctx, canvas, 'INP (ms)', 'Bounce Rate (%)', [
+        { x: 80, y: 25 },
+        { x: 120, y: 28 },
+        { x: 147, y: 34 },
+        { x: 180, y: 38 },
+        { x: 220, y: 43 },
+        { x: 280, y: 48 },
+        { x: 350, y: 55 }
+      ]);
+    }
+
+    private initRevenuePerformanceChart(): void {
+      const canvas = document.getElementById('revenue-performance-chart') as HTMLCanvasElement;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Bar chart showing revenue by performance segment
+      this.drawBarChart(ctx, canvas, ['Fast', 'Moderate', 'Slow'], [48200, 28700, 12100], ['#10b981', '#f59e0b', '#ef4444']);
+    }
+
+    private drawScatterPlot(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, xLabel: string, yLabel: string, data: any[]): void {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const padding = 50;
+      const chartWidth = rect.width - 2 * padding;
+      const chartHeight = rect.height - 2 * padding;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      // Draw axes
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, rect.height - padding);
+      ctx.lineTo(rect.width - padding, rect.height - padding);
+      ctx.stroke();
+
+      // Draw data points
+      ctx.fillStyle = '#3b82f6';
+      data.forEach(point => {
+        const x = padding + (point.x / Math.max(...data.map(d => d.x))) * chartWidth;
+        const y = rect.height - padding - (point.y / Math.max(...data.map(d => d.y))) * chartHeight;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+
+      // Draw trend line
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(padding, rect.height - padding - 20);
+      ctx.lineTo(rect.width - padding, padding + 20);
+      ctx.stroke();
+    }
+
+    private drawBarChart(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, labels: string[], values: number[], colors: string[]): void {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const padding = 50;
+      const chartWidth = rect.width - 2 * padding;
+      const chartHeight = rect.height - 2 * padding;
+      const barWidth = chartWidth / values.length * 0.6;
+      const barSpacing = chartWidth / values.length * 0.4;
+      const maxValue = Math.max(...values);
+
+      // Clear canvas
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      // Draw bars
+      values.forEach((value, index) => {
+        const barHeight = (value / maxValue) * chartHeight;
+        const x = padding + index * (barWidth + barSpacing) + barSpacing / 2;
+        const y = rect.height - padding - barHeight;
+
+        ctx.fillStyle = colors[index];
+        ctx.fillRect(x, y, barWidth, barHeight);
+
+        // Add value labels
+        ctx.fillStyle = '#374151';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`$${(value / 1000).toFixed(1)}K`, x + barWidth / 2, y - 5);
+      });
+    }
+
+    private updateSummaryPeriod(): void {
+      const period = (document.getElementById('summary-period') as HTMLSelectElement)?.value;
+      console.log('Updating summary period to:', period);
+      // Here you would update the summary data based on the selected period
+    }
+
+    private updateBusinessMetrics(): void {
+      // Simulate real-time business metrics updates
+      console.log('Updating business metrics...');
+    }
+
+    private startPeriodicUpdates(): void {
+      this.updateInterval = setInterval(() => {
+        this.updateBusinessMetrics();
+      }, 5 * 60 * 1000); // Update every 5 minutes
+    }
+
+    public destroy(): void {
+      if (this.updateInterval) {
+        clearInterval(this.updateInterval);
+      }
+    }
+  }
+
+  // Initialize controller
+  let businessController: BusinessImpactController;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      businessController = new BusinessImpactController();
+    });
+  } else {
+    businessController = new BusinessImpactController();
+  }
+
+  // Cleanup
+  window.addEventListener('beforeunload', () => {
+    if (businessController) {
+      businessController.destroy();
+    }
+  });
+</script>

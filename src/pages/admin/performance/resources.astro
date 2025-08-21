@@ -1,0 +1,660 @@
+---
+/**
+ * Resource Analysis Page
+ * Detailed analysis of resource performance, bundle sizes, and optimization opportunities
+ * File: src/pages/admin/performance/resources.astro
+ */
+
+import AdminLayout from "@/components/admin/AdminLayout.astro";
+import Layout from "@/layouts/Layout.astro";
+
+const pageTitle = "Resource Analysis";
+---
+
+<Layout title="Resource Analysis - Performance Admin">
+  <AdminLayout title={pageTitle} activeSection="resources">
+    <div slot="description">
+      <p class="text-lg text-(--content-body) mb-6">
+        Comprehensive analysis of JavaScript bundles, images, fonts, and third-party resources 
+        with optimization recommendations and performance impact assessment.
+      </p>
+    </div>
+
+    <!-- Resource Overview -->
+    <section class="resource-overview mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <!-- Total Bundle Size -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold text-(--content-heading)">Bundle Size</h3>
+            <span class="cwv-badge cwv-warning">Warning</span>
+          </div>
+          <div class="flex items-end gap-2 mb-2">
+            <span id="bundle-size" class="text-3xl font-bold text-(--content-heading)">245</span>
+            <span class="text-sm text-(--content-body) mb-1">KB</span>
+          </div>
+          <div class="text-xs text-(--content-meta)">Budget: 200 KB</div>
+          <div class="w-full bg-(--surface-tertiary) rounded-full h-2 mt-2">
+            <div class="bg-yellow-500 h-2 rounded-full transition-all duration-300" style="width: 81%"></div>
+          </div>
+        </div>
+
+        <!-- Image Optimization -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold text-(--content-heading)">Image Optimization</h3>
+            <span class="cwv-badge cwv-good">Good</span>
+          </div>
+          <div class="flex items-end gap-2 mb-2">
+            <span id="image-optimization" class="text-3xl font-bold text-(--content-heading)">87</span>
+            <span class="text-sm text-(--content-body) mb-1">%</span>
+          </div>
+          <div class="text-xs text-(--content-meta)">Modern formats</div>
+          <div class="w-full bg-(--surface-tertiary) rounded-full h-2 mt-2">
+            <div class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 87%"></div>
+          </div>
+        </div>
+
+        <!-- Third-party Impact -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold text-(--content-heading)">Third-party Impact</h3>
+            <span class="cwv-badge cwv-needs-improvement">Needs Work</span>
+          </div>
+          <div class="flex items-end gap-2 mb-2">
+            <span id="third-party-impact" class="text-3xl font-bold text-(--content-heading)">340</span>
+            <span class="text-sm text-(--content-body) mb-1">ms</span>
+          </div>
+          <div class="text-xs text-(--content-meta)">Main thread blocking</div>
+          <div class="w-full bg-(--surface-tertiary) rounded-full h-2 mt-2">
+            <div class="bg-yellow-500 h-2 rounded-full transition-all duration-300" style="width: 68%"></div>
+          </div>
+        </div>
+
+        <!-- Cache Efficiency -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold text-(--content-heading)">Cache Hit Rate</h3>
+            <span class="cwv-badge cwv-good">Good</span>
+          </div>
+          <div class="flex items-end gap-2 mb-2">
+            <span id="cache-hit-rate" class="text-3xl font-bold text-(--content-heading)">94</span>
+            <span class="text-sm text-(--content-body) mb-1">%</span>
+          </div>
+          <div class="text-xs text-(--content-meta)">CDN performance</div>
+          <div class="w-full bg-(--surface-tertiary) rounded-full h-2 mt-2">
+            <div class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 94%"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- JavaScript Bundle Analysis -->
+    <section class="bundle-analysis mb-8">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-semibold text-(--content-heading)">JavaScript Bundle Analysis</h2>
+        <button 
+          id="analyze-bundles"
+          class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4"
+        >
+          🔍 Analyze Bundles
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Bundle Size Breakdown -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Bundle Composition</h3>
+          
+          <div class="space-y-4">
+            <!-- Main Bundle -->
+            <div class="p-4 bg-(--surface-tertiary) rounded">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-(--content-heading)">main.js</span>
+                <span class="text-sm font-bold text-red-600">145 KB</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div class="bg-red-500 h-2 rounded-full" style="width: 59%"></div>
+              </div>
+              <div class="text-xs text-(--content-meta)">
+                Core application logic • 59% of total
+              </div>
+            </div>
+
+            <!-- Vendor Bundle -->
+            <div class="p-4 bg-(--surface-tertiary) rounded">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-(--content-heading)">vendor.js</span>
+                <span class="text-sm font-bold text-yellow-600">78 KB</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div class="bg-yellow-500 h-2 rounded-full" style="width: 32%"></div>
+              </div>
+              <div class="text-xs text-(--content-meta)">
+                Third-party libraries • 32% of total
+              </div>
+            </div>
+
+            <!-- Polyfills -->
+            <div class="p-4 bg-(--surface-tertiary) rounded">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-(--content-heading)">polyfills.js</span>
+                <span class="text-sm font-bold text-green-600">22 KB</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div class="bg-green-500 h-2 rounded-full" style="width: 9%"></div>
+              </div>
+              <div class="text-xs text-(--content-meta)">
+                Browser compatibility • 9% of total
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
+            <div class="flex items-center gap-2 mb-2">
+              <svg class="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+              <span class="font-medium text-yellow-800">Bundle Size Alert</span>
+            </div>
+            <p class="text-sm text-yellow-700">
+              Bundle exceeds 200KB budget by 45KB. Consider code splitting or removing unused dependencies.
+            </p>
+          </div>
+        </div>
+
+        <!-- Dependencies Analysis -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Large Dependencies</h3>
+          
+          <div class="space-y-3">
+            <div class="flex items-center justify-between p-3 bg-(--surface-tertiary) rounded">
+              <div>
+                <div class="font-medium text-(--content-heading)">lodash</div>
+                <div class="text-xs text-(--content-meta)">Utility library</div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-red-600">24 KB</div>
+                <div class="text-xs text-(--content-meta)">Tree-shakable</div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between p-3 bg-(--surface-tertiary) rounded">
+              <div>
+                <div class="font-medium text-(--content-heading)">chart.js</div>
+                <div class="text-xs text-(--content-meta)">Charting library</div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-yellow-600">18 KB</div>
+                <div class="text-xs text-(--content-meta)">Essential</div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between p-3 bg-(--surface-tertiary) rounded">
+              <div>
+                <div class="font-medium text-(--content-heading)">web-vitals</div>
+                <div class="text-xs text-(--content-meta)">Performance monitoring</div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-green-600">8 KB</div>
+                <div class="text-xs text-(--content-meta)">Critical</div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between p-3 bg-(--surface-tertiary) rounded">
+              <div>
+                <div class="font-medium text-(--content-heading)">date-fns</div>
+                <div class="text-xs text-(--content-meta)">Date utilities</div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-yellow-600">12 KB</div>
+                <div class="text-xs text-(--content-meta)">Partially used</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <h4 class="font-medium text-(--content-heading) mb-3">Optimization Opportunities</h4>
+            <div class="space-y-2 text-sm">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 bg-red-500 rounded-full"></span>
+                <span class="text-(--content-body)">Replace lodash with native methods (-16 KB)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                <span class="text-(--content-body)">Tree-shake date-fns imports (-8 KB)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                <span class="text-(--content-body)">Dynamic import chart.js (-18 KB)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Image Performance Analysis -->
+    <section class="image-analysis mb-8">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Image Performance Analysis</h2>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Format Distribution -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Format Distribution</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between mb-2">
+                <span class="text-sm text-(--content-body)">AVIF</span>
+                <span class="text-sm font-medium text-green-600">34%</span>
+              </div>
+              <div class="w-full bg-(--surface-tertiary) rounded-full h-2">
+                <div class="bg-green-500 h-2 rounded-full" style="width: 34%"></div>
+              </div>
+            </div>
+            
+            <div>
+              <div class="flex justify-between mb-2">
+                <span class="text-sm text-(--content-body)">WebP</span>
+                <span class="text-sm font-medium text-blue-600">53%</span>
+              </div>
+              <div class="w-full bg-(--surface-tertiary) rounded-full h-2">
+                <div class="bg-blue-500 h-2 rounded-full" style="width: 53%"></div>
+              </div>
+            </div>
+            
+            <div>
+              <div class="flex justify-between mb-2">
+                <span class="text-sm text-(--content-body)">JPEG/PNG</span>
+                <span class="text-sm font-medium text-red-600">13%</span>
+              </div>
+              <div class="w-full bg-(--surface-tertiary) rounded-full h-2">
+                <div class="bg-red-500 h-2 rounded-full" style="width: 13%"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded">
+            <div class="text-sm font-medium text-green-800 mb-1">Great Progress!</div>
+            <div class="text-xs text-green-700">87% of images use modern formats</div>
+          </div>
+        </div>
+
+        <!-- Size Optimization -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Size Optimization</h3>
+          
+          <div class="space-y-4">
+            <div class="text-center">
+              <div class="text-3xl font-bold text-(--content-heading) mb-1">2.4 MB</div>
+              <div class="text-sm text-(--content-meta)">Total image size</div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div class="text-center p-3 bg-(--surface-tertiary) rounded">
+                <div class="font-semibold text-(--content-heading)">156</div>
+                <div class="text-(--content-meta)">Total images</div>
+              </div>
+              <div class="text-center p-3 bg-(--surface-tertiary) rounded">
+                <div class="font-semibold text-(--content-heading)">15.4 KB</div>
+                <div class="text-(--content-meta)">Avg size</div>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex justify-between text-sm">
+                <span class="text-(--content-body)">Optimized</span>
+                <span class="font-medium text-green-600">143 images</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span class="text-(--content-body)">Need optimization</span>
+                <span class="font-medium text-red-600">13 images</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading Performance -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Loading Performance</h3>
+          
+          <div class="space-y-4">
+            <div class="text-center">
+              <div class="text-3xl font-bold text-(--content-heading) mb-1">890ms</div>
+              <div class="text-sm text-(--content-meta)">Avg load time</div>
+            </div>
+            
+            <div class="space-y-3">
+              <div>
+                <div class="flex justify-between mb-1">
+                  <span class="text-sm text-(--content-body)">Lazy loaded</span>
+                  <span class="text-sm font-medium">89%</span>
+                </div>
+                <div class="w-full bg-(--surface-tertiary) rounded-full h-2">
+                  <div class="bg-green-500 h-2 rounded-full" style="width: 89%"></div>
+                </div>
+              </div>
+              
+              <div>
+                <div class="flex justify-between mb-1">
+                  <span class="text-sm text-(--content-body)">With dimensions</span>
+                  <span class="text-sm font-medium">76%</span>
+                </div>
+                <div class="w-full bg-(--surface-tertiary) rounded-full h-2">
+                  <div class="bg-yellow-500 h-2 rounded-full" style="width: 76%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Third-Party Resource Analysis -->
+    <section class="third-party-analysis mb-8">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Third-Party Resource Impact</h2>
+      
+      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-(--border-primary)">
+                <th class="text-left py-3 px-4 font-medium text-(--content-heading)">Resource</th>
+                <th class="text-left py-3 px-4 font-medium text-(--content-heading)">Type</th>
+                <th class="text-left py-3 px-4 font-medium text-(--content-heading)">Size</th>
+                <th class="text-left py-3 px-4 font-medium text-(--content-heading)">Load Time</th>
+                <th class="text-left py-3 px-4 font-medium text-(--content-heading)">Main Thread</th>
+                <th class="text-left py-3 px-4 font-medium text-(--content-heading)">Impact</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-(--border-primary)">
+              <tr>
+                <td class="py-3 px-4">Google Analytics</td>
+                <td class="py-3 px-4">Analytics</td>
+                <td class="py-3 px-4">45 KB</td>
+                <td class="py-3 px-4">234ms</td>
+                <td class="py-3 px-4">89ms</td>
+                <td class="py-3 px-4"><span class="cwv-badge cwv-warning">Medium</span></td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4">Square Payments</td>
+                <td class="py-3 px-4">Payment</td>
+                <td class="py-3 px-4">67 KB</td>
+                <td class="py-3 px-4">189ms</td>
+                <td class="py-3 px-4">156ms</td>
+                <td class="py-3 px-4"><span class="cwv-badge cwv-poor">High</span></td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4">Font Awesome</td>
+                <td class="py-3 px-4">Icons</td>
+                <td class="py-3 px-4">28 KB</td>
+                <td class="py-3 px-4">145ms</td>
+                <td class="py-3 px-4">23ms</td>
+                <td class="py-3 px-4"><span class="cwv-badge cwv-good">Low</span></td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4">Social Media Widgets</td>
+                <td class="py-3 px-4">Social</td>
+                <td class="py-3 px-4">89 KB</td>
+                <td class="py-3 px-4">456ms</td>
+                <td class="py-3 px-4">234ms</td>
+                <td class="py-3 px-4"><span class="cwv-badge cwv-poor">High</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Optimization Actions -->
+    <section class="optimization-actions">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Recommended Actions</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- High Priority -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-red-200 border-l-4 border-l-red-500">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="w-3 h-3 bg-red-500 rounded-full"></span>
+            <h3 class="font-semibold text-(--content-heading)">High Priority</h3>
+          </div>
+          
+          <div class="space-y-3">
+            <div class="p-3 bg-red-50 border border-red-200 rounded">
+              <div class="font-medium text-red-900 mb-1">Reduce Bundle Size</div>
+              <div class="text-sm text-red-700">Remove unused lodash functions</div>
+              <div class="text-xs text-red-600 mt-1">Saves: 24 KB</div>
+            </div>
+            
+            <div class="p-3 bg-red-50 border border-red-200 rounded">
+              <div class="font-medium text-red-900 mb-1">Optimize Third-party Scripts</div>
+              <div class="text-sm text-red-700">Load social widgets on interaction</div>
+              <div class="text-xs text-red-600 mt-1">Saves: 234ms main thread</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Medium Priority -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-yellow-200 border-l-4 border-l-yellow-500">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+            <h3 class="font-semibold text-(--content-heading)">Medium Priority</h3>
+          </div>
+          
+          <div class="space-y-3">
+            <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <div class="font-medium text-yellow-900 mb-1">Convert Remaining Images</div>
+              <div class="text-sm text-yellow-700">13 images to AVIF format</div>
+              <div class="text-xs text-yellow-600 mt-1">Saves: 280 KB</div>
+            </div>
+            
+            <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <div class="font-medium text-yellow-900 mb-1">Add Image Dimensions</div>
+              <div class="text-sm text-yellow-700">24% of images missing dimensions</div>
+              <div class="text-xs text-yellow-600 mt-1">Reduces: CLS by 0.03</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Low Priority -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-green-200 border-l-4 border-l-green-500">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+            <h3 class="font-semibold text-(--content-heading)">Low Priority</h3>
+          </div>
+          
+          <div class="space-y-3">
+            <div class="p-3 bg-green-50 border border-green-200 rounded">
+              <div class="font-medium text-green-900 mb-1">Implement Resource Hints</div>
+              <div class="text-sm text-green-700">Add preconnect for external domains</div>
+              <div class="text-xs text-green-600 mt-1">Saves: 50ms connection time</div>
+            </div>
+            
+            <div class="p-3 bg-green-50 border border-green-200 rounded">
+              <div class="font-medium text-green-900 mb-1">Optimize Font Loading</div>
+              <div class="text-sm text-green-700">Add font-display: swap</div>
+              <div class="text-xs text-green-600 mt-1">Improves: Perceived performance</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </AdminLayout>
+</Layout>
+
+<style>
+  .cwv-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    letter-spacing: 0.05em;
+  }
+
+  .cwv-good {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .cwv-needs-improvement {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .cwv-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .cwv-poor {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  .resource-overview {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+
+<script>
+  class ResourceAnalysisController {
+    private updateInterval: NodeJS.Timeout | null = null;
+
+    constructor() {
+      this.init();
+    }
+
+    private init(): void {
+      this.updateResourceMetrics();
+      this.setupEventListeners();
+      this.startPeriodicUpdates();
+    }
+
+    private setupEventListeners(): void {
+      const analyzeBundlesBtn = document.getElementById('analyze-bundles');
+      analyzeBundlesBtn?.addEventListener('click', () => {
+        this.analyzeBundles();
+      });
+
+      document.addEventListener('admin:refresh', () => {
+        this.updateResourceMetrics();
+      });
+    }
+
+    private startPeriodicUpdates(): void {
+      this.updateInterval = setInterval(() => {
+        this.updateResourceMetrics();
+      }, 60000); // Update every minute
+    }
+
+    private updateResourceMetrics(): void {
+      // In a real implementation, this would fetch actual resource metrics
+      this.simulateMetricsUpdate();
+    }
+
+    private simulateMetricsUpdate(): void {
+      // Simulate bundle size fluctuation
+      const bundleSize = 240 + Math.floor(Math.random() * 10);
+      const bundleSizeEl = document.getElementById('bundle-size');
+      if (bundleSizeEl) {
+        bundleSizeEl.textContent = bundleSize.toString();
+      }
+
+      // Simulate image optimization changes
+      const imageOpt = 85 + Math.floor(Math.random() * 5);
+      const imageOptEl = document.getElementById('image-optimization');
+      if (imageOptEl) {
+        imageOptEl.textContent = imageOpt.toString();
+      }
+
+      // Simulate third-party impact
+      const thirdPartyImpact = 320 + Math.floor(Math.random() * 40);
+      const thirdPartyEl = document.getElementById('third-party-impact');
+      if (thirdPartyEl) {
+        thirdPartyEl.textContent = thirdPartyImpact.toString();
+      }
+
+      // Simulate cache hit rate
+      const cacheHitRate = 92 + Math.floor(Math.random() * 4);
+      const cacheHitEl = document.getElementById('cache-hit-rate');
+      if (cacheHitEl) {
+        cacheHitEl.textContent = cacheHitRate.toString();
+      }
+    }
+
+    private analyzeBundles(): void {
+      const button = document.getElementById('analyze-bundles') as HTMLButtonElement;
+      if (!button) return;
+
+      const originalText = button.textContent;
+      button.textContent = '🔄 Analyzing...';
+      button.disabled = true;
+
+      // Simulate bundle analysis
+      setTimeout(() => {
+        this.showBundleAnalysisResults();
+        button.textContent = originalText;
+        button.disabled = false;
+      }, 2000);
+    }
+
+    private showBundleAnalysisResults(): void {
+      // Create a toast notification with analysis results
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-blue-100 border border-blue-400 text-blue-700 px-6 py-4 rounded z-50 max-w-sm';
+      toast.innerHTML = `
+        <div class="flex items-center gap-3">
+          <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+          </svg>
+          <div>
+            <strong class="font-bold">Bundle Analysis Complete</strong>
+            <div class="text-sm mt-1">Found 3 optimization opportunities</div>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 5000);
+    }
+
+    public destroy(): void {
+      if (this.updateInterval) {
+        clearInterval(this.updateInterval);
+      }
+    }
+  }
+
+  // Initialize controller
+  let resourceController: ResourceAnalysisController;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      resourceController = new ResourceAnalysisController();
+    });
+  } else {
+    resourceController = new ResourceAnalysisController();
+  }
+
+  // Cleanup
+  window.addEventListener('beforeunload', () => {
+    if (resourceController) {
+      resourceController.destroy();
+    }
+  });
+</script>

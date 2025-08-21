@@ -1,0 +1,674 @@
+---
+/**
+ * Core Web Vitals Detailed Analysis Page
+ * In-depth analysis and optimization recommendations for CWV metrics
+ * File: src/pages/admin/performance/core-vitals.astro
+ */
+
+import AdminLayout from "@/components/admin/AdminLayout.astro";
+import Layout from "@/layouts/Layout.astro";
+
+const pageTitle = "Core Web Vitals Analysis";
+---
+
+<Layout title="Core Web Vitals - Performance Admin">
+  <AdminLayout title={pageTitle} activeSection="core-vitals">
+    <div slot="description">
+      <p class="text-lg text-(--content-body) mb-6">
+        Detailed analysis of Core Web Vitals metrics with historical trends, 
+        device breakdown, and specific optimization recommendations.
+      </p>
+    </div>
+
+    <!-- Current Status Overview -->
+    <section class="cwv-status-overview mb-8">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- LCP Analysis -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold text-(--content-heading)">Largest Contentful Paint</h3>
+            <span id="lcp-status" class="cwv-badge cwv-good">Good</span>
+          </div>
+          
+          <div class="mb-6">
+            <div class="flex items-end gap-2 mb-2">
+              <span id="lcp-value" class="text-4xl font-bold text-(--content-heading)">2.1</span>
+              <span class="text-lg text-(--content-body) mb-1">seconds</span>
+            </div>
+            <div class="text-sm text-(--content-meta) mb-4">
+              75th percentile • Target: ≤ 2.5s
+            </div>
+            
+            <!-- LCP Breakdown -->
+            <div class="space-y-3">
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-(--content-body)">TTFB</span>
+                <span class="text-sm font-medium" id="lcp-ttfb">0.8s</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-(--content-body)">Resource Load</span>
+                <span class="text-sm font-medium" id="lcp-resource">0.9s</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-(--content-body)">Element Render</span>
+                <span class="text-sm font-medium" id="lcp-render">0.4s</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- LCP Element Info -->
+          <div class="bg-(--surface-tertiary) p-4 rounded">
+            <h4 class="font-medium text-(--content-heading) mb-2">LCP Element</h4>
+            <div class="text-sm text-(--content-body)">
+              <div>Type: <span class="font-medium" id="lcp-element-type">Image</span></div>
+              <div>Size: <span class="font-medium" id="lcp-element-size">1200×800</span></div>
+              <div>URL: <span class="font-mono text-xs" id="lcp-element-url">hero-image.jpg</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INP Analysis -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold text-(--content-heading)">Interaction to Next Paint</h3>
+            <span id="inp-status" class="cwv-badge cwv-good">Good</span>
+          </div>
+          
+          <div class="mb-6">
+            <div class="flex items-end gap-2 mb-2">
+              <span id="inp-value" class="text-4xl font-bold text-(--content-heading)">147</span>
+              <span class="text-lg text-(--content-body) mb-1">milliseconds</span>
+            </div>
+            <div class="text-sm text-(--content-meta) mb-4">
+              75th percentile • Target: ≤ 200ms
+            </div>
+            
+            <!-- INP Breakdown -->
+            <div class="space-y-3">
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-(--content-body)">Input Delay</span>
+                <span class="text-sm font-medium" id="inp-delay">12ms</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-(--content-body)">Processing Time</span>
+                <span class="text-sm font-medium" id="inp-processing">89ms</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-(--content-body)">Presentation Delay</span>
+                <span class="text-sm font-medium" id="inp-presentation">46ms</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Interaction Types -->
+          <div class="bg-(--surface-tertiary) p-4 rounded">
+            <h4 class="font-medium text-(--content-heading) mb-2">Worst Interactions</h4>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-(--content-body)">Button clicks</span>
+                <span class="font-medium">156ms</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-(--content-body)">Form inputs</span>
+                <span class="font-medium">134ms</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CLS Analysis -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold text-(--content-heading)">Cumulative Layout Shift</h3>
+            <span id="cls-status" class="cwv-badge cwv-good">Good</span>
+          </div>
+          
+          <div class="mb-6">
+            <div class="flex items-end gap-2 mb-2">
+              <span id="cls-value" class="text-4xl font-bold text-(--content-heading)">0.08</span>
+              <span class="text-lg text-(--content-body) mb-1">score</span>
+            </div>
+            <div class="text-sm text-(--content-meta) mb-4">
+              75th percentile • Target: ≤ 0.1
+            </div>
+            
+            <!-- CLS Sources -->
+            <div class="space-y-3">
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-(--content-body)">Images</span>
+                <span class="text-sm font-medium" id="cls-images">0.03</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-(--content-body)">Web Fonts</span>
+                <span class="text-sm font-medium" id="cls-fonts">0.02</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-(--content-body)">Ads/Embeds</span>
+                <span class="text-sm font-medium" id="cls-ads">0.03</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Shift Events -->
+          <div class="bg-(--surface-tertiary) p-4 rounded">
+            <h4 class="font-medium text-(--content-heading) mb-2">Major Shifts</h4>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-(--content-body)">Hero image load</span>
+                <span class="font-medium">0.04</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-(--content-body)">Font swap</span>
+                <span class="font-medium">0.02</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Historical Trends -->
+    <section class="historical-trends mb-8">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-semibold text-(--content-heading)">Historical Trends</h2>
+        <div class="flex items-center gap-3">
+          <select 
+            id="trend-timeframe"
+            class="px-3 py-2 text-sm border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+          >
+            <option value="7d">Last 7 Days</option>
+            <option value="30d" selected>Last 30 Days</option>
+            <option value="90d">Last 90 Days</option>
+          </select>
+          <select 
+            id="trend-device"
+            class="px-3 py-2 text-sm border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+          >
+            <option value="all" selected>All Devices</option>
+            <option value="mobile">Mobile</option>
+            <option value="desktop">Desktop</option>
+            <option value="tablet">Tablet</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+        <canvas 
+          id="cwv-trends-chart" 
+          width="800" 
+          height="400"
+          class="w-full"
+          style="height: 400px;"
+        ></canvas>
+      </div>
+    </section>
+
+    <!-- Device & Connection Breakdown -->
+    <section class="device-breakdown mb-8">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Device & Connection Analysis</h2>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Device Performance -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Performance by Device</h3>
+          
+          <div class="space-y-4">
+            <!-- Mobile -->
+            <div class="p-4 bg-(--surface-tertiary) rounded">
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-medium text-(--content-heading)">Mobile</span>
+                <span class="text-sm text-(--content-meta)">67% of traffic</span>
+              </div>
+              <div class="grid grid-cols-3 gap-4 text-sm">
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">2.8s</div>
+                  <div class="text-(--content-meta)">LCP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">165ms</div>
+                  <div class="text-(--content-meta)">INP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">0.09</div>
+                  <div class="text-(--content-meta)">CLS</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Desktop -->
+            <div class="p-4 bg-(--surface-tertiary) rounded">
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-medium text-(--content-heading)">Desktop</span>
+                <span class="text-sm text-(--content-meta)">28% of traffic</span>
+              </div>
+              <div class="grid grid-cols-3 gap-4 text-sm">
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">1.9s</div>
+                  <div class="text-(--content-meta)">LCP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">129ms</div>
+                  <div class="text-(--content-meta)">INP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">0.07</div>
+                  <div class="text-(--content-meta)">CLS</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tablet -->
+            <div class="p-4 bg-(--surface-tertiary) rounded">
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-medium text-(--content-heading)">Tablet</span>
+                <span class="text-sm text-(--content-meta)">5% of traffic</span>
+              </div>
+              <div class="grid grid-cols-3 gap-4 text-sm">
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">2.2s</div>
+                  <div class="text-(--content-meta)">LCP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">145ms</div>
+                  <div class="text-(--content-meta)">INP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">0.08</div>
+                  <div class="text-(--content-meta)">CLS</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Connection Type Analysis -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Performance by Connection</h3>
+          
+          <div class="space-y-4">
+            <!-- 4G -->
+            <div class="p-4 bg-(--surface-tertiary) rounded">
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-medium text-(--content-heading)">4G</span>
+                <span class="text-sm text-(--content-meta)">52% of sessions</span>
+              </div>
+              <div class="grid grid-cols-3 gap-4 text-sm">
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">2.3s</div>
+                  <div class="text-(--content-meta)">LCP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">156ms</div>
+                  <div class="text-(--content-meta)">INP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">0.08</div>
+                  <div class="text-(--content-meta)">CLS</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WiFi -->
+            <div class="p-4 bg-(--surface-tertiary) rounded">
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-medium text-(--content-heading)">WiFi</span>
+                <span class="text-sm text-(--content-meta)">41% of sessions</span>
+              </div>
+              <div class="grid grid-cols-3 gap-4 text-sm">
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">1.8s</div>
+                  <div class="text-(--content-meta)">LCP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">134ms</div>
+                  <div class="text-(--content-meta)">INP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">0.07</div>
+                  <div class="text-(--content-meta)">CLS</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3G -->
+            <div class="p-4 bg-(--surface-tertiary) rounded">
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-medium text-(--content-heading)">3G</span>
+                <span class="text-sm text-(--content-meta)">7% of sessions</span>
+              </div>
+              <div class="grid grid-cols-3 gap-4 text-sm">
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">4.2s</div>
+                  <div class="text-(--content-meta)">LCP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">248ms</div>
+                  <div class="text-(--content-meta)">INP</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-semibold text-(--content-heading)">0.12</div>
+                  <div class="text-(--content-meta)">CLS</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Optimization Recommendations -->
+    <section class="optimization-recommendations">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Optimization Recommendations</h2>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- LCP Optimizations -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Improve LCP</h3>
+          <div class="space-y-4">
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded">
+              <div class="font-medium text-blue-900 mb-1">Preload Hero Image</div>
+              <div class="text-sm text-blue-700">Add &lt;link rel="preload"&gt; for hero image</div>
+              <div class="text-xs text-blue-600 mt-1">Potential: -300ms</div>
+            </div>
+            <div class="p-3 bg-green-50 border border-green-200 rounded">
+              <div class="font-medium text-green-900 mb-1">Optimize Images</div>
+              <div class="text-sm text-green-700">Convert to AVIF format</div>
+              <div class="text-xs text-green-600 mt-1">Potential: -200ms</div>
+            </div>
+            <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <div class="font-medium text-yellow-900 mb-1">Reduce Server Response Time</div>
+              <div class="text-sm text-yellow-700">Optimize server configuration</div>
+              <div class="text-xs text-yellow-600 mt-1">Potential: -150ms</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INP Optimizations -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Improve INP</h3>
+          <div class="space-y-4">
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded">
+              <div class="font-medium text-blue-900 mb-1">Debounce Input Handlers</div>
+              <div class="text-sm text-blue-700">Reduce excessive event handlers</div>
+              <div class="text-xs text-blue-600 mt-1">Potential: -30ms</div>
+            </div>
+            <div class="p-3 bg-green-50 border border-green-200 rounded">
+              <div class="font-medium text-green-900 mb-1">Split Long Tasks</div>
+              <div class="text-sm text-green-700">Break up JavaScript execution</div>
+              <div class="text-xs text-green-600 mt-1">Potential: -45ms</div>
+            </div>
+            <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <div class="font-medium text-yellow-900 mb-1">Optimize Third-party Scripts</div>
+              <div class="text-sm text-yellow-700">Load analytics asynchronously</div>
+              <div class="text-xs text-yellow-600 mt-1">Potential: -25ms</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CLS Optimizations -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Improve CLS</h3>
+          <div class="space-y-4">
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded">
+              <div class="font-medium text-blue-900 mb-1">Set Image Dimensions</div>
+              <div class="text-sm text-blue-700">Add width/height attributes</div>
+              <div class="text-xs text-blue-600 mt-1">Potential: -0.03</div>
+            </div>
+            <div class="p-3 bg-green-50 border border-green-200 rounded">
+              <div class="font-medium text-green-900 mb-1">Preload Web Fonts</div>
+              <div class="text-sm text-green-700">Prevent font swap layout shifts</div>
+              <div class="text-xs text-green-600 mt-1">Potential: -0.02</div>
+            </div>
+            <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <div class="font-medium text-yellow-900 mb-1">Reserve Ad Space</div>
+              <div class="text-sm text-yellow-700">Set container dimensions</div>
+              <div class="text-xs text-yellow-600 mt-1">Potential: -0.02</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </AdminLayout>
+</Layout>
+
+<style>
+  .cwv-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    letter-spacing: 0.05em;
+  }
+
+  .cwv-good {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .cwv-needs-improvement {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .cwv-poor {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+</style>
+
+<script>
+  import { performanceManager } from '@/lib/performance/PerformanceManager';
+
+  class CoreWebVitalsController {
+    private trendsChart: any = null;
+    private updateInterval: NodeJS.Timeout | null = null;
+
+    constructor() {
+      this.init();
+    }
+
+    private init(): void {
+      this.updateMetrics();
+      this.initTrendsChart();
+      this.setupEventListeners();
+      this.startAutoUpdate();
+    }
+
+    private setupEventListeners(): void {
+      document.getElementById('trend-timeframe')?.addEventListener('change', () => {
+        this.updateTrendsChart();
+      });
+
+      document.getElementById('trend-device')?.addEventListener('change', () => {
+        this.updateTrendsChart();
+      });
+
+      document.addEventListener('admin:refresh', () => {
+        this.updateMetrics();
+        this.updateTrendsChart();
+      });
+    }
+
+    private startAutoUpdate(): void {
+      this.updateInterval = setInterval(() => {
+        this.updateMetrics();
+      }, 30000);
+    }
+
+    private updateMetrics(): void {
+      const metrics = performanceManager.getAllMetrics();
+      
+      // Update LCP
+      if (metrics.coreWebVitals.lcp !== null) {
+        this.updateMetric('lcp', metrics.coreWebVitals.lcp / 1000, 2.5, 4.0);
+      }
+
+      // Update INP
+      if (metrics.coreWebVitals.inp !== null) {
+        this.updateMetric('inp', metrics.coreWebVitals.inp, 200, 500);
+      }
+
+      // Update CLS
+      if (metrics.coreWebVitals.cls !== null) {
+        this.updateMetric('cls', metrics.coreWebVitals.cls, 0.1, 0.25);
+      }
+    }
+
+    private updateMetric(metric: string, value: number, goodThreshold: number, poorThreshold: number): void {
+      const valueEl = document.getElementById(`${metric}-value`);
+      const statusEl = document.getElementById(`${metric}-status`);
+
+      if (valueEl) {
+        if (metric === 'cls') {
+          valueEl.textContent = value.toFixed(3);
+        } else if (metric === 'inp') {
+          valueEl.textContent = Math.round(value).toString();
+        } else {
+          valueEl.textContent = value.toFixed(1);
+        }
+      }
+
+      if (statusEl) {
+        const status = this.getMetricStatus(value, goodThreshold, poorThreshold);
+        statusEl.textContent = status;
+        statusEl.className = `cwv-badge cwv-${status.toLowerCase().replace(' ', '-')}`;
+      }
+    }
+
+    private getMetricStatus(value: number, goodThreshold: number, poorThreshold: number): string {
+      if (value <= goodThreshold) return 'Good';
+      if (value <= poorThreshold) return 'Needs Improvement';
+      return 'Poor';
+    }
+
+    private initTrendsChart(): void {
+      const canvas = document.getElementById('cwv-trends-chart') as HTMLCanvasElement;
+      if (!canvas) return;
+
+      // Initialize chart with sample data
+      this.renderTrendsChart(canvas);
+    }
+
+    private renderTrendsChart(canvas: HTMLCanvasElement): void {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      // Clear canvas
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      // Generate sample trend data
+      const days = 30;
+      const data = [];
+      for (let i = 0; i < days; i++) {
+        data.push({
+          date: new Date(Date.now() - (days - i) * 24 * 60 * 60 * 1000),
+          lcp: 2000 + Math.random() * 800,
+          inp: 120 + Math.random() * 60,
+          cls: 0.06 + Math.random() * 0.06
+        });
+      }
+
+      this.drawChart(ctx, rect.width, rect.height, data);
+    }
+
+    private drawChart(ctx: CanvasRenderingContext2D, width: number, height: number, data: any[]): void {
+      const padding = 60;
+      const chartWidth = width - 2 * padding;
+      const chartHeight = height - 2 * padding;
+
+      // Draw axes
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      
+      // Y-axis
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, height - padding);
+      ctx.stroke();
+
+      // X-axis
+      ctx.beginPath();
+      ctx.moveTo(padding, height - padding);
+      ctx.lineTo(width - padding, height - padding);
+      ctx.stroke();
+
+      // Draw LCP line (normalized to chart height)
+      this.drawDataLine(ctx, data, 'lcp', '#3b82f6', padding, chartWidth, chartHeight, height, 4000);
+      
+      // Draw INP line (scaled differently)
+      this.drawDataLine(ctx, data, 'inp', '#10b981', padding, chartWidth, chartHeight, height, 400);
+      
+      // Draw CLS line (scaled differently)
+      this.drawDataLine(ctx, data, 'cls', '#f59e0b', padding, chartWidth, chartHeight, height, 0.2);
+    }
+
+    private drawDataLine(
+      ctx: CanvasRenderingContext2D, 
+      data: any[], 
+      metric: string, 
+      color: string,
+      padding: number,
+      chartWidth: number,
+      chartHeight: number,
+      height: number,
+      maxValue: number
+    ): void {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+
+      data.forEach((point, index) => {
+        const x = padding + (index / (data.length - 1)) * chartWidth;
+        const y = height - padding - (point[metric] / maxValue) * chartHeight;
+        
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+
+      ctx.stroke();
+    }
+
+    private updateTrendsChart(): void {
+      const timeframe = (document.getElementById('trend-timeframe') as HTMLSelectElement)?.value;
+      const device = (document.getElementById('trend-device') as HTMLSelectElement)?.value;
+      
+      console.log('Updating trends chart:', { timeframe, device });
+      this.initTrendsChart();
+    }
+
+    public destroy(): void {
+      if (this.updateInterval) {
+        clearInterval(this.updateInterval);
+      }
+    }
+  }
+
+  // Initialize controller
+  let cwvController: CoreWebVitalsController;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      cwvController = new CoreWebVitalsController();
+    });
+  } else {
+    cwvController = new CoreWebVitalsController();
+  }
+
+  // Cleanup
+  window.addEventListener('beforeunload', () => {
+    if (cwvController) {
+      cwvController.destroy();
+    }
+  });
+</script>

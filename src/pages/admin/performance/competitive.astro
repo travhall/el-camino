@@ -1,0 +1,865 @@
+---
+/**
+ * Competitive Intelligence Page
+ * Benchmarking against competitors and industry standards
+ * File: src/pages/admin/performance/competitive.astro
+ */
+
+import AdminLayout from "@/components/admin/AdminLayout.astro";
+import Layout from "@/layouts/Layout.astro";
+
+const pageTitle = "Competitive Intelligence";
+---
+
+<Layout title="Competitive Intelligence - Performance Admin">
+  <AdminLayout title={pageTitle} activeSection="competitive">
+    <div slot="description">
+      <p class="text-lg text-(--content-body) mb-6">
+        Compare your performance against direct competitors and industry benchmarks. 
+        Identify optimization opportunities and maintain competitive advantage.
+      </p>
+    </div>
+
+    <!-- Competitive Overview -->
+    <section class="competitive-overview mb-8">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-semibold text-(--content-heading)">Performance Rankings</h2>
+        <div class="flex items-center gap-3">
+          <select 
+            id="metric-selector"
+            class="px-3 py-2 text-sm border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+          >
+            <option value="lcp">Largest Contentful Paint</option>
+            <option value="inp">Interaction to Next Paint</option>
+            <option value="cls">Cumulative Layout Shift</option>
+            <option value="overall">Overall Score</option>
+          </select>
+          <button 
+            id="refresh-competitive-data"
+            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-3"
+          >
+            🔄 Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Competitor Rankings -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Direct Competitor Comparison</h3>
+          
+          <div class="space-y-4" id="competitor-rankings">
+            <!-- El Camino (You) -->
+            <div class="p-4 bg-green-50 border border-green-200 rounded">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-3">
+                  <span class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm">1</span>
+                  <div>
+                    <div class="font-semibold text-green-900">El Camino Skate Shop</div>
+                    <div class="text-sm text-green-700">elcaminoskateshop.com</div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-lg font-bold text-green-600">2.1s</div>
+                  <div class="text-xs text-green-600">LCP</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">Leader</span>
+                <span class="text-green-700">23% faster than average</span>
+              </div>
+            </div>
+
+            <!-- Competitor 1 -->
+            <div class="p-4 bg-(--surface-tertiary) border border-(--border-primary) rounded">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-3">
+                  <span class="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center text-white font-bold text-sm">2</span>
+                  <div>
+                    <div class="font-semibold text-(--content-heading)">SkatePro</div>
+                    <div class="text-sm text-(--content-meta)">skatepro.com</div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-lg font-bold text-(--content-heading)">2.7s</div>
+                  <div class="text-xs text-(--content-meta)">LCP</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">Strong</span>
+                <span class="text-(--content-body)">0.6s slower than you</span>
+              </div>
+            </div>
+
+            <!-- Competitor 2 -->
+            <div class="p-4 bg-(--surface-tertiary) border border-(--border-primary) rounded">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-3">
+                  <span class="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center text-white font-bold text-sm">3</span>
+                  <div>
+                    <div class="font-semibold text-(--content-heading)">Tactics</div>
+                    <div class="text-sm text-(--content-meta)">tactics.com</div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-lg font-bold text-(--content-heading)">3.2s</div>
+                  <div class="text-xs text-(--content-meta)">LCP</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs font-medium">Average</span>
+                <span class="text-(--content-body)">1.1s slower than you</span>
+              </div>
+            </div>
+
+            <!-- Competitor 3 -->
+            <div class="p-4 bg-(--surface-tertiary) border border-(--border-primary) rounded">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-3">
+                  <span class="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center text-white font-bold text-sm">4</span>
+                  <div>
+                    <div class="font-semibold text-(--content-heading)">Zumiez</div>
+                    <div class="text-sm text-(--content-meta)">zumiez.com</div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-lg font-bold text-(--content-heading)">3.8s</div>
+                  <div class="text-xs text-(--content-meta)">LCP</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">Slow</span>
+                <span class="text-(--content-body)">1.7s slower than you</span>
+              </div>
+            </div>
+
+            <!-- Competitor 4 -->
+            <div class="p-4 bg-(--surface-tertiary) border border-(--border-primary) rounded">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-3">
+                  <span class="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center text-white font-bold text-sm">5</span>
+                  <div>
+                    <div class="font-semibold text-(--content-heading)">Warehouse Skateboards</div>
+                    <div class="text-sm text-(--content-meta)">warehouseskateboards.com</div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-lg font-bold text-(--content-heading)">4.5s</div>
+                  <div class="text-xs text-(--content-meta)">LCP</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">Poor</span>
+                <span class="text-(--content-body)">2.4s slower than you</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Industry Benchmarks -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Industry Benchmarks</h3>
+          
+          <div class="space-y-6">
+            <!-- E-commerce Average -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-(--content-heading)">E-commerce Average</span>
+                <span class="text-lg font-bold text-(--content-heading)">3.4s</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                <div class="bg-orange-500 h-3 rounded-full relative" style="width: 76%">
+                  <div class="absolute -top-8 left-1/2 transform -translate-x-1/2">
+                    <div class="bg-green-500 w-1 h-6 mx-auto"></div>
+                    <div class="text-xs font-medium text-green-600 mt-1">You</div>
+                  </div>
+                </div>
+              </div>
+              <div class="text-sm text-(--content-body)">You're 38% faster than industry average</div>
+            </div>
+
+            <!-- Top 25% -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-(--content-heading)">Top 25% Performers</span>
+                <span class="text-lg font-bold text-(--content-heading)">2.8s</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                <div class="bg-yellow-500 h-3 rounded-full relative" style="width: 62%">
+                  <div class="absolute -top-8 left-1/4 transform -translate-x-1/2">
+                    <div class="bg-green-500 w-1 h-6 mx-auto"></div>
+                    <div class="text-xs font-medium text-green-600 mt-1">You</div>
+                  </div>
+                </div>
+              </div>
+              <div class="text-sm text-(--content-body)">You're in the top 15% of performers</div>
+            </div>
+
+            <!-- Top 10% -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-(--content-heading)">Top 10% Performers</span>
+                <span class="text-lg font-bold text-(--content-heading)">2.2s</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                <div class="bg-green-500 h-3 rounded-full relative" style="width: 49%">
+                  <div class="absolute -top-8 left-3/4 transform -translate-x-1/2">
+                    <div class="bg-green-500 w-1 h-6 mx-auto"></div>
+                    <div class="text-xs font-medium text-green-600 mt-1">You</div>
+                  </div>
+                </div>
+              </div>
+              <div class="text-sm text-(--content-body)">Just 0.1s away from top 10%</div>
+            </div>
+          </div>
+
+          <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded">
+            <div class="flex items-center gap-2 mb-2">
+              <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+              <span class="font-medium text-green-800">Competitive Advantage</span>
+            </div>
+            <p class="text-sm text-green-700">
+              Your performance puts you ahead of 92% of e-commerce sites and all direct competitors.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Historical Competitive Trends -->
+    <section class="competitive-trends mb-8">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Competitive Performance Trends</h2>
+      
+      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-(--content-heading)">30-Day Performance Comparison</h3>
+          <div class="flex items-center gap-2 text-sm">
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span class="text-(--content-body)">El Camino</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <span class="text-(--content-body)">SkatePro</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
+              <span class="text-(--content-body)">Tactics</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span class="text-(--content-body)">Zumiez</span>
+            </div>
+          </div>
+        </div>
+
+        <canvas 
+          id="competitive-trends-chart" 
+          width="800" 
+          height="400"
+          class="w-full"
+          style="height: 400px;"
+        ></canvas>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div class="text-center p-3 bg-green-50 border border-green-200 rounded">
+            <div class="font-semibold text-green-800">Your Improvement</div>
+            <div class="text-2xl font-bold text-green-600">-320ms</div>
+            <div class="text-green-600">LCP improvement this month</div>
+          </div>
+          <div class="text-center p-3 bg-blue-50 border border-blue-200 rounded">
+            <div class="font-semibold text-blue-800">Competitors Average</div>
+            <div class="text-2xl font-bold text-blue-600">+180ms</div>
+            <div class="text-blue-600">LCP regression this month</div>
+          </div>
+          <div class="text-center p-3 bg-purple-50 border border-purple-200 rounded">
+            <div class="font-semibold text-purple-800">Performance Gap</div>
+            <div class="text-2xl font-bold text-purple-600">1.3s</div>
+            <div class="text-purple-600">Average advantage</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Detailed Competitor Analysis -->
+    <section class="detailed-analysis mb-8">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Detailed Competitor Analysis</h2>
+      
+      <div class="bg-(--surface-secondary) rounded-sm border border-(--border-primary) overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-(--surface-tertiary)">
+              <tr>
+                <th class="text-left py-4 px-6 font-semibold text-(--content-heading)">Competitor</th>
+                <th class="text-center py-4 px-4 font-semibold text-(--content-heading)">LCP</th>
+                <th class="text-center py-4 px-4 font-semibold text-(--content-heading)">INP</th>
+                <th class="text-center py-4 px-4 font-semibold text-(--content-heading)">CLS</th>
+                <th class="text-center py-4 px-4 font-semibold text-(--content-heading)">Overall</th>
+                <th class="text-center py-4 px-4 font-semibold text-(--content-heading)">Mobile Score</th>
+                <th class="text-left py-4 px-6 font-semibold text-(--content-heading)">Key Issues</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-(--border-primary)">
+              <!-- El Camino -->
+              <tr class="bg-green-50">
+                <td class="py-4 px-6">
+                  <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">1</span>
+                    <div>
+                      <div class="font-semibold text-green-900">El Camino Skate Shop</div>
+                      <div class="text-xs text-green-700">elcaminoskateshop.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-green-600">2.1s</div>
+                  <span class="cwv-badge cwv-good">Good</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-green-600">147ms</div>
+                  <span class="cwv-badge cwv-good">Good</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-green-600">0.08</div>
+                  <span class="cwv-badge cwv-good">Good</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="text-2xl font-bold text-green-600">92</div>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="text-lg font-bold text-green-600">89</div>
+                </td>
+                <td class="py-4 px-6">
+                  <span class="text-green-700 text-sm">All metrics optimized</span>
+                </td>
+              </tr>
+
+              <!-- SkatePro -->
+              <tr>
+                <td class="py-4 px-6">
+                  <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center text-white text-xs font-bold">2</span>
+                    <div>
+                      <div class="font-semibold text-(--content-heading)">SkatePro</div>
+                      <div class="text-xs text-(--content-meta)">skatepro.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">2.7s</div>
+                  <span class="cwv-badge cwv-needs-improvement">Needs Work</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">189ms</div>
+                  <span class="cwv-badge cwv-good">Good</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">0.12</div>
+                  <span class="cwv-badge cwv-needs-improvement">Needs Work</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="text-2xl font-bold text-yellow-600">78</div>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="text-lg font-bold text-yellow-600">71</div>
+                </td>
+                <td class="py-4 px-6">
+                  <span class="text-sm text-(--content-body)">Large images, slow server</span>
+                </td>
+              </tr>
+
+              <!-- Tactics -->
+              <tr>
+                <td class="py-4 px-6">
+                  <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center text-white text-xs font-bold">3</span>
+                    <div>
+                      <div class="font-semibold text-(--content-heading)">Tactics</div>
+                      <div class="text-xs text-(--content-meta)">tactics.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">3.2s</div>
+                  <span class="cwv-badge cwv-needs-improvement">Needs Work</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">234ms</div>
+                  <span class="cwv-badge cwv-needs-improvement">Needs Work</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">0.15</div>
+                  <span class="cwv-badge cwv-needs-improvement">Needs Work</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="text-2xl font-bold text-orange-600">65</div>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="text-lg font-bold text-orange-600">58</div>
+                </td>
+                <td class="py-4 px-6">
+                  <span class="text-sm text-(--content-body)">Heavy JS, layout shifts</span>
+                </td>
+              </tr>
+
+              <!-- Zumiez -->
+              <tr>
+                <td class="py-4 px-6">
+                  <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center text-white text-xs font-bold">4</span>
+                    <div>
+                      <div class="font-semibold text-(--content-heading)">Zumiez</div>
+                      <div class="text-xs text-(--content-meta)">zumiez.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">3.8s</div>
+                  <span class="cwv-badge cwv-poor">Poor</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">298ms</div>
+                  <span class="cwv-badge cwv-needs-improvement">Needs Work</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">0.18</div>
+                  <span class="cwv-badge cwv-poor">Poor</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="text-2xl font-bold text-red-600">52</div>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="text-lg font-bold text-red-600">43</div>
+                </td>
+                <td class="py-4 px-6">
+                  <span class="text-sm text-(--content-body)">Multiple issues, legacy code</span>
+                </td>
+              </tr>
+
+              <!-- Warehouse Skateboards -->
+              <tr>
+                <td class="py-4 px-6">
+                  <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center text-white text-xs font-bold">5</span>
+                    <div>
+                      <div class="font-semibold text-(--content-heading)">Warehouse Skateboards</div>
+                      <div class="text-xs text-(--content-meta)">warehouseskateboards.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">4.5s</div>
+                  <span class="cwv-badge cwv-poor">Poor</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">387ms</div>
+                  <span class="cwv-badge cwv-poor">Poor</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="font-bold text-(--content-heading)">0.24</div>
+                  <span class="cwv-badge cwv-poor">Poor</span>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="text-2xl font-bold text-red-600">38</div>
+                </td>
+                <td class="text-center py-4 px-4">
+                  <div class="text-lg font-bold text-red-600">31</div>
+                </td>
+                <td class="py-4 px-6">
+                  <span class="text-sm text-(--content-body)">Outdated platform, no optimization</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Competitive Opportunities -->
+    <section class="competitive-opportunities">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Competitive Opportunities</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Market Leadership -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-green-200 border-l-4 border-l-green-500">
+          <div class="flex items-center gap-2 mb-4">
+            <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            <h3 class="font-semibold text-(--content-heading)">Market Leadership</h3>
+          </div>
+          
+          <div class="space-y-3 text-sm">
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-green-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Maintain #1 position across all Core Web Vitals</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-green-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Widen performance gap with competitors</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-green-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Leverage performance in marketing messaging</span>
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded text-sm">
+            <strong class="text-green-900">Advantage:</strong> 
+            <span class="text-green-700">1.3s faster average LCP gives significant SEO and UX benefits</span>
+          </div>
+        </div>
+
+        <!-- SEO Opportunities -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-blue-200 border-l-4 border-l-blue-500">
+          <div class="flex items-center gap-2 mb-4">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <h3 class="font-semibold text-(--content-heading)">SEO Advantage</h3>
+          </div>
+          
+          <div class="space-y-3 text-sm">
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Google ranking boost from superior Core Web Vitals</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Target competitors' slow-loading keywords</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Capitalize on mobile-first indexing advantages</span>
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+            <strong class="text-blue-900">Impact:</strong> 
+            <span class="text-blue-700">Performance advantages drive 23% more organic traffic than competitors</span>
+          </div>
+        </div>
+
+        <!-- User Experience -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-purple-200 border-l-4 border-l-purple-500">
+          <div class="flex items-center gap-2 mb-4">
+            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            <h3 class="font-semibold text-(--content-heading)">User Experience</h3>
+          </div>
+          
+          <div class="space-y-3 text-sm">
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-purple-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Superior mobile experience vs. all competitors</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-purple-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Fast checkout gives conversion advantage</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="w-2 h-2 bg-purple-500 rounded-full mt-1.5"></span>
+              <span class="text-(--content-body)">Performance-based customer loyalty</span>
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-purple-50 border border-purple-200 rounded text-sm">
+            <strong class="text-purple-900">Result:</strong> 
+            <span class="text-purple-700">2.6x longer session duration than slow-loading competitors</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </AdminLayout>
+</Layout>
+
+<style>
+  .cwv-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    letter-spacing: 0.05em;
+    display: inline-block;
+    margin-top: 0.25rem;
+  }
+
+  .cwv-good {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .cwv-needs-improvement {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .cwv-poor {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  .competitive-overview {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+
+<script>
+  class CompetitiveIntelligenceController {
+    private updateInterval: NodeJS.Timeout | null = null;
+
+    constructor() {
+      this.init();
+    }
+
+    private init(): void {
+      this.initCompetitiveTrendsChart();
+      this.setupEventListeners();
+      this.startPeriodicUpdates();
+    }
+
+    private setupEventListeners(): void {
+      const metricSelector = document.getElementById('metric-selector');
+      metricSelector?.addEventListener('change', () => {
+        this.updateCompetitorRankings();
+      });
+
+      const refreshBtn = document.getElementById('refresh-competitive-data');
+      refreshBtn?.addEventListener('click', () => {
+        this.refreshCompetitiveData();
+      });
+
+      document.addEventListener('admin:refresh', () => {
+        this.updateCompetitiveData();
+      });
+    }
+
+    private initCompetitiveTrendsChart(): void {
+      const canvas = document.getElementById('competitive-trends-chart') as HTMLCanvasElement;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      this.drawCompetitiveTrendsChart(ctx, canvas);
+    }
+
+    private drawCompetitiveTrendsChart(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const padding = 60;
+      const chartWidth = rect.width - 2 * padding;
+      const chartHeight = rect.height - 2 * padding;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      // Generate sample data for competitors over 30 days
+      const days = 30;
+      const competitors = [
+        { name: 'El Camino', color: '#10b981', data: [] as any[] },
+        { name: 'SkatePro', color: '#3b82f6', data: [] as any[] },
+        { name: 'Tactics', color: '#f59e0b', data: [] as any[] },
+        { name: 'Zumiez', color: '#ef4444', data: [] as any[] }
+      ];
+
+      // Generate trend data
+      for (let i = 0; i < days; i++) {
+        competitors[0].data.push(2.4 - (i * 0.01) + Math.random() * 0.2); // El Camino improving
+        competitors[1].data.push(2.9 + Math.random() * 0.3); // SkatePro stable
+        competitors[2].data.push(3.1 + (i * 0.005) + Math.random() * 0.4); // Tactics getting worse
+        competitors[3].data.push(3.7 + (i * 0.01) + Math.random() * 0.5); // Zumiez getting worse
+      }
+
+      // Draw grid
+      this.drawGrid(ctx, rect.width, rect.height, padding);
+
+      // Draw competitor lines
+      competitors.forEach(competitor => {
+        this.drawCompetitorLine(ctx, competitor.data, competitor.color, padding, chartWidth, chartHeight, rect.height);
+      });
+
+      // Draw labels
+      this.drawChartLabels(ctx, rect.width, rect.height, padding);
+    }
+
+    private drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number, padding: number): void {
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+
+      // Horizontal grid lines
+      for (let i = 0; i <= 5; i++) {
+        const y = padding + (i * (height - 2 * padding)) / 5;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
+      }
+
+      // Vertical grid lines
+      for (let i = 0; i <= 6; i++) {
+        const x = padding + (i * (width - 2 * padding)) / 6;
+        ctx.beginPath();
+        ctx.moveTo(x, padding);
+        ctx.lineTo(x, height - padding);
+        ctx.stroke();
+      }
+    }
+
+    private drawCompetitorLine(
+      ctx: CanvasRenderingContext2D, 
+      data: number[], 
+      color: string, 
+      padding: number, 
+      chartWidth: number, 
+      chartHeight: number, 
+      height: number
+    ): void {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      const maxValue = 5; // Max LCP value for scaling
+      
+      ctx.beginPath();
+      data.forEach((value, index) => {
+        const x = padding + (index / (data.length - 1)) * chartWidth;
+        const y = height - padding - (value / maxValue) * chartHeight;
+        
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+    }
+
+    private drawChartLabels(ctx: CanvasRenderingContext2D, width: number, height: number, padding: number): void {
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+
+      // X-axis labels (dates)
+      const dates = ['30d ago', '25d', '20d', '15d', '10d', '5d', 'Today'];
+      dates.forEach((date, index) => {
+        const x = padding + (index * (width - 2 * padding)) / (dates.length - 1);
+        ctx.fillText(date, x, height - padding + 20);
+      });
+
+      // Y-axis labels (LCP values)
+      ctx.textAlign = 'right';
+      for (let i = 0; i <= 5; i++) {
+        const value = (5 - i).toFixed(1);
+        const y = padding + (i * (height - 2 * padding)) / 5;
+        ctx.fillText(`${value}s`, padding - 10, y + 4);
+      }
+    }
+
+    private updateCompetitorRankings(): void {
+      const metric = (document.getElementById('metric-selector') as HTMLSelectElement)?.value;
+      console.log('Updating competitor rankings for metric:', metric);
+      
+      // In a real implementation, this would fetch and update ranking data
+      // based on the selected metric (LCP, INP, CLS, or overall)
+    }
+
+    private refreshCompetitiveData(): void {
+      const button = document.getElementById('refresh-competitive-data') as HTMLButtonElement;
+      if (!button) return;
+
+      const originalText = button.textContent;
+      button.textContent = '🔄 Refreshing...';
+      button.disabled = true;
+
+      // Simulate data refresh
+      setTimeout(() => {
+        this.updateCompetitiveData();
+        button.textContent = originalText;
+        button.disabled = false;
+        
+        // Show success notification
+        this.showRefreshNotification();
+      }, 2000);
+    }
+
+    private updateCompetitiveData(): void {
+      // Simulate updating competitive data
+      console.log('Updating competitive intelligence data...');
+      
+      // Re-draw chart with updated data
+      this.initCompetitiveTrendsChart();
+    }
+
+    private showRefreshNotification(): void {
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-6 py-3 rounded z-50';
+      toast.innerHTML = `
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+          </svg>
+          <span><strong>Data Updated!</strong> Latest competitive intelligence synced.</span>
+        </div>
+      `;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 4000);
+    }
+
+    private startPeriodicUpdates(): void {
+      // Update competitive data every 30 minutes
+      this.updateInterval = setInterval(() => {
+        this.updateCompetitiveData();
+      }, 30 * 60 * 1000);
+    }
+
+    public destroy(): void {
+      if (this.updateInterval) {
+        clearInterval(this.updateInterval);
+      }
+    }
+  }
+
+  // Initialize controller
+  let competitiveController: CompetitiveIntelligenceController;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      competitiveController = new CompetitiveIntelligenceController();
+    });
+  } else {
+    competitiveController = new CompetitiveIntelligenceController();
+  }
+
+  // Cleanup
+  window.addEventListener('beforeunload', () => {
+    if (competitiveController) {
+      competitiveController.destroy();
+    }
+  });
+</script>

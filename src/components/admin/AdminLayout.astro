@@ -1,0 +1,227 @@
+---
+/**
+ * Admin Layout Component
+ * Provides shared navigation and layout for admin tools
+ * File: src/components/admin/AdminLayout.astro
+ */
+
+export interface Props {
+  title: string;
+  activeSection?: string;
+  class?: string;
+}
+
+const { title, activeSection = '', class: className = '' } = Astro.props;
+
+// Admin navigation structure
+const adminSections = [
+  {
+    title: "Performance",
+    items: [
+      { name: "Overview", href: "/admin/performance", key: "performance" },
+      { name: "Core Web Vitals", href: "/admin/performance/core-vitals", key: "core-vitals" },
+      { name: "Resource Analysis", href: "/admin/performance/resources", key: "resources" },
+      { name: "Business Impact", href: "/admin/performance/business-impact", key: "business-impact" },
+      { name: "Competitive Intel", href: "/admin/performance/competitive", key: "competitive" }
+    ]
+  },
+  {
+    title: "Content",
+    items: [
+      { name: "SKU Reference", href: "/admin/sku-reference", key: "sku-reference" },
+      { name: "Content Analytics", href: "/admin/content-analytics", key: "content-analytics" }
+    ]
+  }
+];
+---
+
+<div class={`admin-layout ${className}`}>
+  <!-- Admin Header -->
+  <header class="bg-(--surface-secondary) border-b border-(--border-primary) mb-8">
+    <div class="px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-(--content-heading)">
+            El Camino Admin
+          </h1>
+          <p class="text-sm text-(--content-body) mt-1">
+            Performance monitoring and content management tools
+          </p>
+        </div>
+        
+        <!-- Admin Actions -->
+        <div class="flex items-center gap-3">
+          <button
+            id="admin-refresh"
+            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-3 flex items-center gap-2"
+            title="Refresh data"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
+          
+          <a
+            href="/"
+            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-3 flex items-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            Site Home
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation and Content Layout -->
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+      <!-- Admin Navigation Sidebar -->
+      <nav class="lg:col-span-1">
+        <div class="bg-(--surface-secondary) p-4 rounded-sm border border-(--border-primary) sticky top-4">
+          <h2 class="font-semibold text-(--content-heading) mb-4">Admin Tools</h2>
+          
+          {adminSections.map(section => (
+            <div class="mb-6 last:mb-0">
+              <h3 class="text-sm font-medium text-(--content-meta) uppercase tracking-wide mb-2">
+                {section.title}
+              </h3>
+              <ul class="space-y-1">
+                {section.items.map(item => (
+                  <li>
+                    <a
+                      href={item.href}
+                      class={`block px-3 py-2 text-sm rounded transition-colors ${
+                        activeSection === item.key
+                          ? 'bg-(--ui-accent) text-(--ui-accent-contrast) font-medium'
+                          : 'text-(--content-body) hover:bg-(--surface-tertiary) hover:text-(--content-emphasis)'
+                      }`}
+                    >
+                      {item.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </nav>
+
+      <!-- Main Content Area -->
+      <main class="lg:col-span-4">
+        <!-- Page Title Section -->
+        <div class="mb-8">
+          <h1 class="text-4xl font-bold text-(--content-heading) mb-4">
+            {title}
+          </h1>
+          <slot name="description" />
+        </div>
+
+        <!-- Main Content -->
+        <div class="admin-content">
+          <slot />
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+
+<style>
+  .admin-layout {
+    min-height: 100vh;
+    background: var(--surface-primary);
+  }
+
+  .admin-content {
+    display: grid;
+    gap: 2rem;
+  }
+
+  /* Ensure navigation stays accessible on smaller screens */
+  @media (max-width: 1024px) {
+    .admin-layout .sticky {
+      position: static;
+    }
+  }
+
+  /* Enhanced focus states for accessibility */
+  .admin-layout a:focus-visible,
+  .admin-layout button:focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 2px;
+  }
+</style>
+
+<script>
+  /**
+   * Admin Layout Controller
+   * Handles shared admin functionality
+   */
+  class AdminLayoutController {
+    constructor() {
+      this.initRefreshButton();
+      this.initKeyboardShortcuts();
+    }
+
+    private initRefreshButton(): void {
+      const refreshBtn = document.getElementById('admin-refresh');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          this.refreshData();
+        });
+      }
+    }
+
+    private initKeyboardShortcuts(): void {
+      document.addEventListener('keydown', (e) => {
+        // Ctrl/Cmd + R for refresh (prevent default browser refresh)
+        if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+          e.preventDefault();
+          this.refreshData();
+        }
+
+        // Ctrl/Cmd + H for home
+        if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+          e.preventDefault();
+          window.location.href = '/';
+        }
+      });
+    }
+
+    private refreshData(): void {
+      // Dispatch custom event for pages to listen to
+      const refreshEvent = new CustomEvent('admin:refresh', {
+        detail: { timestamp: Date.now() }
+      });
+      document.dispatchEvent(refreshEvent);
+      
+      // Visual feedback
+      const refreshBtn = document.getElementById('admin-refresh');
+      if (refreshBtn) {
+        const originalText = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = `
+          <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refreshing...
+        `;
+        
+        setTimeout(() => {
+          refreshBtn.innerHTML = originalText;
+        }, 1000);
+      }
+    }
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      new AdminLayoutController();
+    });
+  } else {
+    new AdminLayoutController();
+  }
+</script>

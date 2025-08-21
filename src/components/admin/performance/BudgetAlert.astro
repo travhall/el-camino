@@ -1,0 +1,221 @@
+---
+/**
+ * Budget Alert Component
+ * Displays performance budget violations and warnings
+ * File: src/components/admin/performance/BudgetAlert.astro
+ */
+
+export interface Props {
+  metric: string;
+  current: string;
+  budget: string;
+  severity: 'info' | 'warning' | 'critical';
+  change?: string;
+  description?: string;
+  action?: string;
+  class?: string;
+}
+
+const { 
+  metric, 
+  current, 
+  budget, 
+  severity, 
+  change, 
+  description,
+  action = 'View Details',
+  class: className = '' 
+} = Astro.props;
+
+const severityConfig = {
+  info: {
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-200',
+    iconColor: 'text-blue-500',
+    textColor: 'text-blue-900',
+    icon: 'info'
+  },
+  warning: {
+    bgColor: 'bg-yellow-50',
+    borderColor: 'border-yellow-200', 
+    iconColor: 'text-yellow-500',
+    textColor: 'text-yellow-900',
+    icon: 'warning'
+  },
+  critical: {
+    bgColor: 'bg-red-50',
+    borderColor: 'border-red-200',
+    iconColor: 'text-red-500', 
+    textColor: 'text-red-900',
+    icon: 'critical'
+  }
+};
+
+const config = severityConfig[severity];
+---
+
+<div class={`budget-alert ${config.bgColor} ${config.borderColor} border-l-4 p-4 rounded-r ${className}`}>
+  <div class="flex items-start justify-between">
+    <div class="flex items-start space-x-3 flex-1">
+      <!-- Severity Icon -->
+      <div class={`flex-shrink-0 ${config.iconColor} mt-0.5`}>
+        {config.icon === 'critical' && (
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+          </svg>
+        )}
+        {config.icon === 'warning' && (
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+          </svg>
+        )}
+        {config.icon === 'info' && (
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+          </svg>
+        )}
+      </div>
+
+      <!-- Alert Content -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between mb-2">
+          <h4 class={`font-semibold ${config.textColor}`}>
+            {metric} Budget Alert
+          </h4>
+          {change && (
+            <span class={`text-sm font-medium px-2 py-1 rounded ${
+              change.startsWith('+') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+            }`}>
+              {change}
+            </span>
+          )}
+        </div>
+
+        <div class={`text-sm ${config.textColor} mb-3`}>
+          <div class="flex items-center space-x-4">
+            <div>
+              <span class="font-medium">Current:</span> {current}
+            </div>
+            <div>
+              <span class="font-medium">Budget:</span> {budget}
+            </div>
+          </div>
+          {description && (
+            <p class="mt-2 text-sm opacity-80">{description}</p>
+          )}
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="mb-3">
+          <div class="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              class={`h-2 rounded-full transition-all duration-300 ${
+                severity === 'critical' ? 'bg-red-500' : 
+                severity === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+              }`}
+              style={`width: ${Math.min(100, (parseFloat(current) / parseFloat(budget)) * 100)}%`}
+            ></div>
+          </div>
+          <div class="flex justify-between text-xs mt-1 opacity-70">
+            <span>0</span>
+            <span>{budget}</span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between">
+          <div class="text-xs opacity-60">
+            Last checked: {new Date().toLocaleTimeString()}
+          </div>
+          <button 
+            class={`text-sm font-medium hover:underline ${config.iconColor} transition-colors`}
+            onclick="handleBudgetAlertAction(this)"
+            data-metric={metric}
+            data-severity={severity}
+          >
+            {action} →
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .budget-alert {
+    transition: all 0.2s ease-in-out;
+  }
+
+  .budget-alert:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Animation for progress bar */
+  .budget-alert .bg-red-500,
+  .budget-alert .bg-yellow-500,
+  .budget-alert .bg-blue-500 {
+    animation: slideIn 0.8s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      width: 0%;
+    }
+    to {
+      width: var(--final-width, 100%);
+    }
+  }
+</style>
+
+<script>
+  // Global function to handle budget alert actions
+  window.handleBudgetAlertAction = function(button: HTMLButtonElement) {
+    const metric = button.getAttribute('data-metric');
+    const severity = button.getAttribute('data-severity');
+    
+    // Dispatch custom event for parent components to handle
+    const alertEvent = new CustomEvent('budget-alert:action', {
+      detail: {
+        metric,
+        severity,
+        timestamp: Date.now()
+      }
+    });
+    
+    document.dispatchEvent(alertEvent);
+    
+    // Visual feedback
+    const originalText = button.textContent;
+    button.textContent = 'Loading...';
+    button.disabled = true;
+    
+    setTimeout(() => {
+      button.textContent = originalText;
+      button.disabled = false;
+    }, 1500);
+  };
+
+  // Listen for budget alert actions in parent components
+  document.addEventListener('budget-alert:action', (e: CustomEvent) => {
+    const { metric, severity } = e.detail;
+    
+    // Route to appropriate action based on metric
+    switch (metric) {
+      case 'Bundle Size':
+        // Navigate to resource analysis
+        console.log('Navigating to bundle analysis...');
+        break;
+      case 'LCP':
+        // Navigate to LCP optimization
+        console.log('Navigating to LCP optimization...');
+        break;
+      case 'CLS':
+        // Navigate to layout analysis
+        console.log('Navigating to layout analysis...');
+        break;
+      default:
+        console.log(`Handling alert for ${metric} with severity ${severity}`);
+    }
+  });
+</script>

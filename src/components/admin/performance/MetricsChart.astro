@@ -1,0 +1,359 @@
+---
+/**
+ * Metrics Chart Component
+ * Real-time performance metrics visualization
+ * File: src/components/admin/performance/MetricsChart.astro
+ */
+
+export interface Props {
+  timeframe?: string;
+  height?: number;
+  class?: string;
+}
+
+const { timeframe = '24h', height = 300, class: className = '' } = Astro.props;
+---
+
+<div class={`metrics-chart ${className}`} id="metrics-chart">
+  <div class="chart-header mb-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <h3 class="font-medium text-(--content-heading)">Performance Trends</h3>
+        <div class="flex items-center gap-2 text-sm">
+          <div class="flex items-center gap-1">
+            <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+            <span class="text-(--content-body)">LCP</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+            <span class="text-(--content-body)">INP</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
+            <span class="text-(--content-body)">CLS</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-(--content-meta)">Last updated:</span>
+        <span id="chart-last-updated" class="text-sm font-medium text-(--content-heading)">
+          {new Date().toLocaleTimeString()}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-container">
+    <canvas 
+      id="performance-chart" 
+      width="800" 
+      height={height}
+      class="w-full"
+      style={`height: ${height}px;`}
+    ></canvas>
+  </div>
+
+  <div class="chart-summary mt-4 grid grid-cols-3 gap-4 text-sm">
+    <div class="text-center p-3 bg-(--surface-tertiary) rounded">
+      <div class="font-medium text-(--content-heading)" id="lcp-avg">2.1s</div>
+      <div class="text-(--content-meta)">LCP Average</div>
+    </div>
+    <div class="text-center p-3 bg-(--surface-tertiary) rounded">
+      <div class="font-medium text-(--content-heading)" id="inp-avg">147ms</div>
+      <div class="text-(--content-meta)">INP Average</div>
+    </div>
+    <div class="text-center p-3 bg-(--surface-tertiary) rounded">
+      <div class="font-medium text-(--content-heading)" id="cls-avg">0.08</div>
+      <div class="text-(--content-meta)">CLS Average</div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .metrics-chart {
+    position: relative;
+  }
+
+  .chart-container {
+    position: relative;
+    background: var(--surface-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.25rem;
+    padding: 1rem;
+  }
+
+  #performance-chart {
+    display: block;
+    max-width: 100%;
+  }
+
+  .chart-summary {
+    border-top: 1px solid var(--border-primary);
+    padding-top: 1rem;
+  }
+</style>
+
+<script>
+  import { performanceManager } from '@/lib/performance/PerformanceManager';
+
+  class MetricsChartController {
+    private chart: any = null;
+    private canvas: HTMLCanvasElement | null = null;
+    private ctx: CanvasRenderingContext2D | null = null;
+    private dataPoints: { timestamp: number; lcp: number; inp: number; cls: number }[] = [];
+    private animationId: number | null = null;
+
+    constructor() {
+      this.init();
+    }
+
+    private init(): void {
+      this.canvas = document.getElementById('performance-chart') as HTMLCanvasElement;
+      if (!this.canvas) return;
+
+      this.ctx = this.canvas.getContext('2d');
+      if (!this.ctx) return;
+
+      this.setupChart();
+      this.loadInitialData();
+      this.startDataCollection();
+      this.renderChart();
+    }
+
+    private setupChart(): void {
+      if (!this.canvas || !this.ctx) return;
+
+      // Set up high DPI canvas
+      const rect = this.canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      this.canvas.width = rect.width * dpr;
+      this.canvas.height = rect.height * dpr;
+      
+      this.ctx.scale(dpr, dpr);
+      this.canvas.style.width = rect.width + 'px';
+      this.canvas.style.height = rect.height + 'px';
+    }
+
+    private loadInitialData(): void {
+      // Generate sample historical data for the chart
+      const now = Date.now();
+      const hour = 60 * 60 * 1000;
+      
+      for (let i = 24; i >= 0; i--) {
+        const timestamp = now - (i * hour);
+        this.dataPoints.push({
+          timestamp,
+          lcp: 2000 + Math.random() * 1000,
+          inp: 120 + Math.random() * 80,
+          cls: 0.05 + Math.random() * 0.1
+        });
+      }
+    }
+
+    private startDataCollection(): void {
+      // Collect new data point every 5 minutes
+      setInterval(() => {
+        const metrics = performanceManager.getAllMetrics();
+        if (metrics.coreWebVitals.lcp !== null) {
+          this.addDataPoint({
+            timestamp: Date.now(),
+            lcp: metrics.coreWebVitals.lcp,
+            inp: metrics.coreWebVitals.inp || 0,
+            cls: metrics.coreWebVitals.cls || 0
+          });
+        }
+      }, 5 * 60 * 1000);
+    }
+
+    private addDataPoint(point: { timestamp: number; lcp: number; inp: number; cls: number }): void {
+      this.dataPoints.push(point);
+      
+      // Keep only last 24 hours of data
+      const cutoff = Date.now() - (24 * 60 * 60 * 1000);
+      this.dataPoints = this.dataPoints.filter(p => p.timestamp > cutoff);
+      
+      this.renderChart();
+      this.updateSummary();
+    }
+
+    private renderChart(): void {
+      if (!this.ctx || !this.canvas) return;
+
+      const rect = this.canvas.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+      const padding = 40;
+
+      // Clear canvas
+      this.ctx.clearRect(0, 0, width, height);
+
+      if (this.dataPoints.length === 0) return;
+
+      // Calculate scales
+      const timeRange = this.dataPoints[this.dataPoints.length - 1].timestamp - this.dataPoints[0].timestamp;
+      const maxLcp = Math.max(...this.dataPoints.map(p => p.lcp));
+      const maxInp = Math.max(...this.dataPoints.map(p => p.inp));
+      const maxCls = Math.max(...this.dataPoints.map(p => p.cls));
+
+      // Draw grid
+      this.drawGrid(width, height, padding);
+
+      // Draw LCP line (scaled to fit)
+      this.drawLine(
+        this.dataPoints.map(p => ({
+          x: padding + ((p.timestamp - this.dataPoints[0].timestamp) / timeRange) * (width - 2 * padding),
+          y: height - padding - (p.lcp / maxLcp) * (height - 2 * padding)
+        })),
+        '#3b82f6',
+        2
+      );
+
+      // Draw INP line (scaled to fit)
+      this.drawLine(
+        this.dataPoints.map(p => ({
+          x: padding + ((p.timestamp - this.dataPoints[0].timestamp) / timeRange) * (width - 2 * padding),
+          y: height - padding - (p.inp / maxInp) * (height - 2 * padding)
+        })),
+        '#10b981',
+        2
+      );
+
+      // Draw CLS line (scaled to fit)
+      this.drawLine(
+        this.dataPoints.map(p => ({
+          x: padding + ((p.timestamp - this.dataPoints[0].timestamp) / timeRange) * (width - 2 * padding),
+          y: height - padding - (p.cls / maxCls) * (height - 2 * padding)
+        })),
+        '#f59e0b',
+        2
+      );
+
+      // Draw threshold lines
+      this.drawThresholdLine(height - padding - (2500 / maxLcp) * (height - 2 * padding), '#3b82f6', 'LCP Target');
+      this.drawThresholdLine(height - padding - (200 / maxInp) * (height - 2 * padding), '#10b981', 'INP Target');
+      this.drawThresholdLine(height - padding - (0.1 / maxCls) * (height - 2 * padding), '#f59e0b', 'CLS Target');
+    }
+
+    private drawGrid(width: number, height: number, padding: number): void {
+      if (!this.ctx) return;
+
+      this.ctx.strokeStyle = '#e5e7eb';
+      this.ctx.lineWidth = 1;
+
+      // Horizontal grid lines
+      for (let i = 0; i <= 5; i++) {
+        const y = padding + (i * (height - 2 * padding)) / 5;
+        this.ctx.beginPath();
+        this.ctx.moveTo(padding, y);
+        this.ctx.lineTo(width - padding, y);
+        this.ctx.stroke();
+      }
+
+      // Vertical grid lines
+      for (let i = 0; i <= 6; i++) {
+        const x = padding + (i * (width - 2 * padding)) / 6;
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, padding);
+        this.ctx.lineTo(x, height - padding);
+        this.ctx.stroke();
+      }
+    }
+
+    private drawLine(points: { x: number; y: number }[], color: string, width: number): void {
+      if (!this.ctx || points.length === 0) return;
+
+      this.ctx.strokeStyle = color;
+      this.ctx.lineWidth = width;
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+
+      this.ctx.beginPath();
+      this.ctx.moveTo(points[0].x, points[0].y);
+
+      for (let i = 1; i < points.length; i++) {
+        this.ctx.lineTo(points[i].x, points[i].y);
+      }
+
+      this.ctx.stroke();
+    }
+
+    private drawThresholdLine(y: number, color: string, label: string): void {
+      if (!this.ctx || !this.canvas) return;
+
+      const rect = this.canvas.getBoundingClientRect();
+      const width = rect.width;
+      const padding = 40;
+
+      this.ctx.strokeStyle = color;
+      this.ctx.lineWidth = 1;
+      this.ctx.setLineDash([5, 5]);
+
+      this.ctx.beginPath();
+      this.ctx.moveTo(padding, y);
+      this.ctx.lineTo(width - padding, y);
+      this.ctx.stroke();
+
+      this.ctx.setLineDash([]);
+    }
+
+    private updateSummary(): void {
+      if (this.dataPoints.length === 0) return;
+
+      const recent = this.dataPoints.slice(-6); // Last 6 data points (30 minutes)
+      
+      const avgLcp = recent.reduce((sum, p) => sum + p.lcp, 0) / recent.length;
+      const avgInp = recent.reduce((sum, p) => sum + p.inp, 0) / recent.length;
+      const avgCls = recent.reduce((sum, p) => sum + p.cls, 0) / recent.length;
+
+      const lcpAvgEl = document.getElementById('lcp-avg');
+      const inpAvgEl = document.getElementById('inp-avg');
+      const clsAvgEl = document.getElementById('cls-avg');
+
+      if (lcpAvgEl) lcpAvgEl.textContent = `${(avgLcp / 1000).toFixed(1)}s`;
+      if (inpAvgEl) inpAvgEl.textContent = `${Math.round(avgInp)}ms`;
+      if (clsAvgEl) clsAvgEl.textContent = avgCls.toFixed(3);
+
+      // Update last updated time
+      const lastUpdatedEl = document.getElementById('chart-last-updated');
+      if (lastUpdatedEl) lastUpdatedEl.textContent = new Date().toLocaleTimeString();
+    }
+
+    public resize(): void {
+      this.setupChart();
+      this.renderChart();
+    }
+
+    public destroy(): void {
+      if (this.animationId) {
+        cancelAnimationFrame(this.animationId);
+      }
+    }
+  }
+
+  // Initialize chart
+  let chartController: MetricsChartController;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      chartController = new MetricsChartController();
+    });
+  } else {
+    chartController = new MetricsChartController();
+  }
+
+  // Handle resize
+  window.addEventListener('resize', () => {
+    if (chartController) {
+      chartController.resize();
+    }
+  });
+
+  // Cleanup
+  window.addEventListener('beforeunload', () => {
+    if (chartController) {
+      chartController.destroy();
+    }
+  });
+</script>

@@ -1,0 +1,471 @@
+---
+/**
+ * Admin Dashboard Landing Page
+ * Main entry point for all admin tools and performance monitoring
+ * File: src/pages/admin/index.astro
+ */
+
+import AdminLayout from "@/components/admin/AdminLayout.astro";
+import Layout from "@/layouts/Layout.astro";
+
+const pageTitle = "Admin Dashboard";
+---
+
+<Layout title="Admin Dashboard - El Camino Skate Shop">
+  <AdminLayout title={pageTitle}>
+    <div slot="description">
+      <p class="text-lg text-(--content-body) mb-6">
+        Comprehensive admin tools for performance monitoring, content management, and business analytics.
+      </p>
+    </div>
+
+    <!-- Quick Health Overview -->
+    <section class="admin-health-overview mb-12">
+      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-semibold text-(--content-heading)">System Health</h2>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+              ● All Systems Operational
+            </span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <!-- Performance Score -->
+          <div class="text-center">
+            <div class="text-4xl font-bold text-green-600 mb-2" id="overall-health">92</div>
+            <div class="text-sm text-(--content-meta)">Performance Score</div>
+            <div class="w-full bg-(--surface-tertiary) rounded-full h-2 mt-2">
+              <div class="bg-green-500 h-2 rounded-full" style="width: 92%"></div>
+            </div>
+          </div>
+
+          <!-- Core Web Vitals -->
+          <div class="text-center">
+            <div class="text-4xl font-bold text-blue-600 mb-2">3/3</div>
+            <div class="text-sm text-(--content-meta)">CWV Passing</div>
+            <div class="text-xs text-green-600 mt-1">LCP, INP, CLS Good</div>
+          </div>
+
+          <!-- Active Issues -->
+          <div class="text-center">
+            <div class="text-4xl font-bold text-yellow-600 mb-2" id="active-issues">2</div>
+            <div class="text-sm text-(--content-meta)">Active Alerts</div>
+            <div class="text-xs text-yellow-600 mt-1">1 warning, 1 info</div>
+          </div>
+
+          <!-- Uptime -->
+          <div class="text-center">
+            <div class="text-4xl font-bold text-green-600 mb-2">99.9%</div>
+            <div class="text-sm text-(--content-meta)">Uptime (30d)</div>
+            <div class="text-xs text-green-600 mt-1">Last incident: None</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Admin Tools Grid -->
+    <section class="admin-tools-grid">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Admin Tools</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Performance Monitoring -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary) hover:shadow-md transition-shadow">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-(--content-heading)">Performance Monitor</h3>
+              <p class="text-sm text-(--content-meta)">Real-time Core Web Vitals tracking</p>
+            </div>
+          </div>
+          
+          <div class="space-y-2 mb-4">
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">LCP</span>
+              <span class="font-medium text-green-600">2.1s</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">INP</span>
+              <span class="font-medium text-green-600">147ms</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">CLS</span>
+              <span class="font-medium text-green-600">0.08</span>
+            </div>
+          </div>
+          
+          <a 
+            href="/admin/performance"
+            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4 w-full text-center block"
+          >
+            View Dashboard
+          </a>
+        </div>
+
+        <!-- SKU Reference -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary) hover:shadow-md transition-shadow">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-(--content-heading)">SKU Reference</h3>
+              <p class="text-sm text-(--content-meta)">Product reference for content creators</p>
+            </div>
+          </div>
+          
+          <div class="space-y-2 mb-4">
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Total Products</span>
+              <span class="font-medium" id="total-products">1,247</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Categories</span>
+              <span class="font-medium">12</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Last Updated</span>
+              <span class="font-medium">2 hours ago</span>
+            </div>
+          </div>
+          
+          <a 
+            href="/admin/sku-reference"
+            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4 w-full text-center block"
+          >
+            Browse SKUs
+          </a>
+        </div>
+
+        <!-- System Monitoring -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary) hover:shadow-md transition-shadow">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+              <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-(--content-heading)">System Health</h3>
+              <p class="text-sm text-(--content-meta)">Server and service monitoring</p>
+            </div>
+          </div>
+          
+          <div class="space-y-2 mb-4">
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Server Response</span>
+              <span class="font-medium text-green-600">180ms</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">CDN Cache Hit</span>
+              <span class="font-medium text-green-600">94%</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Error Rate</span>
+              <span class="font-medium text-green-600">0.02%</span>
+            </div>
+          </div>
+          
+          <button 
+            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-4 w-full"
+            disabled
+          >
+            Coming Soon
+          </button>
+        </div>
+
+        <!-- Content Analytics -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary) hover:shadow-md transition-shadow">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
+              <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-(--content-heading)">Content Analytics</h3>
+              <p class="text-sm text-(--content-meta)">Blog and product performance</p>
+            </div>
+          </div>
+          
+          <div class="space-y-2 mb-4">
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Page Views</span>
+              <span class="font-medium">12.4K</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Avg Session</span>
+              <span class="font-medium">3:42</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Bounce Rate</span>
+              <span class="font-medium">34%</span>
+            </div>
+          </div>
+          
+          <button 
+            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-4 w-full"
+            disabled
+          >
+            Coming Soon
+          </button>
+        </div>
+
+        <!-- Business Intelligence -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary) hover:shadow-md transition-shadow">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-4">
+              <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-(--content-heading)">Business Intelligence</h3>
+              <p class="text-sm text-(--content-meta)">Revenue and conversion metrics</p>
+            </div>
+          </div>
+          
+          <div class="space-y-2 mb-4">
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Conversion Rate</span>
+              <span class="font-medium text-green-600">3.8%</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Avg Order Value</span>
+              <span class="font-medium">$127</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Revenue (30d)</span>
+              <span class="font-medium">$48.2K</span>
+            </div>
+          </div>
+          
+          <button 
+            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-4 w-full"
+            disabled
+          >
+            Coming Soon
+          </button>
+        </div>
+
+        <!-- WordPress Integration -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary) hover:shadow-md transition-shadow">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-(--content-heading)">WordPress Tools</h3>
+              <p class="text-sm text-(--content-meta)">Content and component management</p>
+            </div>
+          </div>
+          
+          <div class="space-y-2 mb-4">
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Components</span>
+              <span class="font-medium">24</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Active Showcases</span>
+              <span class="font-medium">156</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-(--content-body)">Guide Status</span>
+              <span class="font-medium text-green-600">Updated</span>
+            </div>
+          </div>
+          
+          <a 
+            href="/WORDPRESS_COMPONENTS_GUIDE.md"
+            target="_blank"
+            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4 w-full text-center block"
+          >
+            View Guide
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Activity -->
+    <section class="recent-activity mt-12">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Recent Activity</h2>
+      
+      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+        <div class="space-y-4" id="activity-feed">
+          <div class="flex items-center gap-4 p-3 bg-(--surface-tertiary) rounded">
+            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+              <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <div class="text-sm font-medium text-(--content-heading)">Performance budget alert resolved</div>
+              <div class="text-xs text-(--content-meta)">LCP improved to 2.1s - 2 minutes ago</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 p-3 bg-(--surface-tertiary) rounded">
+            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <div class="text-sm font-medium text-(--content-heading)">SKU Reference updated</div>
+              <div class="text-xs text-(--content-meta)">37 new products added - 1 hour ago</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 p-3 bg-(--surface-tertiary) rounded">
+            <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+              <svg class="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <div class="text-sm font-medium text-(--content-heading)">Bundle size warning</div>
+              <div class="text-xs text-(--content-meta)">JavaScript bundle exceeded 200KB threshold - 3 hours ago</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </AdminLayout>
+</Layout>
+
+<style>
+  .admin-tools-grid .bg-\\(--surface-secondary\\):hover {
+    transform: translateY(-2px);
+  }
+
+  .admin-health-overview {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+
+<script>
+  import { performanceManager } from '@/lib/performance/PerformanceManager';
+  import { budgetManager } from '@/lib/performance/BudgetManager';
+
+  class AdminDashboardController {
+    private updateInterval: NodeJS.Timeout | null = null;
+
+    constructor() {
+      this.init();
+    }
+
+    private init(): void {
+      this.updateDashboard();
+      this.setupEventListeners();
+      this.startPeriodicUpdates();
+    }
+
+    private setupEventListeners(): void {
+      // Listen for admin refresh events
+      document.addEventListener('admin:refresh', () => {
+        this.updateDashboard();
+      });
+
+      // Listen for budget violations
+      budgetManager.onViolation((violation) => {
+        this.showAlert(violation);
+      });
+    }
+
+    private startPeriodicUpdates(): void {
+      // Update dashboard every 2 minutes
+      this.updateInterval = setInterval(() => {
+        this.updateDashboard();
+      }, 2 * 60 * 1000);
+    }
+
+    private updateDashboard(): void {
+      const health = budgetManager.getHealthScore();
+      const metrics = performanceManager.getAllMetrics();
+
+      // Update health score
+      const healthEl = document.getElementById('overall-health');
+      if (healthEl) {
+        healthEl.textContent = health.score.toString();
+        healthEl.className = `text-4xl font-bold mb-2 ${
+          health.score >= 90 ? 'text-green-600' :
+          health.score >= 70 ? 'text-yellow-600' : 'text-red-600'
+        }`;
+      }
+
+      // Update active issues
+      const issuesEl = document.getElementById('active-issues');
+      if (issuesEl) {
+        issuesEl.textContent = health.issues.length.toString();
+      }
+
+      // Update other metrics
+      this.updateMetrics(metrics);
+    }
+
+    private updateMetrics(metrics: any): void {
+      // This would integrate with real analytics data
+      console.log('Updating dashboard metrics:', metrics);
+    }
+
+    private showAlert(violation: any): void {
+      // Create toast notification for new violations
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50';
+      toast.innerHTML = `
+        <strong class="font-bold">Performance Alert!</strong>
+        <span class="block sm:inline">${violation.description}</span>
+      `;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 5000);
+    }
+
+    public destroy(): void {
+      if (this.updateInterval) {
+        clearInterval(this.updateInterval);
+      }
+    }
+  }
+
+  // Initialize dashboard
+  let dashboardController: AdminDashboardController;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      dashboardController = new AdminDashboardController();
+    });
+  } else {
+    dashboardController = new AdminDashboardController();
+  }
+
+  // Cleanup
+  window.addEventListener('beforeunload', () => {
+    if (dashboardController) {
+      dashboardController.destroy();
+    }
+  });
+</script>
