@@ -9,9 +9,6 @@ import MiniCart from "@/components/MiniCart.astro";
 import Modal from "@/components/Modal.astro";
 import Notification from "@/components/Notification.astro";
 import SpeculationRules from "@/components/SpeculationRules.astro";
-import ConnectionAwareExperience from "@/components/ConnectionAwareExperience.astro";
-import ConnectionStatus from "@/components/ConnectionStatus.astro";
-import { pwaInfo } from "virtual:pwa-info";
 import "@/styles/global.css";
 // import CartDebug from "@/components/CartDebug.astro";
 
@@ -63,9 +60,6 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <link rel="apple-touch-icon" href="/pwa-icon.svg" />
     <link rel="mask-icon" href="/pwa-icon.svg" color="#1a1a1a" />
     
-    <!-- PWA Manifest -->
-    {pwaInfo && <Fragment set:html={pwaInfo.webManifest.linkTag} />}
-
     <!-- Enhanced font preloading with fetchpriority -->
     <link
       rel="preload"
@@ -83,6 +77,14 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
       crossorigin="anonymous"
       fetchpriority="high"
     />
+
+    <!-- Performance optimizations -->
+    <link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" crossorigin />
+    <link rel="preconnect" href="https://connect.squareup.com" crossorigin />
+    <link rel="preconnect" href="https://squarecdn.com" crossorigin />
+    <link rel="dns-prefetch" href="https://elcaminoskateshop.wordpress.com" />
+    <link rel="dns-prefetch" href="https://connect.squareup.com" />
+    <link rel="dns-prefetch" href="https://squarecdn.com" />
 
     <SEOMetadata
       siteName={siteConfig.name}
@@ -172,18 +174,15 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
   <body
     class="bg-(--surface-primary) text-(--content-body) grid grid-rows-[auto_1fr_auto] min-h-screen relative"
   >
-    <ConnectionAwareExperience>
-      <Header />
-      <main
-        class="bg-(--surface-primary) text-(--content-body) border-b-4 border-(--border-secondary) z-10 relative"
-        id="main-content"
-      >
-        <slot />
-      </main>
-      <Footer />
-    </ConnectionAwareExperience>
+    <Header />
+    <main
+      class="bg-(--surface-primary) text-(--content-body) border-b-4 border-(--border-secondary) z-10 relative"
+      id="main-content"
+    >
+      <slot />
+    </main>
+    <Footer />
     
-    <ConnectionStatus position="top" />
     <QuickView />
     <MiniCart />
     <Notification />
@@ -258,15 +257,6 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
         }
       }).catch(error => {
         console.warn('[Layout] Performance monitoring failed to load:', error);
-      });
-
-      // Initialize PWA
-      import('../pwa').then(({ pwaManager }) => {
-        if (import.meta.env.DEV) {
-          console.log('[Layout] PWA initialized, installed:', pwaManager.isInstalled());
-        }
-      }).catch(error => {
-        console.warn('[Layout] PWA failed to load:', error);
       });
 
       // Critical performance optimizations for immediate execution

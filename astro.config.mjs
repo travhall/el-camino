@@ -1,11 +1,9 @@
 import { defineConfig } from "astro/config";
-import tailwindcss from "@tailwindcss/vite"; // NEW: Tailwind v4 plugin
+import tailwindcss from "@tailwindcss/vite";
 import icon from "astro-icon";
 import netlify from "@astrojs/netlify";
 import node from "@astrojs/node";
-import AstroPWA from "@vite-pwa/astro";
 import path from "path";
-import { siteConfig } from "./src/lib/site-config.ts";
 
 // Check if we're in preview mode
 const isPreview = process.env.PREVIEW === "true";
@@ -13,61 +11,6 @@ const isPreview = process.env.PREVIEW === "true";
 export default defineConfig({
   integrations: [
     icon({ iconDir: "src/assets/icons" }),
-    AstroPWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
-      manifest: {
-        name: siteConfig.name,
-        short_name: siteConfig.pwa.shortName,
-        description: siteConfig.description,
-        theme_color: siteConfig.pwa.themeColor,
-        background_color: siteConfig.pwa.backgroundColor,
-        display: 'standalone',
-        scope: '/',
-        start_url: '/',
-        icons: [
-          {
-            src: '/pwa-192x192.svg',
-            sizes: '192x192',
-            type: 'image/svg+xml'
-          },
-          {
-            src: '/pwa-512x512.svg',
-            sizes: '512x512',
-            type: 'image/svg+xml'
-          }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{css,js,html,svg,png,ico,txt}'],
-        navigateFallback: '/offline',
-        navigateFallbackDenylist: [/\/(cart|checkout|api)\/.*/],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.squarecdn\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'square-images',
-              expiration: {
-                maxEntries: 60,
-                maxAgeSeconds: 2592000, // 30 days
-              }
-            }
-          },
-          {
-            urlPattern: /\.(css|js|woff2?)$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'static-assets',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 2592000, // 30 days
-              }
-            }
-          }
-        ]
-      }
-    })
   ],
   output: "server",
   adapter: isPreview
