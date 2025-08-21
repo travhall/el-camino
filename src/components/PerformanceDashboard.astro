@@ -1,0 +1,430 @@
+---
+/**
+ * Performance Dashboard Component
+ * File: src/components/PerformanceDashboard.astro
+ */
+
+export interface Props {
+  class?: string;
+}
+
+const { class: className = "" } = Astro.props;
+---
+
+<div class={`performance-dashboard ${className}`} id="performance-dashboard">
+  <!-- Core Web Vitals Section -->
+  <section>
+    <h2 class="text-xl font-semibold text-content-heading mb-4">Core Web Vitals</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- LCP Metric -->
+      <div class="bg-surface-secondary p-4 rounded-sm border border-border-primary">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-medium text-content-body">Largest Contentful Paint</h3>
+          <span class="cwv-status lcp-status text-xs px-2 py-1 rounded">-</span>
+        </div>
+        <div class="text-2xl font-bold text-content-heading">
+          <span id="lcp-value">-</span>
+          <span class="text-sm text-content-body ml-1">ms</span>
+        </div>
+        <div class="text-xs text-content-body mt-1">Target: ≤ 2,500ms</div>
+      </div>
+
+      <!-- INP Metric -->
+      <div class="bg-surface-secondary p-4 rounded-sm border border-border-primary">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-medium text-content-body">Interaction to Next Paint</h3>
+          <span class="cwv-status inp-status text-xs px-2 py-1 rounded">-</span>
+        </div>
+        <div class="text-2xl font-bold text-content-heading">
+          <span id="inp-value">-</span>
+          <span class="text-sm text-content-body ml-1">ms</span>
+        </div>
+        <div class="text-xs text-content-body mt-1">Target: ≤ 200ms</div>
+      </div>
+
+      <!-- CLS Metric -->
+      <div class="bg-surface-secondary p-4 rounded-sm border border-border-primary">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-medium text-content-body">Cumulative Layout Shift</h3>
+          <span class="cwv-status cls-status text-xs px-2 py-1 rounded">-</span>
+        </div>
+        <div class="text-2xl font-bold text-content-heading">
+          <span id="cls-value">-</span>
+        </div>
+        <div class="text-xs text-content-body mt-1">Target: ≤ 0.1</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PWA Status Section -->
+  <section>
+    <h2 class="text-xl font-semibold text-content-heading mb-4">PWA Status</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-surface-secondary p-4 rounded-sm border border-border-primary">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-content-body">Service Worker</span>
+          <span id="sw-status" class="status-indicator">⚪</span>
+        </div>
+      </div>
+      
+      <div class="bg-surface-secondary p-4 rounded-sm border border-border-primary">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-content-body">Cache Hit Rate</span>
+          <span id="cache-hit-rate" class="font-semibold">-%</span>
+        </div>
+      </div>
+      
+      <div class="bg-surface-secondary p-4 rounded-sm border border-border-primary">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-content-body">Install Prompt</span>
+          <span id="install-status" class="status-indicator">⚪</span>
+        </div>
+      </div>
+      
+      <div class="bg-surface-secondary p-4 rounded-sm border border-border-primary">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-content-body">Offline Views</span>
+          <span id="offline-views" class="font-semibold">0</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Image Optimization Section -->
+  <section>
+    <h2 class="text-xl font-semibold text-content-heading mb-4">Image Optimization</h2>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Format Usage -->
+      <div class="bg-surface-secondary p-6 rounded-sm border border-border-primary">
+        <h3 class="font-medium text-content-emphasis mb-4">Format Usage</h3>
+        
+        <div class="space-y-3">
+          <!-- AVIF Usage -->
+          <div>
+            <div class="flex justify-between mb-1">
+              <span class="text-sm text-content-body">AVIF</span>
+              <span id="avif-usage" class="text-sm font-medium text-state-success">0%</span>
+            </div>
+            <div class="w-full bg-surface-tertiary rounded-full h-2">
+              <div id="avif-bar" class="bg-state-success h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- WebP Usage -->
+          <div>
+            <div class="flex justify-between mb-1">
+              <span class="text-sm text-content-body">WebP</span>
+              <span id="webp-usage" class="text-sm font-medium text-state-warning">0%</span>
+            </div>
+            <div class="w-full bg-surface-tertiary rounded-full h-2">
+              <div id="webp-bar" class="bg-state-warning h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- JPEG Usage -->
+          <div>
+            <div class="flex justify-between mb-1">
+              <span class="text-sm text-content-body">JPEG/PNG</span>
+              <span id="jpeg-usage" class="text-sm font-medium text-state-error">100%</span>
+            </div>
+            <div class="w-full bg-surface-tertiary rounded-full h-2">
+              <div id="jpeg-bar" class="bg-state-error h-2 rounded-full transition-all duration-300" style="width: 100%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image Performance -->
+      <div class="bg-surface-secondary p-6 rounded-sm border border-border-primary">
+        <h3 class="font-medium text-content-emphasis mb-4">Image Performance</h3>
+        
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-content-body">Average Load Time</span>
+            <span id="avg-load-time" class="text-lg font-semibold text-content-heading">-ms</span>
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-content-body">Total Images</span>
+            <span id="total-images" class="text-lg font-semibold text-content-heading">0</span>
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-content-body">Modern Format Adoption</span>
+            <span id="modern-format-adoption" class="text-lg font-semibold text-state-success">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Performance Health Score -->
+  <section>
+    <h2 class="text-xl font-semibold text-content-heading mb-4">Performance Health</h2>
+    
+    <div class="bg-surface-secondary p-6 rounded-sm border border-border-primary">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-lg font-medium text-content-heading">Overall Score</span>
+        <span id="health-score" class="text-3xl font-bold text-state-success">100</span>
+      </div>
+      
+      <div id="health-issues" class="space-y-2">
+        <!-- Issues will be dynamically populated -->
+      </div>
+    </div>
+  </section>
+</div>
+
+<style>
+  .performance-dashboard {
+    display: grid;
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+
+  .cwv-status {
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .cwv-status.good {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .cwv-status.needs-improvement {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .cwv-status.poor {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  .status-indicator {
+    font-size: 1.2rem;
+  }
+
+  .status-indicator.active {
+    color: #10b981;
+  }
+
+  .status-indicator.inactive {
+    color: #6b7280;
+  }
+
+  @media (max-width: 768px) {
+    .performance-dashboard {
+      padding: 0.5rem;
+    }
+  }
+</style>
+
+<script>
+  import { performanceManager } from '../lib/performance/PerformanceManager';
+
+  class PerformanceDashboardController {
+    private updateInterval: NodeJS.Timeout | null = null;
+
+    constructor() {
+      this.init();
+    }
+
+    private init(): void {
+      // Start updating dashboard every 5 seconds
+      this.updateInterval = setInterval(() => {
+        this.updateDashboard();
+      }, 5000);
+
+      // Initial update
+      this.updateDashboard();
+
+      // Update immediately when page becomes visible
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          this.updateDashboard();
+        }
+      });
+    }
+
+    private updateDashboard(): void {
+      const metrics = performanceManager.getAllMetrics();
+      const healthScore = performanceManager.getHealthScore();
+
+      this.updateCoreWebVitals(metrics.coreWebVitals);
+      this.updatePWAStatus(metrics.pwaMetrics);
+      this.updateImageOptimization(metrics.imageOptimization);
+      this.updateHealthScore(healthScore);
+    }
+
+    private updateCoreWebVitals(vitals: any): void {
+      // Update LCP
+      if (vitals.lcp !== null) {
+        const lcpEl = document.getElementById('lcp-value');
+        const lcpStatus = document.querySelector('.lcp-status');
+        if (lcpEl) lcpEl.textContent = Math.round(vitals.lcp).toString();
+        if (lcpStatus) {
+          lcpStatus.textContent = this.getVitalStatus(vitals.lcp, 2500, 4000);
+          lcpStatus.className = `cwv-status lcp-status text-xs px-2 py-1 rounded ${this.getVitalClass(vitals.lcp, 2500, 4000)}`;
+        }
+      }
+
+      // Update INP
+      if (vitals.inp !== null) {
+        const inpEl = document.getElementById('inp-value');
+        const inpStatus = document.querySelector('.inp-status');
+        if (inpEl) inpEl.textContent = Math.round(vitals.inp).toString();
+        if (inpStatus) {
+          inpStatus.textContent = this.getVitalStatus(vitals.inp, 200, 500);
+          inpStatus.className = `cwv-status inp-status text-xs px-2 py-1 rounded ${this.getVitalClass(vitals.inp, 200, 500)}`;
+        }
+      }
+
+      // Update CLS
+      if (vitals.cls !== null) {
+        const clsEl = document.getElementById('cls-value');
+        const clsStatus = document.querySelector('.cls-status');
+        if (clsEl) clsEl.textContent = vitals.cls.toFixed(3);
+        if (clsStatus) {
+          clsStatus.textContent = this.getVitalStatus(vitals.cls, 0.1, 0.25);
+          clsStatus.className = `cwv-status cls-status text-xs px-2 py-1 rounded ${this.getVitalClass(vitals.cls, 0.1, 0.25)}`;
+        }
+      }
+    }
+
+    private updatePWAStatus(pwa: any): void {
+      // Service Worker status
+      const swStatus = document.getElementById('sw-status');
+      if (swStatus) {
+        swStatus.textContent = pwa.serviceWorkerActive ? '🟢' : '🔴';
+        swStatus.className = `status-indicator ${pwa.serviceWorkerActive ? 'active' : 'inactive'}`;
+      }
+
+      // Install prompt status
+      const installStatus = document.getElementById('install-status');
+      if (installStatus) {
+        installStatus.textContent = pwa.installPromptShown ? '🟢' : '🔴';
+        installStatus.className = `status-indicator ${pwa.installPromptShown ? 'active' : 'inactive'}`;
+      }
+
+      // Offline views
+      const offlineViews = document.getElementById('offline-views');
+      if (offlineViews) {
+        offlineViews.textContent = pwa.offlinePageViews.toString();
+      }
+    }
+
+    private updateImageOptimization(images: any): void {
+      if (images.totalImages === 0) return;
+
+      const avifPercent = (images.avifUsage / images.totalImages) * 100;
+      const webpPercent = (images.webpUsage / images.totalImages) * 100;
+      const jpegPercent = (images.jpegUsage / images.totalImages) * 100;
+
+      // Update format usage
+      this.updateImageFormat('avif', avifPercent);
+      this.updateImageFormat('webp', webpPercent);
+      this.updateImageFormat('jpeg', jpegPercent);
+
+      // Update performance metrics
+      const avgLoadTime = document.getElementById('avg-load-time');
+      if (avgLoadTime) {
+        avgLoadTime.textContent = `${Math.round(images.avgLoadTime)}ms`;
+      }
+
+      const totalImages = document.getElementById('total-images');
+      if (totalImages) {
+        totalImages.textContent = images.totalImages.toString();
+      }
+
+      const modernAdoption = document.getElementById('modern-format-adoption');
+      if (modernAdoption) {
+        const modernPercent = avifPercent + webpPercent;
+        modernAdoption.textContent = `${Math.round(modernPercent)}%`;
+      }
+    }
+
+    private updateImageFormat(format: string, percentage: number): void {
+      const usage = document.getElementById(`${format}-usage`);
+      const bar = document.getElementById(`${format}-bar`);
+      
+      if (usage) usage.textContent = `${Math.round(percentage)}%`;
+      if (bar) bar.style.width = `${percentage}%`;
+    }
+
+    private updateHealthScore(health: any): void {
+      const scoreEl = document.getElementById('health-score');
+      const issuesEl = document.getElementById('health-issues');
+
+      if (scoreEl) {
+        scoreEl.textContent = health.score.toString();
+        scoreEl.className = `text-3xl font-bold ${this.getScoreClass(health.score)}`;
+      }
+
+      if (issuesEl) {
+        issuesEl.innerHTML = '';
+        health.issues.forEach((issue: string) => {
+          const issueEl = document.createElement('div');
+          issueEl.className = 'text-sm text-state-error bg-state-error/10 p-2 rounded';
+          issueEl.textContent = issue;
+          issuesEl.appendChild(issueEl);
+        });
+
+        if (health.issues.length === 0) {
+          const noIssues = document.createElement('div');
+          noIssues.className = 'text-sm text-state-success';
+          noIssues.textContent = 'No performance issues detected';
+          issuesEl.appendChild(noIssues);
+        }
+      }
+    }
+
+    private getVitalStatus(value: number, goodThreshold: number, poorThreshold: number): string {
+      if (value <= goodThreshold) return 'Good';
+      if (value <= poorThreshold) return 'Needs Improvement';
+      return 'Poor';
+    }
+
+    private getVitalClass(value: number, goodThreshold: number, poorThreshold: number): string {
+      if (value <= goodThreshold) return 'good';
+      if (value <= poorThreshold) return 'needs-improvement';
+      return 'poor';
+    }
+
+    private getScoreClass(score: number): string {
+      if (score >= 90) return 'text-state-success';
+      if (score >= 70) return 'text-state-warning';
+      return 'text-state-error';
+    }
+
+    public destroy(): void {
+      if (this.updateInterval) {
+        clearInterval(this.updateInterval);
+      }
+    }
+  }
+
+  // Initialize dashboard when DOM is ready
+  let dashboardController: PerformanceDashboardController;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      dashboardController = new PerformanceDashboardController();
+    });
+  } else {
+    dashboardController = new PerformanceDashboardController();
+  }
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    if (dashboardController) {
+      dashboardController.destroy();
+    }
+  });
+</script>

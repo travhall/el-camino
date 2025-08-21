@@ -1,0 +1,305 @@
+---
+/**
+ * Enhanced Image Component with AVIF-first optimization
+ * File: src/components/EnhancedImage.astro
+ */
+
+import { EnhancedImageOptimizer, type ModernImageOptions } from '@/lib/image/enhanced-optimizer';
+
+export interface Props {
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  quality?: number;
+  priority?: boolean;
+  placeholder?: 'blur' | 'shimmer' | 'none';
+  sizes?: string;
+  class?: string;
+  loading?: 'eager' | 'lazy';
+  decoding?: 'async' | 'sync' | 'auto';
+  fetchpriority?: 'high' | 'low' | 'auto';
+}
+
+const {
+  src,
+  alt,
+  width = 800,
+  height,
+  quality = 'medium',
+  priority = false,
+  placeholder = 'blur',
+  sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
+  class: className = '',
+  loading = priority ? 'eager' : 'lazy',
+  decoding = 'async',
+  fetchpriority = priority ? 'high' : 'auto'
+} = Astro.props;
+
+// Generate optimized image sources
+const options: ModernImageOptions = {
+  width,
+  height,
+  quality: typeof quality === 'string' ? 75 : quality,
+  sizes,
+  priority,
+  placeholder,
+  formats: ['avif', 'webp', 'jpeg']
+};
+
+const imageSet = EnhancedImageOptimizer.generateOptimizedSources(src, options);
+
+// Generate responsive srcsets for each format
+const avifSrcSet = imageSet.avif ? 
+  EnhancedImageOptimizer.generateResponsiveSrcSet(src, 'avif', options) : '';
+const webpSrcSet = imageSet.webp ? 
+  EnhancedImageOptimizer.generateResponsiveSrcSet(src, 'webp', options) : '';
+const jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(src, 'jpeg', options);
+
+// Calculate aspect ratio for container
+const aspectRatio = imageSet.aspectRatio;
+const paddingBottom = `${(1 / aspectRatio) * 100}%`;
+---
+
+<div class={`enhanced-image-container ${className}`}>
+  <!-- Image container with aspect ratio -->
+  <div 
+    class="relative overflow-hidden"
+    style={`padding-bottom: ${paddingBottom}`}
+  >
+    <!-- Placeholder -->
+    {placeholder !== 'none' && (
+      <div 
+        class="absolute inset-0 z-10 bg-surface-tertiary"
+        data-placeholder={placeholder}
+      >
+        {placeholder === 'blur' && imageSet.placeholder && (
+          <img
+            src={imageSet.placeholder}
+            alt=""
+            class="w-full h-full object-cover opacity-60 scale-110 blur-sm"
+            aria-hidden="true"
+          />
+        )}
+        {placeholder === 'shimmer' && (
+          <div class="shimmer-placeholder w-full h-full"></div>
+        )}
+      </div>
+    )}
+
+    <!-- Main image with format fallbacks -->
+    <picture class="absolute inset-0">
+      <!-- AVIF format (best compression) -->
+      {imageSet.avif && (
+        <source
+          srcset={avifSrcSet}
+          sizes={imageSet.sizes}
+          type="image/avif"
+        />
+      )}
+      
+      <!-- WebP format (good compression, wider support) -->
+      {imageSet.webp && (
+        <source
+          srcset={webpSrcSet}
+          sizes={imageSet.sizes}
+          type="image/webp"
+        />
+      )}
+      
+      <!-- JPEG fallback (universal support) -->
+      <source
+        srcset={jpegSrcSet}
+        sizes={imageSet.sizes}
+        type="image/jpeg"
+      />
+      
+      <!-- Main img element -->
+      <img
+        src={imageSet.jpeg}
+        alt={alt}
+        width={width}
+        height={height}
+        loading={loading}
+        decoding={decoding}
+        fetchpriority={fetchpriority}
+        class="enhanced-image w-full h-full object-cover transition-opacity duration-300"
+        onload="this.parentElement.parentElement.querySelector('[data-placeholder]')?.remove()"
+        onerror="console.warn('Image failed to load:', this.src)"
+      />
+    </picture>
+  </div>
+</div>
+
+<style>
+  .enhanced-image-container {
+    position: relative;
+  }
+
+  .enhanced-image {
+    opacity: 0;
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  .enhanced-image.loaded {
+    opacity: 1;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Shimmer effect for placeholder */
+  .shimmer-placeholder {
+    background: linear-gradient(
+      90deg,
+      #f0f0f0 25%,
+      #e0e0e0 50%,
+      #f0f0f0 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* Dark mode shimmer */
+  @media (prefers-color-scheme: dark) {
+    .shimmer-placeholder {
+      background: linear-gradient(
+        90deg,
+        #374151 25%,
+        #4b5563 50%,
+        #374151 75%
+      );
+      background-size: 200% 100%;
+    }
+  }
+
+  /* Responsive optimizations */
+  @media (max-width: 640px) {
+    .enhanced-image-container {
+      /* Mobile-specific optimizations */
+    }
+  }
+
+  /* Prefers reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .enhanced-image {
+      animation: none;
+      opacity: 1;
+    }
+    
+    .shimmer-placeholder {
+      animation: none;
+      background: #f0f0f0;
+    }
+  }
+
+  /* Performance optimizations */
+  .enhanced-image {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 300px;
+  }
+</style>
+
+<script>
+  class EnhancedImageHandler {
+    constructor() {
+      this.observeImages();
+      this.trackImagePerformance();
+    }
+
+    private observeImages(): void {
+      // Intersection Observer for lazy loading optimization
+      const imageObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const img = entry.target as HTMLImageElement;
+              this.optimizeImageLoading(img);
+              imageObserver.unobserve(img);
+            }
+          });
+        },
+        {
+          rootMargin: '50px 0px',
+          threshold: 0.01
+        }
+      );
+
+      // Observe all enhanced images
+      document.querySelectorAll('.enhanced-image').forEach((img) => {
+        imageObserver.observe(img);
+      });
+    }
+
+    private optimizeImageLoading(img: HTMLImageElement): void {
+      // Add priority hints based on viewport position
+      const rect = img.getBoundingClientRect();
+      const isAboveFold = rect.top < window.innerHeight;
+      
+      if (isAboveFold && img.loading === 'lazy') {
+        // Convert to eager loading if above fold
+        img.loading = 'eager';
+      }
+
+      // Track loading performance
+      const loadStart = performance.now();
+      
+      img.addEventListener('load', () => {
+        const loadTime = performance.now() - loadStart;
+        
+        // Report to performance manager
+        if ('performanceManager' in window) {
+          (window as any).performanceManager.trackImageLoad({
+            src: img.src,
+            loadTime,
+            format: this.detectImageFormat(img.src),
+            size: { width: img.naturalWidth, height: img.naturalHeight }
+          });
+        }
+
+        // Remove placeholder
+        img.classList.add('loaded');
+        const placeholder = img.closest('.enhanced-image-container')?.querySelector('[data-placeholder]');
+        if (placeholder) {
+          placeholder.remove();
+        }
+      });
+    }
+
+    private detectImageFormat(src: string): string {
+      if (src.includes('.avif') || src.includes('f=avif')) return 'avif';
+      if (src.includes('.webp') || src.includes('f=webp')) return 'webp';
+      return 'jpeg';
+    }
+
+    private trackImagePerformance(): void {
+      // Track format support and usage
+      const formats = { avif: 0, webp: 0, jpeg: 0 };
+      
+      document.querySelectorAll('.enhanced-image').forEach((img: Element) => {
+        const htmlImg = img as HTMLImageElement;
+        const format = this.detectImageFormat(htmlImg.currentSrc || htmlImg.src);
+        formats[format as keyof typeof formats]++;
+      });
+
+      // Report format usage
+      console.log('[EnhancedImage] Format usage:', formats);
+    }
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      new EnhancedImageHandler();
+    });
+  } else {
+    new EnhancedImageHandler();
+  }
+</script>

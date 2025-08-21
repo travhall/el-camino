@@ -9,6 +9,7 @@ import MiniCart from "@/components/MiniCart.astro";
 import Modal from "@/components/Modal.astro";
 import Notification from "@/components/Notification.astro";
 import SpeculationRules from "@/components/SpeculationRules.astro";
+import { pwaInfo } from "virtual:pwa-info";
 import "@/styles/global.css";
 // import CartDebug from "@/components/CartDebug.astro";
 
@@ -48,9 +49,20 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
         document.documentElement.setAttribute("data-theme", theme);
       })();
     </script>
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="/pwa-icon.svg" />
+    <link rel="mask-icon" href="/pwa-icon.svg" color="#1a1a1a" />
+    
+    <!-- PWA Manifest -->
+    {pwaInfo && <Fragment set:html={pwaInfo.webManifest.linkTag} />}
 
     <!-- Enhanced font preloading with fetchpriority -->
     <link
@@ -218,6 +230,55 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           }
         }
       });
+    </script>
+
+    <!-- Performance Monitoring & PWA Initialization -->
+    <script>
+      // Initialize Performance Manager
+      import('../lib/performance/PerformanceManager').then(({ performanceManager }) => {
+        // Set reporting endpoint if available
+        if (import.meta.env.MONITORING_ENDPOINT) {
+          performanceManager.setReportingEndpoint(import.meta.env.MONITORING_ENDPOINT);
+        }
+        
+        if (import.meta.env.DEV) {
+          console.log('[Layout] Performance monitoring initialized');
+          
+          // Log initial metrics in development
+          setTimeout(() => {
+            const health = performanceManager.getHealthScore();
+            console.log('[Performance] Health Score:', health.score, 'Issues:', health.issues);
+          }, 5000);
+        }
+      }).catch(error => {
+        console.warn('[Layout] Performance monitoring failed to load:', error);
+      });
+
+      // Initialize PWA
+      import('../pwa').then(({ pwaManager }) => {
+        if (import.meta.env.DEV) {
+          console.log('[Layout] PWA initialized, installed:', pwaManager.isInstalled());
+        }
+      }).catch(error => {
+        console.warn('[Layout] PWA failed to load:', error);
+      });
+
+      // Critical performance optimizations for immediate execution
+      (function() {
+        // Early image format detection and caching
+        if ('HTMLCanvasElement' in window && !sessionStorage.getItem('imageFormatSupport')) {
+          import('../lib/image/enhanced-optimizer').then(({ EnhancedImageOptimizer }) => {
+            EnhancedImageOptimizer.detectFormatSupport();
+          });
+        }
+
+        // Initialize mobile optimization if needed
+        if (window.innerWidth <= 1024) {
+          import('../lib/performance/mobileOptimization').then(({ initMobileOptimization }) => {
+            initMobileOptimization();
+          });
+        }
+      })();
     </script>
   </body>
 </html>

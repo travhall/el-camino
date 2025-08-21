@@ -3,13 +3,42 @@ import tailwindcss from "@tailwindcss/vite"; // NEW: Tailwind v4 plugin
 import icon from "astro-icon";
 import netlify from "@astrojs/netlify";
 import node from "@astrojs/node";
+import AstroPWA from "@vite-pwa/astro";
 import path from "path";
 
 // Check if we're in preview mode
 const isPreview = process.env.PREVIEW === "true";
 
 export default defineConfig({
-  integrations: [icon({ iconDir: "src/assets/icons" })], // REMOVED: tailwind() integration
+  integrations: [
+    icon({ iconDir: "src/assets/icons" }),
+    AstroPWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg'],
+      manifest: {
+        name: 'El Camino Skate Shop',
+        short_name: 'El Camino',
+        description: 'Premium skateboarding gear and accessories',
+        theme_color: '#1a1a1a',
+        background_color: '#ffffff',
+        display: 'standalone',
+        scope: '/',
+        start_url: '/',
+        icons: [
+          {
+            src: '/pwa-192x192.svg',
+            sizes: '192x192',
+            type: 'image/svg+xml'
+          },
+          {
+            src: '/pwa-512x512.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml'
+          }
+        ]
+      }
+    })
+  ],
   output: "server",
   adapter: isPreview
     ? node({
