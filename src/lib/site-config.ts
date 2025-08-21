@@ -38,6 +38,11 @@ export interface SiteConfig {
     defaultDescription: string;
     defaultImage: string;
   };
+  pwa: {
+    shortName: string;
+    themeColor: string;
+    backgroundColor: string;
+  };
 }
 
 export const siteConfig: SiteConfig = {
@@ -87,6 +92,11 @@ export const siteConfig: SiteConfig = {
     defaultDescription:
       "El Camino Skate Shop is a skater owned and operated skateboard shop, located in Eau Claire, WI",
     defaultImage: "/default-og-image.jpg",
+  },
+  pwa: {
+    shortName: "El Camino",
+    themeColor: "#1a1a1a",
+    backgroundColor: "#ffffff",
   },
 };
 

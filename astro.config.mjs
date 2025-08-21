@@ -5,6 +5,7 @@ import netlify from "@astrojs/netlify";
 import node from "@astrojs/node";
 import AstroPWA from "@vite-pwa/astro";
 import path from "path";
+import { siteConfig } from "./src/lib/site-config.ts";
 
 // Check if we're in preview mode
 const isPreview = process.env.PREVIEW === "true";
@@ -16,11 +17,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'El Camino Skate Shop',
-        short_name: 'El Camino',
-        description: 'Premium skateboarding gear and accessories',
-        theme_color: '#1a1a1a',
-        background_color: '#ffffff',
+        name: siteConfig.name,
+        short_name: siteConfig.pwa.shortName,
+        description: siteConfig.description,
+        theme_color: siteConfig.pwa.themeColor,
+        background_color: siteConfig.pwa.backgroundColor,
         display: 'standalone',
         scope: '/',
         start_url: '/',
