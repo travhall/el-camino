@@ -2,7 +2,7 @@
 // src/components/ProductCard.astro - Enhanced with Quick View
 import type { Product, InventoryStatus } from "@/lib/square/types";
 import { MoneyUtils } from "@/lib/square/money";
-import { getProductStockStatus } from "@/lib/square/inventory";
+import { checkItemInventory } from "@/lib/square/inventory";
 import { Icon } from "astro-icon/components";
 
 interface Props {
@@ -21,19 +21,17 @@ const {
   inventoryStatus,
 } = Astro.props;
 
-// Use pre-computed inventory status if available, otherwise check individually
+// Use direct inventory check - only check for sold out
 let isOutOfStock = false;
-let hasLimitedOptions = false;
 
-if (inventoryStatus) {
-  // Use pre-computed status from batch call
-  isOutOfStock = inventoryStatus.isOutOfStock;
-  hasLimitedOptions = inventoryStatus.hasLimitedOptions;
-} else if (!skipInventoryCheck) {
-  // Fall back to individual check for backward compatibility
-  const stockStatus = await getProductStockStatus(product);
-  isOutOfStock = stockStatus.isOutOfStock;
-  hasLimitedOptions = stockStatus.hasLimitedOptions;
+if (!skipInventoryCheck && product.variationId) {
+  try {
+    const quantity = await checkItemInventory(product.variationId);
+    isOutOfStock = quantity <= 0;
+  } catch (error) {
+    console.error(`ProductCard inventory check failed for ${product.title}:`, error);
+    // Default to in stock on error
+  }
 }
 
 // Format price
@@ -116,15 +114,11 @@ const isDynamicPriority = priority || index < 12;
         onload={`this.classList.add('opacity-100', 'loaded'); document.getElementById('${placeholderId}')?.remove()`}
       />
 
-      <!-- Stock status overlay (Priority 1) -->
+      <!-- Stock status overlay - only Sold Out -->
       {
         isOutOfStock ? (
           <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-sm font-bold rounded-sm rounded-tl-none z-20">
             Sold Out
-          </div>
-        ) : hasLimitedOptions ? (
-          <div class="absolute top-0 left-0 bg-state-warning-surface text-state-warning-text px-3 py-2 text-sm font-bold rounded-sm rounded-tl-none z-20">
-            Limited Stock
           </div>
         ) : null
       }

@@ -81,6 +81,7 @@ export interface InventoryStatus {
   isOutOfStock: boolean;
   hasLimitedOptions: boolean;
   totalQuantity?: number;
+  error?: boolean;
 }
 
 export interface ProductWithInventory extends Product {
