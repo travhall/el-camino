@@ -1,5 +1,5 @@
 ---
-// src/components/NewsSearchSort.astro - Enhanced with grid/list view toggles
+// src/components/NewsSearchSort.astro - Fixed grid/list view toggle
 interface Props {
   currentSearch?: string;
   currentSort?: string;
@@ -80,7 +80,6 @@ const {
         <select
           name="sort"
           class="px-3 py-2 text-sm border border-(--ui-input-border)/50 rounded-xs bg-(--ui-input-surface) text-(--ui-input-text) focus:ring-2 focus:ring-ui-accent focus:border-ui-accent"
-          onchange="this.form.submit()"
         >
           <option value="newest" selected={currentSort === "newest"}
             >Most Recent</option
@@ -158,32 +157,59 @@ const {
 
 <script>
   import {
-    updateViewInCurrentURL,
-    navigateWithContext,
     createNewsAwareURL,
-    isNewsPath
+    isNewsPath,
+    saveViewPreference,
   } from "@/utils/newsNavigation";
+  import { navigate } from "astro:transitions/client";
 
   document.addEventListener("astro:page-load", () => {
     // Only run on news pages
     if (!isNewsPath(window.location.pathname)) {
       return;
     }
+
+    // Simple debouncing to prevent double-clicks
+    let isNavigating = false;
+
+    // Simplified navigation function
+    const navigateToUrl = async (url: string) => {
+      if (isNavigating) return;
+      isNavigating = true;
+
+      try {
+        await navigate(url);
+      } catch (error) {
+        window.location.href = url;
+      } finally {
+        // Short navigation lock
+        setTimeout(() => {
+          isNavigating = false;
+        }, 150);
+      }
+    };
+
     // Handle clear search button
     const clearButtons = document.querySelectorAll(".clear-search-btn");
     clearButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
         const currentParams = new URLSearchParams(window.location.search);
         currentParams.delete("search");
-        const newUrl = createNewsAwareURL(window.location.pathname, currentParams);
-        window.location.href = newUrl;
+        currentParams.delete("page");
+        const newUrl = createNewsAwareURL(
+          window.location.pathname,
+          currentParams
+        );
+        await navigateToUrl(newUrl);
       });
     });
 
-    // Handle sort dropdown changes  
+    // Handle sort dropdown changes
     const sortSelects = document.querySelectorAll('select[name="sort"]');
     sortSelects.forEach((select) => {
-      select.addEventListener("change", (e) => {
+      select.addEventListener("change", async (e) => {
+        e.preventDefault();
         const currentParams = new URLSearchParams(window.location.search);
         const sortValue = (e.target as HTMLSelectElement).value;
 
@@ -193,74 +219,77 @@ const {
           currentParams.delete("sort");
         }
 
-        const newUrl = createNewsAwareURL(window.location.pathname, currentParams);
-        window.location.href = newUrl;
+        currentParams.delete("page");
+        const newUrl = createNewsAwareURL(
+          window.location.pathname,
+          currentParams
+        );
+        await navigateToUrl(newUrl);
       });
     });
 
-    // Handle view toggle buttons with news-aware navigation
+    // FIXED: Simplified view toggle without immediate visual feedback
     const viewToggleButtons = document.querySelectorAll(".view-toggle");
+
     viewToggleButtons.forEach((button) => {
-      button.addEventListener("click", (e) => {
+      button.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
         const viewType = (e.currentTarget as HTMLElement).dataset.view;
-        
-        if (viewType) {
-          // Use new scoped utility to update view in current URL
-          updateViewInCurrentURL(viewType as "grid" | "list");
-          
-          // Reload page to reflect changes
-          window.location.reload();
+        if (!viewType || isNavigating) return;
+
+        // Save preference to localStorage
+        saveViewPreference(viewType as "grid" | "list");
+
+        // Build URL with view parameter
+        const currentParams = new URLSearchParams(window.location.search);
+        if (viewType === "grid") {
+          currentParams.delete("view");
+        } else {
+          currentParams.set("view", viewType);
         }
+
+        const newUrl = createNewsAwareURL(
+          window.location.pathname,
+          currentParams
+        );
+
+        // Navigate immediately - let server-side rendering handle button states
+        await navigateToUrl(newUrl);
       });
     });
 
-    // Keyboard shortcuts for view switching
-    document.addEventListener("keydown", (e: KeyboardEvent) => {
-      // Only if not typing in an input
+    // Keyboard shortcuts
+    document.addEventListener("keydown", async (e: KeyboardEvent) => {
       if (
+        isNavigating ||
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement
       )
         return;
 
       if (e.key === "g" && !e.ctrlKey && !e.metaKey) {
-        // Switch to grid view
-        updateViewInCurrentURL("grid");
-        window.location.reload();
         e.preventDefault();
+        saveViewPreference("grid");
+        const currentParams = new URLSearchParams(window.location.search);
+        currentParams.delete("view");
+        const newUrl = createNewsAwareURL(
+          window.location.pathname,
+          currentParams
+        );
+        await navigateToUrl(newUrl);
       } else if (e.key === "l" && !e.ctrlKey && !e.metaKey) {
-        // Switch to list view  
-        updateViewInCurrentURL("list");
-        window.location.reload();
         e.preventDefault();
+        saveViewPreference("list");
+        const currentParams = new URLSearchParams(window.location.search);
+        currentParams.set("view", "list");
+        const newUrl = createNewsAwareURL(
+          window.location.pathname,
+          currentParams
+        );
+        await navigateToUrl(newUrl);
       }
     });
-
-    // Visual feedback for active view
-    const updateViewButtonStates = () => {
-      const currentParams = new URLSearchParams(window.location.search);
-      const currentView = currentParams.get("view") || "grid";
-
-      viewToggleButtons.forEach((button) => {
-        const buttonView = (button as HTMLElement).dataset.view;
-        const isActive = buttonView === currentView;
-
-        if (isActive) {
-          button.classList.add(
-            "bg-(--ui-button-surface)",
-            "text-(--ui-button-text)"
-          );
-          button.classList.remove("text-(--content-meta)");
-        } else {
-          button.classList.remove(
-            "bg-(--ui-button-surface)",
-            "text-(--ui-button-text)"
-          );
-          button.classList.add("text-(--content-meta)");
-        }
-      });
-    };
-
-    updateViewButtonStates();
   });
 </script>

@@ -116,6 +116,7 @@ export function createCleanNewsURL(): string {
 
 /**
  * Updates current URL with view parameter (news section only)
+ * Simplified for better performance - navigation handled by caller
  */
 export function updateViewInCurrentURL(view: 'grid' | 'list'): void {
   if (typeof window === 'undefined' || !isCurrentlyInNewsSection()) return;
@@ -129,10 +130,12 @@ export function updateViewInCurrentURL(view: 'grid' | 'list'): void {
   }
   
   const newURL = createNewsAwareURL(window.location.pathname, currentParams);
-  window.history.replaceState({}, '', newURL);
   
-  // Save preference
+  // Save preference immediately
   saveViewPreference(view);
+  
+  // Update URL without navigation - caller handles navigation
+  window.history.pushState({}, '', newURL);
 }
 
 /**
