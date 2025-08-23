@@ -102,19 +102,19 @@ export async function fetchCategories(): Promise<Category[]> {
               category.name
             )
           ) {
-            console.log(`[DEBUG] Category ${category.name}:`, {
-              id: category.id,
-              isTopLevel: category.isTopLevel,
-              parentCategoryId: category.parentCategoryId,
-              rootCategoryId: category.rootCategoryId,
-              slug: category.slug,
-            });
+            // console.log(`[DEBUG] Category ${category.name}:`, {
+            //   id: category.id,
+            //   isTopLevel: category.isTopLevel,
+            //   parentCategoryId: category.parentCategoryId,
+            //   rootCategoryId: category.rootCategoryId,
+            //   slug: category.slug,
+            // });
           }
 
           return category;
         });
 
-      console.log(`[DEBUG] Total categories processed: ${categories.length}`);
+      // console.log(`[DEBUG] Total categories processed: ${categories.length}`);
       return categories;
     } catch (error) {
       const appError = processSquareError(error, "fetchCategories");
@@ -132,11 +132,11 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
       // Sort by Square's ordinal instead of hardcoded order
       let topLevelCategories = allCategories.filter((cat) => cat.isTopLevel);
 
-      console.log(
-        `[DEBUG] Top level categories found: ${topLevelCategories
-          .map((c) => c.name)
-          .join(", ")}`
-      );
+      // console.log(
+      //   `[DEBUG] Top level categories found: ${topLevelCategories
+      //     .map((c) => c.name)
+      //     .join(", ")}`
+      // );
 
       // REMOVE hardcoded getSortIndex, use Square's ordering
       topLevelCategories.sort((a, b) => {
@@ -158,10 +158,10 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
 
         // DEBUG: Log subcategory matching for Skateboards and Apparel
         if (["Skateboards", "Apparel"].includes(topCat.name)) {
-          console.log(
-            `[DEBUG] ${topCat.name} (${topCat.id}) subcategories:`,
-            subcategories.map((sub) => `${sub.name} (${sub.id})`)
-          );
+          // console.log(
+          //   `[DEBUG] ${topCat.name} (${topCat.id}) subcategories:`,
+          //   subcategories.map((sub) => `${sub.name} (${sub.id})`)
+          // );
         }
 
         // Sort subcategories by ordinal too
@@ -182,9 +182,9 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
         };
       });
 
-      console.log(
-        `[DEBUG] Hierarchy built with ${hierarchy.length} top-level categories`
-      );
+      // console.log(
+      //   `[DEBUG] Hierarchy built with ${hierarchy.length} top-level categories`
+      // );
       return hierarchy;
     } catch (error) {
       const appError = processSquareError(error, "fetchCategoryHierarchy");

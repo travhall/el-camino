@@ -4,15 +4,17 @@ import { squareClient } from "./client";
 import { categoryCache } from "./cacheUtils";
 import type { Category, CategoryHierarchy } from "./types";
 import { processSquareError, handleError } from "./errorUtils";
-import { requestDeduplicator } from './requestDeduplication';
+import { requestDeduplicator } from "./requestDeduplication";
 
 /**
  * Check if a category has any products (regardless of stock status)
  * Uses caching and request deduplication for performance
  */
-export async function categoryHasProducts(categoryId: string): Promise<boolean> {
+export async function categoryHasProducts(
+  categoryId: string
+): Promise<boolean> {
   const cacheKey = `category-has-products:${categoryId}`;
-  
+
   return requestDeduplicator.dedupe(cacheKey, () =>
     categoryCache.getOrCompute(cacheKey, async () => {
       try {
@@ -23,7 +25,7 @@ export async function categoryHasProducts(categoryId: string): Promise<boolean> 
         });
 
         // Return true if we found any items
-        return !!(result?.items?.length);
+        return !!result?.items?.length;
       } catch (error) {
         const appError = processSquareError(
           error,
@@ -43,8 +45,8 @@ export async function categoryHasProducts(categoryId: string): Promise<boolean> 
 export async function batchCheckCategoriesHaveProducts(
   categoryIds: string[]
 ): Promise<Record<string, boolean>> {
-  const cacheKey = `batch-category-check:${categoryIds.sort().join(',')}`;
-  
+  const cacheKey = `batch-category-check:${categoryIds.sort().join(",")}`;
+
   return requestDeduplicator.dedupe(cacheKey, async () => {
     const result: Record<string, boolean> = {};
     const idsToCheck: string[] = [];
@@ -65,7 +67,7 @@ export async function batchCheckCategoriesHaveProducts(
         // Process in parallel but limit concurrency for API stability
         const batchSize = 5;
         const batches = [];
-        
+
         for (let i = 0; i < idsToCheck.length; i += batchSize) {
           const batchIds = idsToCheck.slice(i, i + batchSize);
           batches.push(batchIds);
@@ -74,29 +76,36 @@ export async function batchCheckCategoriesHaveProducts(
         const batchResults = await Promise.all(
           batches.map(async (batchIds) => {
             const batchResult: Record<string, boolean> = {};
-            
+
             // Check each category in the batch
             await Promise.all(
               batchIds.map(async (categoryId) => {
                 try {
-                  const { result: searchResult } = await squareClient.catalogApi.searchCatalogItems({
-                    categoryIds: [categoryId],
-                    limit: 1,
-                  });
-                  
-                  const hasProducts = !!(searchResult?.items?.length);
+                  const { result: searchResult } =
+                    await squareClient.catalogApi.searchCatalogItems({
+                      categoryIds: [categoryId],
+                      limit: 1,
+                    });
+
+                  const hasProducts = !!searchResult?.items?.length;
                   batchResult[categoryId] = hasProducts;
-                  
+
                   // Cache individual results
-                  categoryCache.set(`category-has-products:${categoryId}`, hasProducts);
+                  categoryCache.set(
+                    `category-has-products:${categoryId}`,
+                    hasProducts
+                  );
                 } catch (error) {
                   // On error, default to showing category
                   batchResult[categoryId] = true;
-                  categoryCache.set(`category-has-products:${categoryId}`, true);
+                  categoryCache.set(
+                    `category-has-products:${categoryId}`,
+                    true
+                  );
                 }
               })
             );
-            
+
             return batchResult;
           })
         );
@@ -106,9 +115,12 @@ export async function batchCheckCategoriesHaveProducts(
           Object.assign(result, batchResult);
         }
       } catch (error) {
-        const appError = processSquareError(error, "batchCheckCategoriesHaveProducts");
+        const appError = processSquareError(
+          error,
+          "batchCheckCategoriesHaveProducts"
+        );
         handleError(appError, null);
-        
+
         // On batch error, default all remaining to true
         for (const categoryId of idsToCheck) {
           result[categoryId] = true;
@@ -131,10 +143,10 @@ export async function filterCategoryHierarchyWithProducts(
 
   // Extract all category IDs for batch checking
   const allCategoryIds = new Set<string>();
-  
-  hierarchy.forEach(item => {
+
+  hierarchy.forEach((item) => {
     allCategoryIds.add(item.category.id);
-    item.subcategories.forEach(sub => allCategoryIds.add(sub.id));
+    item.subcategories.forEach((sub) => allCategoryIds.add(sub.id));
   });
 
   // Batch check all categories
@@ -149,7 +161,7 @@ export async function filterCategoryHierarchyWithProducts(
     // Check if main category or any subcategories have products
     const mainCategoryHasProducts = categoryProductMap[item.category.id];
     const subcategoriesWithProducts = item.subcategories.filter(
-      sub => categoryProductMap[sub.id]
+      (sub) => categoryProductMap[sub.id]
     );
 
     // Include category if:
@@ -167,7 +179,7 @@ export async function filterCategoryHierarchyWithProducts(
   if (import.meta.env.DEV) {
     const removedCategories = hierarchy.length - filteredHierarchy.length;
     if (removedCategories > 0) {
-      console.log(`[CategoryFilter] Filtered out ${removedCategories} empty categories`);
+      // console.log(`[CategoryFilter] Filtered out ${removedCategories} empty categories`);
     }
   }
 
@@ -178,28 +190,35 @@ export async function filterCategoryHierarchyWithProducts(
  * Enhanced category hierarchy fetch with product filtering
  * For use in navigation components
  */
-export async function fetchCategoryHierarchyWithProducts(): Promise<CategoryHierarchy[]> {
+export async function fetchCategoryHierarchyWithProducts(): Promise<
+  CategoryHierarchy[]
+> {
   return categoryCache.getOrCompute("hierarchy-with-products", async () => {
     try {
       // Import here to avoid circular dependency
       const { fetchCategoryHierarchy } = await import("./categories");
-      
+
       // Get full hierarchy first
       const fullHierarchy = await fetchCategoryHierarchy();
-      
+
       // Filter to only categories with products
-      const filteredHierarchy = await filterCategoryHierarchyWithProducts(fullHierarchy);
-      
+      const filteredHierarchy = await filterCategoryHierarchyWithProducts(
+        fullHierarchy
+      );
+
       // Sort by Square's ordinal system (maintained from original fetch)
       // The original hierarchy is already sorted by ordinals, so we preserve that order
-      
-      console.log(
-        `[CategoryFilter] Showing ${filteredHierarchy.length} categories with products`
-      );
-      
+
+      // console.log(
+      //   `[CategoryFilter] Showing ${filteredHierarchy.length} categories with products`
+      // );
+
       return filteredHierarchy;
     } catch (error) {
-      const appError = processSquareError(error, "fetchCategoryHierarchyWithProducts");
+      const appError = processSquareError(
+        error,
+        "fetchCategoryHierarchyWithProducts"
+      );
       return handleError<CategoryHierarchy[]>(appError, []);
     }
   });
@@ -215,31 +234,35 @@ export function clearCategoryProductCache(): void {
   if (cache.cache) {
     const keysToDelete = [];
     for (const key of cache.cache.keys()) {
-      if (key.includes('category-has-products') || 
-          key.includes('batch-category-check') || 
-          key === 'hierarchy-with-products') {
+      if (
+        key.includes("category-has-products") ||
+        key.includes("batch-category-check") ||
+        key === "hierarchy-with-products"
+      ) {
         keysToDelete.push(key);
       }
     }
-    keysToDelete.forEach(key => cache.cache.delete(key));
+    keysToDelete.forEach((key) => cache.cache.delete(key));
   }
-  
-  console.log('[CategoryFilter] Cleared category product cache');
+
+  // console.log('[CategoryFilter] Cleared category product cache');
 }
 
 /**
  * Get categories for sidebar with products and optimal sorting
  * Includes fallback sorting strategies
  */
-export async function getCategoriesForSidebar(): Promise<Array<{
-  category: string;
-  url: string;
-  src: string;
-  id: string;
-}>> {
+export async function getCategoriesForSidebar(): Promise<
+  Array<{
+    category: string;
+    url: string;
+    src: string;
+    id: string;
+  }>
+> {
   try {
     const hierarchyWithProducts = await fetchCategoryHierarchyWithProducts();
-    
+
     // Transform to sidebar format
     const categoriesWithImages = hierarchyWithProducts.map((item) => ({
       category: item.category.name,
@@ -266,11 +289,13 @@ export async function getCategoriesForSidebar(): Promise<Array<{
     return categoriesWithImages.map(({ rawOrder, ...item }) => item);
   } catch (error) {
     const appError = processSquareError(error, "getCategoriesForSidebar");
-    return handleError<Array<{
-      category: string;
-      url: string;
-      src: string;
-      id: string;
-    }>>(appError, []);
+    return handleError<
+      Array<{
+        category: string;
+        url: string;
+        src: string;
+        id: string;
+      }>
+    >(appError, []);
   }
 }

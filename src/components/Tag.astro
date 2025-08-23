@@ -97,10 +97,15 @@ const elementProps = shouldUseButton
 </style>
 
 <script>
-  document.addEventListener("astro:page-load", () => {
+  function initializeTagButtons() {
     const tagButtons = document.querySelectorAll(".tag-nav-button");
 
     tagButtons.forEach((button) => {
+      const htmlButton = button as HTMLElement;
+      // Skip if already initialized
+      if (htmlButton.dataset.tagInitialized === "true") return;
+      htmlButton.dataset.tagInitialized = "true";
+
       button.addEventListener("click", (e) => {
         e.stopPropagation();
         e.preventDefault();
@@ -111,5 +116,14 @@ const elementProps = shouldUseButton
         }
       });
     });
-  });
+  }
+
+  // Robust initialization
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeTagButtons);
+  } else {
+    initializeTagButtons();
+  }
+  window.addEventListener("load", initializeTagButtons);
+  document.addEventListener("astro:page-load", initializeTagButtons);
 </script>

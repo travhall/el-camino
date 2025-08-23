@@ -149,11 +149,7 @@ const imageClasses = cropImages
   )}
 </div>
 
-// Fixed script section for WPGallery.astro
-// Replace the existing script section with this improved version
-
 <script>
-  // More reliable initialization that works regardless of Astro event issues
   function initializeGalleryLightbox() {
     const galleries = document.querySelectorAll('.wp-gallery');
 
@@ -161,7 +157,7 @@ const imageClasses = cropImages
       const galleryElement = gallery as HTMLElement;
       const galleryId = galleryElement.dataset.galleryId;
       
-      // Skip if already initialized (prevent double initialization)
+      // Skip if already initialized
       if (galleryElement.dataset.lightboxInitialized === 'true') {
         return;
       }
@@ -170,6 +166,16 @@ const imageClasses = cropImages
       const lightbox = gallery.querySelector('.gallery-lightbox') as HTMLElement;
 
       if (!lightbox || lightboxLinks.length === 0) return;
+
+      // PORTAL APPROACH: Move lightbox to body-level portal
+      const portalRoot = document.getElementById('portal-root');
+      if (portalRoot && lightbox.parentElement !== portalRoot) {
+        // Remove from gallery container
+        lightbox.remove();
+        // Add to portal with proper z-index
+        lightbox.style.zIndex = '9998'; // Match Modal.astro z-index
+        portalRoot.appendChild(lightbox);
+      }
 
       // Mark as initialized
       galleryElement.dataset.lightboxInitialized = 'true';
@@ -224,18 +230,17 @@ const imageClasses = cropImages
         document.body.style.overflow = '';
       }
 
-      // CRITICAL FIX: Event listeners with proper preventDefault
+      // Event listeners with preventDefault
       lightboxLinks.forEach((link, index) => {
-        // Remove any existing listeners to prevent duplicates
+        // Remove existing listeners
         const newLink = link.cloneNode(true) as HTMLAnchorElement;
         link.parentNode?.replaceChild(newLink, link);
         
         newLink.addEventListener('click', (e) => {
-          e.preventDefault(); // CRITICAL: Prevent navigation
+          e.preventDefault();
           e.stopPropagation();
-          console.log(`[Gallery] Opening lightbox for image ${index + 1}`); // Debug logging
           openLightbox(index);
-        }, { passive: false }); // Ensure preventDefault works
+        }, { passive: false });
       });
 
       lightboxClose.addEventListener('click', closeLightbox);
@@ -267,7 +272,6 @@ const imageClasses = cropImages
         }
       }
 
-      // Remove existing keydown listeners to prevent duplicates
       document.removeEventListener('keydown', handleKeydown);
       document.addEventListener('keydown', handleKeydown);
 
@@ -278,7 +282,7 @@ const imageClasses = cropImages
         }
       });
 
-      // Touch gestures for mobile
+      // Touch gestures
       let touchStartX = 0;
       let touchEndX = 0;
 
@@ -293,37 +297,29 @@ const imageClasses = cropImages
 
         if (Math.abs(diff) > threshold) {
           if (diff > 0) {
-            lightboxNext.click(); // Swipe left = next
+            lightboxNext.click();
           } else {
-            lightboxPrev.click(); // Swipe right = previous
+            lightboxPrev.click();
           }
         }
       });
 
-      console.log(`[Gallery] Initialized lightbox for gallery ${galleryId} with ${images.length} images`);
+      console.log(`[Gallery] Portal lightbox initialized for ${galleryId} with ${images.length} images`);
     });
   }
 
-  // ROBUST INITIALIZATION STRATEGY
-  // Use multiple initialization triggers to ensure lightbox works
-
-  // 1. If DOM is already loaded
+  // Robust initialization
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeGalleryLightbox);
   } else {
     initializeGalleryLightbox();
   }
 
-  // 2. Backup initialization on window load
   window.addEventListener('load', initializeGalleryLightbox);
-
-  // 3. Keep astro:page-load as additional trigger (when it works)
   document.addEventListener('astro:page-load', initializeGalleryLightbox);
-
-  // 4. Also handle astro:after-swap for view transitions (if ever re-enabled)
   document.addEventListener('astro:after-swap', initializeGalleryLightbox);
 
-  // 5. Manual re-initialization function for debugging
+  // Debug function
   if (typeof window !== 'undefined') {
     (window as any).reinitializeGalleries = initializeGalleryLightbox;
   }
