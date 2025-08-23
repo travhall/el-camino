@@ -56,10 +56,13 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <meta name="theme-color" content="#1a1a1a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <link rel="apple-touch-icon" href="/pwa-icon.svg" />
     <link rel="mask-icon" href="/pwa-icon.svg" color="#1a1a1a" />
-    
+
     <!-- Enhanced font preloading with fetchpriority -->
     <link
       rel="preload"
@@ -79,7 +82,11 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     />
 
     <!-- Performance optimizations -->
-    <link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" crossorigin />
+    <link
+      rel="preconnect"
+      href="https://elcaminoskateshop.wordpress.com"
+      crossorigin
+    />
     <link rel="preconnect" href="https://connect.squareup.com" crossorigin />
     <link rel="preconnect" href="https://squarecdn.com" crossorigin />
     <link rel="dns-prefetch" href="https://elcaminoskateshop.wordpress.com" />
@@ -182,7 +189,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
       <slot />
     </main>
     <Footer />
-    
+
     <QuickView />
     <MiniCart />
     <Notification />
@@ -241,27 +248,39 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <!-- Performance Monitoring & PWA Initialization -->
     <script>
       // Initialize Performance Manager
-      import('../lib/performance/PerformanceManager').then(({ performanceManager }) => {
-        // Set reporting endpoint if available
-        if (import.meta.env.MONITORING_ENDPOINT) {
-          performanceManager.setReportingEndpoint(import.meta.env.MONITORING_ENDPOINT);
-        }
-        
-        if (import.meta.env.DEV) {
-          console.log('[Layout] Performance monitoring initialized');
-          
-          // Log initial metrics in development (reduced frequency)
-          setTimeout(() => {
-            const health = performanceManager.getHealthScore();
-            console.log('[Performance] Health Score:', health.score, 'Issues:', health.issues);
-          }, 10000); // Increased from 5 seconds to 10 seconds
-        }
-      }).catch(error => {
-        console.warn('[Layout] Performance monitoring failed to load:', error);
-      });
+      import("../lib/performance/PerformanceManager")
+        .then(({ performanceManager }) => {
+          // Set reporting endpoint if available
+          if (import.meta.env.MONITORING_ENDPOINT) {
+            performanceManager.setReportingEndpoint(
+              import.meta.env.MONITORING_ENDPOINT
+            );
+          }
+
+          if (import.meta.env.DEV) {
+            console.log("[Layout] Performance monitoring initialized");
+
+            // Log initial metrics in development (reduced frequency)
+            setTimeout(() => {
+              const health = performanceManager.getHealthScore();
+              console.log(
+                "[Performance] Health Score:",
+                health.score,
+                "Issues:",
+                health.issues
+              );
+            }, 10000); // Increased from 5 seconds to 10 seconds
+          }
+        })
+        .catch((error) => {
+          console.warn(
+            "[Layout] Performance monitoring failed to load:",
+            error
+          );
+        });
 
       // Critical performance optimizations for immediate execution
-      (function() {
+      (function () {
         // TEMPORARILY DISABLED: Heavy image format detection that may impact performance
         // if ('HTMLCanvasElement' in window && !sessionStorage.getItem('imageFormatSupport')) {
         //   import('../lib/image/enhanced-optimizer').then(({ EnhancedImageOptimizer }) => {
@@ -275,9 +294,11 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
         //     initMobileOptimization();
         //   });
         // }
-        
+
         if (import.meta.env.DEV) {
-          console.log('[Layout] Heavy optimizations disabled for performance testing');
+          console.log(
+            "[Layout] Heavy optimizations disabled for performance testing"
+          );
         }
       })();
     </script>

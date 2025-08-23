@@ -118,7 +118,7 @@ const imageClasses = cropImages
 
   <!-- Gallery Navigation (for lightbox mode) -->
   {linkTo === 'file' && (
-    <div class="gallery-lightbox fixed inset-0 bg-black/95 z-50 items-center justify-center" style="display: none;">
+    <div class="gallery-lightbox fixed inset-0 bg-black/95 z-[500] items-center justify-center" style="display: none;">
       <button class="lightbox-close absolute top-4 right-4 text-white text-2xl p-2 hover:bg-white/20 rounded-full">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -149,17 +149,30 @@ const imageClasses = cropImages
   )}
 </div>
 
+// Fixed script section for WPGallery.astro
+// Replace the existing script section with this improved version
+
 <script>
-  document.addEventListener('astro:page-load', () => {
+  // More reliable initialization that works regardless of Astro event issues
+  function initializeGalleryLightbox() {
     const galleries = document.querySelectorAll('.wp-gallery');
 
     galleries.forEach((gallery) => {
       const galleryElement = gallery as HTMLElement;
       const galleryId = galleryElement.dataset.galleryId;
+      
+      // Skip if already initialized (prevent double initialization)
+      if (galleryElement.dataset.lightboxInitialized === 'true') {
+        return;
+      }
+      
       const lightboxLinks = gallery.querySelectorAll('[data-lightbox="gallery"]') as NodeListOf<HTMLAnchorElement>;
       const lightbox = gallery.querySelector('.gallery-lightbox') as HTMLElement;
 
       if (!lightbox || lightboxLinks.length === 0) return;
+
+      // Mark as initialized
+      galleryElement.dataset.lightboxInitialized = 'true';
 
       const lightboxImage = lightbox.querySelector('.lightbox-image') as HTMLImageElement;
       const lightboxCaption = lightbox.querySelector('.lightbox-caption') as HTMLElement;
@@ -211,12 +224,18 @@ const imageClasses = cropImages
         document.body.style.overflow = '';
       }
 
-      // Event listeners
+      // CRITICAL FIX: Event listeners with proper preventDefault
       lightboxLinks.forEach((link, index) => {
-        link.addEventListener('click', (e) => {
-          e.preventDefault();
+        // Remove any existing listeners to prevent duplicates
+        const newLink = link.cloneNode(true) as HTMLAnchorElement;
+        link.parentNode?.replaceChild(newLink, link);
+        
+        newLink.addEventListener('click', (e) => {
+          e.preventDefault(); // CRITICAL: Prevent navigation
+          e.stopPropagation();
+          console.log(`[Gallery] Opening lightbox for image ${index + 1}`); // Debug logging
           openLightbox(index);
-        });
+        }, { passive: false }); // Ensure preventDefault works
       });
 
       lightboxClose.addEventListener('click', closeLightbox);
@@ -232,7 +251,7 @@ const imageClasses = cropImages
       });
 
       // Keyboard navigation
-      document.addEventListener('keydown', (e) => {
+      function handleKeydown(e: KeyboardEvent) {
         if (lightbox.style.display !== 'none' && lightbox.style.display !== '') {
           switch (e.key) {
             case 'Escape':
@@ -246,7 +265,11 @@ const imageClasses = cropImages
               break;
           }
         }
-      });
+      }
+
+      // Remove existing keydown listeners to prevent duplicates
+      document.removeEventListener('keydown', handleKeydown);
+      document.addEventListener('keydown', handleKeydown);
 
       // Close on backdrop click
       lightbox.addEventListener('click', (e) => {
@@ -276,52 +299,32 @@ const imageClasses = cropImages
           }
         }
       });
+
+      console.log(`[Gallery] Initialized lightbox for gallery ${galleryId} with ${images.length} images`);
     });
-  });
+  }
+
+  // ROBUST INITIALIZATION STRATEGY
+  // Use multiple initialization triggers to ensure lightbox works
+
+  // 1. If DOM is already loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeGalleryLightbox);
+  } else {
+    initializeGalleryLightbox();
+  }
+
+  // 2. Backup initialization on window load
+  window.addEventListener('load', initializeGalleryLightbox);
+
+  // 3. Keep astro:page-load as additional trigger (when it works)
+  document.addEventListener('astro:page-load', initializeGalleryLightbox);
+
+  // 4. Also handle astro:after-swap for view transitions (if ever re-enabled)
+  document.addEventListener('astro:after-swap', initializeGalleryLightbox);
+
+  // 5. Manual re-initialization function for debugging
+  if (typeof window !== 'undefined') {
+    (window as any).reinitializeGalleries = initializeGalleryLightbox;
+  }
 </script>
-
-<style>
-  /* Gallery item hover effects */
-  .gallery-item {
-    transition: transform 0.2s ease;
-  }
-
-  .gallery-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  }
-
-  /* Lightbox styles */
-  .gallery-lightbox {
-    backdrop-filter: blur(4px);
-  }
-
-  .lightbox-image {
-    transition: opacity 0.3s ease;
-  }
-
-  /* Focus styles for accessibility */
-  .gallery-link:focus {
-    outline: 2px solid var(--ui-accent);
-    outline-offset: 2px;
-  }
-
-  .lightbox-close:focus,
-  .lightbox-prev:focus,
-  .lightbox-next:focus {
-    outline: 2px solid white;
-    outline-offset: 2px;
-  }
-
-  /* Reduced motion support */
-  @media (prefers-reduced-motion: reduce) {
-    .gallery-item,
-    .lightbox-image {
-      transition: none;
-    }
-    
-    .gallery-item img {
-      transition: none;
-    }
-  }
-</style>
