@@ -43,10 +43,9 @@ const videoId = getVideoId(url, embedType);
       <iframe
         src={`https://www.youtube.com/embed/${videoId}`}
         title="YouTube video player"
-        frameborder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowfullscreen
-        class="w-full h-full"
+        class="w-full h-full youtube-embed"
         loading="lazy"
       />
     </div>
@@ -55,10 +54,9 @@ const videoId = getVideoId(url, embedType);
       <iframe
         src={`https://player.vimeo.com/video/${videoId}`}
         title="Vimeo video player"
-        frameborder="0"
         allow="autoplay; fullscreen; picture-in-picture"
         allowfullscreen
-        class="w-full h-full"
+        class="w-full h-full vimeo-embed"
         loading="lazy"
       />
     </div>
@@ -106,3 +104,10 @@ const videoId = getVideoId(url, embedType);
     <div class="embed-fallback" set:html={originalHtml} />
   )}
 </div>
+
+<style>
+  .youtube-embed,
+  .vimeo-embed {
+    border: none; /* Replaces frameborder="0" */
+  }
+</style>

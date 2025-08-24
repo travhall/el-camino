@@ -618,15 +618,22 @@ function extractProductIds(html: string): string[] {
 const parsedBlocks = parseWordPressBlocks(content);
 ---
 
-<!-- Render parsed blocks -->
+<!-- Render parsed blocks with selective WordPress content styling -->
 <div>
   {
     parsedBlocks.map((block, index) => {
       const isLastBlock = index === parsedBlocks.length - 1;
       const blockClasses = isLastBlock ? "" : "mb-6";
+      
+      // Define which blocks need WordPress content styling (content-only blocks)
+      const needsWordPressContentStyling = [
+        'paragraph', 'heading', 'list', 'quote', 'image', 'gallery', 
+        'columns', 'separator', 'table', 'embed', 'video', 'audio'
+      ].includes(block.type);
 
       switch (block.type) {
         case "product-showcase":
+          // PROTECTED: Never apply WordPress content styling
           const hasProductData =
             (block.data.productSkus && block.data.productSkus.length > 0) ||
             (block.data.fallbackIds && block.data.fallbackIds.length > 0);
@@ -650,6 +657,7 @@ const parsedBlocks = parseWordPressBlocks(content);
           );
 
         case "event":
+          // PROTECTED: Never apply WordPress content styling
           return block.data.title && block.data.date ? (
             <div class={blockClasses}>
               <WPEventBlock {...block.data} />
@@ -657,6 +665,7 @@ const parsedBlocks = parseWordPressBlocks(content);
           ) : null;
 
         case "team-member":
+          // PROTECTED: Never apply WordPress content styling
           return block.data.name && block.data.role ? (
             <div class={blockClasses}>
               <WPTeamMember {...block.data} />
@@ -665,7 +674,7 @@ const parsedBlocks = parseWordPressBlocks(content);
 
         case "jetpack-slideshow":
           return block.data.images && block.data.images.length > 0 ? (
-            <div class={blockClasses}>
+            <div class={`wordpress-content ${blockClasses}`}>
               <JetpackSlideshow {...block.data} />
             </div>
           ) : (
@@ -677,7 +686,7 @@ const parsedBlocks = parseWordPressBlocks(content);
 
         case "gallery":
           return block.data.images && block.data.images.length > 0 ? (
-            <div class={blockClasses}>
+            <div class={`wordpress-content ${blockClasses}`}>
               <WPGallery {...block.data} />
             </div>
           ) : (
@@ -689,7 +698,7 @@ const parsedBlocks = parseWordPressBlocks(content);
 
         case "quote":
           return block.data.quote ? (
-            <div class={blockClasses}>
+            <div class={`wordpress-content ${blockClasses}`}>
               <WPQuote {...block.data} />
             </div>
           ) : (
@@ -701,7 +710,7 @@ const parsedBlocks = parseWordPressBlocks(content);
 
         case "embed":
           return block.data.url ? (
-            <div class={blockClasses}>
+            <div class={`wordpress-content ${blockClasses}`}>
               <WPEmbed {...block.data} />
             </div>
           ) : (
@@ -713,7 +722,7 @@ const parsedBlocks = parseWordPressBlocks(content);
 
         case "image":
           return block.data.src ? (
-            <div class={blockClasses}>
+            <div class={`wordpress-content ${blockClasses}`}>
               <WPImage {...block.data} />
             </div>
           ) : (
@@ -725,7 +734,7 @@ const parsedBlocks = parseWordPressBlocks(content);
 
         case "columns":
           return block.data.columns && block.data.columns.length > 0 ? (
-            <div class={blockClasses}>
+            <div class={`wordpress-content ${blockClasses}`}>
               <WPColumns {...block.data} />
             </div>
           ) : (
@@ -737,7 +746,7 @@ const parsedBlocks = parseWordPressBlocks(content);
 
         case "button":
           return block.data.url && block.data.text ? (
-            <div class={blockClasses}>
+            <div class={`wordpress-content ${blockClasses}`}>
               <WPButton {...block.data} />
             </div>
           ) : (
@@ -748,11 +757,13 @@ const parsedBlocks = parseWordPressBlocks(content);
           );
 
         default:
+          // All other content blocks get WordPress content styling
+          const wrapperClass = needsWordPressContentStyling 
+            ? `wp-content-block wordpress-content ${blockClasses}`
+            : `wp-content-block ${blockClasses}`;
+          
           return (
-            <div
-              class={`wp-content-block wordpress-content ${blockClasses}`}
-              set:html={block.html}
-            />
+            <div class={wrapperClass} set:html={block.html} />
           );
       }
     })
