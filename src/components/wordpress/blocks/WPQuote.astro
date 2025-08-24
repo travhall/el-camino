@@ -1,6 +1,6 @@
 ---
 // src/components/wordpress/blocks/WPQuote.astro
-// Custom quote component for wp-block-quote
+// Simplified quote component leveraging base .wordpress-content styles
 
 interface Props {
   quote: string;
@@ -9,43 +9,63 @@ interface Props {
 }
 
 const { quote, cite, style = "default" } = Astro.props;
-
-const isLarge = style === "large";
 ---
 
-<blockquote
-  class={`wp-quote relative my-8 ${isLarge ? "text-4xl lg:text-5xl" : "text-xl"} leading-relaxed`}
-  cite={cite}
->
+<blockquote class={`wp-quote-enhanced ${style === "large" ? "is-large" : ""}`}>
   <!-- Quote Icon -->
-  <div
-    class={`absolute ${isLarge ? "-top-4 -left-4" : "-top-2 -left-2"} text-(--ui-accent) opacity-20`}
-  >
-    <svg
-      class={`${isLarge ? "w-16 h-16" : "w-8 h-8"}`}
-      fill="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h4v10h-10z"
-      ></path>
+  <div class="quote-icon">
+    <svg class="quote-svg" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h4v10h-10z" />
     </svg>
   </div>
 
-  <!-- Quote Text -->
-  <div
-    class={`${isLarge ? "pl-8 lg:pl-12" : "pl-6"} italic text-(--content-emphasis) font-medium`}
-    set:html={quote}
-  />
+  <!-- Quote Content - Relies on base .wordpress-content blockquote styles -->
+  <div class="quote-content" set:html={quote} />
 
   <!-- Citation -->
-  {
-    cite && (
-      <footer class={`${isLarge ? "mt-6 pl-8 lg:pl-12" : "mt-4 pl-6"}`}>
-        <cite class="text-(--content-meta) text-base italic">
-          — <span set:html={cite} />
-        </cite>
-      </footer>
-    )
-  }
+  {cite && (
+    <footer class="quote-citation">
+      <cite>— <span set:html={cite} /></cite>
+    </footer>
+  )}
 </blockquote>
+
+<style>
+  /* Enhancement-specific styles only - base styles inherited */
+  .wp-quote-enhanced {
+    position: relative;
+    /* All base blockquote styles inherited from .wordpress-content */
+  }
+  
+  .wp-quote-enhanced.is-large {
+    font-size: 1.5rem;
+    text-align: center;
+    border: none;
+    padding-left: 0;
+  }
+  
+  .quote-icon {
+    position: absolute;
+    top: -0.5rem;
+    left: -0.5rem;
+    color: var(--content-emphasis);
+    opacity: 0.3;
+  }
+  
+  .quote-svg {
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  .wp-quote-enhanced.is-large .quote-svg {
+    width: 3rem;
+    height: 3rem;
+  }
+  
+  .quote-citation {
+    margin-top: 1rem;
+    font-style: normal;
+    font-size: 0.9em;
+    color: var(--content-meta);
+  }
+</style>
