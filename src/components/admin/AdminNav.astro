@@ -7,7 +7,7 @@ const adminSections = [
     name: "Dashboard",
     href: "/admin",
     slug: "dashboard",
-    subcategories: [] // No subcategories for dashboard
+    subcategories: [], // No subcategories for dashboard
   },
   {
     name: "Performance",
@@ -15,21 +15,45 @@ const adminSections = [
     slug: "performance",
     subcategories: [
       { name: "Overview", href: "/admin/performance", slug: "overview" },
-      { name: "Core Web Vitals", href: "/admin/performance/core-vitals", slug: "core-vitals" },
-      { name: "Resource Analysis", href: "/admin/performance/resources", slug: "resources" },
-      { name: "Business Impact", href: "/admin/performance/business-impact", slug: "business-impact" },
-      { name: "Competitive Intel", href: "/admin/performance/competitive", slug: "competitive" }
-    ]
+      {
+        name: "Core Web Vitals",
+        href: "/admin/performance/core-vitals",
+        slug: "core-vitals",
+      },
+      {
+        name: "Resource Analysis",
+        href: "/admin/performance/resources",
+        slug: "resources",
+      },
+      {
+        name: "Business Impact",
+        href: "/admin/performance/business-impact",
+        slug: "business-impact",
+      },
+      {
+        name: "Competitive Intel",
+        href: "/admin/performance/competitive",
+        slug: "competitive",
+      },
+    ],
   },
   {
     name: "Content",
     href: "/admin/sku-reference",
-    slug: "content", 
+    slug: "content",
     subcategories: [
-      { name: "SKU Reference", href: "/admin/sku-reference", slug: "sku-reference" },
-      { name: "WordPress Demo", href: "/admin/demo/wordpress-demo", slug: "wordpress-demo" }
-    ]
-  }
+      {
+        name: "SKU Reference",
+        href: "/admin/content/sku-reference",
+        slug: "sku-reference",
+      },
+      {
+        name: "WordPress Demo",
+        href: "/admin/content/wordpress-demo",
+        slug: "wordpress-demo",
+      },
+    ],
+  },
 ];
 
 // Get current path for active state
@@ -55,12 +79,15 @@ const currentPath = Astro.url.pathname;
           href={section.href}
           class:list={[
             "nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 lg:p-4 text-(--ui-nav-text) transition-all duration-300 ease-in-out relative hover:text-(--ui-nav-hover) before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left nav-link",
-            { 
-              "before:scale-x-100 before:origin-left": 
+            {
+              "lg:before:scale-x-100 lg:before:origin-left":
                 (section.slug === "dashboard" && currentPath === "/admin") ||
-                (section.slug === "performance" && currentPath.startsWith("/admin/performance")) ||
-                (section.slug === "content" && (currentPath.startsWith("/admin/sku-reference") || currentPath.startsWith("/admin/demo")))
-            }
+                (section.slug === "performance" &&
+                  currentPath.startsWith("/admin/performance")) ||
+                (section.slug === "content" &&
+                  (currentPath.startsWith("/admin/sku-reference") ||
+                    currentPath.startsWith("/admin/demo"))),
+            },
           ]}
           style={`--item-index: ${index};`}
           data-has-children={section.subcategories.length > 0}
@@ -117,7 +144,10 @@ const currentPath = Astro.url.pathname;
                   data-subcategory={subcategory.name}
                   class:list={[
                     "block p-2 text-2xl lg:text-base text-(--ui-nav-text) hover:text-(--ui-nav-text) before:absolute before:top-0 before:left-0 before:w-full before:h-full before:bg-(--ui-nav-hover)/20 before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left relative",
-                    { "font-semibold bg-(--ui-nav-hover)/10": currentPath === subcategory.href }
+                    {
+                      "font-semibold bg-(--ui-nav-hover)/10":
+                        currentPath === subcategory.href,
+                    },
                   ]}
                 >
                   {subcategory.name}
@@ -135,9 +165,13 @@ const currentPath = Astro.url.pathname;
     class="flex flex-col gap-2 p-4 pt-12 border-t-4 border-(--border-secondary) mt-6 lg:hidden nav-link"
     style="--item-index: 3;"
   >
-    <div class="flex flex-col text-lg gap-2 uppercase not-italic text-(--ui-nav-text)">
+    <div
+      class="flex flex-col text-lg gap-2 uppercase not-italic text-(--ui-nav-text)"
+    >
       <span class="font-semibold">El Camino Admin</span>
-      <span class="text-sm normal-case text-(--content-meta)">Performance monitoring and content management</span>
+      <span class="text-sm normal-case text-(--content-meta)"
+        >Performance monitoring and content management</span
+      >
     </div>
   </div>
 </nav>
@@ -288,7 +322,9 @@ const currentPath = Astro.url.pathname;
       if (!nav) return;
 
       // Enhance skip link functionality
-      const skipLink = document.querySelector(".skip-link") as HTMLAnchorElement;
+      const skipLink = document.querySelector(
+        ".skip-link"
+      ) as HTMLAnchorElement;
       if (skipLink) {
         skipLink.addEventListener(
           "click",
@@ -333,7 +369,8 @@ const currentPath = Astro.url.pathname;
         const hasChildren = link?.getAttribute("data-has-children") === "true";
 
         if (hasChildren && link && dropdown) {
-          const sectionName = link.getAttribute("data-section-name") || "Unknown";
+          const sectionName =
+            link.getAttribute("data-section-name") || "Unknown";
 
           this.navElements.set(group, {
             link,
@@ -430,7 +467,10 @@ const currentPath = Astro.url.pathname;
       }
     }
 
-    private toggleDropdown(group: Element, elementData: AdminNavElementData): void {
+    private toggleDropdown(
+      group: Element,
+      elementData: AdminNavElementData
+    ): void {
       requestAnimationFrame(() => {
         this.isAnimating = true;
 
@@ -441,7 +481,9 @@ const currentPath = Astro.url.pathname;
 
         // Announce state change for screen readers
         const action = wasOpen ? "collapsed" : "expanded";
-        this.announceToScreenReader(`${elementData.sectionName} menu ${action}`);
+        this.announceToScreenReader(
+          `${elementData.sectionName} menu ${action}`
+        );
 
         setTimeout(() => {
           this.isAnimating = false;
@@ -452,11 +494,15 @@ const currentPath = Astro.url.pathname;
     private closeOtherDropdowns(excludeGroup: Element): void {
       const updates: (() => void)[] = [];
 
-      this.navElements.forEach((elementData: AdminNavElementData, group: Element) => {
-        if (group !== excludeGroup && elementData.isOpen) {
-          updates.push(() => this.setDropdownState(group, elementData, false));
+      this.navElements.forEach(
+        (elementData: AdminNavElementData, group: Element) => {
+          if (group !== excludeGroup && elementData.isOpen) {
+            updates.push(() =>
+              this.setDropdownState(group, elementData, false)
+            );
+          }
         }
-      });
+      );
 
       if (updates.length) {
         requestAnimationFrame(() => {
@@ -465,7 +511,11 @@ const currentPath = Astro.url.pathname;
       }
     }
 
-    private setDropdownState(group: Element, elementData: AdminNavElementData, isOpen: boolean): void {
+    private setDropdownState(
+      group: Element,
+      elementData: AdminNavElementData,
+      isOpen: boolean
+    ): void {
       elementData.isOpen = isOpen;
       const { link, dropdown } = elementData;
 
@@ -497,11 +547,13 @@ const currentPath = Astro.url.pathname;
 
     private closeAllDropdowns(): void {
       requestAnimationFrame(() => {
-        this.navElements.forEach((elementData: AdminNavElementData, group: Element) => {
-          if (elementData.isOpen) {
-            this.setDropdownState(group, elementData, false);
+        this.navElements.forEach(
+          (elementData: AdminNavElementData, group: Element) => {
+            if (elementData.isOpen) {
+              this.setDropdownState(group, elementData, false);
+            }
           }
-        });
+        );
       });
     }
 
