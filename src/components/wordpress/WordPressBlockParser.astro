@@ -674,92 +674,92 @@ const parsedBlocks = parseWordPressBlocks(content);
 
         case "jetpack-slideshow":
           return block.data.images && block.data.images.length > 0 ? (
-            <div class={`wordpress-content ${blockClasses}`}>
+            <div class={blockClasses}>
               <JetpackSlideshow {...block.data} />
             </div>
           ) : (
             <div
-              class={`wp-content-block wordpress-content ${blockClasses}`}
+              class={`wp-content-block ${blockClasses}`}
               set:html={block.html}
             />
           );
 
         case "gallery":
           return block.data.images && block.data.images.length > 0 ? (
-            <div class={`wordpress-content ${blockClasses}`}>
+            <div class={blockClasses}>
               <WPGallery {...block.data} />
             </div>
           ) : (
             <div
-              class={`wp-content-block wordpress-content ${blockClasses}`}
+              class={`wp-content-block ${blockClasses}`}
               set:html={block.html}
             />
           );
 
         case "quote":
           return block.data.quote ? (
-            <div class={`wordpress-content ${blockClasses}`}>
+            <div class={blockClasses}>
               <WPQuote {...block.data} />
             </div>
           ) : (
             <div
-              class={`wp-content-block wordpress-content ${blockClasses}`}
+              class={`wp-content-block ${blockClasses}`}
               set:html={block.html}
             />
           );
 
         case "embed":
           return block.data.url ? (
-            <div class={`wordpress-content ${blockClasses}`}>
+            <div class={blockClasses}>
               <WPEmbed {...block.data} />
             </div>
           ) : (
             <div
-              class={`wp-content-block wordpress-content ${blockClasses}`}
+              class={`wp-content-block ${blockClasses}`}
               set:html={block.html}
             />
           );
 
         case "image":
           return block.data.src ? (
-            <div class={`wordpress-content ${blockClasses}`}>
+            <div class={blockClasses}>
               <WPImage {...block.data} />
             </div>
           ) : (
             <div
-              class={`wp-content-block wordpress-content ${blockClasses}`}
+              class={`wp-content-block ${blockClasses}`}
               set:html={block.html}
             />
           );
 
         case "columns":
           return block.data.columns && block.data.columns.length > 0 ? (
-            <div class={`wordpress-content ${blockClasses}`}>
+            <div class={blockClasses}>
               <WPColumns {...block.data} />
             </div>
           ) : (
             <div
-              class={`wp-content-block wordpress-content ${blockClasses}`}
+              class={`wp-content-block ${blockClasses}`}
               set:html={block.html}
             />
           );
 
         case "button":
           return block.data.url && block.data.text ? (
-            <div class={`wordpress-content ${blockClasses}`}>
+            <div class={blockClasses}>
               <WPButton {...block.data} />
             </div>
           ) : (
             <div
-              class={`wp-content-block wordpress-content ${blockClasses}`}
+              class={`wp-content-block ${blockClasses}`}
               set:html={block.html}
             />
           );
 
         default:
-          // All other content blocks get WordPress content styling
+          // All other content blocks - no longer need wordpress-content wrapper
           const wrapperClass = needsWordPressContentStyling 
-            ? `wp-content-block wordpress-content ${blockClasses}`
+            ? `wp-content-block ${blockClasses}`
             : `wp-content-block ${blockClasses}`;
           
           return (

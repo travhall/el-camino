@@ -44,8 +44,8 @@ const filterOptions = {
 ---
 
 <Layout title={pageTitle}>
-  <div class="px-4 sm:px-6 lg:px-8 py-12 relative">
-    
+  <div class="px-4 py-8 relative">
+
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-4xl font-bold text-(--content-heading) mb-4">
@@ -113,7 +113,6 @@ const filterOptions = {
                   </svg>
                   Examples
                 </button>
-                
                 <button
                   id="open-showcase-builder"
                   class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-3 lg:text-base lg:py-2 lg:px-4 flex items-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
@@ -546,11 +545,11 @@ const filterOptions = {
     categoryFilters.forEach(filter => {
       filter.addEventListener('change', updateResults);
     });
-    
+
     brandFilters.forEach(filter => {
       filter.addEventListener('change', updateResults);
     });
-    
+
     priceFilters.forEach(filter => {
       filter.addEventListener('change', updateResults);
     });
@@ -589,7 +588,7 @@ const filterOptions = {
         document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentLayout = btn.dataset.layout;
-        
+
         // Show/hide columns control
         const columnsControl = document.getElementById('columns-control');
         columnsControl.style.display = currentLayout === 'grid' ? 'block' : 'none';
@@ -614,25 +613,25 @@ const filterOptions = {
   function openExamples() {
     const overlay = document.getElementById('examples-overlay');
     const panel = document.getElementById('examples-panel');
-    
+
     overlay.classList.remove('hidden');
     panel.classList.remove('-translate-x-full');
-    
+
     // Trigger animations
     setTimeout(() => {
       overlay.classList.remove('opacity-0');
     }, 10);
-    
+
     document.body.style.overflow = 'hidden';
   }
 
   function closeExamples() {
     const overlay = document.getElementById('examples-overlay');
     const panel = document.getElementById('examples-panel');
-    
+
     overlay.classList.add('opacity-0');
     panel.classList.add('-translate-x-full');
-    
+
     setTimeout(() => {
       overlay.classList.add('hidden');
       document.body.style.overflow = '';
@@ -642,25 +641,25 @@ const filterOptions = {
   function openShowcaseBuilder() {
     const overlay = document.getElementById('showcase-builder-overlay');
     const panel = document.getElementById('showcase-builder-panel');
-    
+
     overlay.classList.remove('hidden');
     panel.classList.remove('translate-x-full');
-    
+
     // Trigger animations
     setTimeout(() => {
       overlay.classList.remove('opacity-0');
     }, 10);
-    
+
     document.body.style.overflow = 'hidden';
   }
 
   function closeShowcaseBuilder() {
     const overlay = document.getElementById('showcase-builder-overlay');
     const panel = document.getElementById('showcase-builder-panel');
-    
+
     overlay.classList.add('opacity-0');
     panel.classList.add('translate-x-full');
-    
+
     setTimeout(() => {
       overlay.classList.add('hidden');
       document.body.style.overflow = '';
@@ -670,7 +669,7 @@ const filterOptions = {
   function updateBuilderButton() {
     const button = document.getElementById('open-showcase-builder');
     const count = document.getElementById('selected-count-trigger');
-    
+
     if (button && count) {
       count.textContent = selectedProducts.size;
       button.disabled = selectedProducts.size === 0;
@@ -714,7 +713,7 @@ const filterOptions = {
     // Update UI
     updateResultsCount();
     renderTableView();
-    
+
     // Show/hide empty state
     emptyState.classList.toggle('hidden', filteredSkus.length > 0);
     document.getElementById('results-container').classList.toggle('hidden', filteredSkus.length === 0);
@@ -799,7 +798,7 @@ const filterOptions = {
 
   function renderTableView() {
     if (!tableResults) return;
-    
+
     tableResults.innerHTML = filteredSkus.map(sku => `
       <tr class="hover:bg-(--surface-tertiary) cursor-pointer product-row" data-sku="${sku.humanReadableSku}">
         <td class="px-4 py-3">
@@ -841,7 +840,7 @@ const filterOptions = {
       row.addEventListener('click', (e) => {
         // Don't trigger if clicking directly on checkbox
         if (e.target.type === 'checkbox') return;
-        
+
         const checkbox = row.querySelector('.sku-checkbox');
         checkbox.checked = !checkbox.checked;
         checkbox.dispatchEvent(new Event('change'));
@@ -875,9 +874,9 @@ const filterOptions = {
   function updateSelectedProductsDisplay() {
     const container = document.getElementById('selected-products');
     const count = document.getElementById('selected-count');
-    
+
     count.textContent = selectedProducts.size;
-    
+
     if (selectedProducts.size === 0) {
       container.innerHTML = '<p class="text-(--content-meta) italic">Products will appear here as you select them</p>';
       return;
@@ -935,10 +934,10 @@ const filterOptions = {
 
   function updateSelectAllState() {
     if (!selectAllCheckbox) return;
-    
+
     const visibleCheckboxes = document.querySelectorAll('.sku-checkbox');
     const checkedCount = Array.from(visibleCheckboxes).filter(cb => cb.checked).length;
-    
+
     if (checkedCount === 0) {
       selectAllCheckbox.checked = false;
       selectAllCheckbox.indeterminate = false;
@@ -955,7 +954,7 @@ const filterOptions = {
     const title = document.getElementById('showcase-title')?.value || '';
     const description = document.getElementById('showcase-description')?.value || '';
     const skuList = Array.from(selectedProducts).map(p => p.sku).join(',');
-    
+
     if (selectedProducts.size === 0) {
       showToast('Please select at least one product');
       return;
@@ -963,23 +962,23 @@ const filterOptions = {
 
     let code = '<div class="wp-block-product-showcase">\n';
     code += `<!-- data-product-skus="${skuList}" -->\n`;
-    
+
     if (title) {
       code += `<!-- data-title="${title}" -->\n`;
     }
-    
+
     if (description) {
       code += `<!-- data-description="${description}" -->\n`;
     }
-    
+
     if (currentLayout !== 'grid') {
       code += `<!-- data-layout="${currentLayout}" -->\n`;
     }
-    
+
     if (currentLayout === 'grid' && currentColumns !== 3) {
       code += `<!-- data-columns="${currentColumns}" -->\n`;
     }
-    
+
     code += '</div>';
 
     document.getElementById('generated-code').textContent = code;
@@ -993,11 +992,11 @@ const filterOptions = {
     updateSelectedProductsDisplay();
     updateBuilderButton();
     document.getElementById('code-output').style.display = 'none';
-    
+
     // Clear form inputs
     document.getElementById('showcase-title').value = '';
     document.getElementById('showcase-description').value = '';
-    
+
     // Reset layout to grid
     document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('[data-layout="grid"]').classList.add('active');
@@ -1026,7 +1025,7 @@ const filterOptions = {
     a.download = `sku-reference-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    
+
     showToast('CSV exported');
   }
 
