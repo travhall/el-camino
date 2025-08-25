@@ -29,7 +29,10 @@ if (!skipInventoryCheck && product.variationId) {
     const quantity = await checkItemInventory(product.variationId);
     isOutOfStock = quantity <= 0;
   } catch (error) {
-    console.error(`ProductCard inventory check failed for ${product.title}:`, error);
+    console.error(
+      `ProductCard inventory check failed for ${product.title}:`,
+      error
+    );
     // Default to in stock on error
   }
 }
@@ -125,11 +128,11 @@ const isDynamicPriority = priority || index < 12;
 
       <!-- Quick View Trigger (appears on hover) -->
       <div
-        class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10 pointer-events-none"
+        class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end z-10 pointer-events-none"
       >
         <button
           type="button"
-          class="quick-view-trigger bg-white text-black px-4 py-2 rounded-sm font-semibold text-sm hover:bg-gray-100 transition-colors duration-200 transform translate-y-2 group-hover:translate-y-0 pointer-events-auto"
+          class="quick-view-trigger text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) focus-visible:ring-(--ui-button-secondary-ring) px-4 py-2 font-semibold text-sm transition-colors duration-200 transform translate-y-4 group-hover:translate-y-0 pointer-events-auto"
           data-product-id={product.id}
           aria-label={`Quick view ${product.title}`}
         >

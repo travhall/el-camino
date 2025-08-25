@@ -1,0 +1,99 @@
+---
+// src/components/admin/AdminHeader.astro - Following established Header.astro patterns
+import AdminNav from "@/components/admin/AdminNav.astro";
+import { Icon } from "astro-icon/components";
+---
+
+<header
+  class="flex flex-row items-center justify-between -mb-1 sticky top-0 z-50 border-4 border-(--border-secondary) bg-(--surface-secondary)"
+>
+  <a href="/admin" class="flex self-center justify-start" aria-label="Admin Home Link">
+    <Icon
+      name="Logo"
+      class="w-48 xl:w-56 h-auto p-2"
+      title="Go to Admin Dashboard"
+    />
+  </a>
+
+  <AdminNav />
+
+  <div class="utility-menu self-center justify-end lg:order-last flex">
+    <a
+      href="/"
+      class="p-2 text-(--content-body) hover:text-(--content-emphasis) transition-colors mr-2"
+      title="Go to main site"
+      aria-label="Home - Go to main site"
+    >
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    </a>
+    
+    <button
+      id="mobile-admin-menu-toggle"
+      class="p-2 lg:hidden text-(--content-body)"
+      aria-label="Toggle admin menu"
+      aria-expanded="false"
+    >
+      <Icon name="uil:bars" class="w-6 h-6" id="admin-menu-icon" />
+      <Icon name="uil:times" class="w-6 h-6 hidden" id="admin-close-icon" />
+    </button>
+  </div>
+</header>
+
+<script>
+  // Mobile admin menu functionality - following main site patterns
+  function setupAdminMobileMenu() {
+    const toggleButton = document.getElementById('mobile-admin-menu-toggle') as HTMLButtonElement;
+    const menuIcon = document.getElementById('admin-menu-icon') as HTMLElement;
+    const closeIcon = document.getElementById('admin-close-icon') as HTMLElement;
+    const nav = document.querySelector('nav') as HTMLElement;
+
+    if (!toggleButton || !menuIcon || !closeIcon || !nav) return;
+
+    function handleToggle(e: MouseEvent) {
+      e.stopPropagation();
+      const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
+
+      toggleButton.setAttribute('aria-expanded', (!isExpanded).toString());
+      menuIcon.classList.toggle('hidden');
+      closeIcon.classList.toggle('hidden');
+      nav.classList.toggle('nav-open');
+      document.body.style.overflow = isExpanded ? 'unset' : 'hidden';
+    }
+
+    toggleButton.removeEventListener('click', handleToggle);
+    toggleButton.addEventListener('click', handleToggle);
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e: MouseEvent) => {
+      const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
+      const clickTarget = e.target as Node;
+      if (
+        isExpanded &&
+        !nav.contains(clickTarget) &&
+        !toggleButton.contains(clickTarget)
+      ) {
+        toggleButton.click();
+      }
+    });
+
+    // Close menu on escape key
+    document.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (
+        e.key === 'Escape' &&
+        toggleButton.getAttribute('aria-expanded') === 'true'
+      ) {
+        toggleButton.click();
+      }
+    });
+  }
+
+  // Initialize mobile menu
+  setupAdminMobileMenu();
+
+  // Handle view transitions
+  document.addEventListener('astro:after-swap', () => {
+    setupAdminMobileMenu();
+  });
+</script>

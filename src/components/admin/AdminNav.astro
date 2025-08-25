@@ -1,0 +1,545 @@
+---
+// src/components/admin/AdminNav.astro - Following established Nav.astro patterns for admin sections
+
+// Admin navigation structure
+const adminSections = [
+  {
+    name: "Dashboard",
+    href: "/admin",
+    slug: "dashboard",
+    subcategories: [] // No subcategories for dashboard
+  },
+  {
+    name: "Performance",
+    href: "/admin/performance",
+    slug: "performance",
+    subcategories: [
+      { name: "Overview", href: "/admin/performance", slug: "overview" },
+      { name: "Core Web Vitals", href: "/admin/performance/core-vitals", slug: "core-vitals" },
+      { name: "Resource Analysis", href: "/admin/performance/resources", slug: "resources" },
+      { name: "Business Impact", href: "/admin/performance/business-impact", slug: "business-impact" },
+      { name: "Competitive Intel", href: "/admin/performance/competitive", slug: "competitive" }
+    ]
+  },
+  {
+    name: "Content",
+    href: "/admin/sku-reference",
+    slug: "content", 
+    subcategories: [
+      { name: "SKU Reference", href: "/admin/sku-reference", slug: "sku-reference" },
+      { name: "WordPress Demo", href: "/admin/demo/wordpress-demo", slug: "wordpress-demo" }
+    ]
+  }
+];
+
+// Get current path for active state
+const currentPath = Astro.url.pathname;
+---
+
+<!-- Skip to content link -->
+<a
+  href="#main-content"
+  class="skip-link font-bold bg-(--surface-secondary) border border-(--border-primary) rounded absolute left-2 -top-16 focus-visible:top-2 p-2 z-50 transition-all"
+  >Skip to main content</a
+>
+
+<nav
+  class="flex flex-col lg:flex-row w-full lg:gap-2 justify-center border-4 border-(--border-secondary) lg:border-0 bg-(--surface-secondary) lg:relative inset-0 top-12 lg:top-auto fixed -translate-x-full lg:translate-x-0 transition-transform duration-400 ease-in-out z-40 [&.nav-open]:translate-x-0 overflow-y-auto lg:overflow-visible"
+  role="navigation"
+  aria-label="Admin navigation"
+>
+  {
+    adminSections.map((section, index) => (
+      <div class="category-group relative flex flex-col lg:flex-row group transition-all">
+        <a
+          href={section.href}
+          class="nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 lg:p-4 text-(--ui-nav-text) transition-all duration-300 ease-in-out relative hover:text-ui-nav-hover before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left nav-link"
+          style={`--item-index: ${index};`}
+          data-has-children={section.subcategories.length > 0}
+          data-section-name={section.name}
+          aria-expanded={section.subcategories.length > 0 ? "false" : undefined}
+          aria-haspopup={section.subcategories.length > 0 ? "menu" : undefined}
+          class:list={[
+            "nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 lg:p-4 text-(--ui-nav-text) transition-all duration-300 ease-in-out relative hover:text-ui-nav-hover before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left nav-link",
+            { "active-nav-item": currentPath === section.href || currentPath.startsWith(section.href) }
+          ]}
+        >
+          {section.name}
+          {section.subcategories.length > 0 && (
+            <span class="dropdown-indicator block ml-1 transition-transform duration-200">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="hidden lg:block h-8 w-8 lg:h-4 lg:w-4 transform lg:group-hover:rotate-180"
+                aria-hidden="true"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 48 48"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lg:hidden mobile-caret"
+                aria-hidden="true"
+              >
+                <polyline points="12 18 24 30 36 18" />
+              </svg>
+            </span>
+          )}
+        </a>
+
+        {/* Dropdown menu with admin subsections */}
+        {section.subcategories.length > 0 && (
+          <div class="dropdown-menu lg:hidden lg:group-hover:block absolute left-0 top-full z-50 min-w-[200px] origin-top lg:opacity-100 lg:transition-none">
+            <div class="bg-(--ui-nav-surface) border border-(--ui-nav-border)/20 shadow-lg rounded-sm p-1 overflow-hidden">
+              {section.subcategories.map((subcategory) => (
+                <a
+                  href={subcategory.href}
+                  class="block p-2 text-2xl lg:text-base text-(--ui-nav-text) hover:text-(--ui-nav-text) before:absolute before:top-0 before:left-0 before:w-full before:h-full before:bg-(--ui-nav-hover)/20 before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left relative"
+                  data-subcategory={subcategory.name}
+                  class:list={[
+                    "block p-2 text-2xl lg:text-base text-(--ui-nav-text) hover:text-(--ui-nav-text) before:absolute before:top-0 before:left-0 before:w-full before:h-full before:bg-(--ui-nav-hover)/20 before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left relative",
+                    { "font-semibold bg-(--ui-nav-hover)/10": currentPath === subcategory.href }
+                  ]}
+                >
+                  {subcategory.name}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    ))
+  }
+
+  {/* Mobile footer - admin specific contact info */}
+  <div
+    class="flex flex-col gap-2 p-4 pt-12 border-t-4 border-(--border-secondary) mt-6 lg:hidden nav-link"
+    style="--item-index: 3;"
+  >
+    <div class="flex flex-col text-lg gap-2 uppercase not-italic text-(--ui-nav-text)">
+      <span class="font-semibold">El Camino Admin</span>
+      <span class="text-sm normal-case text-(--content-meta)">Performance monitoring and content management</span>
+    </div>
+  </div>
+</nav>
+
+<style>
+  nav {
+    view-transition-name: admin-nav;
+  }
+
+  /* Active state styling */
+  .active-nav-item {
+    color: var(--ui-accent);
+    font-weight: 600;
+  }
+
+  .active-nav-item:before {
+    transform: scaleX(1);
+    background: var(--ui-accent);
+  }
+
+  /* Screen reader only class for accessibility */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Mobile animations - following main site patterns */
+  @media (max-width: 1024px) {
+    .nav-link {
+      opacity: 0;
+      transform: translate3d(2rem, 0, 0);
+      will-change: opacity, transform;
+    }
+
+    nav.nav-open .nav-link {
+      animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation-delay: calc(var(--item-index) * 0.08s);
+    }
+
+    .dropdown-menu {
+      position: static;
+      max-height: 0;
+      opacity: 0;
+      transform: translate3d(0, -10px, 0);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      background-color: rgba(var(--ui-nav-hover-rgb, 255, 255, 255), 0.05);
+      border-left: 2px solid rgba(var(--ui-nav-border-rgb, 255, 255, 255), 0.1);
+      padding-left: 0.5rem;
+      border-radius: 0 0 4px 4px;
+      contain: layout style;
+    }
+
+    .dropdown-menu > div {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0.5rem 0;
+    }
+
+    .category-group.open .dropdown-menu {
+      display: block;
+      max-height: 500px;
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+
+    .category-group.open .mobile-caret {
+      transform: rotate(180deg);
+    }
+
+    @keyframes slideIn {
+      to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+  }
+
+  /* Desktop optimizations */
+  @media (min-width: 1025px) {
+    .dropdown-menu {
+      contain: layout style;
+    }
+  }
+
+  /* Accessibility: Reduce motion */
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link,
+    .dropdown-menu,
+    .mobile-caret {
+      animation: none !important;
+      transition: none !important;
+    }
+
+    nav.nav-open .nav-link {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* Focus styles for better accessibility */
+  .nav-item:focus-visible {
+    outline: 2px solid var(--ui-focus-color, #0066cc);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  .skip-link:focus {
+    z-index: 9999;
+  }
+</style>
+
+<script>
+  interface AdminNavElementData {
+    link: HTMLElement;
+    dropdown: HTMLElement;
+    index: number;
+    isOpen: boolean;
+    sectionName: string;
+  }
+
+  class AdminNavigationController {
+    private navElements: Map<Element, AdminNavElementData> = new Map();
+    private isAnimating: boolean = false;
+    private focusTimeout: number | null = null;
+    private abortController: AbortController = new AbortController();
+
+    constructor() {
+      this.init();
+    }
+
+    private init(): void {
+      this.cacheElements();
+      this.setupEventDelegation();
+      this.enhanceAccessibility();
+    }
+
+    private enhanceAccessibility(): void {
+      const nav = document.querySelector("nav");
+      if (!nav) return;
+
+      // Enhance skip link functionality
+      const skipLink = document.querySelector(".skip-link") as HTMLAnchorElement;
+      if (skipLink) {
+        skipLink.addEventListener(
+          "click",
+          (e) => {
+            e.preventDefault();
+            const mainContent = document.getElementById("main-content");
+            if (mainContent) {
+              mainContent.focus();
+              mainContent.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }
+          },
+          { signal: this.abortController.signal }
+        );
+      }
+
+      // Add live region for screen reader announcements
+      const liveRegion = document.createElement("div");
+      liveRegion.setAttribute("aria-live", "polite");
+      liveRegion.setAttribute("aria-atomic", "true");
+      liveRegion.className = "sr-only";
+      liveRegion.id = "admin-nav-announcements";
+      document.body.appendChild(liveRegion);
+    }
+
+    private announceToScreenReader(message: string): void {
+      const liveRegion = document.getElementById("admin-nav-announcements");
+      if (liveRegion) {
+        liveRegion.textContent = message;
+        setTimeout(() => (liveRegion.textContent = ""), 1000);
+      }
+    }
+
+    private cacheElements(): void {
+      const categoryGroups = document.querySelectorAll(".category-group");
+
+      categoryGroups.forEach((group: Element, index: number) => {
+        const link = group.querySelector(".nav-item") as HTMLElement;
+        const dropdown = group.querySelector(".dropdown-menu") as HTMLElement;
+        const hasChildren = link?.getAttribute("data-has-children") === "true";
+
+        if (hasChildren && link && dropdown) {
+          const sectionName = link.getAttribute("data-section-name") || "Unknown";
+
+          this.navElements.set(group, {
+            link,
+            dropdown,
+            index,
+            isOpen: false,
+            sectionName,
+          });
+
+          // Optimize for touch devices
+          if ("ontouchstart" in window) {
+            link.style.cursor = "pointer";
+            dropdown.style.contain = "layout style";
+          }
+        }
+      });
+    }
+
+    private setupEventDelegation(): void {
+      const nav = document.querySelector("nav");
+      if (!nav) return;
+
+      // Use single event listener with delegation for better performance
+      nav.addEventListener("click", this.handleClick.bind(this), {
+        passive: false,
+        signal: this.abortController.signal,
+      });
+
+      nav.addEventListener("focusout", this.handleFocusOut.bind(this), {
+        passive: true,
+        signal: this.abortController.signal,
+      });
+
+      // Keyboard navigation enhancements
+      nav.addEventListener("keydown", this.handleKeydown.bind(this), {
+        signal: this.abortController.signal,
+      });
+    }
+
+    private handleClick(event: Event): void {
+      if (this.isAnimating) {
+        event.preventDefault();
+        return;
+      }
+
+      const target = event.target as HTMLElement;
+      const clickedLink = target.closest(".nav-item") as HTMLAnchorElement;
+      if (!clickedLink) return;
+
+      const group = clickedLink.closest(".category-group");
+      if (!group) return;
+
+      const elementData = this.navElements.get(group);
+
+      if (!elementData || window.innerWidth > 1024) return;
+
+      event.preventDefault();
+      this.toggleDropdown(group, elementData);
+    }
+
+    private handleKeydown(event: KeyboardEvent): void {
+      const target = event.target as HTMLElement;
+      const navItem = target.closest(".nav-item") as HTMLElement;
+
+      if (!navItem) return;
+
+      switch (event.key) {
+        case "Enter":
+        case " ":
+          if (navItem.getAttribute("aria-haspopup") === "menu") {
+            event.preventDefault();
+            navItem.click();
+          }
+          break;
+        case "Escape":
+          this.closeAllDropdowns();
+          this.announceToScreenReader("All menus closed");
+          break;
+        case "ArrowDown":
+          if (navItem.getAttribute("aria-expanded") === "true") {
+            event.preventDefault();
+            this.focusFirstDropdownItem(navItem);
+          }
+          break;
+      }
+    }
+
+    private focusFirstDropdownItem(navItem: HTMLElement): void {
+      const group = navItem.closest(".category-group");
+      const dropdown = group?.querySelector(".dropdown-menu");
+      const firstLink = dropdown?.querySelector("a") as HTMLElement;
+      if (firstLink) {
+        firstLink.focus();
+      }
+    }
+
+    private toggleDropdown(group: Element, elementData: AdminNavElementData): void {
+      requestAnimationFrame(() => {
+        this.isAnimating = true;
+
+        this.closeOtherDropdowns(group);
+
+        const wasOpen = elementData.isOpen;
+        this.setDropdownState(group, elementData, !wasOpen);
+
+        // Announce state change for screen readers
+        const action = wasOpen ? "collapsed" : "expanded";
+        this.announceToScreenReader(`${elementData.sectionName} menu ${action}`);
+
+        setTimeout(() => {
+          this.isAnimating = false;
+        }, 200);
+      });
+    }
+
+    private closeOtherDropdowns(excludeGroup: Element): void {
+      const updates: (() => void)[] = [];
+
+      this.navElements.forEach((elementData: AdminNavElementData, group: Element) => {
+        if (group !== excludeGroup && elementData.isOpen) {
+          updates.push(() => this.setDropdownState(group, elementData, false));
+        }
+      });
+
+      if (updates.length) {
+        requestAnimationFrame(() => {
+          updates.forEach((update) => update());
+        });
+      }
+    }
+
+    private setDropdownState(group: Element, elementData: AdminNavElementData, isOpen: boolean): void {
+      elementData.isOpen = isOpen;
+      const { link, dropdown } = elementData;
+
+      requestAnimationFrame(() => {
+        if (isOpen) {
+          group.classList.add("open");
+          link.setAttribute("aria-expanded", "true");
+          (dropdown as HTMLElement).style.contain = "layout style";
+        } else {
+          group.classList.remove("open");
+          link.setAttribute("aria-expanded", "false");
+          (dropdown as HTMLElement).style.contain = "";
+        }
+      });
+    }
+
+    private handleFocusOut(event: Event): void {
+      if (this.focusTimeout) {
+        clearTimeout(this.focusTimeout);
+      }
+
+      this.focusTimeout = window.setTimeout(() => {
+        const nav = event.currentTarget as HTMLElement;
+        if (nav && !nav.contains(document.activeElement)) {
+          this.closeAllDropdowns();
+        }
+      }, 0);
+    }
+
+    private closeAllDropdowns(): void {
+      requestAnimationFrame(() => {
+        this.navElements.forEach((elementData: AdminNavElementData, group: Element) => {
+          if (elementData.isOpen) {
+            this.setDropdownState(group, elementData, false);
+          }
+        });
+      });
+    }
+
+    public destroy(): void {
+      if (this.focusTimeout) {
+        clearTimeout(this.focusTimeout);
+      }
+
+      this.abortController.abort();
+      this.navElements.clear();
+
+      const liveRegion = document.getElementById("admin-nav-announcements");
+      if (liveRegion) {
+        liveRegion.remove();
+      }
+    }
+  }
+
+  function initializeAdminNavigation(): AdminNavigationController {
+    return new AdminNavigationController();
+  }
+
+  // Initialize and handle view transitions
+  let adminNavController: AdminNavigationController | null = null;
+
+  document.addEventListener("astro:before-swap", () => {
+    if (adminNavController) {
+      adminNavController.destroy();
+      adminNavController = null;
+    }
+  });
+
+  document.addEventListener("astro:after-swap", () => {
+    adminNavController = initializeAdminNavigation();
+  });
+
+  // Initial load
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      adminNavController = initializeAdminNavigation();
+    });
+  } else {
+    adminNavController = initializeAdminNavigation();
+  }
+</script>

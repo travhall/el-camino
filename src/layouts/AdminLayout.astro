@@ -1,0 +1,71 @@
+---
+/**
+ * Admin Layout - Following established site patterns
+ * File: src/layouts/AdminLayout.astro
+ */
+import { SEOMetadata } from "astro-seo-metadata";
+import AdminHeader from "@/components/admin/AdminHeader.astro";
+import "@/styles/global.css";
+
+interface Props {
+  title: string;
+  activeSection?: string;
+  description?: string;
+}
+
+const { title, activeSection = "", description = "" } = Astro.props;
+
+const adminTitle = `${title} - El Camino Admin`;
+const adminDescription = description || "El Camino Skate Shop administration tools";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{adminTitle}</title>
+    <meta name="description" content={adminDescription} />
+    <meta name="robots" content="noindex, nofollow" />
+
+    <script is:inline>
+      (function () {
+        const storedTheme = localStorage.getItem("theme");
+        const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const theme = storedTheme ?? (systemPrefersDark ? "dark" : "light");
+        document.documentElement.classList.add(theme);
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
+
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+
+    <SEOMetadata
+      title={adminTitle}
+      description={adminDescription}
+      canonicalUrl={Astro.url.toString()}
+      type="website"
+    />
+  </head>
+
+  <body>
+    <!-- Admin Header with Logo and Navigation -->
+    <AdminHeader />
+
+    <!-- Main Content -->
+    <main class="px-4 sm:px-6 lg:px-8 py-8" id="main-content">
+      <!-- Page Header -->
+      <div class="mb-8">
+        <h1 class="text-4xl font-bold text-(--content-heading) mb-4">
+          {title}
+        </h1>
+        {description && (
+          <p class="text-lg text-(--content-body) max-w-4xl">{description}</p>
+        )}
+      </div>
+
+      <!-- Page Content -->
+      <slot />
+    </main>
+  </body>
+</html>

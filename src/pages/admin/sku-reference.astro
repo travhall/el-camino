@@ -1,13 +1,14 @@
 ---
 // Enhanced SKU Reference page with improved UX
-import Layout from "@/layouts/Layout.astro";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import { generateSkuReference } from "@/utils/generateSkuReference";
 import type { SkuReference } from "@/utils/generateSkuReference";
 
 // Generate SKU reference at build time
 const { success, skus, categorized, error } = await generateSkuReference();
 
-const pageTitle = "Product SKU Reference - Content Creator Guide";
+const pageTitle = "SKU Reference";
+const pageDescription = "Product SKU lookup and management tool for content creators";
 
 // Build filter options for client-side filtering with hierarchical categories
 const filterOptions = {
@@ -43,19 +44,12 @@ const filterOptions = {
 };
 ---
 
-<Layout title={pageTitle}>
-  <div class="px-4 py-8 relative">
-
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-4xl font-bold text-(--content-heading) mb-4">
-        Product SKU Reference
-      </h1>
-      <p class="text-lg text-(--content-body) mb-6">
-        Use these human-readable SKUs in your WordPress product showcases. 
-        Search, filter, and copy the SKU codes you need for your blog posts.
-      </p>
-    </div>
+<AdminLayout 
+  title={pageTitle} 
+  description={pageDescription}
+  activeSection="sku-reference"
+>
+  <div class="relative">
 
     {error && (
       <div class="bg-(--state-error-surface) text-(--state-error-text) p-6 rounded-sm mb-8">
@@ -489,7 +483,7 @@ const filterOptions = {
       <span id="toast-message">Copied to clipboard!</span>
     </div>
   </div>
-</Layout>
+</AdminLayout>
 
 <script define:vars={{ skus, filterOptions, categorized }}>
   // Enhanced SKU Reference with improved UX and hierarchical categories

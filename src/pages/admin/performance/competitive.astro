@@ -5,23 +5,19 @@
  * File: src/pages/admin/performance/competitive.astro
  */
 
-import AdminLayout from "@/components/admin/AdminLayout.astro";
-import Layout from "@/layouts/Layout.astro";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 
-const pageTitle = "Competitive Intelligence";
+const pageTitle = "Competitive Intel";
+const pageDescription = "Compare your performance against direct competitors and industry benchmarks. Identify optimization opportunities and maintain competitive advantage.";
 ---
 
-<Layout title="Competitive Intelligence - Performance Admin">
-  <AdminLayout title={pageTitle} activeSection="competitive">
-    <div slot="description">
-      <p class="text-lg text-(--content-body) mb-6">
-        Compare your performance against direct competitors and industry benchmarks. 
-        Identify optimization opportunities and maintain competitive advantage.
-      </p>
-    </div>
-
-    <!-- Competitive Overview -->
-    <section class="competitive-overview mb-8">
+<AdminLayout 
+  title={pageTitle}
+  description={pageDescription}
+  activeSection="competitive"
+>
+  <!-- Competitive Overview -->
+  <section class="competitive-overview mb-8">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-2xl font-semibold text-(--content-heading)">Performance Rankings</h2>
         <div class="flex items-center gap-3">
@@ -36,9 +32,13 @@ const pageTitle = "Competitive Intelligence";
           </select>
           <button 
             id="refresh-competitive-data"
-            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-3"
+            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-3 flex items-center gap-2"
+            title="Refresh competitive data"
           >
-            🔄 Refresh
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
           </button>
         </div>
       </div>
@@ -573,8 +573,7 @@ const pageTitle = "Competitive Intelligence";
         </div>
       </div>
     </section>
-  </AdminLayout>
-</Layout>
+</AdminLayout>
 
 <style>
   .cwv-badge {
@@ -789,14 +788,19 @@ const pageTitle = "Competitive Intelligence";
       const button = document.getElementById('refresh-competitive-data') as HTMLButtonElement;
       if (!button) return;
 
-      const originalText = button.textContent;
-      button.textContent = '🔄 Refreshing...';
+      const originalContent = button.innerHTML;
+      button.innerHTML = `
+        <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Refreshing...
+      `;
       button.disabled = true;
 
       // Simulate data refresh
       setTimeout(() => {
         this.updateCompetitiveData();
-        button.textContent = originalText;
+        button.innerHTML = originalContent;
         button.disabled = false;
         
         // Show success notification
