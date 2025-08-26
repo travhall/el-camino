@@ -1,5 +1,5 @@
 ---
-import ClientRouter from "astro/components/ClientRouter.astro";
+import { ClientRouter } from "astro:transitions";
 import { SEOMetadata } from "astro-seo-metadata";
 import { siteConfig, getStructuredData } from "@/lib/site-config";
 import Header from "@/components/Header.astro";
@@ -51,17 +51,6 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#1a1a1a" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta
-      name="apple-mobile-web-app-status-bar-style"
-      content="black-translucent"
-    />
-    <link rel="apple-touch-icon" href="/pwa-icon.svg" />
-    <link rel="mask-icon" href="/pwa-icon.svg" color="#1a1a1a" />
 
     <!-- Enhanced font preloading with fetchpriority -->
     <link
@@ -121,7 +110,11 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <!-- Speculation Rules for Advanced Prefetching -->
     <SpeculationRules currentPath={currentPath} eager={isHighTrafficPage} />
 
-    <script is:inline type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify(orgSchema)}
+    />
     {
       structuredData && (
         <script
@@ -176,8 +169,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
       });
     </script>
 
-    <!-- TEMPORARILY DISABLED VIEW TRANSITIONS FOR NAVIGATION TESTING -->
-    <!-- <ClientRouter /> -->
+    <ClientRouter />
   </head>
   <body
     class="bg-(--surface-primary) text-(--content-body) grid grid-rows-[auto_1fr_auto] min-h-screen relative"
@@ -282,23 +274,21 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
 
       // Critical performance optimizations for immediate execution
       (function () {
-        // TEMPORARILY DISABLED: Heavy image format detection that may impact performance
-        // if ('HTMLCanvasElement' in window && !sessionStorage.getItem('imageFormatSupport')) {
-        //   import('../lib/image/enhanced-optimizer').then(({ EnhancedImageOptimizer }) => {
-        //     EnhancedImageOptimizer.detectFormatSupport();
-        //   });
-        // }
+        if ('HTMLCanvasElement' in window && !sessionStorage.getItem('imageFormatSupport')) {
+          import('../lib/image/enhanced-optimizer').then(({ EnhancedImageOptimizer }) => {
+            EnhancedImageOptimizer.detectFormatSupport();
+          });
+        }
 
-        // TEMPORARILY DISABLED: Mobile optimization that may impact performance
-        // if (window.innerWidth <= 1024) {
-        //   import('../lib/performance/mobileOptimization').then(({ initMobileOptimization }) => {
-        //     initMobileOptimization();
-        //   });
-        // }
+        if (window.innerWidth <= 1024) {
+          import('../lib/performance/mobileOptimization').then(({ initMobileOptimization }) => {
+            initMobileOptimization();
+          });
+        }
 
         if (import.meta.env.DEV) {
           console.log(
-            "[Layout] Heavy optimizations disabled for performance testing"
+            "[Layout] Performance optimizations active: View transitions, Enhanced images, Mobile optimization"
           );
         }
       })();

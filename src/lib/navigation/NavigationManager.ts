@@ -34,8 +34,7 @@ export class NavigationManager {
       isViewTransitionActive: false
     };
     
-    // TEMPORARILY DISABLED FOR TESTING
-    this.enabled = false;
+    this.enabled = true;
     
     if (typeof window !== 'undefined') {
       // Store original methods before interception
@@ -43,8 +42,7 @@ export class NavigationManager {
       this.originalReplaceState = history.replaceState.bind(history);
       
       this.setupEventListeners();
-      // Don't intercept history methods when disabled
-      // this.interceptHistoryMethods();
+      this.interceptHistoryMethods();
     } else {
       // Initialize as no-ops for SSR compatibility
       this.originalPushState = (() => {}) as any;

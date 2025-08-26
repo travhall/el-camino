@@ -16,7 +16,8 @@ interface Props {
 const { title, activeSection = "", description = "" } = Astro.props;
 
 const adminTitle = `${title} - El Camino Admin`;
-const adminDescription = description || "El Camino Skate Shop administration tools";
+const adminDescription =
+  description || "El Camino Skate Shop administration tools";
 ---
 
 <!doctype html>
@@ -31,14 +32,16 @@ const adminDescription = description || "El Camino Skate Shop administration too
     <script is:inline>
       (function () {
         const storedTheme = localStorage.getItem("theme");
-        const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const systemPrefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
         const theme = storedTheme ?? (systemPrefersDark ? "dark" : "light");
         document.documentElement.classList.add(theme);
         document.documentElement.setAttribute("data-theme", theme);
       })();
     </script>
 
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <SEOMetadata
       title={adminTitle}
@@ -59,9 +62,11 @@ const adminDescription = description || "El Camino Skate Shop administration too
         <h1 class="text-4xl font-bold text-(--content-heading) mb-4">
           {title}
         </h1>
-        {description && (
-          <p class="text-lg text-(--content-body) max-w-4xl">{description}</p>
-        )}
+        {
+          description && (
+            <p class="text-lg text-(--content-body) max-w-4xl">{description}</p>
+          )
+        }
       </div>
 
       <!-- Page Content -->
