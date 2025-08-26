@@ -1,0 +1,435 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { generateSkuReference } from "@/utils/generateSkuReference";
+
+// Get products for featured product selection
+const { success, skus, error } = await generateSkuReference();
+
+const pageTitle = "Event Generator";
+const pageDescription = "Create WordPress event blocks with product showcases";
+
+// Sample event templates for quick start
+const eventTemplates = [
+  {
+    name: "Skate Session",
+    title: "Saturday Skate Session", 
+    description: "Join us for our weekly community skate session. All skill levels welcome!",
+    location: "El Camino Skate Shop",
+    registrationRequired: false,
+    time: "2:00 PM - 6:00 PM"
+  },
+  {
+    name: "Product Launch",
+    title: "New Product Launch Party",
+    description: "Celebrate our new arrivals with exclusive previews and special offers!",
+    location: "El Camino Skate Shop", 
+    registrationRequired: true,
+    time: "6:00 PM - 9:00 PM"
+  },
+  {
+    name: "Workshop",
+    title: "Skateboard Maintenance Workshop",
+    description: "Learn proper board maintenance techniques. Bring your board!",
+    location: "El Camino Skate Shop",
+    registrationRequired: true,
+    time: "1:00 PM - 4:00 PM"
+  }
+];
+
+// Convert skus to products array for compatibility
+const allProducts = skus.map(sku => ({
+  id: sku.id,
+  humanReadableSku: sku.humanReadableSku,
+  title: sku.title,
+  brand: sku.brand,
+  price: sku.price
+}));
+---
+
+<AdminLayout 
+  title={pageTitle} 
+  description={pageDescription}
+  activeSection="event-reference"
+>
+  <div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="bg-(--surface-secondary) p-6 rounded-sm mb-8">
+      <h1 class="font-display font-bold text-3xl text-(--content-heading) mb-3">
+        Event Generator
+      </h1>
+      <p class="text-(--content-body)">
+        Create WordPress event blocks using data attributes. Events are automatically rendered with professional styling, structured data, and product showcases.
+      </p>
+    </div>
+
+    {error && (
+      <div class="bg-(--state-error-surface) text-(--state-error-text) p-6 rounded-sm mb-8">
+        <h2 class="text-xl font-semibold mb-2">Error Loading Products</h2>
+        <p>{error}</p>
+      </div>
+    )}
+
+    {success && (
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Event Builder Form -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm">
+          <h2 class="font-display font-semibold text-xl text-(--content-heading) mb-4">
+            Event Builder
+          </h2>
+
+          <form id="event-builder-form" class="space-y-4">
+            <!-- Quick Templates -->
+            <div>
+              <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                Quick Start Template
+              </label>
+              <select id="template-select" class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)">
+                <option value="">Custom Event</option>
+                {eventTemplates.map(template => (
+                  <option value={JSON.stringify(template)}>{template.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <!-- Event Title -->
+            <div>
+              <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                Event Title *
+              </label>
+              <input
+                type="text"
+                id="event-title"
+                required
+                placeholder="Saturday Skate Session"
+                class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+              />
+            </div>
+
+            <!-- Date and Time -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                  Event Date *
+                </label>
+                <input
+                  type="date"
+                  id="event-date"
+                  required
+                  class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                  Time Range
+                </label>
+                <input
+                  type="text"
+                  id="event-time"
+                  placeholder="2:00 PM - 6:00 PM"
+                  class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+                />
+              </div>
+            </div>
+
+            <!-- Location -->
+            <div>
+              <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                Location
+              </label>
+              <input
+                type="text"
+                id="event-location"
+                placeholder="El Camino Skate Shop"
+                class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+              />
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                Description *
+              </label>
+              <textarea
+                id="event-description"
+                required
+                rows="3"
+                placeholder="Join us for our weekly community skate session. All skill levels welcome!"
+                class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+              ></textarea>
+            </div>
+
+            <!-- RSVP Options -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="registration-required"
+                  class="elco-checkbox mr-2"
+                />
+                <label for="registration-required" class="text-sm font-medium text-(--content-heading)">
+                  Registration Required
+                </label>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                  RSVP URL (optional)
+                </label>
+                <input
+                  type="url"
+                  id="rsvp-url"
+                  placeholder="https://eventbrite.com/event/123"
+                  class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+                />
+              </div>
+            </div>
+
+            <!-- Image URL -->
+            <div>
+              <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                Event Image URL (optional)
+              </label>
+              <input
+                type="url"
+                id="event-image"
+                placeholder="https://example.com/event-image.jpg"
+                class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
+              />
+            </div>
+
+            <!-- Generate Button -->
+            <div class="pt-4">
+              <button
+                type="button"
+                id="generate-event-code"
+                class="w-full font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-base py-3 px-4"
+              >
+                Generate WordPress Code
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Generated Code Output -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm">
+          <h2 class="font-display font-semibold text-xl text-(--content-heading) mb-4">
+            Generated WordPress Code
+          </h2>
+
+          <div id="code-output" class="hidden">
+            <div class="relative mb-4">
+              <pre id="generated-event-code" class="bg-(--surface-tertiary) p-4 rounded text-sm font-mono overflow-x-auto border max-h-96 overflow-y-auto"></pre>
+              <button
+                id="copy-event-code"
+                class="absolute top-2 right-2 px-3 py-1 bg-(--ui-accent) text-white text-sm rounded hover:bg-(--ui-accent-hover) font-semibold"
+              >
+                Copy
+              </button>
+            </div>
+
+            <!-- Usage Instructions -->
+            <div class="text-sm text-(--content-body) space-y-2">
+              <p><strong>Usage:</strong></p>
+              <ol class="list-decimal list-inside space-y-1 text-(--content-meta)">
+                <li>Copy the generated code</li>
+                <li>In WordPress, add a "Custom HTML" block</li>
+                <li>Paste the code into the HTML block</li>
+                <li>Publish or update your post/page</li>
+              </ol>
+            </div>
+          </div>
+
+          <div id="code-placeholder" class="text-center py-8 text-(--content-meta)">
+            Fill in the event details to generate WordPress code
+          </div>
+
+          <!-- Example Output -->
+          <div class="mt-6">
+            <h3 class="font-medium text-(--content-heading) mb-3">Example Output:</h3>
+            <pre class="bg-(--surface-tertiary) p-3 rounded text-xs font-mono overflow-x-auto border"><code>&lt;div class="wp-block-event"&gt;
+     &lt;!-- data-title="Saturday Skate Session" --&gt;
+     &lt;!-- data-date="2025-09-15" --&gt;
+     &lt;!-- data-time="2:00 PM - 6:00 PM" --&gt;
+     &lt;!-- data-location="El Camino Skate Shop" --&gt;
+     &lt;!-- data-description="Join us for our weekly session!" --&gt;
+     &lt;!-- data-registration-required="false" --&gt;
+&lt;/div&gt;</code></pre>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+
+  <!-- Available Attributes Reference -->
+  <div class="bg-(--surface-secondary) p-6 rounded-sm mt-8">
+    <h2 class="font-display font-semibold text-xl text-(--content-heading) mb-4">
+      Available Event Attributes
+    </h2>
+    
+    <div class="mb-4 p-4 bg-(--ui-accent)/5 border border-(--ui-accent)/20 rounded-sm">
+      <p class="text-sm text-(--content-body)">
+        <strong>WordPress.com Format:</strong> This tool generates HTML comment format for maximum WordPress.com compatibility. 
+        The system also supports direct data attributes if needed.
+      </p>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+      <div>
+        <h4 class="font-semibold text-(--content-heading) mb-2">Required Attributes:</h4>
+        <ul class="space-y-1 text-(--content-body)">
+          <li><code class="bg-(--ui-accent)/10 text-(--ui-accent) px-1 rounded">data-title</code> - Event title</li>
+          <li><code class="bg-(--ui-accent)/10 text-(--ui-accent) px-1 rounded">data-date</code> - Date (YYYY-MM-DD format)</li>
+          <li><code class="bg-(--ui-accent)/10 text-(--ui-accent) px-1 rounded">data-description</code> - Event description</li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="font-semibold text-(--content-heading) mb-2">Optional Attributes:</h4>
+        <ul class="space-y-1 text-(--content-body)">
+          <li><code class="bg-(--ui-accent)/10 text-(--ui-accent) px-1 rounded">data-time</code> - Time range</li>
+          <li><code class="bg-(--ui-accent)/10 text-(--ui-accent) px-1 rounded">data-location</code> - Event location</li>
+          <li><code class="bg-(--ui-accent)/10 text-(--ui-accent) px-1 rounded">data-rsvp-url</code> - Registration link</li>
+          <li><code class="bg-(--ui-accent)/10 text-(--ui-accent) px-1 rounded">data-featured-products</code> - Product SKUs (comma-separated)</li>
+          <li><code class="bg-(--ui-accent)/10 text-(--ui-accent) px-1 rounded">data-image</code> - Event image URL</li>
+          <li><code class="bg-(--ui-accent)/10 text-(--ui-accent) px-1 rounded">data-registration-required</code> - "true" or "false"</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Copy Feedback Toast -->
+  <div id="copy-toast" class="fixed bottom-4 right-4 bg-(--ui-accent) text-white px-4 py-2 rounded shadow-lg transform translate-y-full transition-transform z-50">
+    <div class="flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+      <span>WordPress code copied!</span>
+    </div>
+  </div>
+</AdminLayout>
+
+<script define:vars={{ allProducts, eventTemplates }}>
+  let selectedProducts = new Set();
+
+  document.addEventListener('DOMContentLoaded', () => {
+    bindFormEvents();
+    bindTemplateSelect();
+  });
+
+  function bindTemplateSelect() {
+    const templateSelect = document.getElementById('template-select');
+    templateSelect?.addEventListener('change', (e) => {
+      if (!e.target.value) return;
+      
+      const template = JSON.parse(e.target.value);
+      
+      // Populate form with template data
+      document.getElementById('event-title').value = template.title;
+      document.getElementById('event-time').value = template.time;
+      document.getElementById('event-location').value = template.location;
+      document.getElementById('event-description').value = template.description;
+      document.getElementById('registration-required').checked = template.registrationRequired;
+      
+      // Set default date to next Saturday for skate sessions
+      if (template.name === 'Skate Session') {
+        const nextSaturday = getNextSaturday();
+        document.getElementById('event-date').value = nextSaturday;
+      } else {
+        // Set to next weekend for other events
+        const nextWeekend = getNextWeekend();
+        document.getElementById('event-date').value = nextWeekend;
+      }
+    });
+  }
+
+  function bindFormEvents() {
+    const generateButton = document.getElementById('generate-event-code');
+    const copyButton = document.getElementById('copy-event-code');
+    
+    generateButton?.addEventListener('click', generateEventCode);
+    copyButton?.addEventListener('click', copyEventCode);
+  }
+
+  function generateEventCode() {
+    const title = document.getElementById('event-title')?.value;
+    const date = document.getElementById('event-date')?.value;
+    const time = document.getElementById('event-time')?.value;
+    const location = document.getElementById('event-location')?.value;
+    const description = document.getElementById('event-description')?.value;
+    const rsvpUrl = document.getElementById('rsvp-url')?.value;
+    const imageUrl = document.getElementById('event-image')?.value;
+    const registrationRequired = document.getElementById('registration-required')?.checked;
+
+    // Validation
+    if (!title || !date || !description) {
+      showToast('Please fill in required fields (Title, Date, Description)');
+      return;
+    }
+
+    // Use HTML comment format for WordPress.com compatibility
+    let code = '<div class="wp-block-event">\n';
+    code += `     <!-- data-title="${escapeHtml(title)}" -->\n`;
+    code += `     <!-- data-date="${date}" -->\n`;
+    
+    if (time) code += `     <!-- data-time="${escapeHtml(time)}" -->\n`;
+    if (location) code += `     <!-- data-location="${escapeHtml(location)}" -->\n`;
+    
+    code += `     <!-- data-description="${escapeHtml(description)}" -->\n`;
+    
+    if (rsvpUrl) code += `     <!-- data-rsvp-url="${escapeHtml(rsvpUrl)}" -->\n`;
+    if (imageUrl) code += `     <!-- data-image="${escapeHtml(imageUrl)}" -->\n`;
+    
+    if (registrationRequired) {
+      code += `     <!-- data-registration-required="true" -->\n`;
+    }
+    
+    code += '</div>';
+
+    document.getElementById('generated-event-code').textContent = code;
+    document.getElementById('code-output').classList.remove('hidden');
+    document.getElementById('code-placeholder').classList.add('hidden');
+  }
+
+  async function copyEventCode() {
+    const code = document.getElementById('generated-event-code').textContent;
+    try {
+      await navigator.clipboard.writeText(code);
+      showToast('WordPress code copied!');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      showToast('Copy failed - please select and copy manually');
+    }
+  }
+
+  function showToast(message) {
+    const toast = document.getElementById('copy-toast');
+    const span = toast.querySelector('span');
+    
+    span.textContent = message;
+    toast.classList.remove('translate-y-full');
+    
+    setTimeout(() => {
+      toast.classList.add('translate-y-full');
+    }, 3000);
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML.replace(/"/g, '&quot;');
+  }
+
+  function getNextSaturday() {
+    const today = new Date();
+    const daysUntilSaturday = (6 - today.getDay()) % 7 || 7;
+    const nextSaturday = new Date(today);
+    nextSaturday.setDate(today.getDate() + daysUntilSaturday);
+    return nextSaturday.toISOString().split('T')[0];
+  }
+
+  function getNextWeekend() {
+    const today = new Date();
+    const daysUntilFriday = (5 - today.getDay() + 7) % 7 || 7;
+    const nextFriday = new Date(today);
+    nextFriday.setDate(today.getDate() + daysUntilFriday);
+    return nextFriday.toISOString().split('T')[0];
+  }
+</script>

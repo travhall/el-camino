@@ -504,20 +504,44 @@ function parseProductShowcase(html: string) {
 }
 
 function parseEventBlock(html: string) {
+  // Extract from data attributes first
+  const title = html.match(/data-title="([^"]+)"/)?.[1] || "";
+  const date = html.match(/data-date="([^"]+)"/)?.[1] || "";
+  const time = html.match(/data-time="([^"]+)"/)?.[1] || "";
+  const location = html.match(/data-location="([^"]+)"/)?.[1] || "";
+  const description = html.match(/data-description="([^"]+)"/)?.[1] || "";
+  const rsvpUrl = html.match(/data-rsvp-url="([^"]+)"/)?.[1] || "";
+  const imageUrl = html.match(/data-image="([^"]+)"/)?.[1] || "";
+  const registrationRequired = html.includes('data-registration-required="true"');
+  const featuredProductsAttr = html.match(/data-featured-products="([^"]+)"/)?.[1];
+
+  // WordPress.com compatibility: Extract from HTML comments as fallback
+  const commentTitle = extractFromComments(html, "data-title");
+  const commentDate = extractFromComments(html, "data-date");
+  const commentTime = extractFromComments(html, "data-time");
+  const commentLocation = extractFromComments(html, "data-location");
+  const commentDescription = extractFromComments(html, "data-description");
+  const commentRsvpUrl = extractFromComments(html, "data-rsvp-url");
+  const commentImageUrl = extractFromComments(html, "data-image");
+  const commentFeaturedProducts = extractFromComments(html, "data-featured-products");
+  const commentRegistrationRequired = html.includes('<!-- data-registration-required="true" -->');
+
   return {
-    title: html.match(/data-title="([^"]+)"/)?.[1] || "",
-    date: html.match(/data-date="([^"]+)"/)?.[1] || "",
-    time: html.match(/data-time="([^"]+)"/)?.[1] || "",
-    location: html.match(/data-location="([^"]+)"/)?.[1] || "",
-    description: html.match(/data-description="([^"]+)"/)?.[1] || "",
-    rsvpUrl: html.match(/data-rsvp-url="([^"]+)"/)?.[1] || "",
-    featuredProducts:
-      html
-        .match(/data-featured-products="([^"]+)"/)?.[1]
-        ?.split(",")
-        .map((p) => p.trim()) || [],
-    imageUrl: html.match(/data-image="([^"]+)"/)?.[1] || "",
-    registrationRequired: html.includes('data-registration-required="true"'),
+    title: title || commentTitle || "",
+    date: date || commentDate || "",
+    time: time || commentTime || "",
+    location: location || commentLocation || "",
+    description: description || commentDescription || "",
+    rsvpUrl: rsvpUrl || commentRsvpUrl || "",
+    imageUrl: imageUrl || commentImageUrl || "",
+    registrationRequired: registrationRequired || commentRegistrationRequired,
+    featuredProducts: featuredProductsAttr 
+      ? featuredProductsAttr.split(",").map((p) => p.trim())
+      : Array.isArray(commentFeaturedProducts)
+        ? commentFeaturedProducts
+        : typeof commentFeaturedProducts === "string" && commentFeaturedProducts
+          ? commentFeaturedProducts.split(",").map((p) => p.trim())
+          : [],
   };
 }
 
