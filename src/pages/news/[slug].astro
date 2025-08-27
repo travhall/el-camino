@@ -164,38 +164,40 @@ const structuredData = {
 
     <!-- UPDATED: Enhanced WordPress content with block parsing -->
     <section
-      class="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl self-center p-4 lg:p-8 xl:p-12 2xl:p-20 bg-(--surface-secondary)"
+      class="bg-(--surface-secondary) border-x-2 border-(--border-secondary)"
     >
-      <!-- WordPress content with enhanced block rendering -->
-      <WordPressBlockParser
-        content={post.content.rendered}
-        enhanceBlocks={true}
-      />
+      <div
+        class="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto p-4 lg:p-8 xl:p-12 2xl:p-20"
+      >
+        <!-- WordPress content with enhanced block rendering -->
+        <WordPressBlockParser
+          content={post.content.rendered}
+          enhanceBlocks={true}
+        />
 
-      <!-- Article Tags Section -->
-      {
-        tags.length > 0 && (
-          <div class="mt-8 pt-6 border-t border-(--border-secondary) tags-section">
-            <h3 class="text-(--content-meta) text-sm font-medium tracking-wide mb-3">
-              Tagged
-            </h3>
-            <div class="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <Tag tag={tag} variant="default" size="sm" clickable={true} />
-              ))}
+        <!-- Article Tags Section -->
+        {
+          tags.length > 0 && (
+            <div class="px-4 py-8 tags-section">
+              <h3 class="text-(--content-meta) text-sm font-medium tracking-wide mb-3">
+                Tagged
+              </h3>
+              <div class="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <Tag tag={tag} variant="default" size="sm" clickable={true} />
+                ))}
+              </div>
             </div>
-          </div>
-        )
-      }
+          )
+        }
+      </div>
     </section>
 
     <!-- Article footer -->
-    <footer
-      class="md:p-4 pt-8 border-t border-(--border-primary) bg-(--surface-secondary)"
-    >
+    <footer class="p-4 bg-(--surface-secondary)">
       {
         category && (
-          <div class="mb-4 px-2">
+          <div class="mb-4">
             <span class="text-(--content-meta) text-sm">Filed under: </span>
             <span class="text-(--content-emphasis) font-medium">
               {category.name}
@@ -204,7 +206,7 @@ const structuredData = {
         )
       }
 
-      <div class="flex justify-between items-center mb-8 px-2">
+      <div class="flex justify-between items-center mb-8">
         <a
           href="/news"
           class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary)/50 hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"

@@ -196,6 +196,49 @@ const allProducts = skus.map(sku => ({
               />
             </div>
 
+            <!-- Featured Products -->
+            <div>
+              <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                Featured Products (optional)
+              </label>
+              <div class="border border-(--ui-input-border) rounded bg-(--ui-input-surface) max-h-48 overflow-y-auto">
+                <div class="p-3">
+                  <input
+                    type="text"
+                    id="product-search"
+                    placeholder="Search products by name or SKU..."
+                    class="w-full px-3 py-2 border border-(--ui-input-border) rounded bg-(--surface-primary) text-(--ui-input-text) mb-3"
+                  />
+                  <div id="product-list" class="space-y-2 max-h-32 overflow-y-auto">
+                    {allProducts.slice(0, 20).map(product => (
+                      <label class="flex items-center cursor-pointer p-2 hover:bg-(--surface-tertiary) rounded product-item">
+                        <input
+                          type="checkbox"
+                          class="product-checkbox elco-checkbox mr-3"
+                          data-sku={product.humanReadableSku}
+                          data-title={product.title}
+                        />
+                        <div class="flex-1">
+                          <div class="text-sm font-medium">{product.title}</div>
+                          <div class="text-xs text-(--content-meta) font-mono">{product.humanReadableSku}</div>
+                        </div>
+                        <div class="text-sm font-bold">${product.price.toFixed(2)}</div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Selected Products Display -->
+            <div id="selected-products-display" class="hidden">
+              <label class="block text-sm font-medium text-(--content-heading) mb-2">
+                Selected Products
+              </label>
+              <div id="selected-products-list" class="flex flex-wrap gap-2 p-3 border border-(--ui-input-border) rounded bg-(--ui-input-surface)">
+              </div>
+            </div>
+
             <!-- Generate Button -->
             <div class="pt-4">
               <button
@@ -251,6 +294,7 @@ const allProducts = skus.map(sku => ({
      &lt;!-- data-time="2:00 PM - 6:00 PM" --&gt;
      &lt;!-- data-location="El Camino Skate Shop" --&gt;
      &lt;!-- data-description="Join us for our weekly session!" --&gt;
+     &lt;!-- data-featured-products="SPITFIRE-CLASSIC-SOCKS,THRASHER-THORNS-HOODY" --&gt;
      &lt;!-- data-registration-required="false" --&gt;
 &lt;/div&gt;</code></pre>
           </div>
@@ -311,6 +355,7 @@ const allProducts = skus.map(sku => ({
 
   document.addEventListener('DOMContentLoaded', () => {
     bindFormEvents();
+    bindProductSearch();
     bindTemplateSelect();
   });
 
@@ -340,12 +385,86 @@ const allProducts = skus.map(sku => ({
     });
   }
 
+  function bindProductSearch() {
+    const searchInput = document.getElementById('product-search');
+    const productList = document.getElementById('product-list');
+    
+    // Product search functionality
+    searchInput?.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      const productItems = productList.querySelectorAll('.product-item');
+      
+      productItems.forEach(item => {
+        const title = item.querySelector('[data-title]')?.dataset.title?.toLowerCase() || '';
+        const sku = item.querySelector('[data-sku]')?.dataset.sku?.toLowerCase() || '';
+        const shouldShow = title.includes(query) || sku.includes(query);
+        item.style.display = shouldShow ? 'flex' : 'none';
+      });
+    });
+
+    // Product selection
+    const checkboxes = document.querySelectorAll('.product-checkbox');
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const sku = e.target.dataset.sku;
+        const title = e.target.dataset.title;
+        
+        if (e.target.checked) {
+          selectedProducts.add({ sku, title });
+        } else {
+          selectedProducts.forEach(product => {
+            if (product.sku === sku) selectedProducts.delete(product);
+          });
+        }
+        
+        updateSelectedProductsDisplay();
+      });
+    });
+  }
+
   function bindFormEvents() {
     const generateButton = document.getElementById('generate-event-code');
     const copyButton = document.getElementById('copy-event-code');
     
     generateButton?.addEventListener('click', generateEventCode);
     copyButton?.addEventListener('click', copyEventCode);
+  }
+
+  function updateSelectedProductsDisplay() {
+    const display = document.getElementById('selected-products-display');
+    const list = document.getElementById('selected-products-list');
+    
+    if (selectedProducts.size === 0) {
+      display.classList.add('hidden');
+      return;
+    }
+    
+    display.classList.remove('hidden');
+    
+    const productTags = Array.from(selectedProducts).map(product => `
+      <span class="inline-flex items-center gap-1 bg-(--ui-accent)/10 text-(--ui-accent) px-2 py-1 rounded text-sm">
+        ${product.sku}
+        <button class="remove-product hover:text-red-500" data-sku="${product.sku}">×</button>
+      </span>
+    `).join('');
+    
+    list.innerHTML = productTags;
+    
+    // Bind remove buttons
+    list.querySelectorAll('.remove-product').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const sku = e.target.dataset.sku;
+        selectedProducts.forEach(product => {
+          if (product.sku === sku) {
+            selectedProducts.delete(product);
+            // Uncheck the checkbox
+            const checkbox = document.querySelector(`[data-sku="${sku}"]`);
+            if (checkbox) checkbox.checked = false;
+          }
+        });
+        updateSelectedProductsDisplay();
+      });
+    });
   }
 
   function generateEventCode() {
@@ -376,6 +495,12 @@ const allProducts = skus.map(sku => ({
     
     if (rsvpUrl) code += `     <!-- data-rsvp-url="${escapeHtml(rsvpUrl)}" -->\n`;
     if (imageUrl) code += `     <!-- data-image="${escapeHtml(imageUrl)}" -->\n`;
+    
+    // Add featured products if selected
+    if (selectedProducts.size > 0) {
+      const productSkus = Array.from(selectedProducts).map(p => p.sku).join(',');
+      code += `     <!-- data-featured-products="${productSkus}" -->\n`;
+    }
     
     if (registrationRequired) {
       code += `     <!-- data-registration-required="true" -->\n`;
@@ -433,3 +558,10 @@ const allProducts = skus.map(sku => ({
     return nextFriday.toISOString().split('T')[0];
   }
 </script>
+
+<style>
+  .product-checkbox:checked + div {
+    background-color: var(--ui-accent);
+    color: white;
+  }
+</style>
