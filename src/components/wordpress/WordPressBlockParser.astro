@@ -42,29 +42,44 @@ function parseWordPressBlocks(htmlContent: string): Array<{
       regex:
         /<div[^>]*class="[^"]*wp-block-product-showcase[^"]*"[^>]*>[\s\S]*?<\/div>/g,
       parser: parseProductShowcase,
+      fallbackRegex: [
+        /<div[^>]*data-product-skus[^>]*>[\s\S]*?<\/div>/g, // Direct attribute pattern
+        /<!--\s*wp:product-showcase[\s\S]*?-->([\s\S]*?)<!--\s*\/wp:product-showcase\s*-->/g, // Comment blocks
+      ],
     },
     {
       type: "event",
       regex: /<div[^>]*class="[^"]*wp-block-event[^"]*"[^>]*>[\s\S]*?<\/div>/g,
       parser: parseEventBlock,
+      fallbackRegex: [
+        /<div[^>]*data-title[^>]*data-date[^>]*>[\s\S]*?<\/div>/g, // Direct attributes
+        /<!--\s*wp:event[\s\S]*?-->([\s\S]*?)<!--\s*\/wp:event\s*-->/g, // Comment blocks
+      ],
     },
     {
       type: "team-member",
       regex:
         /<div[^>]*class="[^"]*wp-block-team-member[^"]*"[^>]*>[\s\S]*?<\/div>/g,
       parser: parseTeamMember,
+      fallbackRegex: [/<div[^>]*data-name[^>]*data-role[^>]*>[\s\S]*?<\/div>/g],
     },
     {
       type: "jetpack-slideshow",
       regex:
         /<div[^>]*class="[^"]*wp-block-jetpack-slideshow[^"]*"[^>]*>[\s\S]*?<\/div>/g,
       parser: parseJetpackSlideshow,
+      fallbackRegex: [/<div[^>]*class="[^"]*slideshow-container[^"]*"/g],
     },
     {
       type: "gallery",
       regex:
         /<figure[^>]*class="[^"]*wp-block-gallery[^"]*"[^>]*>[\s\S]*?<\/figure>/g,
       parser: parseGallery,
+      fallbackRegex: [
+        /<div[^>]*class="[^"]*tiled-gallery[^"]*"/g, // WordPress.com Jetpack
+        /<div[^>]*class="[^"]*gallery[^"]*"/g, // Basic gallery
+        /\[gallery[^\]]*\]/g, // WordPress shortcode format
+      ],
     },
     {
       type: "embed",
@@ -107,6 +122,7 @@ function parseWordPressBlocks(htmlContent: string): Array<{
   }> = [];
 
   blockPatterns.forEach((pattern) => {
+    // Try primary pattern first
     const matches = Array.from(htmlContent.matchAll(pattern.regex));
     matches.forEach((match) => {
       if (match.index !== undefined) {
@@ -121,17 +137,68 @@ function parseWordPressBlocks(htmlContent: string): Array<{
           });
         } catch (error) {
           console.warn(`Error parsing ${pattern.type} block:`, error);
-          // Fallback to text content
-          allMatches.push({
-            type: "raw",
-            match: match[0],
-            start: match.index,
-            end: match.index + match[0].length,
-            data: {},
-          });
+          // Try fallback parsing for business components
+          if (pattern.type === "product-showcase") {
+            try {
+              const fallbackData = parseProductShowcaseFallback(match[0]);
+              if (fallbackData.productSkus.length > 0) {
+                allMatches.push({
+                  type: pattern.type,
+                  match: match[0],
+                  start: match.index,
+                  end: match.index + match[0].length,
+                  data: fallbackData,
+                });
+              }
+            } catch (fallbackError) {
+              // Final fallback to raw content
+              allMatches.push({
+                type: "raw",
+                match: match[0],
+                start: match.index,
+                end: match.index + match[0].length,
+                data: {},
+              });
+            }
+          } else {
+            // Fallback to raw content for other block types
+            allMatches.push({
+              type: "raw",
+              match: match[0],
+              start: match.index,
+              end: match.index + match[0].length,
+              data: {},
+            });
+          }
         }
       }
     });
+
+    // If primary pattern found no matches, try fallback patterns
+    if (matches.length === 0 && pattern.fallbackRegex) {
+      pattern.fallbackRegex.forEach((fallbackRegex) => {
+        const fallbackMatches = Array.from(htmlContent.matchAll(fallbackRegex));
+        fallbackMatches.forEach((match) => {
+          if (match.index !== undefined) {
+            try {
+              const data = pattern.parser(match[0]);
+              allMatches.push({
+                type: pattern.type,
+                match: match[0],
+                start: match.index,
+                end: match.index + match[0].length,
+                data,
+              });
+            } catch (error) {
+              console.warn(
+                `Error parsing ${pattern.type} fallback block:`,
+                error
+              );
+            }
+          }
+        });
+      });
+    }
   });
 
   // Sort matches by position
@@ -512,8 +579,12 @@ function parseEventBlock(html: string) {
   const description = html.match(/data-description="([^"]+)"/)?.[1] || "";
   const rsvpUrl = html.match(/data-rsvp-url="([^"]+)"/)?.[1] || "";
   const imageUrl = html.match(/data-image="([^"]+)"/)?.[1] || "";
-  const registrationRequired = html.includes('data-registration-required="true"');
-  const featuredProductsAttr = html.match(/data-featured-products="([^"]+)"/)?.[1];
+  const registrationRequired = html.includes(
+    'data-registration-required="true"'
+  );
+  const featuredProductsAttr = html.match(
+    /data-featured-products="([^"]+)"/
+  )?.[1];
 
   // WordPress.com compatibility: Extract from HTML comments as fallback
   const commentTitle = extractFromComments(html, "data-title");
@@ -523,8 +594,13 @@ function parseEventBlock(html: string) {
   const commentDescription = extractFromComments(html, "data-description");
   const commentRsvpUrl = extractFromComments(html, "data-rsvp-url");
   const commentImageUrl = extractFromComments(html, "data-image");
-  const commentFeaturedProducts = extractFromComments(html, "data-featured-products");
-  const commentRegistrationRequired = html.includes('<!-- data-registration-required="true" -->');
+  const commentFeaturedProducts = extractFromComments(
+    html,
+    "data-featured-products"
+  );
+  const commentRegistrationRequired = html.includes(
+    '<!-- data-registration-required="true" -->'
+  );
 
   return {
     title: title || commentTitle || "",
@@ -535,7 +611,7 @@ function parseEventBlock(html: string) {
     rsvpUrl: rsvpUrl || commentRsvpUrl || "",
     imageUrl: imageUrl || commentImageUrl || "",
     registrationRequired: registrationRequired || commentRegistrationRequired,
-    featuredProducts: featuredProductsAttr 
+    featuredProducts: featuredProductsAttr
       ? featuredProductsAttr.split(",").map((p) => p.trim())
       : Array.isArray(commentFeaturedProducts)
         ? commentFeaturedProducts
@@ -584,24 +660,66 @@ function parseTeamMember(html: string) {
   };
 }
 
-// Extract data from HTML comments (WordPress.com compatibility)
+// Fallback parser for product showcases when main parsing fails
+function parseProductShowcaseFallback(html: string) {
+  // Simple extraction for basic cases
+  const skuPatterns = [
+    /data-product-skus\s*=\s*["']([^"']+)["']/i,
+    /product-skus:\s*([^;]+)/i,
+    /skus:\s*([^,\n]+)/i,
+  ];
+
+  let productSkus: any = [];
+  for (const pattern of skuPatterns) {
+    const match = html.match(pattern);
+    if (match) {
+      productSkus = match[1]
+        .split(",")
+        .map((sku) => sku.trim())
+        .filter(Boolean);
+      if (productSkus.length > 0) break;
+    }
+  }
+
+  return {
+    productSkus,
+    layout: html.includes("carousel") ? "carousel" : "grid",
+    columns: 3,
+    title: "",
+    description: "",
+    fallbackIds: [],
+  };
+}
+
+// Extract data from HTML comments (WordPress.com compatibility) - Enhanced
 function extractFromComments(
   html: string,
   attribute: string
 ): string | string[] {
-  const commentPattern = new RegExp(
-    `<!--\\s*${attribute}="([^"]+)"\\s*-->`,
-    "g"
-  );
-  const match = commentPattern.exec(html);
+  const patterns = [
+    // Standard comment format
+    new RegExp(`<!--\\s*${attribute}="([^"]+)"\\s*-->`, "i"),
+    // JSON format comments
+    new RegExp(`<!--\\s*"${attribute}"\\s*:\\s*"([^"]+)"\\s*-->`, "i"),
+    // Simple format
+    new RegExp(`<!--\\s*${attribute}:\\s*([^\\s,]+)\\s*-->`, "i"),
+    // WordPress block comment format
+    new RegExp(`<!--\\s*wp:[^>]*${attribute}[=:]"([^"]+)"[^>]*-->`, "i"),
+  ];
 
-  if (match && attribute.includes("product-")) {
-    // For product lists, return array
-    return match[1].split(",").map((item) => item.trim());
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match) {
+      if (attribute.includes("product-")) {
+        // For product lists, return array
+        return match[1].split(",").map((item) => item.trim());
+      }
+      // For single values, return string
+      return match[1];
+    }
   }
 
-  // For single values, return string
-  return match ? match[1] : "";
+  return attribute.includes("product-") ? [] : "";
 }
 
 function extractProductSkus(html: string): string[] {
@@ -648,11 +766,21 @@ const parsedBlocks = parseWordPressBlocks(content);
     parsedBlocks.map((block, index) => {
       const isLastBlock = index === parsedBlocks.length - 1;
       const blockClasses = isLastBlock ? "" : "mb-6";
-      
+
       // Define which blocks need WordPress content styling (content-only blocks)
       const needsWordPressContentStyling = [
-        'paragraph', 'heading', 'list', 'quote', 'image', 'gallery', 
-        'columns', 'separator', 'table', 'embed', 'video', 'audio'
+        "paragraph",
+        "heading",
+        "list",
+        "quote",
+        "image",
+        "gallery",
+        "columns",
+        "separator",
+        "table",
+        "embed",
+        "video",
+        "audio",
       ].includes(block.type);
 
       switch (block.type) {
@@ -782,13 +910,11 @@ const parsedBlocks = parseWordPressBlocks(content);
 
         default:
           // All other content blocks - no longer need wordpress-content wrapper
-          const wrapperClass = needsWordPressContentStyling 
+          const wrapperClass = needsWordPressContentStyling
             ? `wp-content-block ${blockClasses}`
             : `wp-content-block ${blockClasses}`;
-          
-          return (
-            <div class={wrapperClass} set:html={block.html} />
-          );
+
+          return <div class={wrapperClass} set:html={block.html} />;
       }
     })
   }

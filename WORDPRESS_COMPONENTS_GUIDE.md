@@ -8,7 +8,7 @@ The WordPress High-ROI Business Components seamlessly bridge content and commerc
 
 ## Quick Reference
 
-**🔗 SKU Reference Tool**: Visit `/admin/sku-reference` to see all available product SKUs with copy-to-clipboard functionality.
+**🔗 SKU Reference Tool**: Visit `/admin/content/sku-reference` to see all available product SKUs with copy-to-clipboard functionality.
 
 ## Component 1: Product Showcase
 
@@ -53,7 +53,7 @@ The WordPress High-ROI Business Components seamlessly bridge content and commerc
 
 ### Available Product SKUs (Examples)
 
-**Visit `/admin/sku-reference` for the complete, up-to-date list with copy functionality.**
+**Visit `/admin/content/sku-reference` for the complete, up-to-date list with copy functionality.**
 
 **Sample SKUs:**
 

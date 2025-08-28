@@ -212,9 +212,9 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
         <!-- Price Display -->
         <div class="mt-2">
-          <p
+          <h2
             id="price-display"
-            class="text-4xl xl:text-5xl font-display font-bold text-(--content-emphasis) mb-2"
+            class="text-4xl xl:text-5xl font-display font-bold text-(--content-emphasis)"
           >
             {formattedPrice}
             {/* Unit display */}
@@ -225,7 +225,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
                 </span>
               )
             }
-          </p>
+          </h2>
           <small class="italic"
             >Shipping &amp; taxes are calculated at checkout</small
           >
@@ -245,9 +245,12 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
                 return (
                   <div class="mt-6">
-                    <h3 class="text-sm font-medium text-(--content-heading) mb-2">
+                    <label
+                      for="quantity-input"
+                      class="text-sm font-medium block mb-1"
+                    >
                       {displayName}
-                    </h3>
+                    </label>
                     <div class="flex flex-wrap gap-2">
                       {attributeValues.map((value) => {
                         const isAvailable = variations.some((variation) => {
@@ -291,9 +294,12 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
               return (
                 <div class="mt-4">
-                  <h3 class="text-sm font-medium text-(--content-heading) mb-2">
+                  <label
+                    for="quantity-input"
+                    class="text-sm font-medium block mb-1"
+                  >
                     {displayName}
-                  </h3>
+                  </label>
                   <div class="inline-block px-4 py-2 bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50 rounded-[4px]">
                     {attributeValues[0]}
                   </div>
@@ -424,7 +430,7 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
         <!-- Store Information -->
         <div class="text-sm flex flex-col mt-4 space-y-1 py-2">
-          <p class="italic">Available for pick up at El Camino</p>
+          <span class="italic">Available for pick up at El Camino</span>
           <button
             id="location-hours-link"
             class="relative inline-flex self-start font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left"
@@ -490,17 +496,17 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
       // Only initialize PDP controller if we have interactive elements that need it
       if (hasAttributeButtons || hasVariationButtons || hasQuantityControls) {
-        console.log('Initializing PDP controller...');
-        console.log('Has attribute buttons:', hasAttributeButtons);
-        console.log('Has variation buttons:', hasVariationButtons);
-        console.log('Has quantity controls:', hasQuantityControls);
-        console.log('Product data:', productData);
-        
+        console.log("Initializing PDP controller...");
+        console.log("Has attribute buttons:", hasAttributeButtons);
+        console.log("Has variation buttons:", hasVariationButtons);
+        console.log("Has quantity controls:", hasQuantityControls);
+        console.log("Product data:", productData);
+
         pdpController = new PDPController(productData);
-        console.log('PDP controller created:', pdpController);
+        console.log("PDP controller created:", pdpController);
         return true;
       } else {
-        console.log('No interactive elements found - not initializing PDP');
+        console.log("No interactive elements found - not initializing PDP");
         return true; // This is OK, not an error
       }
     } catch (error) {
@@ -554,29 +560,29 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
    */
   // Run immediately since view transitions are disabled
   function initializePage() {
-    console.log('Page initialization started');
-    
+    console.log("Page initialization started");
+
     const variationDataElement = document.getElementById("variation-data");
     const isProductPage = variationDataElement !== null;
-    
-    console.log('variation-data element found:', variationDataElement);
-    console.log('isProductPage:', isProductPage);
+
+    console.log("variation-data element found:", variationDataElement);
+    console.log("isProductPage:", isProductPage);
 
     if (isProductPage) {
-      console.log('Product page detected, calling initializePDP()');
+      console.log("Product page detected, calling initializePDP()");
       if (!initializePDP()) {
         console.error("Failed to initialize PDP controller");
       }
     } else {
-      console.log('Not a product page, skipping PDP initialization');
+      console.log("Not a product page, skipping PDP initialization");
     }
 
     initializeDescriptionToggle();
   }
 
   // Run on DOM ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializePage);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializePage);
   } else {
     initializePage();
   }
