@@ -1,0 +1,673 @@
+---
+/**
+ * Enhanced Product Detail Page - Example Implementation
+ * Demonstrates integration of all enhancement components
+ */
+import { getSquareClient } from '../../lib/square/client';
+import { parseVariations } from '../../lib/square/variationParser';
+import { getBatchInventory } from '../../lib/square/batchInventory';
+import type { CatalogItem, CatalogItemVariation } from '../../lib/square/types';
+
+export interface Props {
+  id: string;
+}
+
+const { id } = Astro.props;
+
+let product: CatalogItem | null = null;
+let variations: CatalogItemVariation[] = [];
+let inventory: Record<string, number> = {};
+let error: string | null = null;
+
+try {
+  const squareClient = getSquareClient();
+  
+  // Fetch product data
+  const catalogResponse = await squareClient.catalogApi.retrieveCatalogObject(id);
+  if (catalogResponse.result?.object?.type === 'ITEM') {
+    product = catalogResponse.result.object as CatalogItem;
+    
+    // Parse variations
+    if (product.itemData?.variations) {
+      variations = product.itemData.variations;
+    }
+    
+    // Fetch inventory
+    if (variations.length > 0) {
+      const variationIds = variations.map(v => v.id!);
+      inventory = await getBatchInventory(variationIds);
+    }
+  }
+  
+} catch (e) {
+  error = e instanceof Error ? e.message : 'Unknown error occurred';
+  console.error('Product page error:', e);
+}
+
+// A/B test data (will be hydrated client-side)
+const abTestConfig = {
+  buttonTest: 'add-to-cart-style-test',
+  layoutTest: 'product-layout-test',
+  imageTest: 'image-gallery-test'
+};
+---
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{product ? product.itemData?.name : 'Product Not Found'} | El Camino</title>
+  
+  <!-- Preload critical enhancements -->
+  <link rel="modulepreload" href="/src/lib/enhancements.ts">
+  <link rel="modulepreload" href="/src/lib/ui/loadingStates.ts">
+  
+  <!-- Performance monitoring preconnect -->
+  <link rel="preconnect" href="https://api.elcamino.com">
+</head>
+
+<body>
+  <div id="product-page-container" class="max-w-7xl mx-auto px-4 py-8">
+    
+    {error ? (
+      <!-- Error State -->
+      <div id="product-error-container" class="text-center py-12">
+        <div class="error-fallback">
+          <h1 class="text-2xl font-bold text-gray-900 mb-4">
+            Product Temporarily Unavailable
+          </h1>
+          <p class="text-gray-600 mb-6">
+            We're having trouble loading this product. Please try again in a moment.
+          </p>
+          <button 
+            onclick="window.location.reload()" 
+            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    ) : product ? (
+      <!-- Product Content -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <!-- Product Images Section -->
+        <div id="product-images-container" class="space-y-4">
+          <div id="product-image-gallery" 
+               class="product-image-gallery" 
+               data-current-index="0"
+               data-mobile-gestures="enabled">
+            
+            {product.itemData?.imageIds ? (
+              product.itemData.imageIds.map((imageId, index) => (
+                <div class="gallery-image-container" data-index={index}>
+                  <img 
+                    class={`gallery-image ${index === 0 ? 'active' : ''}`}
+                    data-src={`https://cdn.elcamino.com/images/${imageId}?w=800&h=800&fit=cover`}
+                    alt={`${product.itemData?.name} - View ${index + 1}`}
+                    loading={index === 0 ? 'eager' : 'lazy'}
+                    fetchpriority={index === 0 ? 'high' : 'auto'}
+                  />
+                </div>
+              ))
+            ) : (
+              <div class="placeholder-image bg-gray-200 aspect-square rounded-lg flex items-center justify-center">
+                <span class="text-gray-500">No image available</span>
+              </div>
+            )}
+          </div>
+          
+          <!-- Image Gallery Controls -->
+          <div class="gallery-controls flex justify-center space-x-2">
+            {product.itemData?.imageIds?.map((_, index) => (
+              <button 
+                class="gallery-indicator w-3 h-3 rounded-full bg-gray-300 data-[active]:bg-gray-700"
+                data-index={index}
+                data-active={index === 0}
+                aria-label={`View image ${index + 1}`}
+              ></button>
+            ))}
+          </div>
+        </div>
+
+        <!-- Product Details Section -->
+        <div id="product-details-container" class="space-y-6">
+          
+          <!-- Product Header -->
+          <div class="product-header">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">
+              {product.itemData?.name}
+            </h1>
+            
+            <div class="price-display mb-4">
+              {variations.length > 0 && (
+                <span id="product-price" class="text-2xl font-semibold text-green-600">
+                  ${(variations[0].itemVariationData?.priceMoney?.amount || 0) / 100}
+                </span>
+              )}
+            </div>
+
+            {product.itemData?.description && (
+              <div class="product-description prose prose-gray max-w-none">
+                <p>{product.itemData.description}</p>
+              </div>
+            )}
+          </div>
+
+          <!-- Variation Selection -->
+          {variations.length > 1 && (
+            <div id="product-variations-container" class="space-y-4">
+              <div id="variation-selector" class="variation-selector space-y-3">
+                <!-- Variations will be populated by JavaScript -->
+              </div>
+            </div>
+          )}
+
+          <!-- Add to Cart Section -->
+          <div id="add-to-cart-section" class="space-y-4">
+            
+            <!-- Quantity Selector -->
+            <div id="quantity-selector-container" class="flex items-center space-x-4">
+              <label for="quantity" class="text-sm font-medium text-gray-700">
+                Quantity:
+              </label>
+              <div class="quantity-controls flex items-center border border-gray-300 rounded-lg">
+                <button 
+                  id="quantity-decrease"
+                  type="button" 
+                  class="px-3 py-2 hover:bg-gray-50 transition-colors"
+                  aria-label="Decrease quantity"
+                >
+                  -
+                </button>
+                <input 
+                  id="quantity-input"
+                  type="number" 
+                  name="quantity" 
+                  value="1" 
+                  min="1" 
+                  max="10"
+                  class="w-16 text-center border-0 focus:ring-0"
+                />
+                <button 
+                  id="quantity-increase"
+                  type="button" 
+                  class="px-3 py-2 hover:bg-gray-50 transition-colors"
+                  aria-label="Increase quantity"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <!-- Add to Cart Button -->
+            <div class="add-to-cart-container">
+              <button 
+                id="add-to-cart-button"
+                type="button"
+                class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                data-product-id={product.id}
+                disabled
+              >
+                Add to Cart
+              </button>
+            </div>
+
+            <!-- Inventory Status -->
+            <div id="inventory-status" class="text-sm text-gray-600">
+              <span class="inventory-indicator">Checking availability...</span>
+            </div>
+          </div>
+
+          <!-- Product Features (A/B Test Target) -->
+          <div id="product-features" class="space-y-3">
+            <!-- Features will be populated based on A/B test variant -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Related Products Section (A/B Test Target) -->
+      <div id="related-products-container" class="mt-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">You Might Also Like</h2>
+        <div id="related-products-grid" class="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <!-- Related products will be loaded asynchronously -->
+        </div>
+      </div>
+      
+    ) : (
+      <!-- Loading State (Server-side fallback) -->
+      <div id="product-loading-container" class="animate-pulse">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="space-y-4">
+            <div class="aspect-square bg-gray-300 rounded-lg"></div>
+            <div class="flex space-x-2">
+              <div class="w-12 h-12 bg-gray-300 rounded"></div>
+              <div class="w-12 h-12 bg-gray-300 rounded"></div>
+              <div class="w-12 h-12 bg-gray-300 rounded"></div>
+            </div>
+          </div>
+          <div class="space-y-6">
+            <div class="h-8 bg-gray-300 rounded w-3/4"></div>
+            <div class="h-6 bg-gray-300 rounded w-1/2"></div>
+            <div class="space-y-2">
+              <div class="h-4 bg-gray-300 rounded"></div>
+              <div class="h-4 bg-gray-300 rounded w-5/6"></div>
+            </div>
+            <div class="h-12 bg-gray-300 rounded"></div>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+
+  <!-- Enhancement Initialization Script -->
+  <script define:vars={{ 
+    product: product ? {
+      id: product.id,
+      name: product.itemData?.name,
+      price: variations[0]?.itemVariationData?.priceMoney?.amount || 0
+    } : null,
+    variations,
+    inventory,
+    abTestConfig 
+  }}>
+    // Initialize enhancements as soon as possible
+    (async function initializeEnhancements() {
+      try {
+        // Import and initialize the enhancement system
+        const { elCaminoEnhancements } = await import('/src/lib/enhancements');
+        
+        console.log('🚀 Initializing El Camino enhancements for product page...');
+        
+        await elCaminoEnhancements.initialize();
+        
+        // Import specific modules
+        const { abTesting } = await import('/src/lib/analytics/abTesting');
+        const { loadingStates } = await import('/src/lib/ui/loadingStates');
+        const { userErrorCommunication } = await import('/src/lib/ui/errorCommunication');
+        const { businessMonitor } = await import('/src/lib/monitoring/businessMonitor');
+        
+        // Track page view
+        businessMonitor.trackCustomEvent('product_page_view', {
+          productId: product?.id,
+          productName: product?.name,
+          timestamp: Date.now()
+        });
+
+        // Set up A/B tests for this product page
+        abTesting.createProductPageTest('add-to-cart-style', {
+          control: {
+            buttonText: 'Add to Cart',
+            buttonColor: '#2563eb',
+            showQuantity: true,
+            showFeatures: true
+          },
+          variant_a: {
+            buttonText: 'Add to Bag',
+            buttonColor: '#059669',
+            showQuantity: true,
+            showFeatures: false
+          },
+          variant_b: {
+            buttonText: 'Buy Now',
+            buttonColor: '#dc2626',
+            showQuantity: false,
+            showFeatures: true
+          }
+        });
+
+        // Initialize product-specific functionality
+        initializeProductInteractions();
+        initializeImageGallery();
+        initializeVariationSelector();
+        initializeAddToCart();
+        
+        console.log('✅ Product page enhancements initialized successfully');
+        
+      } catch (error) {
+        console.error('❌ Failed to initialize enhancements:', error);
+        // Graceful degradation - product page still functions
+      }
+    })();
+
+    function initializeProductInteractions() {
+      // Apply A/B test variants
+      const buttonVariant = elCaminoEnhancements.getProductPageVariant('add-to-cart-style');
+      const button = document.getElementById('add-to-cart-button');
+      const quantityContainer = document.getElementById('quantity-selector-container');
+      const featuresContainer = document.getElementById('product-features');
+      
+      if (buttonVariant && button) {
+        button.textContent = buttonVariant.buttonText;
+        button.style.backgroundColor = buttonVariant.buttonColor;
+        
+        if (!buttonVariant.showQuantity && quantityContainer) {
+          quantityContainer.style.display = 'none';
+        }
+        
+        if (buttonVariant.showFeatures && featuresContainer) {
+          featuresContainer.innerHTML = `
+            <div class="space-y-2">
+              <div class="flex items-center space-x-2">
+                <span class="text-green-600">✓</span>
+                <span class="text-sm">Free shipping on orders over $50</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span class="text-green-600">✓</span>
+                <span class="text-sm">30-day return policy</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span class="text-green-600">✓</span>
+                <span class="text-sm">Secure checkout</span>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      // Quantity controls
+      const decreaseBtn = document.getElementById('quantity-decrease');
+      const increaseBtn = document.getElementById('quantity-increase');
+      const quantityInput = document.getElementById('quantity-input');
+      
+      if (decreaseBtn && increaseBtn && quantityInput) {
+        decreaseBtn.addEventListener('click', () => {
+          const current = parseInt(quantityInput.value);
+          if (current > 1) {
+            quantityInput.value = (current - 1).toString();
+          }
+        });
+        
+        increaseBtn.addEventListener('click', () => {
+          const current = parseInt(quantityInput.value);
+          if (current < 10) {
+            quantityInput.value = (current + 1).toString();
+          }
+        });
+      }
+    }
+
+    function initializeImageGallery() {
+      const gallery = document.getElementById('product-image-gallery');
+      const indicators = document.querySelectorAll('.gallery-indicator');
+      
+      if (!gallery) return;
+
+      // Initialize images with lazy loading
+      const images = gallery.querySelectorAll('img[data-src]');
+      images.forEach((img, index) => {
+        if (index === 0) {
+          // Load first image immediately
+          img.src = img.dataset.src;
+          img.removeAttribute('data-src');
+        }
+      });
+
+      // Gallery controls
+      indicators.forEach((indicator, index) => {
+        indicator.addEventListener('click', () => {
+          switchToImage(index);
+        });
+      });
+
+      function switchToImage(index) {
+        // Update active image
+        const allImages = gallery.querySelectorAll('.gallery-image');
+        allImages.forEach((img, i) => {
+          img.classList.toggle('active', i === index);
+          
+          // Lazy load newly active image
+          if (i === index && img.dataset.src) {
+            img.src = img.dataset.src;
+            img.removeAttribute('data-src');
+          }
+        });
+
+        // Update indicators
+        indicators.forEach((indicator, i) => {
+          indicator.setAttribute('data-active', i === index ? 'true' : 'false');
+        });
+
+        // Update gallery index
+        gallery.setAttribute('data-current-index', index.toString());
+      }
+    }
+
+    function initializeVariationSelector() {
+      if (!variations || variations.length <= 1) return;
+
+      const container = document.getElementById('variation-selector');
+      if (!container) return;
+
+      // Parse variation attributes
+      const attributes = new Map();
+      variations.forEach(variation => {
+        const name = variation.itemVariationData?.name || '';
+        const parts = name.split(',').map(s => s.trim());
+        
+        parts.forEach((part, index) => {
+          const attrName = index === 0 ? 'Size' : index === 1 ? 'Color' : `Option ${index + 1}`;
+          if (!attributes.has(attrName)) {
+            attributes.set(attrName, new Set());
+          }
+          attributes.get(attrName).add(part);
+        });
+      });
+
+      // Create variation UI
+      let html = '';
+      for (const [attrName, values] of attributes) {
+        html += `
+          <div class="variation-group">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              ${attrName}:
+            </label>
+            <div class="flex flex-wrap gap-2">
+              ${Array.from(values).map(value => `
+                <button 
+                  class="variation-option px-4 py-2 border border-gray-300 rounded-lg hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 data-[selected]:border-blue-500 data-[selected]:bg-blue-50"
+                  data-attribute="${attrName}"
+                  data-value="${value}"
+                  data-variation-name="${attrName}: ${value}"
+                  data-variation-details="Click to select this ${attrName.toLowerCase()}"
+                >
+                  ${value}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      container.innerHTML = html;
+
+      // Add variation selection logic
+      container.addEventListener('click', (e) => {
+        const option = e.target.closest('.variation-option');
+        if (!option) return;
+
+        const attribute = option.dataset.attribute;
+        const value = option.dataset.value;
+
+        // Update selection
+        const siblings = container.querySelectorAll(`[data-attribute="${attribute}"]`);
+        siblings.forEach(sibling => sibling.removeAttribute('data-selected'));
+        option.setAttribute('data-selected', 'true');
+
+        // Find matching variation and update price/inventory
+        updateProductForSelectedVariation();
+        
+        // Track selection
+        businessMonitor.trackCustomEvent('variation_selected', {
+          productId: product?.id,
+          attribute,
+          value,
+          timestamp: Date.now()
+        });
+      });
+
+      // Auto-select first variation
+      const firstOptions = container.querySelectorAll('.variation-group .variation-option:first-child');
+      firstOptions.forEach(option => {
+        option.setAttribute('data-selected', 'true');
+      });
+      
+      updateProductForSelectedVariation();
+    }
+
+    async function initializeAddToCart() {
+      const button = document.getElementById('add-to-cart-button');
+      const quantityInput = document.getElementById('quantity-input');
+      
+      if (!button || !quantityInput) return;
+
+      button.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        if (!window.currentVariation) {
+          userErrorCommunication.showCartError(
+            new Error('Please select product options'),
+            document.getElementById('product-details-container')
+          );
+          return;
+        }
+
+        const quantity = parseInt(quantityInput.value) || 1;
+        
+        // Show loading state
+        const loaderId = elCaminoEnhancements.showCartLoading(button);
+
+        try {
+          // Simulate add to cart API call
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Track conversion for A/B test
+          elCaminoEnhancements.trackProductConversion('add-to-cart', 1);
+          
+          // Business metrics
+          businessMonitor.trackCustomEvent('add_to_cart_success', {
+            productId: product?.id,
+            variationId: window.currentVariation.id,
+            quantity,
+            price: window.currentVariation.itemVariationData?.priceMoney?.amount || 0,
+            timestamp: Date.now()
+          });
+
+          // Success state
+          loadingStates.transitionToSuccess(loaderId, 'Added to cart!');
+          
+        } catch (error) {
+          // Error handling with user-friendly message
+          userErrorCommunication.showCartError(
+            error,
+            document.getElementById('add-to-cart-section')
+          );
+          
+          loadingStates.transitionToError(loaderId, 'Failed to add item');
+        }
+      });
+    }
+
+    function updateProductForSelectedVariation() {
+      const selectedOptions = document.querySelectorAll('.variation-option[data-selected]');
+      const selectedValues = Array.from(selectedOptions).map(opt => opt.dataset.value);
+      
+      // Find matching variation
+      const matchingVariation = variations.find(variation => {
+        const name = variation.itemVariationData?.name || '';
+        return selectedValues.every(value => name.includes(value));
+      });
+
+      if (matchingVariation) {
+        // Update price
+        const priceElement = document.getElementById('product-price');
+        if (priceElement && matchingVariation.itemVariationData?.priceMoney?.amount) {
+          const price = matchingVariation.itemVariationData.priceMoney.amount / 100;
+          priceElement.textContent = `$${price}`;
+        }
+
+        // Update inventory status
+        const inventoryElement = document.querySelector('.inventory-indicator');
+        const addToCartButton = document.getElementById('add-to-cart-button');
+        
+        if (inventoryElement && addToCartButton) {
+          const inventoryCount = inventory[matchingVariation.id] || 0;
+          
+          if (inventoryCount > 0) {
+            inventoryElement.textContent = `${inventoryCount} in stock`;
+            inventoryElement.className = 'inventory-indicator text-green-600';
+            addToCartButton.disabled = false;
+          } else {
+            inventoryElement.textContent = 'Out of stock';
+            inventoryElement.className = 'inventory-indicator text-red-600';
+            addToCartButton.disabled = true;
+          }
+        }
+
+        // Store current variation for add to cart
+        window.currentVariation = matchingVariation;
+      }
+    }
+  </script>
+
+  <!-- CSS for enhanced interactions -->
+  <style>
+    .gallery-image {
+      display: none;
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+      border-radius: 8px;
+      transition: opacity 0.3s ease;
+    }
+    
+    .gallery-image.active {
+      display: block;
+    }
+    
+    .gallery-indicator[data-active="true"] {
+      background-color: #374151;
+    }
+    
+    .variation-option[data-selected="true"] {
+      border-color: #3b82f6;
+      background-color: #eff6ff;
+    }
+    
+    .quantity-controls input::-webkit-outer-spin-button,
+    .quantity-controls input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    
+    .quantity-controls input[type=number] {
+      -moz-appearance: textfield;
+    }
+    
+    /* Mobile optimizations */
+    @media (max-width: 768px) {
+      .product-image-gallery {
+        touch-action: pan-x;
+      }
+      
+      .variation-option {
+        min-height: 44px;
+        min-width: 44px;
+      }
+      
+      #add-to-cart-button {
+        min-height: 48px;
+        touch-action: manipulation;
+      }
+    }
+    
+    /* Loading and error states */
+    .error-fallback {
+      padding: 2rem;
+      text-align: center;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+    }
+  </style>
+</html>
