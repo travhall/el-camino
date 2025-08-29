@@ -303,7 +303,15 @@ export class PDPEventManager {
   private setupLocationModal(): void {
     const locationLink = document.getElementById("location-hours-link");
     if (locationLink) {
-      locationLink.addEventListener("click", () => {
+      // Remove any existing listeners to prevent duplicates
+      const newLocationLink = locationLink.cloneNode(true) as HTMLElement;
+      locationLink.parentNode?.replaceChild(newLocationLink, locationLink);
+      
+      // Add event listener to the cloned element
+      newLocationLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Location link clicked, calling showLocationModal');
         window.showLocationModal();
       });
     }

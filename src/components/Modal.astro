@@ -1,6 +1,6 @@
 ---
 // src/components/Modal.astro
-import { siteConfig, type SiteConfig } from '@/lib/site-config';
+import { siteConfig } from '@/lib/site-config';
 
 // Serialize config for client-side use
 const serializedSiteConfig = JSON.stringify(siteConfig);
@@ -31,7 +31,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
   }
 
   // Parse the site config from the data attribute when DOM is ready
-  let siteConfig: SiteConfig | null = null;
+  let clientSiteConfig: SiteConfig | null = null;
   
   function initializeSiteConfig() {
     const siteConfigElement = document.querySelector('[data-site-config]');
@@ -39,7 +39,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       const configData = siteConfigElement.getAttribute('data-site-config');
       if (configData) {
         try {
-          siteConfig = JSON.parse(configData);
+          clientSiteConfig = JSON.parse(configData);
         } catch (error) {
           console.error('Failed to parse site config:', error);
         }
@@ -199,8 +199,11 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
         return;
       }
 
-      // Check if siteConfig is available
-      if (!siteConfig) {
+      // Use the imported siteConfig directly through the data attribute
+      const siteConfigElement = document.querySelector('[data-site-config]');
+      const config = clientSiteConfig || (siteConfigElement ? JSON.parse(siteConfigElement.getAttribute('data-site-config') || '{}') : null);
+
+      if (!config) {
         console.error("Site config not available!");
         return;
       }
@@ -222,7 +225,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
         "bg-(--ui-modal-surface) text-(--ui-modal-text) border border-(--ui-modal-border) rounded shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out";
 
       // Generate hours HTML dynamically from config
-      const hoursHTML = siteConfig.hours.map((hour) => `
+      const hoursHTML = config.hours.map((hour: any) => `
         <div class="flex justify-between">
           <span class="text-(--content-body)">${hour.day}</span>
           <span class="text-(--content-${hour.isOpen ? 'body' : 'meta'})">${hour.hours}</span>
@@ -233,7 +236,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       <div class="p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 id="location-modal-title" class="font-display text-xl text-(--content-heading)">
-            ${siteConfig.name}
+            ${config.name}
           </h2>
           <button
             id="modal-close"
@@ -251,21 +254,21 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
           <!-- Address -->
           <div>
             <p class="text-(--content-body)">
-              ${siteConfig.contact.address.street}<br>
-              ${siteConfig.contact.address.city}, ${siteConfig.contact.address.state} ${siteConfig.contact.address.zip}
+              ${config.contact.address.street}<br>
+              ${config.contact.address.city}, ${config.contact.address.state} ${config.contact.address.zip}
             </p>
           </div>
 
           <!-- Contact -->
           <div class="space-y-1">
             <p class="text-(--content-body)">
-              <a href="tel:${siteConfig.contact.phone.number}" class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left">
-                ${siteConfig.contact.phone.display}
+              <a href="tel:${config.contact.phone.number}" class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left">
+                ${config.contact.phone.display}
               </a>
             </p>
             <p class="text-(--content-body)">
-              <a href="mailto:${siteConfig.contact.email}" class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left">
-                ${siteConfig.contact.email}
+              <a href="mailto:${config.contact.email}" class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left">
+                ${config.contact.email}
               </a>
             </p>
           </div>
@@ -285,47 +288,56 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       portalRoot.appendChild(backdrop);
       this.activeModal = backdrop;
 
-      // Trigger enter animation
-      requestAnimationFrame(() => {
-        backdrop.classList.remove("opacity-0");
-        modal.classList.remove("scale-95", "opacity-0");
-        modal.classList.add("scale-100", "opacity-100");
-      });
+      // Wait for DOM insertion before setting up event listeners
+      setTimeout(() => {
+        // Find close button after DOM insertion
+        const closeButton = modal.querySelector("#modal-close") as HTMLButtonElement;
 
-      // Focus management
-      const closeButton = modal.querySelector(
-        "#modal-close"
-      ) as HTMLButtonElement;
-      closeButton?.focus();
-
-      // Event listeners
-      const handleClose = () => {
-        this.closeModal();
-      };
-
-      const handleKeydown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
+        // Event listeners
+        const handleClose = (e: Event) => {
+          e.preventDefault();
+          e.stopPropagation();
           this.closeModal();
+        };
+
+        const handleKeydown = (e: KeyboardEvent) => {
+          if (e.key === "Escape") {
+            this.closeModal();
+          }
+        };
+
+        const handleBackdropClick = (e: MouseEvent) => {
+          // Close if clicking on backdrop (outside modal content)
+          if (e.target === backdrop) {
+            this.closeModal();
+          }
+        };
+
+        if (closeButton) {
+          closeButton.addEventListener("click", handleClose);
+          closeButton.focus();
         }
-      };
+        
+        document.addEventListener("keydown", handleKeydown);
+        backdrop.addEventListener("click", handleBackdropClick);
 
-      const handleBackdropClick = (e: MouseEvent) => {
-        if (e.target === backdrop) {
-          this.closeModal();
-        }
-      };
+        // Store event listeners for cleanup
+        backdrop.setAttribute("data-cleanup", "true");
+        (backdrop as any)._cleanup = () => {
+          if (closeButton) {
+            closeButton.removeEventListener("click", handleClose);
+          }
+          document.removeEventListener("keydown", handleKeydown);
+          backdrop.removeEventListener("click", handleBackdropClick);
+        };
 
-      closeButton?.addEventListener("click", handleClose);
-      document.addEventListener("keydown", handleKeydown);
-      backdrop.addEventListener("click", handleBackdropClick);
-
-      // Store event listeners for cleanup
-      backdrop.setAttribute("data-cleanup", "true");
-      (backdrop as any)._cleanup = () => {
-        closeButton?.removeEventListener("click", handleClose);
-        document.removeEventListener("keydown", handleKeydown);
-        backdrop.removeEventListener("click", handleBackdropClick);
-      };
+        // Trigger enter animation after event setup
+        requestAnimationFrame(() => {
+          backdrop.classList.remove("opacity-0");
+          modal.classList.remove("scale-95", "opacity-0");
+          modal.classList.add("scale-100", "opacity-100");
+        });
+      }, 10); // Small delay to ensure DOM insertion
     },
 
     closeModal(): void {
