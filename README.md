@@ -34,7 +34,7 @@ A modern e-commerce platform built with Astro and Square integration, featuring 
 ### Prerequisites
 
 - Node.js ≥20.0.0
-- pnpm 9.15.0 (enforced)
+- ppnpm 9.15.0 (enforced)
 - Square Developer Account
 
 ### Installation
@@ -45,7 +45,7 @@ git clone https://github.com/travhall/el-camino.git
 cd el-camino
 
 # Install dependencies
-pnpm install
+ppnpm install
 
 # Configure environment
 cp .env.example .env
@@ -66,16 +66,16 @@ SQUARE_WEBHOOK_SIGNATURE_KEY=your_webhook_signature_key
 
 ```bash
 # Start development server
-pnpm dev
+ppnpm dev
 
 # Run type checking
-pnpm check
+ppnpm check
 
 # Build for production
-pnpm build
+ppnpm build
 
 # Preview production build
-pnpm preview
+ppnpm preview
 ```
 
 ## 📁 Project Structure
@@ -176,13 +176,13 @@ Built with Tailwind CSS v4 featuring:
 
 ```bash
 # Run Square integration tests
-pnpm test
+ppnpm test
 
 # Type checking (0 errors across 83 files)
-pnpm check
+ppnpm check
 
 # Build verification
-pnpm build
+ppnpm build
 ```
 
 ## 🚀 Deployment
@@ -191,15 +191,15 @@ Optimized for Netlify with automatic builds:
 
 ```bash
 # Production build
-pnpm build
+ppnpm build
 
 # Preview locally
-pnpm preview-local
+ppnpm preview-local
 ```
 
 ### Netlify Configuration
 
-- **Build Command**: `pnpm build`
+- **Build Command**: `ppnpm build`
 - **Publish Directory**: `dist`
 - **Node Version**: 20.x
 - **Package Manager**: pnpm
@@ -249,7 +249,7 @@ pnpm preview-local
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
 3. Follow TypeScript strict mode
-4. Ensure all tests pass (`pnpm check`)
+4. Ensure all tests pass (`ppnpm check`)
 5. Submit pull request
 
 ### Development Guidelines

@@ -3,7 +3,7 @@
  * Connects existing PerformanceManager to business metrics and alerting
  */
 
-import { PerformanceManager, type PerformanceData } from '../performance/PerformanceManager';
+import PerformanceManager, { type PerformanceData } from '../performance/PerformanceManager';
 import { errorRecovery, type ErrorCategory } from './errorRecovery';
 
 export interface BusinessMetrics {
@@ -110,12 +110,11 @@ class BusinessPerformanceMonitor {
   }
 
   performBudgetValidation() {
-    this.performanceManager.getMetrics().then(metrics => {
-      const violations = this.checkBudgetViolations(metrics);
-      if (violations.length > 0) {
-        this.handleBudgetViolations(violations);
-      }
-    });
+    const metrics = this.performanceManager.getAllMetrics();
+    const violations = this.checkBudgetViolations(metrics);
+    if (violations.length > 0) {
+      this.handleBudgetViolations(violations);
+    }
   }
 
   private checkBudgetViolations(metrics: PerformanceData): string[] {

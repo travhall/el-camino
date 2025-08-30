@@ -38,4 +38,4 @@ echo "- Examples: $(find examples -name "*.astro" | wc -l) example files"
 
 echo ""
 echo "🚀 Status: IMPLEMENTATION COMPLETE"
-echo "Next Step: Run 'npm run test:integration' to validate functionality"
+echo "Next Step: Run 'pnpm run test:integration' to validate functionality"

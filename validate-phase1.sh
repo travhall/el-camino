@@ -9,7 +9,7 @@ echo "========================================"
 echo "📦 Testing build compilation..."
 cd /Users/travishall/GitHub/el-camino
 
-if npm run check > build_test.log 2>&1; then
+if pnpm run check > build_test.log 2>&1; then
     echo "✅ Build: PASSED - No TypeScript errors"
 else
     echo "❌ Build: FAILED - TypeScript errors detected"
@@ -20,7 +20,7 @@ fi
 
 # Test 2: Quick dev server test
 echo "🚀 Testing dev server startup..."
-timeout 15 npm run dev > dev_test.log 2>&1 &
+timeout 15 pnpm run dev > dev_test.log 2>&1 &
 DEV_PID=$!
 
 sleep 10
@@ -86,7 +86,7 @@ echo "  • Check for any JavaScript errors in console"
 echo "  • Proceed to Phase 2 if everything looks good"
 echo ""
 echo "Manual Testing Instructions:"
-echo "  1. Run: npm run dev"
+echo "  1. Run: pnpm run dev"
 echo "  2. Navigate to different pages (/, /shop/all, /product/...)"
 echo "  3. Check browser console for any errors"
 echo "  4. Verify transitions feel smoother than before"

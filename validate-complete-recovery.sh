@@ -9,7 +9,7 @@ cd /Users/travishall/GitHub/el-camino
 
 # Test 1: Build validation
 echo "📦 Testing complete build compilation..."
-if npm run check > final_build_test.log 2>&1; then
+if pnpm run check > final_build_test.log 2>&1; then
     echo "✅ Build: PASSED - No TypeScript errors with all optimizations enabled"
 else
     echo "❌ Build: FAILED - TypeScript errors detected"
@@ -93,7 +93,7 @@ echo "  • Mobile UX: Significantly enhanced touch experience"
 echo ""
 
 echo "🔍 Manual Testing Instructions:"
-echo "1. Run: npm run dev"
+echo "1. Run: pnpm run dev"
 echo "2. Test navigation between pages for smooth transitions"
 echo "3. Test on mobile device or mobile viewport (<=1024px)"
 echo "4. Check browser console for optimization logs:"
