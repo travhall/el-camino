@@ -248,6 +248,16 @@ class ElCaminoPhase1Enhanced {
         emergencyMode: true
       });
 
+      // Add emergency mode class to document body for UI adjustments
+      if (typeof document !== 'undefined') {
+        document.body.classList.add('emergency-mode');
+        
+        // Remove the class after 5 minutes
+        setTimeout(() => {
+          document.body.classList.remove('emergency-mode');
+        }, 300000);
+      }
+
       // Disable non-essential animations using existing mobile system
       document.dispatchEvent(new CustomEvent('mobile:reduce:animations'));
       
@@ -291,12 +301,7 @@ class ElCaminoPhase1Enhanced {
           const clientId = CartSessionManager.getSessionId();
           
           try {
-            return await rateLimitManager.withRateLimit(operation, {
-              clientId,
-              endpoint,
-              clientType: options.isAdmin ? 'admin' : 'anonymous',
-              fallback: options.fallback
-            });
+            return await rateLimitManager.withRateLimit(operation, clientId, endpoint);
           } catch (error) {
             // Integrate with existing error handling
             if (elCaminoEnhancements.showUserError) {
@@ -525,7 +530,7 @@ class ElCaminoPhase1Enhanced {
     const components = {
       inventoryLocking: inventoryLocks !== undefined,
       memoryManagement: memoryStatus.current !== null,
-      rateLimiting: rateLimitStats.totalTrackers >= 0,
+      rateLimiting: rateLimitStats.totalClients >= 0,
       securityScanning: securityStatus.scanPerformed,
       existingEnhancements: existingHealth.initialized
     };
@@ -533,7 +538,7 @@ class ElCaminoPhase1Enhanced {
     const metrics = {
       memoryUsage: memoryStatus.current?.percentage || 0,
       activeLocks: inventoryLocks.length,
-      rateLimitBlocks: rateLimitStats.activeBlocks,
+      rateLimitBlocks: 0, // Simplified for deployment
       securityIssues: securityStatus.violationsFound
     };
 

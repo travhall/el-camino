@@ -67,7 +67,7 @@ describe('Cart Integration Critical Tests', () => {
   describe('Inventory validation', () => {
     it('prevents overselling', () => {
       const item = { id: 'var-1', quantity: 100 }; // Excessive quantity
-      mockCart.addItem.mockImplementation((item) => {
+      mockCart.addItem.mockImplementation((item: any) => {
         if (item.quantity > 10) {
           throw new Error('Insufficient inventory');
         }

@@ -40,7 +40,7 @@ describe('PDPController State Management', () => {
       const updates = ['Large', 'Medium', 'Small'];
       updates.forEach(size => {
         mockController.updateVariation.mockImplementation((attr, val) => {
-          mockController.currentState.selectedAttributes[attr] = val;
+          (mockController.currentState.selectedAttributes as any)[attr] = val;
         });
       });
       

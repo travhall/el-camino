@@ -3,7 +3,7 @@
  * Phase 1 monitoring infrastructure per technical assessment
  */
 
-import { getCLS, getFID, getFCP, getLCP, getTTFB, type Metric } from 'web-vitals';
+import { onCLS, onINP, onFCP, onLCP, onTTFB, type Metric } from 'web-vitals';
 
 interface PerformanceMetric {
   name: string;
@@ -25,11 +25,11 @@ class PerformanceMonitor {
 
   init() {
     if (typeof window === 'undefined') return;
-    getCLS(this.onMetric.bind(this));
-    getFID(this.onMetric.bind(this));
-    getFCP(this.onMetric.bind(this));
-    getLCP(this.onMetric.bind(this));
-    getTTFB(this.onMetric.bind(this));
+    onCLS(this.onMetric.bind(this));
+    onINP(this.onMetric.bind(this));
+    onFCP(this.onMetric.bind(this));
+    onLCP(this.onMetric.bind(this));
+    onTTFB(this.onMetric.bind(this));
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {

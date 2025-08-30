@@ -227,7 +227,7 @@ class BusinessPerformanceMonitor {
   }
 
   private async reportMetrics() {
-    const performanceData = await this.performanceManager.getMetrics();
+    const performanceData = await this.performanceManager.getAllMetrics();
     
     const report = {
       timestamp: Date.now(),

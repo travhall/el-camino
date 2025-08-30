@@ -50,7 +50,7 @@ export class APICircuitBreaker {
           return await fallback();
         } catch (fallbackError) {
           throw new APIError(
-            `Primary and fallback failed: ${error.message}`,
+            `Primary and fallback failed: ${(error as Error).message}`,
             'COMPLETE_FAILURE'
           );
         }

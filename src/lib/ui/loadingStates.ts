@@ -92,7 +92,7 @@ class LoadingStateManager {
     const loaderId = `cart-update-${Date.now()}`;
     const originalContent = button.innerHTML;
     
-    button.disabled = true;
+    (button as HTMLButtonElement).disabled = true;
     button.innerHTML = `
       <div class="loading-state inline" data-loader-id="${loaderId}">
         <div class="spinner-container">

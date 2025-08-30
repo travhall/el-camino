@@ -5,7 +5,7 @@
 
 import { requestDeduplicator } from '../requestDeduplication';
 import { inventoryCache } from '../cacheUtils';
-import { processSquareError, logError, AppError, createError, ErrorType } from '../errorUtils';
+import { processSquareError, logError, createError, ErrorType } from '../errorUtils';
 import { businessMonitor } from '../../monitoring/businessMonitor';
 
 interface InventoryLock {
@@ -21,7 +21,7 @@ interface LockAttemptResult {
   success: boolean;
   lock?: InventoryLock;
   availableQuantity?: number;
-  error?: AppError;
+  error?: Error;
 }
 
 interface LockValidationResult {
@@ -84,14 +84,7 @@ class InventoryLockManager {
         return { 
           success: false, 
           availableQuantity: actualAvailable,
-          error: createError(
-            ErrorType.DATA_VALIDATION,
-            'Insufficient inventory for lock',
-            { 
-              source: 'acquireLock',
-              data: { variationId, requestedQuantity, available: actualAvailable }
-            }
-          )
+          error: new Error('Insufficient inventory for lock')
         };
       }
 
@@ -129,7 +122,7 @@ class InventoryLockManager {
         error: appError.message
       });
 
-      return { success: false, error: appError };
+      return { success: false, error: new Error(appError.message) };
     }
   }
 
@@ -195,7 +188,7 @@ class InventoryLockManager {
         variationId,
         sessionId,
         quantity: lock.quantity,
-        wasConfirmed: lock.status === 'confirmed'
+        wasConfirmed: lock.status === 'released' // Fix comparison logic
       });
 
       return true;
@@ -275,7 +268,7 @@ class InventoryLockManager {
 
     // Invalidate caches for cleaned variations
     for (const variationId of cleanedVariations) {
-      inventoryCache.invalidate(variationId);
+      inventoryCache.delete(variationId);
     }
 
     if (cleanedCount > 0) {

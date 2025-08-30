@@ -375,7 +375,7 @@ class MobileExperienceManager {
 
   private optimizeScrolling() {
     // Momentum scrolling for iOS
-    document.body.style.webkitOverflowScrolling = 'touch';
+    (document.body.style as any).webkitOverflowScrolling = 'touch';
     
     // Smooth scrolling for navigation
     document.documentElement.style.scrollBehavior = 'smooth';

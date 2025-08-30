@@ -201,7 +201,8 @@ echo "=============================="
 # Check for potential security issues
 if [ -d "src" ]; then
     # Check for hardcoded secrets (basic patterns) - exclude test files and directories
-    if grep -r "sk_[a-zA-Z0-9_-]" src/ 2>/dev/null | grep -v "\.test\." | grep -v "/test/" | grep -v "mockResolvedValue" | grep -v "test.*:" | grep -v "spec\." | head -1 > /dev/null; then
+    secret_matches=$(grep -r "sk_[a-zA-Z0-9_-]" src/ 2>/dev/null | grep -v "\.test\." | grep -v "/test/" | grep -v "mockResolvedValue" | grep -v "test.*:" | grep -v "spec\." | wc -l)
+    if [ "$secret_matches" -gt 0 ]; then
         check_fail "Potential secret key found in source code"
         echo "Run: grep -r 'sk_[a-zA-Z0-9_-]' src/ | grep -v test to investigate"
     else

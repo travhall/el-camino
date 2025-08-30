@@ -4,7 +4,7 @@
  */
 
 import { inventoryLockManager, withInventoryLock } from './inventoryLock';
-import { processSquareError, AppError, createError, ErrorType } from '../errorUtils';
+import { processSquareError, createError, ErrorType } from '../errorUtils';
 import { businessMonitor } from '../../monitoring/businessMonitor';
 
 interface CartItem {
@@ -27,7 +27,7 @@ interface CartSecurityResult {
   success: boolean;
   protected: boolean;
   message?: string;
-  error?: AppError;
+  error?: Error;
 }
 
 /**
@@ -74,13 +74,13 @@ export class SecureCartManager {
         variationId,
         quantity,
         sessionId,
-        error: appError.message
+        error: new Error(appError.message || 'Cart operation failed').message
       });
 
       return { 
         success: false, 
         protected: true,
-        error: appError
+        error: new Error(appError.message || 'Cart operation failed')
       };
     }
   }
@@ -100,10 +100,14 @@ export class SecureCartManager {
         const lockResult = await inventoryLockManager.acquireLock(variationId, quantity, sessionId);
         
         if (!lockResult.success) {
+          const errorDetails = lockResult.error || createError(ErrorType.API_RESPONSE_ERROR, 'Cannot secure inventory for update', { source: 'cartUpdate' });
+          const errorObj = new Error(errorDetails.message);
+          errorObj.name = 'type' in errorDetails ? errorDetails.type : 'UnknownError';
+          
           return {
             success: false,
             protected: true,
-            error: lockResult.error || createError(ErrorType.API_RESPONSE_ERROR, 'Cannot secure inventory for update', { source: 'cartUpdate' })
+            error: errorObj
           };
         }
       }
@@ -132,7 +136,7 @@ export class SecureCartManager {
       return { 
         success: false, 
         protected: true,
-        error: appError
+        error: new Error(appError.message || 'Cart operation failed')
       };
     }
   }
@@ -170,13 +174,14 @@ export class SecureCartManager {
       return { 
         success: false, 
         protected: true,
-        error: appError
+        error: new Error(appError.message || 'Cart operation failed')
       };
     }
   }
 
   /**
    * Validate entire cart before checkout
+   * If no locks exist, tries to acquire them. If locks exist, validates them.
    */
   static async validateCartInventory(cartItems: CartItem[], sessionId: string): Promise<{
     valid: boolean;
@@ -185,6 +190,7 @@ export class SecureCartManager {
     const issues: Array<{ variationId: string; issue: string; availableQuantity?: number }> = [];
 
     for (const item of cartItems) {
+      // First check if lock exists and is valid
       const validation = inventoryLockManager.validateLock(
         item.variationId, 
         sessionId, 
@@ -192,34 +198,68 @@ export class SecureCartManager {
       );
 
       if (!validation.isValid) {
-        let issue = 'Unknown validation issue';
-        
-        switch (validation.reason) {
-          case 'expired':
-            issue = 'Inventory reservation expired';
-            break;
-          case 'not_found':
-            issue = 'No inventory reservation found';
-            break;
-          case 'insufficient_inventory':
-            issue = 'Insufficient inventory available';
-            // Try to get current available quantity
+        // If no lock exists or lock is invalid, try to check inventory availability directly
+        if (validation.reason === 'not_found') {
+          try {
+            // Use enhanced inventory checking that considers existing locks
+            const { checkItemInventoryWithLocks } = await import('../inventoryEnhanced');
+            const inventoryData = await checkItemInventoryWithLocks(item.variationId, sessionId);
+            
+            if (inventoryData.availableQuantity < item.quantity) {
+              issues.push({ 
+                variationId: item.variationId, 
+                issue: 'Insufficient inventory available', 
+                availableQuantity: inventoryData.availableQuantity 
+              });
+            }
+            // If inventory is available, validation passes (lock can be acquired at checkout)
+          } catch (err) {
+            // Fall back to basic inventory check
             try {
               const { checkItemInventory } = await import('../inventory');
               const available = await checkItemInventory(item.variationId);
+              if (available < item.quantity) {
+                issues.push({ 
+                  variationId: item.variationId, 
+                  issue: 'Insufficient inventory available', 
+                  availableQuantity: available 
+                });
+              }
+            } catch (err2) {
               issues.push({ 
                 variationId: item.variationId, 
-                issue, 
-                availableQuantity: available 
+                issue: 'Unable to verify inventory availability' 
               });
-              continue;
-            } catch (err) {
-              // Fall through to generic issue
             }
-            break;
+          }
+        } else {
+          // Handle expired or insufficient locks
+          let issue = 'Unknown validation issue';
+          
+          switch (validation.reason) {
+            case 'expired':
+              issue = 'Inventory reservation expired';
+              break;
+            case 'insufficient_inventory':
+              issue = 'Insufficient inventory available';
+              // Try to get current available quantity
+              try {
+                const { checkItemInventory } = await import('../inventory');
+                const available = await checkItemInventory(item.variationId);
+                issues.push({ 
+                  variationId: item.variationId, 
+                  issue, 
+                  availableQuantity: available 
+                });
+                continue;
+              } catch (err) {
+                // Fall through to generic issue
+              }
+              break;
+          }
+          
+          issues.push({ variationId: item.variationId, issue });
         }
-        
-        issues.push({ variationId: item.variationId, issue });
       }
     }
 

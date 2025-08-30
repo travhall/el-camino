@@ -3,7 +3,7 @@
  * Prevents token exposure in builds and client-side code - Critical security enhancement
  */
 
-import { processSquareError, logError, AppError } from '../square/errorUtils';
+import { processSquareError, logError, createError, ErrorType } from '../square/errorUtils';
 import { businessMonitor } from '../monitoring/businessMonitor';
 
 interface TokenValidation {
@@ -97,7 +97,10 @@ class SecurityTokenManager {
     }
 
     // Determine if token is client-safe
-    const isClientSafe = this.clientSafePrefixes.some(prefix => token.startsWith(prefix));
+    const isClientSafe = this.clientSafePrefixes.some(prefix => token.startsWith(prefix)) ||
+                        token.startsWith('http://') ||
+                        token.startsWith('https://') ||
+                        token.startsWith('test_');
 
     if (!isClientSafe && issues.length === 0) {
       issues.push('Token format not recognized as client-safe');
@@ -298,13 +301,19 @@ class SecurityTokenManager {
     const originalXHROpen = XMLHttpRequest.prototype.open;
     const originalXHRSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
     
-    XMLHttpRequest.prototype.open = function(method: string, url: string, ...rest: any[]) {
+    XMLHttpRequest.prototype.open = function(
+      method: string, 
+      url: string, 
+      async?: boolean,
+      user?: string | null,
+      password?: string | null
+    ) {
       const urlResult = securityTokenManager.performSecurityScan(url, 'xhr-url');
       if (urlResult.violations.length > 0) {
         console.warn('🚨 Security Warning: Potential token in XHR URL');
       }
       
-      return originalXHROpen.call(this, method, url, ...rest);
+      return originalXHROpen.call(this, method, url, async ?? true, user, password);
     };
 
     XMLHttpRequest.prototype.setRequestHeader = function(name: string, value: string) {

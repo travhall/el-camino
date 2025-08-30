@@ -25,8 +25,6 @@ describe('Cart Integration - Critical Business Logic', () => {
     mockCartState = {
       items: [],
       total: 0,
-      subtotal: 0,
-      tax: 0,
       itemCount: 0
     };
   });
@@ -39,7 +37,10 @@ describe('Cart Integration - Critical Business Logic', () => {
       );
 
       const cartItem: CartItem = {
+        id: 'item-1',
+        catalogObjectId: 'catalog-1',
         variationId: 'test-variation',
+        title: 'Test Product',
         quantity: 1,
         catalogVersion: 123,
         name: 'Test Product',
@@ -59,7 +60,10 @@ describe('Cart Integration - Critical Business Logic', () => {
 
     it('validates maximum quantity limits', () => {
       const cartItem: CartItem = {
+        id: 'item-2',
+        catalogObjectId: 'catalog-2',
         variationId: 'test-variation',
+        title: 'Test Product',
         quantity: 999,
         catalogVersion: 123,
         name: 'Test Product',
@@ -75,7 +79,10 @@ describe('Cart Integration - Critical Business Logic', () => {
 
     it('handles duplicate variation additions', () => {
       const baseItem: CartItem = {
+        id: 'item-3',
+        catalogObjectId: 'catalog-3',
         variationId: 'test-variation',
+        title: 'Test Product',
         quantity: 2,
         catalogVersion: 123,
         name: 'Test Product',
@@ -106,14 +113,20 @@ describe('Cart Integration - Critical Business Logic', () => {
     beforeEach(() => {
       mockCartState.items = [
         {
+          id: 'item-4',
+          catalogObjectId: 'catalog-4',
           variationId: 'variation-1',
+          title: 'Product 1',
           quantity: 2,
           catalogVersion: 123,
           name: 'Product 1',
           price: 1000
         },
         {
+          id: 'item-5',
+          catalogObjectId: 'catalog-5',
           variationId: 'variation-2',
+          title: 'Product 2',
           quantity: 1,
           catalogVersion: 123,
           name: 'Product 2',
@@ -174,7 +187,10 @@ describe('Cart Integration - Critical Business Logic', () => {
     beforeEach(() => {
       mockCartState.items = [
         {
+          id: 'item-6',
+          catalogObjectId: 'catalog-6',
           variationId: 'variation-1',
+          title: 'Product 1',
           quantity: 2,
           catalogVersion: 123,
           name: 'Product 1',
@@ -239,8 +255,8 @@ describe('Cart Integration - Critical Business Logic', () => {
     it('validates cart state consistency', () => {
       // Intentionally corrupt cart state
       mockCartState.items = [
-        { variationId: 'v1', quantity: 2, catalogVersion: 123, name: 'P1', price: 1000 },
-        { variationId: 'v2', quantity: 3, catalogVersion: 123, name: 'P2', price: 2000 }
+        { id: 'item-7', catalogObjectId: 'catalog-7', variationId: 'v1', title: 'P1', quantity: 2, catalogVersion: 123, name: 'P1', price: 1000 },
+        { id: 'item-8', catalogObjectId: 'catalog-8', variationId: 'v2', title: 'P2', quantity: 3, catalogVersion: 123, name: 'P2', price: 2000 }
       ];
       mockCartState.itemCount = 10; // Incorrect count
 

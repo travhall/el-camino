@@ -4,7 +4,7 @@
  */
 
 import { businessMonitor } from '../businessMonitor';
-import { processSquareError, logError, AppError } from '../../square/errorUtils';
+import { processSquareError, logError, createError, ErrorType } from '../../square/errorUtils';
 
 interface MemoryMetrics {
   used: number;
