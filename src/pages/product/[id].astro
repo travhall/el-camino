@@ -483,6 +483,12 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
     ) as HTMLInputElement;
     if (!dataInput?.value) return false;
 
+    // Clean up existing controller to prevent double event binding
+    if (pdpController) {
+      pdpController.cleanup();
+      pdpController = null;
+    }
+
     try {
       const productData = JSON.parse(dataInput.value);
 

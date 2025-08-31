@@ -69,44 +69,53 @@ export class PDPEventManager {
 
     if (!quantityInput || !decreaseButton || !increaseButton) return;
 
-    increaseButton.addEventListener("click", () => {
-      const currentValue = parseInt(quantityInput.value, 10) || 0;
-      const maxValue = parseInt(quantityInput.max, 10) || 0;
+    // Clone and replace elements to remove any existing event listeners (same approach as QuickView)
+    const newDecreaseBtn = decreaseButton.cloneNode(true) as HTMLButtonElement;
+    const newIncreaseBtn = increaseButton.cloneNode(true) as HTMLButtonElement;
+    const newQuantityInput = quantityInput.cloneNode(true) as HTMLInputElement;
+
+    decreaseButton.parentNode?.replaceChild(newDecreaseBtn, decreaseButton);
+    increaseButton.parentNode?.replaceChild(newIncreaseBtn, increaseButton);
+    quantityInput.parentNode?.replaceChild(newQuantityInput, quantityInput);
+
+    newIncreaseBtn.addEventListener("click", () => {
+      const currentValue = parseInt(newQuantityInput.value, 10) || 0;
+      const maxValue = parseInt(newQuantityInput.max, 10) || 0;
 
       if (currentValue < maxValue) {
-        quantityInput.value = String(currentValue + 1);
+        newQuantityInput.value = String(currentValue + 1);
         this.updateQuantityButtonStates(
-          quantityInput,
-          decreaseButton,
-          increaseButton
+          newQuantityInput,
+          newDecreaseBtn,
+          newIncreaseBtn
         );
       }
     });
 
-    decreaseButton.addEventListener("click", () => {
-      const currentValue = parseInt(quantityInput.value, 10) || 0;
+    newDecreaseBtn.addEventListener("click", () => {
+      const currentValue = parseInt(newQuantityInput.value, 10) || 0;
       if (currentValue > 1) {
-        quantityInput.value = String(currentValue - 1);
+        newQuantityInput.value = String(currentValue - 1);
         this.updateQuantityButtonStates(
-          quantityInput,
-          decreaseButton,
-          increaseButton
+          newQuantityInput,
+          newDecreaseBtn,
+          newIncreaseBtn
         );
       }
     });
 
-    quantityInput.addEventListener("change", () => {
-      let value = parseInt(quantityInput.value, 10);
-      const max = parseInt(quantityInput.max, 10) || 0;
+    newQuantityInput.addEventListener("change", () => {
+      let value = parseInt(newQuantityInput.value, 10);
+      const max = parseInt(newQuantityInput.max, 10) || 0;
 
       if (isNaN(value) || value < 1) value = 1;
       else if (value > max) value = max;
 
-      quantityInput.value = String(value);
+      newQuantityInput.value = String(value);
       this.updateQuantityButtonStates(
-        quantityInput,
-        decreaseButton,
-        increaseButton
+        newQuantityInput,
+        newDecreaseBtn,
+        newIncreaseBtn
       );
     });
   }

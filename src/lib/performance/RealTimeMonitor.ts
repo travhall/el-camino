@@ -66,8 +66,8 @@ export class RealTimeMonitor {
     // PHASE 1 & 2: Enable core monitoring features
     this.startRegressionDetection();
     this.startInsightGeneration();
-    // STILL DISABLED: WebSocket (heaviest feature)
-    // this.connectWebSocket();
+    // PHASE 3B: WebSocket enabled for real-time monitoring
+    this.connectWebSocket();
     this.startMemoryManagement(); // Keep memory cleanup
     
     if (import.meta.env.DEV) {

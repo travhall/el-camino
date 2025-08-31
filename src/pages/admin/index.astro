@@ -3,6 +3,7 @@
  * Admin Dashboard Landing Page
  * Main entry point for all admin tools and performance monitoring
  * File: src/pages/admin/index.astro
+ * Phase 4: Real-time data integration enabled
  */
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
@@ -10,6 +11,16 @@ import AdminLayout from "@/layouts/AdminLayout.astro";
 const pageTitle = "Dashboard";
 const pageDescription =
   "Comprehensive admin tools for performance monitoring, content management, and business analytics.";
+
+// PHASE 4: Real-time performance data integration
+let dashboardData = {
+  healthScore: 85, // Fallback value
+  cwvPassing: 82,
+  activeIssues: 1,
+  uptime: 99.9
+};
+
+// Server-side integration ready for SSR enhancement
 ---
 
 <AdminLayout
@@ -62,17 +73,17 @@ const pageDescription =
             class="text-4xl font-bold text-green-600 mb-2"
             id="overall-health"
           >
-            92
+            {dashboardData.healthScore}
           </div>
           <div class="text-sm text-(--content-meta)">Performance Score</div>
           <div class="w-full bg-(--surface-tertiary) rounded-full h-2 mt-2">
-            <div class="bg-green-500 h-2 rounded-full" style="width: 92%"></div>
+            <div class="bg-green-500 h-2 rounded-full" style={`width: ${dashboardData.healthScore}%`}></div>
           </div>
         </div>
 
         <!-- Core Web Vitals -->
         <div class="text-center">
-          <div class="text-4xl font-bold text-blue-600 mb-2">3/3</div>
+          <div class="text-4xl font-bold text-blue-600 mb-2" id="cwv-passing">3/3</div>
           <div class="text-sm text-(--content-meta)">CWV Passing</div>
           <div class="text-xs text-green-600 mt-1">LCP, INP, CLS Good</div>
         </div>
@@ -81,9 +92,9 @@ const pageDescription =
         <div class="text-center">
           <div
             class="text-4xl font-bold text-yellow-600 mb-2"
-            id="active-issues"
+            id="active-issues-main"
           >
-            2
+            {dashboardData.activeIssues}
           </div>
           <div class="text-sm text-(--content-meta)">Active Alerts</div>
           <div class="text-xs text-yellow-600 mt-1">1 warning, 1 info</div>
@@ -651,30 +662,50 @@ const pageDescription =
     }
 
     private updateDashboard(): void {
-      const health = budgetManager.getHealthScore();
-      const metrics = performanceManager.getAllMetrics();
+      try {
+        // PHASE 4: Enhanced real-time data integration
+        const health = budgetManager.getHealthScore();
+        const metrics = performanceManager.getAllMetrics();
+        const violations = budgetManager.getViolations();
 
-      // Update health score
-      const healthEl = document.getElementById("overall-health");
-      if (healthEl) {
-        healthEl.textContent = health.score.toString();
-        healthEl.className = `text-4xl font-bold mb-2 ${
-          health.score >= 90
-            ? "text-green-600"
-            : health.score >= 70
-              ? "text-yellow-600"
-              : "text-red-600"
-        }`;
+        // Update health score with real data
+        const healthEl = document.getElementById("overall-health");
+        if (healthEl) {
+          healthEl.textContent = health.score.toString();
+          healthEl.className = `text-4xl font-bold mb-2 ${
+            health.score >= 90
+              ? "text-green-600"
+              : health.score >= 70
+                ? "text-yellow-600"
+                : "text-red-600"
+          }`;
+        }
+
+        // Update health progress bar
+        const progressBar = document.querySelector('.bg-green-500');
+        if (progressBar) {
+          (progressBar as HTMLElement).style.width = `${health.score}%`;
+        }
+
+        // Update active issues with real violation data
+        const issuesEl = document.getElementById("active-issues-main");
+        if (issuesEl) {
+          const issueCount = violations?.length || 0;
+          issuesEl.textContent = issueCount.toString();
+          issuesEl.className = `text-4xl font-bold mb-2 ${
+            issueCount === 0 ? "text-green-600" :
+            issueCount <= 2 ? "text-yellow-600" : "text-red-600"
+          }`;
+        }
+
+        // Update other metrics
+        this.updateMetrics(metrics);
+        
+        console.log('[Phase 4] Main dashboard updated with real-time data');
+      } catch (error) {
+        console.warn('[Phase 4] Dashboard update error:', error);
+        // Graceful degradation - keep showing last known values
       }
-
-      // Update active issues
-      const issuesEl = document.getElementById("active-issues");
-      if (issuesEl) {
-        issuesEl.textContent = health.issues.length.toString();
-      }
-
-      // Update other metrics
-      this.updateMetrics(metrics);
     }
 
     private updateMetrics(metrics: any): void {

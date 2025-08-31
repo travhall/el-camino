@@ -63,6 +63,9 @@ export class PDPUIManager {
   }
 
   updateQuantityControls(info: ProductAvailabilityInfo): void {
+    // Re-cache elements in case they were cloned/replaced
+    this.cacheElements();
+    
     const { quantityInput, decreaseButton, increaseButton } = this.elements;
     if (!quantityInput) return;
 
