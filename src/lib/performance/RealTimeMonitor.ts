@@ -63,9 +63,10 @@ export class RealTimeMonitor {
 
   constructor() {
     this.initializeBaselines();
-    // TEMPORARILY DISABLED: Heavy processing that may impact performance
-    // this.startRegressionDetection();
-    // this.startInsightGeneration();
+    // PHASE 1 & 2: Enable core monitoring features
+    this.startRegressionDetection();
+    this.startInsightGeneration();
+    // STILL DISABLED: WebSocket (heaviest feature)
     // this.connectWebSocket();
     this.startMemoryManagement(); // Keep memory cleanup
     
@@ -602,12 +603,12 @@ export class RealTimeMonitor {
   }
 }
 
-// DISABLED: Global instance temporarily disabled to reduce performance overhead
-// export const realTimeMonitor = new RealTimeMonitor();
+// PHASE 3A: Global instance enabled for site-wide monitoring
+export const realTimeMonitor = new RealTimeMonitor();
 
-// DISABLED: Auto-cleanup disabled
-// if (typeof window !== 'undefined') {
-//   setInterval(() => {
-//     realTimeMonitor.clearOldData();
-//   }, 60 * 60 * 1000);
-// }
+// PHASE 3A: Auto-cleanup enabled
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    realTimeMonitor.clearOldData();
+  }, 60 * 60 * 1000); // Cleanup every hour
+}

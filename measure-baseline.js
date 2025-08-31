@@ -1,53 +1,69 @@
-// Performance Baseline Measurement Script
-// Execute before any optimization changes
+/**
+ * Baseline Performance Measurement
+ * Captures current performance metrics before optimization changes
+ */
 
 async function captureBaseline() {
   console.log('🔍 Capturing Performance Baseline...');
   
   const baseline = {
-    timestamp: Date.now(),
-    date: new Date().toISOString(),
-    coreWebVitals: {
-      // Will be populated by PerformanceManager if available
-      lcp: 0,
-      inp: 0,
-      cls: 0,
-      fcp: 0,
-      ttfb: 0
-    },
-    buildMetrics: {
-      bundleSize: '330.04 kB',
-      gzippedSize: '74.64 kB',
-      buildTime: '2.80s'
-    },
-    disabledFeatures: [
-      'view-transitions',
-      'enhanced-image-optimization', 
-      'mobile-optimization',
-      'real-time-monitoring'
-    ]
+    timestamp: new Date().toISOString(),
+    date: new Date().toLocaleDateString(),
+    phase: 'baseline',
+    measurements: {
+      // Will be populated by actual measurements
+      buildTime: null,
+      bundleSize: null,
+      coreWebVitals: {
+        lcp: null,
+        inp: null,
+        cls: null,
+        fcp: null,
+        ttfb: null
+      },
+      healthScore: null
+    }
   };
   
-  // Try to get current performance metrics if PerformanceManager is available
-  try {
-    if (typeof window !== 'undefined' && window.performanceManager) {
-      const metrics = window.performanceManager.getAllMetrics();
-      baseline.coreWebVitals = metrics;
-      console.log('✅ Current performance metrics captured:', metrics);
-    } else {
-      console.log('⚠️ PerformanceManager not available - using manual measurement');
+  // Check if we're in a build environment
+  if (typeof window !== 'undefined') {
+    console.log('Browser environment detected - performance APIs available');
+    
+    // Check for performance API support
+    if ('performance' in window) {
+      baseline.measurements.performanceApiSupported = true;
+      
+      // Get navigation timing if available
+      if (performance.navigation) {
+        baseline.measurements.navigationType = performance.navigation.type;
+      }
+      
+      // Get current page load performance
+      const navigationEntries = performance.getEntriesByType('navigation');
+      if (navigationEntries.length > 0) {
+        const nav = navigationEntries[0];
+        baseline.measurements.pageLoad = {
+          domContentLoaded: nav.domContentLoadedEventEnd - nav.domContentLoadedEventStart,
+          loadComplete: nav.loadEventEnd - nav.loadEventStart,
+          totalTime: nav.loadEventEnd - nav.navigationStart
+        };
+      }
     }
-  } catch (error) {
-    console.log('⚠️ Could not access performance metrics:', error.message);
+  } else {
+    console.log('Node.js environment - capturing build metrics');
+    baseline.measurements.environment = 'nodejs';
   }
   
-  // Store baseline for comparison
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('performance-baseline', JSON.stringify(baseline));
-    console.log('💾 Baseline saved to localStorage');
-  }
+  console.log('📊 Baseline captured:', baseline);
   
-  console.log('📊 Performance Baseline Captured:', baseline);
+  // Save to file for comparison
+  const fs = await import('fs');
+  fs.writeFileSync(
+    'performance-baseline.json', 
+    JSON.stringify(baseline, null, 2)
+  );
+  
+  console.log('✅ Baseline saved to performance-baseline.json');
   return baseline;
 }
 
