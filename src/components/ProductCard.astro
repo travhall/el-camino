@@ -79,20 +79,10 @@ const isDynamicPriority = priority || index < 12;
   >
     <!-- Product Image Container -->
     <div class="relative aspect-video sm:aspect-square overflow-hidden">
-      <!-- Enhanced placeholder with shimmer -->
-      <div
-        class="absolute inset-0 bg-linear-to-br from-surface-secondary to-surface-tertiary transition-opacity duration-300"
-        id={placeholderId}
-      >
-        <!-- Shimmer effect -->
-        <div
-          class="absolute inset-0 bg-linear-to-r from-transparent via-surface-primary/30 to-transparent animate-shimmer -translate-x-full"
-        >
-        </div>
+      <!-- Unified Loading Placeholder with Logo -->
+      <div class="loading-skeleton loading-image absolute inset-0" id={placeholderId}>
         <!-- El Camino logo -->
-        <div
-          class="absolute inset-0 flex items-center justify-center opacity-20"
-        >
+        <div class="absolute inset-0 flex items-center justify-center opacity-20">
           <svg width="48" height="44" fill="currentColor">
             <path
               fill-rule="evenodd"
@@ -102,9 +92,7 @@ const isDynamicPriority = priority || index < 12;
           </svg>
         </div>
       </div>
-
-      <!-- Enhanced Image -->
-      <img
+      <!-- Enhanced Image -->      <img
         id={imageId}
         src={optimizedImageSrc}
         alt={product.title}
@@ -185,28 +173,11 @@ const isDynamicPriority = priority || index < 12;
 </div>
 
 <style>
-  @keyframes shimmer {
-    0% {
-      transform: translateX(-100%);
-    }
-    100% {
-      transform: translateX(100%);
-    }
-  }
-
-  .animate-shimmer {
-    animation: shimmer 2s ease-in-out infinite;
-  }
-
   .image-enhanced.error {
     filter: grayscale(100%);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .animate-shimmer {
-      animation: none;
-    }
-
     .image-enhanced {
       transition: none !important;
     }

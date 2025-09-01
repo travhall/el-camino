@@ -1,24 +1,25 @@
 ---
-// src/components/ArticleCardSkeleton.astro - Enhanced with variant support
+// src/components/ArticleCardSkeleton.astro - Updated with Unified Loading System
 interface Props {
   featured?: boolean;
   variant?: "masonry" | "grid" | "list";
+  index?: number;
 }
 
-const { featured = false, variant = "masonry" } = Astro.props;
+const { featured = false, variant = "masonry", index = 0 } = Astro.props;
 
-// Get container classes based on variant
+// Calculate stagger delay
+const staggerDelay = index * 0.1;
+
+// Determine container and layout classes based on variant
 const getContainerClasses = () => {
-  const baseClasses =
-    "animate-pulse bg-(--ui-card-surface) border-(--ui-card-border) overflow-hidden";
-
+  const baseClasses = "loading-container loading-article-card";
+  
   switch (variant) {
     case "list":
       return `${baseClasses} flex flex-row min-h-[140px]`;
-
     case "grid":
       return `${baseClasses} flex flex-col`;
-
     case "masonry":
     default:
       return `${baseClasses} flex flex-col aspect-[3/4.5] md:aspect-auto col-span-full md:first-of-type:col-span-4 md:col-span-2 md:row-span-5 md:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 ${
@@ -27,204 +28,112 @@ const getContainerClasses = () => {
   }
 };
 
-// Get image skeleton classes based on variant
 const getImageClasses = () => {
+  const baseClass = "loading-skeleton loading-image";
   switch (variant) {
     case "list":
-      return "w-40 h-full flex-shrink-0 bg-(--surface-secondary)";
-
+      return `${baseClass} compact w-40 h-full flex-shrink-0`;
     case "grid":
-      return "w-full h-48 bg-(--surface-secondary)";
-
+      return `${baseClass} w-full h-48`;
     case "masonry":
     default:
-      return "w-full h-full bg-(--surface-secondary)";
+      return `${baseClass} w-full h-full`;
   }
 };
 
-// Get content skeleton classes based on variant
 const getContentClasses = () => {
   switch (variant) {
     case "list":
-      return "flex flex-col justify-between p-4 flex-1 min-w-0";
-
+      return "loading-article-content flex flex-col justify-between p-4 flex-1 min-w-0";
     case "grid":
-      return "flex flex-col p-4 h-1/3 justify-between";
-
+      return "loading-article-content flex flex-col p-4 h-1/3 justify-between";
     case "masonry":
     default:
-      return `flex flex-col gap-3 px-6 py-12 xl:p-12 absolute bottom-0 m-1 ${
+      return `loading-article-content flex flex-col gap-3 px-6 py-12 xl:p-12 absolute bottom-0 m-1 ${
         featured && "md:w-5/6 lg:w-2/3 right-0"
       }`;
   }
 };
 ---
 
-<div class={getContainerClasses()}>
-  <!-- Image Skeleton -->
+<div
+  class={getContainerClasses()}
+  role="status"
+  aria-label="Loading article..."
+  style={`--loading-stagger-delay: ${staggerDelay}s`}
+>
+  <!-- Unified Image Skeleton -->
   <div class={getImageClasses()}></div>
 
-  <!-- Content Skeleton -->
+  <!-- Unified Content Skeleton -->
   <div class={getContentClasses()}>
     <!-- Category Badge Skeleton (not for list view) -->
-    {
-      variant !== "list" && (
-        <div class="h-5 bg-(--surface-secondary) rounded w-20 mb-2" />
-      )
-    }
+    {variant !== "list" && (
+      <div class="loading-skeleton loading-badge"></div>
+    )}
 
     <!-- Title Skeleton -->
-    <div class="space-y-2 mb-3">
-      <div
-        class={`h-4 bg-(--surface-secondary) rounded ${
-          variant === "list" ? "w-full" : variant === "grid" ? "w-5/6" : "w-4/5"
-        }`}
-      >
-      </div>
-      {
-        variant !== "list" && (
-          <div
-            class={`h-4 bg-(--surface-secondary) rounded ${
-              variant === "grid" ? "w-4/6" : "w-3/5"
-            }`}
-          />
-        )
-      }
+    <div class="space-y-1">
+      <div class="loading-skeleton loading-title"></div>
+      {variant !== "list" && (
+        <div class="loading-skeleton loading-title multi-line"></div>
+      )}
     </div>
 
-    <!-- Date Skeleton (for list and grid views) -->
-    {
-      variant !== "masonry" && (
-        <div class="h-3 bg-(--surface-secondary) rounded w-24 mb-2" />
-      )
-    }
-
-    <!-- Date Skeleton (for masonry view) -->
-    {
-      variant === "masonry" && (
-        <div class="h-3 bg-(--surface-secondary) rounded w-20 mb-3" />
-      )
-    }
+    <!-- Date Skeleton -->
+    <div class="loading-skeleton loading-text-line" style="width: 6rem; height: 0.75rem;"></div>
 
     <!-- Excerpt Skeleton -->
-    <div class="space-y-2 mb-4">
-      {
-        variant === "list" ? (
-          <>
-            <div class="h-3 bg-(--surface-secondary) rounded w-full" />
-            <div class="h-3 bg-(--surface-secondary) rounded w-3/4" />
-          </>
-        ) : (
-          <>
-            <div class="h-3 bg-(--surface-secondary) rounded w-full" />
-            <div class="h-3 bg-(--surface-secondary) rounded w-5/6" />
-            <div class="h-3 bg-(--surface-secondary) rounded w-4/6" />
-          </>
-        )
-      }
+    <div class="space-y-1">
+      {variant === "list" ? (
+        <>
+          <div class="loading-skeleton loading-text-line"></div>
+          <div class="loading-skeleton loading-text-line" style="width: 75%;"></div>
+        </>
+      ) : (
+        <>
+          <div class="loading-skeleton loading-text-line"></div>
+          <div class="loading-skeleton loading-text-line"></div>
+          <div class="loading-skeleton loading-text-line" style="width: 66%;"></div>
+        </>
+      )}
     </div>
 
     <!-- Tags Skeleton -->
-    <div class="flex gap-2 mt-auto">
-      {
-        variant === "masonry" && (
-          <div class="h-3 bg-(--surface-secondary) rounded w-12" />
-        )
-      }
-      <div
-        class={`h-6 bg-(--surface-secondary) rounded ${
-          variant === "list" ? "w-12" : "w-16"
-        }`}
-      >
-      </div>
-      <div
-        class={`h-6 bg-(--surface-secondary) rounded ${
-          variant === "list" ? "w-14" : "w-20"
-        }`}
-      >
-      </div>
-      {
-        variant !== "list" && (
-          <div class="h-6 bg-(--surface-secondary) rounded w-16" />
-        )
-      }
+    <div class="loading-article-tags">
+      {variant === "masonry" && (
+        <div class="loading-skeleton loading-tag" style="width: 3rem;"></div>
+      )}
+      <div class="loading-skeleton loading-tag"></div>
+      <div class="loading-skeleton loading-tag" style="width: 5rem;"></div>
+      {variant !== "list" && (
+        <div class="loading-skeleton loading-tag"></div>
+      )}
     </div>
   </div>
+
+  <span class="sr-only">Loading article information...</span>
 </div>
 
 <style>
-  /* Enhanced skeleton animations */
-  .animate-pulse {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  /* Component-specific overrides */
+  .loading-article-card {
+    background: var(--ui-card-surface, #ffffff);
+    border: 1px solid var(--ui-card-border, #e5e7eb);
+    border-radius: 0.375rem;
+    overflow: hidden;
   }
-
-  @keyframes pulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.7;
-    }
-  }
-
-  /* Staggered animation for multiple skeletons */
-  .animate-pulse:nth-child(2) {
-    animation-delay: 0.1s;
-  }
-
-  .animate-pulse:nth-child(3) {
-    animation-delay: 0.2s;
-  }
-
-  .animate-pulse:nth-child(4) {
-    animation-delay: 0.3s;
-  }
-
-  .animate-pulse:nth-child(5) {
-    animation-delay: 0.4s;
-  }
-
-  .animate-pulse:nth-child(6) {
-    animation-delay: 0.5s;
-  }
-
-  /* Subtle shimmer effect */
-  .animate-pulse::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.1),
-      transparent
-    );
-    animation: shimmer 1.5s infinite;
-  }
-
-  @keyframes shimmer {
-    0% {
-      left: -100%;
-    }
-    100% {
-      left: 100%;
-    }
-  }
-
-  /* Variant-specific skeleton styles */
-  .article-card .animate-pulse::before,
-  .banner-card .animate-pulse::before {
-    animation-duration: 2s;
-  }
-
-  /* Responsive skeleton adjustments */
+  
+  /* Responsive adjustments */
   @media (max-width: 768px) {
-    .flex.flex-row .space-y-2 > div:last-child {
+    .flex.flex-row .loading-text-line:last-child {
       display: none;
     }
+  }
+  
+  /* Dark theme integration */
+  :global([data-theme="dark"]) .loading-article-card {
+    background: var(--ui-card-surface-dark, #1f2937);
+    border-color: var(--ui-card-border-dark, #374151);
   }
 </style>
