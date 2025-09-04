@@ -1,5 +1,5 @@
 ---
-// src/components/ProductFilters.astro - Enhanced with Availability filter
+// src/components/ProductFilters.astro - Enhanced with Phantom Click Prevention
 import type { FilterOptions } from "@/lib/square/types";
 
 interface Props {
@@ -37,6 +37,39 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   /* Prevent flickering during initial load */
   .brand-filter-list {
     transition: none;
+  }
+  
+  /* Phase 1: Phantom Click Prevention */
+  .filters-processing {
+    pointer-events: none;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+  }
+
+  .filters-processing .filter-checkbox,
+  .filters-processing .applied-filter-tag,
+  .filters-processing .clear-button {
+    cursor: not-allowed;
+  }
+  
+  /* Processing indicator */
+  .filter-processing-indicator {
+    position: relative;
+  }
+  
+  .filter-processing-indicator::after {
+    content: "Processing...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--surface-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--content-meta);
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 </style>
 
@@ -268,31 +301,70 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       document.body.style.overflow = "";
     }
 
+    // Phase 1: Enhanced Desktop Filtering with Phantom Click Prevention
     private setupDesktopFiltering(): void {
       if (!this.form) return;
 
       const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
       
       checkboxes.forEach((checkbox) => {
-        checkbox.addEventListener("change", () => {
+        checkbox.addEventListener("change", (event) => {
           if (window.innerWidth >= 1024) {
+            // Phase 1: IMMEDIATE phantom click prevention
+            this.blockAllFilterInteractions();
+            
+            // Existing functionality preserved
             sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
-
-            const grid = document.getElementById("filterable-product-grid");
-            if (grid) {
-              grid.style.transition = "opacity 0.3s ease";
-              grid.style.opacity = "0.5";
-            }
-
             sessionStorage.setItem("filtering-in-progress", "true");
 
-            // Direct form submission - no nested setTimeout
+            // Submit form after blocking interactions
             if (this.form) {
               this.form.submit();
             }
           }
         });
       });
+    }
+
+    // Phase 1: Block all filter interactions immediately
+    private blockAllFilterInteractions(): void {
+      // Block filter container interactions
+      const filterContainer = document.getElementById("filter-container");
+      const appliedFilters = document.querySelector(".applied-filters");
+      
+      filterContainer?.classList.add("filters-processing");
+      appliedFilters?.classList.add("filters-processing");
+      
+      // Activate existing skeleton system
+      this.activateExistingSkeletons();
+      
+      // Show processing indicator
+      this.showProcessingFeedback();
+    }
+
+    // Phase 1: Leverage existing skeleton infrastructure
+    private activateExistingSkeletons(): void {
+      const productGrid = document.getElementById("filterable-product-grid");
+      const skeleton = document.getElementById("product-grid-skeleton");
+      
+      if (productGrid && skeleton) {
+        // Use existing pattern from ProductGrid
+        productGrid.style.transition = "opacity 0.3s ease";
+        productGrid.style.opacity = "0.5";
+        
+        // Activate skeleton (follows existing pattern)
+        skeleton.style.display = "grid";
+        skeleton.classList.remove("hidden");
+        skeleton.classList.add("grid");
+      }
+    }
+
+    // Phase 1: Visual processing feedback
+    private showProcessingFeedback(): void {
+      const filterContainer = document.getElementById("filter-container");
+      if (filterContainer) {
+        filterContainer.classList.add("filter-processing-indicator");
+      }
     }
 
     private setupShowMoreToggle(): void {
@@ -381,12 +453,12 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
 
     private navigateWithParams(params: URLSearchParams): void {
+      // Phase 1: Apply phantom click prevention for navigation too
+      this.blockAllFilterInteractions();
+      
       const queryString = params.toString();
       const basePath = window.location.pathname;
       const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
-
-      const grid = document.getElementById("filterable-product-grid");
-      if (grid) grid.style.opacity = "0.5";
 
       sessionStorage.setItem("filtering-in-progress", "true");
       window.location.href = newUrl;
@@ -395,6 +467,10 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     // Cleanup method for navigation
     destroy(): void {
       document.body.style.overflow = "";
+      
+      // Clean up any processing states
+      const filterContainer = document.getElementById("filter-container");
+      filterContainer?.classList.remove("filters-processing", "filter-processing-indicator");
     }
   }
 
