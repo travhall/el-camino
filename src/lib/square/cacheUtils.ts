@@ -137,3 +137,6 @@ export const categoryCache = new Cache<any>("category", 900); // 15 minutes
 export const productCache = new Cache<any>("product", 300); // 5 minutes
 export const imageCache = new Cache<string>("image", 3600); // 1 hour
 export const wordpressCache = new Cache<any>("wordpress", 300);
+
+// Filter result caching - Phase 1 optimization
+export const filterCache = new Cache<any>("filter", 300); // 5 minutes

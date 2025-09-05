@@ -7,14 +7,23 @@ import { batchInventoryService } from "@/lib/square/batchInventory";
 
 interface Props {
   products: Product[];
+  allProducts?: Product[]; // All products for client-side filtering
   paginationMode?: boolean;
   categoryPath?: string;
   skipInventoryCheck?: boolean;
 }
 
-const { products, paginationMode = false, categoryPath = "", skipInventoryCheck = false } = Astro.props;
+const { products, allProducts, paginationMode = false, categoryPath = "", skipInventoryCheck = false } = Astro.props;
 
 console.log(`[ProductGrid] skipInventoryCheck: ${skipInventoryCheck}, products.length: ${products.length}`);
+console.log(`[ProductGrid] DAY 1: allProducts.length: ${allProducts ? allProducts.length : 0}, paginationMode: ${paginationMode}`);
+
+// DAY 1: Log data architecture setup
+if (allProducts && allProducts.length > 0) {
+  console.log(`[ProductGrid] DAY 1: Client-side filtering enabled with ${allProducts.length} total products`);
+} else {
+  console.log(`[ProductGrid] DAY 1: Fallback to server-side pagination mode`);
+}
 
 // Batch inventory check for all products
 let productsWithInventory: ProductWithInventory[] = products;
@@ -52,9 +61,11 @@ if (!skipInventoryCheck && products.length > 0) {
 <div
   id="filterable-product-grid"
   class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-2 lg:gap-1 transition-all duration-300"
-  data-products={JSON.stringify(productsWithInventory)}
+  data-all-products={JSON.stringify(allProducts || [])}
+  data-initial-products={JSON.stringify(productsWithInventory)}
   data-pagination-mode={paginationMode}
   data-category-path={categoryPath}
+  data-product-count={allProducts ? allProducts.length : productsWithInventory.length}
 >
   {
     productsWithInventory.map((product, index) => (
@@ -70,6 +81,15 @@ if (!skipInventoryCheck && products.length > 0) {
       </div>
     ))
   }
+</div>
+
+<!-- DAY 1: Infinite Scroll Trigger (hidden until Day 2 activation) -->
+<div 
+  id="infinite-scroll-trigger" 
+  class="col-span-full h-20 flex items-center justify-center"
+  style="display: none;"
+>
+  <div class="loading-skeleton loading-price"></div>
 </div>
 
 <!-- Enhanced Loading Overlay -->
