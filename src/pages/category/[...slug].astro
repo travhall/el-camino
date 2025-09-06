@@ -41,9 +41,11 @@ if (subCategorySlug) {
 const urlParams = parseURLParams(Astro.url.searchParams);
 const { filters, page, pageSize } = urlParams;
 
+import type { Product } from "@/lib/square/types";
+
 // === DAY 1: ENHANCED DATA ARCHITECTURE FOR CLIENT-SIDE FILTERING ===
 let productData;
-let allProducts = [];
+let allProducts: Product[] = [];
 
 try {
   // Fetch paginated products for server-side rendering
@@ -199,13 +201,15 @@ const categoryPath = parentCategory
                 categoryPath={categoryPath}
               />
 
-              <!-- Pagination Controls -->
-              <PaginationControls
-                pagination={pagination}
-                basePath={categoryPath}
-                filters={appliedFilters}
-                pageSize={pageSize}
-              />
+              <!-- Pagination Controls - Hidden when client-side filtering active -->
+              <div id="server-side-pagination">
+                <PaginationControls
+                  pagination={pagination}
+                  basePath={categoryPath}
+                  filters={appliedFilters}
+                  pageSize={pageSize}
+                />
+              </div>
             </>
           ) : (
             <div class="text-center py-16">

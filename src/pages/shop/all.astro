@@ -151,21 +151,23 @@ const hasActiveFilters = filters.brands.length > 0 || filters.availability === t
         {
           paginatedProducts.length > 0 ? (
             <>
-              <!-- Products Grid -->
+              <!-- Products Grid - Updated for client-side filtering -->
               <ProductGrid
                 products={paginatedProducts}
-                allProducts={filteredProducts}
+                allProducts={allProducts}
                 paginationMode={true}
                 categoryPath={categoryPath}
               />
 
-              <!-- Pagination Controls -->
-              <PaginationControls
-                pagination={pagination}
-                basePath={categoryPath}
-                filters={filters}
-                pageSize={pageSize}
-              />
+              <!-- Pagination Controls - Hidden when client-side filtering active -->
+              <div id="server-side-pagination">
+                <PaginationControls
+                  pagination={pagination}
+                  basePath={categoryPath}
+                  filters={filters}
+                  pageSize={pageSize}
+                />
+              </div>
             </>
           ) : (
             <div class="text-center py-16">

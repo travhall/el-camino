@@ -116,15 +116,15 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         </button>
       </div>
 
-      <!-- Results Count -->
+      <!-- Results Count - DAY 2: Enhanced for client-side updates -->
       <div class="min-w-fit mt-2 mb-4">
         <div class="lg:hidden p-3 bg-(--surface-tertiary) rounded-sm">
-          <p class="text-sm text-(--content-meta)">
+          <p class="text-sm text-(--content-meta)" data-result-count>
             {filteredCount} of {totalProducts} products
           </p>
         </div>
         <div class="hidden lg:block">
-          <p class="text-sm lg:text-base text-(--content-meta) font-medium">
+          <p class="text-sm lg:text-base text-(--content-meta) font-medium" data-result-count>
             {filteredCount === totalProducts
               ? `${totalProducts} products`
               : `${filteredCount} of ${totalProducts} products`
@@ -138,15 +138,15 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         <div class="mb-6 lg:mb-4">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-xl font-medium font-display text-(--content-heading)">Brand</h3>
-            {currentBrands.length > 0 && (
-              <button
-                type="button"
-                data-clear-filters
-                class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors"
-              >
-                Clear
-              </button>
-            )}
+            <button
+              type="button"
+              id="clear-brands-button"
+              data-clear-filters
+              class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors"
+              style={currentBrands.length === 0 ? "display: none;" : ""}
+            >
+              Clear
+            </button>
           </div>
 
           <!-- Brand List with FOUC Fix -->
@@ -237,12 +237,425 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 </div>
 
 <script>
+  // DAY 2: Ultimate Filter Engine - Eliminates FOUT and Phantom Clicks
+  class UltimateFilterEngine {
+    private allProducts: any[] = [];
+    private filteredProducts: any[] = [];
+    private visibleProducts: any[] = [];
+    private visibleCount: number = 24;
+    private infiniteScrollObserver: IntersectionObserver | null = null;
+    
+    constructor() {
+      this.initializeData();
+      // ALWAYS setup infinite scroll to maintain smooth UX
+      this.setupInfiniteScroll();
+    }
+    
+    private initializeData(): void {
+      const grid = document.getElementById("filterable-product-grid");
+      if (!grid) {
+        console.error("[UltimateFilterEngine] ❌ Could not find filterable-product-grid element");
+        return;
+      }
+      
+      try {
+        const allProductsData = grid.dataset.allProducts;
+        if (!allProductsData) {
+          console.error("[UltimateFilterEngine] ❌ No allProducts data found in grid dataset");
+          this.fallbackToServerSide();
+          return;
+        }
+        
+        this.allProducts = JSON.parse(allProductsData);
+        this.filteredProducts = [...this.allProducts];
+        this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
+        
+        console.log(`[UltimateFilterEngine] ✅ Initialized with ${this.allProducts.length} products`);
+        
+        // Show infinite scroll trigger if more products available
+        if (this.hasMoreProducts()) {
+          const trigger = document.getElementById("infinite-scroll-trigger");
+          if (trigger) {
+            trigger.style.display = "flex";
+          }
+        }
+      } catch (error) {
+        console.error("[UltimateFilterEngine] ❌ Failed to parse allProducts data:", error);
+        this.fallbackToServerSide();
+      }
+    }
+    
+    // INSTANT client-side filtering - ELIMINATES FOUT
+    public applyFilters(criteria: any): void {
+      const startTime = performance.now();
+      
+      console.log(`[UltimateFilterEngine] STARTING CLIENT-SIDE FILTER: brands=${criteria.brands.join(',')}, availability=${criteria.availability}`);
+      
+      // IMMEDIATE: Block all interactions to prevent phantom clicks
+      this.blockAllInteractions();
+      
+      // CRITICAL: Ensure pagination stays hidden during filtering
+      this.forceHidePagination();
+      
+      // Filter products instantly using embedded data
+      this.filteredProducts = this.allProducts.filter(product => {
+        // Brand filtering
+        if (criteria.brands.length > 0) {
+          if (!criteria.brands.includes(product.brand)) {
+            return false;
+          }
+        }
+        
+        // Availability filtering
+        if (criteria.availability) {
+          if (product.inventoryStatus?.isOutOfStock) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
+      // Reset visible count and update products
+      this.visibleCount = Math.min(24, this.filteredProducts.length);
+      this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
+      
+      // Update DOM instantly
+      this.updateProductGrid();
+      this.updateResultCount();
+      this.updateInfiniteScrollTrigger();
+      this.updateAppliedFilters(criteria);
+      this.updateClearButtonVisibility(criteria);
+      
+      // Unblock interactions after update
+      this.unblockInteractions();
+      
+      const duration = performance.now() - startTime;
+      console.log(`[UltimateFilterEngine] ✅ COMPLETED: Filtered ${this.allProducts.length} → ${this.filteredProducts.length} products in ${duration.toFixed(1)}ms`);
+    }
+    
+    // CRITICAL: Aggressively hide pagination to prevent flashing
+    private forceHidePagination(): void {
+      const pagination = document.getElementById('server-side-pagination') as HTMLElement;
+      if (pagination) {
+        pagination.style.display = 'none !important';
+        pagination.style.visibility = 'hidden';
+        pagination.setAttribute('aria-hidden', 'true');
+      }
+      
+      // Also hide any other pagination elements that might exist
+      const allPagination = document.querySelectorAll('[data-pagination], .pagination, nav[aria-label*="pagination"]');
+      allPagination.forEach(el => {
+        (el as HTMLElement).style.display = 'none';
+        (el as HTMLElement).style.visibility = 'hidden';
+      });
+    }
+    
+    private updateAppliedFilters(criteria: any): void {
+      // Update AppliedFilters component for client-side filtering
+      const appliedFiltersContainer = document.getElementById('applied-filters-container') as HTMLElement;
+      const appliedFiltersContent = document.getElementById('applied-filters-content') as HTMLElement;
+      
+      if (!appliedFiltersContainer || !appliedFiltersContent) return;
+      
+      const hasFilters = criteria.brands.length > 0 || criteria.availability;
+      
+      if (!hasFilters) {
+        // Hide container when no filters
+        appliedFiltersContainer.style.display = 'none';
+        return;
+      }
+      
+      // Show container and clear existing content
+      appliedFiltersContainer.style.display = 'block';
+      appliedFiltersContent.innerHTML = '';
+      
+      // Create filters wrapper
+      const filtersWrapper = document.createElement('div');
+      filtersWrapper.className = 'flex flex-wrap gap-2';
+      
+      // Add brand filters
+      criteria.brands.forEach((brand: string) => {
+        const filterTag = document.createElement('button');
+        filterTag.className = 'inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 group';
+        filterTag.innerHTML = `
+          <span>${brand}</span>
+          <svg class="w-3 h-3 ml-1 text-(--content-meta) group-hover:text-(--content-body)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        `;
+        filterTag.addEventListener('click', () => {
+          // Remove this brand and reapply filters
+          const checkbox = document.querySelector(`input[name="brands"][value="${brand}"]`) as HTMLInputElement;
+          if (checkbox) {
+            checkbox.checked = false;
+            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+        filtersWrapper.appendChild(filterTag);
+      });
+      
+      // Add availability filter
+      if (criteria.availability) {
+        const filterTag = document.createElement('button');
+        filterTag.className = 'inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--state-success-surface) hover:bg-(--state-success-surface)/75 transition-colors text-(--state-success-text) border-(--state-success-text)/50 group';
+        filterTag.innerHTML = `
+          <span>In stock only</span>
+          <svg class="w-3 h-3 ml-1 text-(--state-success-text)/70 group-hover:text-(--state-success-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        `;
+        filterTag.addEventListener('click', () => {
+          // Remove availability filter and reapply
+          const checkbox = document.querySelector('input[name="availability"]') as HTMLInputElement;
+          if (checkbox) {
+            checkbox.checked = false;
+            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+        filtersWrapper.appendChild(filterTag);
+      }
+      
+      // Add clear all button - SAME LOGIC AS ProductFilters Clear
+      const clearAllButton = document.createElement('button');
+      clearAllButton.className = 'text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-nowrap';
+      clearAllButton.textContent = 'Clear All';
+      clearAllButton.addEventListener('click', () => {
+        // Use exact same method as ProductFilters Clear button
+        const responsiveFilters = (window as any).currentFilterInstance;
+        if (responsiveFilters && responsiveFilters.clearAllFilters) {
+          responsiveFilters.clearAllFilters();
+        }
+      });
+      
+      appliedFiltersContent.appendChild(filtersWrapper);
+      appliedFiltersContent.appendChild(clearAllButton);
+    }
+    
+    private updateClearButtonVisibility(criteria: any): void {
+      const clearButton = document.getElementById('clear-brands-button') as HTMLElement;
+      if (clearButton) {
+        const hasFilters = criteria.brands.length > 0 || criteria.availability;
+        clearButton.style.display = hasFilters ? 'block' : 'none';
+      }
+    }
+    
+    private updateProductGrid(): void {
+      const grid = document.getElementById("filterable-product-grid");
+      if (!grid) return;
+      
+      console.log(`[UltimateFilterEngine] Updating to show ${this.visibleProducts.length} products`);
+      
+      // Get all existing product wrappers
+      const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
+      
+      // Create Set of visible product IDs
+      const visibleProductIds = new Set(this.visibleProducts.map(p => p.id));
+      
+      // Show/hide products using display (not opacity/visibility)
+      allWrappers.forEach((wrapper, index) => {
+        const productId = wrapper.getAttribute('data-product-id');
+        const isVisible = visibleProductIds.has(productId);
+        
+        if (isVisible) {
+          // Show product
+          (wrapper as HTMLElement).style.display = '';
+          wrapper.classList.add('opacity-100', 'scale-100');
+          wrapper.classList.remove('opacity-0', 'scale-95');
+        } else {
+          // Hide product
+          (wrapper as HTMLElement).style.display = 'none';
+        }
+      });
+      
+      this.updateNoResultsState();
+      console.log(`[UltimateFilterEngine] ✅ Now showing ${this.visibleProducts.length} products`);
+    }
+    
+    private updateResultCount(): void {
+      const resultElements = document.querySelectorAll('[data-result-count]');
+      resultElements.forEach(element => {
+        const totalProducts = this.allProducts.length;
+        const filteredCount = this.filteredProducts.length;
+        
+        if (filteredCount === totalProducts) {
+          element.textContent = `${totalProducts} products`;
+        } else {
+          element.textContent = `${filteredCount} of ${totalProducts} products`;
+        }
+      });
+    }
+    
+    private updateNoResultsState(): void {
+      const noResults = document.getElementById("no-results");
+      const grid = document.getElementById("filterable-product-grid");
+      
+      if (this.filteredProducts.length === 0) {
+        noResults?.classList.remove("hidden");
+        grid?.classList.add("hidden");
+      } else {
+        noResults?.classList.add("hidden");
+        grid?.classList.remove("hidden");
+      }
+    }
+    
+    private setupInfiniteScroll(): void {
+      const trigger = document.getElementById("infinite-scroll-trigger");
+      if (!trigger) return;
+      
+      let isLoading = false;
+      
+      this.infiniteScrollObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && this.hasMoreProducts() && !isLoading) {
+            isLoading = true;
+            console.log(`[UltimateFilterEngine] 📜 Loading more products...`);
+            
+            // Use QuickView loading pattern for consistency
+            trigger.innerHTML = `
+              <div class="col-span-full text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-(--content-heading)"></div>
+                <p class="mt-2 text-(--content-meta)">Loading more products...</p>
+              </div>
+            `;
+            
+            // Load more products with timeout to ensure completion
+            setTimeout(() => {
+              try {
+                this.loadMoreProducts();
+                isLoading = false;
+                console.log(`[UltimateFilterEngine] ✅ Products loaded successfully`);
+              } catch (error) {
+                console.error(`[UltimateFilterEngine] ❌ Loading failed:`, error);
+                isLoading = false;
+                this.updateInfiniteScrollTrigger(); // Reset trigger on error
+              }
+            }, 600);
+          }
+        });
+      }, { 
+        threshold: 0.1,
+        rootMargin: "50px"
+      });
+      
+      this.infiniteScrollObserver.observe(trigger);
+    }
+    
+    private hasMoreProducts(): boolean {
+      const hasMore = this.visibleCount < this.filteredProducts.length;
+      console.log(`[UltimateFilterEngine] hasMoreProducts: ${hasMore} (${this.visibleCount} < ${this.filteredProducts.length})`);
+      return hasMore;
+    }
+    
+    private loadMoreProducts(): void {
+      // CRITICAL: Ensure pagination stays hidden during scroll loading
+      this.forceHidePagination();
+      
+      const nextBatch = 24;
+      const previousVisibleCount = this.visibleCount;
+      const newVisibleCount = Math.min(
+        this.visibleCount + nextBatch, 
+        this.filteredProducts.length
+      );
+      
+      console.log(`[UltimateFilterEngine] Loading batch: ${previousVisibleCount} → ${newVisibleCount} of ${this.filteredProducts.length}`);
+      
+      if (newVisibleCount === this.visibleCount) {
+        console.log(`[UltimateFilterEngine] ⚠️ No more products to load`);
+        return;
+      }
+      
+      // Update visible products array
+      this.visibleCount = newVisibleCount;
+      this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
+      
+      // CRITICAL: Update the grid to show more products
+      this.updateProductGrid();
+      
+      // CRITICAL: Update infinite scroll trigger state
+      this.updateInfiniteScrollTrigger();
+      
+      console.log(`[UltimateFilterEngine] ✅ Successfully loaded: now showing ${this.visibleCount}/${this.filteredProducts.length}`);
+    }
+    
+    private updateInfiniteScrollTrigger(): void {
+      const trigger = document.getElementById("infinite-scroll-trigger") as HTMLElement;
+      if (!trigger) return;
+      
+      const hasMore = this.hasMoreProducts();
+      console.log(`[UltimateFilterEngine] Trigger update: hasMore=${hasMore}, visible=${this.visibleCount}/${this.filteredProducts.length}`);
+      
+      if (hasMore) {
+        // CRITICAL: Clear loading content and set to invisible trigger state
+        trigger.innerHTML = '';
+        trigger.style.display = "flex";
+        trigger.style.visibility = "visible";
+        trigger.style.height = "20px"; // Small invisible trigger
+        
+        console.log(`[UltimateFilterEngine] 📜 Trigger cleared and ready for intersection`);
+      } else {
+        // All products loaded - hide trigger completely
+        trigger.style.display = "none";
+        trigger.style.visibility = "hidden";
+        trigger.innerHTML = "";
+        console.log(`[UltimateFilterEngine] ✅ All products loaded - trigger hidden`);
+      }
+    }
+    
+    // CRITICAL: Immediate interaction blocking prevents phantom clicks
+    private blockAllInteractions(): void {
+      const filterContainer = document.getElementById("filter-container");
+      filterContainer?.classList.add("filters-processing");
+      
+      // Visual feedback during processing
+      const processingIndicator = document.createElement('div');
+      processingIndicator.id = 'filter-processing-indicator';
+      processingIndicator.className = 'fixed top-4 right-4 bg-(--surface-secondary) border border-(--border-tertiary) rounded-md px-3 py-2 shadow-lg z-50';
+      processingIndicator.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <div class="animate-spin rounded-full h-4 w-4 border-2 border-ui-accent border-t-transparent"></div>
+          <span class="text-sm text-(--content-body)">Filtering...</span>
+        </div>
+      `;
+      document.body.appendChild(processingIndicator);
+    }
+    
+    private unblockInteractions(): void {
+      const filterContainer = document.getElementById("filter-container");
+      filterContainer?.classList.remove("filters-processing");
+      
+      // Remove processing indicator
+      const indicator = document.getElementById('filter-processing-indicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }
+    
+    private fallbackToServerSide(): void {
+      console.warn("[FilterEngine] Falling back to server-side filtering");
+      const form = document.getElementById("filter-form") as HTMLFormElement;
+      if (form) form.submit();
+    }
+    
+    public destroy(): void {
+      if (this.infiniteScrollObserver) {
+        this.infiniteScrollObserver.disconnect();
+      }
+    }
+    
+    // Method for validation
+    public getAllProductsCount(): number {
+      return this.allProducts ? this.allProducts.length : 0;
+    }
+  }
+
   class ResponsiveFilters {
     private form: HTMLFormElement | null = null;
     private container: HTMLElement | null = null;
     private overlay: HTMLElement | null = null;
     private showMoreToggle: HTMLButtonElement | null = null;
     private isExpanded: boolean = false;
+    private filterEngine: UltimateFilterEngine | null = null; // DAY 2: Add filter engine
 
     constructor() {
       // Direct element assignment - no setTimeout delays
@@ -256,8 +669,58 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         return;
       }
       
+      // SOLUTION: Wait for ProductGrid with timeout fallback for slow networks
+      let gridReadyFired = false;
+      
+      document.addEventListener('productGridReady', () => {
+        if (!gridReadyFired) {
+          gridReadyFired = true;
+          this.initializeFilterEngine();
+        }
+      });
+      
+      // Fallback timeout for slow networks (3 seconds)
+      setTimeout(() => {
+        if (!gridReadyFired) {
+          console.log('[ResponsiveFilters] ⏰ Grid ready timeout - initializing filter engine anyway');
+          gridReadyFired = true;
+          this.initializeFilterEngine();
+        }
+      }, 3000);
+      
       this.setupEventListeners();
       this.initializeMenuState();
+    }
+    
+    private initializeFilterEngine(): void {
+      // ALWAYS enable client-side filtering to prevent FOUT and phantom clicks
+      try {
+        this.filterEngine = new UltimateFilterEngine();
+        console.log('[ResponsiveFilters] ✅ Client-side filtering enabled for all devices');
+        
+        // Always hide pagination when client-side filtering is active
+        const pagination = document.getElementById('server-side-pagination') as HTMLElement;
+        if (pagination) {
+          pagination.style.display = 'none';
+          console.log('[ResponsiveFilters] 🚫 Server-side pagination hidden');
+        }
+        
+        // Validate engine has data
+        const productCount = this.filterEngine && this.filterEngine.getAllProductsCount ? this.filterEngine.getAllProductsCount() : 0;
+        if (productCount === 0) {
+          console.warn('[ResponsiveFilters] ⚠️ Filter engine has no products - fallback may be needed');
+        }
+        
+      } catch (error) {
+        console.error('[ResponsiveFilters] ❌ Filter engine initialization failed:', error);
+        this.filterEngine = null;
+        
+        // Still hide pagination to prevent FOUT
+        const pagination = document.getElementById('server-side-pagination') as HTMLElement;
+        if (pagination) {
+          pagination.style.display = 'none';
+        }
+      }
     }
 
     private setupEventListeners(): void {
@@ -301,29 +764,74 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       document.body.style.overflow = "";
     }
 
-    // Phase 1: Enhanced Desktop Filtering with Phantom Click Prevention
+    // DAY 2: Enhanced Desktop Filtering with INSTANT client-side filtering
+    // ELIMINATES FOUT: No page reloads ever  
+    // ELIMINATES PHANTOM CLICKS: Immediate interaction blocking
     private setupDesktopFiltering(): void {
       if (!this.form) return;
 
       const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
       
       checkboxes.forEach((checkbox) => {
-        checkbox.addEventListener("change", (event) => {
-          if (window.innerWidth >= 1024) {
-            // Phase 1: IMMEDIATE phantom click prevention
-            this.blockAllFilterInteractions();
+        // CRITICAL: Remove all existing event listeners by cloning the element
+        const newCheckbox = checkbox.cloneNode(true) as HTMLInputElement;
+        checkbox.parentNode?.replaceChild(newCheckbox, checkbox);
+        
+        newCheckbox.addEventListener("change", (event) => {
+          console.log(`[ResponsiveFilters] Checkbox changed: ${(event.target as HTMLInputElement).name}=${(event.target as HTMLInputElement).value}, checked=${(event.target as HTMLInputElement).checked}`);
+          
+          if (window.innerWidth >= 1024 && this.filterEngine) {
+            console.log('[ResponsiveFilters] 🚀 Using CLIENT-SIDE filtering');
             
-            // Existing functionality preserved
+            // PREVENT page reload completely
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            
+            // Get current filter criteria
+            const criteria = this.buildFilterCriteria();
+            
+            // Apply filters instantly (< 50ms response time)
+            this.filterEngine.applyFilters(criteria);
+            
+            // Save menu state
+            sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+            
+            return false; // Extra prevention
+            
+          } else {
+            console.log('[ResponsiveFilters] 📱 Using SERVER-SIDE filtering');
+            // Mobile: use existing server-side approach
             sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
             sessionStorage.setItem("filtering-in-progress", "true");
-
-            // Submit form after blocking interactions
-            if (this.form) {
-              this.form.submit();
-            }
+            this.form?.submit();
           }
         });
       });
+      
+      // ALSO prevent form submission at form level
+      this.form.addEventListener('submit', (event) => {
+        if (window.innerWidth >= 1024 && this.filterEngine) {
+          event.preventDefault();
+          event.stopPropagation();
+          console.log('[ResponsiveFilters] Prevented form submission - using client-side filtering');
+          return false;
+        }
+      });
+    }
+    
+    // DAY 2: Build filter criteria for client-side engine
+    private buildFilterCriteria(): any {
+      if (!this.form) return { brands: [], availability: false };
+      
+      // Re-query form to get current checkboxes (in case they were cloned)
+      const formData = new FormData(this.form);
+      const brands = formData.getAll('brands') as string[];
+      const availability = formData.get('availability') === 'true';
+      
+      console.log(`[ResponsiveFilters] Building criteria: brands=${brands.join(',')}, availability=${availability}`);
+      
+      return { brands, availability };
     }
 
     // Phase 1: Block all filter interactions immediately
@@ -427,29 +935,66 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
 
     private clearBrandFilters(): void {
-      sessionStorage.removeItem("filter-menu-expanded");
+      if (window.innerWidth >= 1024 && this.filterEngine) {
+        // DAY 2: Clear brand filters instantly with client-side filtering
+        const checkboxes = this.form?.querySelectorAll('input[name="brands"]') as NodeListOf<HTMLInputElement>;
+        checkboxes?.forEach(checkbox => {
+          if (checkbox.checked) {
+            checkbox.checked = false;
+          }
+        });
+        
+        // Apply filters instantly
+        const criteria = this.buildFilterCriteria();
+        this.filterEngine.applyFilters(criteria);
+        
+      } else {
+        // Mobile: use existing server-side approach
+        sessionStorage.removeItem("filter-menu-expanded");
+        
+        const currentParams = new URLSearchParams(window.location.search);
+        const currentPageSize = currentParams.get("pageSize") || "24";
+        const currentAvailability = currentParams.get("availability");
+        
+        const params = new URLSearchParams();
+        if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
+        if (currentAvailability) params.set("availability", currentAvailability);
 
-      const currentParams = new URLSearchParams(window.location.search);
-      const currentPageSize = currentParams.get("pageSize") || "24";
-      const currentAvailability = currentParams.get("availability");
-      
-      const params = new URLSearchParams();
-      if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
-      if (currentAvailability) params.set("availability", currentAvailability);
-
-      this.navigateWithParams(params);
+        this.navigateWithParams(params);
+      }
     }
 
-    private clearAllFilters(): void {
-      sessionStorage.removeItem("filter-menu-expanded");
+    public clearAllFilters(): void {
+      if (window.innerWidth >= 1024 && this.filterEngine) {
+        // DAY 2: Clear all filters instantly with client-side filtering
+        const checkboxes = this.form?.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+        let hasChanges = false;
+        
+        checkboxes?.forEach(checkbox => {
+          if (checkbox.checked) {
+            checkbox.checked = false;
+            hasChanges = true;
+          }
+        });
+        
+        // Only apply filters if there were actually changes
+        if (hasChanges) {
+          const criteria = this.buildFilterCriteria();
+          this.filterEngine.applyFilters(criteria);
+        }
+        
+      } else {
+        // Mobile: use existing server-side approach
+        sessionStorage.removeItem("filter-menu-expanded");
 
-      const currentParams = new URLSearchParams(window.location.search);
-      const currentPageSize = currentParams.get("pageSize") || "24";
-      
-      const params = new URLSearchParams();
-      if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
+        const currentParams = new URLSearchParams(window.location.search);
+        const currentPageSize = currentParams.get("pageSize") || "24";
+        
+        const params = new URLSearchParams();
+        if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
 
-      this.navigateWithParams(params);
+        this.navigateWithParams(params);
+      }
     }
 
     private navigateWithParams(params: URLSearchParams): void {
@@ -468,9 +1013,21 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     destroy(): void {
       document.body.style.overflow = "";
       
+      // DAY 2: Clean up filter engine
+      if (this.filterEngine) {
+        this.filterEngine.destroy();
+        this.filterEngine = null;
+      }
+      
       // Clean up any processing states
       const filterContainer = document.getElementById("filter-container");
       filterContainer?.classList.remove("filters-processing", "filter-processing-indicator");
+      
+      // Remove any processing indicators
+      const indicator = document.getElementById('filter-processing-indicator');
+      if (indicator) {
+        indicator.remove();
+      }
     }
   }
 
@@ -486,6 +1043,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     
     // Create new instance
     currentInstance = new ResponsiveFilters();
+    
+    // Expose instance globally for AppliedFilters access
+    (window as any).currentFilterInstance = currentInstance;
   }
 
   // Handle both initial load and Astro navigation

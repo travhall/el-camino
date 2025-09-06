@@ -58,6 +58,31 @@ if (!skipInventoryCheck && products.length > 0) {
 }
 ---
 
+<style>
+  /* SMOOTH FILTERING: Prevent layout shifts with opacity transitions */
+  .product-card-wrapper {
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+    will-change: opacity, transform;
+  }
+  
+  .product-card-wrapper.opacity-0 {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  
+  .product-card-wrapper.opacity-100 {
+    opacity: 1;
+    transform: scale(1);
+  }
+  
+  /* MOBILE INFINITE SCROLL: Better spacing and loading states */
+  @media (max-width: 1023px) {
+    #infinite-scroll-trigger {
+      margin: 1rem 0;
+    }
+  }
+</style>
+
 <div
   id="filterable-product-grid"
   class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-2 lg:gap-1 transition-all duration-300"
@@ -68,11 +93,13 @@ if (!skipInventoryCheck && products.length > 0) {
   data-product-count={allProducts ? allProducts.length : productsWithInventory.length}
 >
   {
-    productsWithInventory.map((product, index) => (
+    (allProducts && allProducts.length > 0 ? allProducts : productsWithInventory).map((product, index) => (
       <div
-        class="product-card-wrapper grid"
+        class="product-card-wrapper grid opacity-100 scale-100"
         data-product-id={product.id}
         data-brand={product.brand || ""}
+        data-initial-index={index}
+        style={allProducts && allProducts.length > 0 && index >= 24 ? "display: none;" : ""}
       >
         <ProductCard 
           product={product} 
@@ -156,14 +183,22 @@ if (!skipInventoryCheck && products.length > 0) {
       grid.style.opacity = "1";
       grid.style.transition = "opacity 0.3s ease";
     }
+    
+    // CRITICAL FIX: Signal ProductGrid ready on Astro navigation
+    console.log('[ProductGrid] 📡 Emitting productGridReady on astro:page-load');
+    document.dispatchEvent(new CustomEvent('productGridReady'));
   });
 
-  // Initialize loading states on page load
+  // SOLUTION: Signal when ProductGrid is ready for filtering
   document.addEventListener("DOMContentLoaded", () => {
     const grid = document.getElementById("filterable-product-grid");
     if (grid && sessionStorage.getItem("filtering-in-progress")) {
       grid.style.opacity = "1";
       sessionStorage.removeItem("filtering-in-progress");
     }
+    
+    // Signal that ProductGrid is loaded and ready
+    console.log('[ProductGrid] 📡 Emitting productGridReady on DOMContentLoaded');
+    document.dispatchEvent(new CustomEvent('productGridReady'));
   });
 </script>
