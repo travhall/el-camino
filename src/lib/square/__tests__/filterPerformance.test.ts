@@ -20,31 +20,37 @@ const mockProducts: Product[] = [
   {
     id: 'prod1',
     catalogObjectId: 'cat1',
+    variationId: 'var1',
     title: 'Test Product 1',
     brand: 'Spitfire',
     description: 'Test description',
-    price: { amount: 2999, currency: 'USD' },
+    price: 2999, // $29.99 in cents
     image: 'test1.jpg',
+    url: '/product/test-product-1',
     variations: []
   },
   {
     id: 'prod2', 
     catalogObjectId: 'cat2',
+    variationId: 'var2',
     title: 'Test Product 2',
     brand: 'Independent',
     description: 'Test description',
-    price: { amount: 3999, currency: 'USD' },
+    price: 3999, // $39.99 in cents
     image: 'test2.jpg',
+    url: '/product/test-product-2',
     variations: []
   },
   {
     id: 'prod3',
-    catalogObjectId: 'cat3', 
+    catalogObjectId: 'cat3',
+    variationId: 'var3', 
     title: 'Test Product 3',
     brand: 'Spitfire',
     description: 'Test description',
-    price: { amount: 1999, currency: 'USD' },
+    price: 1999, // $19.99 in cents
     image: 'test3.jpg',
+    url: '/product/test-product-3',
     variations: []
   }
 ];
