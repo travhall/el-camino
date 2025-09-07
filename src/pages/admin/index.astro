@@ -17,7 +17,7 @@ let dashboardData = {
   healthScore: 85, // Fallback value
   cwvPassing: 82,
   activeIssues: 1,
-  uptime: 99.9
+  uptime: 99.9,
 };
 
 // Server-side integration ready for SSR enhancement
@@ -77,13 +77,19 @@ let dashboardData = {
           </div>
           <div class="text-sm text-(--content-meta)">Performance Score</div>
           <div class="w-full bg-(--surface-tertiary) rounded-full h-2 mt-2">
-            <div class="bg-green-500 h-2 rounded-full" style={`width: ${dashboardData.healthScore}%`}></div>
+            <div
+              class="bg-green-500 h-2 rounded-full"
+              style={`width: ${dashboardData.healthScore}%`}
+            >
+            </div>
           </div>
         </div>
 
         <!-- Core Web Vitals -->
         <div class="text-center">
-          <div class="text-4xl font-bold text-blue-600 mb-2" id="cwv-passing">3/3</div>
+          <div class="text-4xl font-bold text-blue-600 mb-2" id="cwv-passing">
+            3/3
+          </div>
           <div class="text-sm text-(--content-meta)">CWV Passing</div>
           <div class="text-xs text-green-600 mt-1">LCP, INP, CLS Good</div>
         </div>
@@ -546,10 +552,7 @@ let dashboardData = {
 </AdminLayout>
 
 <style>
-  .admin-tools-grid .bg-\\(--surface-secondary\\):hover {
-    transform: translateY(-2px);
-  }
-
+  .admin-tools-grid,
   .admin-health-overview {
     animation: fadeInUp 0.6s ease-out;
   }
@@ -682,7 +685,7 @@ let dashboardData = {
         }
 
         // Update health progress bar
-        const progressBar = document.querySelector('.bg-green-500');
+        const progressBar = document.querySelector(".bg-green-500");
         if (progressBar) {
           (progressBar as HTMLElement).style.width = `${health.score}%`;
         }
@@ -693,17 +696,20 @@ let dashboardData = {
           const issueCount = violations?.length || 0;
           issuesEl.textContent = issueCount.toString();
           issuesEl.className = `text-4xl font-bold mb-2 ${
-            issueCount === 0 ? "text-green-600" :
-            issueCount <= 2 ? "text-yellow-600" : "text-red-600"
+            issueCount === 0
+              ? "text-green-600"
+              : issueCount <= 2
+                ? "text-yellow-600"
+                : "text-red-600"
           }`;
         }
 
         // Update other metrics
         this.updateMetrics(metrics);
-        
-        console.log('[Phase 4] Main dashboard updated with real-time data');
+
+        console.log("[Phase 4] Main dashboard updated with real-time data");
       } catch (error) {
-        console.warn('[Phase 4] Dashboard update error:', error);
+        console.warn("[Phase 4] Dashboard update error:", error);
         // Graceful degradation - keep showing last known values
       }
     }
