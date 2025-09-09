@@ -3,7 +3,6 @@
 import ProductFilters from "@/components/ProductFilters.astro";
 import AppliedFilters from "@/components/AppliedFilters.astro";
 import ProductGrid from "@/components/ProductGrid.astro";
-import PaginationControls from "@/components/PaginationControls.astro";
 import Layout from "@/layouts/Layout.astro";
 import { fetchProducts } from "@/lib/square/client";
 import { parseURLParams, filterProducts, extractFilterOptions } from "@/lib/square/filterUtils";
@@ -149,25 +148,14 @@ const hasActiveFilters = filters.brands.length > 0 || filters.availability === t
 
         <!-- Products -->
         {
-          paginatedProducts.length > 0 ? (
+          (paginatedProducts.length > 0 || allProducts.length > 0) ? (
             <>
-              <!-- Products Grid - Updated for client-side filtering -->
+              <!-- Products Grid - Enhanced with infinite scroll only -->
               <ProductGrid
                 products={paginatedProducts}
                 allProducts={allProducts}
-                paginationMode={true}
                 categoryPath={categoryPath}
               />
-
-              <!-- Pagination Controls - Hidden when client-side filtering active -->
-              <div id="server-side-pagination">
-                <PaginationControls
-                  pagination={pagination}
-                  basePath={categoryPath}
-                  filters={filters}
-                  pageSize={pageSize}
-                />
-              </div>
             </>
           ) : (
             <div class="text-center py-16">
