@@ -46,6 +46,28 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
         const theme = storedTheme ?? (systemPrefersDark ? "dark" : "light");
         document.documentElement.classList.add(theme);
         document.documentElement.setAttribute("data-theme", theme);
+        
+        // Font loading state management
+        document.documentElement.classList.add("fonts-loading");
+        
+        // Check if fonts are already cached
+        if (sessionStorage.getItem("fonts-loaded")) {
+          document.documentElement.classList.remove("fonts-loading");
+          document.documentElement.classList.add("fonts-loaded");
+        } else {
+          // Load fonts and update state
+          Promise.all([
+            document.fonts.load("700 48px Alumni"),
+            document.fonts.load("400 16px Cabin")
+          ]).then(() => {
+            document.documentElement.classList.remove("fonts-loading");
+            document.documentElement.classList.add("fonts-loaded");
+            sessionStorage.setItem("fonts-loaded", "true");
+          }).catch(() => {
+            document.documentElement.classList.remove("fonts-loading");
+            document.documentElement.classList.add("fonts-failed");
+          });
+        }
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -69,6 +91,26 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
       crossorigin="anonymous"
       fetchpriority="high"
     />
+
+    <!-- Critical font styling to prevent FOUT on h1 elements -->
+    <style>
+      /* Critical inline fonts for h1 elements - prevents FOUT */
+      h1 {
+        font-family: "Alumni", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        font-synthesis: none;
+        font-optical-sizing: auto;
+      }
+      
+      /* Ensure proper font loading states */
+      .fonts-loading h1 {
+        visibility: hidden;
+      }
+      
+      .fonts-loaded h1,
+      .fonts-failed h1 {
+        visibility: visible;
+      }
+    </style>
 
     <!-- Performance optimizations -->
     <link
@@ -149,7 +191,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
       }
     </script>
 
-    <!-- Clean news parameters when outside news section with NavigationManager coordination -->
+    <!-- Clean news parameters when outside news section -->
     <script is:inline>
       document.addEventListener("astro:page-load", function () {
         if (!window.location.pathname.startsWith("/news")) {
@@ -219,7 +261,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
         setTimeout(cleanNonNewsForms, 100);
       });
 
-      // Clean view parameter from URLs when navigating away from news with NavigationManager coordination
+      // Clean view parameter from URLs when navigating away from news
       document.addEventListener("astro:before-swap", (e) => {
         if (
           window.location.pathname.startsWith("/news") &&

@@ -1,14 +1,15 @@
 // src/lib/square/categoryUtils.ts - Category filtering and product count utilities
 
 import { squareClient } from "./client";
-import { categoryCache } from "./cacheUtils";
+import { categoryCache, navigationCache } from "./cacheUtils";
 import type { Category, CategoryHierarchy } from "./types";
 import { processSquareError, handleError } from "./errorUtils";
 import { requestDeduplicator } from "./requestDeduplication";
+import { apiRetryClient } from "./apiRetry";
 
 /**
  * Check if a category has any products (regardless of stock status)
- * Uses caching and request deduplication for performance
+ * Uses caching, request deduplication, and enhanced retry logic
  */
 export async function categoryHasProducts(
   categoryId: string
@@ -18,11 +19,18 @@ export async function categoryHasProducts(
   return requestDeduplicator.dedupe(cacheKey, () =>
     categoryCache.getOrCompute(cacheKey, async () => {
       try {
-        // Use Square's search API to check for products in this category
-        const { result } = await squareClient.catalogApi.searchCatalogItems({
-          categoryIds: [categoryId],
-          limit: 1, // We only need to know if ANY exist
-        });
+        // Use enhanced API retry client for robust Square API calls
+        const result = await apiRetryClient.executeWithRetry(
+          async () => {
+            const { result } = await squareClient.catalogApi.searchCatalogItems({
+              categoryIds: [categoryId],
+              limit: 1, // We only need to know if ANY exist
+            });
+            return result;
+          },
+          `categoryHasProducts:${categoryId}`,
+          { maxRetries: 2, baseDelay: 300 } // Faster retry for navigation
+        );
 
         // Return true if we found any items
         return !!result?.items?.length;
@@ -77,15 +85,21 @@ export async function batchCheckCategoriesHaveProducts(
           batches.map(async (batchIds) => {
             const batchResult: Record<string, boolean> = {};
 
-            // Check each category in the batch
+            // Check each category in the batch with retry logic
             await Promise.all(
               batchIds.map(async (categoryId) => {
                 try {
-                  const { result: searchResult } =
-                    await squareClient.catalogApi.searchCatalogItems({
-                      categoryIds: [categoryId],
-                      limit: 1,
-                    });
+                  const searchResult = await apiRetryClient.executeWithRetry(
+                    async () => {
+                      const { result } = await squareClient.catalogApi.searchCatalogItems({
+                        categoryIds: [categoryId],
+                        limit: 1,
+                      });
+                      return result;
+                    },
+                    `batchCategoryCheck:${categoryId}`,
+                    { maxRetries: 2, baseDelay: 200 } // Faster for batch operations
+                  );
 
                   const hasProducts = !!searchResult?.items?.length;
                   batchResult[categoryId] = hasProducts;
@@ -188,18 +202,24 @@ export async function filterCategoryHierarchyWithProducts(
 
 /**
  * Enhanced category hierarchy fetch with product filtering
- * For use in navigation components
+ * For use in navigation components - optimized for fast rendering
  */
 export async function fetchCategoryHierarchyWithProducts(): Promise<
   CategoryHierarchy[]
 > {
-  return categoryCache.getOrCompute("hierarchy-with-products", async () => {
+  // Use navigation cache for longer TTL and faster subsequent renders
+  return navigationCache.getOrCompute("hierarchy-with-products", async () => {
     try {
       // Import here to avoid circular dependency
       const { fetchCategoryHierarchy } = await import("./categories");
 
       // Get full hierarchy first
       const fullHierarchy = await fetchCategoryHierarchy();
+
+      // Quick early return for empty hierarchy
+      if (!fullHierarchy.length) {
+        return [];
+      }
 
       // Filter to only categories with products
       const filteredHierarchy = await filterCategoryHierarchyWithProducts(
@@ -209,9 +229,11 @@ export async function fetchCategoryHierarchyWithProducts(): Promise<
       // Sort by Square's ordinal system (maintained from original fetch)
       // The original hierarchy is already sorted by ordinals, so we preserve that order
 
-      // console.log(
-      //   `[CategoryFilter] Showing ${filteredHierarchy.length} categories with products`
-      // );
+      if (import.meta.env.DEV) {
+        console.log(
+          `[Navigation] Loaded ${filteredHierarchy.length} categories with products (cached for 1 hour)`
+        );
+      }
 
       return filteredHierarchy;
     } catch (error) {

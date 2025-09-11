@@ -8,29 +8,32 @@ import { Icon } from "astro-icon/components";
 const { contact, social } = siteConfig;
 
 let categoryHierarchy: CategoryHierarchy[];
+let navigationStatus: 'loading' | 'success' | 'timeout' | 'error' = 'loading';
+
 try {
-  // Use product-filtered category fetching to only show categories with products
-  categoryHierarchy = await fetchCategoryHierarchyWithProducts();
+  // Use product-filtered category fetching with timeout fallback for navigation performance
+  const timeoutPromise = new Promise<CategoryHierarchy[]>((_, reject) => {
+    setTimeout(() => reject(new Error("Navigation fetch timeout")), 2000); // 2 second timeout
+  });
+
+  categoryHierarchy = await Promise.race([
+    fetchCategoryHierarchyWithProducts(),
+    timeoutPromise,
+  ]);
+  navigationStatus = 'success';
 } catch (error) {
-  console.warn("Category fetch failed:", error);
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  if (errorMessage === 'Navigation fetch timeout') {
+    navigationStatus = 'timeout';
+    console.warn("Navigation fetch timed out after 2 seconds - using minimal navigation");
+  } else {
+    navigationStatus = 'error';
+    console.warn("Category fetch failed:", error);
+  }
   categoryHierarchy = [];
 }
 
-// Determine prefetch strategy for categories
-function getPrefetchStrategyForCategory(categoryName: string): string {
-  const highPriorityCategories = ["Decks", "Apparel", "Skateboards", "Trucks"];
-  const mediumPriorityCategories = ["Wheels", "Bearings", "Hardware"];
-
-  if (highPriorityCategories.includes(categoryName)) {
-    return "hover"; // Prefetch on hover for popular categories
-  } else if (mediumPriorityCategories.includes(categoryName)) {
-    return "tap"; // Prefetch on interaction for medium priority
-  }
-
-  return "hover"; // Default hover strategy
-}
-
-// Static navigation items with prefetch configuration
+// Static navigation items with simplified prefetch configuration  
 const staticNavItems = [
   {
     category: {
@@ -42,7 +45,7 @@ const staticNavItems = [
       rootCategoryId: undefined,
     },
     subcategories: [],
-    prefetchStrategy: "viewport", // High priority - prefetch when visible
+    prefetchStrategy: "hover", // Simplified: hover for all
   },
   {
     category: {
@@ -54,20 +57,33 @@ const staticNavItems = [
       rootCategoryId: undefined,
     },
     subcategories: [],
-    prefetchStrategy: "viewport", // High priority - prefetch when visible
+    prefetchStrategy: "hover", // Simplified: hover for all
   },
 ];
 
-// Enhanced navigation items with prefetch strategies
-const navItems = [
+// Enhanced navigation items with error-aware fallback behavior
+const navItems = categoryHierarchy.length > 0 ? [
   staticNavItems[0], // "The Shop" first
   ...categoryHierarchy.map((item) => ({
     ...item,
-    // Assign prefetch strategy based on category importance
-    prefetchStrategy: getPrefetchStrategyForCategory(item.category.name),
+    // Simplified: use hover strategy for all categories
+    prefetchStrategy: "hover",
   })),
   staticNavItems[1], // "News" last
+] : [
+  // Minimal safe navigation when categories fail to load
+  // Only includes pages that are guaranteed to work
+  staticNavItems[0], // "The Shop" - always works (static page)
+  staticNavItems[1], // "News" - always works (WordPress-driven)
 ];
+
+// Debug: Log navigation state for development
+if (import.meta.env.DEV) {
+  console.log(`[Navigation] Status: ${navigationStatus}, Items: ${navItems.length}`);
+  if (navigationStatus !== 'success') {
+    console.log('[Navigation] Using minimal safe navigation - category data unavailable');
+  }
+}
 
 // Get current path for context-aware prefetching
 const currentPath = Astro.url.pathname;
@@ -91,7 +107,21 @@ const isCategoryPage = currentPath.includes("/category/");
     isProductPage,
     isCategoryPage,
   })}
+  data-nav-status={navigationStatus}
+  data-nav-items={navItems.length}
 >
+  {/* Error recovery notification - only shown in development or when explicitly requested */}
+  {(navigationStatus === 'timeout' || navigationStatus === 'error') && import.meta.env.DEV && (
+    <div class="nav-status-indicator p-2 text-sm bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border-l-4 border-orange-500 lg:hidden">
+      <p class="font-medium">
+        {navigationStatus === 'timeout' ? 'Navigation loading slowly' : 'Navigation temporarily limited'}
+      </p>
+      <p class="text-xs mt-1">
+        Showing essential links only. Full navigation will load automatically.
+      </p>
+    </div>
+  )}
+
   {
     navItems.map((item, index) => (
       <div class="category-group relative flex flex-col lg:flex-row group transition-all">
@@ -105,12 +135,16 @@ const isCategoryPage = currentPath.includes("/category/");
           }
           class:list={[
             "nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 lg:p-4 text-(--ui-nav-text) transition-all duration-300 ease-in-out relative hover:text-(--ui-nav-hover) before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left nav-link",
-            { 
-              "lg:before:scale-x-100 lg:before:origin-left": 
-                (item.category.id === "the-shop" && currentPath.startsWith("/the-shop")) ||
-                (item.category.id === "news" && currentPath.startsWith("/news")) ||
-                (item.category.id !== "the-shop" && item.category.id !== "news" && currentPath.startsWith(`/category/${item.category.slug}`))
-            }
+            {
+              "lg:before:scale-x-100 lg:before:origin-left":
+                (item.category.id === "the-shop" &&
+                  currentPath.startsWith("/the-shop")) ||
+                (item.category.id === "news" &&
+                  currentPath.startsWith("/news")) ||
+                (item.category.id !== "the-shop" &&
+                  item.category.id !== "news" &&
+                  currentPath.startsWith(`/category/${item.category.slug}`)),
+            },
           ]}
           style={`--item-index: ${index};`}
           data-has-children={item.subcategories.length > 0}
@@ -174,12 +208,13 @@ const isCategoryPage = currentPath.includes("/category/");
                   data-subcategory={subcategory.name}
                   class:list={[
                     "block p-2 text-2xl lg:text-base text-(--ui-nav-text) hover:text-(--ui-nav-text) before:absolute before:top-0 before:left-0 before:w-full before:h-full before:bg-(--ui-nav-hover)/20 before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left relative",
-                    { 
-                      "font-semibold bg-(--ui-nav-hover)/10": 
-                        currentPath === (item.category.id === "the-shop" 
-                          ? `/the-shop/${subcategory.slug}` 
-                          : `/category/${item.category.slug}/${subcategory.slug}`)
-                    }
+                    {
+                      "font-semibold bg-(--ui-nav-hover)/10":
+                        currentPath ===
+                        (item.category.id === "the-shop"
+                          ? `/the-shop/${subcategory.slug}`
+                          : `/category/${item.category.slug}/${subcategory.slug}`),
+                    },
                   ]}
                 >
                   {subcategory.name}
@@ -252,7 +287,7 @@ const isCategoryPage = currentPath.includes("/category/");
     border: 0;
   }
 
-  /* Mobile animations - optimized for performance */
+  /* Mobile animations - optimized for 60fps performance with design-preserving stagger */
   @media (max-width: 1024px) {
     .nav-link {
       opacity: 0;
@@ -269,14 +304,18 @@ const isCategoryPage = currentPath.includes("/category/");
       position: static;
       max-height: 0;
       opacity: 0;
-      transform: translate3d(0, -10px, 0);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: translateZ(0) translateY(-5px); /* Simplified transform */
+      transition:
+        max-height 0.2s ease,
+        opacity 0.2s ease,
+        transform 0.2s ease; /* Faster, smoother */
       overflow: hidden;
       background-color: rgba(var(--ui-nav-hover-rgb, 255, 255, 255), 0.05);
       border-left: 2px solid rgba(var(--ui-nav-border-rgb, 255, 255, 255), 0.1);
       padding-left: 0.5rem;
       border-radius: 0 0 4px 4px;
       contain: layout style;
+      will-change: auto; /* Only set when animating */
     }
 
     .dropdown-menu > div {
@@ -290,7 +329,7 @@ const isCategoryPage = currentPath.includes("/category/");
       display: block;
       max-height: 500px;
       opacity: 1;
-      transform: translate3d(0, 0, 0);
+      transform: translateZ(0) translateY(0);
     }
 
     .category-group.open .mobile-caret {
@@ -300,7 +339,7 @@ const isCategoryPage = currentPath.includes("/category/");
     @keyframes slideIn {
       to {
         opacity: 1;
-        transform: translate3d(0, 0, 0);
+        transform: translateZ(0) translateX(0); /* GPU-optimized final state */
       }
     }
   }
@@ -312,7 +351,7 @@ const isCategoryPage = currentPath.includes("/category/");
     }
   }
 
-  /* Accessibility: Reduce motion */
+  /* Accessibility: Reduce motion - Enhanced support with stagger preservation */
   @media (prefers-reduced-motion: reduce) {
     .nav-link,
     .dropdown-menu,
@@ -323,34 +362,80 @@ const isCategoryPage = currentPath.includes("/category/");
 
     nav.nav-open .nav-link {
       opacity: 1;
-      transform: translate3d(0, 0, 0);
+      transform: translateZ(0) translateX(0);
+      animation-delay: 0s; /* Remove stagger for accessibility */
     }
-  }
 
-  /* Focus styles for better accessibility */
-  .nav-item:focus-visible {
-    outline: 2px solid var(--ui-focus-color, #0066cc);
-    outline-offset: 2px;
-    border-radius: 2px;
+    .category-group.open .dropdown-menu {
+      max-height: 500px;
+      opacity: 1;
+      transform: translateZ(0) translateY(0);
+    }
+
+    .category-group.open .mobile-caret {
+      transform: rotate(180deg);
+    }
+
+    /* Ensure immediate visibility for reduced motion users */
+    .nav-link {
+      will-change: auto;
+    }
   }
 
   .skip-link:focus {
     z-index: 9999;
   }
+
+  /* Error status indicator styling */
+  .nav-status-indicator {
+    animation: slideDown 0.3s ease-out;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Enhanced error states for navigation items */
+  nav[data-nav-status="timeout"] .nav-item::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 4px;
+    background-color: orange;
+    border-radius: 50%;
+    opacity: 0.7;
+  }
+
+  nav[data-nav-status="enhanced"] .nav-item::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 4px;
+    background-color: green;
+    border-radius: 50%;
+    opacity: 0.7;
+  }
 </style>
 
 <script>
-  import {
-    getNavigationContext,
-    prefetchHighPriorityTargets,
-  } from "@/lib/square/navigationUtils";
+  // Simplified navigation controller - removed complex prefetching
 
   interface NavElementData {
     link: HTMLElement;
     dropdown: HTMLElement;
     index: number;
     isOpen: boolean;
-    prefetchStrategy: string;
     categoryName: string;
   }
 
@@ -360,6 +445,7 @@ const isCategoryPage = currentPath.includes("/category/");
     private focusTimeout: number | null = null;
     private resizeObserver: ResizeObserver | null = null;
     private abortController: AbortController = new AbortController();
+    private retryAttempted = false;
 
     constructor() {
       this.init();
@@ -369,16 +455,51 @@ const isCategoryPage = currentPath.includes("/category/");
       this.cacheElements();
       this.setupEventDelegation();
       this.setupResizeObserver();
-      this.initializePrefetching();
       this.enhanceAccessibility();
+      this.setupProgressiveEnhancement();
     }
 
-    private initializePrefetching(): void {
-      const context = getNavigationContext();
-      prefetchHighPriorityTargets(context);
+    private setupProgressiveEnhancement(): void {
+      const nav = document.querySelector("nav");
+      const navStatus = nav?.getAttribute("data-nav-status");
+      
+      // If navigation failed or timed out, attempt one retry after 3 seconds
+      if ((navStatus === 'timeout' || navStatus === 'error') && !this.retryAttempted) {
+        this.retryAttempted = true;
+        
+        setTimeout(() => {
+          this.attemptNavigationRetry();
+        }, 3000); // Retry after 3 seconds, non-blocking
+      }
+    }
 
+    private async attemptNavigationRetry(): Promise<void> {
       if (import.meta.env.DEV) {
-        console.log("[Navigation] Prefetch initialized for context:", context);
+        console.log("[Navigation] Attempting progressive enhancement retry...");
+      }
+
+      try {
+        // Try to load categories in the background
+        const { fetchCategoryHierarchyWithProducts } = await import("@/lib/square/categoryUtils");
+        const categories = await fetchCategoryHierarchyWithProducts();
+        
+        if (categories.length > 0) {
+          // Success! Trigger a page refresh to show full navigation
+          if (import.meta.env.DEV) {
+            console.log("[Navigation] Progressive enhancement successful - categories now available");
+          }
+          
+          // Update nav status attributes
+          const nav = document.querySelector("nav");
+          if (nav) {
+            nav.setAttribute("data-nav-status", "enhanced");
+            nav.setAttribute("data-nav-items", String(categories.length + 2)); // +2 for The Shop and News
+          }
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.log("[Navigation] Progressive enhancement retry failed - keeping minimal navigation");
+        }
       }
     }
 
@@ -434,8 +555,6 @@ const isCategoryPage = currentPath.includes("/category/");
         const hasChildren = link?.getAttribute("data-has-children") === "true";
 
         if (hasChildren && link && dropdown) {
-          const prefetchStrategy =
-            link.getAttribute("data-prefetch-strategy") || "hover";
           const categoryName =
             link.getAttribute("data-category-name") || "Unknown";
 
@@ -444,7 +563,6 @@ const isCategoryPage = currentPath.includes("/category/");
             dropdown,
             index,
             isOpen: false,
-            prefetchStrategy,
             categoryName,
           });
 
@@ -623,13 +741,23 @@ const isCategoryPage = currentPath.includes("/category/");
       const target = event.target as HTMLElement;
       const group = target.closest(".category-group");
       if (group && this.navElements.has(group)) {
-        // Optimize for touch by preparing for animation
-        (group as HTMLElement).style.willChange = "transform";
+        // Optimize for touch by temporarily enabling will-change only during interaction
+        const groupElement = group as HTMLElement;
+        groupElement.style.willChange = "transform, opacity";
 
-        // Clean up after interaction
-        setTimeout(() => {
-          (group as HTMLElement).style.willChange = "auto";
-        }, 300);
+        // Clean up more efficiently - remove will-change after interaction completes
+        const cleanupWillChange = () => {
+          groupElement.style.willChange = "auto";
+        };
+
+        // Multiple cleanup triggers for reliability
+        setTimeout(cleanupWillChange, 250);
+        groupElement.addEventListener("animationend", cleanupWillChange, {
+          once: true,
+        });
+        groupElement.addEventListener("transitionend", cleanupWillChange, {
+          once: true,
+        });
       }
     }
 
@@ -646,13 +774,22 @@ const isCategoryPage = currentPath.includes("/category/");
     }
 
     private setupResizeObserver(): void {
-      // Use ResizeObserver for better performance than resize events
+      // Throttled ResizeObserver for better performance (100ms throttle)
+      let resizeTimeout: number | null = null;
+
       this.resizeObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          if (entry.contentRect.width > 1024) {
-            this.closeAllDropdowns();
-          }
+        if (resizeTimeout) {
+          clearTimeout(resizeTimeout);
         }
+
+        resizeTimeout = window.setTimeout(() => {
+          for (const entry of entries) {
+            if (entry.contentRect.width > 1024) {
+              this.closeAllDropdowns();
+            }
+          }
+          resizeTimeout = null;
+        }, 100); // 100ms throttle for smoother performance
       });
 
       this.resizeObserver.observe(document.documentElement);
@@ -681,8 +818,26 @@ const isCategoryPage = currentPath.includes("/category/");
   function initializeOptimizedNavigation(): OptimizedNavigationController {
     const navController = new OptimizedNavigationController();
 
+    // Set up navigation health monitoring
+    if (typeof window !== 'undefined') {
+      // Monitor navigation health every 30 seconds
+      const healthCheckInterval = setInterval(() => {
+        if (window.navigationManager && !window.navigationManager.isHealthy()) {
+          if (import.meta.env.DEV) {
+            console.warn("[Navigation] Health check failed - attempting recovery");
+          }
+          window.navigationManager.recoverFromError();
+        }
+      }, 30000);
+
+      // Clean up interval on page unload
+      window.addEventListener('beforeunload', () => {
+        clearInterval(healthCheckInterval);
+      });
+    }
+
     if (import.meta.env.DEV) {
-      console.log("[Navigation] Optimized navigation controller initialized");
+      console.log("[Navigation] Optimized navigation controller initialized with health monitoring");
     }
 
     return navController;

@@ -133,10 +133,13 @@ export class Cache<T> {
 
 // Export standard cache instances
 export const inventoryCache = new Cache<number>("inventory", 60); // 1 minute
-export const categoryCache = new Cache<any>("category", 900); // 15 minutes
+export const categoryCache = new Cache<any>("category", 1800); // 30 minutes (increased from 15)
 export const productCache = new Cache<any>("product", 300); // 5 minutes
 export const imageCache = new Cache<string>("image", 3600); // 1 hour
 export const wordpressCache = new Cache<any>("wordpress", 300);
 
 // Filter result caching - Phase 1 optimization
 export const filterCache = new Cache<any>("filter", 300); // 5 minutes
+
+// Navigation-specific cache with longer TTL for stability
+export const navigationCache = new Cache<any>("navigation", 3600); // 1 hour for navigation data

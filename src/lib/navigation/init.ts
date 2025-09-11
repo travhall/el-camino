@@ -1,7 +1,7 @@
-// src/lib/navigation/init.ts - NavigationManager global initialization
+// src/lib/navigation/init.ts - Simplified NavigationManager initialization
 import { navigationManager, type NavigationManager } from './NavigationManager';
 
-// Make NavigationManager available globally for inline scripts
+// Make NavigationManager available globally (simplified interface)
 declare global {
   interface Window {
     navigationManager: NavigationManager | null;
@@ -13,7 +13,7 @@ if (typeof window !== 'undefined') {
   window.navigationManager = navigationManager;
   
   if (import.meta.env.DEV) {
-    console.log('[NavigationManager] Global instance initialized');
+    console.log('[NavigationManager] Simplified global instance initialized');
   }
 }
 
