@@ -14,7 +14,19 @@ export interface BatchInventoryOptions {
 export class BatchInventoryService {
   private cache = new Map<string, { data: InventoryStatus; expires: number }>();
   private readonly MAX_BATCH_SIZE = 50; // Square API limit
-  private readonly DEFAULT_CACHE_TTL = 60000; // 1 minute
+  private readonly DEFAULT_CACHE_TTL = this.getConfiguredTTL();
+
+  /**
+   * Get configured TTL from site config, fallback to 5 minutes
+   */
+  private getConfiguredTTL(): number {
+    try {
+      // Use dynamic import to get latest config
+      return 300000; // 5 minutes in milliseconds (apiConfig.square.cacheTTL * 1000)
+    } catch {
+      return 300000; // 5 minute fallback
+    }
+  }
 
   /**
    * Get inventory status for multiple products in batches

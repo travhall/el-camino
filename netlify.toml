@@ -9,6 +9,18 @@ for = "*.html"
 [headers.values]
 Cache-Control = "public, max-age=0, must-revalidate"
 
+# Shop pages - conservative caching for better performance 
+[[headers]]
+for = "/shop/*"
+[headers.values]
+Cache-Control = "public, max-age=60, s-maxage=180, stale-while-revalidate=600"
+
+# Category pages - conservative caching for better performance
+[[headers]]
+for = "/category/*"
+[headers.values]
+Cache-Control = "public, max-age=60, s-maxage=180, stale-while-revalidate=600"
+
 # Static assets - long cache with immutable
 [[headers]]
 for = "/assets/*"

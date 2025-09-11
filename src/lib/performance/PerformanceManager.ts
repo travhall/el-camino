@@ -19,6 +19,15 @@ export interface CacheMetrics {
   missCount: number;
   totalRequests: number;
   avgResponseTime: number;
+  lastUpdate?: number;
+}
+
+export interface CacheMetricEntry {
+  type: string;
+  hit: boolean;
+  responseTime: number;
+  timestamp: number;
+  url: string;
 }
 
 export interface ImageOptimizationMetrics {
@@ -396,6 +405,13 @@ class PerformanceManager {
     this.reportingEndpoint = endpoint;
   }
 
+  public updateCacheMetrics(newMetrics: Partial<CacheMetrics>): void {
+    this.cacheMetrics = {
+      ...this.cacheMetrics,
+      ...newMetrics
+    };
+  }
+
   public getHealthScore(): {
     score: number;
     issues: string[];
@@ -451,6 +467,41 @@ class PerformanceManager {
 }
 
 // Global instance
+/**
+ * Track cache performance metrics for monitoring and optimization
+ */
+export function trackCachePerformance(cacheType: string, hit: boolean, responseTime: number): void {
+  const metrics = {
+    type: cacheType,
+    hit,
+    responseTime,
+    timestamp: Date.now(),
+    url: typeof window !== 'undefined' ? window.location.pathname : 'unknown'
+  };
+  
+  // Store metrics for dashboard
+  if (typeof window !== 'undefined') {
+    try {
+      const cacheMetrics = JSON.parse(localStorage.getItem('cacheMetrics') || '[]');
+      cacheMetrics.push(metrics);
+      if (cacheMetrics.length > 500) cacheMetrics.shift(); // Keep last 500 entries
+      localStorage.setItem('cacheMetrics', JSON.stringify(cacheMetrics));
+      
+      // Also update the performance manager cache metrics
+      performanceManager.updateCacheMetrics({
+        lastUpdate: Date.now(),
+        totalRequests: cacheMetrics.length,
+        hitRate: cacheMetrics.filter((m: CacheMetricEntry) => m.hit).length / cacheMetrics.length,
+        avgResponseTime: cacheMetrics.reduce((sum: number, m: CacheMetricEntry) => sum + m.responseTime, 0) / cacheMetrics.length
+      });
+      
+      console.log(`[CacheTracker] ${cacheType}: ${hit ? 'HIT' : 'MISS'} (${responseTime}ms)`);
+    } catch (error) {
+      console.warn('[CacheTracker] Failed to store cache metrics:', error);
+    }
+  }
+}
+
 export const performanceManager = new PerformanceManager();
 
 // Initialize immediately if in browser

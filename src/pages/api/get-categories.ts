@@ -3,8 +3,15 @@ import type { APIRoute } from "astro";
 import { squareClient, jsonStringifyReplacer } from "@/lib/square/client";
 import type { CatalogObject } from "square/legacy";
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ request }) => {
+  const startTime = Date.now();
+  
   try {
+    // Check if request includes cache headers to determine if this might be cached
+    const cacheControl = request.headers.get('cache-control');
+    const ifNoneMatch = request.headers.get('if-none-match');
+    const wasCached = cacheControl?.includes('max-age') && !cacheControl?.includes('no-cache');
+    
     // console.log("Fetching Square categories...");
 
     // Fetch all categories
@@ -14,12 +21,15 @@ export const GET: APIRoute = async () => {
     );
 
     if (!categoryResponse.result?.objects?.length) {
+      const responseTime = Date.now() - startTime;
+      
       return new Response(
         JSON.stringify(
           {
             success: false,
             error: "No categories found",
             categories: [],
+            _meta: { responseTime, cached: false }
           },
           jsonStringifyReplacer
         ),
@@ -62,12 +72,15 @@ export const GET: APIRoute = async () => {
           itemData: obj.itemData,
         })) || [];
 
+    const responseTime = Date.now() - startTime;
+
     return new Response(
       JSON.stringify(
         {
           success: true,
           categories,
           itemCategories,
+          _meta: { responseTime, cached: wasCached }
         },
         jsonStringifyReplacer,
         2
@@ -76,11 +89,15 @@ export const GET: APIRoute = async () => {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-store",
+          "Cache-Control": "public, max-age=120, s-maxage=300, stale-while-revalidate=600",
+          "Netlify-CDN-Cache-Control": "public, s-maxage=300, stale-while-revalidate=1800",
+          "Vary": "Accept-Encoding",
+          "X-Response-Time": responseTime.toString()
         },
       }
     );
   } catch (error) {
+    const responseTime = Date.now() - startTime;
     console.error("Error fetching categories:", error);
     return new Response(
       JSON.stringify(
@@ -90,12 +107,16 @@ export const GET: APIRoute = async () => {
             error instanceof Error
               ? error.message
               : "Failed to fetch categories",
+          _meta: { responseTime, cached: false }
         },
         jsonStringifyReplacer
       ),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Response-Time": responseTime.toString()
+        },
       }
     );
   }

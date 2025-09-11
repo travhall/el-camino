@@ -306,6 +306,53 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
               );
             }, 10000); // Increased from 5 seconds to 10 seconds
           }
+
+          // PHASE 1: Baseline measurement collection (Week 1) - Non-blocking
+          setTimeout(() => {
+            const metrics = performanceManager.getAllMetrics();
+            
+            // Only log in dev mode to reduce overhead
+            if (import.meta.env.DEV) {
+              console.log('[Baseline] Core Web Vitals:', metrics.coreWebVitals);
+            }
+            
+            // Send to analytics only if metrics are available and gtag exists
+            if (metrics.coreWebVitals.lcp && metrics.coreWebVitals.cls && typeof gtag !== 'undefined') {
+              gtag('event', 'performance_baseline', {
+                lcp: metrics.coreWebVitals.lcp,
+                cls: metrics.coreWebVitals.cls,
+                page_path: window.location.pathname
+              });
+            }
+
+            // Non-blocking storage with error handling
+            requestIdleCallback(() => {
+              try {
+                const baselineKey = `baseline_${new Date().toISOString().split('T')[0]}`;
+                localStorage.setItem(baselineKey, JSON.stringify({
+                  timestamp: Date.now(),
+                  metrics: metrics.coreWebVitals,
+                  url: window.location.pathname
+                }));
+              } catch (e) {
+                // Silently fail - don't block user experience
+                console.warn('[Baseline] Storage failed:', e);
+              }
+            });
+          }, 30000); // Increased to 30 seconds to avoid blocking initial load
+
+          // PHASE 3: Real-time cache monitoring (Week 3) - Non-blocking
+          requestIdleCallback(() => {
+            import("../scripts/cache-monitor.ts")
+              .then(() => {
+                if (import.meta.env.DEV) {
+                  console.log("[Layout] Phase 3 cache monitoring initialized");
+                }
+              })
+              .catch((error) => {
+                console.warn("[Layout] Cache monitoring failed to load:", error);
+              });
+          });
         })
         .catch((error) => {
           console.warn(
@@ -328,9 +375,58 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           });
         }
 
+        // PHASE 1: Initialize cache analysis for optimization planning
+        import('../lib/performance/cacheAnalysis').then(() => {
+          console.log('[Phase 1] Cache analysis monitoring active');
+        }).catch(error => {
+          console.warn('[Phase 1] Cache analysis failed to load:', error);
+        });
+
+        // PHASE 4: Smart Cache Manager console tools (Week 4)
+        import('../lib/square/client').then(({ smartCacheManager }) => {
+          // Make smart cache manager globally available
+          (window as any).smartCacheManager = smartCacheManager;
+          
+          // Add console commands for testing
+          (window as any).smartCache = () => {
+            const stats = smartCacheManager.getCacheStats();
+            console.log('[SmartCache] Current Statistics:', stats);
+            console.log('[SmartCache] Available commands:');
+            console.log('  - smartCache() - View current cache statistics');
+            console.log('  - invalidateCache() - Force cache invalidation');
+            console.log('  - checkCacheHealth() - Check cache health status');
+            return stats;
+          };
+          
+          (window as any).invalidateCache = (reason = 'manual') => {
+            console.log(`[SmartCache] Forcing cache invalidation: ${reason}`);
+            return smartCacheManager.forceInvalidation(reason);
+          };
+          
+          (window as any).checkCacheHealth = () => {
+            const stats = smartCacheManager.getCacheStats();
+            const health = {
+              cacheVersion: stats.cacheVersion,
+              timeSinceLastUpdate: stats.timeSinceLastUpdate,
+              totalInvalidations: stats.invalidations,
+              needsInvalidation: smartCacheManager.shouldInvalidateCache(stats.lastInventoryUpdate),
+              status: stats.timeSinceLastUpdate < 300000 ? 'healthy' : 'stale'
+            };
+            console.log('[SmartCache] Health Status:', health);
+            return health;
+          };
+          
+          if (import.meta.env.DEV) {
+            console.log('[Phase 4] Smart cache manager initialized');
+            console.log('[Phase 4] Console commands: smartCache(), invalidateCache(), checkCacheHealth()');
+          }
+        }).catch(error => {
+          console.warn('[Phase 4] Smart cache manager failed to load:', error);
+        });
+
         if (import.meta.env.DEV) {
           console.log(
-            "[Layout] Performance optimizations active: View transitions, Enhanced images, Mobile optimization"
+            "[Layout] Performance optimizations active: View transitions, Enhanced images, Mobile optimization, Cache analysis"
           );
         }
       })();

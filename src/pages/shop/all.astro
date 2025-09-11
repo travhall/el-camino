@@ -14,6 +14,29 @@ const urlParams = parseURLParams(Astro.url.searchParams);
 const { filters, page, pageSize } = urlParams;
 const sortBy = Astro.url.searchParams.get("sort") || "name-asc";
 
+// Phase 4: Enhanced Server-Side Caching
+// Smart cache headers based on filters
+const hasFilters = Object.values(filters).some(f => 
+  Array.isArray(f) ? f.length > 0 : f === true
+);
+
+const cacheControl = hasFilters
+  ? "public, max-age=60, s-maxage=120, stale-while-revalidate=300" // Shorter cache for filtered results
+  : "public, max-age=180, s-maxage=300, stale-while-revalidate=600"; // Longer cache for unfiltered
+
+// Set cache headers for this response
+Astro.response.headers.set("Cache-Control", cacheControl);
+Astro.response.headers.set("Netlify-CDN-Cache-Control", 
+  hasFilters 
+    ? "public, s-maxage=120, stale-while-revalidate=600"
+    : "public, s-maxage=300, stale-while-revalidate=1800"
+);
+
+// Add cache debugging header
+Astro.response.headers.set("X-Cache-Strategy", 
+  hasFilters ? "filtered-content" : "base-catalog"
+);
+
 // === FETCH ALL PRODUCTS ===
 let allProducts: Product[] = [];
 let filteredProducts: Product[] = [];

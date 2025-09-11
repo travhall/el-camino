@@ -254,7 +254,7 @@ export async function fetchProductsByCategory(
         const imageUrl =
           imageId && imageUrlMap[imageId]
             ? imageUrlMap[imageId]
-            : "/images/placeholder.png";
+            : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI2NyIgdmlld0JveD0iMCAwIDQwMCAyNjciIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIyNjciIGZpbGw9IiNmM2Y0ZjYiLz48cGF0aCBkPSJNMjAwIDEzMy41bC0yMC0yMGgtNDBsLTIwIDIwIDIwIDIwaDQwbDIwLTIweiIgZmlsbD0iIzllYTNhZSIvPjwvc3ZnPg==";
 
         const unit = measurementUnitId
           ? measurementUnitsMap[measurementUnitId] || undefined

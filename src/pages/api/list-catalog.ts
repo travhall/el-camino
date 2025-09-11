@@ -48,7 +48,9 @@ export const GET: APIRoute = async () => {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-store",
+          "Cache-Control": "public, max-age=120, s-maxage=300, stale-while-revalidate=600",
+          "Netlify-CDN-Cache-Control": "public, s-maxage=300, stale-while-revalidate=1800",
+          "Vary": "Accept-Encoding"
         },
       }
     );
