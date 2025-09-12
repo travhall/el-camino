@@ -3,6 +3,8 @@
  * File: src/lib/image/enhanced-optimizer.ts
  */
 
+import { SHIMMER_PLACEHOLDER_DATA_URI } from "@/lib/constants/assets";
+
 export interface ModernImageOptions {
   width?: number;
   height?: number;
@@ -230,7 +232,7 @@ export class EnhancedImageOptimizer {
     }
 
     // Return shimmer data URL
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA4MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGRlZnM+CjxsaW5lYXJHcmFkaWVudCBpZD0ic2hpbW1lciIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjAiPgo8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZjBmMGYwIi8+CjxzdG9wIG9mZnNldD0iNTAlIiBzdG9wLWNvbG9yPSIjZTBlMGUwIi8+CjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2YwZjBmMCIvPgo8L2xpbmVhckdyYWRpZW50Pgo8L2RlZnM+CjxyZWN0IHdpZHRoPSI4MCIgaGVpZ2h0PSI2MCIgZmlsbD0idXJsKCNzaGltbWVyKSIvPgo8L3N2Zz4K';
+    return SHIMMER_PLACEHOLDER_DATA_URI;
   }
 
   /**

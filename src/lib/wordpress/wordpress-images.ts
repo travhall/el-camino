@@ -1,10 +1,7 @@
 // src/lib/wordpress/wordpress-images.ts
 import { imageCache } from "@/lib/square/cacheUtils";
-import type {
-  WordPressPost,
-  ExtractedWordPressData,
-  OptimizedWordPressImages,
-} from "./types";
+import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import type { WordPressPost, OptimizedWordPressImages } from "./types";
 
 export interface ImageOptimizationOptions {
   width?: number;
@@ -284,39 +281,8 @@ export function generatePlaceholderImage(
   height: number = 400,
   text: string = "El Camino"
 ): string {
-  // Use a simple placeholder service or generate data URL
-  const canvas =
-    typeof window !== "undefined" ? document.createElement("canvas") : null;
-
-  if (canvas) {
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-
-    if (ctx) {
-      // Simple gray background with text
-      ctx.fillStyle = "#f3f4f6";
-      ctx.fillRect(0, 0, width, height);
-
-      ctx.fillStyle = "#6b7280";
-      ctx.font = `${Math.min(width, height) / 10}px sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(text, width / 2, height / 2);
-
-      return canvas.toDataURL("image/png");
-    }
-  }
-
-  // Fallback to a simple data URL
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-      <rect width="100%" height="100%" fill="#f3f4f6"/>
-      <text x="50%" y="50%" text-anchor="middle" dy="0.3em" font-family="sans-serif" font-size="${
-        Math.min(width, height) / 10
-      }" fill="#6b7280">${text}</text>
-    </svg>
-  `)}`;
+  // Use El Camino branded logo as consistent fallback for all failed images
+  return EL_CAMINO_LOGO_DATA_URI;
 }
 
 /**

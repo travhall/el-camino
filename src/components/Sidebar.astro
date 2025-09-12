@@ -2,6 +2,7 @@
 // src/components/Sidebar.astro - Updated with Unified Loading System
 import { getCategoriesForSidebar } from "@/lib/square/categoryUtils";
 import { squareClient } from "@/lib/square/client";
+import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 
 interface Props {
   class?: string;
@@ -124,7 +125,6 @@ const prodCats = categoriesWithImages.map(item => ({
             </div>
           </div>
 
-          <!-- Enhanced category image -->
           <img
             id={imageId}
             src={e.src}
@@ -135,7 +135,7 @@ const prodCats = categoriesWithImages.map(item => ({
             fetchpriority={index < 2 ? "high" : "auto"}
             data-placeholder-id={placeholderId}
             onload={`this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
-            onerror={`this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjMzOCIgdmlld0JveD0iMCAwIDYwMCAzMzgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI2MDAiIGhlaWdodD0iMzM4IiBmaWxsPSIjZTVlN2ViIi8+CjxwYXRoIGQ9Im0yNzUgMTAwIDUwIDUwIDUwLTUwIDI1IDI1LTI1IDI1IDI1IDI1LTI1IDI1LTUwLTUwLTUwIDUweiIgZmlsbD0iIzliYTFhNiIvPgo8dGV4dCB4PSIzMDAiIHk9IjE5MCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkNhdGVnb3J5IEltYWdlPC90ZXh0Pgo8dGV4dCB4PSIzMDAiIHk9IjIxMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlVuYXZhaWxhYmxlPC90ZXh0Pgo8L3N2Zz4K'; this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
+            onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
           />
 
           <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-(--border-secondary) border-b-0 bg-(--surface-secondary) text-(--content-heading) transition-all">
