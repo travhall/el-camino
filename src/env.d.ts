@@ -19,5 +19,4 @@ declare global {
     type Element = astroHTML.JSX.Element;
     type IntrinsicElements = astroHTML.JSX.IntrinsicElements;
   }
-
-
+}
