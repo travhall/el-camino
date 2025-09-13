@@ -2,7 +2,7 @@
 // src/components/Sidebar.astro - Updated with Unified Loading System
 import { getCategoriesForSidebar } from "@/lib/square/categoryUtils";
 import { squareClient } from "@/lib/square/client";
-import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
 
 interface Props {
   class?: string;
@@ -108,28 +108,27 @@ const prodCats = categoriesWithImages.map(item => ({
       return (
         <a
           href={e.url}
-          class="category-link block relative border-t-4 border-t-(--ui-button-surface) border-b-4 border-b-(--surface-primary) overflow-hidden loading-container"
+          class="category-link block relative border-t-4 border-t-(--ui-button-surface) border-b-4 border-b-(--surface-primary) overflow-hidden loading-container aspect-video"
           style={`--loading-stagger-delay: ${staggerDelay}s`}
         >
           <!-- Unified Loading Placeholder -->
           <div
-            class="loading-skeleton loading-image absolute inset-0"
+            class="loading-skeleton absolute inset-0"
             id={placeholderId}
             aria-hidden="true"
           >
-            <!-- Category icon overlay -->
-            <div class="absolute inset-0 flex items-center justify-center opacity-20">
-              <svg class="w-8 h-8 text-(--content-meta)" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
-              </svg>
-            </div>
+            <!-- El Camino logo using data URI -->
+            <div 
+              class="absolute inset-0 flex items-center justify-center"
+              style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
+            ></div>
           </div>
 
           <img
             id={imageId}
             src={e.src}
             alt={e.category}
-            class="category-img loading-to-content object-cover w-full h-auto aspect-video will-change-transform"
+            class="category-img loading-to-content object-cover w-full h-full will-change-transform"
             loading={index < 2 ? "eager" : "lazy"}
             decoding={index < 2 ? "sync" : "async"}
             fetchpriority={index < 2 ? "high" : "auto"}

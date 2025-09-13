@@ -17,7 +17,7 @@ import {
   createSEOTitle,
   createSlugMapping,
 } from "@/lib/square/slugUtils";
-import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
 
 // Get the slug from URL params (note: still called 'id' because file is [id].astro)
 const { id: slug } = Astro.params;
@@ -174,14 +174,30 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
       <div
         class="aspect-square border-4 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative"
       >
+        <!-- Loading placeholder with logo -->
+        <div
+          class="loading-skeleton absolute inset-0 w-full h-full"
+          id="pdp-image-placeholder"
+          aria-hidden="true"
+        >
+          <!-- El Camino logo using data URI -->
+          <div 
+            class="absolute inset-0 flex items-center justify-center"
+            style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
+          ></div>
+        </div>
+
         <img
           id="product-image"
           src={product.image}
           alt={product.title}
-          class={`w-full h-full object-cover ${!selectedVariationInStock ? "opacity-75" : ""}`}
+          class={`w-full h-full object-cover opacity-0 transition-opacity duration-300 ${!selectedVariationInStock ? "opacity-75" : ""}`}
           loading="eager"
           fetchpriority="high"
-          onerror="this.src=EL_CAMINO_LOGO_DATA_URI"
+          onload="this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()"
+          onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()`}
+          role="img"
+          aria-label={product.title || "Product image"}
         />
 
         {/* Out of stock overlay */}
