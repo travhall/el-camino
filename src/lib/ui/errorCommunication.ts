@@ -214,7 +214,7 @@ class UserErrorCommunicationSystem {
             <strong>What you can do:</strong>
             <ol class="guidance-steps">
               <li>${errorDisplay.guidance.primaryAction}</li>
-              ${errorDisplay.guidance.secondaryActions.map(action => `<li>${action}</li>`).join('')}
+              ${errorDisplay.guidance.secondaryActions.map((action: string) => `<li>${action}</li>`).join('')}
             </ol>
           </div>
           
@@ -393,7 +393,7 @@ class UserErrorCommunicationSystem {
             <h4>Try these solutions:</h4>
             <ul>
               <li>${errorDisplay.guidance.primaryAction}</li>
-              ${errorDisplay.guidance.secondaryActions.map(action => `<li>${action}</li>`).join('')}
+              ${errorDisplay.guidance.secondaryActions.map((action: string) => `<li>${action}</li>`).join('')}
             </ul>
           </div>
           
@@ -418,7 +418,7 @@ class UserErrorCommunicationSystem {
 
   // Utility methods
   private getErrorIcon(category: ErrorCategory): string {
-    const icons = {
+    const icons: Record<ErrorCategory, string> = {
       NETWORK: '🌐',
       TIMEOUT: '⏱️',
       AUTH: '🔒',
@@ -430,7 +430,7 @@ class UserErrorCommunicationSystem {
   }
 
   private getErrorSeverity(category: ErrorCategory): 'low' | 'medium' | 'high' | 'critical' {
-    const severityMap = {
+    const severityMap: Record<ErrorCategory, 'low' | 'medium' | 'high' | 'critical'> = {
       VALIDATION: 'medium',
       NETWORK: 'high',
       TIMEOUT: 'medium',
