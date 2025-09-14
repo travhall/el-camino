@@ -658,6 +658,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     private showMoreToggle: HTMLButtonElement | null = null;
     private isExpanded: boolean = false;
     private filterEngine: UltimateFilterEngine | null = null; // DAY 2: Add filter engine
+    private _isClearing: boolean = false; // Prevent infinite recursion in clearAllFilters
+    private debounceTimer: number | null = null; // Debounce filter operations
 
     constructor() {
       // Direct element assignment - no setTimeout delays
@@ -793,8 +795,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             // Get current filter criteria
             const criteria = this.buildFilterCriteria();
             
-            // Apply filters instantly (< 50ms response time)
-            this.filterEngine.applyFilters(criteria);
+            // Apply filters with debouncing (150ms) for smooth UX
+            this.debouncedApplyFilters(criteria);
             
             // Save menu state
             sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
@@ -824,6 +826,11 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     
     // DAY 2: Build filter criteria for client-side engine
     private buildFilterCriteria(): any {
+      // CRITICAL: Prevent infinite recursion during clearAllFilters
+      if (this._isClearing) {
+        return { brands: [], availability: false };
+      }
+      
       if (!this.form) return { brands: [], availability: false };
       
       // Re-query form to get current checkboxes (in case they were cloned)
@@ -834,6 +841,18 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       console.log(`[ResponsiveFilters] Building criteria: brands=${brands.join(',')}, availability=${availability}`);
       
       return { brands, availability };
+    }
+
+    // Add debouncing to prevent excessive filter operations
+    private debouncedApplyFilters(criteria: any): void {
+      if (this.debounceTimer) {
+        clearTimeout(this.debounceTimer);
+      }
+      
+      this.debounceTimer = setTimeout(() => {
+        this.filterEngine?.applyFilters(criteria);
+        this.debounceTimer = null;
+      }, 150); // 150ms debounce
     }
 
     // Phase 1: Block all filter interactions immediately
@@ -968,7 +987,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
     public clearAllFilters(): void {
       if (window.innerWidth >= 1024 && this.filterEngine) {
-        // DAY 2: Clear all filters instantly with client-side filtering
+        // CRITICAL: Prevent infinite recursion
+        this._isClearing = true;
+        
         const checkboxes = this.form?.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
         let hasChanges = false;
         
@@ -978,6 +999,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             hasChanges = true;
           }
         });
+        
+        // Clear flag before applying filters
+        this._isClearing = false;
         
         // Only apply filters if there were actually changes
         if (hasChanges) {
