@@ -32,44 +32,20 @@ const hasSelectedBrandsBelow = currentBrands.some(brand => {
 const shouldStartExpanded = hasSelectedBrandsBelow;
 ---
 
-<!-- FOUC Prevention: Inline critical CSS -->
+<!-- Simplified CSS - No Complex Animations -->
 <style is:inline>
-  /* Prevent flickering during initial load */
+  /* Simple transitions only */
   .brand-filter-list {
     transition: none;
   }
   
-  /* Phase 1: Phantom Click Prevention */
-  .filters-processing {
-    pointer-events: none;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
-  }
-
-  .filters-processing .filter-checkbox,
-  .filters-processing .applied-filter-tag,
-  .filters-processing .clear-button {
-    cursor: not-allowed;
+  /* Keep basic product visibility transitions */
+  .product-card-wrapper {
+    transition: none;
   }
   
-  /* Processing indicator */
-  .filter-processing-indicator {
-    position: relative;
-  }
-  
-  .filter-processing-indicator::after {
-    content: "Processing...";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: var(--surface-secondary);
-    padding: 0.5rem 1rem;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    color: var(--content-meta);
-    z-index: 10;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  .product-card-wrapper[style*="display: none"] {
+    display: none !important;
   }
 </style>
 
@@ -279,12 +255,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   }
     
   public applyFilters(criteria: any): void {
-    const startTime = performance.now();
-    
-    // Show loading state
-    this.showLoadingState();
-    
-    // Filter products - brand and availability only
+    // Simple, reliable filtering
     this.filteredProducts = this.products.filter(product => 
       this.matchesCriteria(product, criteria)
     );
@@ -293,22 +264,16 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     this.visibleCount = Math.min(24, this.filteredProducts.length);
     this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
     
-    // Update DOM
-    this.updateDOM();
+    // Simple DOM updates
+    this.updateProductGrid();
+    this.updateResultCount();
     this.updateAppliedFilters(criteria);
     this.updateClearButtonVisibility(criteria);
+    this.updateNoResultsState();
     
     // Setup infinite scroll if needed
     this.setupInfiniteScroll();
-    
-    // CRITICAL FIX: Update trigger visibility after filtering
     this.updateInfiniteScrollTrigger();
-    
-    // Hide loading state
-    this.hideLoadingState();
-    
-    const duration = performance.now() - startTime;
-    console.log(`[StreamlinedFilterEngine] Filtered ${this.products.length} → ${this.filteredProducts.length} products in ${duration.toFixed(1)}ms`);
   }
   
   private matchesCriteria(product: any, criteria: any): boolean {
@@ -380,14 +345,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       noResults?.classList.add("hidden");
       grid?.classList.remove("hidden");
     }
-  }
-  
-  private showLoadingState(): void {
-    document.querySelector('[data-product-grid]')?.classList.add('filters-processing');
-  }
-  
-  private hideLoadingState(): void {
-    document.querySelector('[data-product-grid]')?.classList.remove('filters-processing');
   }
   
   private forceHidePagination(): void {
@@ -619,9 +576,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     private overlay: HTMLElement | null = null;
     private showMoreToggle: HTMLButtonElement | null = null;
     private isExpanded: boolean = false;
-    private filterEngine: StreamlinedFilterEngine | null = null; // DAY 2: Add streamlined filter engine
-    private _isClearing: boolean = false; // Prevent infinite recursion in clearAllFilters
-    private debounceTimer: number | null = null; // Debounce filter operations
+    private filterEngine: StreamlinedFilterEngine | null = null;
 
     constructor() {
       // Direct element assignment - no setTimeout delays
@@ -744,8 +699,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             // Get current filter criteria
             const criteria = this.buildFilterCriteria();
             
-            // Apply filters with debouncing (150ms) for smooth UX
-            this.debouncedApplyFilters(criteria);
+            // Apply filters immediately - no debouncing for simplicity
+            this.filterEngine.applyFilters(criteria);
             
             // Save menu state
             sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
@@ -754,10 +709,10 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             
           } else {
             console.log('[ResponsiveFilters] 📱 Using SERVER-SIDE filtering');
-            // Mobile: use existing server-side approach
+            // Mobile: allow normal form behavior - no preventDefault
+            // Form will submit naturally when user clicks "Apply Filters"
             sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
             sessionStorage.setItem("filtering-in-progress", "true");
-            this.form?.submit();
           }
         });
       });
@@ -773,13 +728,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       });
     }
     
-    // DAY 2: Build filter criteria for client-side engine
+    // Build filter criteria for client-side engine  
     private buildFilterCriteria(): any {
-      // CRITICAL: Prevent infinite recursion during clearAllFilters
-      if (this._isClearing) {
-        return { brands: [], availability: false };
-      }
-      
       if (!this.form) return { brands: [], availability: false };
       
       // Re-query form to get current checkboxes (in case they were cloned)
@@ -787,62 +737,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const brands = formData.getAll('brands') as string[];
       const availability = formData.get('availability') === 'true';
       
-      console.log(`[ResponsiveFilters] Building criteria: brands=${brands.join(',')}, availability=${availability}`);
-      
       return { brands, availability };
-    }
-
-    // Add debouncing to prevent excessive filter operations
-    private debouncedApplyFilters(criteria: any): void {
-      if (this.debounceTimer) {
-        clearTimeout(this.debounceTimer);
-      }
-      
-      this.debounceTimer = window.setTimeout(() => {
-        this.filterEngine?.applyFilters(criteria);
-        this.debounceTimer = null;
-      }, 150); // 150ms debounce
-    }
-
-    // Phase 1: Block all filter interactions immediately
-    private blockAllFilterInteractions(): void {
-      // Block filter container interactions
-      const filterContainer = document.getElementById("filter-container");
-      const appliedFilters = document.querySelector(".applied-filters");
-      
-      filterContainer?.classList.add("filters-processing");
-      appliedFilters?.classList.add("filters-processing");
-      
-      // Activate existing skeleton system
-      this.activateExistingSkeletons();
-      
-      // Show processing indicator
-      this.showProcessingFeedback();
-    }
-
-    // Phase 1: Leverage existing skeleton infrastructure
-    private activateExistingSkeletons(): void {
-      const productGrid = document.getElementById("filterable-product-grid");
-      const skeleton = document.getElementById("product-grid-skeleton");
-      
-      if (productGrid && skeleton) {
-        // Use existing pattern from ProductGrid
-        productGrid.style.transition = "opacity 0.3s ease";
-        productGrid.style.opacity = "0.5";
-        
-        // Activate skeleton (follows existing pattern)
-        skeleton.style.display = "grid";
-        skeleton.classList.remove("hidden");
-        skeleton.classList.add("grid");
-      }
-    }
-
-    // Phase 1: Visual processing feedback
-    private showProcessingFeedback(): void {
-      const filterContainer = document.getElementById("filter-container");
-      if (filterContainer) {
-        filterContainer.classList.add("filter-processing-indicator");
-      }
     }
 
     private setupShowMoreToggle(): void {
@@ -901,7 +796,13 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const clearBtnMobile = document.querySelector("[data-clear-filters-mobile]");
 
       clearBtn?.addEventListener("click", () => this.clearBrandFilters());
-      clearBtnMobile?.addEventListener("click", () => this.clearAllFilters());
+      clearBtnMobile?.addEventListener("click", () => {
+        // Mobile clear should always use form submission
+        const params = new URLSearchParams();
+        const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
+        if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
+        this.navigateWithParams(params);
+      });
     }
 
     private clearBrandFilters(): void {
@@ -938,47 +839,24 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
 
     public clearAllFilters(): void {
-      if (window.innerWidth >= 1024 && this.filterEngine) {
-        // CRITICAL: Prevent infinite recursion
-        this._isClearing = true;
-        
+      if (this.filterEngine) {
+        // Clear checkboxes
         const checkboxes = this.form?.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
-        let hasChanges = false;
+        checkboxes?.forEach(checkbox => checkbox.checked = false);
         
-        checkboxes?.forEach(checkbox => {
-          if (checkbox.checked) {
-            checkbox.checked = false;
-            hasChanges = true;
-          }
-        });
-        
-        // Clear flag before applying filters
-        this._isClearing = false;
-        
-        // Only apply filters if there were actually changes
-        if (hasChanges) {
-          const criteria = this.buildFilterCriteria();
-          this.filterEngine.applyFilters(criteria);
-        }
-        
+        // Apply filters immediately
+        const criteria = this.buildFilterCriteria();
+        this.filterEngine.applyFilters(criteria);
       } else {
-        // Mobile: use existing server-side approach
-        sessionStorage.removeItem("filter-menu-expanded");
-
-        const currentParams = new URLSearchParams(window.location.search);
-        const currentPageSize = currentParams.get("pageSize") || "24";
-        
+        // Fallback to server-side
         const params = new URLSearchParams();
+        const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
         if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
-
         this.navigateWithParams(params);
       }
     }
 
     private navigateWithParams(params: URLSearchParams): void {
-      // Phase 1: Apply phantom click prevention for navigation too
-      this.blockAllFilterInteractions();
-      
       const queryString = params.toString();
       const basePath = window.location.pathname;
       const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;

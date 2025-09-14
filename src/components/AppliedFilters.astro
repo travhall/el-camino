@@ -85,14 +85,15 @@ function buildClearAllUrl(): string {
         <div class="flex flex-wrap gap-2">
           {
             currentBrands.map((brand) => (
-              <a
-                href={buildRemoveFilterUrl(brand)}
+              <button
+                type="button"
+                data-remove-brand={brand}
                 class="inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 group"
                 title={`Remove ${brand} filter`}
               >
                 <span>{brand}</span>
                 <svg
-                  class="w-3 h-3 text-(--content-meta) group-hover:text-(--content-body)"
+                  class="w-3 h-3 ml-1 text-(--content-meta) group-hover:text-(--content-body)"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -104,19 +105,20 @@ function buildClearAllUrl(): string {
                     d="M6 18L18 6M6 6l12 12"
                   />
                 </svg>
-              </a>
+              </button>
             ))
           }
           {
             currentAvailability && (
-              <a
-                href={buildRemoveAvailabilityUrl()}
+              <button
+                type="button"
+                data-remove-availability
                 class="inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--state-success-surface) hover:bg-(--state-success-surface)/75 transition-colors text-(--state-success-text) border-(--state-success-text)/50 group"
                 title="Remove availability filter"
               >
                 <span>In stock only</span>
                 <svg
-                  class="w-3 h-3 text-(--state-success-text)/70 group-hover:text-(--state-success-text)"
+                  class="w-3 h-3 ml-1 text-(--state-success-text)/70 group-hover:text-(--state-success-text)"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -128,17 +130,106 @@ function buildClearAllUrl(): string {
                     d="M6 18L18 6M6 6l12 12"
                   />
                 </svg>
-                </a>
+              </button>
             )
           }
         </div>
-        <a
-          href={buildClearAllUrl()}
+        <button
+          type="button"
+          data-clear-all-filters
           class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-nowrap"
         >
           Clear All
-        </a>
+        </button>
       </>
     )}
   </div>
 </div>
+
+<script>
+// UNIFIED event handling for client-side filtering
+document.addEventListener('astro:page-load', () => {
+  // Remove individual brand filters
+  document.querySelectorAll('[data-remove-brand]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const target = e.currentTarget as HTMLElement;
+      if (!target?.dataset.removeBrand) return;
+      const brand = target.dataset.removeBrand;
+      removeFilter('brand', brand);
+    });
+  });
+  
+  // Remove availability filter
+  document.querySelector('[data-remove-availability]')?.addEventListener('click', () => {
+    removeFilter('availability');
+  });
+  
+  // Clear all filters - SAME METHOD AS ProductFilters
+  document.querySelector('[data-clear-all-filters]')?.addEventListener('click', () => {
+    const filterInstance = (window as any).currentFilterInstance;
+    if (filterInstance?.clearAllFilters) {
+      filterInstance.clearAllFilters();
+    } else {
+      // Fallback to server-side navigation
+      const params = new URLSearchParams();
+      const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
+      if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
+      
+      const queryString = params.toString();
+      const basePath = window.location.pathname;
+      const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
+      window.location.href = newUrl;
+    }
+  });
+});
+
+function removeFilter(type: string, value: string | null = null) {
+  const filterInstance = (window as any).currentFilterInstance;
+  if (!filterInstance?.filterEngine) {
+    // Fallback to server-side navigation
+    window.location.href = buildRemovalUrl(type, value);
+    return;
+  }
+  
+  // Client-side filter removal
+  if (type === 'brand' && value) {
+    const checkbox = document.querySelector(`input[name="brands"][value="${value}"]`) as HTMLInputElement;
+    if (checkbox) {
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  } else if (type === 'availability') {
+    const checkbox = document.querySelector('input[name="availability"]') as HTMLInputElement;
+    if (checkbox) {
+      checkbox.checked = false;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+}
+
+function buildRemovalUrl(type: string, value: string | null = null) {
+  const currentParams = new URLSearchParams(window.location.search);
+  const currentBrands = currentParams.getAll("brands") || [];
+  const currentAvailability = currentParams.get("availability") === "true";
+  const currentPageSize = currentParams.get("pageSize") || "24";
+  
+  const params = new URLSearchParams();
+  
+  if (type === 'brand' && value) {
+    // Remove this brand, keep others
+    const otherBrands = currentBrands.filter(b => b !== value);
+    otherBrands.forEach(brand => params.append("brands", brand));
+    // Keep availability
+    if (currentAvailability) params.set("availability", "true");
+  } else if (type === 'availability') {
+    // Keep brands, remove availability
+    currentBrands.forEach(brand => params.append("brands", brand));
+  }
+  
+  if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
+  
+  const queryString = params.toString();
+  const basePath = window.location.pathname;
+  return `${basePath}${queryString ? "?" + queryString : ""}`;
+}
+</script>
