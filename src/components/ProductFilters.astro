@@ -724,6 +724,25 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
           event.stopPropagation();
           console.log('[ResponsiveFilters] Prevented form submission - using client-side filtering');
           return false;
+        } else {
+          // Mobile: trigger close animation before form submits
+          event.preventDefault();
+          
+          // Wait for animation to complete using transitionend event
+          const handleAnimationComplete = () => {
+            this.container?.removeEventListener('transitionend', handleAnimationComplete);
+            this.form?.submit();
+          };
+          
+          this.container?.addEventListener('transitionend', handleAnimationComplete);
+          
+          // Fallback timeout in case transitionend doesn't fire
+          const fallbackTimeout = setTimeout(() => {
+            this.container?.removeEventListener('transitionend', handleAnimationComplete);
+            this.form?.submit();
+          }, 400);
+          
+          this.closeMobileDrawer();
         }
       });
     }
@@ -798,10 +817,29 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       clearBtn?.addEventListener("click", () => this.clearBrandFilters());
       clearBtnMobile?.addEventListener("click", () => {
         // Mobile clear should always use form submission
-        const params = new URLSearchParams();
-        const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
-        if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
-        this.navigateWithParams(params);
+        
+        // Wait for animation to complete using transitionend event
+        const handleAnimationComplete = () => {
+          this.container?.removeEventListener('transitionend', handleAnimationComplete);
+          const params = new URLSearchParams();
+          const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
+          if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
+          this.navigateWithParams(params);
+        };
+        
+        this.container?.addEventListener('transitionend', handleAnimationComplete);
+        
+        // Fallback timeout in case transitionend doesn't fire
+        const fallbackTimeout = setTimeout(() => {
+          this.container?.removeEventListener('transitionend', handleAnimationComplete);
+          const params = new URLSearchParams();
+          const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
+          if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
+          this.navigateWithParams(params);
+        }, 400);
+        
+        // Trigger close animation
+        this.closeMobileDrawer();
       });
     }
 
