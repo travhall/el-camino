@@ -24,28 +24,53 @@ if (allProducts && allProducts.length > 0) {
   console.log(`[ProductGrid] Server-side mode with ${products.length} products`);
 }
 
-// Batch inventory check for all products
-let productsWithInventory: ProductWithInventory[] = products;
+// Determine which products to check inventory for
+const productsToCheck = allProducts && allProducts.length > 0 ? allProducts : products;
 
-if (!skipInventoryCheck && products.length > 0) {
-  console.log(`[ProductGrid] Starting batch inventory check for ${products.length} products`);
+console.log(`[ProductGrid] productsToCheck source: ${allProducts && allProducts.length > 0 ? 'allProducts' : 'products'}`);
+console.log(`[ProductGrid] Sample productsToCheck[0]:`, {
+  id: productsToCheck[0]?.id,
+  title: productsToCheck[0]?.title,
+  catalogObjectId: productsToCheck[0]?.catalogObjectId,
+  variationId: productsToCheck[0]?.variationId
+});
+
+// Batch inventory check for all products that will be displayed
+let productsWithInventory: ProductWithInventory[] = productsToCheck;
+
+if (!skipInventoryCheck && productsToCheck.length > 0) {
+  console.log(`[ProductGrid] Starting batch inventory check for ${productsToCheck.length} products`);
   try {
-    const catalogObjectIds = products.map(p => p.catalogObjectId).filter(Boolean);
-    console.log(`[ProductGrid] Catalog object IDs: ${catalogObjectIds.length}`);
-    const inventoryMap = await batchInventoryService.getBatchInventoryStatus(catalogObjectIds);
+    const variationIds = productsToCheck.map(p => p.variationId).filter(Boolean);
+    console.log(`[ProductGrid] Variation IDs: ${variationIds.length}`);
+    const inventoryMap = await batchInventoryService.getBatchInventoryStatus(variationIds);
     
-    productsWithInventory = products.map(product => ({
-      ...product,
-      inventoryStatus: inventoryMap.get(product.catalogObjectId) || {
+    console.log(`[ProductGrid] Inventory map size: ${inventoryMap.size}`);
+    
+    // Debug: Log actual inventory results
+    const sampleInventoryEntries = Array.from(inventoryMap.entries()).slice(0, 3);
+    console.log(`[ProductGrid] Sample inventory results:`, sampleInventoryEntries);
+    
+    productsWithInventory = productsToCheck.map(product => {
+      const inventoryStatus = inventoryMap.get(product.variationId) || {
         isOutOfStock: false,
         hasLimitedOptions: false,
         totalQuantity: 0,
-      }
-    }));
+      };
+      
+      console.log(`[ProductGrid] Product ${product.title}: variationId=${product.variationId}, isOutOfStock=${inventoryStatus.isOutOfStock}`);
+      
+      return {
+        ...product,
+        inventoryStatus
+      };
+    });
+    
+    console.log(`[ProductGrid] Batch inventory complete. All products processed with inventory data.`);
   } catch (error) {
     console.error('Batch inventory check failed:', error);
     // Fallback: all products assumed in stock
-    productsWithInventory = products.map(product => ({
+    productsWithInventory = productsToCheck.map(product => ({
       ...product,
       inventoryStatus: {
         isOutOfStock: false,
@@ -55,6 +80,8 @@ if (!skipInventoryCheck && products.length > 0) {
     }));
   }
 }
+
+console.log(`[ProductGrid] Batch inventory check completed for ${productsWithInventory.length} products`);
 ---
 
 <style>
@@ -88,10 +115,10 @@ if (!skipInventoryCheck && products.length > 0) {
   data-all-products={JSON.stringify(allProducts || [])}
   data-initial-products={JSON.stringify(productsWithInventory)}
   data-category-path={categoryPath}
-  data-product-count={allProducts ? allProducts.length : productsWithInventory.length}
+  data-product-count={productsWithInventory.length}
 >
   {
-    (allProducts && allProducts.length > 0 ? allProducts : productsWithInventory).map((product, index) => (
+    productsWithInventory.map((product, index) => (
       <div
         class="product-card-wrapper grid opacity-100 scale-100"
         data-product-id={product.id}
@@ -102,6 +129,8 @@ if (!skipInventoryCheck && products.length > 0) {
         <ProductCard 
           product={product} 
           priority={index < 8}
+          inventoryStatus={product.inventoryStatus}
+          skipInventoryCheck={!!product.inventoryStatus}
         />
       </div>
     ))

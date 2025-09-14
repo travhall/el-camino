@@ -32,23 +32,23 @@ export class BatchInventoryService {
    * Get inventory status for multiple products in batches
    */
   async getBatchInventoryStatus(
-    catalogObjectIds: string[],
+    variationIds: string[],
     options: BatchInventoryOptions = {}
   ): Promise<Map<string, InventoryStatus>> {
-    if (catalogObjectIds.length === 0) {
-      // console.log("[BatchInventory] No catalog object IDs provided");
+    if (variationIds.length === 0) {
+      // console.log("[BatchInventory] No variation IDs provided");
       return new Map();
     }
 
     // CREATE: Deterministic cache key for request deduplication
-    const sortedIds = [...catalogObjectIds].sort();
+    const sortedIds = [...variationIds].sort();
     const cacheKey = `batch-inventory:${sortedIds.join(",")}:${JSON.stringify(
       options
     )}`;
 
     // USE: Existing request deduplication pattern
     return requestDeduplicator.dedupe(cacheKey, () =>
-      this.performBatchInventoryCheck(catalogObjectIds, options)
+      this.performBatchInventoryCheck(variationIds, options)
     );
   }
 
@@ -56,11 +56,11 @@ export class BatchInventoryService {
    * Perform the actual batch inventory check (internal method)
    */
   private async performBatchInventoryCheck(
-    catalogObjectIds: string[],
+    variationIds: string[],
     options: BatchInventoryOptions
   ): Promise<Map<string, InventoryStatus>> {
     // console.log(
-    //   `[BatchInventory] Starting batch check for ${catalogObjectIds.length} products`
+    //   `[BatchInventory] Starting batch check for ${variationIds.length} products`
     // );
 
     const {
@@ -75,7 +75,7 @@ export class BatchInventoryService {
     // Check cache first
     if (useCache) {
       const now = Date.now();
-      catalogObjectIds.forEach((id) => {
+      variationIds.forEach((id) => {
         const cached = this.cache.get(id);
         if (cached && cached.expires > now) {
           results.set(id, cached.data);
@@ -84,12 +84,12 @@ export class BatchInventoryService {
         }
       });
     } else {
-      uncachedIds.push(...catalogObjectIds);
+      uncachedIds.push(...variationIds);
     }
 
     if (uncachedIds.length === 0) {
       // console.log(
-      //   `[BatchInventory] All ${catalogObjectIds.length} items served from cache`
+      //   `[BatchInventory] All ${variationIds.length} items served from cache`
       // );
       return results;
     }
@@ -149,89 +149,81 @@ export class BatchInventoryService {
    * Process a single batch of inventory checks
    */
   private async processBatch(
-    catalogObjectIds: string[]
+    variationIds: string[]
   ): Promise<Map<string, InventoryStatus>> {
     return defaultCircuitBreaker.execute(async () => {
       // console.log(
-      //   `[BatchInventory] Making Square API call for batch of ${catalogObjectIds.length} items`
+      //   `[BatchInventory] Making Square API calls for batch of ${variationIds.length} items`
       // );
 
       try {
-        const response =
-          await squareClient.inventoryApi.batchRetrieveInventoryCounts({
-            catalogObjectIds,
-          });
-
-        // console.log(`[BatchInventory] API response received successfully`);
-        const batchResults = new Map<string, InventoryStatus>();
-
-        // Handle legacy API response format
-        const result = response.result || response;
-        const counts = result.counts || [];
-        // console.log(
-        //   `[BatchInventory] Processing ${counts.length} inventory counts from API`
-        // );
-
-        // Process successful responses - ONLY count IN_STOCK items like individual inventory check
-        if (counts && counts.length > 0) {
-          // Group counts by catalogObjectId to handle multiple states per item
-          const itemCounts = new Map<string, number>();
-
-          counts.forEach((count: any) => {
-            if (count.catalogObjectId && count.state === "IN_STOCK") {
-              const quantity = parseInt(count.quantity || "0", 10);
-              itemCounts.set(count.catalogObjectId, quantity);
-              // console.log(
-              //   `[BatchInventory] Item ${count.catalogObjectId}: IN_STOCK qty=${quantity}`
-              // );
-            } else if (count.catalogObjectId) {
-              // console.log(
-              //   `[BatchInventory] Item ${count.catalogObjectId}: state=${count.state}, qty=${count.quantity} (ignored - not IN_STOCK)`
-              // );
-            }
-          });
-
-          // Set inventory status for items found in IN_STOCK state
-          itemCounts.forEach((quantity, catalogObjectId) => {
+        // Use individual inventory calls in parallel since batchRetrieveInventoryCounts uses catalogObjectIds
+        const inventoryPromises = variationIds.map(async (variationId) => {
+          try {
+            const response = await squareClient.inventoryApi.retrieveInventoryCount(variationId);
+            
+            // Process the response similar to individual inventory check
+            const counts = response.result.counts || [];
+            const inStockCount = counts.find((count) => count.state === "IN_STOCK");
+            const quantity = inStockCount?.quantity ? parseInt(inStockCount.quantity, 10) : 0;
+            
             const isOutOfStock = quantity <= 0;
             const hasLimitedOptions = quantity > 0 && quantity <= 3;
-
-            batchResults.set(catalogObjectId, {
-              isOutOfStock,
-              hasLimitedOptions,
-              totalQuantity: quantity,
-              error: false,
-            });
-          });
-        }
-
-        // Handle items not in response - set to out of stock like individual inventory check
-        catalogObjectIds.forEach((id) => {
-          if (!batchResults.has(id)) {
-            // console.log(
-            //   `[BatchInventory] Item ${id} not found in IN_STOCK state, marking as out of stock`
-            // );
-            batchResults.set(id, {
-              isOutOfStock: true,
-              hasLimitedOptions: false,
-              totalQuantity: 0,
-              error: false,
-            });
+            
+            return {
+              variationId,
+              status: {
+                isOutOfStock,
+                hasLimitedOptions,
+                totalQuantity: quantity,
+                error: false,
+              }
+            };
+          } catch (error) {
+            console.error(`[BatchInventory] Error checking inventory for ${variationId}:`, error);
+            return {
+              variationId,
+              status: {
+                isOutOfStock: false, // Fail safe
+                hasLimitedOptions: false,
+                totalQuantity: 0,
+                error: true,
+              }
+            };
           }
         });
 
+        const results = await Promise.all(inventoryPromises);
+        const batchResults = new Map<string, InventoryStatus>();
+        
+        results.forEach(({ variationId, status }) => {
+          batchResults.set(variationId, status);
+        });
+
+        // console.log(`[BatchInventory] Successfully processed ${batchResults.size} items`);
         return batchResults;
       } catch (error) {
-        console.error("BatchInventory API call failed:", error);
-        const appError = processSquareError(error, "batchInventoryCheck");
+        const appError = processSquareError(error, "processBatch");
         logError(appError);
-        throw appError;
+
+        // Return error status for all items
+        const batchResults = new Map<string, InventoryStatus>();
+        variationIds.forEach((variationId) => {
+          batchResults.set(variationId, {
+            isOutOfStock: false, // Fail safe
+            hasLimitedOptions: false,
+            totalQuantity: 0,
+            error: true,
+          });
+        });
+
+        return batchResults;
       }
     });
   }
 
   /**
-   * Chunk array into smaller batches
+   * Split array into chunks of specified size
    */
   private chunkArray<T>(array: T[], chunkSize: number): T[][] {
     const chunks: T[][] = [];

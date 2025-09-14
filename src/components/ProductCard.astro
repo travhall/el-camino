@@ -22,10 +22,14 @@ const {
   inventoryStatus,
 } = Astro.props;
 
-// Use direct inventory check - only check for sold out
+// Use inventory status if provided, otherwise perform individual check
 let isOutOfStock = false;
 
-if (!skipInventoryCheck && product.variationId) {
+// If we have batch inventory status, use it
+if (inventoryStatus) {
+  isOutOfStock = inventoryStatus.isOutOfStock;
+} else if (!skipInventoryCheck && product.variationId) {
+  // Fallback to individual inventory check
   try {
     const quantity = await checkItemInventory(product.variationId);
     isOutOfStock = quantity <= 0;
