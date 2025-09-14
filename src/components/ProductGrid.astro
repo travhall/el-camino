@@ -152,7 +152,8 @@ console.log(`[ProductGrid] Batch inventory check completed for ${productsWithInv
 <!-- Enhanced Loading Overlay -->
 <div
   id="filter-loading-overlay"
-  class="hidden fixed inset-0 bg-(--surface-primary)/60 backdrop-blur-sm z-40 flex items-center justify-center"
+  class="fixed inset-0 bg-(--surface-primary)/60 backdrop-blur-sm z-40 flex items-center justify-center"
+  style="display: none;"
 >
   <div
     class="bg-(--surface-secondary) rounded-lg p-6 shadow-lg flex items-center space-x-3"
@@ -214,6 +215,9 @@ console.log(`[ProductGrid] Batch inventory check completed for ${productsWithInv
       grid.style.transition = "opacity 0.3s ease";
     }
     
+    // Initialize infinite scroll
+    initializeInfiniteScroll();
+    
     // CRITICAL FIX: Signal ProductGrid ready on Astro navigation
     console.log('[ProductGrid] 📡 Emitting productGridReady on astro:page-load');
     document.dispatchEvent(new CustomEvent('productGridReady'));
@@ -227,8 +231,90 @@ console.log(`[ProductGrid] Batch inventory check completed for ${productsWithInv
       sessionStorage.removeItem("filtering-in-progress");
     }
     
+    // Initialize infinite scroll
+    initializeInfiniteScroll();
+    
     // Signal that ProductGrid is loaded and ready
     console.log('[ProductGrid] 📡 Emitting productGridReady on DOMContentLoaded');
     document.dispatchEvent(new CustomEvent('productGridReady'));
   });
+
+  function initializeInfiniteScroll() {
+    const grid = document.getElementById("filterable-product-grid");
+    const trigger = document.getElementById("infinite-scroll-trigger");
+    
+    if (!grid || !trigger) return;
+    
+    // Get all product cards (including hidden ones)
+    const allCards = Array.from(grid.querySelectorAll('.product-card-wrapper'));
+    let visibleCount = 24; // Start with first 24 visible
+    
+    // Check if we have more than 24 products
+    if (allCards.length <= 24) {
+      trigger.style.display = 'none';
+      return;
+    }
+    
+    // Show trigger if there are more products
+    trigger.style.display = 'flex';
+    
+    // Intersection Observer for infinite scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && visibleCount < allCards.length) {
+          console.log(`[ProductGrid] Loading more products... (${visibleCount}/${allCards.length})`);
+          
+          // Show loading state
+          trigger.innerHTML = `
+            <div class="flex items-center space-x-3">
+              <div class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"></div>
+              <span class="text-(--content-body) font-medium">Loading more products...</span>
+            </div>
+          `;
+          
+          // Load next batch after short delay for smooth UX
+          setTimeout(() => {
+            const nextBatch = 24;
+            const newVisibleCount = Math.min(visibleCount + nextBatch, allCards.length);
+            
+            // Show the next batch of cards
+            for (let i = visibleCount; i < newVisibleCount; i++) {
+              if (allCards[i]) {
+                (allCards[i] as HTMLElement).style.display = '';
+                // Add fade-in animation
+                allCards[i].classList.add('opacity-0');
+                setTimeout(() => {
+                  allCards[i].classList.remove('opacity-0');
+                  allCards[i].classList.add('opacity-100');
+                }, 50);
+              }
+            }
+            
+            visibleCount = newVisibleCount;
+            console.log(`[ProductGrid] Now showing ${visibleCount}/${allCards.length} products`);
+            
+            // Hide trigger if all products are visible
+            if (visibleCount >= allCards.length) {
+              trigger.style.display = 'none';
+              console.log('[ProductGrid] All products loaded, hiding trigger');
+            } else {
+              // Reset trigger content
+              trigger.innerHTML = `
+                <div class="flex items-center space-x-3">
+                  <div class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"></div>
+                  <span class="text-(--content-body) font-medium">Loading more products...</span>
+                </div>
+              `;
+            }
+          }, 500);
+        }
+      });
+    }, {
+      threshold: 0.1,
+      rootMargin: "50px"
+    });
+    
+    observer.observe(trigger);
+    console.log(`[ProductGrid] Infinite scroll initialized for ${allCards.length} products`);
+  }
 </script>

@@ -239,118 +239,271 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 <script>
   // DAY 2: Ultimate Filter Engine - Eliminates FOUT and Phantom Clicks 
   // cSpell:ignore FOUT
-  class UltimateFilterEngine {
-    private allProducts: any[] = [];
-    private filteredProducts: any[] = [];
-    private visibleProducts: any[] = [];
-    private visibleCount: number = 24;
-    private infiniteScrollObserver: IntersectionObserver | null = null;
+  class StreamlinedFilterEngine {
+  private products: any[] = [];
+  private filteredProducts: any[] = [];
+  private visibleProducts: any[] = [];
+  private visibleCount: number = 24;
+  private infiniteScrollObserver: IntersectionObserver | null = null;
+  
+  constructor() {
+    this.initializeProducts();
+  }
     
-    constructor() {
-      this.initializeData();
-      // ALWAYS setup infinite scroll to maintain smooth UX
-      this.setupInfiniteScroll();
+  private initializeProducts(): void {
+    const grid = document.getElementById("filterable-product-grid");
+    
+    // Use the correct data attributes set by ProductGrid
+    const allProductsData = grid?.dataset.allProducts;
+    const initialProductsData = grid?.dataset.initialProducts;
+    
+    if (!allProductsData && !initialProductsData) {
+      console.warn("[StreamlinedFilterEngine] No product data found");
+      return;
     }
     
-    private initializeData(): void {
-      const grid = document.getElementById("filterable-product-grid");
-      if (!grid) {
-        console.error("[UltimateFilterEngine] ❌ Could not find filterable-product-grid element");
+    try {
+      // Prefer allProducts for client-side filtering, fallback to initial products
+      const productData = allProductsData || initialProductsData;
+      if (!productData) {
+        console.error("[StreamlinedFilterEngine] No valid product data available");
         return;
       }
-      
-      try {
-        const allProductsData = grid.dataset.allProducts;
-        if (!allProductsData) {
-          console.error("[UltimateFilterEngine] ❌ No allProducts data found in grid dataset");
-          this.fallbackToServerSide();
-          return;
-        }
-        
-        this.allProducts = JSON.parse(allProductsData);
-        this.filteredProducts = [...this.allProducts];
-        this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
-        
-        console.log(`[UltimateFilterEngine] ✅ Initialized with ${this.allProducts.length} products`);
-        
-        // Show infinite scroll trigger if more products available
-        if (this.hasMoreProducts()) {
-          const trigger = document.getElementById("infinite-scroll-trigger");
-          if (trigger) {
-            trigger.style.display = "flex";
-          }
-        }
-      } catch (error) {
-        console.error("[UltimateFilterEngine] ❌ Failed to parse allProducts data:", error);
-        this.fallbackToServerSide();
-      }
-    }
-    
-    // INSTANT client-side filtering - ELIMINATES FOUT
-    public applyFilters(criteria: any): void {
-      const startTime = performance.now();
-      
-      console.log(`[UltimateFilterEngine] STARTING CLIENT-SIDE FILTER: brands=${criteria.brands.join(',')}, availability=${criteria.availability}`);
-      
-      // IMMEDIATE: Block all interactions to prevent phantom clicks
-      this.blockAllInteractions();
-      
-      // CRITICAL: Ensure pagination stays hidden during filtering
-      this.forceHidePagination();
-      
-      // Filter products instantly using embedded data
-      this.filteredProducts = this.allProducts.filter(product => {
-        // Brand filtering
-        if (criteria.brands.length > 0) {
-          if (!criteria.brands.includes(product.brand)) {
-            return false;
-          }
-        }
-        
-        // Availability filtering
-        if (criteria.availability) {
-          if (product.inventoryStatus?.isOutOfStock) {
-            return false;
-          }
-        }
-        
-        return true;
-      });
-      
-      // Reset visible count and update products
-      this.visibleCount = Math.min(24, this.filteredProducts.length);
+      this.products = JSON.parse(productData);
+      this.filteredProducts = [...this.products];
       this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
-      
-      // Update DOM instantly
-      this.updateProductGrid();
-      this.updateResultCount();
-      this.updateInfiniteScrollTrigger();
-      this.updateAppliedFilters(criteria);
-      this.updateClearButtonVisibility(criteria);
-      
-      // Unblock interactions after update
-      this.unblockInteractions();
-      
-      const duration = performance.now() - startTime;
-      console.log(`[UltimateFilterEngine] ✅ COMPLETED: Filtered ${this.allProducts.length} → ${this.filteredProducts.length} products in ${duration.toFixed(1)}ms`);
+      console.log(`[StreamlinedFilterEngine] Initialized with ${this.products.length} products`);
+    } catch (error) {
+      console.error("[StreamlinedFilterEngine] Failed to parse product data:", error);
+    }
+  }
+    
+  public applyFilters(criteria: any): void {
+    const startTime = performance.now();
+    
+    // Show loading state
+    this.showLoadingState();
+    
+    // Filter products - brand and availability only
+    this.filteredProducts = this.products.filter(product => 
+      this.matchesCriteria(product, criteria)
+    );
+    
+    // Reset visible count and products for new filter
+    this.visibleCount = Math.min(24, this.filteredProducts.length);
+    this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
+    
+    // Update DOM
+    this.updateDOM();
+    this.updateAppliedFilters(criteria);
+    this.updateClearButtonVisibility(criteria);
+    
+    // Setup infinite scroll if needed
+    this.setupInfiniteScroll();
+    
+    // CRITICAL FIX: Update trigger visibility after filtering
+    this.updateInfiniteScrollTrigger();
+    
+    // Hide loading state
+    this.hideLoadingState();
+    
+    const duration = performance.now() - startTime;
+    console.log(`[StreamlinedFilterEngine] Filtered ${this.products.length} → ${this.filteredProducts.length} products in ${duration.toFixed(1)}ms`);
+  }
+  
+  private matchesCriteria(product: any, criteria: any): boolean {
+    // Brand filtering
+    if (criteria.brands.length > 0 && !criteria.brands.includes(product.brand)) {
+      return false;
     }
     
-    // CRITICAL: Aggressively hide pagination to prevent flashing
-    private forceHidePagination(): void {
-      const pagination = document.getElementById('server-side-pagination') as HTMLElement;
-      if (pagination) {
-        pagination.style.display = 'none !important';
-        pagination.style.visibility = 'hidden';
-        pagination.setAttribute('aria-hidden', 'true');
-      }
-      
-      // Also hide any other pagination elements that might exist
-      const allPagination = document.querySelectorAll('[data-pagination], .pagination, nav[aria-label*="pagination"]');
-      allPagination.forEach(el => {
-        (el as HTMLElement).style.display = 'none';
-        (el as HTMLElement).style.visibility = 'hidden';
-      });
+    // Availability filtering
+    if (criteria.availability && product.inventoryStatus?.isOutOfStock) {
+      return false;
     }
+    
+    return true;
+  }
+  
+  private updateDOM(): void {
+    this.updateProductGrid();
+    this.updateResultCount();
+  }
+    
+  private updateProductGrid(): void {
+    const grid = document.getElementById("filterable-product-grid");
+    if (!grid) return;
+    
+    // Get all existing product wrappers
+    const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
+    
+    // Create Set of visible product IDs for O(1) lookup
+    const visibleProductIds = new Set(this.visibleProducts.map(p => p.id));
+    
+    // Show/hide products efficiently
+    allWrappers.forEach((wrapper) => {
+      const productId = wrapper.getAttribute('data-product-id');
+      const isVisible = visibleProductIds.has(productId);
+      
+      if (isVisible) {
+        (wrapper as HTMLElement).style.display = '';
+      } else {
+        (wrapper as HTMLElement).style.display = 'none';
+      }
+    });
+    
+    this.updateNoResultsState();
+  }
+  
+  private updateResultCount(): void {
+    const resultElements = document.querySelectorAll('[data-result-count]');
+    resultElements.forEach(element => {
+      const totalProducts = this.products.length;
+      const filteredCount = this.filteredProducts.length;
+      
+      if (filteredCount === totalProducts) {
+        element.textContent = `${totalProducts} products`;
+      } else {
+        element.textContent = `${filteredCount} of ${totalProducts} products`;
+      }
+    });
+  }
+  
+  private updateNoResultsState(): void {
+    const noResults = document.getElementById("no-results");
+    const grid = document.getElementById("filterable-product-grid");
+    
+    if (this.filteredProducts.length === 0) {
+      noResults?.classList.remove("hidden");
+      grid?.classList.add("hidden");
+    } else {
+      noResults?.classList.add("hidden");
+      grid?.classList.remove("hidden");
+    }
+  }
+  
+  private showLoadingState(): void {
+    document.querySelector('[data-product-grid]')?.classList.add('filters-processing');
+  }
+  
+  private hideLoadingState(): void {
+    document.querySelector('[data-product-grid]')?.classList.remove('filters-processing');
+  }
+  
+  private forceHidePagination(): void {
+    const pagination = document.getElementById('server-side-pagination') as HTMLElement;
+    if (pagination) {
+      pagination.style.display = 'none';
+    }
+  }
+  
+  private hasMoreProducts(): boolean {
+    const hasMore = this.visibleCount < this.filteredProducts.length;
+    console.log(`[StreamlinedFilterEngine] hasMoreProducts: ${hasMore} (${this.visibleCount} < ${this.filteredProducts.length})`);
+    return hasMore;
+  }
+  
+  private loadMoreProducts(): void {
+    // CRITICAL: Ensure pagination stays hidden during scroll loading
+    this.forceHidePagination();
+    
+    const nextBatch = 24;
+    const previousVisibleCount = this.visibleCount;
+    const newVisibleCount = Math.min(
+      this.visibleCount + nextBatch, 
+      this.filteredProducts.length
+    );
+    
+    console.log(`[StreamlinedFilterEngine] Loading batch: ${previousVisibleCount} → ${newVisibleCount} of ${this.filteredProducts.length}`);
+    
+    if (newVisibleCount === this.visibleCount) {
+      console.log(`[StreamlinedFilterEngine] ⚠️ No more products to load`);
+      return;
+    }
+    
+    // Update visible products array
+    this.visibleCount = newVisibleCount;
+    this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
+    
+    // CRITICAL: Update the grid to show more products
+    this.updateProductGrid();
+    
+    // CRITICAL: Update infinite scroll trigger state
+    this.updateInfiniteScrollTrigger();
+    
+    console.log(`[StreamlinedFilterEngine] ✅ Successfully loaded: now showing ${this.visibleCount}/${this.filteredProducts.length}`);
+  }
+  
+  private updateInfiniteScrollTrigger(): void {
+    const trigger = document.getElementById("infinite-scroll-trigger") as HTMLElement;
+    if (!trigger) return;
+    
+    const hasMore = this.hasMoreProducts();
+    console.log(`[StreamlinedFilterEngine] Trigger update: hasMore=${hasMore}, visible=${this.visibleCount}/${this.filteredProducts.length}`);
+    
+    if (hasMore) {
+      // CRITICAL: Clear loading content and set to invisible trigger state
+      trigger.innerHTML = '';
+      trigger.style.display = "flex";
+      trigger.style.visibility = "visible";
+      trigger.style.height = "20px"; // Small invisible trigger
+      
+      console.log(`[StreamlinedFilterEngine] 📜 Trigger cleared and ready for intersection`);
+    } else {
+      // All products loaded - hide trigger completely
+      trigger.style.display = "none";
+      trigger.style.visibility = "hidden";
+      trigger.innerHTML = "";
+      console.log(`[StreamlinedFilterEngine] ✅ All products loaded - trigger hidden`);
+    }
+  }
+  
+  private setupInfiniteScroll(): void {
+    const trigger = document.getElementById("infinite-scroll-trigger");
+    if (!trigger) return;
+    
+    let isLoading = false;
+    
+    if (this.infiniteScrollObserver) {
+      this.infiniteScrollObserver.disconnect();
+    }
+    
+    this.infiniteScrollObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && this.hasMoreProducts() && !isLoading) {
+          isLoading = true;
+          console.log(`[StreamlinedFilterEngine] 📜 Loading more products...`);
+          
+          // Use QuickView loading pattern for consistency
+          trigger.innerHTML = `
+            <div class="col-span-full text-center py-8 flex flex-row gap-2 justify-center items-center my-4">
+              <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-(--content-heading)">
+              </div>
+              <p class="text-(--content-meta)">Loading more products...</p>
+            </div>
+          `;
+          
+          // Load more products with timeout to ensure completion
+          setTimeout(() => {
+            try {
+              this.loadMoreProducts();
+              isLoading = false;
+              console.log(`[StreamlinedFilterEngine] ✅ Products loaded successfully`);
+            } catch (error) {
+              console.error(`[StreamlinedFilterEngine] ❌ Loading failed:`, error);
+              isLoading = false;
+              this.updateInfiniteScrollTrigger(); // Reset trigger on error
+            }
+          }, 600);
+        }
+      });
+    }, { 
+      threshold: 0.1,
+      rootMargin: "50px"
+    });
+    
+    this.infiniteScrollObserver.observe(trigger);
+  }
     
     private updateAppliedFilters(criteria: any): void {
       // Update AppliedFilters component for client-side filtering
@@ -437,206 +590,15 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const clearButton = document.getElementById('clear-brands-button') as HTMLElement;
       if (clearButton) {
         const hasFilters = criteria.brands.length > 0 || criteria.availability;
+        const filterCount = criteria.brands.length + (criteria.availability ? 1 : 0);
+        
+        // Update both visibility and text content
         clearButton.style.display = hasFilters ? 'block' : 'none';
-      }
-    }
-    
-    private updateProductGrid(): void {
-      const grid = document.getElementById("filterable-product-grid");
-      if (!grid) return;
-      
-      console.log(`[UltimateFilterEngine] Updating to show ${this.visibleProducts.length} products`);
-      
-      // Get all existing product wrappers
-      const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
-      
-      // Create Set of visible product IDs
-      const visibleProductIds = new Set(this.visibleProducts.map(p => p.id));
-      
-      // Show/hide products using display (not opacity/visibility)
-      allWrappers.forEach((wrapper, index) => {
-        const productId = wrapper.getAttribute('data-product-id');
-        const isVisible = visibleProductIds.has(productId);
+        clearButton.textContent = `Clear All`; // Simplified text
         
-        if (isVisible) {
-          // Show product
-          (wrapper as HTMLElement).style.display = '';
-          wrapper.classList.add('opacity-100', 'scale-100');
-          wrapper.classList.remove('opacity-0', 'scale-95');
-        } else {
-          // Hide product
-          (wrapper as HTMLElement).style.display = 'none';
-        }
-      });
-      
-      this.updateNoResultsState();
-      console.log(`[UltimateFilterEngine] ✅ Now showing ${this.visibleProducts.length} products`);
-    }
-    
-    private updateResultCount(): void {
-      const resultElements = document.querySelectorAll('[data-result-count]');
-      resultElements.forEach(element => {
-        const totalProducts = this.allProducts.length;
-        const filteredCount = this.filteredProducts.length;
-        
-        if (filteredCount === totalProducts) {
-          element.textContent = `${totalProducts} products`;
-        } else {
-          element.textContent = `${filteredCount} of ${totalProducts} products`;
-        }
-      });
-    }
-    
-    private updateNoResultsState(): void {
-      const noResults = document.getElementById("no-results");
-      const grid = document.getElementById("filterable-product-grid");
-      
-      if (this.filteredProducts.length === 0) {
-        noResults?.classList.remove("hidden");
-        grid?.classList.add("hidden");
-      } else {
-        noResults?.classList.add("hidden");
-        grid?.classList.remove("hidden");
+        // Alternative: Show count if preferred
+        // clearButton.textContent = filterCount > 0 ? `Clear (${filterCount})` : 'Clear All';
       }
-    }
-    
-    private setupInfiniteScroll(): void {
-      const trigger = document.getElementById("infinite-scroll-trigger");
-      if (!trigger) return;
-      
-      let isLoading = false;
-      
-      this.infiniteScrollObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting && this.hasMoreProducts() && !isLoading) {
-            isLoading = true;
-            console.log(`[UltimateFilterEngine] 📜 Loading more products...`);
-            
-            // Use QuickView loading pattern for consistency
-            trigger.innerHTML = `
-              <div class="col-span-full text-center py-8 flex flex-row gap-2 justify-center items-center my-4">
-                <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-(--content-heading)">
-                </div>
-                <p class="text-(--content-meta)">Loading more products...</p>
-              </div>
-            `;
-            
-            // Load more products with timeout to ensure completion
-            setTimeout(() => {
-              try {
-                this.loadMoreProducts();
-                isLoading = false;
-                console.log(`[UltimateFilterEngine] ✅ Products loaded successfully`);
-              } catch (error) {
-                console.error(`[UltimateFilterEngine] ❌ Loading failed:`, error);
-                isLoading = false;
-                this.updateInfiniteScrollTrigger(); // Reset trigger on error
-              }
-            }, 600);
-          }
-        });
-      }, { 
-        threshold: 0.1,
-        rootMargin: "50px"
-      });
-      
-      this.infiniteScrollObserver.observe(trigger);
-    }
-    
-    private hasMoreProducts(): boolean {
-      const hasMore = this.visibleCount < this.filteredProducts.length;
-      console.log(`[UltimateFilterEngine] hasMoreProducts: ${hasMore} (${this.visibleCount} < ${this.filteredProducts.length})`);
-      return hasMore;
-    }
-    
-    private loadMoreProducts(): void {
-      // CRITICAL: Ensure pagination stays hidden during scroll loading
-      this.forceHidePagination();
-      
-      const nextBatch = 24;
-      const previousVisibleCount = this.visibleCount;
-      const newVisibleCount = Math.min(
-        this.visibleCount + nextBatch, 
-        this.filteredProducts.length
-      );
-      
-      console.log(`[UltimateFilterEngine] Loading batch: ${previousVisibleCount} → ${newVisibleCount} of ${this.filteredProducts.length}`);
-      
-      if (newVisibleCount === this.visibleCount) {
-        console.log(`[UltimateFilterEngine] ⚠️ No more products to load`);
-        return;
-      }
-      
-      // Update visible products array
-      this.visibleCount = newVisibleCount;
-      this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
-      
-      // CRITICAL: Update the grid to show more products
-      this.updateProductGrid();
-      
-      // CRITICAL: Update infinite scroll trigger state
-      this.updateInfiniteScrollTrigger();
-      
-      console.log(`[UltimateFilterEngine] ✅ Successfully loaded: now showing ${this.visibleCount}/${this.filteredProducts.length}`);
-    }
-    
-    private updateInfiniteScrollTrigger(): void {
-      const trigger = document.getElementById("infinite-scroll-trigger") as HTMLElement;
-      if (!trigger) return;
-      
-      const hasMore = this.hasMoreProducts();
-      console.log(`[UltimateFilterEngine] Trigger update: hasMore=${hasMore}, visible=${this.visibleCount}/${this.filteredProducts.length}`);
-      
-      if (hasMore) {
-        // CRITICAL: Clear loading content and set to invisible trigger state
-        trigger.innerHTML = '';
-        trigger.style.display = "flex";
-        trigger.style.visibility = "visible";
-        trigger.style.height = "20px"; // Small invisible trigger
-        
-        console.log(`[UltimateFilterEngine] 📜 Trigger cleared and ready for intersection`);
-      } else {
-        // All products loaded - hide trigger completely
-        trigger.style.display = "none";
-        trigger.style.visibility = "hidden";
-        trigger.innerHTML = "";
-        console.log(`[UltimateFilterEngine] ✅ All products loaded - trigger hidden`);
-      }
-    }
-    
-    // CRITICAL: Immediate interaction blocking prevents phantom clicks
-    private blockAllInteractions(): void {
-      const filterContainer = document.getElementById("filter-container");
-      filterContainer?.classList.add("filters-processing");
-      
-      // Visual feedback during processing
-      const processingIndicator = document.createElement('div');
-      processingIndicator.id = 'filter-processing-indicator';
-      processingIndicator.className = 'fixed top-4 right-4 bg-(--surface-secondary) border border-(--border-tertiary) rounded-md px-3 py-2 shadow-lg z-50';
-      processingIndicator.innerHTML = `
-        <div class="flex items-center space-x-2">
-          <div class="animate-spin rounded-full h-4 w-4 border-2 border-ui-accent border-t-transparent"></div>
-          <span class="text-sm text-(--content-body)">Filtering...</span>
-        </div>
-      `;
-      document.body.appendChild(processingIndicator);
-    }
-    
-    private unblockInteractions(): void {
-      const filterContainer = document.getElementById("filter-container");
-      filterContainer?.classList.remove("filters-processing");
-      
-      // Remove processing indicator
-      const indicator = document.getElementById('filter-processing-indicator');
-      if (indicator) {
-        indicator.remove();
-      }
-    }
-    
-    private fallbackToServerSide(): void {
-      console.warn("[FilterEngine] Falling back to server-side filtering");
-      const form = document.getElementById("filter-form") as HTMLFormElement;
-      if (form) form.submit();
     }
     
     public destroy(): void {
@@ -646,8 +608,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
     
     // Method for validation
-    public getAllProductsCount(): number {
-      return this.allProducts ? this.allProducts.length : 0;
+    public getProductsCount(): number {
+      return this.products ? this.products.length : 0;
     }
   }
 
@@ -657,7 +619,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     private overlay: HTMLElement | null = null;
     private showMoreToggle: HTMLButtonElement | null = null;
     private isExpanded: boolean = false;
-    private filterEngine: UltimateFilterEngine | null = null; // DAY 2: Add filter engine
+    private filterEngine: StreamlinedFilterEngine | null = null; // DAY 2: Add streamlined filter engine
     private _isClearing: boolean = false; // Prevent infinite recursion in clearAllFilters
     private debounceTimer: number | null = null; // Debounce filter operations
 
@@ -697,33 +659,20 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
     
     private initializeFilterEngine(): void {
-      // ALWAYS enable client-side filtering to prevent FOUT and phantom clicks
+      // Enable streamlined client-side filtering
       try {
-        this.filterEngine = new UltimateFilterEngine();
-        console.log('[ResponsiveFilters] ✅ Client-side filtering enabled for all devices');
+        this.filterEngine = new StreamlinedFilterEngine();
+        console.log('[ResponsiveFilters] ✅ Streamlined filtering enabled');
         
-        // Always hide pagination when client-side filtering is active
+        // Hide pagination when client-side filtering is active
         const pagination = document.getElementById('server-side-pagination') as HTMLElement;
         if (pagination) {
           pagination.style.display = 'none';
-          console.log('[ResponsiveFilters] 🚫 Server-side pagination hidden');
-        }
-        
-        // Validate engine has data
-        const productCount = this.filterEngine && this.filterEngine.getAllProductsCount ? this.filterEngine.getAllProductsCount() : 0;
-        if (productCount === 0) {
-          console.warn('[ResponsiveFilters] ⚠️ Filter engine has no products - fallback may be needed');
         }
         
       } catch (error) {
         console.error('[ResponsiveFilters] ❌ Filter engine initialization failed:', error);
         this.filterEngine = null;
-        
-        // Still hide pagination to prevent FOUT
-        const pagination = document.getElementById('server-side-pagination') as HTMLElement;
-        if (pagination) {
-          pagination.style.display = 'none';
-        }
       }
     }
 
@@ -849,7 +798,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         clearTimeout(this.debounceTimer);
       }
       
-      this.debounceTimer = setTimeout(() => {
+      this.debounceTimer = window.setTimeout(() => {
         this.filterEngine?.applyFilters(criteria);
         this.debounceTimer = null;
       }, 150); // 150ms debounce
@@ -956,8 +905,10 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
 
     private clearBrandFilters(): void {
-      if (window.innerWidth >= 1024 && this.filterEngine) {
-        // DAY 2: Clear brand filters instantly with client-side filtering
+      // Always try client-side filtering first if filterEngine is available
+      if (this.filterEngine) {
+        console.log('[ResponsiveFilters] Clearing brand filters client-side');
+        
         const checkboxes = this.form?.querySelectorAll('input[name="brands"]') as NodeListOf<HTMLInputElement>;
         checkboxes?.forEach(checkbox => {
           if (checkbox.checked) {
@@ -970,7 +921,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         this.filterEngine.applyFilters(criteria);
         
       } else {
-        // Mobile: use existing server-side approach
+        console.log('[ResponsiveFilters] Falling back to server-side clear (no filter engine)');
+        // Fallback: use existing server-side approach
         sessionStorage.removeItem("filter-menu-expanded");
         
         const currentParams = new URLSearchParams(window.location.search);
