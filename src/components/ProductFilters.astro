@@ -870,67 +870,35 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const clearBtn = document.querySelector("[data-clear-filters]");
       const clearBtnMobile = document.querySelector("[data-clear-filters-mobile]");
 
-      clearBtn?.addEventListener("click", () => this.clearBrandFilters());
+      // UNIFIED: Both desktop and mobile clear buttons use same logic as AppliedFilters
+      clearBtn?.addEventListener("click", () => this.handleUnifiedClear());
       clearBtnMobile?.addEventListener("click", () => {
-        // Mobile clear should always use form submission
-        
-        // Wait for animation to complete using transitionend event
-        const handleAnimationComplete = () => {
-          this.container?.removeEventListener('transitionend', handleAnimationComplete);
-          const params = new URLSearchParams();
-          const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
-          if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
-          this.navigateWithParams(params);
-        };
-        
-        this.container?.addEventListener('transitionend', handleAnimationComplete);
-        
-        // Fallback timeout in case transitionend doesn't fire
-        const fallbackTimeout = setTimeout(() => {
-          this.container?.removeEventListener('transitionend', handleAnimationComplete);
-          const params = new URLSearchParams();
-          const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
-          if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
-          this.navigateWithParams(params);
-        }, 400);
-        
-        // Trigger close animation
+        // Close mobile drawer first, then clear
         this.closeMobileDrawer();
+        // Use same unified clear logic 
+        this.handleUnifiedClear();
       });
     }
 
-    private clearBrandFilters(): void {
-      // Always try client-side filtering first if filterEngine is available
-      if (this.filterEngine) {
-        console.log('[ResponsiveFilters] Clearing brand filters client-side');
-        
-        const checkboxes = this.form?.querySelectorAll('input[name="brands"]') as NodeListOf<HTMLInputElement>;
-        checkboxes?.forEach(checkbox => {
-          if (checkbox.checked) {
-            checkbox.checked = false;
-          }
-        });
-        
-        // Apply filters instantly
-        const criteria = this.buildFilterCriteria();
-        this.filterEngine.applyFilters(criteria);
-        
+    private handleUnifiedClear(): void {
+      // Use exact same pattern as AppliedFilters' "Clear All" button
+      const filterInstance = (window as any).currentFilterInstance;
+      if (filterInstance?.clearAllFilters) {
+        filterInstance.clearAllFilters();
       } else {
-        console.log('[ResponsiveFilters] Falling back to server-side clear (no filter engine)');
-        // Fallback: use existing server-side approach
-        sessionStorage.removeItem("filter-menu-expanded");
-        
-        const currentParams = new URLSearchParams(window.location.search);
-        const currentPageSize = currentParams.get("pageSize") || "24";
-        const currentAvailability = currentParams.get("availability");
-        
+        // Fallback to server-side navigation (same as AppliedFilters)
         const params = new URLSearchParams();
+        const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
         if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
-        if (currentAvailability) params.set("availability", currentAvailability);
-
-        this.navigateWithParams(params);
+        
+        const queryString = params.toString();
+        const basePath = window.location.pathname;
+        const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
+        window.location.href = newUrl;
       }
     }
+
+
 
     public clearAllFilters(): void {
       if (this.filterEngine) {
