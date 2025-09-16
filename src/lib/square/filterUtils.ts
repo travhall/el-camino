@@ -7,9 +7,6 @@ import type {
 } from "./types";
 import { createFilterSlug } from "./types";
 import { getProductStockStatus } from "./inventory"; // Import inventory checking
-import { filterCache } from "./cacheUtils"; // Phase 1: Import filter cache
-import { batchInventoryService } from "./batchInventory"; // Phase 2: Import batch inventory
-import { requestDeduplicator } from "./requestDeduplication"; // Phase 3: Import deduplication
 
 /**
  * Extract filter options from product array
@@ -85,94 +82,11 @@ export async function filterProducts(
   return filteredProducts;
 }
 
-/**
- * Enhanced filter products with caching and batch inventory
- * PHASE 1: Cached filter results to eliminate repeated database queries
- * PHASE 2: Batch inventory service integration for availability filtering
- * PHASE 3: Request deduplication for concurrent users
- */
-export async function filterProductsCached(
-  products: Product[],
-  filters: ProductFilters,
-  categoryId?: string
-): Promise<Product[]> {
-  // Create deterministic cache key
-  const filterKey = `${categoryId || 'all'}-${JSON.stringify(filters)}`;
-  
-  return filterCache.getOrCompute(filterKey, async () => {
-    console.log(`[FilterCache] Computing filter result for: ${filterKey}`);
-    const startTime = performance.now();
-    
-    // Use enhanced filtering with batch inventory
-    const result = await filterProductsWithBatchInventory(products, filters);
-    
-    const duration = performance.now() - startTime;
-    console.log(`[FilterCache] Filtered ${products.length} → ${result.length} products in ${duration.toFixed(2)}ms`);
-    
-    return result;
-  });
-}
 
-/**
- * Enhanced filter products using batch inventory service
- * PHASE 2: Replaces individual inventory calls with efficient batching
- */
-export async function filterProductsWithBatchInventory(
-  products: Product[],
-  filters: ProductFilters
-): Promise<Product[]> {
-  let filteredProducts = products;
 
-  // Brand filtering (fast, no API calls)
-  if (filters.brands.length > 0) {
-    filteredProducts = filteredProducts.filter((product) => {
-      if (!product.brand) return false;
-      return filters.brands.includes(product.brand);
-    });
-  }
 
-  // Availability filtering using existing batch service
-  if (filters.availability === true) {
-    const catalogObjectIds = filteredProducts.map(p => p.catalogObjectId);
-    
-    if (catalogObjectIds.length > 0) {
-      try {
-        // Use existing batchInventoryService with request deduplication
-        const inventoryMap = await batchInventoryService.getBatchInventoryStatus(catalogObjectIds);
-        
-        filteredProducts = filteredProducts.filter(product => {
-          const status = inventoryMap.get(product.catalogObjectId);
-          return status && !status.isOutOfStock;
-        });
-        
-        console.log(`[FilterBatch] Batch inventory check: ${catalogObjectIds.length} → ${filteredProducts.length} in stock`);
-      } catch (error) {
-        console.error('[FilterBatch] Batch inventory failed, falling back to individual checks:', error);
-        // Fallback to original individual inventory checks
-        return filterProducts(products, filters);
-      }
-    }
-  }
 
-  return filteredProducts;
-}
 
-/**
- * Filter products with request deduplication for concurrent users
- * PHASE 3: Prevents duplicate filter operations when multiple users filter simultaneously
- */
-export async function filterProductsDeduped(
-  products: Product[],
-  filters: ProductFilters,
-  categoryId?: string
-): Promise<Product[]> {
-  // Create deterministic key for deduplication
-  const dedupeKey = `filter-${categoryId || 'all'}-${JSON.stringify(filters)}`;
-  
-  return requestDeduplicator.dedupe(dedupeKey, () => 
-    filterProductsCached(products, filters, categoryId)
-  );
-}
 
 /**
  * Parse filters from URL search params
