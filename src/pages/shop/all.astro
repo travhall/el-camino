@@ -5,7 +5,7 @@ import AppliedFilters from "@/components/AppliedFilters.astro";
 import ProductGrid from "@/components/ProductGrid.astro";
 import Layout from "@/layouts/Layout.astro";
 import { fetchProducts } from "@/lib/square/client";
-import { parseURLParams, filterProducts, extractFilterOptions } from "@/lib/square/filterUtils";
+import { parseURLParams, filterProductsWithCache, extractFilterOptions } from "@/lib/square/filterUtils";
 import { calculatePaginationMeta } from "@/lib/square/types";
 import type { Product, ProductFilters as ProductFiltersType, FilterOptions } from "@/lib/square/types";
 
@@ -49,7 +49,7 @@ try {
   filterOptions = extractFilterOptions(allProducts);
 
   // === APPLY FILTERS (now async due to availability filtering) ===
-  filteredProducts = await filterProducts(allProducts, filters);
+  filteredProducts = await filterProductsWithCache(allProducts, filters, 'shop-all');
 
   // === APPLY SORTING ===
   filteredProducts.sort((a, b) => {

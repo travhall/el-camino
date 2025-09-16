@@ -7,6 +7,7 @@ import type {
 } from "./types";
 import { createFilterSlug } from "./types";
 import { getProductStockStatus } from "./inventory"; // Import inventory checking
+import { filterCache } from "./cacheUtils"; // Import filter cache
 
 /**
  * Extract filter options from product array
@@ -80,6 +81,34 @@ export async function filterProducts(
   }
 
   return filteredProducts;
+}
+
+/**
+ * Enhanced filter products with caching
+ * Phase 1: Cached filter results to eliminate repeated database queries
+ * Provides significant performance improvement for repeated filter operations
+ */
+export async function filterProductsWithCache(
+  products: Product[],
+  filters: ProductFilters,
+  categoryId?: string
+): Promise<Product[]> {
+  // Create deterministic cache key based on products, filters, and category
+  const productIds = products.map(p => p.id).sort().join(',');
+  const filterKey = `${categoryId || 'all'}-${JSON.stringify(filters)}-${productIds.slice(0, 50)}`;
+  
+  return filterCache.getOrCompute(filterKey, async () => {
+    console.log(`[FilterCache] Computing filter result for: ${filterKey.slice(0, 100)}...`);
+    const startTime = performance.now();
+    
+    // Use the existing filterProducts function
+    const result = await filterProducts(products, filters);
+    
+    const duration = performance.now() - startTime;
+    console.log(`[FilterCache] Filtered ${products.length} → ${result.length} products in ${duration.toFixed(2)}ms`);
+    
+    return result;
+  });
 }
 
 

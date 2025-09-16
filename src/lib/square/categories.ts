@@ -352,7 +352,7 @@ import type {
   ProductFilters,
 } from "./types";
 import { calculatePaginationMeta } from "./types";
-import { filterProducts, extractFilterOptions } from "./filterUtils";
+import { filterProductsWithCache, extractFilterOptions } from "./filterUtils";
 
 /**
  * Fetch ALL products from category, then filter and paginate
@@ -398,8 +398,8 @@ export async function fetchProductsByCategoryWithPagination(
       }
     })
     .then(async (allProducts) => {
-      // UPDATED: Now async to handle availability filtering
-      const filteredProducts = await filterProducts(allProducts, filters);
+      // UPDATED: Now async to handle availability filtering with caching
+      const filteredProducts = await filterProductsWithCache(allProducts, filters, categoryId);
       const startIndex = (page - 1) * pageSize;
       const endIndex = startIndex + pageSize;
       const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
