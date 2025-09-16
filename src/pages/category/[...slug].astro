@@ -3,12 +3,9 @@
 import ProductFilters from "@/components/ProductFilters.astro";
 import AppliedFilters from "@/components/AppliedFilters.astro";
 import ProductGrid from "@/components/ProductGrid.astro";
-import PaginationControls from "@/components/PaginationControls.astro";
-import {
-  fetchProductsByCategoryWithPagination,
-} from "@/lib/square/categories";
+import { fetchProductsByCategory } from "@/lib/square/categories";
 import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
-import { parseURLParams } from "@/lib/square/filterUtils";
+import { parseFiltersFromURL } from "@/lib/square/filterUtils";
 import Layout from "@/layouts/Layout.astro";
 
 const { slug } = Astro.params;
@@ -37,57 +34,46 @@ if (subCategorySlug) {
   parentCategory = topLevelItem.category;
 }
 
-// === NEW: PARSE URL PARAMETERS FOR PAGINATION + FILTERING ===
-const urlParams = parseURLParams(Astro.url.searchParams);
-const { filters, page, pageSize } = urlParams;
+// === PARSE URL PARAMETERS FOR FILTERING ONLY ===
+const filters = parseFiltersFromURL(Astro.url.searchParams);
 
 import type { Product } from "@/lib/square/types";
 
-// === DAY 1: ENHANCED DATA ARCHITECTURE FOR CLIENT-SIDE FILTERING ===
-let productData;
+// === DATA ARCHITECTURE FOR CLIENT-SIDE FILTERING WITH INFINITE SCROLL ===
 let allProducts: Product[] = [];
+let filterOptions = { brands: [] as Array<{name: string; count: number; slug: string}> };
 
 try {
-  // Fetch paginated products for server-side rendering
-  productData = await fetchProductsByCategoryWithPagination(category.id, {
-    page,
-    pageSize,
-    filters,
+  // Fetch ALL products for infinite scroll and client-side filtering
+  console.log(`[Category] Fetching all products for category: ${category.name}`);
+  
+  const productData = await fetchProductsByCategory(category.id, { limit: 200 });
+  allProducts = productData.products;
+  
+  // Extract filter options from all products for this category
+  const brandCounts = new Map<string, number>();
+  allProducts.forEach((product) => {
+    if (product.brand) {
+      brandCounts.set(product.brand, (brandCounts.get(product.brand) || 0) + 1);
+    }
   });
 
-  // DAY 1: Also fetch ALL products for client-side filtering
-  // This enables instant filtering without page reloads
-  console.log(`[Category] Fetching all products for client-side filtering in category: ${category.name}`);
+  filterOptions = {
+    brands: Array.from(brandCounts.entries())
+      .map(([name, count]) => ({
+        name,
+        count,
+        slug: name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").trim(),
+      }))
+      .sort((a, b) => b.count - a.count)
+  };
   
-  const allProductsData = await fetchProductsByCategoryWithPagination(category.id, {
-    page: 1,
-    pageSize: 1000, // Fetch up to 1000 products for client-side filtering
-    filters: { brands: [] }, // No filters to get all products
-  });
-  
-  allProducts = allProductsData.products;
-  console.log(`[Category] Loaded ${allProducts.length} products for client-side filtering`);
+  console.log(`[Category] Loaded ${allProducts.length} products for infinite scroll`);
   
 } catch (error) {
   console.error("Error fetching products:", error);
-  productData = {
-    products: [],
-    pagination: {
-      currentPage: page,
-      totalPages: 1,
-      pageSize,
-      totalProducts: 0,
-      hasNextPage: false,
-      hasPrevPage: false,
-    },
-    appliedFilters: filters,
-    filterOptions: { brands: [] },
-    hasMore: false,
-  };
   allProducts = [];
 }
-
-const { products, pagination, appliedFilters, filterOptions } = productData;
 
 // Generate page metadata
 const subcategories = !subCategorySlug ? topLevelItem.subcategories : [];
@@ -95,18 +81,15 @@ const pageTitle = parentCategory
   ? `${parentCategory.name} - ${category.name}`
   : category.name;
 
-// Add pagination info to title if not on page 1
-const fullPageTitle = page > 1
-  ? `${pageTitle} - Page ${page} | El Camino`
-  : `Shop ${pageTitle} | El Camino`;
+const fullPageTitle = `Shop ${pageTitle} | El Camino`;
 
 // Preload critical images (first 8 products)
-const preloadImages = products
+const preloadImages = allProducts
   .slice(0, 8)
   .map((p) => p.image)
   .filter((img) => !img.includes("placeholder"));
 
-// Current category path for pagination URLs
+// Current category path for filter URLs
 const categoryPath = parentCategory 
   ? `/category/${parentCategory.slug}/${category.slug}`
   : `/category/${category.slug}`;
@@ -129,12 +112,6 @@ const categoryPath = parentCategory
           >
             {category.name}
           </h1>
-          <!-- Page indicator for non-first pages -->
-          {page > 1 && (
-            <p class="text-(--content-meta) text-sm mt-2">
-              Page {page} of {pagination.totalPages}
-            </p>
-          )}
         </div>
         <div class="hidden md:block min-w-fit">
         <!-- Subcategory Navigation -->
@@ -177,8 +154,8 @@ const categoryPath = parentCategory
       <aside class="lg:col-span-1">
         <ProductFilters
           filterOptions={filterOptions}
-          totalProducts={pagination.totalProducts}
-          filteredCount={products.length}
+          totalProducts={allProducts.length}
+          filteredCount={allProducts.length}
           categoryPath={categoryPath}
         />
       </aside>
@@ -191,11 +168,11 @@ const categoryPath = parentCategory
 
         <!-- Products -->
         {
-          (products.length > 0 || allProducts.length > 0) ? (
+          allProducts.length > 0 ? (
             <>
-              <!-- Products Grid -->
+              <!-- Products Grid with Infinite Scroll -->
               <ProductGrid
-                products={products}
+                products={allProducts}
                 allProducts={allProducts}
                 categoryPath={categoryPath}
               />
@@ -203,20 +180,20 @@ const categoryPath = parentCategory
           ) : (
             <div class="text-center py-16">
               <div class="text-6xl mb-4 opacity-20">
-                {appliedFilters.brands.length > 0 ? "🔍" : "🛹"}
+                {filters.brands.length > 0 ? "🔍" : "🛹"}
               </div>
               <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
-                {appliedFilters.brands.length > 0 ? "No products match your filters" : "No products found"}
+                {filters.brands.length > 0 ? "No products match your filters" : "No products found"}
               </h2>
               <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
-                {appliedFilters.brands.length > 0 
+                {filters.brands.length > 0 
                   ? "Try adjusting your filters or browse all products."
                   : subcategories.length > 0
                   ? "Try browsing our subcategories above, or check out other product categories."
                   : "This category is currently empty. Check back soon for new products!"
                 }
               </p>
-              {appliedFilters.brands.length > 0 ? (
+              {filters.brands.length > 0 ? (
                 <a
                   href={categoryPath}
                   class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"

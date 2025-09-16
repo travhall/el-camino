@@ -1,18 +1,15 @@
 ---
-// src/pages/shop/all.astro - Rebuilt using existing component architecture with working availability filter and sorting
+// src/pages/shop/all.astro - Rebuilt using existing component architecture with working availability filter
 import ProductFilters from "@/components/ProductFilters.astro";
 import AppliedFilters from "@/components/AppliedFilters.astro";
 import ProductGrid from "@/components/ProductGrid.astro";
 import Layout from "@/layouts/Layout.astro";
 import { fetchProducts } from "@/lib/square/client";
-import { parseURLParams, filterProductsWithCache, extractFilterOptions } from "@/lib/square/filterUtils";
-import { calculatePaginationMeta } from "@/lib/square/types";
+import { parseFiltersFromURL, extractFilterOptions } from "@/lib/square/filterUtils";
 import type { Product, ProductFilters as ProductFiltersType, FilterOptions } from "@/lib/square/types";
 
-// === PARSE URL PARAMETERS FOR PAGINATION + FILTERING + SORTING ===
-const urlParams = parseURLParams(Astro.url.searchParams);
-const { filters, page, pageSize } = urlParams;
-const sortBy = Astro.url.searchParams.get("sort") || "name-asc";
+// === PARSE URL PARAMETERS FOR FILTERING ===
+const filters = parseFiltersFromURL(Astro.url.searchParams);
 
 // Phase 4: Enhanced Server-Side Caching
 // Smart cache headers based on filters
@@ -39,7 +36,6 @@ Astro.response.headers.set("X-Cache-Strategy",
 
 // === FETCH ALL PRODUCTS ===
 let allProducts: Product[] = [];
-let filteredProducts: Product[] = [];
 let filterOptions: FilterOptions = { brands: [] };
 
 try {
@@ -48,63 +44,27 @@ try {
   // Extract filter options from all products
   filterOptions = extractFilterOptions(allProducts);
 
-  // === APPLY FILTERS (now async due to availability filtering) ===
-  filteredProducts = await filterProductsWithCache(allProducts, filters, 'shop-all');
-
-  // === APPLY SORTING ===
-  filteredProducts.sort((a, b) => {
-    switch (sortBy) {
-      case 'name-asc':
-        return a.title.localeCompare(b.title);
-      case 'name-desc':
-        return b.title.localeCompare(a.title);
-      case 'price-asc':
-        return a.price - b.price;
-      case 'price-desc':
-        return b.price - a.price;
-      case 'newest':
-        // Assuming newer products have higher IDs or you have a date field
-        return b.id.localeCompare(a.id);
-      default:
-        return 0;
-    }
-  });
+  // CLIENT-SIDE FILTERING: Let the client handle all filtering and infinite scroll
+  // No server-side filtering for shop/all - matches category page behavior
 
 } catch (error) {
   console.error("Error fetching products:", error);
-  filteredProducts = [];
+  allProducts = [];
 }
 
-// === PAGINATION LOGIC ===
-const totalProducts = filteredProducts.length;
-const startIndex = (page - 1) * pageSize;
-const endIndex = startIndex + pageSize;
-const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
-
-// Calculate pagination metadata
-const pagination = calculatePaginationMeta(
-  page,
-  pageSize,
-  paginatedProducts.length,
-  endIndex < totalProducts,
-  totalProducts
-);
-
 // === PAGE METADATA ===
-const pageTitle = page > 1 
-  ? `Shop All - Page ${page} | El Camino`
-  : "Shop All | El Camino";
+const pageTitle = "Shop All | El Camino";
 
 // Preload critical images (first 8 products)
-const preloadImages = paginatedProducts
+const preloadImages = allProducts
   .slice(0, 8)
   .map((p) => p.image)
   .filter((img) => !img.includes("placeholder"));
 
-// Current path for pagination URLs
+// Current path for filter URLs
 const categoryPath = "/shop/all";
 
-// Check for active filters
+// Check for active filters (for display purposes)
 const hasActiveFilters = filters.brands.length > 0 || filters.availability === true;
 ---
 
@@ -121,31 +81,6 @@ const hasActiveFilters = filters.brands.length > 0 || filters.availability === t
           <h1 class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading)">
             Shop All
           </h1>
-          <!-- Page indicator for non-first pages -->
-          {page > 1 && (
-            <p class="text-(--content-meta) text-sm mt-2">
-              Page {page} of {pagination.totalPages}
-            </p>
-          )}
-        </div>
-        
-        <!-- Sort Controls -->
-        <div class="flex flex-wrap gap-2 mb-1.5">
-          <div class="flex items-center space-x-2">
-            <label for="sort-select" class="text-sm font-medium text-(--content-heading) hidden sm:block">
-              Sort by:
-            </label>
-            <select
-              id="sort-select"
-              class="border border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) px-3 py-2 rounded-sm focus:ring-2 focus:ring-(--ui-focus) focus:border-transparent"
-            >
-              <option value="name-asc" selected={sortBy === "name-asc"}>Name: A-Z</option>
-              <option value="name-desc" selected={sortBy === "name-desc"}>Name: Z-A</option>
-              <option value="price-asc" selected={sortBy === "price-asc"}>Price: Low to High</option>
-              <option value="price-desc" selected={sortBy === "price-desc"}>Price: High to Low</option>
-              <option value="newest" selected={sortBy === "newest"}>Newest First</option>
-            </select>
-          </div>
         </div>
       </div>
     </div>
@@ -158,7 +93,7 @@ const hasActiveFilters = filters.brands.length > 0 || filters.availability === t
         <ProductFilters
           filterOptions={filterOptions}
           totalProducts={allProducts.length}
-          filteredCount={totalProducts}
+          filteredCount={allProducts.length}
           categoryPath={categoryPath}
         />
       </aside>
@@ -171,11 +106,11 @@ const hasActiveFilters = filters.brands.length > 0 || filters.availability === t
 
         <!-- Products -->
         {
-          (paginatedProducts.length > 0 || allProducts.length > 0) ? (
+          allProducts.length > 0 ? (
             <>
-              <!-- Products Grid - Enhanced with infinite scroll only -->
+              <!-- Products Grid - Client-side filtering enabled -->
               <ProductGrid
-                products={paginatedProducts}
+                products={allProducts}
                 allProducts={allProducts}
                 categoryPath={categoryPath}
               />
@@ -216,38 +151,6 @@ const hasActiveFilters = filters.brands.length > 0 || filters.availability === t
     </div>
   </div>
 </Layout>
-
-<script>
-  // Handle sort dropdown changes
-  document.addEventListener('astro:page-load', () => {
-    const sortSelect = document.getElementById('sort-select') as HTMLSelectElement;
-    
-    if (sortSelect) {
-      sortSelect.addEventListener('change', (e) => {
-        const target = e.target as HTMLSelectElement;
-        const newSort = target.value;
-
-        // Get current URL parameters
-        const currentParams = new URLSearchParams(window.location.search);
-        // Update sort parameter
-        if (newSort && newSort !== 'name-asc') {
-          currentParams.set('sort', newSort);
-        } else {
-          currentParams.delete('sort'); // Remove if default
-        }
-        // Reset to page 1 when sorting changes
-        currentParams.delete('page');
-        // Build new URL
-        const queryString = currentParams.toString();
-        const newUrl = `${window.location.pathname}${queryString ? '?' + queryString : ''}`;
-        // Add loading state
-        const grid = document.getElementById('filterable-product-grid');
-        if (grid) grid.style.opacity = '0.5';
-        // Navigate
-        setTimeout(() => {
-          window.location.href = newUrl;
-        }, 150);
-      });
     }
   });
 </script>

@@ -346,12 +346,8 @@ export function clearCategoryCache(): void {
 }
 
 import type {
-  PaginationOptions,
-  PaginatedProductsWithMeta,
-  PaginationMeta,
   ProductFilters,
 } from "./types";
-import { calculatePaginationMeta } from "./types";
 import { filterProductsWithCache, extractFilterOptions } from "./filterUtils";
 
 /**
@@ -374,54 +370,4 @@ async function fetchAllProductsFromCategory(
   } while (cursor);
 
   return allProducts;
-}
-
-/**
- * Fetch products with server-side filtering and page-based pagination
- */
-export async function fetchProductsByCategoryWithPagination(
-  categoryId: string,
-  options: PaginationOptions = {}
-): Promise<PaginatedProductsWithMeta> {
-  const { page = 1, pageSize = 24, filters = { brands: [] } } = options;
-
-  // Cache ALL products for the category
-  const baseCacheKey = `category-all-products-${categoryId}`;
-
-  return productCache
-    .getOrCompute(baseCacheKey, async () => {
-      try {
-        // Fetch ALL products for category - this fixes the pagination bug
-        return await fetchAllProductsFromCategory(categoryId);
-      } catch (error) {
-        return [];
-      }
-    })
-    .then(async (allProducts) => {
-      // UPDATED: Now async to handle availability filtering with caching
-      const filteredProducts = await filterProductsWithCache(allProducts, filters, categoryId);
-      const startIndex = (page - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
-
-      const totalPages = Math.ceil(filteredProducts.length / pageSize);
-
-      const pagination = calculatePaginationMeta(
-        page,
-        pageSize,
-        paginatedProducts.length,
-        page < totalPages,
-        filteredProducts.length
-      );
-
-      const filterOptions = extractFilterOptions(allProducts);
-
-      return {
-        products: paginatedProducts,
-        hasMore: page < totalPages,
-        pagination,
-        appliedFilters: filters,
-        filterOptions,
-      };
-    });
 }

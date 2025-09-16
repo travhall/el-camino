@@ -14,42 +14,16 @@ interface Props {
 
 const { products, allProducts, categoryPath = "", skipInventoryCheck = false } = Astro.props;
 
-console.log(`[ProductGrid] skipInventoryCheck: ${skipInventoryCheck}, products.length: ${products.length}`);
-console.log(`[ProductGrid] allProducts.length: ${allProducts ? allProducts.length : 0}`);
-
-// Log data architecture setup
-if (allProducts && allProducts.length > 0) {
-  console.log(`[ProductGrid] Client-side filtering enabled with ${allProducts.length} total products`);
-} else {
-  console.log(`[ProductGrid] Server-side mode with ${products.length} products`);
-}
-
 // Determine which products to check inventory for
 const productsToCheck = allProducts && allProducts.length > 0 ? allProducts : products;
-
-console.log(`[ProductGrid] productsToCheck source: ${allProducts && allProducts.length > 0 ? 'allProducts' : 'products'}`);
-console.log(`[ProductGrid] Sample productsToCheck[0]:`, {
-  id: productsToCheck[0]?.id,
-  title: productsToCheck[0]?.title,
-  catalogObjectId: productsToCheck[0]?.catalogObjectId,
-  variationId: productsToCheck[0]?.variationId
-});
 
 // Batch inventory check for all products that will be displayed
 let productsWithInventory: ProductWithInventory[] = productsToCheck;
 
 if (!skipInventoryCheck && productsToCheck.length > 0) {
-  console.log(`[ProductGrid] Starting batch inventory check for ${productsToCheck.length} products`);
   try {
     const variationIds = productsToCheck.map(p => p.variationId).filter(Boolean);
-    console.log(`[ProductGrid] Variation IDs: ${variationIds.length}`);
     const inventoryMap = await batchInventoryService.getBatchInventoryStatus(variationIds);
-    
-    console.log(`[ProductGrid] Inventory map size: ${inventoryMap.size}`);
-    
-    // Debug: Log actual inventory results
-    const sampleInventoryEntries = Array.from(inventoryMap.entries()).slice(0, 3);
-    console.log(`[ProductGrid] Sample inventory results:`, sampleInventoryEntries);
     
     productsWithInventory = productsToCheck.map(product => {
       const inventoryStatus = inventoryMap.get(product.variationId) || {
@@ -58,15 +32,11 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
         totalQuantity: 0,
       };
       
-      console.log(`[ProductGrid] Product ${product.title}: variationId=${product.variationId}, isOutOfStock=${inventoryStatus.isOutOfStock}`);
-      
       return {
         ...product,
         inventoryStatus
       };
     });
-    
-    console.log(`[ProductGrid] Batch inventory complete. All products processed with inventory data.`);
   } catch (error) {
     console.error('Batch inventory check failed:', error);
     // Fallback: all products assumed in stock
@@ -80,8 +50,6 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     }));
   }
 }
-
-console.log(`[ProductGrid] Batch inventory check completed for ${productsWithInventory.length} products`);
 ---
 
 <style>
@@ -111,7 +79,7 @@ console.log(`[ProductGrid] Batch inventory check completed for ${productsWithInv
 
 <div
   id="filterable-product-grid"
-  class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-2 lg:gap-1 transition-all duration-300"
+  class="product-grid grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-2 lg:gap-1 transition-all duration-300"
   data-all-products={JSON.stringify(allProducts || [])}
   data-initial-products={JSON.stringify(productsWithInventory)}
   data-category-path={categoryPath}
