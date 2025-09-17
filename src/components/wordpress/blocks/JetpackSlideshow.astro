@@ -2,7 +2,7 @@
 // src/components/wordpress/blocks/JetpackSlideshow.astro
 // OPTIMIZED: Custom slideshow component with image loading optimization
 
-import { optimizeForContext } from "@/lib/utils/image-optimization";
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
 
 interface Props {
@@ -66,7 +66,16 @@ const containerStyle = useAspectRatio
   >
     {
       images.map((image, index) => {
-        const optimizedSrc = optimizeForContext(image.src, 'gallery');
+        // Generate optimized sources using EnhancedImageOptimizer
+        const imageSet = EnhancedImageOptimizer.generateOptimizedSources(image.src, {
+          width: 800,
+          height: 600,
+          quality: index === 0 ? 90 : 85, // Higher quality for first slide
+          priority: index === 0 // Priority loading for first slide only
+        });
+
+        // Use best available format
+        const optimizedSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
         const imageId = `slide-${slideshowId}-${index}`;
         const placeholderId = `${imageId}-placeholder`;
         

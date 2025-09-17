@@ -2,7 +2,7 @@
 // src/components/wordpress/blocks/WPGallery.astro
 // Custom gallery component for wp-block-gallery with optimized loading
 
-import { optimizeImageUrl } from "@/lib/utils/image-optimization";
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
 
 interface Props {
@@ -77,7 +77,16 @@ const imageClasses = cropImages
 >
   <div class={`grid ${getColumnClasses(columns)} ${spacingClasses[spacing]}`}>
     {images.map((image, index) => {
-      const optimizedSrc = optimizeImageUrl(image.src, { width: 400, height: 300 });
+      // Generate optimized sources using EnhancedImageOptimizer
+      const imageSet = EnhancedImageOptimizer.generateOptimizedSources(image.src, {
+        width: 400,
+        height: 300,
+        quality: 85,
+        priority: index < 6 // First 6 images priority loading
+      });
+
+      // Use best available format
+      const optimizedSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
       const imageId = `gallery-img-${galleryId}-${index}`;
       const placeholderId = `${imageId}-placeholder`;
       

@@ -3,6 +3,7 @@
 import type { Product } from "@/lib/square/types";
 import { MoneyUtils } from "@/lib/square/money";
 import { getProductStockStatus } from "@/lib/square/inventory";
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
 
 interface Props {
@@ -40,25 +41,19 @@ const availabilitySchema = isOutOfStock
 const imageId = `blog-img-${product.id}-${index}`;
 const placeholderId = `blog-placeholder-${product.id}-${index}`;
 
-// Square CDN optimization (same as ProductCard)
-const optimizedImageSrc = (() => {
-  if (product.image.includes("squarecdn.com")) {
-    try {
-      const url = new URL(product.image);
-      url.searchParams.set("w", "600");
-      url.searchParams.set("h", "400");
-      url.searchParams.set("q", "85");
-      url.searchParams.set("f", "auto");
-      return url.toString();
-    } catch {
-      return product.image;
-    }
-  }
-  return product.image;
-})();
-
 // Dynamic priority (same as ProductCard)
 const isDynamicPriority = priority || index < 12;
+
+// Enhanced image optimization using EnhancedImageOptimizer
+const imageSet = EnhancedImageOptimizer.generateOptimizedSources(product.image, {
+  width: 600,
+  height: 400,
+  quality: 85,
+  priority: isDynamicPriority
+});
+
+// Use best available format
+const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
 ---
 
 <!-- LIST VARIANT -->{

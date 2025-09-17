@@ -2,7 +2,7 @@
 // src/components/wordpress/blocks/WPImage.astro
 // Enhanced image component for wp-block-image with optimized loading
 
-import { optimizeImageUrl } from "@/lib/utils/image-optimization";
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
 
 interface Props {
@@ -28,7 +28,16 @@ const sizeSettings = {
   default: { width: 600, height: 400 }
 };
 
-const optimizedSrc = optimizeImageUrl(src, sizeSettings[alignment as keyof typeof sizeSettings]);
+// Generate optimized sources using EnhancedImageOptimizer
+const imageSet = EnhancedImageOptimizer.generateOptimizedSources(src, {
+  width: sizeSettings[alignment as keyof typeof sizeSettings].width,
+  height: sizeSettings[alignment as keyof typeof sizeSettings].height,
+  quality: 85,
+  priority: priority
+});
+
+// Use best available format
+const optimizedSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
 const imageId = `wp-img-${Math.random().toString(36).substr(2, 9)}`;
 const placeholderId = `${imageId}-placeholder`;
 ---
