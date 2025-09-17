@@ -1,5 +1,5 @@
 ---
-// src/components/ArticleCard.astro - Enhanced with grid/list view support
+// src/components/ArticleCard.astro - Fixed with all variants preserved from _BU
 import type {
   WordPressPost,
   ExtractedWordPressData,
@@ -11,8 +11,7 @@ import {
   generateFallbackContent,
 } from "@/lib/wordpress/types";
 import { formatDate } from "@/utils/dates";
-import { Image } from "astro:assets";
-import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
+import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 import Tag from "./Tag.astro";
 
 interface Props {
@@ -115,7 +114,8 @@ const getContentClasses = () => {
 
     case "masonry":
     default:
-      return `flex flex-col gap-2 px-6 py-12 xl:p-12 absolute bottom-0 m-1 bg-(--ui-card-surface)/00 backdrop-blur-0 lg:group-hover:bg-(--ui-card-surface)/95 lg:group-hover:backdrop-blur transition-all duration-300 z-20 ${
+      // FIXED: Removed z-20 that was breaking layout, restored from _BU version
+      return `flex flex-col gap-2 px-6 py-12 xl:p-12 absolute bottom-0 m-1 bg-(--ui-card-surface)/00 backdrop-blur-0 lg:group-hover:bg-(--ui-card-surface)/95 lg:group-hover:backdrop-blur transition-all duration-300 ${
         featured &&
         "bg-(--ui-card-surface)/90 md:bg-(--ui-card-surface) first-of-type:m-0 md:border-t-4 md:border-l-4 md:border-(--ui-card-border) md:w-5/6 lg:w-2/3 right-0"
       }`;
@@ -158,52 +158,44 @@ const getExcerptClasses = () => {
   class={getCardClasses()}
   aria-label={`Read article: ${actualFallbackContent.title}`}
 >
-  <!-- Featured Image with Minimal Loading State -->
-  <div class="relative w-full h-full">
-    <!-- Minimal loading placeholder -->
-    {imageUrl && (
-      <div 
-        class="loading-skeleton loading-image absolute inset-0 z-10"
-        id={placeholderId}
-        aria-hidden="true"
-      >
-        <div 
-          class="absolute inset-0 flex items-center justify-center"
-          style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
-        ></div>
-      </div>
-    )}
-    
-    {
-      imageUrl ? (
-        <Image
-          src={imageUrl}
-          alt={actualFallbackContent.imageAlt}
-          width={imageWidth}
-          height={imageHeight}
-          format="avif"
-          quality={85}
-          class={getImageClasses()}
-          loading={priority ? "eager" : "lazy"}
-          fetchpriority={priority ? "high" : "auto"}
-          decoding={priority ? "sync" : "async"}
-        />
-      ) : (
-        <img
-          src={EL_CAMINO_LOGO_DATA_URI}
-          alt="Article placeholder"
-          width={imageWidth}
-          height={imageHeight}
-          class={getImageClasses()}
-          loading={priority ? "eager" : "lazy"}
-          fetchpriority={priority ? "high" : "auto"}
-          decoding={priority ? "sync" : "async"}
-        />
-      )
-    }
-  </div>
+  <!-- FIXED: Simplified image structure like ProductCard, preserves all layouts -->
+  {
+    imageUrl ? (
+      <img
+        src={imageUrl}
+        alt={actualFallbackContent.imageAlt}
+        width={imageWidth}
+        height={imageHeight}
+        class={`${getImageClasses()} opacity-0`}
+        loading={priority ? "eager" : "lazy"}
+        fetchpriority={priority ? "high" : "auto"}
+        decoding={priority ? "sync" : "async"}
+        onload={
+          variant === "masonry" && !featured
+            ? `this.style.opacity=''; this.classList.add('loaded');`
+            : `this.style.opacity='1'; this.classList.add('loaded');`
+        }
+        onerror={
+          variant === "masonry" && !featured
+            ? `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity=''; this.classList.add('error');`
+            : `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; this.classList.add('error');`
+        }
+      />
+    ) : (
+      <img
+        src={EL_CAMINO_LOGO_DATA_URI}
+        alt="Article placeholder"
+        width={imageWidth}
+        height={imageHeight}
+        class={getImageClasses()}
+        loading={priority ? "eager" : "lazy"}
+        fetchpriority={priority ? "high" : "auto"}
+        decoding={priority ? "sync" : "async"}
+      />
+    )
+  }
 
-  <!-- Content Container -->
+  <!-- Content Container - Layout preserved from _BU -->
   <div class={getContentClasses()}>
     <!-- Category Badge -->
     <span
@@ -254,7 +246,7 @@ const getExcerptClasses = () => {
 </a>
 
 <script>
-  // Enhanced script with variant-aware functionality
+  // SIMPLIFIED: Streamlined script based on working ProductCard pattern
   document.addEventListener("astro:page-load", () => {
     // Client-side fallback for failed images
     const images = document.querySelectorAll<HTMLImageElement>(
@@ -272,43 +264,12 @@ const getExcerptClasses = () => {
       });
     });
 
-    // Progressive enhancement for image loading
-    const articleCards = document.querySelectorAll(
-      "a[class*='article-'], a[class*='banner-card']"
-    );
-
-    articleCards.forEach((card) => {
-      const image = card.querySelector("img") as HTMLImageElement;
-      const placeholder = card.querySelector(".loading-skeleton") as HTMLElement;
-
-      if (image && placeholder) {
-        const handleImageLoad = () => {
-          placeholder?.remove();
-          card.classList.add("loaded");
-          image.removeEventListener("load", handleImageLoad);
-        };
-
-        const handleImageError = () => {
-          // For Astro Image components, we can't directly change src, so just remove placeholder
-          placeholder?.remove();
-          card.setAttribute("data-error", "true");
-          image.removeEventListener("error", handleImageError);
-        };
-
-        if (image.complete && image.naturalHeight !== 0) {
-          handleImageLoad();
-        } else {
-          image.addEventListener("load", handleImageLoad);
-          image.addEventListener("error", handleImageError);
-        }
-      } else if (!placeholder) {
-        // No placeholder, just mark as loaded
-        card.classList.add("loaded");
-      }
-    });
-
-    // Intersection Observer for analytics
+    // Simplified intersection observer for analytics
     if ("IntersectionObserver" in window) {
+      const articleCards = document.querySelectorAll(
+        "a[class*='article-'], a[class*='banner-card']"
+      );
+
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
