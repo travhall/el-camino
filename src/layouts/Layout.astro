@@ -55,18 +55,27 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           document.documentElement.classList.remove("fonts-loading");
           document.documentElement.classList.add("fonts-loaded");
         } else {
-          // Load fonts and update state
-          Promise.all([
-            document.fonts.load("700 48px Alumni"),
-            document.fonts.load("400 16px Cabin")
-          ]).then(() => {
+          // Wait for preloaded fonts to be available, then verify loading
+          // This works better with link rel="preload" elements
+          if (document.fonts.check("700 48px Alumni") && document.fonts.check("400 16px Cabin")) {
+            // Fonts already available (likely from preload)
             document.documentElement.classList.remove("fonts-loading");
             document.documentElement.classList.add("fonts-loaded");
             sessionStorage.setItem("fonts-loaded", "true");
-          }).catch(() => {
-            document.documentElement.classList.remove("fonts-loading");
-            document.documentElement.classList.add("fonts-failed");
-          });
+          } else {
+            // Force load fonts if not already available
+            Promise.all([
+              document.fonts.load("700 48px Alumni"),
+              document.fonts.load("400 16px Cabin")
+            ]).then(() => {
+              document.documentElement.classList.remove("fonts-loading");
+              document.documentElement.classList.add("fonts-loaded");
+              sessionStorage.setItem("fonts-loaded", "true");
+            }).catch(() => {
+              document.documentElement.classList.remove("fonts-loading");
+              document.documentElement.classList.add("fonts-failed");
+            });
+          }
         }
       })();
     </script>

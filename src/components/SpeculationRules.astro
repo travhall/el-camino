@@ -55,13 +55,21 @@ function generateSpeculationRules(path: string, isEager: boolean) {
 const speculationRules = generateSpeculationRules(currentPath, eager);
 ---
 
-<!-- Speculation Rules Script for Advanced Prefetching -->
-<script type="speculationrules" set:html={JSON.stringify(speculationRules)} />
-
 <!-- Fallback Script for Browsers Without Speculation Rules Support -->
-<script>
+<script define:vars={{ speculationRules }}>
   // Check Speculation Rules support and provide fallback
   (function () {
+    // Prevent duplicate speculation rules insertion during view transitions
+    if (document.querySelector('script[type="speculationrules"][data-astro-speculation]')) {
+      return;
+    }
+
+    // Insert speculation rules script
+    const speculationScript = document.createElement('script');
+    speculationScript.type = 'speculationrules';
+    speculationScript.setAttribute('data-astro-speculation', 'true');
+    speculationScript.textContent = JSON.stringify(speculationRules);
+    document.head.appendChild(speculationScript);
     const supportsSpeculationRules =
       "HTMLScriptElement" in window &&
       "supports" in HTMLScriptElement &&
@@ -77,7 +85,7 @@ const speculationRules = generateSpeculationRules(currentPath, eager);
           const observer = new PerformanceObserver((list) => {
             for (const entry of list.getEntries()) {
               // Cast to PerformanceNavigationTiming to access initiatorType
-              const navEntry = entry as any;
+              const navEntry = entry;
               if (navEntry.initiatorType === "speculation") {
                 console.log(
                   "[Speculation Rules] Prerender completed:",
@@ -104,12 +112,12 @@ const speculationRules = generateSpeculationRules(currentPath, eager);
         },
 
         setupHoverPrefetch() {
-          document.addEventListener("mouseover", (e: Event) => {
+          document.addEventListener("mouseover", (e) => {
             if (!e.target) return;
 
-            const link = (e.target as HTMLElement).closest(
+            const link = e.target.closest(
               'a[data-astro-prefetch="hover"]'
-            ) as HTMLAnchorElement;
+            );
             if (link && !link.dataset.prefetched) {
               this.prefetchLink(link.href);
               link.dataset.prefetched = "true";
@@ -122,7 +130,7 @@ const speculationRules = generateSpeculationRules(currentPath, eager);
             const observer = new IntersectionObserver((entries) => {
               entries.forEach((entry) => {
                 if (entry.isIntersecting) {
-                  const link = entry.target as HTMLAnchorElement;
+                  const link = entry.target;
                   if (!link.dataset.prefetched) {
                     this.prefetchLink(link.href);
                     link.dataset.prefetched = "true";
@@ -140,7 +148,7 @@ const speculationRules = generateSpeculationRules(currentPath, eager);
           }
         },
 
-        prefetchLink(url: string) {
+        prefetchLink(url) {
           if (
             !url ||
             url.includes("#") ||
