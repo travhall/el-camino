@@ -20,8 +20,6 @@ export const GET: APIRoute = async ({ request, url }) => {
       );
     }
 
-    console.log(`[API] Checking inventory for ${variationId}`);
-
     // Check inventory directly from Square API
     const { result } = await squareClient.inventoryApi.retrieveInventoryCount(
       variationId
@@ -30,9 +28,6 @@ export const GET: APIRoute = async ({ request, url }) => {
     // Get the counts and find IN_STOCK state
     const counts = result.counts || [];
 
-    // Log all received states for debugging
-    console.log(`[API] Retrieved inventory counts:`, counts);
-
     // Find in-stock quantity
     const inStockCount = counts.find((count) => count.state === "IN_STOCK");
 
@@ -40,8 +35,6 @@ export const GET: APIRoute = async ({ request, url }) => {
     const quantity = inStockCount?.quantity
       ? parseInt(inStockCount.quantity, 10)
       : 0;
-
-    console.log(`[API] Determined quantity: ${quantity}`);
 
     // Return the inventory data with full details for debugging
     return new Response(

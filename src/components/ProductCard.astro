@@ -5,6 +5,7 @@ import { MoneyUtils } from "@/lib/square/money";
 import { checkItemInventory } from "@/lib/square/inventory";
 import { Icon } from "astro-icon/components";
 import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 
 interface Props {
   product: Product;
@@ -54,25 +55,21 @@ const availabilitySchema = isOutOfStock
 const imageId = `img-${product.id}`;
 const placeholderId = `placeholder-${product.id}`;
 
-// Square CDN optimization
-const optimizedImageSrc = (() => {
-  if (product.image.includes("squarecdn.com")) {
-    try {
-      const url = new URL(product.image);
-      url.searchParams.set("w", "600");
-      url.searchParams.set("h", "400");
-      url.searchParams.set("q", "85");
-      url.searchParams.set("f", "auto");
-      return url.toString();
-    } catch {
-      return product.image;
-    }
-  }
-  return product.image;
-})();
-
 // Dynamic priority
 const isDynamicPriority = priority || index < 12;
+
+// Enhanced image optimization using new system
+const imageSet = EnhancedImageOptimizer.generateOptimizedSources(
+  product.image,
+  { 
+    width: 600, 
+    height: 400, 
+    quality: 85,
+    priority: isDynamicPriority 
+  }
+);
+
+const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
 ---
 
 <div 

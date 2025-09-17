@@ -12,6 +12,7 @@ import {
 } from "@/lib/wordpress/types";
 import { formatDate } from "@/utils/dates";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 import Tag from "./Tag.astro";
 
 interface Props {
@@ -55,6 +56,16 @@ const getImageDimensions = () => {
 };
 
 const { width: imageWidth, height: imageHeight } = getImageDimensions();
+
+// Enhanced image optimization
+const optimizedImageUrl = imageUrl ? EnhancedImageOptimizer.generateOptimizedSources(
+  imageUrl,
+  { 
+    width: imageWidth, 
+    height: imageHeight, 
+    priority: priority 
+  }
+).jpeg : "";
 
 // Get the proper display category
 const displayCategory = getDisplayCategory(post);
@@ -160,9 +171,9 @@ const getExcerptClasses = () => {
 >
   <!-- FIXED: Simplified image structure like ProductCard, preserves all layouts -->
   {
-    imageUrl ? (
+    optimizedImageUrl ? (
       <img
-        src={imageUrl}
+        src={optimizedImageUrl}
         alt={actualFallbackContent.imageAlt}
         width={imageWidth}
         height={imageHeight}

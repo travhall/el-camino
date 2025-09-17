@@ -44,7 +44,7 @@ const getContainerClasses = () => {
       return "flex flex-col gap-1";
     } else {
       // Grid view for news page - simpler than masonry
-      return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1";
+      return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-1";
     }
   }
   // Original masonry layout for home page
@@ -84,15 +84,14 @@ const getSkeletonVariant = () => {
     ) : displayPosts.length > 0 ? (
       <>
         {displayPosts.map((post, index) => (
-            <ArticleCard
-              post={post}
-              featured={!filterable && index === 0}
-              priority={index === 0}
-              variant={getCardVariant(index)}
-              data-variant={getCardVariant(index)}
-            />
-          )
-        )}
+          <ArticleCard
+            post={post}
+            featured={!filterable && index === 0}
+            priority={index === 0}
+            variant={getCardVariant(index)}
+            data-variant={getCardVariant(index)}
+          />
+        ))}
 
         {/* Home page sidebar and CTA (only for non-filterable mode) */}
         {showSidebar && !filterable && (
@@ -152,7 +151,7 @@ const getSkeletonVariant = () => {
     // SIMPLIFIED: Basic lazy loading without heavy intersection observer
     // Only set up lazy loading if there are many images
     const lazyImages = document.querySelectorAll("img[data-src]");
-    
+
     if (lazyImages.length > 0 && "IntersectionObserver" in window) {
       const imageObserver = new IntersectionObserver(
         (entries) => {
@@ -186,18 +185,21 @@ const getSkeletonVariant = () => {
     }
 
     // SIMPLIFIED: Reduced event listener setup for better performance
-    const container = document.querySelector("[class*='grid'], [class*='flex']");
-    if (container && container.classList.contains('filterable')) {
+    const container = document.querySelector(
+      "[class*='grid'], [class*='flex']"
+    );
+    if (container && container.classList.contains("filterable")) {
       // Only add complex event listeners on filterable pages (not home page)
-      
-      container.addEventListener('viewchange', (e: Event) => {
+
+      container.addEventListener("viewchange", (e: Event) => {
         const customEvent = e as CustomEvent;
         const newView = customEvent.detail?.view;
-        
-        if (newView === 'list') {
-          container.className = 'flex flex-col gap-1';
-        } else if (newView === 'grid') {
-          container.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1';
+
+        if (newView === "list") {
+          container.className = "flex flex-col gap-1";
+        } else if (newView === "grid") {
+          container.className =
+            "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1";
         }
       });
     }

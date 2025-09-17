@@ -1,8 +1,9 @@
 ---
 // src/components/wordpress/blocks/JetpackSlideshow.astro
-// FIXED: Custom slideshow component with configurable height
+// OPTIMIZED: Custom slideshow component with image loading optimization
 
-import { Image } from "astro:assets";
+import { optimizeForContext } from "@/lib/utils/image-optimization";
+import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
 
 interface Props {
   images: Array<{
@@ -64,32 +65,55 @@ const containerStyle = useAspectRatio
     aria-label="Image slideshow"
   >
     {
-      images.map((image, index) => (
-        <div
-          class={`slide absolute inset-0 transition-opacity duration-500 ${index === 0 ? "opacity-100" : "opacity-0"}`}
-          data-slide={index}
-          role="group"
-          aria-roledescription="slide"
-          aria-label={`Slide ${index + 1} of ${images.length}`}
-        >
-          <Image
-            src={image.src}
-            alt={image.alt}
-            width={800}
-            height={600}
-            class="w-full h-full object-cover"
-            loading={index === 0 ? "eager" : "lazy"}
-            format="avif"
-            quality={85}
-          />
+      images.map((image, index) => {
+        const optimizedSrc = optimizeForContext(image.src, 'gallery');
+        const imageId = `slide-${slideshowId}-${index}`;
+        const placeholderId = `${imageId}-placeholder`;
+        
+        return (
+          <div
+            class={`slide absolute inset-0 transition-opacity duration-500 ${index === 0 ? "opacity-100" : "opacity-0"}`}
+            data-slide={index}
+            role="group"
+            aria-roledescription="slide"
+            aria-label={`Slide ${index + 1} of ${images.length}`}
+          >
+            <!-- Slide Image with Loading State -->
+            <div class="relative w-full h-full">
+              <!-- Loading placeholder -->
+              <div 
+                class="loading-skeleton absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-pulse"
+                id={placeholderId}
+                style="animation: shimmer 1.5s ease-in-out infinite;"
+              >
+                <!-- El Camino logo as loading indicator -->
+                <div 
+                  class="absolute inset-0 flex items-center justify-center opacity-70"
+                  style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: 48px 42px; background-position: center; background-repeat: no-repeat;`}
+                ></div>
+              </div>
 
-          {image.caption && (
-            <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-4">
-              <p class="text-sm leading-relaxed" set:html={image.caption} />
+              <!-- Optimized image -->
+              <img
+                id={imageId}
+                src={optimizedSrc}
+                alt={image.alt}
+                class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
+                loading={index === 0 ? "eager" : "lazy"}
+                fetchpriority={index === 0 ? "high" : "auto"}
+                onload={`this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove();`}
+                onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove();`}
+              />
             </div>
-          )}
-        </div>
-      ))
+
+            {image.caption && (
+              <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-4">
+                <p class="text-sm leading-relaxed" set:html={image.caption} />
+              </div>
+            )}
+          </div>
+        );
+      })
     }
 
     <!-- Loading State -->
@@ -483,6 +507,18 @@ const containerStyle = useAspectRatio
 </script>
 
 <style>
+  /* Shimmer loading animation */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  
+  .loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
   .jetpack-slideshow {
     /* Ensure slideshow is keyboard focusable */
     &:focus-within {

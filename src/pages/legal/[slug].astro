@@ -7,11 +7,8 @@ import Layout from "@/layouts/Layout.astro";
 // Get the slug from the URL params
 const { slug } = Astro.params;
 
-// console.log("🔍 SSR Legal page request for slug:", slug);
-
 // Validate slug parameter
 if (!slug || typeof slug !== "string") {
-  console.error("❌ Invalid or missing slug parameter");
   return Astro.redirect("/404");
 }
 
@@ -39,25 +36,15 @@ try {
 
   // If not found in legal pages, try all pages as fallback
   if (!page) {
-    console.log("📄 Page not found in legal pages, trying all pages...");
     const allPages = await getPages();
     page = allPages.find((p) => p.slug === slug) || null;
   }
-
-  console.log("✅ Found page:", {
-    slug: page?.slug,
-    title: page?.title.rendered,
-    hasContent: !!page?.content.rendered,
-    contentLength: page?.content.rendered.length || 0,
-  });
 } catch (error) {
-  console.error("❌ Error fetching page:", error);
+  // Error fetching page - continue with null page
 }
 
 // If page not found, create fallback content
 if (!page) {
-  console.warn("⚠️ Page not found, using fallback content for:", slug);
-
   const fallbackTitles: Record<string, string> = {
     "privacy-policy": "Privacy Policy",
     "return-policy": "Return Policy",

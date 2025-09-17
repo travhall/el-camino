@@ -1,36 +1,75 @@
 ---
 // src/components/wordpress/blocks/WPImage.astro
-// Enhanced image component for wp-block-image
+// Enhanced image component for wp-block-image with optimized loading
 
-import { Image } from "astro:assets";
+import { optimizeImageUrl } from "@/lib/utils/image-optimization";
+import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
 
 interface Props {
   src: string;
   alt: string;
   caption?: string;
   alignment?: "default" | "wide" | "full";
+  priority?: boolean;
 }
 
-const { src, alt, caption, alignment = "default" } = Astro.props;
+const { src, alt, caption, alignment = "default", priority = false } = Astro.props;
 
 const alignmentClasses = {
   default: "max-w-4xl mx-auto",
   wide: "max-w-6xl mx-auto",
   full: "w-full",
 };
+
+// Optimize image based on alignment size
+const sizeSettings = {
+  full: { width: 1200, height: 800 },
+  wide: { width: 800, height: 600 },
+  default: { width: 600, height: 400 }
+};
+
+const optimizedSrc = optimizeImageUrl(src, sizeSettings[alignment as keyof typeof sizeSettings]);
+const imageId = `wp-img-${Math.random().toString(36).substr(2, 9)}`;
+const placeholderId = `${imageId}-placeholder`;
 ---
 
+<style>
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  
+  .loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+</style>
+
 <figure class={`wp-image my-8 ${alignmentClasses[alignment]}`}>
-  <div class="overflow-hidden bg-(--surface-secondary)">
-    <Image
-      src={src}
+  <div class="relative overflow-hidden bg-(--surface-secondary)">
+    <!-- Loading placeholder -->
+    <div 
+      class="loading-skeleton absolute inset-0 aspect-video"
+      id={placeholderId}
+      style="animation: shimmer 1.5s ease-in-out infinite;"
+    >
+      <!-- El Camino logo as loading indicator -->
+      <div 
+        class="absolute inset-0 flex items-center justify-center opacity-70"
+        style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: 48px 42px; background-position: center; background-repeat: no-repeat;`}
+      ></div>
+    </div>
+    
+    <!-- Optimized image -->
+    <img
+      id={imageId}
+      src={optimizedSrc}
       alt={alt}
-      width={800}
-      height={600}
-      class="w-full h-auto object-cover"
-      format="avif"
-      quality={85}
+      class="w-full h-auto object-cover opacity-0 transition-opacity duration-300"
       loading="lazy"
+      onload={`this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove();`}
+      onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove();`}
     />
   </div>
 
