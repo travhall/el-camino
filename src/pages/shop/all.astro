@@ -18,15 +18,15 @@ const hasFilters = Object.values(filters).some(f =>
 );
 
 const cacheControl = hasFilters
-  ? "public, max-age=60, s-maxage=120, stale-while-revalidate=300" // Shorter cache for filtered results
-  : "public, max-age=180, s-maxage=300, stale-while-revalidate=600"; // Longer cache for unfiltered
+  ? "public, max-age=60, s-max-age=120, stale-while-revalidate=300" // Shorter cache for filtered results
+  : "public, max-age=180, s-max-age=300, stale-while-revalidate=600"; // Longer cache for unfiltered
 
 // Set cache headers for this response
 Astro.response.headers.set("Cache-Control", cacheControl);
 Astro.response.headers.set("Netlify-CDN-Cache-Control", 
   hasFilters 
-    ? "public, s-maxage=120, stale-while-revalidate=600"
-    : "public, s-maxage=300, stale-while-revalidate=1800"
+    ? "public, s-max-age=120, stale-while-revalidate=600"
+    : "public, s-max-age=300, stale-while-revalidate=1800"
 );
 
 // Add cache debugging header
@@ -75,7 +75,7 @@ const hasActiveFilters = filters.brands.length > 0 || filters.availability === t
   <div class="min-h-screen bg-(--surface-primary)">
 
     <!-- Shop All Header -->
-    <div class="p-4 pb-0">
+    <div class="p-4 pb-2">
       <div class="flex flex-col lg:flex-row justify-between gap-4 items-baseline">
         <div class="flex flex-row w-full lg:w-auto justify-between gap-4 items-baseline">
           <h1 class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading)">

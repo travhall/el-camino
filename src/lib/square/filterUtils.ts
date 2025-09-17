@@ -1,4 +1,4 @@
-// src/lib/square/filterUtils.ts - Enhanced with availability filtering
+// src/lib/square/filterUtils.ts - Enhanced with batch inventory optimization
 import type {
   Product,
   ProductFilters,
@@ -6,7 +6,8 @@ import type {
   BrandOption,
 } from "./types";
 import { createFilterSlug } from "./types";
-import { getProductStockStatus } from "./inventory"; // Import inventory checking
+import { getProductStockStatus } from "./inventory"; // Import individual inventory checking (fallback)
+import { batchInventoryService } from "./batchInventory"; // Import batch inventory service
 import { filterCache } from "./cacheUtils"; // Import filter cache
 
 /**
@@ -37,7 +38,7 @@ export function extractFilterOptions(products: Product[]): FilterOptions {
 
 /**
  * Filter products based on active filters
- * ENHANCED: Now includes availability filtering
+ * ENHANCED: Now includes batch inventory optimization for availability filtering
  */
 export async function filterProducts(
   products: Product[],
@@ -53,31 +54,71 @@ export async function filterProducts(
     });
   }
 
-  // Availability filtering - NEW
+  // OPTIMIZED: Batch availability filtering
   if (filters.availability === true) {
-    // Use Promise.all to check stock status for all products in parallel
-    const stockChecks = await Promise.all(
-      filteredProducts.map(async (product) => {
-        try {
-          const stockStatus = await getProductStockStatus(product);
-          return {
-            product,
-            isInStock: !stockStatus.isOutOfStock,
-          };
-        } catch (error) {
-          // If stock check fails, assume in stock to avoid hiding products unnecessarily
-          return {
-            product,
-            isInStock: true,
-          };
+    const startTime = performance.now();
+    
+    try {
+      // Extract all variation IDs for batch processing
+      const variationIds = filteredProducts
+        .map(product => product.variationId)
+        .filter(Boolean); // Remove any undefined/null values
+      
+      if (variationIds.length === 0) {
+        // No variation IDs to check, return filtered products as-is
+        return filteredProducts;
+      }
+      
+      // Single batch API call instead of individual calls
+      const inventoryMap = await batchInventoryService.getBatchInventoryStatus(variationIds);
+      
+      // Filter products based on batch results
+      filteredProducts = filteredProducts.filter((product) => {
+        if (!product.variationId) {
+          // No variation ID - assume in stock (fail-safe behavior)
+          return true;
         }
-      })
-    );
+        
+        const inventoryStatus = inventoryMap.get(product.variationId);
+        if (!inventoryStatus || inventoryStatus.error) {
+          // No status or error - assume in stock (fail-safe behavior)
+          return true;
+        }
+        
+        // Filter out only products that are definitively out of stock
+        return !inventoryStatus.isOutOfStock;
+      });
+      
+      const duration = performance.now() - startTime;
+      console.log(`[FilterBatch] Batch inventory filter: ${products.length} → ${filteredProducts.length} products in ${duration.toFixed(2)}ms`);
+      
+    } catch (error) {
+      console.warn('[FilterBatch] Batch inventory failed, falling back to individual checks:', error);
+      
+      // Fallback to individual inventory checks
+      const stockChecks = await Promise.all(
+        filteredProducts.map(async (product) => {
+          try {
+            const stockStatus = await getProductStockStatus(product);
+            return {
+              product,
+              isInStock: !stockStatus.isOutOfStock,
+            };
+          } catch (error) {
+            // If individual check fails, assume in stock to avoid hiding products unnecessarily
+            return {
+              product,
+              isInStock: true,
+            };
+          }
+        })
+      );
 
-    // Filter to only in-stock products
-    filteredProducts = stockChecks
-      .filter(({ isInStock }) => isInStock)
-      .map(({ product }) => product);
+      // Filter to only in-stock products
+      filteredProducts = stockChecks
+        .filter(({ isInStock }) => isInStock)
+        .map(({ product }) => product);
+    }
   }
 
   return filteredProducts;
@@ -86,7 +127,7 @@ export async function filterProducts(
 /**
  * Enhanced filter products with caching
  * Phase 1: Cached filter results to eliminate repeated database queries
- * Provides significant performance improvement for repeated filter operations
+ * ENHANCED: Now uses batch inventory optimization when cache miss occurs
  */
 export async function filterProductsWithCache(
   products: Product[],
@@ -101,7 +142,7 @@ export async function filterProductsWithCache(
     console.log(`[FilterCache] Computing filter result for: ${filterKey.slice(0, 100)}...`);
     const startTime = performance.now();
     
-    // Use the existing filterProducts function
+    // Use the optimized filterProducts function (now with batch inventory)
     const result = await filterProducts(products, filters);
     
     const duration = performance.now() - startTime;
