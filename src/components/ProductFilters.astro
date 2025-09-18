@@ -38,11 +38,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     transition: none;
   }
   
-  /* Keep basic product visibility transitions */
-  .product-card-wrapper {
-    transition: none;
-  }
-  
   .product-card-wrapper[style*="display: none"] {
     display: none !important;
   }
@@ -323,25 +318,46 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     const grid = document.getElementById("filterable-product-grid");
     if (!grid) return;
     
-    // Get all existing product wrappers
     const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
-    
-    // Create Set of visible product IDs for O(1) lookup
     const visibleProductIds = new Set(this.visibleProducts.map(p => p.id));
-    
-    // Show/hide products efficiently
+
+    // Get animation timing from CSS
+    const duration = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--card-transition-duration').replace('s', '')) * 1000 || 300;
+    const staggerDelay = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--card-stagger-delay')) || 50;
+
+    // Step 1: Exit all cards
     allWrappers.forEach((wrapper) => {
-      const productId = wrapper.getAttribute('data-product-id');
-      const isVisible = visibleProductIds.has(productId);
-      
-      if (isVisible) {
-        (wrapper as HTMLElement).style.display = '';
-      } else {
-        (wrapper as HTMLElement).style.display = 'none';
-      }
+      wrapper.classList.remove('opacity-100');
+      wrapper.classList.add('opacity-0');
     });
-    
-    this.updateNoResultsState();
+
+    // Step 2: Show/hide and animate visible cards
+    setTimeout(() => {
+      let visibleIndex = 0;
+      
+      allWrappers.forEach((wrapper) => {
+        const productId = wrapper.getAttribute('data-product-id');
+        const isVisible = visibleProductIds.has(productId);
+
+        if (isVisible) {
+          // Show card and animate in with stagger
+          (wrapper as HTMLElement).style.display = '';
+          
+          setTimeout(() => {
+            wrapper.classList.remove('opacity-0');
+            wrapper.classList.add('opacity-100');
+          }, visibleIndex * staggerDelay);
+          
+          visibleIndex++;
+        } else {
+          // Hide card completely
+          (wrapper as HTMLElement).style.display = 'none';
+        }
+      });
+      
+    }, duration);
   }
   
   private updateResultCount(): void {
@@ -406,13 +422,55 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     this.visibleCount = newVisibleCount;
     this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
     
-    // CRITICAL: Update the grid to show more products
-    this.updateProductGrid();
+    // CRITICAL: Show newly loaded products with animation
+    this.loadMoreProductsWithAnimation(previousVisibleCount, newVisibleCount);
     
     // CRITICAL: Update infinite scroll trigger state
     this.updateInfiniteScrollTrigger();
     
     console.log(`[StreamlinedFilterEngine] ✅ Successfully loaded: now showing ${this.visibleCount}/${this.filteredProducts.length}`);
+  }
+  
+  private loadMoreProductsWithAnimation(previousCount: number, newCount: number): void {
+    const grid = document.getElementById("filterable-product-grid");
+    if (!grid) return;
+    
+    const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
+    const newlyVisibleProducts = this.visibleProducts.slice(previousCount, newCount);
+    
+    // Get animation timing from CSS
+    const staggerDelay = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--card-stagger-delay')) || 50;
+    const duration = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--card-transition-duration').replace('s', '')) * 1000 || 300;
+    
+    console.log(`[StreamlinedFilterEngine] Animating ${newlyVisibleProducts.length} newly loaded cards`);
+    
+    // Animate newly loaded cards with stagger
+    newlyVisibleProducts.forEach((product, index) => {
+      const wrapper = allWrappers.find(w => w.getAttribute('data-product-id') === product.id);
+      if (wrapper) {
+        // Ensure card is in proper initial state
+        wrapper.classList.add('animating');
+        wrapper.classList.remove('opacity-100');
+        wrapper.classList.add('opacity-0');
+        (wrapper as HTMLElement).style.display = '';
+        
+        // Staggered entrance animation
+        setTimeout(() => {
+          wrapper.classList.remove('opacity-0');
+          wrapper.classList.add('opacity-100');
+          
+          // Clean up animation state
+          setTimeout(() => {
+            wrapper.classList.remove('animating');
+          }, duration);
+          
+        }, index * staggerDelay);
+      } else {
+        console.warn(`[StreamlinedFilterEngine] Could not find wrapper for product ${product.id}`);
+      }
+    });
   }
   
   private updateInfiniteScrollTrigger(): void {

@@ -53,20 +53,44 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
 ---
 
 <style>
+  /* Animation Configuration */
+  :root {
+    --card-transition-duration: 0.3s;
+    --card-stagger-delay: 50ms;
+  }
+  
+  /* Respect reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --card-transition-duration: 0.1s;
+      --card-stagger-delay: 0ms;
+    }
+  }
+
   /* SMOOTH FILTERING: Prevent layout shifts with opacity transitions */
   .product-card-wrapper {
-    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+    transition: opacity var(--card-transition-duration) ease, 
+                transform var(--card-transition-duration) ease;
     will-change: opacity, transform;
   }
   
   .product-card-wrapper.opacity-0 {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.95) translate3d(0, 10px, 0);
   }
   
   .product-card-wrapper.opacity-100 {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  
+  /* Animation states for different scenarios */
+  .product-card-wrapper.animating {
+    will-change: opacity, transform;
+  }
+  
+  .product-card-wrapper:not(.animating) {
+    will-change: auto;
   }
   
   /* MOBILE INFINITE SCROLL: Better spacing and loading states */
@@ -88,7 +112,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
   {
     productsWithInventory.map((product, index) => (
       <div
-        class="product-card-wrapper grid opacity-100 scale-100"
+        class="product-card-wrapper grid opacity-0"
         data-product-id={product.id}
         data-brand={product.brand || ""}
         data-initial-index={index}
@@ -169,6 +193,52 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
 </div>
 
 <script>
+  // Animation configuration
+  const ANIMATION_CONFIG = {
+    staggerDelay: parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--card-stagger-delay')) || 50,
+    duration: parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue('--card-transition-duration').replace('s', '')) * 1000 || 300
+  };
+
+  // Page load entrance animations with stagger
+  function initializePageLoadAnimations() {
+    const cards = document.querySelectorAll('.product-card-wrapper.opacity-0');
+    if (!cards.length) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const card = entry.target as HTMLElement;
+          const index = parseInt(card.dataset.initialIndex || '0');
+          
+          // Add animating class for will-change optimization
+          card.classList.add('animating');
+          
+          // Staggered entrance animation
+          setTimeout(() => {
+            card.classList.remove('opacity-0');
+            card.classList.add('opacity-100');
+            
+            // Remove will-change after animation completes
+            setTimeout(() => {
+              card.classList.remove('animating');
+            }, ANIMATION_CONFIG.duration);
+            
+          }, index * ANIMATION_CONFIG.staggerDelay);
+          
+          // Stop observing this card
+          observer.unobserve(card);
+        }
+      });
+    }, {
+      threshold: 0.1,
+      rootMargin: '50px'
+    });
+
+    cards.forEach(card => observer.observe(card));
+  }
+
   // Handle filter state restoration
   document.addEventListener("astro:page-load", () => {
     const grid = document.getElementById("filterable-product-grid");
@@ -182,6 +252,9 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
       grid.style.opacity = "1";
       grid.style.transition = "opacity 0.3s ease";
     }
+    
+    // Initialize page load animations
+    initializePageLoadAnimations();
     
     // Initialize infinite scroll
     initializeInfiniteScroll();

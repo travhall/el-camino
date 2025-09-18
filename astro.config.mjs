@@ -34,7 +34,12 @@ export default defineConfig({
   },
 
   image: {
-    service: { entrypoint: "astro/assets/services/sharp" },
+    service: { 
+      entrypoint: "astro/assets/services/sharp",
+      config: {
+        limitInputPixels: false,  // Prevent Sharp memory issues
+      }
+    },
     domains: [
       "elcaminoskateshop.wordpress.com",
       "api.elcaminoskateshop.com",
