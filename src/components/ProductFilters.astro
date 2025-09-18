@@ -606,14 +606,20 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const hasFilters = criteria.brands.length > 0 || criteria.availability;
       
       if (!hasFilters) {
-        // Hide container when no filters
-        appliedFiltersContainer.style.display = 'none';
+        // Use CSS Grid animation to hide
+        appliedFiltersContainer.classList.remove('filters-open');
+        // Clear content after animation completes
+        setTimeout(() => {
+          if (!appliedFiltersContainer.classList.contains('filters-open')) {
+            appliedFiltersContent.innerHTML = '';
+          }
+        }, 300);
         return;
       }
       
-      // Show container and clear existing content
-      appliedFiltersContainer.style.display = 'block';
+      // Show container using CSS Grid animation and populate content
       appliedFiltersContent.innerHTML = '';
+      appliedFiltersContainer.classList.add('filters-open');
       
       // Create filters wrapper
       const filtersWrapper = document.createElement('div');
