@@ -238,7 +238,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   private products: any[] = [];
   private filteredProducts: any[] = [];
   private visibleProducts: any[] = [];
-  private visibleCount: number = 24;
+  private visibleCount: number = 0; // Will be set responsively in initializeProducts
   private infiniteScrollObserver: IntersectionObserver | null = null;
   
   constructor() {
@@ -266,8 +266,13 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       }
       this.products = JSON.parse(productData);
       this.filteredProducts = [...this.products];
+      
+      // Set initial visible count responsively
+      const initialBatchSize = this.getNextBatchSize() * 4; // Show ~4 rows initially
+      this.visibleCount = Math.min(initialBatchSize, this.filteredProducts.length);
       this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
-      console.log(`[StreamlinedFilterEngine] Initialized with ${this.products.length} products`);
+      
+      console.log(`[StreamlinedFilterEngine] Initialized with ${this.products.length} products, showing initial ${this.visibleCount} on ${this.calculateCardsPerRow()}-column grid`);
     } catch (error) {
       console.error("[StreamlinedFilterEngine] Failed to parse product data:", error);
     }
@@ -279,8 +284,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       this.matchesCriteria(product, criteria)
     );
     
-    // Reset visible count and products for new filter
-    this.visibleCount = Math.min(24, this.filteredProducts.length);
+    // Reset visible count and products for new filter - use responsive sizing
+    const initialBatchSize = this.getNextBatchSize() * 4; // Show ~4 rows initially after filtering
+    this.visibleCount = Math.min(initialBatchSize, this.filteredProducts.length);
     this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
     
     // Simple DOM updates
@@ -321,11 +327,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
     const visibleProductIds = new Set(this.visibleProducts.map(p => p.id));
 
-    // Get animation timing from CSS
-    const duration = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--card-transition-duration').replace('s', '')) * 1000 || 300;
-    const staggerDelay = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--card-stagger-delay')) || 50;
+    // Get animation timing using fixed CSS parsing
+    const { duration, staggerDelay } = this.getAnimationTiming();
 
     // Step 1: Exit all cards
     allWrappers.forEach((wrapper) => {
@@ -394,6 +397,49 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
   }
   
+  // Responsive batch calculation based on current grid layout
+  private calculateCardsPerRow(): number {
+    const screenWidth = window.innerWidth;
+    console.log(`[StreamlinedFilterEngine] Screen width: ${screenWidth}px`);
+    
+    if (screenWidth >= 1536) return 6; // 2xl
+    if (screenWidth >= 1280) return 4; // xl  
+    if (screenWidth >= 1024) return 3; // lg
+    if (screenWidth >= 768) return 2;  // md
+    return 2; // default
+  }
+
+  private getNextBatchSize(): number {
+    const cardsPerRow = this.calculateCardsPerRow();
+    const batchSize = cardsPerRow * 2; // Load 2 rows at a time for smooth experience
+    console.log(`[StreamlinedFilterEngine] Calculated batch size: ${batchSize} (${cardsPerRow} cards per row × 2 rows)`);
+    return batchSize;
+  }
+
+  // Fixed CSS parsing for animation timing
+  private getAnimationTiming() {
+    const style = getComputedStyle(document.documentElement);
+    
+    // Properly parse duration (handles "0.3s", "300ms", etc.)
+    const durationStr = style.getPropertyValue('--card-transition-duration').trim();
+    console.log(`[StreamlinedFilterEngine] CSS duration value: "${durationStr}"`);
+    const duration = durationStr.includes('ms') 
+      ? parseInt(durationStr.replace('ms', ''))
+      : parseFloat(durationStr.replace('s', '')) * 1000;
+    
+    // Properly parse stagger delay (handles "50ms", "0ms", etc.)
+    const staggerStr = style.getPropertyValue('--card-stagger-delay').trim();
+    console.log(`[StreamlinedFilterEngine] CSS stagger value: "${staggerStr}"`);
+    const staggerDelay = parseInt(staggerStr.replace('ms', '')) || 0;
+    
+    console.log(`[StreamlinedFilterEngine] Parsed timing - Duration: ${duration}ms, Stagger: ${staggerDelay}ms`);
+    
+    return {
+      duration: duration || 300,
+      staggerDelay: staggerDelay
+    };
+  }
+
   private hasMoreProducts(): boolean {
     const hasMore = this.visibleCount < this.filteredProducts.length;
     console.log(`[StreamlinedFilterEngine] hasMoreProducts: ${hasMore} (${this.visibleCount} < ${this.filteredProducts.length})`);
@@ -404,14 +450,14 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     // CRITICAL: Ensure pagination stays hidden during scroll loading
     this.forceHidePagination();
     
-    const nextBatch = 24;
+    const nextBatch = this.getNextBatchSize(); // Responsive batch size
     const previousVisibleCount = this.visibleCount;
     const newVisibleCount = Math.min(
       this.visibleCount + nextBatch, 
       this.filteredProducts.length
     );
     
-    console.log(`[StreamlinedFilterEngine] Loading batch: ${previousVisibleCount} → ${newVisibleCount} of ${this.filteredProducts.length}`);
+    console.log(`[StreamlinedFilterEngine] Loading batch: ${previousVisibleCount} → ${newVisibleCount} of ${this.filteredProducts.length} (${nextBatch} cards on ${this.calculateCardsPerRow()}-column grid)`);
     
     if (newVisibleCount === this.visibleCount) {
       console.log(`[StreamlinedFilterEngine] ⚠️ No more products to load`);
@@ -438,38 +484,44 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
     const newlyVisibleProducts = this.visibleProducts.slice(previousCount, newCount);
     
-    // Get animation timing from CSS
-    const staggerDelay = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--card-stagger-delay')) || 50;
-    const duration = parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--card-transition-duration').replace('s', '')) * 1000 || 300;
+    // Get animation timing using fixed CSS parsing
+    const { duration, staggerDelay } = this.getAnimationTiming();
     
-    console.log(`[StreamlinedFilterEngine] Animating ${newlyVisibleProducts.length} newly loaded cards`);
+    console.log(`[StreamlinedFilterEngine] Animating ${newlyVisibleProducts.length} newly loaded cards with ${staggerDelay}ms stagger`);
     
-    // Animate newly loaded cards with stagger
-    newlyVisibleProducts.forEach((product, index) => {
-      const wrapper = allWrappers.find(w => w.getAttribute('data-product-id') === product.id);
+    // First, prepare all cards in initial state
+    const wrappersToAnimate: HTMLElement[] = [];
+    newlyVisibleProducts.forEach((product) => {
+      const wrapper = allWrappers.find(w => w.getAttribute('data-product-id') === product.id) as HTMLElement;
       if (wrapper) {
-        // Ensure card is in proper initial state
         wrapper.classList.add('animating');
         wrapper.classList.remove('opacity-100');
         wrapper.classList.add('opacity-0');
-        (wrapper as HTMLElement).style.display = '';
-        
-        // Staggered entrance animation
-        setTimeout(() => {
-          wrapper.classList.remove('opacity-0');
-          wrapper.classList.add('opacity-100');
-          
-          // Clean up animation state
-          setTimeout(() => {
-            wrapper.classList.remove('animating');
-          }, duration);
-          
-        }, index * staggerDelay);
+        wrapper.style.display = '';
+        wrappersToAnimate.push(wrapper);
       } else {
         console.warn(`[StreamlinedFilterEngine] Could not find wrapper for product ${product.id}`);
       }
+    });
+    
+    console.log(`[StreamlinedFilterEngine] Found ${wrappersToAnimate.length} wrappers to animate`);
+    
+    // Then animate them with proper stagger using sequential timing
+    wrappersToAnimate.forEach((wrapper, index) => {
+      const animationDelay = index * staggerDelay;
+      console.log(`[StreamlinedFilterEngine] Card ${index}: scheduling animation in ${animationDelay}ms`);
+      
+      setTimeout(() => {
+        console.log(`[StreamlinedFilterEngine] Card ${index}: animating now`);
+        wrapper.classList.remove('opacity-0');
+        wrapper.classList.add('opacity-100');
+        
+        // Clean up animation state after transition completes
+        setTimeout(() => {
+          wrapper.classList.remove('animating');
+        }, duration);
+        
+      }, animationDelay);
     });
   }
   
@@ -513,7 +565,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
           isLoading = true;
           console.log(`[StreamlinedFilterEngine] 📜 Loading more products...`);
           
-          // Use QuickView loading pattern for consistency
+          // Show loading state
           trigger.innerHTML = `
             <div class="col-span-full text-center py-8 flex flex-row gap-2 justify-center items-center my-4">
               <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-(--content-heading)">
@@ -522,8 +574,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             </div>
           `;
           
-          // Load more products with timeout to ensure completion
-          setTimeout(() => {
+          // Use requestAnimationFrame for smooth loading - no artificial delays
+          requestAnimationFrame(() => {
             try {
               this.loadMoreProducts();
               isLoading = false;
@@ -533,12 +585,12 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
               isLoading = false;
               this.updateInfiniteScrollTrigger(); // Reset trigger on error
             }
-          }, 600);
+          });
         }
       });
     }, { 
       threshold: 0.1,
-      rootMargin: "50px"
+      rootMargin: "150px" // Larger margin for smoother fast scrolling
     });
     
     this.infiniteScrollObserver.observe(trigger);

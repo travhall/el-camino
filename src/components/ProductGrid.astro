@@ -315,21 +315,40 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
           
           // Load next batch after short delay for smooth UX
           setTimeout(() => {
-            const nextBatch = 24;
+            // Responsive batch calculation
+            function calculateCardsPerRow() {
+              const screenWidth = window.innerWidth;
+              if (screenWidth >= 1536) return 6; // 2xl
+              if (screenWidth >= 1280) return 4; // xl  
+              if (screenWidth >= 1024) return 3; // lg
+              if (screenWidth >= 768) return 2;  // md
+              return 2; // default
+            }
+            
+            const cardsPerRow = calculateCardsPerRow();
+            const nextBatch = cardsPerRow * 2; // Load 2 rows at a time
             const newVisibleCount = Math.min(visibleCount + nextBatch, allCards.length);
             
-            // Show the next batch of cards
+            console.log(`[ProductGrid] Loading ${nextBatch} cards (${cardsPerRow} per row × 2 rows)`);
+            
+            // Show the next batch of cards with stagger
+            const newCards: HTMLElement[] = [];
             for (let i = visibleCount; i < newVisibleCount; i++) {
               if (allCards[i]) {
-                (allCards[i] as HTMLElement).style.display = '';
-                // Add fade-in animation
-                allCards[i].classList.add('opacity-0');
-                setTimeout(() => {
-                  allCards[i].classList.remove('opacity-0');
-                  allCards[i].classList.add('opacity-100');
-                }, 50);
+                const card = allCards[i] as HTMLElement;
+                card.style.display = '';
+                card.classList.add('opacity-0');
+                newCards.push(card);
               }
             }
+            
+            // Animate cards with stagger
+            newCards.forEach((card, index) => {
+              setTimeout(() => {
+                card.classList.remove('opacity-0');
+                card.classList.add('opacity-100');
+              }, index * 50); // 50ms stagger
+            });
             
             visibleCount = newVisibleCount;
             console.log(`[ProductGrid] Now showing ${visibleCount}/${allCards.length} products`);
