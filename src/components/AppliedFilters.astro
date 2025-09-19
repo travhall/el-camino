@@ -12,7 +12,6 @@ const { categoryPath = "", classes } = Astro.props;
 const currentParams = new URLSearchParams(Astro.url.search);
 const currentBrands = currentParams.getAll("brands") || [];
 const currentAvailability = currentParams.get("availability") === "true";
-const currentPageSize = currentParams.get("pageSize") || "24";
 
 // Only show content if there are active filters, but always render container for client-side updates
 const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
@@ -32,11 +31,6 @@ function buildRemoveFilterUrl(brandToRemove: string): string {
     params.set("availability", "true");
   }
 
-  // Preserve page size
-  if (currentPageSize !== "24") {
-    params.set("pageSize", currentPageSize);
-  }
-
   const queryString = params.toString();
   const basePath = categoryPath || Astro.url.pathname;
   return `${basePath}${queryString ? "?" + queryString : ""}`;
@@ -51,11 +45,6 @@ function buildRemoveAvailabilityUrl(): string {
     params.append("brands", brand);
   });
 
-  // Preserve page size
-  if (currentPageSize !== "24") {
-    params.set("pageSize", currentPageSize);
-  }
-
   const queryString = params.toString();
   const basePath = categoryPath || Astro.url.pathname;
   return `${basePath}${queryString ? "?" + queryString : ""}`;
@@ -64,9 +53,6 @@ function buildRemoveAvailabilityUrl(): string {
 // Clear all filters URL
 function buildClearAllUrl(): string {
   const params = new URLSearchParams();
-  if (currentPageSize !== "24") {
-    params.set("pageSize", currentPageSize);
-  }
 
   const queryString = params.toString();
   const basePath = categoryPath || Astro.url.pathname;
@@ -79,13 +65,18 @@ function buildClearAllUrl(): string {
   .applied-filters-grid {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 300ms ease;
-    overflow: hidden;
+    transition:
+      grid-template-rows 300ms ease,
+      opacity 300ms ease,
+      margin-bottom 300ms ease;
+    /* overflow: hidden; */
+    opacity: 0;
   }
 
   .applied-filters-grid.filters-open {
     grid-template-rows: 1fr;
     margin-bottom: 0.5rem;
+    opacity: 1;
   }
 
   .applied-filters-content {
@@ -199,9 +190,6 @@ function buildClearAllUrl(): string {
         } else {
           // Fallback to server-side navigation
           const params = new URLSearchParams();
-          const currentPageSize =
-            new URLSearchParams(window.location.search).get("pageSize") || "24";
-          if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
 
           const queryString = params.toString();
           const basePath = window.location.pathname;
@@ -243,7 +231,6 @@ function buildClearAllUrl(): string {
     const currentParams = new URLSearchParams(window.location.search);
     const currentBrands = currentParams.getAll("brands") || [];
     const currentAvailability = currentParams.get("availability") === "true";
-    const currentPageSize = currentParams.get("pageSize") || "24";
 
     const params = new URLSearchParams();
 
@@ -257,8 +244,6 @@ function buildClearAllUrl(): string {
       // Keep brands, remove availability
       currentBrands.forEach((brand) => params.append("brands", brand));
     }
-
-    if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
 
     const queryString = params.toString();
     const basePath = window.location.pathname;

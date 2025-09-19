@@ -46,10 +46,10 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
         const theme = storedTheme ?? (systemPrefersDark ? "dark" : "light");
         document.documentElement.classList.add(theme);
         document.documentElement.setAttribute("data-theme", theme);
-        
+
         // Font loading state management
         document.documentElement.classList.add("fonts-loading");
-        
+
         // Check if fonts are already cached
         if (sessionStorage.getItem("fonts-loaded")) {
           document.documentElement.classList.remove("fonts-loading");
@@ -57,7 +57,10 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
         } else {
           // Wait for preloaded fonts to be available, then verify loading
           // This works better with link rel="preload" elements
-          if (document.fonts.check("700 48px Alumni") && document.fonts.check("400 16px Cabin")) {
+          if (
+            document.fonts.check("700 48px Alumni") &&
+            document.fonts.check("400 16px Cabin")
+          ) {
             // Fonts already available (likely from preload)
             document.documentElement.classList.remove("fonts-loading");
             document.documentElement.classList.add("fonts-loaded");
@@ -66,15 +69,17 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
             // Force load fonts if not already available
             Promise.all([
               document.fonts.load("700 48px Alumni"),
-              document.fonts.load("400 16px Cabin")
-            ]).then(() => {
-              document.documentElement.classList.remove("fonts-loading");
-              document.documentElement.classList.add("fonts-loaded");
-              sessionStorage.setItem("fonts-loaded", "true");
-            }).catch(() => {
-              document.documentElement.classList.remove("fonts-loading");
-              document.documentElement.classList.add("fonts-failed");
-            });
+              document.fonts.load("400 16px Cabin"),
+            ])
+              .then(() => {
+                document.documentElement.classList.remove("fonts-loading");
+                document.documentElement.classList.add("fonts-loaded");
+                sessionStorage.setItem("fonts-loaded", "true");
+              })
+              .catch(() => {
+                document.documentElement.classList.remove("fonts-loading");
+                document.documentElement.classList.add("fonts-failed");
+              });
           }
         }
       })();
@@ -105,16 +110,22 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <style>
       /* Critical inline fonts for h1 elements - prevents FOUT */
       h1 {
-        font-family: "Alumni", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        font-family:
+          "Alumni",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          system-ui,
+          sans-serif;
         font-synthesis: none;
         font-optical-sizing: auto;
       }
-      
+
       /* Ensure proper font loading states */
       .fonts-loading h1 {
         visibility: hidden;
       }
-      
+
       .fonts-loaded h1,
       .fonts-failed h1 {
         visibility: visible;
@@ -319,16 +330,19 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           // Simple performance metrics for dashboard
           setTimeout(() => {
             const metrics = performanceManager.getAllMetrics();
-            
+
             // Store basic metrics for admin dashboard
             if (metrics.coreWebVitals.lcp) {
-              localStorage.setItem('webVitalsData', JSON.stringify({
-                timestamp: Date.now(),
-                lcp: metrics.coreWebVitals.lcp,
-                cls: metrics.coreWebVitals.cls,
-                inp: metrics.coreWebVitals.inp,
-                url: window.location.pathname
-              }));
+              localStorage.setItem(
+                "webVitalsData",
+                JSON.stringify({
+                  timestamp: Date.now(),
+                  lcp: metrics.coreWebVitals.lcp,
+                  cls: metrics.coreWebVitals.cls,
+                  inp: metrics.coreWebVitals.inp,
+                  url: window.location.pathname,
+                })
+              );
             }
           }, 10000);
         })
@@ -341,20 +355,29 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
 
       // Critical performance optimizations for immediate execution
       (function () {
-        if ('HTMLCanvasElement' in window && !sessionStorage.getItem('imageFormatSupport')) {
-          import('../lib/image/enhanced-optimizer').then(({ EnhancedImageOptimizer }) => {
-            EnhancedImageOptimizer.detectFormatSupport();
-          });
+        if (
+          "HTMLCanvasElement" in window &&
+          !sessionStorage.getItem("imageFormatSupport")
+        ) {
+          import("../lib/image/enhanced-optimizer").then(
+            ({ EnhancedImageOptimizer }) => {
+              EnhancedImageOptimizer.detectFormatSupport();
+            }
+          );
         }
 
         if (window.innerWidth <= 1024) {
-          import('../lib/performance/mobileOptimization').then(({ initMobileOptimization }) => {
-            initMobileOptimization();
-          });
+          import("../lib/performance/mobileOptimization").then(
+            ({ initMobileOptimization }) => {
+              initMobileOptimization();
+            }
+          );
         }
 
         if (import.meta.env.DEV) {
-          console.log("[Layout] Performance optimizations active: Enhanced images, Mobile optimization");
+          console.log(
+            "[Layout] Performance optimizations active: Enhanced images, Mobile optimization"
+          );
         }
       })();
     </script>

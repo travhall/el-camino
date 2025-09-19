@@ -95,7 +95,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     class="filters-disabled lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-[28rem] lg:w-auto bg-(--surface-secondary) z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
   >
     <form method="GET" action={categoryPath || ""} class="px-4 lg:p-2" id="filter-form">
-      <input type="hidden" name="pageSize" value={currentPageSize} />
 
       <!-- Mobile Header -->
       <div class="flex items-center justify-between mb-4 p-6 -mx-4 bg-(--surface-secondary) border border-b-(--border-tertiary) sticky top-0 z-50 lg:hidden">
@@ -107,7 +106,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         </button>
       </div>
 
-      <!-- Results Count - DAY 2: Enhanced for client-side updates -->
+      <!-- Results Count -->
       <div class="min-w-fit mt-2 mb-4">
         <div class="lg:hidden p-3 bg-(--surface-tertiary) rounded-sm">
           <p class="text-sm text-(--content-meta)" data-result-count>
@@ -232,8 +231,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 </div>
 
 <script>
-  // DAY 2: Ultimate Filter Engine - Eliminates FOUT and Phantom Clicks 
-  // cSpell:ignore FOUT
   class StreamlinedFilterEngine {
   private products: any[] = [];
   private filteredProducts: any[] = [];
@@ -314,11 +311,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     
     return true;
   }
-  
-  private updateDOM(): void {
-    this.updateProductGrid();
-    this.updateResultCount();
-  }
     
   private updateProductGrid(): void {
     const grid = document.getElementById("filterable-product-grid");
@@ -390,13 +382,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
   }
   
-  private forceHidePagination(): void {
-    const pagination = document.getElementById('server-side-pagination') as HTMLElement;
-    if (pagination) {
-      pagination.style.display = 'none';
-    }
-  }
-  
   // Responsive batch calculation based on current grid layout
   private calculateCardsPerRow(): number {
     const screenWidth = window.innerWidth;
@@ -447,9 +432,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   }
   
   private loadMoreProducts(): void {
-    // CRITICAL: Ensure pagination stays hidden during scroll loading
-    this.forceHidePagination();
-    
     const nextBatch = this.getNextBatchSize(); // Responsive batch size
     const previousVisibleCount = this.visibleCount;
     const newVisibleCount = Math.min(
@@ -468,10 +450,10 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     this.visibleCount = newVisibleCount;
     this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
     
-    // CRITICAL: Show newly loaded products with animation
+    // Show newly loaded products with animation
     this.loadMoreProductsWithAnimation(previousVisibleCount, newVisibleCount);
     
-    // CRITICAL: Update infinite scroll trigger state
+    // Update infinite scroll trigger state
     this.updateInfiniteScrollTrigger();
     
     console.log(`[StreamlinedFilterEngine] ✅ Successfully loaded: now showing ${this.visibleCount}/${this.filteredProducts.length}`);
@@ -533,7 +515,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     console.log(`[StreamlinedFilterEngine] Trigger update: hasMore=${hasMore}, visible=${this.visibleCount}/${this.filteredProducts.length}`);
     
     if (hasMore) {
-      // CRITICAL: Clear loading content and set to invisible trigger state
+      // Clear loading content and set to invisible trigger state
       trigger.innerHTML = '';
       trigger.style.display = "flex";
       trigger.style.visibility = "visible";
@@ -791,12 +773,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         this.filterEngine = new StreamlinedFilterEngine();
         console.log('[ResponsiveFilters] ✅ Streamlined filtering enabled');
         
-        // Hide pagination when client-side filtering is active
-        const pagination = document.getElementById('server-side-pagination') as HTMLElement;
-        if (pagination) {
-          pagination.style.display = 'none';
-        }
-        
       } catch (error) {
         console.error('[ResponsiveFilters] ❌ Filter engine initialization failed:', error);
         this.filterEngine = null;
@@ -844,7 +820,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       document.body.style.overflow = "";
     }
 
-    // DAY 2: Enhanced Desktop Filtering with INSTANT client-side filtering
     // ELIMINATES FOUT: No page reloads ever  
     // ELIMINATES PHANTOM CLICKS: Immediate interaction blocking
     private setupDesktopFiltering(): void {
@@ -853,7 +828,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
       
       checkboxes.forEach((checkbox) => {
-        // CRITICAL: Remove all existing event listeners by cloning the element
+        // Remove all existing event listeners by cloning the element
         const newCheckbox = checkbox.cloneNode(true) as HTMLInputElement;
         checkbox.parentNode?.replaceChild(newCheckbox, checkbox);
         
@@ -987,34 +962,21 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const clearBtnMobile = document.querySelector("[data-clear-filters-mobile]");
 
       // UNIFIED: Both desktop and mobile clear buttons use same logic as AppliedFilters
-      clearBtn?.addEventListener("click", () => this.handleUnifiedClear());
-      clearBtnMobile?.addEventListener("click", () => {
-        // Close mobile drawer first, then clear
-        this.closeMobileDrawer();
-        // Use same unified clear logic 
-        this.handleUnifiedClear();
-      });
-    }
-
-    private handleUnifiedClear(): void {
-      // Use exact same pattern as AppliedFilters' "Clear All" button
+      clearBtn?.addEventListener("click", () => {
       const filterInstance = (window as any).currentFilterInstance;
       if (filterInstance?.clearAllFilters) {
         filterInstance.clearAllFilters();
-      } else {
-        // Fallback to server-side navigation (same as AppliedFilters)
-        const params = new URLSearchParams();
-        const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
-        if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
-        
-        const queryString = params.toString();
-        const basePath = window.location.pathname;
-        const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
-        window.location.href = newUrl;
       }
+    });
+      clearBtnMobile?.addEventListener("click", () => {
+        // Close mobile drawer first, then clear
+        this.closeMobileDrawer();
+        const filterInstance = (window as any).currentFilterInstance;
+        if (filterInstance?.clearAllFilters) {
+          filterInstance.clearAllFilters();
+        }
+      });
     }
-
-
 
     public clearAllFilters(): void {
       if (this.filterEngine) {
@@ -1028,8 +990,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       } else {
         // Fallback to server-side
         const params = new URLSearchParams();
-        const currentPageSize = new URLSearchParams(window.location.search).get("pageSize") || "24";
-        if (currentPageSize !== "24") params.set("pageSize", currentPageSize);
         this.navigateWithParams(params);
       }
     }
@@ -1047,7 +1007,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     destroy(): void {
       document.body.style.overflow = "";
       
-      // DAY 2: Clean up filter engine
       if (this.filterEngine) {
         this.filterEngine.destroy();
         this.filterEngine = null;
