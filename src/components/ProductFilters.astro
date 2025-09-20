@@ -305,8 +305,18 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
     const visibleProductIds = new Set(this.filteredProducts.map(p => p.id));
 
-    // Get animation timing using fixed CSS parsing
-    const { duration, staggerDelay } = this.getAnimationTiming();
+    // Get animation timing with row-based calculations
+    const { duration, staggerDelay, rowStaggerDelay } = this.getAnimationTiming();
+
+    // Helper function to calculate responsive grid
+    function getCardsPerRow() {
+      const width = window.innerWidth;
+      if (width >= 1536) return 6; // 2xl:grid-cols-6
+      if (width >= 1280) return 4; // xl:grid-cols-4
+      if (width >= 1024) return 3; // lg:grid-cols-3
+      if (width >= 768) return 2;  // md:grid-cols-2
+      return 2; // fallback
+    }
 
     // Step 1: Exit all cards
     allWrappers.forEach((wrapper) => {
@@ -314,29 +324,44 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       wrapper.classList.add('opacity-0');
     });
 
-    // Step 2: Show/hide and animate visible cards
+    // Step 2: Show/hide and animate visible cards with row-based stagger
     setTimeout(() => {
       let visibleIndex = 0;
+      const cardsPerRow = getCardsPerRow();
       
       allWrappers.forEach((wrapper) => {
         const productId = wrapper.getAttribute('data-product-id');
         const isVisible = visibleProductIds.has(productId);
 
         if (isVisible) {
-          // Show card and animate in with stagger
+          // Show card and animate in with combined row + individual card stagger
           (wrapper as HTMLElement).style.display = '';
+          (wrapper as HTMLElement).removeAttribute('data-filter-hidden');
+          
+          // Calculate both row index and individual stagger
+          const rowIndex = Math.floor(visibleIndex / cardsPerRow);
+          const cardInRow = visibleIndex % cardsPerRow;
+          
+          // Combined delay: row delay + individual card delay within row
+          const baseRowDelay = rowIndex * rowStaggerDelay;
+          const cardDelay = cardInRow * (staggerDelay / 1.2); // More pronounced individual stagger
+          const totalDelay = baseRowDelay + cardDelay;
           
           setTimeout(() => {
             wrapper.classList.remove('opacity-0');
             wrapper.classList.add('opacity-100');
-          }, visibleIndex * staggerDelay);
+          }, totalDelay);
           
           visibleIndex++;
         } else {
-          // Hide card completely
+          // Hide card completely and mark as filtered
           (wrapper as HTMLElement).style.display = 'none';
+          (wrapper as HTMLElement).setAttribute('data-filter-hidden', 'true');
         }
       });
+      
+      // Enhanced: Notify ProductGrid that filters have been applied
+      document.dispatchEvent(new CustomEvent("filtersApplied"));
       
     }, duration);
   }
@@ -368,7 +393,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
   }
 
-  // Fixed CSS parsing for animation timing
+  // Enhanced CSS parsing for animation timing with row-based calculations
   private getAnimationTiming() {
     const style = getComputedStyle(document.documentElement);
     
@@ -383,12 +408,18 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     const staggerStr = style.getPropertyValue('--card-stagger-delay').trim();
     console.log(`[StreamlinedFilterEngine] CSS stagger value: "${staggerStr}"`);
     const staggerDelay = parseInt(staggerStr.replace('ms', '')) || 0;
+
+    // Parse row stagger delay for row-based animations
+    const rowStaggerStr = style.getPropertyValue('--row-stagger-delay').trim();
+    console.log(`[StreamlinedFilterEngine] CSS row stagger value: "${rowStaggerStr}"`);
+    const rowStaggerDelay = parseInt(rowStaggerStr.replace('ms', '')) || 100;
     
-    console.log(`[StreamlinedFilterEngine] Parsed timing - Duration: ${duration}ms, Stagger: ${staggerDelay}ms`);
+    console.log(`[StreamlinedFilterEngine] Parsed timing - Duration: ${duration}ms, Stagger: ${staggerDelay}ms, Row Stagger: ${rowStaggerDelay}ms`);
     
     return {
       duration: duration || 300,
-      staggerDelay: staggerDelay
+      staggerDelay: staggerDelay,
+      rowStaggerDelay: rowStaggerDelay
     };
   }
     

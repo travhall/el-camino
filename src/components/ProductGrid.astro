@@ -66,6 +66,16 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
   :root {
     --card-transition-duration: 0.3s;
     --card-stagger-delay: 50ms;
+    --row-stagger-delay: 100ms;
+  }
+
+  /* Responsive optimizations */
+  @media (max-width: 1023px) {
+    :root {
+      --card-transition-duration: 0.2s; /* Faster on mobile */
+      --card-stagger-delay: 75ms;
+      --row-stagger-delay: 75ms;
+    }
   }
 
   /* Respect reduced motion preferences */
@@ -73,6 +83,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     :root {
       --card-transition-duration: 0.1s;
       --card-stagger-delay: 0ms;
+      --row-stagger-delay: 0ms;
     }
   }
 
@@ -82,6 +93,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
       opacity var(--card-transition-duration) ease,
       transform var(--card-transition-duration) ease;
     will-change: opacity, transform;
+    transform: translate3d(0, 0, 0); /* GPU acceleration */
   }
 
   .product-card-wrapper.opacity-0 {
@@ -120,26 +132,34 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
   data-product-count={productsWithInventory.length}
 >
   {
-    productsWithInventory.map((product, index) => (
-      <div
-        class="product-card-wrapper grid opacity-0"
-        data-product-id={product.id}
-        data-brand={product.brand || ""}
-        data-initial-index={index}
-        style={
-          allProducts && allProducts.length > 0 && index >= 24
-            ? "display: none;"
-            : ""
-        }
-      >
-        <ProductCard
-          product={product}
-          priority={index < 8}
-          inventoryStatus={product.inventoryStatus}
-          skipInventoryCheck={!!product.inventoryStatus}
-        />
-      </div>
-    ))
+    productsWithInventory.map((product, index) => {
+      // Server-side safe responsive calculation  
+      // Use a conservative estimate that works across all screen sizes
+      const serverSideCardsPerRow = 4; // Safe default for SSR
+      const initialRowsToShow = 4;
+      const initialCardsToShow = serverSideCardsPerRow * initialRowsToShow; // 16 cards initially
+      
+      return (
+        <div
+          class="product-card-wrapper grid opacity-0"
+          data-product-id={product.id}
+          data-brand={product.brand || ""}
+          data-initial-index={index}
+          style={
+            allProducts && allProducts.length > 0 && index >= initialCardsToShow
+              ? "display: none;"
+              : ""
+          }
+        >
+          <ProductCard
+            product={product}
+            priority={index < 8}
+            inventoryStatus={product.inventoryStatus}
+            skipInventoryCheck={!!product.inventoryStatus}
+          />
+        </div>
+      );
+    })
   }
 </div>
 
@@ -220,6 +240,12 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
           "--card-stagger-delay"
         )
       ) || 50,
+    rowStaggerDelay:
+      parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--row-stagger-delay"
+        )
+      ) || 100,
     duration:
       parseInt(
         getComputedStyle(document.documentElement)
@@ -228,10 +254,20 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
       ) * 1000 || 300,
   };
 
-  // Page load entrance animations with stagger
+  // Enhanced page load entrance animations with combined row + individual card stagger
   function initializePageLoadAnimations() {
     const cards = document.querySelectorAll(".product-card-wrapper.opacity-0");
     if (!cards.length) return;
+
+    // Calculate cards per row for row-based animation
+    function getCardsPerRow() {
+      const width = window.innerWidth;
+      if (width >= 1536) return 6; // 2xl:grid-cols-6
+      if (width >= 1280) return 4; // xl:grid-cols-4
+      if (width >= 1024) return 3; // lg:grid-cols-3
+      if (width >= 768) return 2;  // md:grid-cols-2
+      return 2; // fallback
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -239,11 +275,26 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
           if (entry.isIntersecting) {
             const card = entry.target as HTMLElement;
             const index = parseInt(card.dataset.initialIndex || "0");
+            const cardsPerRow = getCardsPerRow();
+            const rowIndex = Math.floor(index / cardsPerRow);
+            const cardInRow = index % cardsPerRow;
 
             // Add animating class for will-change optimization
             card.classList.add("animating");
 
-            // Staggered entrance animation
+            // Combined stagger: row delay + individual card delay
+            const rowStaggerDelay = parseInt(
+              getComputedStyle(document.documentElement).getPropertyValue("--row-stagger-delay")
+            ) || 100;
+            
+            const cardStaggerDelay = parseInt(
+              getComputedStyle(document.documentElement).getPropertyValue("--card-stagger-delay")
+            ) || 50;
+
+            const baseRowDelay = rowIndex * rowStaggerDelay;
+            const cardDelay = cardInRow * (cardStaggerDelay / 2); // More noticeable individual stagger
+            const totalDelay = baseRowDelay + cardDelay;
+
             setTimeout(() => {
               card.classList.remove("opacity-0");
               card.classList.add("opacity-100");
@@ -252,7 +303,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
               setTimeout(() => {
                 card.classList.remove("animating");
               }, ANIMATION_CONFIG.duration);
-            }, index * ANIMATION_CONFIG.staggerDelay);
+            }, totalDelay);
 
             // Stop observing this card
             observer.unobserve(card);
@@ -295,7 +346,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     document.dispatchEvent(new CustomEvent("productGridReady"));
   });
 
-  // Initialize on DOMContentLoaded as well
+    // Initialize on DOMContentLoaded as well
   document.addEventListener("DOMContentLoaded", () => {
     const grid = document.getElementById("filterable-product-grid");
     if (grid && sessionStorage.getItem("filtering-in-progress")) {
@@ -303,7 +354,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
       sessionStorage.removeItem("filtering-in-progress");
     }
 
-    // RESTORED: Initialize working infinite scroll
+    // Initialize infinite scroll
     initializeInfiniteScroll();
 
     // Signal that ProductGrid is loaded and ready
@@ -313,7 +364,13 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     document.dispatchEvent(new CustomEvent("productGridReady"));
   });
 
-  // RESTORED: Self-contained infinite scroll from working version a2c2689
+  // Enhanced: Reset infinite scroll when filters change
+  document.addEventListener("filtersApplied", () => {
+    console.log("[ProductGrid] 🔄 Filters applied, reinitializing infinite scroll");
+    initializeInfiniteScroll();
+  });
+
+  // ENHANCED: Filter-aware infinite scroll with responsive grid calculations
   function initializeInfiniteScroll() {
     const grid = document.getElementById("filterable-product-grid");
     const trigger = document.getElementById("infinite-scroll-trigger");
@@ -322,109 +379,147 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
 
     // Get all product cards (including hidden ones)
     const allCards = Array.from(grid.querySelectorAll(".product-card-wrapper"));
-    let visibleCount = 24; // Start with first 24 visible
+    
+    // Enhanced: Only consider cards that are currently visible (not hidden by filters)
+    const getVisibleCards = () => {
+      return allCards.filter(card => {
+        const htmlCard = card as HTMLElement;
+        return !htmlCard.hasAttribute('data-filter-hidden') && 
+               htmlCard.style.display !== 'none';
+      });
+    };
+    
+    // Enhanced responsive grid calculation - consistent with server-side
+    function getCardsPerRow() {
+      const width = window.innerWidth;
+      if (width >= 1536) return 6; // 2xl:grid-cols-6
+      if (width >= 1280) return 4; // xl:grid-cols-4
+      if (width >= 1024) return 3; // lg:grid-cols-3
+      if (width >= 768) return 2;  // md:grid-cols-2
+      return 2; // fallback
+    }
 
-    // Check if we have more than 24 products
-    if (allCards.length <= 24) {
+    const cardsPerRow = getCardsPerRow();
+    const initialRows = 4; // Show 4 rows initially
+    
+    // Calculate initial visible count based on current screen size
+    // This may be different from server-side calculation (which used 16)
+    let visibleCount = cardsPerRow * initialRows;
+
+    // Get currently visible (filtered) cards
+    const currentlyVisibleCards = getVisibleCards();
+
+    // ENHANCED: Adjust for server/client screen size differences
+    // Show cards that should be visible based on current screen size
+    currentlyVisibleCards.forEach((card, index) => {
+      const htmlCard = card as HTMLElement;
+      if (index < visibleCount) {
+        // This card should be visible based on current screen size
+        htmlCard.style.display = '';
+        htmlCard.removeAttribute('data-infinite-scroll-hidden');
+      } else {
+        // This card should be hidden by infinite scroll
+        htmlCard.style.display = 'none';
+        htmlCard.setAttribute('data-infinite-scroll-hidden', 'true');
+      }
+    });
+
+    // Check if we have more than initial batch of visible cards
+    if (currentlyVisibleCards.length <= visibleCount) {
       trigger.style.display = "none";
       return;
     }
 
-    // Show trigger if there are more products
+    // Show trigger if there are more visible products
     trigger.style.display = "flex";
 
-    // Intersection Observer for infinite scroll - EXACT working implementation
+    // Intersection Observer for infinite scroll with responsive batching
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && visibleCount < allCards.length) {
-            console.log(
-              `[ProductGrid] Loading more products... (${visibleCount}/${allCards.length})`
-            );
-
-            // Show loading state
-            trigger.innerHTML = `
-            <div class="flex items-center space-x-3">
-              <div class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"></div>
-              <span class="text-(--content-body) font-medium">Loading more products...</span>
-            </div>
-          `;
-
-            // Load next batch after short delay for smooth UX
-            setTimeout(() => {
-              // Responsive batch calculation - EXACT from working version
-              function calculateCardsPerRow() {
-                const screenWidth = window.innerWidth;
-                if (screenWidth >= 1536) return 6; // 2xl
-                if (screenWidth >= 1280) return 4; // xl
-                if (screenWidth >= 1024) return 3; // lg
-                if (screenWidth >= 768) return 2; // md
-                return 2; // default
-              }
-
-              const cardsPerRow = calculateCardsPerRow();
-              const nextBatch = cardsPerRow * 2; // Load 2 rows at a time
-              const newVisibleCount = Math.min(
-                visibleCount + nextBatch,
-                allCards.length
-              );
-
+          if (entry.isIntersecting) {
+            // Refresh visible cards list (in case filtering changed)
+            const refreshedVisibleCards = getVisibleCards();
+            
+            if (visibleCount < refreshedVisibleCards.length) {
               console.log(
-                `[ProductGrid] Loading ${nextBatch} cards (${cardsPerRow} per row × 2 rows)`
+                `[ProductGrid] Loading more products... (${visibleCount}/${refreshedVisibleCards.length})`
               );
 
-              // Show the next batch of cards with stagger - EXACT implementation
-              const newCards: HTMLElement[] = [];
-              for (let i = visibleCount; i < newVisibleCount; i++) {
-                if (allCards[i]) {
-                  const card = allCards[i] as HTMLElement;
-                  card.style.display = "";
-                  card.classList.add("opacity-0");
-                  newCards.push(card);
-                }
-              }
+              // Show loading state
+              trigger.innerHTML = `
+              <div class="flex items-center space-x-3">
+                <div class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"></div>
+                <span class="text-(--content-body) font-medium">Loading more products...</span>
+              </div>
+            `;
 
-              // Animate cards with stagger - EXACT timing
-              newCards.forEach((card, index) => {
-                setTimeout(() => {
-                  card.classList.remove("opacity-0");
-                  card.classList.add("opacity-100");
-                }, index * 50); // 50ms stagger
-              });
+              // Load next batch after short delay for smooth UX
+              setTimeout(() => {
+                const rowsToLoad = 2; // Load 2 rows at a time
+                const cardsToShow = cardsPerRow * rowsToLoad;
+                const newVisibleCount = Math.min(visibleCount + cardsToShow, refreshedVisibleCards.length);
 
-              visibleCount = newVisibleCount;
-              console.log(
-                `[ProductGrid] Now showing ${visibleCount}/${allCards.length} products`
-              );
-
-              // Hide trigger if all products are visible
-              if (visibleCount >= allCards.length) {
-                trigger.style.display = "none";
                 console.log(
-                  "[ProductGrid] All products loaded, hiding trigger"
+                  `[ProductGrid] Loading ${cardsToShow} cards (${cardsPerRow} per row × 2 rows)`
                 );
-              } else {
-                // Reset trigger content for next batch
-                trigger.innerHTML = `
-                <div class="flex items-center space-x-3">
-                  <div class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"></div>
-                  <span class="text-(--content-body) font-medium">Loading more products...</span>
-                </div>
-              `;
-              }
-            }, 500);
+
+                // Enhanced: Show the next batch of currently visible cards with combined stagger
+                for (let i = visibleCount; i < newVisibleCount; i++) {
+                  if (refreshedVisibleCards[i]) {
+                    const card = refreshedVisibleCards[i] as HTMLElement;
+                    const batchIndex = i - visibleCount;
+                    const rowOffset = Math.floor(batchIndex / cardsPerRow);
+                    const cardInRow = batchIndex % cardsPerRow;
+                    
+                    // Combined delay: row delay + individual card delay (enhanced visibility)
+                    const baseRowDelay = rowOffset * 100; // 100ms per row
+                    const cardDelay = cardInRow * 35; // 35ms per card within row
+                    const totalDelay = baseRowDelay + cardDelay;
+                    
+                    setTimeout(() => {
+                      card.style.display = '';
+                      card.removeAttribute('data-infinite-scroll-hidden');
+                      card.classList.remove('opacity-0');
+                      card.classList.add('opacity-100');
+                    }, totalDelay);
+                  }
+                }
+
+                visibleCount = newVisibleCount;
+                console.log(
+                  `[ProductGrid] Now showing ${visibleCount}/${refreshedVisibleCards.length} visible products`
+                );
+
+                // Hide trigger if all visible products are loaded
+                if (visibleCount >= refreshedVisibleCards.length) {
+                  trigger.style.display = "none";
+                  console.log(
+                    "[ProductGrid] All visible products loaded, hiding trigger"
+                  );
+                } else {
+                  // Reset trigger content for next batch
+                  trigger.innerHTML = `
+                  <div class="flex items-center space-x-3">
+                    <div class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"></div>
+                    <span class="text-(--content-body) font-medium">Loading more products...</span>
+                  </div>
+                `;
+                }
+              }, 500);
+            }
           }
         });
       },
       {
         threshold: 0.1,
-        rootMargin: "50px", // EXACT settings from working version
+        rootMargin: "50px",
       }
     );
 
     observer.observe(trigger);
     console.log(
-      `[ProductGrid] Infinite scroll initialized for ${allCards.length} products`
+      `[ProductGrid] Enhanced filter-aware infinite scroll initialized for ${currentlyVisibleCards.length} visible products (${cardsPerRow} per row)`
     );
   }
 </script>
