@@ -65,16 +65,16 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
   /* Animation Configuration */
   :root {
     --card-transition-duration: 0.3s;
-    --card-stagger-delay: 50ms;
-    --row-stagger-delay: 100ms;
+    --card-stagger-delay: 75ms;
+    --row-stagger-delay: 150ms;
   }
 
   /* Responsive optimizations */
   @media (max-width: 1023px) {
     :root {
       --card-transition-duration: 0.2s; /* Faster on mobile */
-      --card-stagger-delay: 75ms;
-      --row-stagger-delay: 75ms;
+      --card-stagger-delay: 50ms;
+      --row-stagger-delay: 100ms;
     }
   }
 
@@ -367,7 +367,11 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
   // Enhanced: Reset infinite scroll when filters change
   document.addEventListener("filtersApplied", () => {
     console.log("[ProductGrid] 🔄 Filters applied, reinitializing infinite scroll");
-    initializeInfiniteScroll();
+    
+    // Add small delay to ensure DOM is fully updated
+    setTimeout(() => {
+      initializeInfiniteScroll();
+    }, 100);
   });
 
   // ENHANCED: Filter-aware infinite scroll with responsive grid calculations
@@ -408,6 +412,14 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
 
     // Get currently visible (filtered) cards
     const currentlyVisibleCards = getVisibleCards();
+    
+    console.log(`[ProductGrid] 🔍 Infinite scroll initialization:`, {
+      totalCards: allCards.length,
+      visibleCards: currentlyVisibleCards.length,
+      cardsPerRow: cardsPerRow,
+      initialRows: initialRows,
+      calculatedVisibleCount: visibleCount
+    });
 
     // ENHANCED: Adjust for server/client screen size differences
     // Show cards that should be visible based on current screen size
@@ -427,11 +439,13 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     // Check if we have more than initial batch of visible cards
     if (currentlyVisibleCards.length <= visibleCount) {
       trigger.style.display = "none";
+      console.log(`[ProductGrid] ⚠️ Infinite scroll disabled: ${currentlyVisibleCards.length} visible cards <= ${visibleCount} initial visible count`);
       return;
     }
 
     // Show trigger if there are more visible products
     trigger.style.display = "flex";
+    console.log(`[ProductGrid] ✅ Infinite scroll enabled: ${currentlyVisibleCards.length} visible cards > ${visibleCount} initial visible count`);
 
     // Intersection Observer for infinite scroll with responsive batching
     const observer = new IntersectionObserver(
