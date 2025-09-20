@@ -1,5 +1,5 @@
 ---
-// src/components/ProductFilters.astro - Enhanced with Phantom Click Prevention
+// src/components/ProductFilters.astro - Cleaned with restored pageSize input
 import type { FilterOptions } from "@/lib/square/types";
 
 interface Props {
@@ -95,6 +95,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     class="filters-disabled lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-[28rem] lg:w-auto bg-(--surface-secondary) z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
   >
     <form method="GET" action={categoryPath || ""} class="px-4 lg:p-2" id="filter-form">
+      <!-- RESTORED: pageSize hidden input for pagination state -->
+      <input type="hidden" name="pageSize" value={currentPageSize} />
 
       <!-- Mobile Header -->
       <div class="flex items-center justify-between mb-4 p-6 -mx-4 bg-(--surface-secondary) border border-b-(--border-tertiary) sticky top-0 z-50 lg:hidden">
@@ -231,12 +233,10 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 </div>
 
 <script>
+  // SIMPLIFIED: Filter Engine WITHOUT infinite scroll responsibility
   class StreamlinedFilterEngine {
   private products: any[] = [];
   private filteredProducts: any[] = [];
-  private visibleProducts: any[] = [];
-  private visibleCount: number = 0; // Will be set responsively in initializeProducts
-  private infiniteScrollObserver: IntersectionObserver | null = null;
   
   constructor() {
     this.initializeProducts();
@@ -264,38 +264,24 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       this.products = JSON.parse(productData);
       this.filteredProducts = [...this.products];
       
-      // Set initial visible count responsively
-      const initialBatchSize = this.getNextBatchSize() * 4; // Show ~4 rows initially
-      this.visibleCount = Math.min(initialBatchSize, this.filteredProducts.length);
-      this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
-      
-      console.log(`[StreamlinedFilterEngine] Initialized with ${this.products.length} products, showing initial ${this.visibleCount} on ${this.calculateCardsPerRow()}-column grid`);
+      console.log(`[StreamlinedFilterEngine] Initialized with ${this.products.length} products`);
     } catch (error) {
       console.error("[StreamlinedFilterEngine] Failed to parse product data:", error);
     }
   }
     
   public applyFilters(criteria: any): void {
-    // Simple, reliable filtering
+    // Simple, reliable filtering - NO infinite scroll logic
     this.filteredProducts = this.products.filter(product => 
       this.matchesCriteria(product, criteria)
     );
     
-    // Reset visible count and products for new filter - use responsive sizing
-    const initialBatchSize = this.getNextBatchSize() * 4; // Show ~4 rows initially after filtering
-    this.visibleCount = Math.min(initialBatchSize, this.filteredProducts.length);
-    this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
-    
-    // Simple DOM updates
+    // Simple DOM updates - ProductGrid handles its own infinite scroll
     this.updateProductGrid();
     this.updateResultCount();
     this.updateAppliedFilters(criteria);
     this.updateClearButtonVisibility(criteria);
     this.updateNoResultsState();
-    
-    // Setup infinite scroll if needed
-    this.setupInfiniteScroll();
-    this.updateInfiniteScrollTrigger();
   }
   
   private matchesCriteria(product: any, criteria: any): boolean {
@@ -317,7 +303,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     if (!grid) return;
     
     const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
-    const visibleProductIds = new Set(this.visibleProducts.map(p => p.id));
+    const visibleProductIds = new Set(this.filteredProducts.map(p => p.id));
 
     // Get animation timing using fixed CSS parsing
     const { duration, staggerDelay } = this.getAnimationTiming();
@@ -381,25 +367,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       grid?.classList.remove("hidden");
     }
   }
-  
-  // Responsive batch calculation based on current grid layout
-  private calculateCardsPerRow(): number {
-    const screenWidth = window.innerWidth;
-    console.log(`[StreamlinedFilterEngine] Screen width: ${screenWidth}px`);
-    
-    if (screenWidth >= 1536) return 6; // 2xl
-    if (screenWidth >= 1280) return 4; // xl  
-    if (screenWidth >= 1024) return 3; // lg
-    if (screenWidth >= 768) return 2;  // md
-    return 2; // default
-  }
-
-  private getNextBatchSize(): number {
-    const cardsPerRow = this.calculateCardsPerRow();
-    const batchSize = cardsPerRow * 2; // Load 2 rows at a time for smooth experience
-    console.log(`[StreamlinedFilterEngine] Calculated batch size: ${batchSize} (${cardsPerRow} cards per row × 2 rows)`);
-    return batchSize;
-  }
 
   // Fixed CSS parsing for animation timing
   private getAnimationTiming() {
@@ -423,159 +390,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       duration: duration || 300,
       staggerDelay: staggerDelay
     };
-  }
-
-  private hasMoreProducts(): boolean {
-    const hasMore = this.visibleCount < this.filteredProducts.length;
-    console.log(`[StreamlinedFilterEngine] hasMoreProducts: ${hasMore} (${this.visibleCount} < ${this.filteredProducts.length})`);
-    return hasMore;
-  }
-  
-  private loadMoreProducts(): void {
-    const nextBatch = this.getNextBatchSize(); // Responsive batch size
-    const previousVisibleCount = this.visibleCount;
-    const newVisibleCount = Math.min(
-      this.visibleCount + nextBatch, 
-      this.filteredProducts.length
-    );
-    
-    console.log(`[StreamlinedFilterEngine] Loading batch: ${previousVisibleCount} → ${newVisibleCount} of ${this.filteredProducts.length} (${nextBatch} cards on ${this.calculateCardsPerRow()}-column grid)`);
-    
-    if (newVisibleCount === this.visibleCount) {
-      console.log(`[StreamlinedFilterEngine] ⚠️ No more products to load`);
-      return;
-    }
-    
-    // Update visible products array
-    this.visibleCount = newVisibleCount;
-    this.visibleProducts = this.filteredProducts.slice(0, this.visibleCount);
-    
-    // Show newly loaded products with animation
-    this.loadMoreProductsWithAnimation(previousVisibleCount, newVisibleCount);
-    
-    // Update infinite scroll trigger state
-    this.updateInfiniteScrollTrigger();
-    
-    console.log(`[StreamlinedFilterEngine] ✅ Successfully loaded: now showing ${this.visibleCount}/${this.filteredProducts.length}`);
-  }
-  
-  private loadMoreProductsWithAnimation(previousCount: number, newCount: number): void {
-    const grid = document.getElementById("filterable-product-grid");
-    if (!grid) return;
-    
-    const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
-    const newlyVisibleProducts = this.visibleProducts.slice(previousCount, newCount);
-    
-    // Get animation timing using fixed CSS parsing
-    const { duration, staggerDelay } = this.getAnimationTiming();
-    
-    console.log(`[StreamlinedFilterEngine] Animating ${newlyVisibleProducts.length} newly loaded cards with ${staggerDelay}ms stagger`);
-    
-    // First, prepare all cards in initial state
-    const wrappersToAnimate: HTMLElement[] = [];
-    newlyVisibleProducts.forEach((product) => {
-      const wrapper = allWrappers.find(w => w.getAttribute('data-product-id') === product.id) as HTMLElement;
-      if (wrapper) {
-        wrapper.classList.add('animating');
-        wrapper.classList.remove('opacity-100');
-        wrapper.classList.add('opacity-0');
-        wrapper.style.display = '';
-        wrappersToAnimate.push(wrapper);
-      } else {
-        console.warn(`[StreamlinedFilterEngine] Could not find wrapper for product ${product.id}`);
-      }
-    });
-    
-    console.log(`[StreamlinedFilterEngine] Found ${wrappersToAnimate.length} wrappers to animate`);
-    
-    // Then animate them with proper stagger using sequential timing
-    wrappersToAnimate.forEach((wrapper, index) => {
-      const animationDelay = index * staggerDelay;
-      console.log(`[StreamlinedFilterEngine] Card ${index}: scheduling animation in ${animationDelay}ms`);
-      
-      setTimeout(() => {
-        console.log(`[StreamlinedFilterEngine] Card ${index}: animating now`);
-        wrapper.classList.remove('opacity-0');
-        wrapper.classList.add('opacity-100');
-        
-        // Clean up animation state after transition completes
-        setTimeout(() => {
-          wrapper.classList.remove('animating');
-        }, duration);
-        
-      }, animationDelay);
-    });
-  }
-  
-  private updateInfiniteScrollTrigger(): void {
-    const trigger = document.getElementById("infinite-scroll-trigger") as HTMLElement;
-    if (!trigger) return;
-    
-    const hasMore = this.hasMoreProducts();
-    console.log(`[StreamlinedFilterEngine] Trigger update: hasMore=${hasMore}, visible=${this.visibleCount}/${this.filteredProducts.length}`);
-    
-    if (hasMore) {
-      // Clear loading content and set to invisible trigger state
-      trigger.innerHTML = '';
-      trigger.style.display = "flex";
-      trigger.style.visibility = "visible";
-      trigger.style.height = "20px"; // Small invisible trigger
-      
-      console.log(`[StreamlinedFilterEngine] 📜 Trigger cleared and ready for intersection`);
-    } else {
-      // All products loaded - hide trigger completely
-      trigger.style.display = "none";
-      trigger.style.visibility = "hidden";
-      trigger.innerHTML = "";
-      console.log(`[StreamlinedFilterEngine] ✅ All products loaded - trigger hidden`);
-    }
-  }
-  
-  private setupInfiniteScroll(): void {
-    const trigger = document.getElementById("infinite-scroll-trigger");
-    if (!trigger) return;
-    
-    let isLoading = false;
-    
-    if (this.infiniteScrollObserver) {
-      this.infiniteScrollObserver.disconnect();
-    }
-    
-    this.infiniteScrollObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting && this.hasMoreProducts() && !isLoading) {
-          isLoading = true;
-          console.log(`[StreamlinedFilterEngine] 📜 Loading more products...`);
-          
-          // Show loading state
-          trigger.innerHTML = `
-            <div class="col-span-full text-center py-8 flex flex-row gap-2 justify-center items-center my-4">
-              <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-(--content-heading)">
-              </div>
-              <p class="text-(--content-meta)">Loading more products...</p>
-            </div>
-          `;
-          
-          // Use requestAnimationFrame for smooth loading - no artificial delays
-          requestAnimationFrame(() => {
-            try {
-              this.loadMoreProducts();
-              isLoading = false;
-              console.log(`[StreamlinedFilterEngine] ✅ Products loaded successfully`);
-            } catch (error) {
-              console.error(`[StreamlinedFilterEngine] ❌ Loading failed:`, error);
-              isLoading = false;
-              this.updateInfiniteScrollTrigger(); // Reset trigger on error
-            }
-          });
-        }
-      });
-    }, { 
-      threshold: 0.1,
-      rootMargin: "150px" // Larger margin for smoother fast scrolling
-    });
-    
-    this.infiniteScrollObserver.observe(trigger);
   }
     
     private updateAppliedFilters(criteria: any): void {
@@ -681,9 +495,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
     
     public destroy(): void {
-      if (this.infiniteScrollObserver) {
-        this.infiniteScrollObserver.disconnect();
-      }
+      // No infinite scroll observer to clean up
     }
     
     // Method for validation
@@ -768,10 +580,10 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
     
     private initializeFilterEngine(): void {
-      // Enable streamlined client-side filtering
+      // Enable streamlined client-side filtering - NO infinite scroll
       try {
         this.filterEngine = new StreamlinedFilterEngine();
-        console.log('[ResponsiveFilters] ✅ Streamlined filtering enabled');
+        console.log('[ResponsiveFilters] ✅ Streamlined filtering enabled (infinite scroll handled by ProductGrid)');
         
       } catch (error) {
         console.error('[ResponsiveFilters] ❌ Filter engine initialization failed:', error);
@@ -820,8 +632,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       document.body.style.overflow = "";
     }
 
-    // ELIMINATES FOUT: No page reloads ever  
-    // ELIMINATES PHANTOM CLICKS: Immediate interaction blocking
+    // SIMPLIFIED: Desktop filtering without infinite scroll complexity
     private setupDesktopFiltering(): void {
       if (!this.form) return;
 
@@ -846,7 +657,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             // Get current filter criteria
             const criteria = this.buildFilterCriteria();
             
-            // Apply filters immediately - no debouncing for simplicity
+            // Apply filters immediately - ProductGrid handles its own infinite scroll
             this.filterEngine.applyFilters(criteria);
             
             // Save menu state
@@ -984,7 +795,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         const checkboxes = this.form?.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
         checkboxes?.forEach(checkbox => checkbox.checked = false);
         
-        // Apply filters immediately
+        // Apply filters immediately - ProductGrid handles its own infinite scroll
         const criteria = this.buildFilterCriteria();
         this.filterEngine.applyFilters(criteria);
       } else {

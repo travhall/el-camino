@@ -12,41 +12,50 @@ interface Props {
   skipInventoryCheck?: boolean;
 }
 
-const { products, allProducts, categoryPath = "", skipInventoryCheck = false } = Astro.props;
+const {
+  products,
+  allProducts,
+  categoryPath = "",
+  skipInventoryCheck = false,
+} = Astro.props;
 
 // Determine which products to check inventory for
-const productsToCheck = allProducts && allProducts.length > 0 ? allProducts : products;
+const productsToCheck =
+  allProducts && allProducts.length > 0 ? allProducts : products;
 
 // Batch inventory check for all products that will be displayed
 let productsWithInventory: ProductWithInventory[] = productsToCheck;
 
 if (!skipInventoryCheck && productsToCheck.length > 0) {
   try {
-    const variationIds = productsToCheck.map(p => p.variationId).filter(Boolean);
-    const inventoryMap = await batchInventoryService.getBatchInventoryStatus(variationIds);
-    
-    productsWithInventory = productsToCheck.map(product => {
+    const variationIds = productsToCheck
+      .map((p) => p.variationId)
+      .filter(Boolean);
+    const inventoryMap =
+      await batchInventoryService.getBatchInventoryStatus(variationIds);
+
+    productsWithInventory = productsToCheck.map((product) => {
       const inventoryStatus = inventoryMap.get(product.variationId) || {
         isOutOfStock: false,
         hasLimitedOptions: false,
         totalQuantity: 0,
       };
-      
+
       return {
         ...product,
-        inventoryStatus
+        inventoryStatus,
       };
     });
   } catch (error) {
-    console.error('Batch inventory check failed:', error);
+    console.error("Batch inventory check failed:", error);
     // Fallback: all products assumed in stock
-    productsWithInventory = productsToCheck.map(product => ({
+    productsWithInventory = productsToCheck.map((product) => ({
       ...product,
       inventoryStatus: {
         isOutOfStock: false,
         hasLimitedOptions: false,
         totalQuantity: 0,
-      }
+      },
     }));
   }
 }
@@ -58,7 +67,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     --card-transition-duration: 0.3s;
     --card-stagger-delay: 50ms;
   }
-  
+
   /* Respect reduced motion preferences */
   @media (prefers-reduced-motion: reduce) {
     :root {
@@ -69,30 +78,31 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
 
   /* SMOOTH FILTERING: Prevent layout shifts with opacity transitions */
   .product-card-wrapper {
-    transition: opacity var(--card-transition-duration) ease, 
-                transform var(--card-transition-duration) ease;
+    transition:
+      opacity var(--card-transition-duration) ease,
+      transform var(--card-transition-duration) ease;
     will-change: opacity, transform;
   }
-  
+
   .product-card-wrapper.opacity-0 {
     opacity: 0;
     transform: scale(0.95) translate3d(0, 10px, 0);
   }
-  
+
   .product-card-wrapper.opacity-100 {
     opacity: 1;
     transform: scale(1) translate3d(0, 0, 0);
   }
-  
+
   /* Animation states for different scenarios */
   .product-card-wrapper.animating {
     will-change: opacity, transform;
   }
-  
+
   .product-card-wrapper:not(.animating) {
     will-change: auto;
   }
-  
+
   /* MOBILE INFINITE SCROLL: Better spacing and loading states */
   @media (max-width: 1023px) {
     #infinite-scroll-trigger {
@@ -116,10 +126,14 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
         data-product-id={product.id}
         data-brand={product.brand || ""}
         data-initial-index={index}
-        style={allProducts && allProducts.length > 0 && index >= 24 ? "display: none;" : ""}
+        style={
+          allProducts && allProducts.length > 0 && index >= 24
+            ? "display: none;"
+            : ""
+        }
       >
-        <ProductCard 
-          product={product} 
+        <ProductCard
+          product={product}
           priority={index < 8}
           inventoryStatus={product.inventoryStatus}
           skipInventoryCheck={!!product.inventoryStatus}
@@ -129,15 +143,20 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
   }
 </div>
 
-<!-- DAY 1: Infinite Scroll Trigger (hidden until Day 2 activation) -->
-<div 
-  id="infinite-scroll-trigger" 
+<!-- RESTORED: Working Infinite Scroll Trigger -->
+<div
+  id="infinite-scroll-trigger"
   class="col-span-full h-20 flex items-center justify-center"
   style="display: none;"
 >
   <div class="flex items-center space-x-3">
-    <div class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"></div>
-    <span class="text-(--content-body) font-medium">Loading more products...</span>
+    <div
+      class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"
+    >
+    </div>
+    <span class="text-(--content-body) font-medium"
+      >Loading more products...</span
+    >
   </div>
 </div>
 
@@ -195,48 +214,58 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
 <script>
   // Animation configuration
   const ANIMATION_CONFIG = {
-    staggerDelay: parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--card-stagger-delay')) || 50,
-    duration: parseInt(getComputedStyle(document.documentElement)
-      .getPropertyValue('--card-transition-duration').replace('s', '')) * 1000 || 300
+    staggerDelay:
+      parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--card-stagger-delay"
+        )
+      ) || 50,
+    duration:
+      parseInt(
+        getComputedStyle(document.documentElement)
+          .getPropertyValue("--card-transition-duration")
+          .replace("s", "")
+      ) * 1000 || 300,
   };
 
   // Page load entrance animations with stagger
   function initializePageLoadAnimations() {
-    const cards = document.querySelectorAll('.product-card-wrapper.opacity-0');
+    const cards = document.querySelectorAll(".product-card-wrapper.opacity-0");
     if (!cards.length) return;
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const card = entry.target as HTMLElement;
-          const index = parseInt(card.dataset.initialIndex || '0');
-          
-          // Add animating class for will-change optimization
-          card.classList.add('animating');
-          
-          // Staggered entrance animation
-          setTimeout(() => {
-            card.classList.remove('opacity-0');
-            card.classList.add('opacity-100');
-            
-            // Remove will-change after animation completes
-            setTimeout(() => {
-              card.classList.remove('animating');
-            }, ANIMATION_CONFIG.duration);
-            
-          }, index * ANIMATION_CONFIG.staggerDelay);
-          
-          // Stop observing this card
-          observer.unobserve(card);
-        }
-      });
-    }, {
-      threshold: 0.1,
-      rootMargin: '50px'
-    });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const card = entry.target as HTMLElement;
+            const index = parseInt(card.dataset.initialIndex || "0");
 
-    cards.forEach(card => observer.observe(card));
+            // Add animating class for will-change optimization
+            card.classList.add("animating");
+
+            // Staggered entrance animation
+            setTimeout(() => {
+              card.classList.remove("opacity-0");
+              card.classList.add("opacity-100");
+
+              // Remove will-change after animation completes
+              setTimeout(() => {
+                card.classList.remove("animating");
+              }, ANIMATION_CONFIG.duration);
+            }, index * ANIMATION_CONFIG.staggerDelay);
+
+            // Stop observing this card
+            observer.unobserve(card);
+          }
+        });
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "50px",
+      }
+    );
+
+    cards.forEach((card) => observer.observe(card));
   }
 
   // Handle filter state restoration
@@ -247,58 +276,155 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     if (isFiltering && grid) {
       // Clear filtering state
       sessionStorage.removeItem("filtering-in-progress");
-      
+
       // Ensure grid is visible
       grid.style.opacity = "1";
       grid.style.transition = "opacity 0.3s ease";
     }
-    
+
     // Initialize page load animations
     initializePageLoadAnimations();
-    
-    // Initialize infinite scroll
+
+    // RESTORED: Initialize working infinite scroll
     initializeInfiniteScroll();
-    
-    // CRITICAL FIX: Signal ProductGrid ready on Astro navigation
-    console.log('[ProductGrid] 📡 Emitting productGridReady on astro:page-load');
-    document.dispatchEvent(new CustomEvent('productGridReady'));
+
+    // Signal ProductGrid ready for filtering coordination
+    console.log(
+      "[ProductGrid] 📡 Emitting productGridReady on astro:page-load"
+    );
+    document.dispatchEvent(new CustomEvent("productGridReady"));
   });
 
-  // SOLUTION: Signal when ProductGrid is ready for filtering
+  // Initialize on DOMContentLoaded as well
   document.addEventListener("DOMContentLoaded", () => {
     const grid = document.getElementById("filterable-product-grid");
     if (grid && sessionStorage.getItem("filtering-in-progress")) {
       grid.style.opacity = "1";
       sessionStorage.removeItem("filtering-in-progress");
     }
-    
-    // Initialize infinite scroll
+
+    // RESTORED: Initialize working infinite scroll
     initializeInfiniteScroll();
-    
+
     // Signal that ProductGrid is loaded and ready
-    console.log('[ProductGrid] 📡 Emitting productGridReady on DOMContentLoaded');
-    document.dispatchEvent(new CustomEvent('productGridReady'));
+    console.log(
+      "[ProductGrid] 📡 Emitting productGridReady on DOMContentLoaded"
+    );
+    document.dispatchEvent(new CustomEvent("productGridReady"));
   });
 
+  // RESTORED: Self-contained infinite scroll from working version a2c2689
   function initializeInfiniteScroll() {
     const grid = document.getElementById("filterable-product-grid");
     const trigger = document.getElementById("infinite-scroll-trigger");
-    
+
     if (!grid || !trigger) return;
-    
+
     // Get all product cards (including hidden ones)
-    const allCards = Array.from(grid.querySelectorAll('.product-card-wrapper'));
+    const allCards = Array.from(grid.querySelectorAll(".product-card-wrapper"));
     let visibleCount = 24; // Start with first 24 visible
-    
+
     // Check if we have more than 24 products
     if (allCards.length <= 24) {
-      trigger.style.display = 'none';
+      trigger.style.display = "none";
       return;
     }
-    
+
     // Show trigger if there are more products
-    trigger.style.display = 'flex';
-    // ProductFilters.astro handles infinite scroll
-    console.log(`[ProductGrid] Ready - ${allCards.length} products available for filtering`);
+    trigger.style.display = "flex";
+
+    // Intersection Observer for infinite scroll - EXACT working implementation
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && visibleCount < allCards.length) {
+            console.log(
+              `[ProductGrid] Loading more products... (${visibleCount}/${allCards.length})`
+            );
+
+            // Show loading state
+            trigger.innerHTML = `
+            <div class="flex items-center space-x-3">
+              <div class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"></div>
+              <span class="text-(--content-body) font-medium">Loading more products...</span>
+            </div>
+          `;
+
+            // Load next batch after short delay for smooth UX
+            setTimeout(() => {
+              // Responsive batch calculation - EXACT from working version
+              function calculateCardsPerRow() {
+                const screenWidth = window.innerWidth;
+                if (screenWidth >= 1536) return 6; // 2xl
+                if (screenWidth >= 1280) return 4; // xl
+                if (screenWidth >= 1024) return 3; // lg
+                if (screenWidth >= 768) return 2; // md
+                return 2; // default
+              }
+
+              const cardsPerRow = calculateCardsPerRow();
+              const nextBatch = cardsPerRow * 2; // Load 2 rows at a time
+              const newVisibleCount = Math.min(
+                visibleCount + nextBatch,
+                allCards.length
+              );
+
+              console.log(
+                `[ProductGrid] Loading ${nextBatch} cards (${cardsPerRow} per row × 2 rows)`
+              );
+
+              // Show the next batch of cards with stagger - EXACT implementation
+              const newCards: HTMLElement[] = [];
+              for (let i = visibleCount; i < newVisibleCount; i++) {
+                if (allCards[i]) {
+                  const card = allCards[i] as HTMLElement;
+                  card.style.display = "";
+                  card.classList.add("opacity-0");
+                  newCards.push(card);
+                }
+              }
+
+              // Animate cards with stagger - EXACT timing
+              newCards.forEach((card, index) => {
+                setTimeout(() => {
+                  card.classList.remove("opacity-0");
+                  card.classList.add("opacity-100");
+                }, index * 50); // 50ms stagger
+              });
+
+              visibleCount = newVisibleCount;
+              console.log(
+                `[ProductGrid] Now showing ${visibleCount}/${allCards.length} products`
+              );
+
+              // Hide trigger if all products are visible
+              if (visibleCount >= allCards.length) {
+                trigger.style.display = "none";
+                console.log(
+                  "[ProductGrid] All products loaded, hiding trigger"
+                );
+              } else {
+                // Reset trigger content for next batch
+                trigger.innerHTML = `
+                <div class="flex items-center space-x-3">
+                  <div class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"></div>
+                  <span class="text-(--content-body) font-medium">Loading more products...</span>
+                </div>
+              `;
+              }
+            }, 500);
+          }
+        });
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "50px", // EXACT settings from working version
+      }
+    );
+
+    observer.observe(trigger);
+    console.log(
+      `[ProductGrid] Infinite scroll initialized for ${allCards.length} products`
+    );
   }
 </script>
