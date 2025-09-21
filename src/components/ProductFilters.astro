@@ -104,6 +104,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     id="mobile-filter-toggle"
     class="lg:hidden fixed bottom-4 right-4 bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) rounded-md flex flex-row gap-2 p-4 shadow-lg z-250"
     aria-label="Open Filters"
+    disabled
   >
     Filters
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,7 +126,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   <!-- Single Form - Desktop Static, Mobile Drawer -->
   <div
     id="filter-container"
-    class="lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-[28rem] lg:w-auto bg-(--surface-secondary) z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+    class="filters-disabled lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-[28rem] lg:w-auto bg-(--surface-secondary) z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
   >
     <form class="px-4 lg:p-2" id="filter-form">
       <!-- Mobile Header -->
@@ -164,6 +165,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
               type="button"
               id="clear-brands-button"
               data-clear-filters
+              disabled
               class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors lg:mr-2"
               style={currentBrands.length === 0 ? "display: none;" : ""}
             >
@@ -188,6 +190,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
                       name="brands"
                       value={brand.name}
                       checked={currentBrands.includes(brand.name)}
+                      disabled
                       class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
                     />
                     <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
@@ -228,6 +231,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             name="availability"
             value="true"
             checked={currentAvailability}
+            disabled
             class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
           />
           <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
@@ -242,6 +246,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
           <button
             type="button"
             data-clear-filters-mobile
+            disabled
             class="flex-1 py-3 px-4 border border-(--ui-button-border) text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
           >
             Clear Filters
@@ -833,8 +838,33 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
     
     private enableFilterControls(): void {
-      // Progressive enhancement: Controls start enabled, just log readiness
-      console.log('[ResponsiveFilters] ✅ Filter controls ready (progressive enhancement)');
+      // Enable all form controls for phantom click prevention
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+      const clearButtons = document.querySelectorAll('[data-clear-filters], [data-clear-filters-mobile]') as NodeListOf<HTMLButtonElement>;
+      const mobileToggle = document.getElementById('mobile-filter-toggle') as HTMLButtonElement;
+      const filterContainer = document.getElementById('filter-container');
+      
+      // Enable checkboxes
+      checkboxes.forEach(checkbox => {
+        checkbox.disabled = false;
+      });
+      
+      // Enable clear buttons
+      clearButtons.forEach(button => {
+        button.disabled = false;
+      });
+      
+      // Enable mobile toggle
+      if (mobileToggle) {
+        mobileToggle.disabled = false;
+      }
+      
+      // Remove disabled visual state
+      if (filterContainer) {
+        filterContainer.classList.remove('filters-disabled');
+      }
+      
+      console.log('[ResponsiveFilters] ✅ Filter controls enabled');
     }
     
     private initializeFilterEngine(): void {
