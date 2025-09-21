@@ -44,6 +44,7 @@ console.log('[ProductGrid] 🎯 FIXED: Rendering vs Inventory logic:', {
 
 // Batch inventory check for all products that will be displayed
 let productsWithInventory: ProductWithInventory[] = productsToRender;
+let allProductsWithInventory: ProductWithInventory[] = allProducts || [];
 
 if (!skipInventoryCheck && productsToCheck.length > 0) {
   try {
@@ -54,7 +55,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     const inventoryMap =
       await batchInventoryService.getBatchInventoryStatus(variationIds);
 
-    // But only apply inventory to products we're actually rendering
+    // Apply inventory to products we're rendering (server-filtered)
     productsWithInventory = productsToRender.map((product) => {
       const inventoryStatus = inventoryMap.get(product.variationId) || {
         isOutOfStock: false,
@@ -67,10 +68,25 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
         inventoryStatus,
       };
     });
+
+    // FIXED: Also apply inventory to ALL products for client-side filtering
+    allProductsWithInventory = productsToCheck.map((product) => {
+      const inventoryStatus = inventoryMap.get(product.variationId) || {
+        isOutOfStock: false,
+        hasLimitedOptions: false,
+        totalQuantity: 0,
+      };
+
+      return {
+        ...product,
+        inventoryStatus,
+      };
+    });
     
-    console.log('[ProductGrid] ✅ Inventory applied to rendered products:', {
+    console.log('[ProductGrid] ✅ Inventory applied to both sets:', {
       checkedInventoryFor: productsToCheck.length,
-      appliedInventoryTo: productsWithInventory.length,
+      appliedToRendered: productsWithInventory.length,
+      appliedToAll: allProductsWithInventory.length,
       sampleWithInventory: productsWithInventory.slice(0, 2).map(p => ({ 
         id: p.id, 
         brand: p.brand, 
@@ -81,6 +97,15 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     console.error("Batch inventory check failed:", error);
     // Fallback: all products assumed in stock
     productsWithInventory = productsToRender.map((product) => ({
+      ...product,
+      inventoryStatus: {
+        isOutOfStock: false,
+        hasLimitedOptions: false,
+        totalQuantity: 0,
+      },
+    }));
+    
+    allProductsWithInventory = (allProducts || []).map((product) => ({
       ...product,
       inventoryStatus: {
         isOutOfStock: false,
@@ -159,7 +184,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
 <div
   id="filterable-product-grid"
   class="product-grid grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-2 lg:gap-1 transition-all duration-300"
-  data-all-products={JSON.stringify(allProducts || [])}
+  data-all-products={JSON.stringify(allProductsWithInventory)}
   data-initial-products={JSON.stringify(productsWithInventory)}
   data-category-path={categoryPath}
   data-product-count={productsWithInventory.length}

@@ -57,44 +57,52 @@ export async function filterProducts(
   // OPTIMIZED: Batch availability filtering
   if (filters.availability === true) {
     const startTime = performance.now();
-    
+
     try {
       // Extract all variation IDs for batch processing
       const variationIds = filteredProducts
-        .map(product => product.variationId)
+        .map((product) => product.variationId)
         .filter(Boolean); // Remove any undefined/null values
-      
+
       if (variationIds.length === 0) {
         // No variation IDs to check, return filtered products as-is
         return filteredProducts;
       }
-      
+
       // Single batch API call instead of individual calls
-      const inventoryMap = await batchInventoryService.getBatchInventoryStatus(variationIds);
-      
+      const inventoryMap = await batchInventoryService.getBatchInventoryStatus(
+        variationIds
+      );
+
       // Filter products based on batch results
       filteredProducts = filteredProducts.filter((product) => {
         if (!product.variationId) {
           // No variation ID - assume in stock (fail-safe behavior)
           return true;
         }
-        
+
         const inventoryStatus = inventoryMap.get(product.variationId);
         if (!inventoryStatus || inventoryStatus.error) {
           // No status or error - assume in stock (fail-safe behavior)
           return true;
         }
-        
+
         // Filter out only products that are definitively out of stock
         return !inventoryStatus.isOutOfStock;
       });
-      
+
       const duration = performance.now() - startTime;
-      console.log(`[FilterBatch] Batch inventory filter: ${products.length} → ${filteredProducts.length} products in ${duration.toFixed(2)}ms`);
-      
+      console.log(
+        `[FilterBatch] Batch inventory filter: ${products.length} → ${
+          filteredProducts.length
+        } products in ${duration.toFixed(2)}ms`
+      );
     } catch (error) {
-      console.warn('[FilterBatch] Batch inventory failed, falling back to individual checks:', error);
-      
+      console.warn(
+        "[FilterBatch] Batch inventory failed, falling back to individual checks:",
+        error
+      );
+
       // Fallback to individual inventory checks
       const stockChecks = await Promise.all(
         filteredProducts.map(async (product) => {
@@ -135,28 +143,33 @@ export async function filterProductsWithCache(
   categoryId?: string
 ): Promise<Product[]> {
   // Create deterministic cache key based on products, filters, and category
-  const productIds = products.map(p => p.id).sort().join(',');
-  const filterKey = `${categoryId || 'all'}-${JSON.stringify(filters)}-${productIds.slice(0, 50)}`;
-  
+  const productIds = products
+    .map((p) => p.id)
+    .sort()
+    .join(",");
+  const filterKey = `${categoryId || "all"}-${JSON.stringify(
+    filters
+  )}-${productIds.slice(0, 50)}`;
+
   return filterCache.getOrCompute(filterKey, async () => {
-    console.log(`[FilterCache] Computing filter result for: ${filterKey.slice(0, 100)}...`);
+    console.log(
+      `[FilterCache] Computing filter result for: ${filterKey.slice(0, 100)}...`
+    );
     const startTime = performance.now();
-    
+
     // Use the optimized filterProducts function (now with batch inventory)
     const result = await filterProducts(products, filters);
-    
+
     const duration = performance.now() - startTime;
-    console.log(`[FilterCache] Filtered ${products.length} → ${result.length} products in ${duration.toFixed(2)}ms`);
-    
+    console.log(
+      `[FilterCache] Filtered ${products.length} → ${
+        result.length
+      } products in ${duration.toFixed(2)}ms`
+    );
+
     return result;
   });
 }
-
-
-
-
-
-
 
 /**
  * Parse filters from URL search params
@@ -173,7 +186,7 @@ export function parseFiltersFromURL(
 
   return {
     brands,
-    availability: availability || undefined, // Only include if true
+    availability: availability, // Always boolean (true/false)
   };
 }
 

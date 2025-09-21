@@ -419,6 +419,15 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const inventoryStatus = product.inventoryStatus;
       const isOutOfStock = inventoryStatus?.isOutOfStock;
       
+      if (productIndex < 3) {
+        console.log(`[StreamlinedFilterEngine] 🔍 AVAILABILITY DEBUG Product ${productIndex}:`, {
+          hasInventoryStatus: !!inventoryStatus,
+          isOutOfStock: isOutOfStock,
+          inventoryStatusKeys: inventoryStatus ? Object.keys(inventoryStatus) : 'none',
+          productId: product.id
+        });
+      }
+      
       if (isOutOfStock === true) {
         if (productIndex < 3) console.log(`[StreamlinedFilterEngine] ❌ Product ${productIndex} filtered out - out of stock`);
         return false;
