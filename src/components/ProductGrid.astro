@@ -19,22 +19,43 @@ const {
   skipInventoryCheck = false,
 } = Astro.props;
 
-// Determine which products to check inventory for
-const productsToCheck =
-  allProducts && allProducts.length > 0 ? allProducts : products;
+console.log('[ProductGrid] 📊 Props analysis:', {
+  productsCount: products?.length || 0,
+  allProductsCount: allProducts?.length || 0,
+  categoryPath,
+  sampleProducts: products?.slice(0, 3).map(p => ({ id: p.id, brand: p.brand })) || []
+});
+
+// FIXED: Separate rendering products from inventory checking products
+// - products: What to render (server-filtered for mobile, all for desktop)  
+// - allProducts: What to use for client-side filtering data
+
+// For rendering: always use the products prop (server-filtered)
+const productsToRender = products;
+
+// For inventory checking: check inventory for all products that might be needed
+const productsToCheck = allProducts && allProducts.length > 0 ? allProducts : products;
+
+console.log('[ProductGrid] 🎯 FIXED: Rendering vs Inventory logic:', {
+  productsToRender: productsToRender?.length || 0,
+  productsToCheck: productsToCheck?.length || 0,
+  renderingFiltered: productsToRender !== productsToCheck
+});
 
 // Batch inventory check for all products that will be displayed
-let productsWithInventory: ProductWithInventory[] = productsToCheck;
+let productsWithInventory: ProductWithInventory[] = productsToRender;
 
 if (!skipInventoryCheck && productsToCheck.length > 0) {
   try {
+    // Check inventory for all products (for efficiency)
     const variationIds = productsToCheck
       .map((p) => p.variationId)
       .filter(Boolean);
     const inventoryMap =
       await batchInventoryService.getBatchInventoryStatus(variationIds);
 
-    productsWithInventory = productsToCheck.map((product) => {
+    // But only apply inventory to products we're actually rendering
+    productsWithInventory = productsToRender.map((product) => {
       const inventoryStatus = inventoryMap.get(product.variationId) || {
         isOutOfStock: false,
         hasLimitedOptions: false,
@@ -46,10 +67,20 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
         inventoryStatus,
       };
     });
+    
+    console.log('[ProductGrid] ✅ Inventory applied to rendered products:', {
+      checkedInventoryFor: productsToCheck.length,
+      appliedInventoryTo: productsWithInventory.length,
+      sampleWithInventory: productsWithInventory.slice(0, 2).map(p => ({ 
+        id: p.id, 
+        brand: p.brand, 
+        isOutOfStock: p.inventoryStatus?.isOutOfStock 
+      }))
+    });
   } catch (error) {
     console.error("Batch inventory check failed:", error);
     // Fallback: all products assumed in stock
-    productsWithInventory = productsToCheck.map((product) => ({
+    productsWithInventory = productsToRender.map((product) => ({
       ...product,
       inventoryStatus: {
         isOutOfStock: false,
@@ -58,6 +89,8 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
       },
     }));
   }
+} else {
+  console.log('[ProductGrid] ⚪ Skipping inventory check or no products to check');
 }
 ---
 
@@ -346,7 +379,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     document.dispatchEvent(new CustomEvent("productGridReady"));
   });
 
-    // Initialize on DOMContentLoaded as well
+  // Initialize on DOMContentLoaded as well
   document.addEventListener("DOMContentLoaded", () => {
     const grid = document.getElementById("filterable-product-grid");
     if (grid && sessionStorage.getItem("filtering-in-progress")) {
@@ -364,34 +397,19 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     document.dispatchEvent(new CustomEvent("productGridReady"));
   });
 
-  // Enhanced: Reset infinite scroll when filters change
-  document.addEventListener("filtersApplied", () => {
-    console.log("[ProductGrid] 🔄 Filters applied, reinitializing infinite scroll");
-    
-    // Add small delay to ensure DOM is fully updated
-    setTimeout(() => {
-      initializeInfiniteScroll();
-    }, 100);
-  });
-
-  // ENHANCED: Filter-aware infinite scroll with responsive grid calculations
+  // RESTORED: Simple infinite scroll without filter-awareness conflicts
   function initializeInfiniteScroll() {
     const grid = document.getElementById("filterable-product-grid");
     const trigger = document.getElementById("infinite-scroll-trigger");
 
     if (!grid || !trigger) return;
 
-    // Get all product cards (including hidden ones)
+    // Simple: Get all product cards  
     const allCards = Array.from(grid.querySelectorAll(".product-card-wrapper"));
     
-    // Enhanced: Only consider cards that are currently visible (not hidden by filters)
-    const getVisibleCards = () => {
-      return allCards.filter(card => {
-        const htmlCard = card as HTMLElement;
-        return !htmlCard.hasAttribute('data-filter-hidden') && 
-               htmlCard.style.display !== 'none';
-      });
-    };
+    console.log(`[ProductGrid] 🔍 Simple infinite scroll initialization:`, {
+      totalCards: allCards.length
+    });
     
     // Enhanced responsive grid calculation - consistent with server-side
     function getCardsPerRow() {
@@ -405,28 +423,19 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
 
     const cardsPerRow = getCardsPerRow();
     const initialRows = 4; // Show 4 rows initially
-    
-    // Calculate initial visible count based on current screen size
-    // This may be different from server-side calculation (which used 16)
     let visibleCount = cardsPerRow * initialRows;
 
-    // Get currently visible (filtered) cards
-    const currentlyVisibleCards = getVisibleCards();
-    
-    console.log(`[ProductGrid] 🔍 Infinite scroll initialization:`, {
-      totalCards: allCards.length,
-      visibleCards: currentlyVisibleCards.length,
-      cardsPerRow: cardsPerRow,
-      initialRows: initialRows,
+    console.log(`[ProductGrid] 📐 Grid calculation:`, {
+      cardsPerRow,
+      initialRows,
       calculatedVisibleCount: visibleCount
     });
 
-    // ENHANCED: Adjust for server/client screen size differences
-    // Show cards that should be visible based on current screen size
-    currentlyVisibleCards.forEach((card, index) => {
+    // SIMPLIFIED: Show initial batch based on current screen size
+    allCards.forEach((card, index) => {
       const htmlCard = card as HTMLElement;
       if (index < visibleCount) {
-        // This card should be visible based on current screen size
+        // This card should be visible
         htmlCard.style.display = '';
         htmlCard.removeAttribute('data-infinite-scroll-hidden');
       } else {
@@ -436,28 +445,25 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
       }
     });
 
-    // Check if we have more than initial batch of visible cards
-    if (currentlyVisibleCards.length <= visibleCount) {
+    // Check if we need infinite scroll
+    if (allCards.length <= visibleCount) {
       trigger.style.display = "none";
-      console.log(`[ProductGrid] ⚠️ Infinite scroll disabled: ${currentlyVisibleCards.length} visible cards <= ${visibleCount} initial visible count`);
+      console.log(`[ProductGrid] ⚠️ Infinite scroll disabled: ${allCards.length} total cards <= ${visibleCount} initial visible count`);
       return;
     }
 
-    // Show trigger if there are more visible products
+    // Show trigger if there are more products
     trigger.style.display = "flex";
-    console.log(`[ProductGrid] ✅ Infinite scroll enabled: ${currentlyVisibleCards.length} visible cards > ${visibleCount} initial visible count`);
+    console.log(`[ProductGrid] ✅ Infinite scroll enabled: ${allCards.length} total cards > ${visibleCount} initial visible count`);
 
-    // Intersection Observer for infinite scroll with responsive batching
+    // SIMPLIFIED: Intersection Observer for infinite scroll
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            // Refresh visible cards list (in case filtering changed)
-            const refreshedVisibleCards = getVisibleCards();
-            
-            if (visibleCount < refreshedVisibleCards.length) {
+          if (entry.isIntersecting) {            
+            if (visibleCount < allCards.length) {
               console.log(
-                `[ProductGrid] Loading more products... (${visibleCount}/${refreshedVisibleCards.length})`
+                `[ProductGrid] Loading more products... (${visibleCount}/${allCards.length})`
               );
 
               // Show loading state
@@ -472,21 +478,21 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
               setTimeout(() => {
                 const rowsToLoad = 2; // Load 2 rows at a time
                 const cardsToShow = cardsPerRow * rowsToLoad;
-                const newVisibleCount = Math.min(visibleCount + cardsToShow, refreshedVisibleCards.length);
+                const newVisibleCount = Math.min(visibleCount + cardsToShow, allCards.length);
 
                 console.log(
                   `[ProductGrid] Loading ${cardsToShow} cards (${cardsPerRow} per row × 2 rows)`
                 );
 
-                // Enhanced: Show the next batch of currently visible cards with combined stagger
+                // Show the next batch with stagger animation
                 for (let i = visibleCount; i < newVisibleCount; i++) {
-                  if (refreshedVisibleCards[i]) {
-                    const card = refreshedVisibleCards[i] as HTMLElement;
+                  if (allCards[i]) {
+                    const card = allCards[i] as HTMLElement;
                     const batchIndex = i - visibleCount;
                     const rowOffset = Math.floor(batchIndex / cardsPerRow);
                     const cardInRow = batchIndex % cardsPerRow;
                     
-                    // Combined delay: row delay + individual card delay (enhanced visibility)
+                    // Combined delay: row delay + individual card delay
                     const baseRowDelay = rowOffset * 100; // 100ms per row
                     const cardDelay = cardInRow * 35; // 35ms per card within row
                     const totalDelay = baseRowDelay + cardDelay;
@@ -502,14 +508,14 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
 
                 visibleCount = newVisibleCount;
                 console.log(
-                  `[ProductGrid] Now showing ${visibleCount}/${refreshedVisibleCards.length} visible products`
+                  `[ProductGrid] Now showing ${visibleCount}/${allCards.length} products`
                 );
 
-                // Hide trigger if all visible products are loaded
-                if (visibleCount >= refreshedVisibleCards.length) {
+                // Hide trigger if all products are loaded
+                if (visibleCount >= allCards.length) {
                   trigger.style.display = "none";
                   console.log(
-                    "[ProductGrid] All visible products loaded, hiding trigger"
+                    "[ProductGrid] All products loaded, hiding trigger"
                   );
                 } else {
                   // Reset trigger content for next batch
@@ -533,7 +539,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
 
     observer.observe(trigger);
     console.log(
-      `[ProductGrid] Enhanced filter-aware infinite scroll initialized for ${currentlyVisibleCards.length} visible products (${cardsPerRow} per row)`
+      `[ProductGrid] ✅ Simple infinite scroll initialized for ${allCards.length} products (${cardsPerRow} per row)`
     );
   }
 </script>

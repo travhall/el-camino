@@ -5,7 +5,7 @@ import AppliedFilters from "@/components/AppliedFilters.astro";
 import ProductGrid from "@/components/ProductGrid.astro";
 import { fetchProductsByCategory } from "@/lib/square/categories";
 import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
-import { parseFiltersFromURL } from "@/lib/square/filterUtils";
+import { parseFiltersFromURL, filterProductsWithCache, extractFilterOptions } from "@/lib/square/filterUtils";
 import Layout from "@/layouts/Layout.astro";
 
 const { slug } = Astro.params;
@@ -34,13 +34,32 @@ if (subCategorySlug) {
   parentCategory = topLevelItem.category;
 }
 
-// === PARSE URL PARAMETERS FOR FILTERING ONLY ===
+// === PARSE URL PARAMETERS FOR FILTERING ===
 const filters = parseFiltersFromURL(Astro.url.searchParams);
+
+console.log(`[Category] 🔍 URL Parsing:`, {
+  searchParams: Astro.url.search,
+  parsedFilters: filters,
+  hasBrands: filters.brands.length > 0,
+  hasAvailability: filters.availability
+});
+
+// Check for active filters
+const hasFilters = Object.values(filters).some(f => 
+  Array.isArray(f) ? f.length > 0 : f === true
+);
+
+console.log(`[Category] 📊 Filter Analysis:`, {
+  hasFilters,
+  filterValues: Object.values(filters),
+  filtersBreakdown: filters
+});
 
 import type { Product } from "@/lib/square/types";
 
-// === DATA ARCHITECTURE FOR CLIENT-SIDE FILTERING WITH INFINITE SCROLL ===
+// === HYBRID: Server-side + Client-side filtering ===
 let allProducts: Product[] = [];
+let filteredProducts: Product[] = [];
 let filterOptions = { brands: [] as Array<{name: string; count: number; slug: string}> };
 
 try {
@@ -50,29 +69,32 @@ try {
   const productData = await fetchProductsByCategory(category.id, { limit: 200 });
   allProducts = productData.products;
   
-  // Extract filter options from all products for this category
-  const brandCounts = new Map<string, number>();
-  allProducts.forEach((product) => {
-    if (product.brand) {
-      brandCounts.set(product.brand, (brandCounts.get(product.brand) || 0) + 1);
-    }
-  });
-
-  filterOptions = {
-    brands: Array.from(brandCounts.entries())
-      .map(([name, count]) => ({
-        name,
-        count,
-        slug: name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").trim(),
-      }))
-      .sort((a, b) => b.count - a.count)
-  };
+  // Extract filter options from all products using the same logic as shop/all
+  filterOptions = extractFilterOptions(allProducts);
   
-  console.log(`[Category] Loaded ${allProducts.length} products for infinite scroll`);
+  console.log(`[Category] Loaded ${allProducts.length} products for hybrid filtering`);
+  
+  // HYBRID: Server-side filtering for mobile, client-side data for desktop
+  if (hasFilters) {
+    console.log(`[Category] 🔄 Applying server-side filtering...`);
+    console.log(`[Category] 📋 Before filtering: ${allProducts.length} products`);
+    console.log(`[Category] 🎯 Filter criteria:`, filters);
+    
+    // Apply server-side filtering using the same logic as shop/all
+    filteredProducts = await filterProductsWithCache(allProducts, filters);
+    
+    console.log(`[Category] ✅ After filtering: ${filteredProducts.length} products`);
+    console.log(`[Category] 📋 Sample filtered products:`, filteredProducts.slice(0, 3).map(p => ({ id: p.id, brand: p.brand, title: p.title })));
+  } else {
+    console.log(`[Category] ⚪ No filters applied - showing all ${allProducts.length} products`);
+    // No filters applied - show all products
+    filteredProducts = [...allProducts];
+  }
   
 } catch (error) {
   console.error("Error fetching products:", error);
   allProducts = [];
+  filteredProducts = [];
 }
 
 // Generate page metadata
@@ -93,6 +115,17 @@ const preloadImages = allProducts
 const categoryPath = parentCategory 
   ? `/category/${parentCategory.slug}/${category.slug}`
   : `/category/${category.slug}`;
+
+// Check for active filters (for display purposes)
+const hasActiveFilters = filters.brands.length > 0 || filters.availability === true;
+
+console.log(`[Category] 🎬 Final data summary:`, {
+  allProductsCount: allProducts.length,
+  filteredProductsCount: filteredProducts.length,
+  hasActiveFilters,
+  categoryPath,
+  sampleFilteredProducts: filteredProducts.slice(0, 2).map(p => p.brand)
+});
 ---
 
 <Layout title={fullPageTitle}>
@@ -155,7 +188,7 @@ const categoryPath = parentCategory
         <ProductFilters
           filterOptions={filterOptions}
           totalProducts={allProducts.length}
-          filteredCount={allProducts.length}
+          filteredCount={filteredProducts.length}
           categoryPath={categoryPath}
         />
       </aside>
@@ -168,11 +201,11 @@ const categoryPath = parentCategory
 
         <!-- Products -->
         {
-          allProducts.length > 0 ? (
+          filteredProducts.length > 0 ? (
             <>
-              <!-- Products Grid with Infinite Scroll -->
+              <!-- Products Grid - HYBRID: Server-filtered for mobile, all products for desktop client-side -->
               <ProductGrid
-                products={allProducts}
+                products={filteredProducts}
                 allProducts={allProducts}
                 categoryPath={categoryPath}
               />
@@ -180,20 +213,20 @@ const categoryPath = parentCategory
           ) : (
             <div class="text-center py-16">
               <div class="text-6xl mb-4 opacity-20">
-                {filters.brands.length > 0 ? "🔍" : "🛹"}
+                {hasActiveFilters ? "🔍" : "🛹"}
               </div>
               <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
-                {filters.brands.length > 0 ? "No products match your filters" : "No products found"}
+                {hasActiveFilters ? "No products match your filters" : "No products found"}
               </h2>
               <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
-                {filters.brands.length > 0 
+                {hasActiveFilters 
                   ? "Try adjusting your filters or browse all products."
                   : subcategories.length > 0
                   ? "Try browsing our subcategories above, or check out other product categories."
                   : "This category is currently empty. Check back soon for new products!"
                 }
               </p>
-              {filters.brands.length > 0 ? (
+              {hasActiveFilters ? (
                 <a
                   href={categoryPath}
                   class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"

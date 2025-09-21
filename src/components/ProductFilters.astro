@@ -259,7 +259,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 </div>
 
 <script>
-  // SIMPLIFIED: Filter Engine WITHOUT infinite scroll responsibility
+  // HYBRID: Device-specific Filter Engine - Desktop client-side, Mobile server-side
   class StreamlinedFilterEngine {
   private products: any[] = [];
   private filteredProducts: any[] = [];
@@ -275,24 +275,82 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     const allProductsData = grid?.dataset.allProducts;
     const initialProductsData = grid?.dataset.initialProducts;
     
+    console.log('[StreamlinedFilterEngine] 🔍 Data source investigation:', {
+      hasAllProducts: !!allProductsData,
+      hasInitialProducts: !!initialProductsData,
+      allProductsLength: allProductsData ? JSON.parse(allProductsData).length : 0,
+      initialProductsLength: initialProductsData ? JSON.parse(initialProductsData).length : 0
+    });
+    
     if (!allProductsData && !initialProductsData) {
       console.warn("[StreamlinedFilterEngine] No product data found");
       return;
     }
     
     try {
-      // Prefer allProducts for client-side filtering, fallback to initial products
-      const productData = allProductsData || initialProductsData;
+      // PREFER allProducts for client-side filtering, but validate it has content
+      let productData = allProductsData;
+      let dataSource = "allProducts";
+      
+      // Enhanced validation with better error handling
+      if (!allProductsData) {
+        console.log('[StreamlinedFilterEngine] ⚠️ allProducts data not available');
+        productData = initialProductsData;
+        dataSource = "initialProducts";
+      } else {
+        // Test parse allProducts to check if it's valid
+        try {
+          const testParse = JSON.parse(allProductsData);
+          if (!Array.isArray(testParse) || testParse.length === 0) {
+            console.log('[StreamlinedFilterEngine] ⚠️ allProducts data is empty array, falling back to initialProducts');
+            productData = initialProductsData;
+            dataSource = "initialProducts";
+          }
+        } catch (parseError) {
+          console.error('[StreamlinedFilterEngine] ❌ allProducts JSON parse failed:', parseError);
+          productData = initialProductsData;
+          dataSource = "initialProducts";
+        }
+      }
+      
       if (!productData) {
-        console.error("[StreamlinedFilterEngine] No valid product data available");
+        console.error("[StreamlinedFilterEngine] ❌ No valid product data available from either source");
         return;
       }
+      
+      // Final parse with detailed error reporting
       this.products = JSON.parse(productData);
+      
+      if (!Array.isArray(this.products)) {
+        console.error("[StreamlinedFilterEngine] ❌ Parsed data is not an array:", typeof this.products);
+        return;
+      }
+      
       this.filteredProducts = [...this.products];
       
-      console.log(`[StreamlinedFilterEngine] Initialized with ${this.products.length} products`);
+      console.log(`[StreamlinedFilterEngine] ✅ Successfully initialized with ${this.products.length} products from ${dataSource}`);
+      
+      // DEBUG: Show sample product structure for troubleshooting
+      if (this.products.length > 0) {
+        console.log('[StreamlinedFilterEngine] 📋 Sample product structure:', {
+          id: this.products[0].id,
+          brand: this.products[0].brand,
+          name: this.products[0].name,
+          hasInventoryStatus: !!this.products[0].inventoryStatus,
+          allKeys: Object.keys(this.products[0])
+        });
+      } else {
+        console.warn('[StreamlinedFilterEngine] ⚠️ No products in parsed array');
+      }
     } catch (error) {
-      console.error("[StreamlinedFilterEngine] Failed to parse product data:", error);
+      console.error("[StreamlinedFilterEngine] ❌ Critical error during product data initialization:", error);
+      console.log("[StreamlinedFilterEngine] 🔍 Debug info:", {
+        allProductsDataType: typeof allProductsData,
+        allProductsDataLength: allProductsData?.length,
+        initialProductsDataType: typeof initialProductsData,
+        initialProductsDataLength: initialProductsData?.length,
+        gridElement: !!document.getElementById("filterable-product-grid")
+      });
     }
   }
     
@@ -306,7 +364,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     );
     
     console.log('[StreamlinedFilterEngine] ✅ Filtered products:', this.filteredProducts.length);
-    console.log('[StreamlinedFilterEngine] 📋 Sample filtered products:', this.filteredProducts.slice(0, 3).map(p => ({ id: p.id, brand: p.brand, name: p.name })));
+    console.log('[StreamlinedFilterEngine] 📋 Sample filtered products:', this.filteredProducts.slice(0, 3).map(p => ({ id: p.id, brand: p.brand, title: p.title })));
     
     // Simple DOM updates - ProductGrid handles its own infinite scroll
     this.updateProductGrid();
@@ -317,31 +375,62 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   }
   
   private matchesCriteria(product: any, criteria: any): boolean {
-    // Debug first few products
+    // Debug first few products with enhanced information
     const productIndex = this.products.indexOf(product);
     if (productIndex < 3) {
       console.log(`[StreamlinedFilterEngine] 🔍 Filtering product ${productIndex}:`, {
         id: product.id,
         brand: product.brand,
+        brandType: typeof product.brand,
         criteriaBrands: criteria.brands,
         criteriaAvailability: criteria.availability,
-        isOutOfStock: product.inventoryStatus?.isOutOfStock
+        isOutOfStock: product.inventoryStatus?.isOutOfStock,
+        productKeys: Object.keys(product)
       });
     }
     
-    // Brand filtering
-    if (criteria.brands.length > 0 && !criteria.brands.includes(product.brand)) {
-      if (productIndex < 3) console.log(`[StreamlinedFilterEngine] ❌ Product ${productIndex} filtered out by brand`);
-      return false;
+    // DEFENSIVE: Brand filtering with case handling and null checks
+    if (criteria.brands.length > 0) {
+      const productBrand = product.brand;
+      
+      // Handle missing or null brand
+      if (!productBrand) {
+        if (productIndex < 3) console.log(`[StreamlinedFilterEngine] ❌ Product ${productIndex} has no brand field`);
+        return false;
+      }
+      
+      // Check if product brand matches any of the selected brands (case-insensitive for safety)
+      const brandMatches = criteria.brands.some((selectedBrand: string) => {
+        const normalizedProductBrand = String(productBrand).trim();
+        const normalizedSelectedBrand = String(selectedBrand).trim();
+        return normalizedProductBrand === normalizedSelectedBrand;
+      });
+      
+      if (!brandMatches) {
+        if (productIndex < 3) {
+          console.log(`[StreamlinedFilterEngine] ❌ Product ${productIndex} brand "${productBrand}" not in selected brands:`, criteria.brands);
+        }
+        return false;
+      }
     }
     
-    // Availability filtering
-    if (criteria.availability && product.inventoryStatus?.isOutOfStock) {
-      if (productIndex < 3) console.log(`[StreamlinedFilterEngine] ❌ Product ${productIndex} filtered out by availability`);
-      return false;
+    // DEFENSIVE: Availability filtering with null checks
+    if (criteria.availability) {
+      const inventoryStatus = product.inventoryStatus;
+      const isOutOfStock = inventoryStatus?.isOutOfStock;
+      
+      if (isOutOfStock === true) {
+        if (productIndex < 3) console.log(`[StreamlinedFilterEngine] ❌ Product ${productIndex} filtered out - out of stock`);
+        return false;
+      }
+      
+      // If inventory status is missing, assume in stock for now
+      if (productIndex < 3 && !inventoryStatus) {
+        console.log(`[StreamlinedFilterEngine] ⚠️ Product ${productIndex} missing inventory status - assuming in stock`);
+      }
     }
     
-    if (productIndex < 3) console.log(`[StreamlinedFilterEngine] ✅ Product ${productIndex} matches criteria`);
+    if (productIndex < 3) console.log(`[StreamlinedFilterEngine] ✅ Product ${productIndex} matches all criteria`);
     return true;
   }
     
@@ -353,11 +442,23 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
     
     const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
-    const visibleProductIds = new Set(this.filteredProducts.map(p => String(p.id))); // Ensure string comparison
+    
+    // DEFENSIVE: Create more robust ID matching 
+    const visibleProductIds = new Set();
+    this.filteredProducts.forEach(p => {
+      // Add both string and number versions of ID to handle any format mismatches
+      visibleProductIds.add(String(p.id));
+      visibleProductIds.add(p.id);
+    });
     
     console.log('[StreamlinedFilterEngine] 🎯 DOM Update - Total cards:', allWrappers.length);
-    console.log('[StreamlinedFilterEngine] 🎯 DOM Update - Should be visible:', visibleProductIds.size);
-    console.log('[StreamlinedFilterEngine] 🎯 Visible product IDs:', Array.from(visibleProductIds).slice(0, 5));
+    console.log('[StreamlinedFilterEngine] 🎯 DOM Update - Filtered products count:', this.filteredProducts.length);
+    console.log('[StreamlinedFilterEngine] 🎯 Visible product IDs (first 5):', Array.from(visibleProductIds).slice(0, 10));
+
+    // DEBUG: Check first few DOM cards to see their IDs
+    console.log('[StreamlinedFilterEngine] 🔍 First 3 DOM card IDs:', 
+      allWrappers.slice(0, 3).map(w => w.getAttribute('data-product-id'))
+    );
 
     // Get animation timing with row-based calculations
     const { duration, staggerDelay, rowStaggerDelay } = this.getAnimationTiming();
@@ -381,21 +482,36 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     // Step 2: Show/hide and animate visible cards with row-based stagger
     setTimeout(() => {
       let visibleIndex = 0;
+      let hiddenCount = 0;
       const cardsPerRow = getCardsPerRow();
       
-      allWrappers.forEach((wrapper) => {
+      allWrappers.forEach((wrapper, domIndex) => {
         const productId = wrapper.getAttribute('data-product-id');
-        const isVisible = productId ? visibleProductIds.has(productId) : false;
         
-        // Debug first few iterations
-        if (visibleIndex < 3) {
-          console.log(`[StreamlinedFilterEngine] 🔍 Card ${visibleIndex}: DOM ID="${productId}", visible=${isVisible}`);
+        // DEFENSIVE: Try multiple ID formats and handle missing IDs
+        const isVisible = productId ? (
+          visibleProductIds.has(productId) || 
+          visibleProductIds.has(String(productId)) ||
+          visibleProductIds.has(parseInt(productId))
+        ) : false;
+        
+        // Enhanced debug for first few iterations
+        if (domIndex < 5) {
+          console.log(`[StreamlinedFilterEngine] 🔍 Card ${domIndex}: DOM ID="${productId}", visible=${isVisible}, type=${typeof productId}`);
         }
 
         if (isVisible) {
           // Show card and animate in with combined row + individual card stagger
           (wrapper as HTMLElement).style.display = '';
           (wrapper as HTMLElement).removeAttribute('data-filter-hidden');
+          
+          // FIXED: Don't interfere with infinite scroll state management
+          // Only clear infinite scroll hidden if it was set by filtering, not by scroll logic
+          const wasHiddenByScroll = (wrapper as HTMLElement).hasAttribute('data-infinite-scroll-hidden');
+          if (!wasHiddenByScroll) {
+            // This card was hidden by filtering, not by scroll, so it's safe to show
+            (wrapper as HTMLElement).removeAttribute('data-infinite-scroll-hidden');
+          }
           
           // Calculate both row index and individual stagger
           const rowIndex = Math.floor(visibleIndex / cardsPerRow);
@@ -413,15 +529,27 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
           
           visibleIndex++;
         } else {
-          // Hide card completely and mark as filtered
+          // Hide card and mark as filtered - preserve infinite scroll state
           (wrapper as HTMLElement).style.display = 'none';
           (wrapper as HTMLElement).setAttribute('data-filter-hidden', 'true');
+          
+          // FIXED: Don't modify infinite scroll attributes when filtering
+          // Let infinite scroll manage its own state independently
+          
+          hiddenCount++;
         }
       });
       
-      // FIXED: Notify ProductGrid AFTER DOM updates are complete
-      console.log('[StreamlinedFilterEngine] 📡 DOM updates complete, notifying ProductGrid');
-      document.dispatchEvent(new CustomEvent("filtersApplied"));
+      console.log(`[StreamlinedFilterEngine] ✅ DOM update complete: ${visibleIndex} visible, ${hiddenCount} hidden`);
+      
+      // HYBRID: Only emit filtersApplied for desktop (where infinite scroll might need adjustment)
+      const isDesktop = window.innerWidth >= 1024;
+      if (isDesktop) {
+        console.log('[StreamlinedFilterEngine] 🖥️ Desktop filtering complete - infinite scroll will be unaffected');
+        // Note: We're not emitting filtersApplied anymore since infinite scroll is simpler
+      } else {
+        console.log('[StreamlinedFilterEngine] 📱 Mobile filtering complete (this should not happen in hybrid mode)');
+      }
       
     }, duration);
   }
@@ -618,6 +746,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       // Initialize immediately with progressive enhancement
       this.setupEventListeners();
       this.initializeMenuState();
+      this.setupViewTransitionsCoordination();
       
       // Initialize filter engine when ProductGrid is ready (with fallback)
       this.initializeWithGridReady();
@@ -628,22 +757,70 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       
       const enableFiltering = () => {
         if (!gridReady) {
-          gridReady = true;
-          this.enableFilterControls();
-          this.initializeFilterEngine();
+          // Enhanced grid detection with data validation
+          const grid = document.getElementById("filterable-product-grid");
+          const hasAllProducts = grid?.dataset.allProducts;
+          const hasInitialProducts = grid?.dataset.initialProducts;
+          
+          if (grid && (hasAllProducts || hasInitialProducts)) {
+            // Validate data is not just empty arrays
+            let hasValidData = false;
+            
+            try {
+              if (hasAllProducts) {
+                const allProductsParsed = JSON.parse(hasAllProducts);
+                if (Array.isArray(allProductsParsed) && allProductsParsed.length > 0) {
+                  hasValidData = true;
+                }
+              }
+              
+              if (!hasValidData && hasInitialProducts) {
+                const initialProductsParsed = JSON.parse(hasInitialProducts);
+                if (Array.isArray(initialProductsParsed) && initialProductsParsed.length > 0) {
+                  hasValidData = true;
+                }
+              }
+            } catch (error) {
+              console.error('[ResponsiveFilters] ❌ Error parsing grid data:', error);
+            }
+            
+            if (hasValidData) {
+              gridReady = true;
+              console.log('[ResponsiveFilters] ✅ Grid with valid data detected - enabling filters');
+              this.enableFilterControls();
+              this.initializeFilterEngine();
+            } else {
+              console.warn('[ResponsiveFilters] ⚠️ Grid found but data appears to be empty');
+            }
+          } else {
+            console.log('[ResponsiveFilters] 🔍 Grid not ready yet - waiting...');
+          }
         }
       };
       
-      // Listen for ProductGrid ready event
+      // Multiple detection methods for reliability
       document.addEventListener('productGridReady', enableFiltering);
+      document.addEventListener('DOMContentLoaded', enableFiltering);
       
-      // Fallback timeout for reliability
-      setTimeout(() => {
-        if (!gridReady) {
-          console.log('[ResponsiveFilters] ⏰ Grid ready timeout - enabling filters anyway');
+      // Immediate check in case we're already loaded
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        enableFiltering();
+      }
+      
+      // Polling fallback for maximum reliability
+      let attempts = 0;
+      const maxAttempts = 50; // 5 seconds max
+      const checkInterval = setInterval(() => {
+        attempts++;
+        if (!gridReady && attempts < maxAttempts) {
           enableFiltering();
+        } else {
+          clearInterval(checkInterval);
+          if (!gridReady && attempts >= maxAttempts) {
+            console.warn('[ResponsiveFilters] ⚠️ Grid detection timeout - filters may not work correctly');
+          }
         }
-      }, 2000); // Reduced from 3 seconds
+      }, 100);
     }
     
     private enableFilterControls(): void {
@@ -652,20 +829,31 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
     
     private initializeFilterEngine(): void {
-      // Enable streamlined client-side filtering - NO infinite scroll
-      try {
-        this.filterEngine = new StreamlinedFilterEngine();
-        console.log('[ResponsiveFilters] ✅ Streamlined filtering enabled (infinite scroll handled by ProductGrid)');
-        
-      } catch (error) {
-        console.error('[ResponsiveFilters] ❌ Filter engine initialization failed:', error);
+      // HYBRID: Only initialize client-side filtering for desktop
+      // OVERRIDE: Check for ?test-desktop=true in URL to force desktop behavior
+      const urlParams = new URLSearchParams(window.location.search);
+      const forceDesktop = urlParams.get('test-desktop') === 'true';
+      
+      const isDesktop = forceDesktop || window.innerWidth >= 1024;
+      
+      if (isDesktop) {
+        try {
+          this.filterEngine = new StreamlinedFilterEngine();
+          console.log(`[ResponsiveFilters] 🖥️ Desktop: Client-side filtering engine enabled${forceDesktop ? ' (forced via URL)' : ''}`);
+          
+        } catch (error) {
+          console.error('[ResponsiveFilters] ❌ Desktop filter engine initialization failed:', error);
+          this.filterEngine = null;
+        }
+      } else {
+        console.log('[ResponsiveFilters] 📱 Mobile: Using server-side filtering - no client-side engine needed');
         this.filterEngine = null;
       }
     }
 
     private setupEventListeners(): void {
       this.setupMobileDrawer();
-      this.setupDesktopFiltering();
+      this.setupHybridFiltering();
       this.setupShowMoreToggle();
       this.setupClearButtons();
     }
@@ -704,8 +892,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       document.body.style.overflow = "";
     }
 
-    // SIMPLIFIED: Desktop filtering without infinite scroll complexity
-    private setupDesktopFiltering(): void {
+    // HYBRID: Device-specific filtering approach  
+    private setupHybridFiltering(): void {
       if (!this.form) return;
 
       const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
@@ -716,93 +904,120 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         checkbox.parentNode?.replaceChild(newCheckbox, checkbox);
         
         newCheckbox.addEventListener("change", (event) => {
-          console.log(`[ResponsiveFilters] Checkbox changed: ${(event.target as HTMLInputElement).name}=${(event.target as HTMLInputElement).value}, checked=${(event.target as HTMLInputElement).checked}`);
+          // OVERRIDE: Add easy way to test desktop behavior 
+          // Check for ?test-desktop=true in URL to force desktop behavior
+          const urlParams = new URLSearchParams(window.location.search);
+          const forceDesktop = urlParams.get('test-desktop') === 'true';
           
-          // UNIFIED: Use client-side filtering for ALL devices
-          if (this.filterEngine) {
-            console.log('[ResponsiveFilters] 🚀 Using CLIENT-SIDE filtering for all devices');
+          const isMobile = !forceDesktop && window.innerWidth < 1024;
+          
+          console.log(`[ResponsiveFilters] Checkbox changed: ${(event.target as HTMLInputElement).name}=${(event.target as HTMLInputElement).value}, checked=${(event.target as HTMLInputElement).checked}, device=${isMobile ? 'mobile' : 'desktop'}${forceDesktop ? ' (forced)' : ''}`);
+          
+          if (isMobile) {
+            // MOBILE: Allow natural form submission with View Transitions
+            console.log('[ResponsiveFilters] 📱 Mobile: Allowing natural form submission');
+            sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+            sessionStorage.setItem("filtering-in-progress", "true");
+            // Don't prevent - let form submit naturally
+            return;
+          } else {
+            // DESKTOP: Use client-side filtering
+            if (this.filterEngine) {
+              console.log('[ResponsiveFilters] 🖥️ Desktop: Using CLIENT-SIDE filtering');
+              
+              // PREVENT form submission for desktop
+              event.preventDefault();
+              event.stopPropagation();
+              event.stopImmediatePropagation();
+              
+              // Get current filter criteria and apply immediately
+              const criteria = this.buildFilterCriteria();
+              this.filterEngine.applyFilters(criteria);
+              
+              // Save menu state
+              sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+              
+              return false;
+              
+            } else {
+              console.error('[ResponsiveFilters] ❌ Filter engine not available for desktop');
+              // Fallback to server-side
+              sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+              sessionStorage.setItem("filtering-in-progress", "true");
+            }
+          }
+        });
+      });
+      
+      // HYBRID: Form submission handling
+      this.form.addEventListener('submit', (event) => {
+        // OVERRIDE: Add easy way to test desktop behavior 
+        const urlParams = new URLSearchParams(window.location.search);
+        const forceDesktop = urlParams.get('test-desktop') === 'true';
+        
+        const isMobile = !forceDesktop && window.innerWidth < 1024;
+        
+        console.log('[ResponsiveFilters] 📝 FORM SUBMISSION', {
+          device: isMobile ? 'mobile' : 'desktop',
+          screenWidth: window.innerWidth,
+          filterEngineAvailable: !!this.filterEngine,
+          forceDesktop: forceDesktop
+        });
+        
+        if (isMobile) {
+          // MOBILE: Server-side filtering with View Transitions
+          console.log('[ResponsiveFilters] 📱 Mobile: Using SERVER-SIDE filtering with View Transitions');
+          
+          // ENHANCED: Close drawer FIRST and wait for animation to complete
+          // This ensures smooth View Transitions without visual conflicts
+          if (this.container && this.overlay) {
+            // Start closing drawer immediately
+            this.closeMobileDrawer();
             
-            // PREVENT any form submission
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
+            // Add a small delay to let drawer animation start
+            setTimeout(() => {
+              // Save state for restoration after navigation
+              sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+              sessionStorage.setItem("filtering-in-progress", "true");
+              
+              // Now allow form to submit naturally - Astro View Transitions will handle it
+              // Don't prevent default - let Astro's router handle the smooth transition
+            }, 50); // Small delay for animation start
+          } else {
+            // Fallback if elements not found
+            sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+            sessionStorage.setItem("filtering-in-progress", "true");
+          }
+          
+          // Let form submit naturally - View Transitions will handle smoothly
+          return;
+          
+        } else {
+          // DESKTOP: Client-side filtering
+          event.preventDefault();
+          event.stopPropagation();
+          
+          if (this.filterEngine) {
+            console.log('[ResponsiveFilters] 🖥️ Desktop: Using CLIENT-SIDE filtering');
             
             // Get current filter criteria and apply immediately
             const criteria = this.buildFilterCriteria();
+            console.log('[ResponsiveFilters] 🔍 Filter criteria:', criteria);
             this.filterEngine.applyFilters(criteria);
             
             // Save menu state
             sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
             
-            return false;
-            
+            console.log('[ResponsiveFilters] ✅ Desktop client-side filtering complete');
           } else {
-            console.error('[ResponsiveFilters] ❌ Filter engine not available');
-            // Only if client-side fails completely
-            sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+            console.error('[ResponsiveFilters] ❌ Filter engine not available for desktop');
+            // Fallback: allow form submission
             sessionStorage.setItem("filtering-in-progress", "true");
-          }
-        });
-      });
-      
-      // CORRECTED: Unified client-side filtering for all devices
-      this.form.addEventListener('submit', (event) => {
-        console.log('[ResponsiveFilters] 📝 FORM SUBMISSION INTERCEPTED');
-        console.log('[ResponsiveFilters] 📝 Event details:', {
-          type: event.type,
-          target: event.target,
-          screenWidth: window.innerWidth,
-          filterEngineAvailable: !!this.filterEngine
-        });
-        
-        // ALWAYS prevent form submission - use client-side filtering on all devices
-        event.preventDefault();
-        event.stopPropagation();
-        
-        if (this.filterEngine) {
-          console.log('[ResponsiveFilters] 🎯 Using CLIENT-SIDE filtering for all devices');
-          
-          // Mobile: Close drawer first, then apply filters
-          if (window.innerWidth < 1024) {
-            this.closeMobileDrawer();
+            return;
           }
           
-          // Get current filter criteria and apply immediately
-          const criteria = this.buildFilterCriteria();
-          console.log('[ResponsiveFilters] 🔍 Filter criteria:', criteria);
-          this.filterEngine.applyFilters(criteria);
-          
-          // Save menu state
-          sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
-          
-          console.log('[ResponsiveFilters] ✅ Client-side filtering complete');
-          
-          // DEBUGGING: Monitor for delayed actions
-          let urlBefore = window.location.href;
-          setTimeout(() => {
-            if (window.location.href !== urlBefore) {
-              console.log('[ResponsiveFilters] 🚨 DELAYED URL CHANGE DETECTED!', {
-                before: urlBefore,
-                after: window.location.href,
-                timeDelta: '1 second after filtering'
-              });
-            }
-          }, 1000);
-          
-          setTimeout(() => {
-            if (window.location.href !== urlBefore) {
-              console.log('[ResponsiveFilters] 🚨 DELAYED URL CHANGE DETECTED!', {
-                before: urlBefore,
-                after: window.location.href,
-                timeDelta: '3 seconds after filtering'
-              });
-            }
-          }, 3000);
-        } else {
-          console.error('[ResponsiveFilters] ❌ Filter engine not available');
+          return false;
         }
-        
-        return false;
       });
     }
     
@@ -890,24 +1105,63 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       });
     }
 
+    private setupViewTransitionsCoordination(): void {
+      // HYBRID: Ensure mobile drawer closes before View Transitions navigation
+      document.addEventListener('astro:before-preparation', () => {
+        console.log('[ResponsiveFilters] 🚀 View Transitions preparation - ensuring mobile drawer is closed');
+        
+        // Force close mobile drawer before any navigation
+        if (this.container && this.overlay) {
+          this.container.classList.add("translate-y-full", "opacity-0", "pointer-events-none");
+          this.overlay.classList.add("pointer-events-none", "opacity-0");
+          document.body.style.overflow = "";
+        }
+        
+        // Clean up session storage
+        sessionStorage.removeItem("filtering-in-progress");
+      });
+    }
+
     public clearAllFilters(): void {
       console.log('[ResponsiveFilters] 🧹 Clearing all filters');
       
-      if (this.filterEngine) {
-        // Clear checkboxes
-        const checkboxes = this.form?.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
-        checkboxes?.forEach(checkbox => checkbox.checked = false);
-        
-        // Apply empty filter criteria immediately
-        const criteria = this.buildFilterCriteria();
-        this.filterEngine.applyFilters(criteria);
-        
-        console.log('[ResponsiveFilters] ✅ Filters cleared using client-side filtering');
-      } else {
-        console.error('[ResponsiveFilters] ❌ Filter engine not available');
-        // Fallback: navigate to base URL without filters
+      // OVERRIDE: Check for ?test-desktop=true in URL to force desktop behavior
+      const urlParams = new URLSearchParams(window.location.search);
+      const forceDesktop = urlParams.get('test-desktop') === 'true';
+      
+      const isMobile = !forceDesktop && window.innerWidth < 1024;
+      
+      if (isMobile) {
+        // MOBILE: Use server-side approach - navigate to base URL
+        console.log('[ResponsiveFilters] 📱 Mobile: Clearing filters via server-side navigation');
         const basePath = window.location.pathname;
+        
+        // Close drawer first for smooth transition
+        this.closeMobileDrawer();
+        
+        // Navigate to base URL (Astro View Transitions will handle smoothly)
         window.location.href = basePath;
+        
+      } else {
+        // DESKTOP: Use client-side approach
+        if (this.filterEngine) {
+          console.log(`[ResponsiveFilters] 🖥️ Desktop: Clearing filters using client-side approach${forceDesktop ? ' (forced)' : ''}`);
+          
+          // Clear checkboxes
+          const checkboxes = this.form?.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+          checkboxes?.forEach(checkbox => checkbox.checked = false);
+          
+          // Apply empty filter criteria immediately
+          const criteria = this.buildFilterCriteria();
+          this.filterEngine.applyFilters(criteria);
+          
+          console.log('[ResponsiveFilters] ✅ Desktop filters cleared using client-side filtering');
+        } else {
+          console.error('[ResponsiveFilters] ❌ Filter engine not available for desktop - falling back to server-side');
+          // Fallback: navigate to base URL
+          const basePath = window.location.pathname;
+          window.location.href = basePath;
+        }
       }
     }
 
