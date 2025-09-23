@@ -42,15 +42,28 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   }
   
   /* Disabled state styling for phantom click prevention */
+  /* ENHANCED: Phantom click prevention without visual flicker during View Transitions */
   :disabled {
-    opacity: 0.6;
     cursor: not-allowed;
     pointer-events: none;
   }
   
-  /* Disabled button styling */
-  button:disabled {
+  /* Only show opacity reduction when not during filtering process */
+  body:not(.filtering-in-progress) :disabled {
     opacity: 0.6;
+  }
+  
+  /* Smooth transition for opacity changes */
+  input[type="checkbox"], button {
+    transition: opacity 0.15s ease;
+  }
+  
+  /* Disabled button styling - consistent with general disabled styling */
+  body:not(.filtering-in-progress) button:disabled {
+    opacity: 0.6;
+  }
+  
+  button:disabled {
     cursor: not-allowed;
     pointer-events: none;
   }
@@ -264,478 +277,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 </div>
 
 <script>
-  // HYBRID: Device-specific Filter Engine - Desktop client-side, Mobile server-side
-  class StreamlinedFilterEngine {
-  private products: any[] = [];
-  private filteredProducts: any[] = [];
-  
-  constructor() {
-    this.initializeProducts();
-  }
-    
-  private initializeProducts(): void {
-    const grid = document.getElementById("filterable-product-grid");
-    
-    // Use the correct data attributes set by ProductGrid
-    const allProductsData = grid?.dataset.allProducts;
-    const initialProductsData = grid?.dataset.initialProducts;
-    
-    console.log('[StreamlinedFilterEngine] 🔍 Data source investigation:', {
-      hasAllProducts: !!allProductsData,
-      hasInitialProducts: !!initialProductsData,
-      allProductsLength: allProductsData ? JSON.parse(allProductsData).length : 0,
-      initialProductsLength: initialProductsData ? JSON.parse(initialProductsData).length : 0
-    });
-    
-    if (!allProductsData && !initialProductsData) {
-      console.warn("[StreamlinedFilterEngine] No product data found");
-      return;
-    }
-    
-    try {
-      // PREFER allProducts for client-side filtering, but validate it has content
-      let productData = allProductsData;
-      let dataSource = "allProducts";
-      
-      // Enhanced validation with better error handling
-      if (!allProductsData) {
-        console.log('[StreamlinedFilterEngine] ⚠️ allProducts data not available');
-        productData = initialProductsData;
-        dataSource = "initialProducts";
-      } else {
-        // Test parse allProducts to check if it's valid
-        try {
-          const testParse = JSON.parse(allProductsData);
-          if (!Array.isArray(testParse) || testParse.length === 0) {
-            console.log('[StreamlinedFilterEngine] ⚠️ allProducts data is empty array, falling back to initialProducts');
-            productData = initialProductsData;
-            dataSource = "initialProducts";
-          }
-        } catch (parseError) {
-          console.error('[StreamlinedFilterEngine] ❌ allProducts JSON parse failed:', parseError);
-          productData = initialProductsData;
-          dataSource = "initialProducts";
-        }
-      }
-      
-      if (!productData) {
-        console.error("[StreamlinedFilterEngine] ❌ No valid product data available from either source");
-        return;
-      }
-      
-      // Final parse with detailed error reporting
-      this.products = JSON.parse(productData);
-      
-      if (!Array.isArray(this.products)) {
-        console.error("[StreamlinedFilterEngine] ❌ Parsed data is not an array:", typeof this.products);
-        return;
-      }
-      
-      this.filteredProducts = [...this.products];
-      
-      console.log(`[StreamlinedFilterEngine] ✅ Successfully initialized with ${this.products.length} products from ${dataSource}`);
-      
-      // DEBUG: Show sample product structure for troubleshooting
-      if (this.products.length > 0) {
-        console.log('[StreamlinedFilterEngine] 📋 Sample product structure:', {
-          id: this.products[0].id,
-          brand: this.products[0].brand,
-          name: this.products[0].name,
-          hasInventoryStatus: !!this.products[0].inventoryStatus,
-          allKeys: Object.keys(this.products[0])
-        });
-      } else {
-        console.warn('[StreamlinedFilterEngine] ⚠️ No products in parsed array');
-      }
-    } catch (error) {
-      console.error("[StreamlinedFilterEngine] ❌ Critical error during product data initialization:", error);
-      console.log("[StreamlinedFilterEngine] 🔍 Debug info:", {
-        allProductsDataType: typeof allProductsData,
-        allProductsDataLength: allProductsData?.length,
-        initialProductsDataType: typeof initialProductsData,
-        initialProductsDataLength: initialProductsData?.length,
-        gridElement: !!document.getElementById("filterable-product-grid")
-      });
-    }
-  }
-    
-  public applyFilters(criteria: any): void {
-    console.log('[StreamlinedFilterEngine] 🔍 Applying filters:', criteria);
-    console.log('[StreamlinedFilterEngine] 📊 Total products to filter:', this.products.length);
-    
-    // Simple, reliable filtering - NO infinite scroll logic
-    this.filteredProducts = this.products.filter(product => 
-      this.matchesCriteria(product, criteria)
-    );
-    
-    console.log('[StreamlinedFilterEngine] ✅ Filtered products:', this.filteredProducts.length);
-    console.log('[StreamlinedFilterEngine] 📋 Sample filtered products:', this.filteredProducts.slice(0, 3).map(p => ({ id: p.id, brand: p.brand, title: p.title })));
-    
-    // Simple DOM updates - ProductGrid handles its own infinite scroll
-    this.updateProductGrid();
-    this.updateResultCount();
-    this.updateAppliedFilters(criteria);
-    this.updateClearButtonVisibility(criteria);
-    this.updateNoResultsState();
-  }
-  
-  private matchesCriteria(product: any, criteria: any): boolean {
-    // Debug first few products with enhanced information
-    const productIndex = this.products.indexOf(product);
-    if (productIndex < 3) {
-      console.log(`[StreamlinedFilterEngine] 🔍 Filtering product ${productIndex}:`, {
-        id: product.id,
-        brand: product.brand,
-        brandType: typeof product.brand,
-        criteriaBrands: criteria.brands,
-        criteriaAvailability: criteria.availability,
-        isOutOfStock: product.inventoryStatus?.isOutOfStock,
-        productKeys: Object.keys(product)
-      });
-    }
-    
-    // DEFENSIVE: Brand filtering with case handling and null checks
-    if (criteria.brands.length > 0) {
-      const productBrand = product.brand;
-      
-      // Handle missing or null brand
-      if (!productBrand) {
-        if (productIndex < 3) console.log(`[StreamlinedFilterEngine] ❌ Product ${productIndex} has no brand field`);
-        return false;
-      }
-      
-      // Check if product brand matches any of the selected brands (case-insensitive for safety)
-      const brandMatches = criteria.brands.some((selectedBrand: string) => {
-        const normalizedProductBrand = String(productBrand).trim();
-        const normalizedSelectedBrand = String(selectedBrand).trim();
-        return normalizedProductBrand === normalizedSelectedBrand;
-      });
-      
-      if (!brandMatches) {
-        if (productIndex < 3) {
-          console.log(`[StreamlinedFilterEngine] ❌ Product ${productIndex} brand "${productBrand}" not in selected brands:`, criteria.brands);
-        }
-        return false;
-      }
-    }
-    
-    // DEFENSIVE: Availability filtering with null checks
-    if (criteria.availability) {
-      const inventoryStatus = product.inventoryStatus;
-      const isOutOfStock = inventoryStatus?.isOutOfStock;
-      
-      if (productIndex < 3) {
-        console.log(`[StreamlinedFilterEngine] 🔍 AVAILABILITY DEBUG Product ${productIndex}:`, {
-          hasInventoryStatus: !!inventoryStatus,
-          isOutOfStock: isOutOfStock,
-          inventoryStatusKeys: inventoryStatus ? Object.keys(inventoryStatus) : 'none',
-          productId: product.id
-        });
-      }
-      
-      if (isOutOfStock === true) {
-        if (productIndex < 3) console.log(`[StreamlinedFilterEngine] ❌ Product ${productIndex} filtered out - out of stock`);
-        return false;
-      }
-      
-      // If inventory status is missing, assume in stock for now
-      if (productIndex < 3 && !inventoryStatus) {
-        console.log(`[StreamlinedFilterEngine] ⚠️ Product ${productIndex} missing inventory status - assuming in stock`);
-      }
-    }
-    
-    if (productIndex < 3) console.log(`[StreamlinedFilterEngine] ✅ Product ${productIndex} matches all criteria`);
-    return true;
-  }
-    
-  private updateProductGrid(): void {
-    const grid = document.getElementById("filterable-product-grid");
-    if (!grid) {
-      console.error('[StreamlinedFilterEngine] ❌ Product grid not found');
-      return;
-    }
-    
-    const allWrappers = Array.from(grid.querySelectorAll('.product-card-wrapper'));
-    
-    // DEFENSIVE: Create more robust ID matching 
-    const visibleProductIds = new Set();
-    this.filteredProducts.forEach(p => {
-      // Add both string and number versions of ID to handle any format mismatches
-      visibleProductIds.add(String(p.id));
-      visibleProductIds.add(p.id);
-    });
-    
-    console.log('[StreamlinedFilterEngine] 🎯 DOM Update - Total cards:', allWrappers.length);
-    console.log('[StreamlinedFilterEngine] 🎯 DOM Update - Filtered products count:', this.filteredProducts.length);
-    console.log('[StreamlinedFilterEngine] 🎯 Visible product IDs (first 5):', Array.from(visibleProductIds).slice(0, 10));
-
-    // DEBUG: Check first few DOM cards to see their IDs
-    console.log('[StreamlinedFilterEngine] 🔍 First 3 DOM card IDs:', 
-      allWrappers.slice(0, 3).map(w => w.getAttribute('data-product-id'))
-    );
-
-    // Get animation timing with row-based calculations
-    const { duration, staggerDelay, rowStaggerDelay } = this.getAnimationTiming();
-
-    // Helper function to calculate responsive grid
-    function getCardsPerRow() {
-      const width = window.innerWidth;
-      if (width >= 1536) return 6; // 2xl:grid-cols-6
-      if (width >= 1280) return 4; // xl:grid-cols-4
-      if (width >= 1024) return 3; // lg:grid-cols-3
-      if (width >= 768) return 2;  // md:grid-cols-2
-      return 2; // fallback
-    }
-
-    // Step 1: Exit all cards
-    allWrappers.forEach((wrapper) => {
-      wrapper.classList.remove('opacity-100');
-      wrapper.classList.add('opacity-0');
-    });
-
-    // Step 2: Show/hide and animate visible cards with row-based stagger
-    setTimeout(() => {
-      let visibleIndex = 0;
-      let hiddenCount = 0;
-      const cardsPerRow = getCardsPerRow();
-      
-      allWrappers.forEach((wrapper, domIndex) => {
-        const productId = wrapper.getAttribute('data-product-id');
-        
-        // DEFENSIVE: Try multiple ID formats and handle missing IDs
-        const isVisible = productId ? (
-          visibleProductIds.has(productId) || 
-          visibleProductIds.has(String(productId)) ||
-          visibleProductIds.has(parseInt(productId))
-        ) : false;
-        
-        // Enhanced debug for first few iterations
-        if (domIndex < 5) {
-          console.log(`[StreamlinedFilterEngine] 🔍 Card ${domIndex}: DOM ID="${productId}", visible=${isVisible}, type=${typeof productId}`);
-        }
-
-        if (isVisible) {
-          // Show card and animate in with combined row + individual card stagger
-          (wrapper as HTMLElement).style.display = '';
-          (wrapper as HTMLElement).removeAttribute('data-filter-hidden');
-          
-          // FIXED: Don't interfere with infinite scroll state management
-          // Only clear infinite scroll hidden if it was set by filtering, not by scroll logic
-          const wasHiddenByScroll = (wrapper as HTMLElement).hasAttribute('data-infinite-scroll-hidden');
-          if (!wasHiddenByScroll) {
-            // This card was hidden by filtering, not by scroll, so it's safe to show
-            (wrapper as HTMLElement).removeAttribute('data-infinite-scroll-hidden');
-          }
-          
-          // Calculate both row index and individual stagger
-          const rowIndex = Math.floor(visibleIndex / cardsPerRow);
-          const cardInRow = visibleIndex % cardsPerRow;
-          
-          // Combined delay: row delay + individual card delay within row
-          const baseRowDelay = rowIndex * rowStaggerDelay;
-          const cardDelay = cardInRow * (staggerDelay / 1.2); // More pronounced individual stagger
-          const totalDelay = baseRowDelay + cardDelay;
-          
-          setTimeout(() => {
-            wrapper.classList.remove('opacity-0');
-            wrapper.classList.add('opacity-100');
-          }, totalDelay);
-          
-          visibleIndex++;
-        } else {
-          // Hide card and mark as filtered - preserve infinite scroll state
-          (wrapper as HTMLElement).style.display = 'none';
-          (wrapper as HTMLElement).setAttribute('data-filter-hidden', 'true');
-          
-          // FIXED: Don't modify infinite scroll attributes when filtering
-          // Let infinite scroll manage its own state independently
-          
-          hiddenCount++;
-        }
-      });
-      
-      console.log(`[StreamlinedFilterEngine] ✅ DOM update complete: ${visibleIndex} visible, ${hiddenCount} hidden`);
-      
-      // HYBRID: Only emit filtersApplied for desktop (where infinite scroll might need adjustment)
-      const isDesktop = window.innerWidth >= 1024;
-      if (isDesktop) {
-        console.log('[StreamlinedFilterEngine] 🖥️ Desktop filtering complete - infinite scroll will be unaffected');
-        // Note: We're not emitting filtersApplied anymore since infinite scroll is simpler
-      } else {
-        console.log('[StreamlinedFilterEngine] 📱 Mobile filtering complete (this should not happen in hybrid mode)');
-      }
-      
-    }, duration);
-  }
-  
-  private updateResultCount(): void {
-    const resultElements = document.querySelectorAll('[data-result-count]');
-    resultElements.forEach(element => {
-      const totalProducts = this.products.length;
-      const filteredCount = this.filteredProducts.length;
-      
-      if (filteredCount === totalProducts) {
-        element.textContent = `${totalProducts} products`;
-      } else {
-        element.textContent = `${filteredCount} of ${totalProducts} products`;
-      }
-    });
-  }
-  
-  private updateNoResultsState(): void {
-    const noResults = document.getElementById("no-results");
-    const grid = document.getElementById("filterable-product-grid");
-    
-    if (this.filteredProducts.length === 0) {
-      noResults?.classList.remove("hidden");
-      grid?.classList.add("hidden");
-    } else {
-      noResults?.classList.add("hidden");
-      grid?.classList.remove("hidden");
-    }
-  }
-
-  // Enhanced CSS parsing for animation timing with row-based calculations
-  private getAnimationTiming() {
-    const style = getComputedStyle(document.documentElement);
-    
-    // Properly parse duration (handles "0.3s", "300ms", etc.)
-    const durationStr = style.getPropertyValue('--card-transition-duration').trim();
-    console.log(`[StreamlinedFilterEngine] CSS duration value: "${durationStr}"`);
-    const duration = durationStr.includes('ms') 
-      ? parseInt(durationStr.replace('ms', ''))
-      : parseFloat(durationStr.replace('s', '')) * 1000;
-    
-    // Properly parse stagger delay (handles "50ms", "0ms", etc.)
-    const staggerStr = style.getPropertyValue('--card-stagger-delay').trim();
-    console.log(`[StreamlinedFilterEngine] CSS stagger value: "${staggerStr}"`);
-    const staggerDelay = parseInt(staggerStr.replace('ms', '')) || 0;
-
-    // Parse row stagger delay for row-based animations
-    const rowStaggerStr = style.getPropertyValue('--row-stagger-delay').trim();
-    console.log(`[StreamlinedFilterEngine] CSS row stagger value: "${rowStaggerStr}"`);
-    const rowStaggerDelay = parseInt(rowStaggerStr.replace('ms', '')) || 100;
-    
-    console.log(`[StreamlinedFilterEngine] Parsed timing - Duration: ${duration}ms, Stagger: ${staggerDelay}ms, Row Stagger: ${rowStaggerDelay}ms`);
-    
-    return {
-      duration: duration || 300,
-      staggerDelay: staggerDelay,
-      rowStaggerDelay: rowStaggerDelay
-    };
-  }
-    
-    private updateAppliedFilters(criteria: any): void {
-      // Update AppliedFilters component for client-side filtering
-      const appliedFiltersContainer = document.getElementById('applied-filters-container') as HTMLElement;
-      const appliedFiltersContent = document.getElementById('applied-filters-content') as HTMLElement;
-      
-      if (!appliedFiltersContainer || !appliedFiltersContent) return;
-      
-      const hasFilters = criteria.brands.length > 0 || criteria.availability;
-      
-      if (!hasFilters) {
-        // Use CSS Grid animation to hide
-        appliedFiltersContainer.classList.remove('filters-open');
-        // Clear content after animation completes
-        setTimeout(() => {
-          if (!appliedFiltersContainer.classList.contains('filters-open')) {
-            appliedFiltersContent.innerHTML = '';
-          }
-        }, 300);
-        return;
-      }
-      
-      // Show container using CSS Grid animation and populate content
-      appliedFiltersContent.innerHTML = '';
-      appliedFiltersContainer.classList.add('filters-open');
-      
-      // Create filters wrapper
-      const filtersWrapper = document.createElement('div');
-      filtersWrapper.className = 'flex flex-wrap gap-2';
-      
-      // Add brand filters
-      criteria.brands.forEach((brand: string) => {
-        const filterTag = document.createElement('button');
-        filterTag.className = 'inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 group';
-        filterTag.innerHTML = `
-          <span>${brand}</span>
-          <svg class="w-3 h-3 ml-1 text-(--content-meta) group-hover:text-(--content-body)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        `;
-        filterTag.addEventListener('click', () => {
-          // Remove this brand and reapply filters
-          const checkbox = document.querySelector(`input[name="brands"][value="${brand}"]`) as HTMLInputElement;
-          if (checkbox) {
-            checkbox.checked = false;
-            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        });
-        filtersWrapper.appendChild(filterTag);
-      });
-      
-      // Add availability filter
-      if (criteria.availability) {
-        const filterTag = document.createElement('button');
-        filterTag.className = 'inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--state-success-surface) hover:bg-(--state-success-surface)/75 transition-colors text-(--state-success-text) border-(--state-success-text)/50 group';
-        filterTag.innerHTML = `
-          <span>In stock only</span>
-          <svg class="w-3 h-3 ml-1 text-(--state-success-text)/70 group-hover:text-(--state-success-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        `;
-        filterTag.addEventListener('click', () => {
-          // Remove availability filter and reapply
-          const checkbox = document.querySelector('input[name="availability"]') as HTMLInputElement;
-          if (checkbox) {
-            checkbox.checked = false;
-            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        });
-        filtersWrapper.appendChild(filterTag);
-      }
-      
-      // Add clear all button - SAME LOGIC AS ProductFilters Clear
-      const clearAllButton = document.createElement('button');
-      clearAllButton.className = 'text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-nowrap';
-      clearAllButton.textContent = 'Clear All';
-      clearAllButton.addEventListener('click', () => {
-        // Use exact same method as ProductFilters Clear button
-        const responsiveFilters = (window as any).currentFilterInstance;
-        if (responsiveFilters && responsiveFilters.clearAllFilters) {
-          responsiveFilters.clearAllFilters();
-        }
-      });
-      
-      appliedFiltersContent.appendChild(filtersWrapper);
-      appliedFiltersContent.appendChild(clearAllButton);
-    }
-    
-    private updateClearButtonVisibility(criteria: any): void {
-      const clearButton = document.getElementById('clear-brands-button') as HTMLElement;
-      if (clearButton) {
-        const hasFilters = criteria.brands.length > 0 || criteria.availability;
-        const filterCount = criteria.brands.length + (criteria.availability ? 1 : 0);
-        
-        // Update both visibility and text content
-        clearButton.style.display = hasFilters ? 'block' : 'none';
-        clearButton.textContent = `Clear All`; // Simplified text
-        
-        // Alternative: Show count if preferred
-        // clearButton.textContent = filterCount > 0 ? `Clear (${filterCount})` : 'Clear All';
-      }
-    }
-    
-    public destroy(): void {
-      // No infinite scroll observer to clean up
-    }
-    
-    // Method for validation
-    public getProductsCount(): number {
-      return this.products ? this.products.length : 0;
-    }
-  }
+  // UNIFIED: View Transitions architecture - no client-side filtering engine needed
 
   class ResponsiveFilters {
     private form: HTMLFormElement | null = null;
@@ -743,7 +285,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     private overlay: HTMLElement | null = null;
     private showMoreToggle: HTMLButtonElement | null = null;
     private isExpanded: boolean = false;
-    private filterEngine: StreamlinedFilterEngine | null = null;
+    // UNIFIED: No filterEngine needed - View Transitions handle all filtering
 
     constructor() {
       // Direct element assignment
@@ -802,7 +344,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
               gridReady = true;
               console.log('[ResponsiveFilters] ✅ Grid with valid data detected - enabling filters');
               this.enableFilterControls();
-              this.initializeFilterEngine();
+              // UNIFIED: No filter engine initialization needed - View Transitions handle all filtering
             } else {
               console.warn('[ResponsiveFilters] ⚠️ Grid found but data appears to be empty');
             }
@@ -867,28 +409,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       console.log('[ResponsiveFilters] ✅ Filter controls enabled');
     }
     
-    private initializeFilterEngine(): void {
-      // HYBRID: Only initialize client-side filtering for desktop
-      // OVERRIDE: Check for ?test-desktop=true in URL to force desktop behavior
-      const urlParams = new URLSearchParams(window.location.search);
-      const forceDesktop = urlParams.get('test-desktop') === 'true';
-      
-      const isDesktop = forceDesktop || window.innerWidth >= 1024;
-      
-      if (isDesktop) {
-        try {
-          this.filterEngine = new StreamlinedFilterEngine();
-          console.log(`[ResponsiveFilters] 🖥️ Desktop: Client-side filtering engine enabled${forceDesktop ? ' (forced via URL)' : ''}`);
-          
-        } catch (error) {
-          console.error('[ResponsiveFilters] ❌ Desktop filter engine initialization failed:', error);
-          this.filterEngine = null;
-        }
-      } else {
-        console.log('[ResponsiveFilters] 📱 Mobile: Using server-side filtering - no client-side engine needed');
-        this.filterEngine = null;
-      }
-    }
+    // UNIFIED: No initializeFilterEngine method needed - View Transitions handle all filtering
 
     private setupEventListeners(): void {
       this.setupMobileDrawer();
@@ -937,140 +458,127 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
       const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
       
+      // UNIFIED: Server-side filtering with View Transitions for ALL devices
+      // Device-appropriate UX: Mobile = drawer workflow, Desktop = immediate filtering
+      
       checkboxes.forEach((checkbox) => {
         // Remove all existing event listeners by cloning the element
         const newCheckbox = checkbox.cloneNode(true) as HTMLInputElement;
         checkbox.parentNode?.replaceChild(newCheckbox, checkbox);
         
         newCheckbox.addEventListener("change", (event) => {
-          // OVERRIDE: Add easy way to test desktop behavior 
-          // Check for ?test-desktop=true in URL to force desktop behavior
           const urlParams = new URLSearchParams(window.location.search);
           const forceDesktop = urlParams.get('test-desktop') === 'true';
-          
           const isMobile = !forceDesktop && window.innerWidth < 1024;
           
-          console.log(`[ResponsiveFilters] Checkbox changed: ${(event.target as HTMLInputElement).name}=${(event.target as HTMLInputElement).value}, checked=${(event.target as HTMLInputElement).checked}, device=${isMobile ? 'mobile' : 'desktop'}${forceDesktop ? ' (forced)' : ''}`);
+          console.log(`[ResponsiveFilters] Checkbox changed: ${(event.target as HTMLInputElement).name}=${(event.target as HTMLInputElement).value}, device=${isMobile ? 'mobile' : 'desktop'}`);
           
           if (isMobile) {
-            // MOBILE: Allow natural form submission with View Transitions
-            console.log('[ResponsiveFilters] 📱 Mobile: Allowing natural form submission');
+            // MOBILE: Multi-select drawer workflow - no immediate action
+            console.log('[ResponsiveFilters] 📱 Mobile: Checkbox change saved for Apply Filters');
             sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
-            sessionStorage.setItem("filtering-in-progress", "true");
-            // Don't prevent - let form submit naturally
+            // Don't prevent - let checkboxes accumulate for drawer workflow
             return;
+            
           } else {
-            // DESKTOP: Use client-side filtering
-            if (this.filterEngine) {
-              console.log('[ResponsiveFilters] 🖥️ Desktop: Using CLIENT-SIDE filtering');
+            // DESKTOP: Immediate View Transitions filtering with exit animation coordination
+            console.log('[ResponsiveFilters] 🖥️ Desktop: Using immediate View Transitions filtering');
+            
+            // PREVENT form submission temporarily
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            
+            // ANTI-FLICKER: Add class to prevent disabled opacity during filtering
+            document.body.classList.add('filtering-in-progress');
+            
+            // STEP 1: Start exit animation (identical to current system)
+            const grid = document.getElementById("filterable-product-grid");
+            if (grid) {
+              const allCards = Array.from(grid.querySelectorAll('.product-card-wrapper'));
               
-              // PREVENT form submission for desktop
-              event.preventDefault();
-              event.stopPropagation();
-              event.stopImmediatePropagation();
+              // Exit animation (matching current desktop behavior)
+              allCards.forEach(card => {
+                card.classList.remove('opacity-100');
+                card.classList.add('opacity-0');
+              });
               
-              // Get current filter criteria and apply immediately
-              const criteria = this.buildFilterCriteria();
-              this.filterEngine.applyFilters(criteria);
-              
-              // Save menu state
-              sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
-              
-              return false;
-              
-            } else {
-              console.error('[ResponsiveFilters] ❌ Filter engine not available for desktop');
-              // Fallback to server-side
-              sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
-              sessionStorage.setItem("filtering-in-progress", "true");
+              // STEP 2: Trigger View Transitions navigation during exit phase
+              setTimeout(() => {
+                // Save state and trigger form submission
+                sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+                sessionStorage.setItem("filtering-in-progress", "true");
+                
+                // Create and submit form programmatically for View Transitions
+                const formData = new FormData(this.form!);
+                const params = new URLSearchParams();
+                
+                // Build URL with current filter state
+                const brands = formData.getAll('brands') as string[];
+                const availability = formData.get('availability') === 'true';
+                
+                brands.forEach(brand => params.append('brands', brand));
+                if (availability) params.set('availability', 'true');
+                
+                const queryString = params.toString();
+                const basePath = window.location.pathname;
+                const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
+                
+                // Navigate with View Transitions (Astro handles this automatically)
+                window.location.href = newUrl;
+                
+              }, 150); // Trigger during exit animation, well before 300ms gap
             }
+            
+            return false;
           }
         });
       });
       
-      // HYBRID: Form submission handling
+      // UNIFIED: Form submission handling for both mobile and desktop
       this.form.addEventListener('submit', (event) => {
-        // OVERRIDE: Add easy way to test desktop behavior 
         const urlParams = new URLSearchParams(window.location.search);
         const forceDesktop = urlParams.get('test-desktop') === 'true';
-        
         const isMobile = !forceDesktop && window.innerWidth < 1024;
         
         console.log('[ResponsiveFilters] 📝 FORM SUBMISSION', {
           device: isMobile ? 'mobile' : 'desktop',
           screenWidth: window.innerWidth,
-          filterEngineAvailable: !!this.filterEngine,
           forceDesktop: forceDesktop
         });
         
         if (isMobile) {
-          // MOBILE: Server-side filtering with View Transitions
-          console.log('[ResponsiveFilters] 📱 Mobile: Using SERVER-SIDE filtering with View Transitions');
+          // MOBILE: Drawer workflow with View Transitions
+          console.log('[ResponsiveFilters] 📱 Mobile: Using drawer + View Transitions');
           
-          // ENHANCED: Close drawer FIRST and wait for animation to complete
-          // This ensures smooth View Transitions without visual conflicts
+          // Close drawer FIRST for smooth View Transitions
           if (this.container && this.overlay) {
-            // Start closing drawer immediately
             this.closeMobileDrawer();
             
-            // Add a small delay to let drawer animation start
             setTimeout(() => {
-              // Save state for restoration after navigation
               sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
               sessionStorage.setItem("filtering-in-progress", "true");
-              
-              // Now allow form to submit naturally - Astro View Transitions will handle it
-              // Don't prevent default - let Astro's router handle the smooth transition
-            }, 50); // Small delay for animation start
+              // Let form submit naturally - View Transitions handle smoothly
+            }, 50);
           } else {
-            // Fallback if elements not found
             sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
             sessionStorage.setItem("filtering-in-progress", "true");
           }
           
-          // Let form submit naturally - View Transitions will handle smoothly
+          // Let form submit naturally for View Transitions
           return;
           
         } else {
-          // DESKTOP: Client-side filtering
+          // DESKTOP: Form submission shouldn't happen (checkboxes handle immediately)
+          // But if it does, treat it as immediate filtering
           event.preventDefault();
-          event.stopPropagation();
-          
-          if (this.filterEngine) {
-            console.log('[ResponsiveFilters] 🖥️ Desktop: Using CLIENT-SIDE filtering');
-            
-            // Get current filter criteria and apply immediately
-            const criteria = this.buildFilterCriteria();
-            console.log('[ResponsiveFilters] 🔍 Filter criteria:', criteria);
-            this.filterEngine.applyFilters(criteria);
-            
-            // Save menu state
-            sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
-            
-            console.log('[ResponsiveFilters] ✅ Desktop client-side filtering complete');
-          } else {
-            console.error('[ResponsiveFilters] ❌ Filter engine not available for desktop');
-            // Fallback: allow form submission
-            sessionStorage.setItem("filtering-in-progress", "true");
-            return;
-          }
-          
+          console.log('[ResponsiveFilters] 🖥️ Desktop: Form submission intercepted - should be handled by checkbox change');
           return false;
         }
       });
     }
     
-    // Build filter criteria for client-side engine  
-    private buildFilterCriteria(): any {
-      if (!this.form) return { brands: [], availability: false };
-      
-      // Re-query form to get current checkboxes (in case they were cloned)
-      const formData = new FormData(this.form);
-      const brands = formData.getAll('brands') as string[];
-      const availability = formData.get('availability') === 'true';
-      
-      return { brands, availability };
-    }
+    // UNIFIED: No buildFilterCriteria needed - View Transitions handle form data directly
 
     private setupShowMoreToggle(): void {
       if (!this.showMoreToggle) return;
@@ -1127,27 +635,38 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const clearBtn = document.querySelector("[data-clear-filters]");
       const clearBtnMobile = document.querySelector("[data-clear-filters-mobile]");
 
-      // UNIFIED: Both desktop and mobile clear buttons use same logic as AppliedFilters
-      clearBtn?.addEventListener("click", () => {
-      const filterInstance = (window as any).currentFilterInstance;
-      if (filterInstance?.clearAllFilters) {
-        filterInstance.clearAllFilters();
-      }
-    });
+      // UNIFIED: Bulletproof Clear All implementation
+      const handleClearAll = () => {
+        // Primary: Use instance method
+        const filterInstance = (window as any).currentFilterInstance;
+        if (filterInstance?.clearAllFilters) {
+          return filterInstance.clearAllFilters();
+        }
+        
+        // Secondary: Use global fallback function
+        const globalClearAll = (window as any).globalClearAllFilters;
+        if (globalClearAll) {
+          return globalClearAll();
+        }
+        
+        // Tertiary: Direct fallback (should rarely be needed)
+        console.warn('[ProductFilters] ⚠️ Using direct fallback - animation may be inconsistent');
+        window.location.href = window.location.pathname;
+      };
+
+      clearBtn?.addEventListener("click", handleClearAll);
+      
       clearBtnMobile?.addEventListener("click", () => {
         // Close mobile drawer first, then clear
         this.closeMobileDrawer();
-        const filterInstance = (window as any).currentFilterInstance;
-        if (filterInstance?.clearAllFilters) {
-          filterInstance.clearAllFilters();
-        }
+        setTimeout(handleClearAll, 100); // Small delay after drawer close
       });
     }
 
     private setupViewTransitionsCoordination(): void {
-      // HYBRID: Ensure mobile drawer closes before View Transitions navigation
+      // UNIFIED: Enhanced View Transitions coordination for both mobile and desktop
       document.addEventListener('astro:before-preparation', () => {
-        console.log('[ResponsiveFilters] 🚀 View Transitions preparation - ensuring mobile drawer is closed');
+        console.log('[ResponsiveFilters] 🚀 View Transitions preparation - unified cleanup');
         
         // Force close mobile drawer before any navigation
         if (this.container && this.overlay) {
@@ -1156,68 +675,152 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
           document.body.style.overflow = "";
         }
         
+        // Clean up any clearing messages from previous transitions
+        const existingMessage = document.getElementById('clearing-message');
+        if (existingMessage) {
+          existingMessage.remove();
+        }
+        
         // Clean up session storage
         sessionStorage.removeItem("filtering-in-progress");
+      });
+      
+      // UNIFIED: Coordinate with product grid animations during View Transitions
+      document.addEventListener('astro:after-swap', () => {
+        console.log('[ResponsiveFilters] ✨ View Transitions swap complete - coordinating animations');
+        
+        // Ensure product cards start in the correct state for entrance animations
+        const cards = document.querySelectorAll('.product-card-wrapper');
+        cards.forEach(card => {
+          const htmlCard = card as HTMLElement;
+          if (!htmlCard.classList.contains('opacity-100')) {
+            htmlCard.classList.add('opacity-0');
+          }
+        });
+      });
+      
+      // UNIFIED: Prevent FOUC by managing grid visibility during transitions
+      document.addEventListener('astro:page-load', () => {
+        const grid = document.getElementById('filterable-product-grid');
+        if (grid) {
+          // Ensure grid is ready for animations
+          grid.style.visibility = 'visible';
+          grid.style.opacity = '1';
+        }
+        
+        // ANTI-FLICKER: Clean up filtering class after View Transitions
+        document.body.classList.remove('filtering-in-progress');
+        
+        // Re-establish global Clear All function after page load
+        const currentInstance = (window as any).currentFilterInstance;
+        if (currentInstance) {
+          (window as any).globalClearAllFilters = function() {
+            if (currentInstance?.clearAllFilters) {
+              return currentInstance.clearAllFilters();
+            }
+            
+            // Enhanced fallback for any navigation scenario
+            console.log('[GlobalClearAll] 🔄 Post-navigation fallback');
+            const visibleCards = document.querySelectorAll('.product-card-wrapper:not([style*="display: none"])');
+            const basePath = window.location.pathname;
+            
+            if (visibleCards.length > 0) {
+              visibleCards.forEach(card => {
+                card.classList.remove('opacity-100');
+                card.classList.add('opacity-0');
+              });
+              setTimeout(() => window.location.href = basePath, 150);
+            } else {
+              window.location.href = basePath;
+            }
+          };
+        }
       });
     }
 
     public clearAllFilters(): void {
       console.log('[ResponsiveFilters] 🧹 Clearing all filters');
       
-      // OVERRIDE: Check for ?test-desktop=true in URL to force desktop behavior
       const urlParams = new URLSearchParams(window.location.search);
       const forceDesktop = urlParams.get('test-desktop') === 'true';
-      
       const isMobile = !forceDesktop && window.innerWidth < 1024;
+      const basePath = window.location.pathname;
       
       if (isMobile) {
-        // MOBILE: Use server-side approach - navigate to base URL
-        console.log('[ResponsiveFilters] 📱 Mobile: Clearing filters via server-side navigation');
-        const basePath = window.location.pathname;
+        // MOBILE: Enhanced clear with exit animation
+        const visibleCards = document.querySelectorAll('.product-card-wrapper:not([style*="display: none"])');
         
-        // Close drawer first for smooth transition
-        this.closeMobileDrawer();
-        
-        // Navigate to base URL (Astro View Transitions will handle smoothly)
-        window.location.href = basePath;
+        if (visibleCards.length > 0) {
+          console.log('[ResponsiveFilters] 📱 Mobile: Clear All with exit animation');
+          this.closeMobileDrawer();
+          
+          // Exit animation
+          visibleCards.forEach((card, index) => {
+            const htmlCard = card as HTMLElement;
+            const rowIndex = Math.floor(index / 2); // 2 cards per row on mobile
+            const cardInRow = index % 2;
+            const totalDelay = rowIndex * 50 + cardInRow * 25;
+            
+            setTimeout(() => {
+              htmlCard.classList.remove('opacity-100');
+              htmlCard.classList.add('opacity-0');
+            }, totalDelay);
+          });
+          
+          // Navigate during exit animation
+          const maxDelay = Math.ceil(visibleCards.length / 2) * 50 + 25 + 100;
+          setTimeout(() => {
+            sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+            window.location.href = basePath;
+          }, maxDelay);
+          
+        } else {
+          // No cards to animate
+          this.closeMobileDrawer();
+          sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+          window.location.href = basePath;
+        }
         
       } else {
-        // DESKTOP: Use client-side approach
-        if (this.filterEngine) {
-          console.log(`[ResponsiveFilters] 🖥️ Desktop: Clearing filters using client-side approach${forceDesktop ? ' (forced)' : ''}`);
+        // DESKTOP: Clear All with coordinated exit animation + View Transitions
+        console.log('[ResponsiveFilters] 🖥️ Desktop: Clear All with coordinated View Transitions');
+        
+        const grid = document.getElementById("filterable-product-grid");
+        if (grid) {
+          const visibleCards = Array.from(grid.querySelectorAll('.product-card-wrapper:not([style*="display: none"])'));
           
-          // Clear checkboxes
-          const checkboxes = this.form?.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
-          checkboxes?.forEach(checkbox => checkbox.checked = false);
-          
-          // Apply empty filter criteria immediately
-          const criteria = this.buildFilterCriteria();
-          this.filterEngine.applyFilters(criteria);
-          
-          console.log('[ResponsiveFilters] ✅ Desktop filters cleared using client-side filtering');
-        } else {
-          console.error('[ResponsiveFilters] ❌ Filter engine not available for desktop - falling back to server-side');
-          // Fallback: navigate to base URL
-          const basePath = window.location.pathname;
-          window.location.href = basePath;
+          if (visibleCards.length > 0) {
+            // Exit animation (matching desktop filtering pattern)
+            visibleCards.forEach(card => {
+              card.classList.remove('opacity-100');
+              card.classList.add('opacity-0');
+            });
+            
+            // Navigate during exit animation (same timing as regular filtering)
+            setTimeout(() => {
+              sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+              window.location.href = basePath;
+            }, 150); // Same 150ms timing as regular desktop filtering
+            
+          } else {
+            // No cards to animate
+            sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+            window.location.href = basePath;
+          }
         }
       }
     }
 
-    // FIXED: Proper cleanup that restores initial drawer state
-    destroy(): void {
-      console.log('[ResponsiveFilters] 🧹 Cleaning up');
+    // UNIFIED: Proper cleanup for View Transitions architecture
+    public destroy(): void {
+      console.log('[ResponsiveFilters] 🧹 Cleaning up View Transitions architecture');
       
       // Clean up DOM state
       document.body.style.overflow = "";
       
-      // Clean up filter engine
-      if (this.filterEngine) {
-        this.filterEngine.destroy();
-        this.filterEngine = null;
-      }
+      // UNIFIED: No filter engine to clean up anymore
       
-      // FIXED: Reset mobile drawer to CLOSED state (not open)
+      // Reset mobile drawer to CLOSED state (not open)
       if (this.container) {
         // Ensure drawer is closed on mobile, visible on desktop
         this.container.classList.add("translate-y-full", "opacity-0", "pointer-events-none");
@@ -1232,7 +835,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       // Clean up session storage
       sessionStorage.removeItem("filtering-in-progress");
       
-      console.log('[ResponsiveFilters] ✅ Cleanup complete');
+      console.log('[ResponsiveFilters] ✅ View Transitions cleanup complete');
     }
   }
 
@@ -1249,8 +852,48 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     // Create new instance
     currentInstance = new ResponsiveFilters();
     
-    // Expose instance globally for AppliedFilters access
+    // Expose instance globally for AppliedFilters and all Clear All buttons
     (window as any).currentFilterInstance = currentInstance;
+    
+    // UNIFIED: Global Clear All coordination to prevent FOUT from any source
+    (window as any).globalClearAllFilters = function() {
+      if (currentInstance?.clearAllFilters) {
+        return currentInstance.clearAllFilters();
+      }
+      
+      // Enhanced fallback that works from any component
+      console.log('[GlobalClearAll] 🔄 Using enhanced global fallback');
+      const visibleCards = document.querySelectorAll('.product-card-wrapper:not([style*="display: none"])');
+      const basePath = window.location.pathname;
+      const isMobile = window.innerWidth < 1024;
+      
+      if (visibleCards.length > 0) {
+        // Exit animation
+        visibleCards.forEach((card, index) => {
+          const htmlCard = card as HTMLElement;
+          
+          if (isMobile) {
+            const rowIndex = Math.floor(index / 2);
+            const cardInRow = index % 2;
+            const totalDelay = rowIndex * 50 + cardInRow * 25;
+            
+            setTimeout(() => {
+              htmlCard.classList.remove('opacity-100');
+              htmlCard.classList.add('opacity-0');
+            }, totalDelay);
+          } else {
+            htmlCard.classList.remove('opacity-100');
+            htmlCard.classList.add('opacity-0');
+          }
+        });
+        
+        // Navigate during exit animation
+        const delay = isMobile ? Math.ceil(visibleCards.length / 2) * 50 + 25 + 100 : 150;
+        setTimeout(() => window.location.href = basePath, delay);
+      } else {
+        window.location.href = basePath;
+      }
+    };
     
     // DEBUGGING: Monitor all form submissions globally
     document.addEventListener('submit', (e) => {
