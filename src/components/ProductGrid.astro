@@ -318,8 +318,14 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
 
   // Enhanced page load entrance animations with combined row + individual card stagger
   function initializePageLoadAnimations() {
+    // FIXED: Only animate cards that are initially visible (no display: none style)
     const cards = document.querySelectorAll(".product-card-wrapper.opacity-0");
-    if (!cards.length) return;
+    const visibleCards = Array.from(cards).filter(card => {
+      const htmlCard = card as HTMLElement;
+      return htmlCard.style.display !== "none";
+    });
+    
+    if (!visibleCards.length) return;
 
     // Calculate cards per row for row-based animation
     function getCardsPerRow() {
@@ -384,7 +390,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
       }
     );
 
-    cards.forEach((card) => observer.observe(card));
+    visibleCards.forEach((card) => observer.observe(card));
   }
 
   // Handle filter state restoration
@@ -466,17 +472,19 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
       calculatedVisibleCount: visibleCount,
     });
 
-    // SIMPLIFIED: Show initial batch based on current screen size
+    // FIXED: Use display:none for layout but ensure proper animation state when showing
     allCards.forEach((card, index) => {
       const htmlCard = card as HTMLElement;
       if (index < visibleCount) {
-        // This card should be visible
+        // This card should be visible on initial load
         htmlCard.style.display = "";
         htmlCard.removeAttribute("data-infinite-scroll-hidden");
       } else {
-        // This card should be hidden by infinite scroll
+        // Hidden cards use display:none (for proper layout) but prepare animation state
         htmlCard.style.display = "none";
         htmlCard.setAttribute("data-infinite-scroll-hidden", "true");
+        // CRITICAL: Pre-set opacity-0 class for when card becomes visible
+        htmlCard.classList.add("opacity-0");
       }
     });
 
@@ -526,7 +534,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
                   `[ProductGrid] Loading ${cardsToShow} cards (${cardsPerRow} per row × 2 rows)`
                 );
 
-                // Show the next batch with stagger animation
+                // Show the next batch with stagger animation (ENHANCED to match page load animations)
                 for (let i = visibleCount; i < newVisibleCount; i++) {
                   if (allCards[i]) {
                     const card = allCards[i] as HTMLElement;
@@ -534,16 +542,39 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
                     const rowOffset = Math.floor(batchIndex / cardsPerRow);
                     const cardInRow = batchIndex % cardsPerRow;
 
-                    // Combined delay: row delay + individual card delay
-                    const baseRowDelay = rowOffset * 100; // 100ms per row
-                    const cardDelay = cardInRow * 35; // 35ms per card within row
+                    // ENHANCED: Use same stagger calculation as page load animations
+                    const rowStaggerDelay = parseInt(
+                      getComputedStyle(document.documentElement).getPropertyValue("--row-stagger-delay")
+                    ) || 100;
+                    
+                    const cardStaggerDelay = parseInt(
+                      getComputedStyle(document.documentElement).getPropertyValue("--card-stagger-delay")
+                    ) || 50;
+
+                    const baseRowDelay = rowOffset * rowStaggerDelay;
+                    const cardDelay = cardInRow * (cardStaggerDelay / 2); // More noticeable individual stagger
                     const totalDelay = baseRowDelay + cardDelay;
 
+                    // ENHANCED: Add animating class for will-change optimization (matching page load)
+                    card.classList.add("animating");
+
                     setTimeout(() => {
+                      // STEP 1: Show element in layout but keep it invisible
                       card.style.display = "";
                       card.removeAttribute("data-infinite-scroll-hidden");
-                      card.classList.remove("opacity-0");
-                      card.classList.add("opacity-100");
+                      
+                      // STEP 2: Force reflow so browser recognizes element is now in layout
+                      // This is CRITICAL - without this, CSS transitions won't work after display: none
+                      card.offsetHeight; // Trigger reflow
+                      
+                      // STEP 3: Now trigger the CSS animation (after reflow, transitions work)
+                      card.classList.remove("opacity-0"); // Remove scale(0.95) state  
+                      card.classList.add("opacity-100");   // Add scale(1) state - NOW animates!
+
+                      // ENHANCED: Remove will-change after animation completes (matching page load)
+                      setTimeout(() => {
+                        card.classList.remove("animating");
+                      }, ANIMATION_CONFIG.duration);
                     }, totalDelay);
                   }
                 }
