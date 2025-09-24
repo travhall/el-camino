@@ -503,7 +503,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
                 card.classList.add('opacity-0');
               });
               
-              // STEP 2: Trigger View Transitions navigation during exit phase
+              // STEP 2: Trigger View Transitions navigation at optimal timing
+              // Wait for exit animation to be mostly complete (250ms of 300ms)
               setTimeout(() => {
                 // Save state and trigger form submission
                 sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
@@ -527,7 +528,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
                 // Navigate with View Transitions (Astro handles this automatically)
                 window.location.href = newUrl;
                 
-              }, 150); // Trigger during exit animation, well before 300ms gap
+              }, 250); // Wait until exit is nearly complete to minimize gap
             }
             
             return false;
@@ -796,11 +797,11 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
               card.classList.add('opacity-0');
             });
             
-            // Navigate during exit animation (same timing as regular filtering)
+            // Navigate at optimal timing (same as regular filtering)
             setTimeout(() => {
               sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
               window.location.href = basePath;
-            }, 150); // Same 150ms timing as regular desktop filtering
+            }, 250); // Same 250ms timing as regular desktop filtering
             
           } else {
             // No cards to animate
@@ -888,7 +889,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         });
         
         // Navigate during exit animation
-        const delay = isMobile ? Math.ceil(visibleCards.length / 2) * 50 + 25 + 100 : 150;
+        const delay = isMobile ? Math.ceil(visibleCards.length / 2) * 50 + 25 + 100 : 250;
         setTimeout(() => window.location.href = basePath, delay);
       } else {
         window.location.href = basePath;
