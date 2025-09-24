@@ -1,11 +1,15 @@
 ---
-// src/pages/category/[...slug].astro 
+// src/pages/category/[...slug].astro
 import ProductFilters from "@/components/ProductFilters.astro";
 import AppliedFilters from "@/components/AppliedFilters.astro";
 import ProductGrid from "@/components/ProductGrid.astro";
 import { fetchProductsByCategory } from "@/lib/square/categories";
 import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
-import { parseFiltersFromURL, filterProductsWithCache, extractFilterOptions } from "@/lib/square/filterUtils";
+import {
+  parseFiltersFromURL,
+  filterProductsWithCache,
+  extractFilterOptions,
+} from "@/lib/square/filterUtils";
 import Layout from "@/layouts/Layout.astro";
 
 const { slug } = Astro.params;
@@ -41,56 +45,70 @@ console.log(`[Category] 🔍 URL Parsing:`, {
   searchParams: Astro.url.search,
   parsedFilters: filters,
   hasBrands: filters.brands.length > 0,
-  hasAvailability: filters.availability
+  hasAvailability: filters.availability,
 });
 
 // Check for active filters
-const hasFilters = Object.values(filters).some(f => 
+const hasFilters = Object.values(filters).some((f) =>
   Array.isArray(f) ? f.length > 0 : f === true
 );
 
 console.log(`[Category] 📊 Filter Analysis:`, {
   hasFilters,
   filterValues: Object.values(filters),
-  filtersBreakdown: filters
+  filtersBreakdown: filters,
 });
 
 import type { Product } from "@/lib/square/types";
 
-// === HYBRID: Server-side + Client-side filtering ===
 let allProducts: Product[] = [];
 let filteredProducts: Product[] = [];
-let filterOptions = { brands: [] as Array<{name: string; count: number; slug: string}> };
+let filterOptions = {
+  brands: [] as Array<{ name: string; count: number; slug: string }>,
+};
 
 try {
   // Fetch ALL products for infinite scroll and client-side filtering
-  console.log(`[Category] Fetching all products for category: ${category.name}`);
-  
-  const productData = await fetchProductsByCategory(category.id, { limit: 200 });
+  console.log(
+    `[Category] Fetching all products for category: ${category.name}`
+  );
+
+  const productData = await fetchProductsByCategory(category.id, {
+    limit: 200,
+  });
   allProducts = productData.products;
-  
+
   // Extract filter options from all products using the same logic as shop/all
   filterOptions = extractFilterOptions(allProducts);
-  
-  console.log(`[Category] Loaded ${allProducts.length} products for hybrid filtering`);
-  
-  // HYBRID: Server-side filtering for mobile, client-side data for desktop
+
+  console.log(`[Category] Loaded ${allProducts.length} products for filtering`);
+
   if (hasFilters) {
     console.log(`[Category] 🔄 Applying server-side filtering...`);
-    console.log(`[Category] 📋 Before filtering: ${allProducts.length} products`);
+    console.log(
+      `[Category] 📋 Before filtering: ${allProducts.length} products`
+    );
     console.log(`[Category] 🎯 Filter criteria:`, filters);
-    
+
     // Apply server-side filtering using the same logic as shop/all
     filteredProducts = await filterProductsWithCache(allProducts, filters);
-    
-    console.log(`[Category] ✅ After filtering: ${filteredProducts.length} products`);
-    console.log(`[Category] 📋 Sample filtered products:`, filteredProducts.slice(0, 3).map(p => ({ id: p.id, brand: p.brand, title: p.title })));
+
+    console.log(
+      `[Category] ✅ After filtering: ${filteredProducts.length} products`
+    );
+    console.log(
+      `[Category] 📋 Sample filtered products:`,
+      filteredProducts
+        .slice(0, 3)
+        .map((p) => ({ id: p.id, brand: p.brand, title: p.title }))
+    );
   } else {
-    console.log(`[Category] ⚪ No filters applied - showing all ${allProducts.length} products`);
+    console.log(
+      `[Category] ⚪ No filters applied - showing all ${allProducts.length} products`
+    );
     // No filters applied - show all products
     filteredProducts = [...allProducts];
   }
-  
 } catch (error) {
   console.error("Error fetching products:", error);
   allProducts = [];
@@ -112,19 +130,20 @@ const preloadImages = allProducts
   .filter((img) => !img.includes("placeholder"));
 
 // Current category path for filter URLs
-const categoryPath = parentCategory 
+const categoryPath = parentCategory
   ? `/category/${parentCategory.slug}/${category.slug}`
   : `/category/${category.slug}`;
 
 // Check for active filters (for display purposes)
-const hasActiveFilters = filters.brands.length > 0 || filters.availability === true;
+const hasActiveFilters =
+  filters.brands.length > 0 || filters.availability === true;
 
 console.log(`[Category] 🎬 Final data summary:`, {
   allProductsCount: allProducts.length,
   filteredProductsCount: filteredProducts.length,
   hasActiveFilters,
   categoryPath,
-  sampleFilteredProducts: filteredProducts.slice(0, 2).map(p => p.brand)
+  sampleFilteredProducts: filteredProducts.slice(0, 2).map((p) => p.brand),
 });
 ---
 
@@ -133,10 +152,11 @@ console.log(`[Category] 🎬 Final data summary:`, {
 
   <!-- Responsive Grid Layout -->
   <div class="min-h-screen bg-(--surface-primary)">
-
     <!-- Category Header -->
     <div class="p-4 pb-0">
-      <div class="flex flex-col md:flex-row justify-between gap-4 items-baseline">
+      <div
+        class="flex flex-col md:flex-row justify-between gap-4 items-baseline"
+      >
         <div
           class="flex flex-row w-full lg:w-auto justify-between gap-4 items-baseline"
         >
@@ -147,42 +167,40 @@ console.log(`[Category] 🎬 Final data summary:`, {
           </h1>
         </div>
         <div class="hidden md:block min-w-fit">
-        <!-- Subcategory Navigation -->
-        {
-          subcategories.length > 0 && (
-            <div class="flex flex-wrap gap-2 mb-1.5">
-              {subcategories.map((subcategory) => (
-                <a
-                  href={`/category/${category.slug}/${subcategory.slug}`}
-                  class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary)/50 hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
-                >
-                  {subcategory.name}
-                </a>
-              ))}
-            </div>
-          )
-        }
+          <!-- Subcategory Navigation -->
+          {
+            subcategories.length > 0 && (
+              <div class="flex flex-wrap gap-2 mb-1.5">
+                {subcategories.map((subcategory) => (
+                  <a
+                    href={`/category/${category.slug}/${subcategory.slug}`}
+                    class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary)/50 hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
+                  >
+                    {subcategory.name}
+                  </a>
+                ))}
+              </div>
+            )
+          }
 
-        {
-          parentCategory && (
-            <div class="flex flex-wrap gap-2 mb-1.5">
-              <a
-                href={`/category/${parentCategory.slug}`}
-                class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
-              >
-                See all products in {parentCategory.name}
-              </a>
-            </div>
-          )
-        }
-      </div>
+          {
+            parentCategory && (
+              <div class="flex flex-wrap gap-2 mb-1.5">
+                <a
+                  href={`/category/${parentCategory.slug}`}
+                  class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
+                >
+                  See all products in {parentCategory.name}
+                </a>
+              </div>
+            )
+          }
+        </div>
       </div>
     </div>
 
     <!-- Page Body -->
-    <div
-      class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-1 pb-0"
-    >
+    <div class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-1 pb-0">
       <!-- Filter Sidebar -->
       <aside class="lg:col-span-1">
         <ProductFilters
@@ -195,7 +213,6 @@ console.log(`[Category] 🎬 Final data summary:`, {
 
       <!-- Main Content -->
       <main class="lg:col-span-3 xl:col-span-4">
-
         <!-- Applied Filters Above Product Grid -->
         <AppliedFilters categoryPath={categoryPath} classes="hidden lg:block" />
 
@@ -203,7 +220,6 @@ console.log(`[Category] 🎬 Final data summary:`, {
         {
           filteredProducts.length > 0 ? (
             <>
-              <!-- Products Grid - HYBRID: Server-filtered for mobile, all products for desktop client-side -->
               <ProductGrid
                 products={filteredProducts}
                 allProducts={allProducts}
@@ -216,15 +232,16 @@ console.log(`[Category] 🎬 Final data summary:`, {
                 {hasActiveFilters ? "🔍" : "🛹"}
               </div>
               <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
-                {hasActiveFilters ? "No products match your filters" : "No products found"}
+                {hasActiveFilters
+                  ? "No products match your filters"
+                  : "No products found"}
               </h2>
               <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
-                {hasActiveFilters 
+                {hasActiveFilters
                   ? "Try adjusting your filters or browse all products."
                   : subcategories.length > 0
-                  ? "Try browsing our subcategories above, or check out other product categories."
-                  : "This category is currently empty. Check back soon for new products!"
-                }
+                    ? "Try browsing our subcategories above, or check out other product categories."
+                    : "This category is currently empty. Check back soon for new products!"}
               </p>
               {hasActiveFilters ? (
                 <a
