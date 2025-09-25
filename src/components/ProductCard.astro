@@ -43,7 +43,19 @@ if (inventoryStatus) {
   }
 }
 
-// Format price
+// Enhanced alt text generation for better accessibility
+function generateProductAltText(product: Product, isOutOfStock: boolean): string {
+  const brand = product.brand ? `${product.brand} ` : '';
+  const price = product.price ? `, priced at $${MoneyUtils.format(MoneyUtils.fromFloat(product.price))}` : '';
+  const stock = isOutOfStock ? ', currently sold out' : ', in stock';
+  
+  return `${brand}${product.title}${price}${stock}`;
+}
+
+// Generate enhanced alt text
+const enhancedAltText = generateProductAltText(product, isOutOfStock);
+
+// Format price for display
 const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 
 // Schema.org availability
@@ -102,7 +114,7 @@ const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
       <img
         id={imageId}
         src={optimizedImageSrc}
-        alt={product.title}
+        alt={enhancedAltText}
         class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""} image-enhanced will-change-transform`}
         loading={isDynamicPriority ? "eager" : "lazy"}
         fetchpriority={isDynamicPriority ? "high" : "auto"}
@@ -159,6 +171,7 @@ const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
           )
         }
         <p
+          id={`product-title-${product.id}`}
           class="text-base text-(--product-heading) font-light leading-tight line-clamp-2 mb-1"
           itemprop="name"
         >
@@ -171,6 +184,7 @@ const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
       >
         <meta itemprop="availability" content={availabilitySchema} />
         <span
+          id={`product-price-${product.id}`}
           class="font-display font-semibold text-3xl whitespace-nowrap"
           itemprop="offers"
           itemscope

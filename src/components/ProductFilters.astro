@@ -108,6 +108,19 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       animation: none !important;
     }
   }
+  
+  /* Screen reader only content */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 </style>
 
 <!-- Single Responsive Form Container -->
@@ -152,7 +165,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         </button>
       </div>
 
-      <!-- Results Count -->
+      <!-- Results Count with Live Region for Screen Reader Announcements -->
       <div class="min-w-fit mt-2 mb-4">
         <div class="lg:hidden p-3 bg-(--surface-tertiary) rounded-sm">
           <p class="text-sm text-(--content-meta)" data-result-count>
@@ -166,6 +179,19 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
               : `${filteredCount} of ${totalProducts} products`
             }
           </p>
+        </div>
+        
+        <!-- Screen Reader Live Region for Filter Updates -->
+        <div 
+          id="filter-results-live-region" 
+          aria-live="polite" 
+          aria-atomic="true" 
+          class="sr-only"
+        >
+          {filteredCount === totalProducts
+            ? `Showing all ${totalProducts} products`
+            : `Filtered to ${filteredCount} of ${totalProducts} products`
+          }
         </div>
       </div>
 
@@ -711,6 +737,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         // ANTI-FLICKER: Clean up filtering class after View Transitions
         document.body.classList.remove('filtering-in-progress');
         
+        // Update live region with new filter results
+        updateFilterResultsLiveRegion();
+        
         // Re-establish global Clear All function after page load
         const currentInstance = (window as any).currentFilterInstance;
         if (currentInstance) {
@@ -836,6 +865,25 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       sessionStorage.removeItem("filtering-in-progress");
       
       console.log('[ResponsiveFilters] ✅ View Transitions cleanup complete');
+    }
+  }
+
+  // Function to update filter results live region for screen readers
+  function updateFilterResultsLiveRegion() {
+    const liveRegion = document.getElementById('filter-results-live-region');
+    const resultCountElement = document.querySelector('[data-result-count]');
+    
+    if (liveRegion && resultCountElement) {
+      // Extract count from the visible result text
+      const resultText = resultCountElement.textContent || '';
+      const message = resultText.includes('of') 
+        ? `Filtered to ${resultText}` 
+        : `Showing ${resultText}`;
+      
+      // Update live region with slight delay to ensure it's announced
+      setTimeout(() => {
+        liveRegion.textContent = message;
+      }, 100);
     }
   }
 
