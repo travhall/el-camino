@@ -21,22 +21,34 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
 
 <style>
   /* Simple visibility animation - no height animation needed with new grid */
-  .applied-filters-container {
-    transition: opacity 300ms ease;
+  /* CSS Grid Height Animation Solution */
+  .applied-filters-grid {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition:
+      grid-template-rows 300ms ease,
+      opacity 400ms ease;
+    /* overflow: hidden; */
+    opacity: 0;
   }
 
-  .applied-filters-container.hidden {
-    opacity: 0;
-    pointer-events: none;
+  .applied-filters-grid.filters-open {
+    grid-template-rows: 1fr;
+    margin-bottom: 0.5rem;
+    opacity: 1;
+  }
+
+  .applied-filters-content {
+    min-height: 0; /* Essential for grid sizing */
   }
 </style>
 
 <div
   id="applied-filters-container"
   class:list={[
-    "applied-filters-container px-2 bg-(--surface-primary)",
+    "applied-filters-grid px-2 bg-(--surface-primary)",
     classes,
-    !hasActiveFilters ? "hidden" : "",
+    hasActiveFilters ? "filters-open" : "",
   ]}
 >
   <div
@@ -137,16 +149,18 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
           filterInstance.clearAllFilters();
           return;
         }
-        
+
         // Secondary: Use global fallback function
         const globalClearAll = (window as any).globalClearAllFilters;
         if (globalClearAll) {
           globalClearAll();
           return;
         }
-        
+
         // Tertiary: Direct fallback (should rarely be needed)
-        console.warn('[AppliedFilters] ⚠️ Using direct fallback - animation may be inconsistent');
+        console.warn(
+          "[AppliedFilters] ⚠️ Using direct fallback - animation may be inconsistent"
+        );
         window.location.href = window.location.pathname;
       });
   });
@@ -154,32 +168,36 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
   function removeFilter(type: string, value: string | null = null) {
     // UNIFIED: Use same coordinated approach as Clear All for consistent animations
     const filterInstance = (window as any).currentFilterInstance;
-    
+
     // Try to use the coordinated filter system
     if (filterInstance?.clearAllFilters) {
       // We have a working filter instance - check if we should use exit animation
       const isMobile = window.innerWidth < 1024;
-      const visibleCards = document.querySelectorAll('.product-card-wrapper:not([style*="display: none"])');
-      
+      const visibleCards = document.querySelectorAll(
+        '.product-card-wrapper:not([style*="display: none"])'
+      );
+
       if (visibleCards.length > 0 && !isMobile) {
         // DESKTOP: Play exit animation then navigate
-        console.log('[AppliedFilters] 🖥️ Desktop: Individual filter removal with exit animation');
-        
+        console.log(
+          "[AppliedFilters] 🖥️ Desktop: Individual filter removal with exit animation"
+        );
+
         // Exit animation
-        visibleCards.forEach(card => {
-          card.classList.remove('opacity-100');
-          card.classList.add('opacity-0');
+        visibleCards.forEach((card) => {
+          card.classList.remove("opacity-100");
+          card.classList.add("opacity-0");
         });
-        
+
         // Navigate during exit animation (same timing as desktop filtering)
         setTimeout(() => {
           window.location.href = buildRemovalUrl(type, value);
         }, 150);
-        
+
         return;
       }
     }
-    
+
     // FALLBACK: Direct navigation (mobile or no visible cards)
     window.location.href = buildRemovalUrl(type, value);
   }
