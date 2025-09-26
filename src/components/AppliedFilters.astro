@@ -16,84 +16,31 @@ const currentAvailability = currentParams.get("availability") === "true";
 // Only show content if there are active filters, but always render container for client-side updates
 const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
 
-// Function to build URLs for removing individual filters
-function buildRemoveFilterUrl(brandToRemove: string): string {
-  const otherBrands = currentBrands.filter((b) => b !== brandToRemove);
-  const params = new URLSearchParams();
-
-  // Add remaining brands using the same format as the form
-  otherBrands.forEach((brand) => {
-    params.append("brands", brand);
-  });
-
-  // Preserve availability filter
-  if (currentAvailability) {
-    params.set("availability", "true");
-  }
-
-  const queryString = params.toString();
-  const basePath = categoryPath || Astro.url.pathname;
-  return `${basePath}${queryString ? "?" + queryString : ""}`;
-}
-
-// Function to build URL for removing availability filter
-function buildRemoveAvailabilityUrl(): string {
-  const params = new URLSearchParams();
-
-  // Preserve brands
-  currentBrands.forEach((brand) => {
-    params.append("brands", brand);
-  });
-
-  const queryString = params.toString();
-  const basePath = categoryPath || Astro.url.pathname;
-  return `${basePath}${queryString ? "?" + queryString : ""}`;
-}
-
-// Clear all filters URL
-function buildClearAllUrl(): string {
-  const params = new URLSearchParams();
-
-  const queryString = params.toString();
-  const basePath = categoryPath || Astro.url.pathname;
-  return `${basePath}${queryString ? "?" + queryString : ""}`;
-}
+// Note: URL building is now handled client-side for consistency with the new grid implementation
 ---
 
 <style>
-  /* CSS Grid Height Animation Solution */
-  .applied-filters-grid {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition:
-      grid-template-rows 300ms ease,
-      opacity 300ms ease,
-      margin-bottom 300ms ease;
-    /* overflow: hidden; */
+  /* Simple visibility animation - no height animation needed with new grid */
+  .applied-filters-container {
+    transition: opacity 300ms ease;
+  }
+
+  .applied-filters-container.hidden {
     opacity: 0;
-  }
-
-  .applied-filters-grid.filters-open {
-    grid-template-rows: 1fr;
-    margin-bottom: 0.5rem;
-    opacity: 1;
-  }
-
-  .applied-filters-content {
-    min-height: 0; /* Essential for grid sizing */
+    pointer-events: none;
   }
 </style>
 
 <div
   id="applied-filters-container"
   class:list={[
-    "applied-filters-grid px-2 bg-(--surface-primary)",
+    "applied-filters-container px-2 bg-(--surface-primary)",
     classes,
-    hasActiveFilters ? "filters-open" : "",
+    !hasActiveFilters ? "hidden" : "",
   ]}
 >
   <div
-    class="applied-filters-content flex flex-wrap items-center gap-3"
+    class="flex flex-wrap items-center gap-3 mb-2"
     id="applied-filters-content"
   >
     {
