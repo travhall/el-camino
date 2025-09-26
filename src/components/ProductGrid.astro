@@ -476,8 +476,56 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       `[ProductGrid] ✅ Showing ${visibleCount}/${allCards.length} initially`
     );
 
-    // SIMPLE: Basic intersection observer
-    const observer = new IntersectionObserver(
+    // Create an IntersectionObserver for infinite scroll card animations
+    const cardAnimationObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const card = entry.target as HTMLElement;
+            const index = parseInt(card.dataset.initialIndex || "0");
+            const cardsPerRow = getCardsPerRow();
+            
+            // Calculate animation timing based on the card's position in the newly loaded batch
+            // Find the index within the current batch (relative to when it was loaded)
+            const batchStartIndex = Math.floor(index / (cardsPerRow * 2)) * (cardsPerRow * 2);
+            const cardIndexInBatch = index - batchStartIndex;
+            const rowIndex = Math.floor(cardIndexInBatch / cardsPerRow);
+            const cardInRow = cardIndexInBatch % cardsPerRow;
+
+            // Add animating class for will-change optimization
+            card.classList.add("animating");
+
+            // Combined stagger: row delay + individual card delay (same as initial load)
+            const rowStaggerDelay = ANIMATION_CONFIG.rowStaggerDelay;
+            const cardStaggerDelay = ANIMATION_CONFIG.staggerDelay;
+
+            const baseRowDelay = rowIndex * rowStaggerDelay;
+            const cardDelay = cardInRow * (cardStaggerDelay / 2);
+            const totalDelay = baseRowDelay + cardDelay;
+
+            setTimeout(() => {
+              card.classList.remove("opacity-0");
+              card.classList.add("opacity-100");
+
+              // Remove will-change after animation completes
+              setTimeout(() => {
+                card.classList.remove("animating");
+              }, ANIMATION_CONFIG.duration);
+            }, totalDelay);
+
+            // Stop observing this card
+            cardAnimationObserver.unobserve(card);
+          }
+        });
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "50px",
+      }
+    );
+
+    // SIMPLE: Basic intersection observer for loading more cards
+    const loadMoreObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && visibleCount < allCards.length) {
@@ -490,28 +538,19 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
               allCards.length
             );
 
-            // Show the new cards with proper animation initialization
+            // Show the new cards but DON'T animate them immediately
+            // Let the cardAnimationObserver handle the animation when they come into view
             for (let i = visibleCount; i < newVisibleCount; i++) {
               if (allCards[i]) {
                 const card = allCards[i] as HTMLElement;
 
-                // MINIMAL FIX: Just ensure card starts with opacity-0 before animation
+                // Show the card but keep it in opacity-0 state for animation
                 card.style.display = "";
                 card.classList.remove("opacity-100");
-                card.classList.add("opacity-0", "animating");
+                card.classList.add("opacity-0");
 
-                // Same timing as original
-                const cardIndex = i - visibleCount;
-                const cardsPerRowCurrent = getCardsPerRow();
-                const rowIndex = Math.floor(cardIndex / cardsPerRowCurrent);
-                const cardInRow = cardIndex % cardsPerRowCurrent;
-                const totalDelay = rowIndex * 100 + cardInRow * 25;
-
-                setTimeout(() => {
-                  card.classList.remove("opacity-0");
-                  card.classList.add("opacity-100");
-                  setTimeout(() => card.classList.remove("animating"), 300);
-                }, totalDelay);
+                // Add to animation observer so it animates when it comes into view
+                cardAnimationObserver.observe(card);
               }
             }
 
@@ -531,7 +570,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       { threshold: 0.1, rootMargin: "100px" }
     );
 
-    observer.observe(trigger);
+    loadMoreObserver.observe(trigger);
     console.log("[ProductGrid] ✅ Simple infinite scroll initialized");
   }
 </script>
