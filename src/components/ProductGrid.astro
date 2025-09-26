@@ -32,33 +32,33 @@ console.log("[ProductGrid] 📊 Props analysis:", {
 // - allProducts: What to use for client-side filtering data
 
 // For rendering: always use the products prop (server-filtered)
-const productsToRender = products;
+const initialProducts = products; // Products to show immediately
 
 // For inventory checking: check inventory for all products that might be needed
-const productsToCheck =
-  allProducts && allProducts.length > 0 ? allProducts : products;
+const inventoryCheckProducts =
+  allProducts && allProducts.length > 0 ? allProducts : products; // Products for inventory batch check
 
 console.log("[ProductGrid] 🎯 FIXED: Rendering vs Inventory logic:", {
-  productsToRender: productsToRender?.length || 0,
-  productsToCheck: productsToCheck?.length || 0,
-  renderingFiltered: productsToRender !== productsToCheck,
+  initialProducts: initialProducts?.length || 0,
+  inventoryCheckProducts: inventoryCheckProducts?.length || 0,
+  renderingFiltered: initialProducts !== inventoryCheckProducts,
 });
 
 // Batch inventory check for all products that will be displayed
-let productsWithInventory: ProductWithInventory[] = productsToRender;
+let productsWithInventory: ProductWithInventory[] = initialProducts;
 let allProductsWithInventory: ProductWithInventory[] = allProducts || [];
 
-if (!skipInventoryCheck && productsToCheck.length > 0) {
+if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
   try {
     // Check inventory for all products (for efficiency)
-    const variationIds = productsToCheck
+    const variationIds = inventoryCheckProducts
       .map((p) => p.variationId)
       .filter(Boolean);
     const inventoryMap =
       await batchInventoryService.getBatchInventoryStatus(variationIds);
 
     // Apply inventory to products we're rendering (server-filtered)
-    productsWithInventory = productsToRender.map((product) => {
+    productsWithInventory = initialProducts.map((product) => {
       const inventoryStatus = inventoryMap.get(product.variationId) || {
         isOutOfStock: false,
         hasLimitedOptions: false,
@@ -72,7 +72,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     });
 
     // FIXED: Also apply inventory to ALL products for client-side filtering
-    allProductsWithInventory = productsToCheck.map((product) => {
+    allProductsWithInventory = inventoryCheckProducts.map((product) => {
       const inventoryStatus = inventoryMap.get(product.variationId) || {
         isOutOfStock: false,
         hasLimitedOptions: false,
@@ -86,7 +86,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
     });
 
     console.log("[ProductGrid] ✅ Inventory applied to both sets:", {
-      checkedInventoryFor: productsToCheck.length,
+      checkedInventoryFor: inventoryCheckProducts.length,
       appliedToRendered: productsWithInventory.length,
       appliedToAll: allProductsWithInventory.length,
       sampleWithInventory: productsWithInventory.slice(0, 2).map((p) => ({
@@ -98,7 +98,7 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
   } catch (error) {
     console.error("Batch inventory check failed:", error);
     // Fallback: all products assumed in stock
-    productsWithInventory = productsToRender.map((product) => ({
+    productsWithInventory = initialProducts.map((product) => ({
       ...product,
       inventoryStatus: {
         isOutOfStock: false,
@@ -232,22 +232,22 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
       );
     })
   }
-</div>
 
-<!-- RESTORED: Working Infinite Scroll Trigger -->
-<div
-  id="infinite-scroll-trigger"
-  class="col-span-full h-20 flex items-center justify-center"
-  style="display: none;"
->
-  <div class="flex items-center space-x-3">
-    <div
-      class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"
-    >
+  <!-- Infinite Scroll Trigger -->
+  <div
+    id="infinite-scroll-trigger"
+    class="col-span-full h-20 flex items-center justify-center"
+    style="display: none;"
+  >
+    <div class="flex items-center space-x-3">
+      <div
+        class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"
+      >
+      </div>
+      <span class="text-(--content-body) font-medium"
+        >Loading more products...</span
+      >
     </div>
-    <span class="text-(--content-body) font-medium"
-      >Loading more products...</span
-    >
   </div>
 </div>
 
@@ -490,19 +490,28 @@ if (!skipInventoryCheck && productsToCheck.length > 0) {
               allCards.length
             );
 
-            // Show the new cards immediately
+            // Show the new cards with proper animation initialization
             for (let i = visibleCount; i < newVisibleCount; i++) {
               if (allCards[i]) {
                 const card = allCards[i] as HTMLElement;
+
+                // MINIMAL FIX: Just ensure card starts with opacity-0 before animation
                 card.style.display = "";
-                // Trigger entrance animation
-                setTimeout(
-                  () => {
-                    card.classList.remove("opacity-0");
-                    card.classList.add("opacity-100");
-                  },
-                  (i - visibleCount) * 50
-                );
+                card.classList.remove("opacity-100");
+                card.classList.add("opacity-0", "animating");
+
+                // Same timing as original
+                const cardIndex = i - visibleCount;
+                const cardsPerRowCurrent = getCardsPerRow();
+                const rowIndex = Math.floor(cardIndex / cardsPerRowCurrent);
+                const cardInRow = cardIndex % cardsPerRowCurrent;
+                const totalDelay = rowIndex * 100 + cardInRow * 25;
+
+                setTimeout(() => {
+                  card.classList.remove("opacity-0");
+                  card.classList.add("opacity-100");
+                  setTimeout(() => card.classList.remove("animating"), 300);
+                }, totalDelay);
               }
             }
 
