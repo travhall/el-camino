@@ -227,125 +227,121 @@ const structuredData = {
           content={post.content.rendered}
           enhanceBlocks={true}
         />
-
-        <!-- Article Tags Section -->
-        {
-          tags.length > 0 && (
-            <div class="p-4 pt-0 tags-section">
-              <h3 class="text-(--content-meta) text-sm font-medium tracking-wide mb-3">
-                Tagged
-              </h3>
-              <div class="flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <Tag tag={tag} variant="default" size="sm" clickable={true} />
-                ))}
-              </div>
-            </div>
-          )
-        }
       </div>
     </section>
-
-    <!-- Article footer -->
-    <footer class="bg-(--surface-secondary)">
-      {
-        category && (
-          <div class="p-4 pb-0">
-            <span class="text-(--content-meta) text-sm">Filed under: </span>
-            <span class="text-(--content-emphasis) font-medium">
-              {category.name}
-            </span>
-          </div>
-        )
-      }
-
-      <div class="flex p-4 justify-between items-center">
-        <a
-          href="/news"
-          class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary)/50 hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
-        >
-          ← Back to News
-        </a>
-
-        <button
-          class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary)/50 hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
-          id="share-article-button"
-        >
-          Share Article
-        </button>
-      </div>
-
-      <!-- Article Navigation (unchanged) -->
-      {
-        (prevPost || nextPost) && (
-          <nav
-            class="border-t border-(--border-primary) pt-4"
-            aria-label="Article navigation"
-          >
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-1">
-              <div class="flex justify-start">
-                {prevPost && (
-                  <a
-                    href={`/news/${prevPost.slug}`}
-                    class="group flex flex-col w-full p-8 lg:p-12 bg-(--surface-tertiary) hover:bg-(--surface-primary) transition-all duration-200"
-                  >
-                    <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center">
-                      <svg
-                        class="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M15 19l-7-7 7-7"
-                        />
-                      </svg>
-                      Previous Article
-                    </span>
-                    <h3 class="text-(--content-heading) font-display group-hover:font-black font-semibold text-4xl md:text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all line-clamp-2">
-                      {prevPost.title.rendered}
-                    </h3>
-                  </a>
-                )}
-              </div>
-
-              <div class="flex justify-end">
-                {nextPost && (
-                  <a
-                    href={`/news/${nextPost.slug}`}
-                    class="group flex flex-col w-full p-8 lg:p-12 bg-(--surface-tertiary) hover:bg-(--surface-primary) transition-all duration-200 text-right"
-                  >
-                    <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center justify-end">
-                      Next Article
-                      <svg
-                        class="w-4 h-4 ml-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </span>
-                    <h3 class="text-(--content-heading) font-display group-hover:font-black font-semibold text-4xl md:text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all line-clamp-2">
-                      {nextPost.title.rendered}
-                    </h3>
-                  </a>
-                )}
-              </div>
-            </div>
-          </nav>
-        )
-      }
-    </footer>
   </article>
+
+  <!-- Article footer -->
+  <footer class="bg-(--surface-primary)">
+    <!-- Article Tags Section -->
+    {
+      tags.length > 0 && (
+        <div class="p-4 tags-section">
+          <h3 class="text-(--content-meta) text-sm font-medium tracking-wide mb-3">
+            Tagged
+          </h3>
+          <div class="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <Tag tag={tag} variant="default" size="sm" clickable={true} />
+            ))}
+          </div>
+        </div>
+      )
+    }
+    {
+      category && (
+        <div class="p-4 pb-0 border-2 border-(--border-secondary)">
+          <span class="text-(--content-meta) text-sm">Filed under: </span>
+          <span class="text-(--content-emphasis) font-medium">
+            {category.name}
+          </span>
+        </div>
+      )
+    }
+
+    <div class="flex p-4 justify-between items-center">
+      <a
+        href="/news"
+        class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary)/50 hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
+      >
+        ← Back to News
+      </a>
+
+      <button
+        class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary)/50 hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
+        id="share-article-button"
+      >
+        Share Article
+      </button>
+    </div>
+
+    <!-- Article Navigation (unchanged) -->
+    {
+      (prevPost || nextPost) && (
+        <nav aria-label="Article navigation">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-1">
+            <div class="flex justify-start">
+              {prevPost && (
+                <a
+                  href={`/news/${prevPost.slug}`}
+                  class="group flex flex-col w-full p-8 lg:p-12 bg-(--surface-tertiary) hover:bg-(--surface-primary) transition-all duration-200"
+                >
+                  <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center">
+                    <svg
+                      class="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                    Previous Article
+                  </span>
+                  <h3 class="text-(--content-heading) font-display group-hover:font-black font-semibold text-4xl md:text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all line-clamp-2">
+                    {prevPost.title.rendered}
+                  </h3>
+                </a>
+              )}
+            </div>
+
+            <div class="flex justify-end">
+              {nextPost && (
+                <a
+                  href={`/news/${nextPost.slug}`}
+                  class="group flex flex-col w-full p-8 lg:p-12 bg-(--surface-tertiary) hover:bg-(--surface-primary) transition-all duration-200 text-right"
+                >
+                  <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center justify-end">
+                    Next Article
+                    <svg
+                      class="w-4 h-4 ml-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </span>
+                  <h3 class="text-(--content-heading) font-display group-hover:font-black font-semibold text-4xl md:text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all line-clamp-2">
+                    {nextPost.title.rendered}
+                  </h3>
+                </a>
+              )}
+            </div>
+          </div>
+        </nav>
+      )
+    }
+  </footer>
 </Layout>
 
 <script>
