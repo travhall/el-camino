@@ -1,5 +1,5 @@
 ---
-// src/components/AppliedFilters.astro - Enhanced with availability filter support
+// src/components/AppliedFilters.astro
 
 export interface Props {
   categoryPath?: string;
@@ -13,48 +13,32 @@ const currentParams = new URLSearchParams(Astro.url.search);
 const currentBrands = currentParams.getAll("brands") || [];
 const currentAvailability = currentParams.get("availability") === "true";
 
-// Only show content if there are active filters, but always render container for client-side updates
+// Only show content if there are active filters
 const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
-
-// Note: URL building is now handled client-side for consistency with the new grid implementation
 ---
 
 <style>
-  /* Simple visibility animation - no height animation needed with new grid */
-  /* CSS Grid Height Animation Solution */
-  .applied-filters-grid {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition:
-      grid-template-rows 300ms ease,
-      opacity 400ms ease;
-    /* overflow: hidden; */
-    opacity: 0;
-  }
-
-  .applied-filters-grid.filters-open {
-    grid-template-rows: 1fr;
+  .applied-filters-container {
     margin-bottom: 0.5rem;
     opacity: 1;
+    transition: opacity 300ms ease;
   }
 
-  .applied-filters-content {
-    min-height: 0; /* Essential for grid sizing */
+  .applied-filters-container.no-filters {
+    opacity: 0;
+    pointer-events: none;
   }
 </style>
 
 <div
   id="applied-filters-container"
   class:list={[
-    "applied-filters-grid px-2 bg-(--surface-primary)",
+    "applied-filters-container px-2",
     classes,
-    hasActiveFilters ? "filters-open" : "",
+    !hasActiveFilters ? "no-filters" : "",
   ]}
 >
-  <div
-    class="flex flex-wrap items-center gap-3 mb-2"
-    id="applied-filters-content"
-  >
+  <div class="flex flex-wrap items-center gap-3 mb-2">
     {
       hasActiveFilters && (
         <>
@@ -86,7 +70,7 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
               <button
                 type="button"
                 data-remove-availability
-                class="inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--state-success-surface) hover:bg-(--state-success-surface)/75 transition-colors text-(--state-success-text) border-(--state-success-text)/50 group"
+                class="inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 group"
                 title="Remove availability filter"
               >
                 <span>In stock only</span>
@@ -120,89 +104,41 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
 </div>
 
 <script>
-  // UNIFIED event handling for client-side filtering
   document.addEventListener("astro:page-load", () => {
-    // Remove individual brand filters
+    setupFilterHandlers();
+  });
+
+  function setupFilterHandlers() {
+    // Individual brand removal
     document.querySelectorAll("[data-remove-brand]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const target = e.currentTarget as HTMLElement;
-        if (!target?.dataset.removeBrand) return;
-        const brand = target.dataset.removeBrand;
-        removeFilter("brand", brand);
+        const brand = target?.dataset.removeBrand;
+        if (brand) removeFilter("brand", brand);
       });
     });
 
-    // Remove availability filter
+    // Availability removal
     document
       .querySelector("[data-remove-availability]")
       ?.addEventListener("click", () => {
         removeFilter("availability");
       });
 
-    // UNIFIED: Clear all filters with bulletproof FOUT prevention
+    // Clear All - use existing global system
     document
       .querySelector("[data-clear-all-filters]")
       ?.addEventListener("click", () => {
-        // Primary: Use instance method
-        const filterInstance = (window as any).currentFilterInstance;
-        if (filterInstance?.clearAllFilters) {
-          filterInstance.clearAllFilters();
-          return;
-        }
-
-        // Secondary: Use global fallback function
         const globalClearAll = (window as any).globalClearAllFilters;
         if (globalClearAll) {
           globalClearAll();
-          return;
+        } else {
+          window.location.href = window.location.pathname;
         }
-
-        // Tertiary: Direct fallback (should rarely be needed)
-        console.warn(
-          "[AppliedFilters] ⚠️ Using direct fallback - animation may be inconsistent"
-        );
-        window.location.href = window.location.pathname;
       });
-  });
-
-  function removeFilter(type: string, value: string | null = null) {
-    // UNIFIED: Use same coordinated approach as Clear All for consistent animations
-    const filterInstance = (window as any).currentFilterInstance;
-
-    // Try to use the coordinated filter system
-    if (filterInstance?.clearAllFilters) {
-      // We have a working filter instance - check if we should use exit animation
-      const isMobile = window.innerWidth < 1024;
-      const visibleCards = document.querySelectorAll(
-        '.product-card-wrapper:not([style*="display: none"])'
-      );
-
-      if (visibleCards.length > 0 && !isMobile) {
-        // DESKTOP: Play exit animation then navigate
-        console.log(
-          "[AppliedFilters] 🖥️ Desktop: Individual filter removal with exit animation"
-        );
-
-        // Exit animation
-        visibleCards.forEach((card) => {
-          card.classList.remove("opacity-100");
-          card.classList.add("opacity-0");
-        });
-
-        // Navigate during exit animation (same timing as desktop filtering)
-        setTimeout(() => {
-          window.location.href = buildRemovalUrl(type, value);
-        }, 150);
-
-        return;
-      }
-    }
-
-    // FALLBACK: Direct navigation (mobile or no visible cards)
-    window.location.href = buildRemovalUrl(type, value);
   }
 
-  function buildRemovalUrl(type: string, value: string | null = null) {
+  function removeFilter(type: string, value: string | null = null) {
     const currentParams = new URLSearchParams(window.location.search);
     const currentBrands = currentParams.getAll("brands") || [];
     const currentAvailability = currentParams.get("availability") === "true";
@@ -210,18 +146,15 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
     const params = new URLSearchParams();
 
     if (type === "brand" && value) {
-      // Remove this brand, keep others
       const otherBrands = currentBrands.filter((b) => b !== value);
       otherBrands.forEach((brand) => params.append("brands", brand));
-      // Keep availability
       if (currentAvailability) params.set("availability", "true");
     } else if (type === "availability") {
-      // Keep brands, remove availability
       currentBrands.forEach((brand) => params.append("brands", brand));
     }
 
     const queryString = params.toString();
-    const basePath = window.location.pathname;
-    return `${basePath}${queryString ? "?" + queryString : ""}`;
+    const url = `${window.location.pathname}${queryString ? "?" + queryString : ""}`;
+    window.location.href = url;
   }
 </script>
