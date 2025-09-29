@@ -59,16 +59,13 @@ export function initializeConditionalLoading(): void {
   console.debug('Device info:', deviceInfo);
   console.debug('Registered features:', featureRegistry.getRegisteredFeatures());
 
-  // Preload desktop features if on desktop AND not on slow connection
+  // Note: Astro components cannot be dynamically imported in the browser
+  // Only JavaScript/TypeScript modules can be conditionally loaded
+  // Desktop features like cartButton are already loaded via SSR
   if (deviceInfo.isDesktop && !deviceInfo.isSlowConnection) {
-    const desktopFeatures = ['cartButton', 'productCard', 'viewTransitions'];
-    desktopFeatures.forEach(feature => {
-      featureRegistry.load(feature).catch(err => {
-        console.warn(`Failed to preload ${feature}:`, err);
-      });
-    });
+    console.debug('Desktop detected - components loaded via SSR');
   } else if (deviceInfo.isDesktop && deviceInfo.isSlowConnection) {
-    console.debug('Skipping desktop feature preload due to slow connection');
+    console.debug('Desktop with slow connection - using SSR-loaded components');
   }
 }
 

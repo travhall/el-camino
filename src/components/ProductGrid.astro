@@ -149,12 +149,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     }
   }
 
-  /* PHASE 5: Layout Shift Prevention */
-  .product-grid {
-    contain: layout; /* Prevent external layout shifts */
-    min-height: 400px; /* Reserve space during filtering */
-  }
-
   /* SMOOTH FILTERING: Prevent layout shifts with opacity transitions */
   .product-card-wrapper {
     transition:
@@ -196,14 +190,8 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     contain: layout style paint; /* Full containment for overlay */
   }
 
-  #product-grid-skeleton {
-    contain: layout; /* Prevent shifts when skeleton shows */
-    min-height: 400px;
-  }
-
   #no-results {
     contain: layout; /* Prevent shifts in no-results state */
-    min-height: 400px;
   }
 
   #infinite-scroll-trigger {
@@ -369,28 +357,30 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
   // PHASE 5: Properly parse animation timing from CSS custom properties
   function getAnimationTiming() {
     const style = getComputedStyle(document.documentElement);
-    
+
     // Parse duration (handles "0.3s", "300ms", etc.)
-    const durationStr = style.getPropertyValue('--card-transition-duration').trim();
+    const durationStr = style
+      .getPropertyValue("--card-transition-duration")
+      .trim();
     let duration = 300; // default
-    if (durationStr.includes('ms')) {
-      duration = parseInt(durationStr.replace('ms', ''));
-    } else if (durationStr.includes('s')) {
-      duration = parseFloat(durationStr.replace('s', '')) * 1000;
+    if (durationStr.includes("ms")) {
+      duration = parseInt(durationStr.replace("ms", ""));
+    } else if (durationStr.includes("s")) {
+      duration = parseFloat(durationStr.replace("s", "")) * 1000;
     }
-    
+
     // Parse stagger delay (handles "50ms", "0ms", etc.)
-    const staggerStr = style.getPropertyValue('--card-stagger-delay').trim();
-    const staggerDelay = parseInt(staggerStr.replace('ms', '')) || 0;
-    
+    const staggerStr = style.getPropertyValue("--card-stagger-delay").trim();
+    const staggerDelay = parseInt(staggerStr.replace("ms", "")) || 0;
+
     // Parse row stagger delay
-    const rowStaggerStr = style.getPropertyValue('--row-stagger-delay').trim();
-    const rowStaggerDelay = parseInt(rowStaggerStr.replace('ms', '')) || 0;
-    
+    const rowStaggerStr = style.getPropertyValue("--row-stagger-delay").trim();
+    const rowStaggerDelay = parseInt(rowStaggerStr.replace("ms", "")) || 0;
+
     return {
       duration: duration || 300,
       staggerDelay: staggerDelay,
-      rowStaggerDelay: rowStaggerDelay
+      rowStaggerDelay: rowStaggerDelay,
     };
   }
 
@@ -612,12 +602,16 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     // PHASE 5: Debounced load more to prevent rapid-fire loading
     let isLoading = false;
     let loadTimeout: ReturnType<typeof setTimeout>;
-    
+
     // SIMPLE: Basic intersection observer for loading more cards
     const loadMoreObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && visibleCount < allCards.length && !isLoading) {
+          if (
+            entry.isIntersecting &&
+            visibleCount < allCards.length &&
+            !isLoading
+          ) {
             // Debounce to prevent rapid loading
             clearTimeout(loadTimeout);
             loadTimeout = setTimeout(() => {
@@ -626,39 +620,39 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
 
               // Load 2 more rows
               const cardsToAdd = cardsPerRow * 2;
-            const newVisibleCount = Math.min(
-              visibleCount + cardsToAdd,
-              allCards.length
-            );
+              const newVisibleCount = Math.min(
+                visibleCount + cardsToAdd,
+                allCards.length
+              );
 
-            // Show the new cards but DON'T animate them immediately
-            // Let the cardAnimationObserver handle the animation when they come into view
-            for (let i = visibleCount; i < newVisibleCount; i++) {
-              if (allCards[i]) {
-                const card = allCards[i] as HTMLElement;
+              // Show the new cards but DON'T animate them immediately
+              // Let the cardAnimationObserver handle the animation when they come into view
+              for (let i = visibleCount; i < newVisibleCount; i++) {
+                if (allCards[i]) {
+                  const card = allCards[i] as HTMLElement;
 
-                // Show the card but keep it in opacity-0 state for animation
-                card.style.display = "";
-                card.classList.remove("opacity-100");
-                card.classList.add("opacity-0");
+                  // Show the card but keep it in opacity-0 state for animation
+                  card.style.display = "";
+                  card.classList.remove("opacity-100");
+                  card.classList.add("opacity-0");
 
-                // Add to animation observer so it animates when it comes into view
-                cardAnimationObserver.observe(card);
+                  // Add to animation observer so it animates when it comes into view
+                  cardAnimationObserver.observe(card);
+                }
               }
-            }
 
-            visibleCount = newVisibleCount;
-            console.log(
-              `[ProductGrid] Now showing ${visibleCount}/${allCards.length}`
-            );
+              visibleCount = newVisibleCount;
+              console.log(
+                `[ProductGrid] Now showing ${visibleCount}/${allCards.length}`
+              );
 
-            // Hide trigger when done
-            if (visibleCount >= allCards.length) {
-              trigger.style.display = "none";
-              console.log("[ProductGrid] ✅ All products loaded");
-            }
-            
-            isLoading = false;
+              // Hide trigger when done
+              if (visibleCount >= allCards.length) {
+                trigger.style.display = "none";
+                console.log("[ProductGrid] ✅ All products loaded");
+              }
+
+              isLoading = false;
             }, 100); // PHASE 5: 100ms debounce delay
           }
         });

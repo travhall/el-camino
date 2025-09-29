@@ -9,7 +9,7 @@ import MiniCart from "@/components/MiniCart.astro";
 import Modal from "@/components/Modal.astro";
 import Notification from "@/components/Notification.astro";
 import SpeculationRules from "@/components/SpeculationRules.astro";
-import { detectDeviceFromUA } from '@/utils/device';
+import { detectDeviceFromUA } from "@/utils/device";
 import "@/styles/global.css";
 // import CartDebug from "@/components/CartDebug.astro";
 
@@ -21,7 +21,7 @@ interface Props {
 const { title, structuredData } = Astro.props;
 
 // Device detection for conditional component loading
-const userAgent = Astro.request.headers.get('user-agent') || '';
+const userAgent = Astro.request.headers.get("user-agent") || "";
 const deviceInfo = detectDeviceFromUA(userAgent);
 const isDesktop = deviceInfo.isDesktop;
 
@@ -58,8 +58,10 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
 
         // CRITICAL: Use localStorage instead of sessionStorage for View Transitions persistence
         const fontsLoaded = localStorage.getItem("fonts-loaded");
-        const fontsCached = document.fonts.check("700 48px Alumni") && document.fonts.check("400 16px Cabin");
-        
+        const fontsCached =
+          document.fonts.check("700 48px Alumni") &&
+          document.fonts.check("400 16px Cabin");
+
         if (fontsLoaded === "true" || fontsCached) {
           // Fonts already loaded - prevent FOUT immediately
           document.documentElement.classList.remove("fonts-loading");
@@ -68,9 +70,9 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           // Force preloaded fonts to load immediately (critical weights)
           Promise.all([
             document.fonts.load("700 48px Alumni"),
-            document.fonts.load("600 24px Alumni"),  // Navigation weight
+            document.fonts.load("600 24px Alumni"), // Navigation weight
             document.fonts.load("400 16px Cabin"),
-            document.fonts.load("500 16px Cabin"),   // Filter weights
+            document.fonts.load("500 16px Cabin"), // Filter weights
           ])
             .then(() => {
               document.documentElement.classList.remove("fonts-loading");
@@ -91,8 +93,20 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <meta name="generator" content={Astro.generator} />
 
     <!-- CRITICAL: Font preloading for FOUT prevention during View Transitions -->
-    <link rel="preload" href="/fonts/AlumniSans.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/Cabin.woff2" as="font" type="font/woff2" crossorigin />
+    <link
+      rel="preload"
+      href="/fonts/AlumniSans.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/Cabin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
 
     <!-- Enhanced font preloading with fetchpriority -->
     <link
@@ -114,7 +128,6 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
 
     <!-- Critical font styling to prevent FOUT on h1 elements -->
     <style>
-      /* Critical inline fonts for h1 elements - prevents FOUT */
       h1 {
         font-family:
           "Alumni",
@@ -252,13 +265,15 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <Footer />
 
     <!-- Desktop-only features -->
-    {isDesktop && (
-      <>
-        <QuickView />
-        <MiniCart />
-      </>
-    )}
-    
+    {
+      isDesktop && (
+        <>
+          <QuickView />
+          <MiniCart />
+        </>
+      )
+    }
+
     <Notification />
     <Modal />
     <!-- <CartDebug /> -->
