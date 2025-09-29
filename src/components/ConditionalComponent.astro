@@ -1,0 +1,39 @@
+---
+// Conditional Component Loader Wrapper
+// Renders desktop or mobile version based on device detection
+import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
+import { detectDeviceFromUA } from '@/utils/device';
+
+interface Props {
+  desktopComponent: Promise<{ default: AstroComponentFactory }>;
+  mobileComponent: Promise<{ default: AstroComponentFactory }>;
+  fallbackToMobile?: boolean;
+  componentProps?: Record<string, any>;
+}
+
+const { 
+  desktopComponent, 
+  mobileComponent, 
+  fallbackToMobile = true,
+  componentProps = {}
+} = Astro.props;
+
+// Server-side device detection
+const userAgent = Astro.request.headers.get('user-agent') || '';
+const deviceInfo = detectDeviceFromUA(userAgent);
+
+// Determine which component to load
+const shouldLoadMobile = deviceInfo.isMobile || (fallbackToMobile && !deviceInfo.isDesktop);
+
+// Load appropriate component
+let Component: AstroComponentFactory;
+if (shouldLoadMobile) {
+  const module = await mobileComponent;
+  Component = module.default;
+} else {
+  const module = await desktopComponent;
+  Component = module.default;
+}
+---
+
+<Component {...componentProps} />

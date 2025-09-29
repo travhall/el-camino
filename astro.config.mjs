@@ -96,8 +96,29 @@ export default defineConfig({
       cssMinify: true,
       rollupOptions: {
         output: {
-          manualChunks: {
-            square: ["square"],
+          manualChunks(id) {
+            // Desktop-only features
+            if (id.includes('CartButton') || 
+                id.includes('ProductCard') ||
+                id.includes('@astrojs/view-transitions')) {
+              return 'desktop-features';
+            }
+            
+            // Mobile-only features
+            if (id.includes('MobileProductFilters') ||
+                id.includes('MobileProductCard')) {
+              return 'mobile-features';
+            }
+            
+            // Square SDK
+            if (id.includes('square')) {
+              return 'square';
+            }
+            
+            // Core vendor code
+            if (id.includes('node_modules')) {
+              return 'vendor';
+            }
           },
         },
       },

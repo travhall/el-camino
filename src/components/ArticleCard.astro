@@ -58,14 +58,13 @@ const getImageDimensions = () => {
 const { width: imageWidth, height: imageHeight } = getImageDimensions();
 
 // Enhanced image optimization
-const optimizedImageUrl = imageUrl ? EnhancedImageOptimizer.generateOptimizedSources(
-  imageUrl,
-  { 
-    width: imageWidth, 
-    height: imageHeight, 
-    priority: priority 
-  }
-).jpeg : "";
+const optimizedImageUrl = imageUrl
+  ? EnhancedImageOptimizer.generateOptimizedSources(imageUrl, {
+      width: imageWidth,
+      height: imageHeight,
+      priority: priority,
+    }).jpeg
+  : "";
 
 // Get the proper display category
 const displayCategory = getDisplayCategory(post);
@@ -125,7 +124,6 @@ const getContentClasses = () => {
 
     case "masonry":
     default:
-      // FIXED: Removed z-20 that was breaking layout, restored from _BU version
       return `flex flex-col gap-2 px-6 py-12 xl:p-12 absolute bottom-0 m-1 bg-(--ui-card-surface)/00 backdrop-blur-0 lg:group-hover:bg-(--ui-card-surface)/95 lg:group-hover:backdrop-blur transition-all duration-300 ${
         featured &&
         "bg-(--ui-card-surface)/90 md:bg-(--ui-card-surface) first-of-type:m-0 md:border-t-4 md:border-l-4 md:border-(--ui-card-border) md:w-5/6 lg:w-2/3 right-0"
@@ -230,7 +228,7 @@ const getExcerptClasses = () => {
     {
       variant === "masonry" && (
         <div class="overflow-hidden">
-          <span class="font-display -ml-[100%] group-hover:ml-0 py-2 self-start text-2xl text-(--ui-button-surface) font-semibold transition-all duration-200 blur-2xl group-hover:blur-none">
+          <span class="font-display lg:-ml-[100%] lg:group-hover:ml-0 py-2 self-start text-2xl text-(--ui-button-surface) font-semibold transition-all duration-200 lg:blur-2xl lg:group-hover:blur-none">
             Read More
           </span>
         </div>

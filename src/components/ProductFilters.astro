@@ -384,25 +384,25 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       document.addEventListener('productGridReady', enableFiltering);
       document.addEventListener('DOMContentLoaded', enableFiltering);
       
-      // Immediate check in case we're already loaded
+      // Event-based grid detection (eliminates polling)
+      const handleGridReady = () => {
+        if (!gridReady) {
+          enableFiltering();
+        }
+      };
+      
+      // Listen for grid ready event
+      window.addEventListener('product-grid-ready', handleGridReady);
+      
+      // Immediate check in case grid already loaded
       if (document.readyState === 'complete' || document.readyState === 'interactive') {
         enableFiltering();
       }
       
-      // Polling fallback for maximum reliability
-      let attempts = 0;
-      const maxAttempts = 50; // 5 seconds max
-      const checkInterval = setInterval(() => {
-        attempts++;
-        if (!gridReady && attempts < maxAttempts) {
-          enableFiltering();
-        } else {
-          clearInterval(checkInterval);
-          if (!gridReady && attempts >= maxAttempts) {
-            console.warn('[ResponsiveFilters] ⚠️ Grid detection timeout - filters may not work correctly');
-          }
-        }
-      }, 100);
+      // Cleanup on navigation
+      document.addEventListener('astro:before-swap', () => {
+        window.removeEventListener('product-grid-ready', handleGridReady);
+      });
     }
     
     private enableFilterControls(): void {

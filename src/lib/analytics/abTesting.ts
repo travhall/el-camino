@@ -487,7 +487,7 @@ class ABTestingFramework {
   private getUserId(): string {
     let userId = localStorage.getItem('ab_test_user_id');
     if (!userId) {
-      userId = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+      userId = 'user_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
       localStorage.setItem('ab_test_user_id', userId);
     }
     return userId;

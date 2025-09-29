@@ -45,7 +45,7 @@ class UserErrorCommunicationSystem {
     const userMessage = errorRecovery.getUserFriendlyMessage(error);
     const guidance = errorRecovery.getRecoveryGuidance(error);
     
-    const errorId = `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const errorId = `error-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     
     const displayOptions: ErrorDisplayOptions = {
       type: 'inline',

@@ -9,6 +9,7 @@ import MiniCart from "@/components/MiniCart.astro";
 import Modal from "@/components/Modal.astro";
 import Notification from "@/components/Notification.astro";
 import SpeculationRules from "@/components/SpeculationRules.astro";
+import { detectDeviceFromUA } from '@/utils/device';
 import "@/styles/global.css";
 // import CartDebug from "@/components/CartDebug.astro";
 
@@ -18,6 +19,11 @@ interface Props {
 }
 
 const { title, structuredData } = Astro.props;
+
+// Device detection for conditional component loading
+const userAgent = Astro.request.headers.get('user-agent') || '';
+const deviceInfo = detectDeviceFromUA(userAgent);
+const isDesktop = deviceInfo.isDesktop;
 
 // Use site config for default SEO values
 const seoData = {
@@ -245,8 +251,14 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     </main>
     <Footer />
 
-    <QuickView />
-    <MiniCart />
+    <!-- Desktop-only features -->
+    {isDesktop && (
+      <>
+        <QuickView />
+        <MiniCart />
+      </>
+    )}
+    
     <Notification />
     <Modal />
     <!-- <CartDebug /> -->
@@ -298,6 +310,12 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           }
         }
       });
+    </script>
+
+    <!-- PHASE 1: Device Detection & Conditional Loading -->
+    <script>
+      // Initialize device-aware feature loading system
+      import("../scripts/initDeviceDetection");
     </script>
 
     <!-- Performance Monitoring & PWA Initialization -->

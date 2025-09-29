@@ -1,11 +1,9 @@
 // src/lib/performance/mobileOptimization.ts - Mobile-specific navigation optimizations
 
-interface MobileContext {
-  isMobile: boolean;
-  isSlowConnection: boolean;
-  touchDevice: boolean;
-  screenWidth: number;
-  connectionType: string;
+import { getDeviceInfo, type DeviceInfo } from '@/utils/device';
+
+interface MobileContext extends DeviceInfo {
+  // MobileContext now extends DeviceInfo for consistency
 }
 
 interface MobilePrefetchConfig {
@@ -28,28 +26,12 @@ export class MobileNavigationOptimizer {
   }
 
   private detectMobileContext(): MobileContext {
-    const isMobile = window.innerWidth <= 1024;
-    const touchDevice = "ontouchstart" in window;
-
-    // Detect slow connections
-    const connection = (navigator as any).connection;
-    const isSlowConnection = connection
-      ? connection.effectiveType === "slow-2g" ||
-        connection.effectiveType === "2g" ||
-        connection.saveData
-      : false;
-
-    return {
-      isMobile,
-      isSlowConnection,
-      touchDevice,
-      screenWidth: window.innerWidth,
-      connectionType: connection?.effectiveType || "unknown",
-    };
+    // Use consolidated device detection from utils/device.ts
+    return getDeviceInfo();
   }
 
   private getMobilePrefetchConfig(): MobilePrefetchConfig {
-    const { isMobile, isSlowConnection, touchDevice } = this.context;
+    const { isMobile, isSlowConnection, hasTouch } = this.context;
 
     if (isSlowConnection) {
       return {
@@ -60,7 +42,7 @@ export class MobileNavigationOptimizer {
       };
     }
 
-    if (isMobile && touchDevice) {
+    if (isMobile && hasTouch) {
       return {
         strategy: "tap",
         maxConcurrent: 2,
@@ -128,6 +110,8 @@ export class MobileNavigationOptimizer {
 
   private optimizeAnimations(): void {
     // Reduce motion for performance on mobile
+    // NOTE: This handles NAVIGATION animations only (nav-item, dropdown, nav-link)
+    // Product card animations are handled separately in ProductGrid.astro
     if (this.context.isMobile) {
       const style = document.createElement("style");
       style.textContent = `
@@ -161,7 +145,7 @@ export class MobileNavigationOptimizer {
     );
 
     // Prevent accidental hover states on touch devices
-    if (this.context.touchDevice) {
+    if (this.context.hasTouch) {
       document.addEventListener("touchend", () => {
         document.body.classList.add("touch-active");
         setTimeout(() => {

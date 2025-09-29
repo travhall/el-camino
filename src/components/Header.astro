@@ -3,6 +3,13 @@
 import Nav from "@/components/Nav.astro";
 import { Icon } from "astro-icon/components";
 import CartButton from "./CartButton.astro";
+import CartButtonMobile from "./CartButtonMobile.astro";
+import { detectDeviceFromUA } from '@/utils/device';
+
+// Device detection for conditional rendering
+const userAgent = Astro.request.headers.get('user-agent') || '';
+const deviceInfo = detectDeviceFromUA(userAgent);
+const isMobile = deviceInfo.isMobile;
 ---
 
 <header
@@ -19,7 +26,7 @@ import CartButton from "./CartButton.astro";
   <Nav />
 
   <div class="utility-menu self-center justify-end lg:order-last flex">
-    <CartButton />
+    {isMobile ? <CartButtonMobile /> : <CartButton />}
     <button
       id="mobile-menu-toggle"
       class="p-2 lg:hidden text-(--content-body)"

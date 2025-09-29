@@ -149,6 +149,12 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     }
   }
 
+  /* PHASE 5: Layout Shift Prevention */
+  .product-grid {
+    contain: layout; /* Prevent external layout shifts */
+    min-height: 400px; /* Reserve space during filtering */
+  }
+
   /* SMOOTH FILTERING: Prevent layout shifts with opacity transitions */
   .product-card-wrapper {
     transition:
@@ -156,6 +162,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       transform var(--card-transition-duration) ease;
     will-change: opacity, transform;
     transform: translate3d(0, 0, 0); /* GPU acceleration */
+    min-height: 280px; /* Minimum card height */
   }
 
   .product-card-wrapper.opacity-0 {
@@ -182,6 +189,25 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     #infinite-scroll-trigger {
       margin: 1rem 0;
     }
+  }
+
+  /* PHASE 5: Stable loading states to prevent layout shifts */
+  #filter-loading-overlay {
+    contain: layout style paint; /* Full containment for overlay */
+  }
+
+  #product-grid-skeleton {
+    contain: layout; /* Prevent shifts when skeleton shows */
+    min-height: 400px;
+  }
+
+  #no-results {
+    contain: layout; /* Prevent shifts in no-results state */
+    min-height: 400px;
+  }
+
+  #infinite-scroll-trigger {
+    contain: layout; /* Prevent shifts during scroll loading */
   }
 </style>
 
@@ -303,27 +329,73 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
 </div>
 
 <script>
-  // Animation configuration
-  const ANIMATION_CONFIG = {
-    staggerDelay:
-      parseInt(
-        getComputedStyle(document.documentElement).getPropertyValue(
-          "--card-stagger-delay"
-        )
-      ) || 50,
-    rowStaggerDelay:
-      parseInt(
-        getComputedStyle(document.documentElement).getPropertyValue(
-          "--row-stagger-delay"
-        )
-      ) || 100,
-    duration:
-      parseInt(
-        getComputedStyle(document.documentElement)
-          .getPropertyValue("--card-transition-duration")
-          .replace("s", "")
-      ) * 1000 || 300,
+  // Check for reduced motion preference
+  const prefersReducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+
+  // Animation state management
+  // NOTE: This animation queue handles PRODUCT CARD animations only
+  // Navigation animations are handled by mobileOptimization.ts
+  const animationQueue = {
+    running: false,
+    pending: [] as (() => void)[],
+
+    async run(animationFn: () => void) {
+      if (prefersReducedMotion) {
+        // Skip animations entirely for reduced motion
+        animationFn();
+        return;
+      }
+
+      this.pending.push(animationFn);
+
+      if (!this.running) {
+        this.running = true;
+        while (this.pending.length > 0) {
+          const fn = this.pending.shift();
+          if (fn)
+            await new Promise((resolve) => {
+              fn();
+              // Small delay between queued animations
+              setTimeout(resolve, 50);
+            });
+        }
+        this.running = false;
+      }
+    },
   };
+
+  // PHASE 5: Properly parse animation timing from CSS custom properties
+  function getAnimationTiming() {
+    const style = getComputedStyle(document.documentElement);
+    
+    // Parse duration (handles "0.3s", "300ms", etc.)
+    const durationStr = style.getPropertyValue('--card-transition-duration').trim();
+    let duration = 300; // default
+    if (durationStr.includes('ms')) {
+      duration = parseInt(durationStr.replace('ms', ''));
+    } else if (durationStr.includes('s')) {
+      duration = parseFloat(durationStr.replace('s', '')) * 1000;
+    }
+    
+    // Parse stagger delay (handles "50ms", "0ms", etc.)
+    const staggerStr = style.getPropertyValue('--card-stagger-delay').trim();
+    const staggerDelay = parseInt(staggerStr.replace('ms', '')) || 0;
+    
+    // Parse row stagger delay
+    const rowStaggerStr = style.getPropertyValue('--row-stagger-delay').trim();
+    const rowStaggerDelay = parseInt(rowStaggerStr.replace('ms', '')) || 0;
+    
+    return {
+      duration: duration || 300,
+      staggerDelay: staggerDelay,
+      rowStaggerDelay: rowStaggerDelay
+    };
+  }
+
+  // Animation configuration
+  const ANIMATION_CONFIG = getAnimationTiming();
 
   // Enhanced page load entrance animations with combined row + individual card stagger
   function initializePageLoadAnimations() {
@@ -335,6 +407,16 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     });
 
     if (!visibleCards.length) return;
+
+    // Skip animations if reduced motion preferred
+    if (prefersReducedMotion) {
+      visibleCards.forEach((card) => {
+        const htmlCard = card as HTMLElement;
+        htmlCard.classList.remove("opacity-0");
+        htmlCard.classList.add("opacity-100");
+      });
+      return;
+    }
 
     // Calculate cards per row for row-based animation
     function getCardsPerRow() {
@@ -350,52 +432,43 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            const card = entry.target as HTMLElement;
-            const index = parseInt(card.dataset.initialIndex || "0");
-            const cardsPerRow = getCardsPerRow();
-            const rowIndex = Math.floor(index / cardsPerRow);
-            const cardInRow = index % cardsPerRow;
+            animationQueue.run(() => {
+              const card = entry.target as HTMLElement;
+              const index = parseInt(card.dataset.initialIndex || "0");
+              const cardsPerRow = getCardsPerRow();
+              const rowIndex = Math.floor(index / cardsPerRow);
+              const cardInRow = index % cardsPerRow;
 
-            // Add animating class for will-change optimization
-            card.classList.add("animating");
+              // Add animating class for will-change optimization
+              card.classList.add("animating");
 
-            // Combined stagger: row delay + individual card delay
-            const rowStaggerDelay =
-              parseInt(
-                getComputedStyle(document.documentElement).getPropertyValue(
-                  "--row-stagger-delay"
-                )
-              ) || 100;
+              // Combined stagger: row delay + individual card delay
+              const rowStaggerDelay = ANIMATION_CONFIG.rowStaggerDelay;
+              const cardStaggerDelay = ANIMATION_CONFIG.staggerDelay;
 
-            const cardStaggerDelay =
-              parseInt(
-                getComputedStyle(document.documentElement).getPropertyValue(
-                  "--card-stagger-delay"
-                )
-              ) || 50;
+              const baseRowDelay = rowIndex * rowStaggerDelay;
+              const cardDelay = cardInRow * (cardStaggerDelay / 2);
+              const totalDelay = baseRowDelay + cardDelay;
 
-            const baseRowDelay = rowIndex * rowStaggerDelay;
-            const cardDelay = cardInRow * (cardStaggerDelay / 2); // More noticeable individual stagger
-            const totalDelay = baseRowDelay + cardDelay;
-
-            setTimeout(() => {
-              card.classList.remove("opacity-0");
-              card.classList.add("opacity-100");
-
-              // Remove will-change after animation completes
               setTimeout(() => {
-                card.classList.remove("animating");
-              }, ANIMATION_CONFIG.duration);
-            }, totalDelay);
+                card.classList.remove("opacity-0");
+                card.classList.add("opacity-100");
 
-            // Stop observing this card
-            observer.unobserve(card);
+                // Remove will-change after animation completes
+                setTimeout(() => {
+                  card.classList.remove("animating");
+                }, ANIMATION_CONFIG.duration);
+              }, totalDelay);
+
+              // Stop observing this card
+              observer.unobserve(card);
+            });
           }
         });
       },
       {
         threshold: 0.1,
-        rootMargin: "50px",
+        rootMargin: "200px", // PHASE 5: Increased from 50px for better scroll performance
       }
     );
 
@@ -482,57 +555,77 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const card = entry.target as HTMLElement;
-            const index = parseInt(card.dataset.initialIndex || "0");
-            const cardsPerRow = getCardsPerRow();
-            
-            // Calculate animation timing based on the card's position in the newly loaded batch
-            // Find the index within the current batch (relative to when it was loaded)
-            const batchStartIndex = Math.floor(index / (cardsPerRow * 2)) * (cardsPerRow * 2);
-            const cardIndexInBatch = index - batchStartIndex;
-            const rowIndex = Math.floor(cardIndexInBatch / cardsPerRow);
-            const cardInRow = cardIndexInBatch % cardsPerRow;
 
-            // Add animating class for will-change optimization
-            card.classList.add("animating");
-
-            // Combined stagger: row delay + individual card delay (same as initial load)
-            const rowStaggerDelay = ANIMATION_CONFIG.rowStaggerDelay;
-            const cardStaggerDelay = ANIMATION_CONFIG.staggerDelay;
-
-            const baseRowDelay = rowIndex * rowStaggerDelay;
-            const cardDelay = cardInRow * (cardStaggerDelay / 2);
-            const totalDelay = baseRowDelay + cardDelay;
-
-            setTimeout(() => {
+            // Skip animations if reduced motion preferred
+            if (prefersReducedMotion) {
               card.classList.remove("opacity-0");
               card.classList.add("opacity-100");
+              cardAnimationObserver.unobserve(card);
+              return;
+            }
 
-              // Remove will-change after animation completes
+            animationQueue.run(() => {
+              const index = parseInt(card.dataset.initialIndex || "0");
+              const cardsPerRow = getCardsPerRow();
+
+              // Calculate animation timing based on the card's position in the newly loaded batch
+              // Find the index within the current batch (relative to when it was loaded)
+              const batchStartIndex =
+                Math.floor(index / (cardsPerRow * 2)) * (cardsPerRow * 2);
+              const cardIndexInBatch = index - batchStartIndex;
+              const rowIndex = Math.floor(cardIndexInBatch / cardsPerRow);
+              const cardInRow = cardIndexInBatch % cardsPerRow;
+
+              // Add animating class for will-change optimization
+              card.classList.add("animating");
+
+              // Combined stagger: row delay + individual card delay (same as initial load)
+              const rowStaggerDelay = ANIMATION_CONFIG.rowStaggerDelay;
+              const cardStaggerDelay = ANIMATION_CONFIG.staggerDelay;
+
+              const baseRowDelay = rowIndex * rowStaggerDelay;
+              const cardDelay = cardInRow * (cardStaggerDelay / 2);
+              const totalDelay = baseRowDelay + cardDelay;
+
               setTimeout(() => {
-                card.classList.remove("animating");
-              }, ANIMATION_CONFIG.duration);
-            }, totalDelay);
+                card.classList.remove("opacity-0");
+                card.classList.add("opacity-100");
 
-            // Stop observing this card
-            cardAnimationObserver.unobserve(card);
+                // Remove will-change after animation completes
+                setTimeout(() => {
+                  card.classList.remove("animating");
+                }, ANIMATION_CONFIG.duration);
+              }, totalDelay);
+
+              // Stop observing this card
+              cardAnimationObserver.unobserve(card);
+            });
           }
         });
       },
       {
         threshold: 0.1,
-        rootMargin: "50px",
+        rootMargin: "200px", // PHASE 5: Increased from 50px for better scroll performance
       }
     );
 
+    // PHASE 5: Debounced load more to prevent rapid-fire loading
+    let isLoading = false;
+    let loadTimeout: ReturnType<typeof setTimeout>;
+    
     // SIMPLE: Basic intersection observer for loading more cards
     const loadMoreObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && visibleCount < allCards.length) {
-            console.log("[ProductGrid] Loading more...");
+          if (entry.isIntersecting && visibleCount < allCards.length && !isLoading) {
+            // Debounce to prevent rapid loading
+            clearTimeout(loadTimeout);
+            loadTimeout = setTimeout(() => {
+              isLoading = true;
+              console.log("[ProductGrid] Loading more...");
 
-            // Load 2 more rows
-            const cardsToAdd = cardsPerRow * 2;
+              // Load 2 more rows
+              const cardsToAdd = cardsPerRow * 2;
             const newVisibleCount = Math.min(
               visibleCount + cardsToAdd,
               allCards.length
@@ -564,13 +657,47 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
               trigger.style.display = "none";
               console.log("[ProductGrid] ✅ All products loaded");
             }
+            
+            isLoading = false;
+            }, 100); // PHASE 5: 100ms debounce delay
           }
         });
       },
-      { threshold: 0.1, rootMargin: "100px" }
+      { threshold: 0.1, rootMargin: "200px" } // PHASE 5: Increased from 100px
     );
 
     loadMoreObserver.observe(trigger);
     console.log("[ProductGrid] ✅ Simple infinite scroll initialized");
+
+    // Dispatch event to signal grid is ready (eliminates polling in ProductFilters)
+    window.dispatchEvent(
+      new CustomEvent("product-grid-ready", {
+        detail: { productCount: allCards.length },
+      })
+    );
+    console.log("[ProductGrid] 🎯 Grid ready event dispatched");
   }
+
+  // Debounced resize handler for responsive animations
+  let resizeTimeout: ReturnType<typeof setTimeout>;
+  function handleResize() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      // PHASE 5: Recalculate animation config on resize using proper parsing
+      const newConfig = getAnimationTiming();
+      ANIMATION_CONFIG.staggerDelay = newConfig.staggerDelay;
+      ANIMATION_CONFIG.rowStaggerDelay = newConfig.rowStaggerDelay;
+      ANIMATION_CONFIG.duration = newConfig.duration;
+
+      console.log("[ProductGrid] 📐 Animation config updated for new viewport");
+    }, 250); // Debounce 250ms
+  }
+
+  window.addEventListener("resize", handleResize);
+
+  // Cleanup on navigation
+  document.addEventListener("astro:before-swap", () => {
+    window.removeEventListener("resize", handleResize);
+    clearTimeout(resizeTimeout);
+  });
 </script>
