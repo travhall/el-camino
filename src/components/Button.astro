@@ -6,7 +6,7 @@ interface Props extends HTMLAttributes<"button"> {
   type?: "button" | "submit";
   size?: "sm" | "md" | "lg";
   classes?: string;
-  variant?: "primary" | "secondary" | "outline";
+  variant?: "primary" | "secondary" | "outline" | "ghost";
   loading?: boolean;
   loadingText?: string;
   disabled?: boolean;
@@ -32,7 +32,7 @@ const isDisabled = disabled || loading;
   data-variant={variant}
   disabled={isDisabled}
   class:list={[
-    "font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring outline-0 focus-visible:ring-offset-2",
+    "font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) inline-flex items-center justify-center",
 
     variant === "primary" && [
       "text-(--ui-button-text)",
@@ -56,6 +56,14 @@ const isDisabled = disabled || loading;
       "border-(--ui-button-outline-border)",
       "hover:bg-(--ui-button-outline-surface)/25",
       "focus-visible:ring-(--ui-button-outline-ring)",
+    ],
+
+    variant === "ghost" && [
+      "text-(--content-body)",
+      "bg-(--ui-button-surface)/0",
+      "border-(--ui-button-border)/0",
+      "hover:bg-(--ui-button-surface)/15",
+      "focus-visible:ring-(--ui-button-ring)",
     ],
 
     size === "sm" && "text-xs lg:text-sm py-1 px-2",

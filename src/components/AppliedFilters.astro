@@ -38,7 +38,7 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
     !hasActiveFilters ? "no-filters" : "",
   ]}
 >
-  <div class="flex flex-wrap items-center gap-3 mb-2">
+  <div class="flex flex-wrap items-center gap-3 my-2">
     {
       hasActiveFilters && (
         <>
@@ -120,26 +120,32 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
     const hasFilters = currentBrands.length > 0 || currentAvailability;
 
     // Only apply timing logic ONCE per session and only for first filter application
-    const hasShownBefore = sessionStorage.getItem('appliedFiltersShown') === 'true';
-    
-    if (hasFilters && !hasShownBefore && !container.classList.contains('no-filters')) {
+    const hasShownBefore =
+      sessionStorage.getItem("appliedFiltersShown") === "true";
+
+    if (
+      hasFilters &&
+      !hasShownBefore &&
+      !container.classList.contains("no-filters")
+    ) {
       // First time showing AppliedFilters in this session - apply timing
-      container.style.visibility = 'hidden';
-      container.style.opacity = '0';
-      
+      container.style.visibility = "hidden";
+      container.style.opacity = "0";
+
       // Shorter delay - just enough for ProductGrid to start settling
       setTimeout(() => {
-        container.style.visibility = 'visible';
-        container.style.opacity = '1';
-        container.style.transition = 'opacity 200ms ease';
-        sessionStorage.setItem('appliedFiltersShown', 'true');
-        console.log('[AppliedFilters] ⏰ First appearance with timing protection');
+        container.style.visibility = "visible";
+        container.style.opacity = "1";
+        container.style.transition = "opacity 200ms ease";
+        sessionStorage.setItem("appliedFiltersShown", "true");
+        console.log(
+          "[AppliedFilters] ⏰ First appearance with timing protection"
+        );
       }, 400); // Much shorter delay
-      
     } else if (hasFilters) {
       // Already shown before or subsequent filters - appear immediately
-      container.style.visibility = 'visible';
-      container.style.opacity = '1';
+      container.style.visibility = "visible";
+      container.style.opacity = "1";
     }
   }
 

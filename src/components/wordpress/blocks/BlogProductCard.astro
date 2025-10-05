@@ -4,7 +4,10 @@ import type { Product } from "@/lib/square/types";
 import { MoneyUtils } from "@/lib/square/money";
 import { getProductStockStatus } from "@/lib/square/inventory";
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
-import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
+import {
+  EL_CAMINO_LOGO_DATA_URI,
+  EL_CAMINO_LOADER_DATA_URI,
+} from "@/lib/constants/assets";
 
 interface Props {
   product: Product;
@@ -45,12 +48,15 @@ const placeholderId = `blog-placeholder-${product.id}-${index}`;
 const isDynamicPriority = priority || index < 12;
 
 // Enhanced image optimization using EnhancedImageOptimizer
-const imageSet = EnhancedImageOptimizer.generateOptimizedSources(product.image, {
-  width: 600,
-  height: 400,
-  quality: 85,
-  priority: isDynamicPriority
-});
+const imageSet = EnhancedImageOptimizer.generateOptimizedSources(
+  product.image,
+  {
+    width: 600,
+    height: 400,
+    quality: 85,
+    priority: isDynamicPriority,
+  }
+);
 
 // Use best available format
 const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
@@ -73,7 +79,7 @@ const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
           itemprop="image"
         />
         {isOutOfStock && (
-          <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-xs font-bold rounded z-10">
+          <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-xs font-bold rounded-br-sm z-10">
             Sold Out
           </div>
         )}
@@ -122,7 +128,7 @@ const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
   variant !== "list" && (
     <a
       href={product.url}
-      class={`group grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-all duration-200 ${isOutOfStock ? "opacity-75" : ""}`}
+      class={`group grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-(--ui-card-surface) hover:bg-(--ui-card-surface-hover) transition-all duration-200 ${isOutOfStock ? "opacity-75" : ""}`}
       itemscope
       itemtype="http://schema.org/Product"
     >
@@ -135,10 +141,10 @@ const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
           aria-hidden="true"
         >
           {/* El Camino logo using data URI */}
-          <div 
+          <div
             class="absolute inset-0 flex items-center justify-center"
             style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
-          ></div>
+          />
         </div>
 
         {/* Enhanced Image (same as ProductCard) */}
