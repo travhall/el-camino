@@ -10,6 +10,7 @@ interface Props extends HTMLAttributes<"button"> {
   loading?: boolean;
   loadingText?: string;
   disabled?: boolean;
+  href?: string;
 }
 
 const {
@@ -20,14 +21,17 @@ const {
   loading = false,
   loadingText = "Loading...",
   disabled = false,
+  href,
   ...rest
 } = Astro.props;
 
 const isDisabled = disabled || loading;
+const Element = href ? "a" : "button";
 ---
 
-<button
-  {type}
+<Element
+  type={!href ? type : undefined}
+  href={href}
   data-size={size}
   data-variant={variant}
   disabled={isDisabled}
@@ -103,4 +107,4 @@ const isDisabled = disabled || loading;
       <slot />
     )
   }
-</button>
+</Element>
