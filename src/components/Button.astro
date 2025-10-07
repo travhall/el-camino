@@ -2,16 +2,31 @@
 // src/components/Button.astro
 import type { HTMLAttributes } from "astro/types";
 
-interface Props extends HTMLAttributes<"button"> {
-  type?: "button" | "submit";
+// Shared props for both button and link variants
+type SharedProps = {
   size?: "sm" | "md" | "lg";
   classes?: string;
   variant?: "primary" | "secondary" | "outline" | "ghost";
   loading?: boolean;
   loadingText?: string;
   disabled?: boolean;
-  href?: string;
-}
+};
+
+// Button-specific props (when no href)
+type ButtonProps = HTMLAttributes<"button"> &
+  SharedProps & {
+    type?: "button" | "submit";
+    href?: never;
+  };
+
+// Link-specific props (when href is provided)
+type LinkProps = HTMLAttributes<"a"> &
+  SharedProps & {
+    href: string;
+    type?: never;
+  };
+
+type Props = ButtonProps | LinkProps;
 
 const {
   type = "button",
@@ -27,38 +42,53 @@ const {
 
 const isDisabled = disabled || loading;
 const Element = href ? "a" : "button";
+
+// Extract link-specific props and auto-add security attributes for external links
+const target = "target" in rest ? rest.target : undefined;
+const rel = "rel" in rest ? rest.rel : undefined;
+const isExternalLink = href && target === "_blank";
+const linkRel = isExternalLink && !rel ? "noopener noreferrer" : rel;
 ---
 
 <Element
   type={!href ? type : undefined}
   href={href}
+  target={target}
+  rel={linkRel}
   data-size={size}
   data-variant={variant}
-  disabled={isDisabled}
+  disabled={!href && isDisabled ? true : undefined}
+  aria-disabled={href && isDisabled ? "true" : undefined}
+  aria-busy={loading ? "true" : undefined}
+  tabindex={href && isDisabled ? -1 : undefined}
+  onclick={href && isDisabled ? "event.preventDefault();" : undefined}
   class:list={[
-    "font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) inline-flex items-center justify-center",
+    "font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] hover:scale-105 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) inline-flex items-center justify-center",
 
     variant === "primary" && [
       "text-(--ui-button-text)",
+      "hover:text-(--ui-button-surface)",
       "bg-(--ui-button-surface)",
       "border-(--ui-button-border)",
-      "hover:bg-(--ui-button-surface)/75",
+      "hover:bg-(--ui-button-surface)/10",
       "focus-visible:ring-(--ui-button-ring)",
     ],
 
     variant === "secondary" && [
       "text-(--ui-button-secondary-text)",
+      "hover:text-(--ui-button-secondary-surface)",
       "bg-(--ui-button-secondary-surface)",
       "border-(--ui-button-secondary-border)",
-      "hover:bg-(--ui-button-secondary-surface)/75",
+      "hover:bg-(--ui-button-secondary-surface)/10",
       "focus-visible:ring-(--ui-button-secondary-ring)",
     ],
 
     variant === "outline" && [
       "text-(--ui-button-outline-text)",
+      "hover:text-(--surface-primary)",
       "bg-(--ui-button-outline-surface)/0",
       "border-(--ui-button-outline-border)",
-      "hover:bg-(--ui-button-outline-surface)/25",
+      "hover:bg-(--ui-button-outline-surface)/60",
       "focus-visible:ring-(--ui-button-outline-ring)",
     ],
 
@@ -66,8 +96,9 @@ const Element = href ? "a" : "button";
       "text-(--content-body)",
       "bg-(--ui-button-surface)/0",
       "border-(--ui-button-border)/0",
-      "hover:bg-(--ui-button-surface)/15",
+      "hover:bg-(--ui-button-surface)/0",
       "focus-visible:ring-(--ui-button-ring)",
+      "hover:underline hover:underline-offset-4",
     ],
 
     size === "sm" && "text-xs lg:text-sm py-1 px-2",
@@ -75,17 +106,19 @@ const Element = href ? "a" : "button";
     size === "lg" && "text-lg py-2 px-4 lg:text-xl lg:py-3 lg:px-5",
 
     loading && "opacity-75 cursor-not-allowed",
+    isDisabled && "pointer-events-none",
     classes,
   ]}
   {...rest}
 >
   {
     loading ? (
-      <span class="flex items-center justify-center">
+      <span class="flex items-center justify-center" aria-live="polite">
         <svg
           class="animate-spin -ml-1 mr-2 h-4 w-4"
           fill="none"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <circle
             class="opacity-25"
@@ -101,6 +134,7 @@ const Element = href ? "a" : "button";
             d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
           />
         </svg>
+        <span class="sr-only">Loading: </span>
         {loadingText}
       </span>
     ) : (
