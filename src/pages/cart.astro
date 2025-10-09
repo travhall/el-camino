@@ -1,8 +1,7 @@
 ---
 // src/pages/cart.astro
 import Layout from "@/layouts/Layout.astro";
-import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
-import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
+import Button from "@/components/Button.astro";
 ---
 
 <Layout title="Your Shopping Cart | El Camino">
@@ -25,8 +24,63 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
       <p class="mt-2 text-(--content-meta)">Loading cart...</p>
     </div>
 
-    <!-- Cart Content -->
-    <div id="cart-container" class="hidden relative"></div>
+    <!-- Empty Cart State -->
+    <div
+      id="empty-cart"
+      class="hidden flex flex-col min-h-[50dvh] items-center justify-center"
+    >
+      <p class="text-lg mb-6 text-(--content-body)">Your cart is empty</p>
+      <Button href="/shop/all" variant="outline"> Continue Shopping </Button>
+    </div>
+
+    <!-- Cart Content Grid -->
+    <div id="cart-content" class="hidden grid md:grid-cols-3 gap-1 items-start">
+      <!-- Cart Items Column -->
+      <div class="md:col-span-2 space-y-1 grid">
+        <Button
+          id="clear-cart-button"
+          variant="ghost"
+          size="sm"
+          classes="justify-self-end -mt-1 mb-1"
+        >
+          Clear Cart
+        </Button>
+        <div id="cart-items-list" class="grid gap-1"></div>
+      </div>
+
+      <!-- Order Summary Column (Static) -->
+      <div class="md:col-span-1">
+        <div class="bg-(--surface-secondary) p-4 sticky top-4">
+          <h2 class="font-display text-2xl mb-2 text-(--content-heading)">
+            Order Summary
+          </h2>
+          <div class="order-summary lg:space-y-2 mb-2">
+            <div class="flex justify-between text-(--content-body)">
+              <span>Subtotal</span>
+              <span
+                class="font-display font-bold text-3xl text-(--content-caption)"
+                id="subtotal">$0.00</span
+              >
+            </div>
+          </div>
+          <div class="space-y-2">
+            <p class="italic my-4">
+              Shipping &amp; taxes are calculated at checkout
+            </p>
+            <Button id="checkout-button" variant="primary" classes="w-full">
+              Proceed to Checkout
+            </Button>
+            <Button
+              href="/shop/all"
+              variant="outline"
+              classes="w-full text-center"
+            >
+              Continue Shopping
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Processing Indicator -->
     <div
@@ -50,38 +104,42 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
   import { cart } from "@/lib/cart";
   import type { CartItem } from "@/lib/cart/types";
   import { MoneyUtils } from "@/lib/square/money";
-  
+
   let isUpdating = false;
   let inventoryData: Record<string, number> = {};
 
   // Client-side image optimization for cart items
   function optimizeCartImage(src: string): string {
-    if (!src || !src.includes('squarecdn.com')) {
+    if (!src || !src.includes("squarecdn.com")) {
       return src;
     }
 
     try {
       const url = new URL(src);
-      
+
       // Cart images are larger than mini-cart (w-16/h-16 lg:w-24/h-24)
-      url.searchParams.set('w', '96'); // lg:w-24 = 96px
-      url.searchParams.set('h', '96'); // lg:h-24 = 96px
-      url.searchParams.set('q', '85');
-      url.searchParams.set('auto', 'compress');
-      url.searchParams.set('fit', 'crop');
-      
+      url.searchParams.set("w", "96"); // lg:w-24 = 96px
+      url.searchParams.set("h", "96"); // lg:h-24 = 96px
+      url.searchParams.set("q", "85");
+      url.searchParams.set("auto", "compress");
+      url.searchParams.set("fit", "crop");
+
       // Use AVIF if supported, fallback to WebP, then auto
-      if (typeof window !== 'undefined') {
-        const testCanvas = document.createElement('canvas');
-        if (testCanvas.toDataURL('image/avif').indexOf('data:image/avif') === 0) {
-          url.searchParams.set('f', 'avif');
-        } else if (testCanvas.toDataURL('image/webp').indexOf('data:image/webp') === 0) {
-          url.searchParams.set('f', 'webp');
+      if (typeof window !== "undefined") {
+        const testCanvas = document.createElement("canvas");
+        if (
+          testCanvas.toDataURL("image/avif").indexOf("data:image/avif") === 0
+        ) {
+          url.searchParams.set("f", "avif");
+        } else if (
+          testCanvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
+        ) {
+          url.searchParams.set("f", "webp");
         } else {
-          url.searchParams.set('f', 'auto');
+          url.searchParams.set("f", "auto");
         }
       }
-      
+
       return url.toString();
     } catch {
       return src;
@@ -174,52 +232,6 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
     }
   }
 
-  function createEmptyCart(): string {
-    return `
-      <div class="flex flex-col min-h-[50dvh] items-center justify-center" id="empty-cart">
-        <p class="text-lg mb-6 text-(--content-body)">Your cart is empty</p>
-        <a
-          href="/shop/all"
-          class="block text-center bg-(--ui-button-surface)/0 hover:bg-(--ui-button-surface)/10 border-(--ui-button-surface) text-(--ui-button-surface) font-sans font-semibold transition-all duration-300 border-2 rounded-[4px] py-2 px-4"
-        >
-          Continue Shopping
-        </a>
-      </div>
-    `;
-  }
-
-  function createOrderSummary(total: number): string {
-    return `
-      <div class="md:col-span-1">
-        <div class="bg-(--surface-secondary) p-4 sticky top-4">
-          <h2 class="font-display text-2xl mb-2 text-(--content-heading)">Order Summary</h2>
-          <div class="order-summary lg:space-y-2 mb-2">
-            <div class="flex justify-between text-(--content-body)">
-              <span>Subtotal</span>
-              <span class="font-display font-bold text-3xl text-(--content-caption)" id="subtotal">${MoneyUtils.format(MoneyUtils.fromFloat(total))}</span>
-            </div>
-          </div>
-          <div class="space-y-2">
-            <p class="italic my-4">Shipping &amp; taxes are calculated at checkout</p>
-            <button
-              type="button"
-              id="checkout-button"
-              class="w-full block text-center font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
-            >
-              Proceed to Checkout
-            </button>
-            <a
-              href="/shop/all"
-              class="w-full block text-center font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-(--ui-button-surface) bg-(--ui-button-surface) border-(--ui-button-border) bg-(--ui-button-surface)/0 hover:bg-(--ui-button-surface)/20 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
-            >
-              Continue Shopping
-            </a>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
   function createCartItem(item: CartItem): string {
     const itemKey = `${item.id}:${item.variationId}`;
     const itemSubtotal = item.price * item.quantity;
@@ -229,10 +241,10 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
 
     return `
       <div class="bg-(--surface-secondary) p-4 flex gap-4 self-start" data-item-container="${itemKey}">
-        <div class="shrink-0 relative">
+        <div class="shrink-0 relative w-16 h-16 lg:w-24 lg:h-24">
           <!-- Loading placeholder -->
           <div 
-            class="loading-skeleton absolute inset-0 w-16 h-16 lg:w-24 lg:h-24 rounded"
+            class="loading-skeleton absolute inset-0 rounded transition-opacity duration-300"
             id="cart-placeholder-${itemKey}"
             aria-hidden="true"
           >
@@ -246,10 +258,10 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
           <img 
             src="${item.image}"
             alt="${item.title}"
-            class="w-16 h-16 lg:w-24 lg:h-24 object-cover rounded border border-(--border-secondary) opacity-0 transition-opacity duration-300" 
-            loading="lazy"
-            onload="this.classList.add('opacity-100'); document.getElementById('cart-placeholder-${itemKey}')?.remove()"
-            onerror="this.src='data:image/svg+xml,%3Csvg%20width%3D%2248%22%20height%3D%2244%22%20viewBox%3D%220%200%2048%2044%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2248%22%20height%3D%2244%22%20fill%3D%22white%22%20fill-opacity%3D%220.7%22%2F%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M12.904%2039.9998L12.827%2040C10.7973%2040%209.28558%2039.5717%208.98823%2039.4875C7.2466%2038.9908%206.24507%2038.0664%206.05024%2037.8868C5.85673%2037.7041%204.86739%2036.7717%204.32907%2035.0827C3.79098%2033.393%204.06438%2031.424%204.10835%2031.1083C4.41789%2028.8789%205.18323%2027.5482%205.34541%2027.2665C6.28447%2025.6546%207.48735%2024.7851%207.72026%2024.617C7.95644%2024.4461%209.16912%2023.5682%2011.049%2023.0713C11.3683%2022.9875%2012.9403%2022.5746%2015.1546%2022.5746C16.5158%2022.5746%2017.3886%2022.6832%2017.5815%2022.7072C18.6588%2022.8396%2019.3555%2023.0028%2019.5075%2023.0382C20.3568%2023.2372%2020.8753%2023.4448%2020.9903%2023.4909L22.1355%2023.9657C21.9004%2025.6583%2021.6653%2027.3511%2021.4303%2029.0439H17.9585C17.4809%2028.2493%2016.9223%2027.9384%2016.8061%2027.8736C16.1433%2027.4983%2015.5003%2027.4983%2015.3821%2027.4983C15.2767%2027.4983%2014.7362%2027.4983%2014.0913%2027.7413C13.9885%2027.7807%2013.4576%2027.9843%2012.9203%2028.4478C12.8311%2028.5247%2012.3829%2028.9116%2012.0013%2029.5847C11.9369%2029.6968%2011.6208%2030.2474%2011.5013%2031.1083C11.478%2031.2752%2011.3041%2032.5284%2011.4628%2033.2133C11.6213%2033.8974%2011.9737%2034.2651%2012.0446%2034.3393C12.1158%2034.4118%2012.4791%2034.7808%2013.1537%2034.9906L13.9563%2035.1554L15.2175%2035.1904C15.4058%2035.1835%2016.431%2035.1461%2017.5641%2035.0065C22.2646%2034.2029%2023.3571%2029.7977%2023.9069%2028.6215L24.0171%2028.3595C24.5561%2027.1344%2025.2245%2026.3417%2025.3573%2026.1846L25.3606%2026.1806C25.5954%2025.8873%2026.8158%2024.3632%2029.2838%2023.4893L29.4298%2023.4357C29.6279%2023.3638%2030.6452%2022.994%2031.9888%2022.7844C32.2096%2022.7503%2033.3443%2022.5746%2034.7747%2022.5746H34.786C36.2098%2022.5754%2037.2871%2022.7496%2037.5022%2022.7844C38.7998%2022.9942%2039.7083%2023.3617%2039.8914%2023.4357C40.9837%2023.8774%2041.6851%2024.4495%2041.8228%2024.5618C41.9576%2024.6701%2042.6738%2025.2462%2043.2108%2026.1956C43.7088%2027.0762%2043.8808%2028.1905%2043.9086%2028.3705C43.9426%2028.5869%2044.1002%2029.5933%2043.9014%2031.1083C43.5843%2033.5256%2042.7306%2034.9081%2042.5479%2035.204C41.5044%2036.9042%2040.1994%2037.8105%2039.9469%2037.986C39.6973%2038.1595%2038.3898%2039.0678%2036.4452%2039.5317C36.1249%2039.6062%2034.4344%2040%2032.3546%2040C32.1384%2040%2031.0728%2040%2029.6578%2039.8188C28.3773%2039.6531%2027.4671%2039.2752%2027.2868%2039.2004C26.2078%2038.7479%2025.4973%2038.1557%2025.3599%2038.0412L24.6875%2037.3722C21.3547%2039.3369%2016.4519%2039.7748%2015.7077%2039.8414C15.4848%2039.8619%2014.0673%2039.9923%2012.9147%2039.9998H12.904ZM32.8021%2027.8074C32.2814%2027.9843%2031.9688%2028.2322%2031.9057%2028.2822C31.5413%2028.5803%2031.3528%2028.8947%2031.3163%2028.9555L30.9453%2029.7173L30.7488%2030.4681L30.6482%2031.1083L30.5709%2031.7486L30.5574%2032.5103L30.7153%2033.2832C30.7339%2033.3441%2030.8345%2033.6693%2031.1147%2033.9787C31.1649%2034.0297%2031.4077%2034.2766%2031.8776%2034.4643C31.9693%2034.4999%2032.3589%2034.652%2033.0973%2034.652C33.8354%2034.652%2034.2618%2034.4987%2034.3574%2034.4643C34.8907%2034.2768%2035.2028%2034.0295%2035.2671%2033.9787C35.6443%2033.6695%2035.8341%2033.3461%2035.8711%2033.2832C36.1097%2032.8959%2036.2213%2032.5748%2036.2438%2032.5103L36.4418%2031.7486L36.5538%2031.1083L36.6197%2030.4681L36.6317%2029.7173C36.6273%2029.6553%2036.6047%2029.3318%2036.4721%2028.9555C36.4528%2028.8957%2036.3511%2028.5801%2036.0581%2028.2822C36.0076%2028.2307%2035.7647%2027.984%2035.2818%2027.8074C35.1915%2027.7713%2034.8119%2027.6198%2034.074%2027.6198C33.3356%2027.6198%2032.8988%2027.7734%2032.8021%2027.8074ZM16.2243%2018.0371C19.1879%2018.0371%2020.8618%2017.0233%2021.2023%2016.5018H23.1817C22.9538%2018.1432%2022.7258%2019.7843%2022.4979%2021.4254H6.6506C6.87851%2019.7843%207.10642%2018.1432%207.33433%2016.5018L8.89093%2016.2182C9.2144%2013.8888%209.53787%2011.5593%209.86133%209.23003L8.38374%208.94627C8.61252%207.29765%208.84152%205.64882%209.07052%204H24.9178C24.6899%205.64133%2024.462%207.28244%2024.2341%208.92377H22.3258C22.0638%208.48625%2020.3852%207.38828%2017.7032%207.38828C17.5148%208.74334%2017.3268%2010.0984%2017.1385%2011.4535C18.3579%2011.2076%2019.5773%2010.962%2020.7968%2010.7161C20.6108%2012.0547%2020.425%2013.3934%2020.2391%2014.7322C19.088%2014.4863%2017.9368%2014.2404%2016.7857%2013.9947C16.5984%2015.3422%2016.4113%2016.6898%2016.2243%2018.0371ZM34.4142%2017.164C34.9358%2017.171%2039.3738%2017.2315%2040.7318%2015.617H42.7278C42.4589%2017.5531%2042.1901%2019.4892%2041.9213%2021.4254H23.6953C23.9233%2019.7843%2024.1512%2018.1432%2024.3791%2016.5018L25.9357%2016.2182C26.2592%2013.8888%2026.5826%2011.5593%2026.9061%209.23003L25.4316%208.92356C25.6594%207.28244%2025.8873%205.64133%2026.1153%204H37.7597C37.5318%205.64133%2037.3038%207.28244%2037.0759%208.92356L35.5161%209.23003C35.1488%2011.8745%2034.7814%2014.5192%2034.4142%2017.164Z%22%20fill%3D%22%2359564F%22%20fill-opacity%3D%220.7%22%2F%3E%3C%2Fsvg%3E'; this.classList.add('opacity-100'); document.getElementById('cart-placeholder-${itemKey}')?.remove()"
+            class="absolute inset-0 w-full h-full object-cover rounded border border-(--border-secondary) opacity-0 transition-opacity duration-300" 
+            loading="eager"
+            onload="this.style.opacity='1'; const p = document.getElementById('cart-placeholder-${itemKey}'); if(p) p.style.opacity='0';"
+            onerror="this.src='data:image/svg+xml,%3Csvg%20width%3D%2248%22%20height%3D%2244%22%20viewBox%3D%220%200%2048%2044%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2248%22%20height%3D%2244%22%20fill%3D%22white%22%20fill-opacity%3D%220.7%22%2F%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M12.904%2039.9998L12.827%2040C10.7973%2040%209.28558%2039.5717%208.98823%2039.4875C7.2466%2038.9908%206.24507%2038.0664%206.05024%2037.8868C5.85673%2037.7041%204.86739%2036.7717%204.32907%2035.0827C3.79098%2033.393%204.06438%2031.424%204.10835%2031.1083C4.41789%2028.8789%205.18323%2027.5482%205.34541%2027.2665C6.28447%2025.6546%207.48735%2024.7851%207.72026%2024.617C7.95644%2024.4461%209.16912%2023.5682%2011.049%2023.0713C11.3683%2022.9875%2012.9403%2022.5746%2015.1546%2022.5746C16.5158%2022.5746%2017.3886%2022.6832%2017.5815%2022.7072C18.6588%2022.8396%2019.3555%2023.0028%2019.5075%2023.0382C20.3568%2023.2372%2020.8753%2023.4448%2020.9903%2023.4909L22.1355%2023.9657C21.9004%2025.6583%2021.6653%2027.3511%2021.4303%2029.0439H17.9585C17.4809%2028.2493%2016.9223%2027.9384%2016.8061%2027.8736C16.1433%2027.4983%2015.5003%2027.4983%2015.3821%2027.4983C15.2767%2027.4983%2014.7362%2027.4983%2014.0913%2027.7413C13.9885%2027.7807%2013.4576%2027.9843%2012.9203%2028.4478C12.8311%2028.5247%2012.3829%2028.9116%2012.0013%2029.5847C11.9369%2029.6968%2011.6208%2030.2474%2011.5013%2031.1083C11.478%2031.2752%2011.3041%2032.5284%2011.4628%2033.2133C11.6213%2033.8974%2011.9737%2034.2651%2012.0446%2034.3393C12.1158%2034.4118%2012.4791%2034.7808%2013.1537%2034.9906L13.9563%2035.1554L15.2175%2035.1904C15.4058%2035.1835%2016.431%2035.1461%2017.5641%2035.0065C22.2646%2034.2029%2023.3571%2029.7977%2023.9069%2028.6215L24.0171%2028.3595C24.5561%2027.1344%2025.2245%2026.3417%2025.3573%2026.1846L25.3606%2026.1806C25.5954%2025.8873%2026.8158%2024.3632%2029.2838%2023.4893L29.4298%2023.4357C29.6279%2023.3638%2030.6452%2022.994%2031.9888%2022.7844C32.2096%2022.7503%2033.3443%2022.5746%2034.7747%2022.5746H34.786C36.2098%2022.5754%2037.2871%2022.7496%2037.5022%2022.7844C38.7998%2022.9942%2039.7083%2023.3617%2039.8914%2023.4357C40.9837%2023.8774%2041.6851%2024.4495%2041.8228%2024.5618C41.9576%2024.6701%2042.6738%2025.2462%2043.2108%2026.1956C43.7088%2027.0762%2043.8808%2028.1905%2043.9086%2028.3705C43.9426%2028.5869%2044.1002%2029.5933%2043.9014%2031.1083C43.5843%2033.5256%2042.7306%2034.9081%2042.5479%2035.204C41.5044%2036.9042%2040.1994%2037.8105%2039.9469%2037.986C39.6973%2038.1595%2038.3898%2039.0678%2036.4452%2039.5317C36.1249%2039.6062%2034.4344%2040%2032.3546%2040C32.1384%2040%2031.0728%2040%2029.6578%2039.8188C28.3773%2039.6531%2027.4671%2039.2752%2027.2868%2039.2004C26.2078%2038.7479%2025.4973%2038.1557%2025.3599%2038.0412L24.6875%2037.3722C21.3547%2039.3369%2016.4519%2039.7748%2015.7077%2039.8414C15.4848%2039.8619%2014.0673%2039.9923%2012.9147%2039.9998H12.904ZM32.8021%2027.8074C32.2814%2027.9843%2031.9688%2028.2322%2031.9057%2028.2822C31.5413%2028.5803%2031.3528%2028.8947%2031.3163%2028.9555L30.9453%2029.7173L30.7488%2030.4681L30.6482%2031.1083L30.5709%2031.7486L30.5574%2032.5103L30.7153%2033.2832C30.7339%2033.3441%2030.8345%2033.6693%2031.1147%2033.9787C31.1649%2034.0297%2031.4077%2034.2766%2031.8776%2034.4643C31.9693%2034.4999%2032.3589%2034.652%2033.0973%2034.652C33.8354%2034.652%2034.2618%2034.4987%2034.3574%2034.4643C34.8907%2034.2768%2035.2028%2034.0295%2035.2671%2033.9787C35.6443%2033.6695%2035.8341%2033.3461%2035.8711%2033.2832C36.1097%2032.8959%2036.2213%2032.5748%2036.2438%2032.5103L36.4418%2031.7486L36.5538%2031.1083L36.6197%2030.4681L36.6317%2029.7173C36.6273%2029.6553%2036.6047%2029.3318%2036.4721%2028.9555C36.4528%2028.8957%2036.3511%2028.5801%2036.0581%2028.2822C36.0076%2028.2307%2035.7647%2027.984%2035.2818%2027.8074C35.1915%2027.7713%2034.8119%2027.6198%2034.074%2027.6198C33.3356%2027.6198%2032.8988%2027.7734%2032.8021%2027.8074ZM16.2243%2018.0371C19.1879%2018.0371%2020.8618%2017.0233%2021.2023%2016.5018H23.1817C22.9538%2018.1432%2022.7258%2019.7843%2022.4979%2021.4254H6.6506C6.87851%2019.7843%207.10642%2018.1432%207.33433%2016.5018L8.89093%2016.2182C9.2144%2013.8888%209.53787%2011.5593%209.86133%209.23003L8.38374%208.94627C8.61252%207.29765%208.84152%205.64882%209.07052%204H24.9178C24.6899%205.64133%2024.462%207.28244%2024.2341%208.92377H22.3258C22.0638%208.48625%2020.3852%207.38828%2017.7032%207.38828C17.5148%208.74334%2017.3268%2010.0984%2017.1385%2011.4535C18.3579%2011.2076%2019.5773%2010.962%2020.7968%2010.7161C20.6108%2012.0547%2020.425%2013.3934%2020.2391%2014.7322C19.088%2014.4863%2017.9368%2014.2404%2016.7857%2013.9947C16.5984%2015.3422%2016.4113%2016.6898%2016.2243%2018.0371ZM34.4142%2017.164C34.9358%2017.171%2039.3738%2017.2315%2040.7318%2015.617H42.7278C42.4589%2017.5531%2042.1901%2019.4892%2041.9213%2021.4254H23.6953C23.9233%2019.7843%2024.1512%2018.1432%2024.3791%2016.5018L25.9357%2016.2182C26.2592%2013.8888%2026.5826%2011.5593%2026.9061%209.23003L25.4316%208.92356C25.6594%207.28244%2025.8873%205.64133%2026.1153%204H37.7597C37.5318%205.64133%2037.3038%207.28244%2037.0759%208.92356L35.5161%209.23003C35.1488%2011.8745%2034.7814%2014.5192%2034.4142%2017.164Z%22%20fill%3D%22%2359564F%22%20fill-opacity%3D%220.7%22%2F%3E%3C%2Fsvg%3E'; this.style.opacity='1'; const p = document.getElementById('cart-placeholder-${itemKey}'); if(p) p.style.opacity='0';"
           />
         </div>
         <div class="grow flex flex-col justify-between min-w-0">
@@ -320,7 +332,7 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
             <div class="flex items-center gap-4">
               <button 
                 type="button" 
-                class="remove-btn text-sm relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left" 
+                class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-[4px] focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) inline-flex items-center justify-center text-xs lg:text-sm py-1 px-2 text-(--content-body) bg-(--ui-button-surface)/0 border-(--ui-button-border)/0 hover:bg-(--ui-button-surface)/0 focus-visible:ring-(--ui-button-ring) hover:underline hover:underline-offset-4" 
                 data-item-key="${itemKey}"
                 data-item-title="${item.title}"
                 data-action="remove"
@@ -418,18 +430,18 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
   }
 
   function setupCartItemEventListeners() {
-    const cartContainer = document.getElementById("cart-container");
-    if (!cartContainer) return;
+    const cartItemsList = document.getElementById("cart-items-list");
+    if (!cartItemsList) return;
 
     // Remove existing event listeners by cloning
-    const newCartContainer = cartContainer.cloneNode(true) as HTMLElement;
-    const parent = cartContainer.parentNode;
+    const newCartItemsList = cartItemsList.cloneNode(true) as HTMLElement;
+    const parent = cartItemsList.parentNode;
     if (parent) {
-      parent.replaceChild(newCartContainer, cartContainer);
+      parent.replaceChild(newCartItemsList, cartItemsList);
     }
 
     // Add single event listener using delegation - SAME PATTERN AS MINICART
-    newCartContainer.addEventListener("click", async (e) => {
+    newCartItemsList.addEventListener("click", async (e) => {
       const target = e.target as HTMLElement;
       const button = target.closest("button[data-action]") as HTMLButtonElement;
       if (!button || button.disabled) return;
@@ -455,7 +467,7 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
 
               if (newQty <= inventory) {
                 await cart.updateQuantity(itemKey, newQty);
-                await updateDisplay();
+                await updateCartItemQuantity(itemKey);
               } else {
                 showNotification(`Only ${inventory} available`, "error");
               }
@@ -480,7 +492,7 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
                 );
               } else {
                 await cart.updateQuantity(itemKey, currentItem.quantity - 1);
-                await updateDisplay();
+                await updateCartItemQuantity(itemKey);
               }
             }
             break;
@@ -507,7 +519,7 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
 
     // Handle quantity input changes with debouncing
     let inputTimeout: number;
-    newCartContainer.addEventListener("input", (e) => {
+    newCartItemsList.addEventListener("input", (e) => {
       const target = e.target as HTMLInputElement;
       if (!target.classList.contains("quantity-input")) return;
 
@@ -532,13 +544,80 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
 
         try {
           await cart.updateQuantity(itemKey, newQuantity);
-          await updateDisplay();
+          await updateCartItemQuantity(itemKey);
         } catch (error) {
           console.error("Error updating quantity:", error);
           showNotification("Error updating quantity", "error");
         }
       }, 500);
     });
+  }
+
+  async function updateCartItemQuantity(itemKey: string): Promise<void> {
+    const items = cart.getItems();
+    const item = items.find(
+      (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+    );
+
+    if (!item) {
+      // Item was removed, do full update
+      await updateDisplay();
+      return;
+    }
+
+    const inventory = inventoryData[item.variationId] || 999;
+    const itemSubtotal = item.price * item.quantity;
+    const total = cart.getTotal();
+
+    // Update quantity display
+    const quantityInput = document.querySelector(
+      `input[data-item-key="${itemKey}"]`
+    ) as HTMLInputElement;
+    if (quantityInput) {
+      quantityInput.value = item.quantity.toString();
+    }
+
+    // Update item subtotal
+    const itemContainer = document.querySelector(
+      `[data-item-container="${itemKey}"]`
+    );
+    if (itemContainer) {
+      const subtotalEl = itemContainer.querySelector(
+        ".font-display.font-bold.text-2xl"
+      );
+      if (subtotalEl) {
+        subtotalEl.textContent = MoneyUtils.format(
+          MoneyUtils.fromFloat(itemSubtotal)
+        );
+      }
+
+      // Update button states
+      const decreaseBtn = itemContainer.querySelector(
+        '[data-action="decrease"]'
+      ) as HTMLButtonElement;
+      const increaseBtn = itemContainer.querySelector(
+        '[data-action="increase"]'
+      ) as HTMLButtonElement;
+
+      if (decreaseBtn) {
+        decreaseBtn.disabled = item.quantity <= 1;
+        decreaseBtn.classList.toggle("opacity-50", item.quantity <= 1);
+        decreaseBtn.classList.toggle("cursor-not-allowed", item.quantity <= 1);
+      }
+
+      if (increaseBtn) {
+        const canIncrement = item.quantity < inventory;
+        increaseBtn.disabled = !canIncrement;
+        increaseBtn.classList.toggle("opacity-50", !canIncrement);
+        increaseBtn.classList.toggle("cursor-not-allowed", !canIncrement);
+      }
+    }
+
+    // Update cart total
+    const subtotalEl = document.getElementById("subtotal");
+    if (subtotalEl) {
+      subtotalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(total));
+    }
   }
 
   async function updateDisplay(): Promise<void> {
@@ -552,38 +631,33 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
       await loadInventoryData(items);
 
       const cartLoading = document.getElementById("cart-loading");
-      const cartContainer = document.getElementById("cart-container");
+      const emptyCart = document.getElementById("empty-cart");
+      const cartContent = document.getElementById("cart-content");
+      const cartItemsList = document.getElementById("cart-items-list");
+      const subtotalEl = document.getElementById("subtotal");
 
-      if (!cartContainer) return;
+      if (!emptyCart || !cartContent || !cartItemsList || !subtotalEl) return;
 
       if (cartLoading) cartLoading.classList.add("hidden");
-      cartContainer.classList.remove("hidden");
 
       if (items.length === 0) {
-        cartContainer.innerHTML = createEmptyCart();
+        // Show empty state
+        emptyCart.classList.remove("hidden");
+        cartContent.classList.add("hidden");
       } else {
-        const cartItemsHtml = items.map(createCartItem).join("");
+        // Show cart with items
+        emptyCart.classList.add("hidden");
+        cartContent.classList.remove("hidden");
 
-        cartContainer.innerHTML = `
-          <div class="grid md:grid-cols-3 gap-1 items-start">
-            <div class="md:col-span-2 space-y-1 grid">
-              <button
-                type="button"
-                id="clear-cart-button"
-                class="text-sm relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left -mt-1 mb-1 justify-self-end"
-              >
-                Clear Cart
-              </button>
-              ${cartItemsHtml}
-            </div>
-            ${createOrderSummary(total)}
-          </div>
-        `;
+        // Update items list
+        const cartItemsHtml = items.map(createCartItem).join("");
+        cartItemsList.innerHTML = cartItemsHtml;
+
+        // Update subtotal
+        subtotalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(total));
 
         setupCartItemEventListeners();
       }
-
-      attachEventListeners();
     } catch (error) {
       console.error("Error updating cart display:", error);
     } finally {
@@ -592,20 +666,15 @@ import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/consta
   }
 
   function handlePageLoad() {
-    updateDisplay();
-  }
-
-  function handleCartUpdate() {
+    attachEventListeners();
     updateDisplay();
   }
 
   document.addEventListener("astro:page-load", handlePageLoad);
-  window.addEventListener("cartUpdated", handleCartUpdate);
 
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {
       document.removeEventListener("astro:page-load", handlePageLoad);
-      window.removeEventListener("cartUpdated", handleCartUpdate);
     });
   }
 </script>

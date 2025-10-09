@@ -263,6 +263,22 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       >
     </div>
   </div>
+
+  <!-- Load More Button (Progressive Enhancement Fallback) -->
+  <div
+    id="load-more-container"
+    class="col-span-full flex items-center justify-center py-8"
+    style="display: none;"
+  >
+    <button
+      id="load-more-button"
+      type="button"
+      class="font-sans font-semibold text-sm text-center lg:text-base py-3 px-6 lg:py-3 lg:px-8 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+      aria-label="Load more products"
+    >
+      Load More Products
+    </button>
+  </div>
 </div>
 
 <!-- Enhanced Loading Overlay -->
@@ -440,15 +456,17 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
               const cardDelay = cardInRow * (cardStaggerDelay / 2);
               const totalDelay = baseRowDelay + cardDelay;
 
-              setTimeout(() => {
+              const timeout1 = setTimeout(() => {
                 card.classList.remove("opacity-0");
                 card.classList.add("opacity-100");
 
                 // Remove will-change after animation completes
-                setTimeout(() => {
+                const timeout2 = setTimeout(() => {
                   card.classList.remove("animating");
                 }, ANIMATION_CONFIG.duration);
+                animationTimeouts.push(timeout2);
               }, totalDelay);
+              animationTimeouts.push(timeout1);
 
               // Stop observing this card
               observer.unobserve(card);
@@ -462,11 +480,16 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       }
     );
 
+    // Store observer globally for cleanup
+    pageLoadObserver = observer;
     visibleCards.forEach((card) => observer.observe(card));
   }
 
-  // SIMPLE: Initialize on page load
+  // SIMPLE: Initialize on page load (prevent dual initialization)
   document.addEventListener("astro:page-load", () => {
+    if (isInitialized) return;
+    isInitialized = true;
+
     const grid = document.getElementById("filterable-product-grid");
     if (grid) {
       grid.style.opacity = "1";
@@ -480,8 +503,11 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     document.dispatchEvent(new CustomEvent("productGridReady"));
   });
 
-  // Initialize on DOMContentLoaded as well
+  // Initialize on DOMContentLoaded as fallback
   document.addEventListener("DOMContentLoaded", () => {
+    if (isInitialized) return;
+    isInitialized = true;
+
     initializePageLoadAnimations();
     initializeInfiniteScroll();
     console.log("[ProductGrid] 📡 DOMContentLoaded initialization complete");
@@ -498,10 +524,48 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       return;
     }
 
+    // Create ARIA live region for screen reader announcements
+    liveRegion = document.createElement("div");
+    liveRegion.setAttribute("role", "status");
+    liveRegion.setAttribute("aria-live", "polite");
+    liveRegion.setAttribute("aria-atomic", "true");
+    liveRegion.className = "sr-only";
+    liveRegion.style.position = "absolute";
+    liveRegion.style.left = "-10000px";
+    liveRegion.style.width = "1px";
+    liveRegion.style.height = "1px";
+    liveRegion.style.overflow = "hidden";
+    document.body.appendChild(liveRegion);
+
+    function announceToScreenReader(message: string) {
+      if (liveRegion) {
+        liveRegion.textContent = message;
+        // Clear after announcement
+        setTimeout(() => {
+          if (liveRegion) liveRegion.textContent = "";
+        }, 1000);
+      }
+    }
+
     const allCards = Array.from(grid.querySelectorAll(".product-card-wrapper"));
     console.log(
       `[ProductGrid] 🔍 Simple infinite scroll for ${allCards.length} products`
     );
+
+    // Progressive enhancement check
+    const supportsIntersectionObserver = "IntersectionObserver" in window;
+    const loadMoreContainer = document.getElementById("load-more-container");
+    const loadMoreButton = document.getElementById("load-more-button");
+
+    // Check if we should use accessible mode (no IntersectionObserver)
+    // DEV ONLY: Support ?test-button=1 for testing button mode
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceButtonMode = urlParams.has("test-button") && import.meta.env.DEV;
+    const useAccessibleMode = !supportsIntersectionObserver || forceButtonMode;
+
+    if (forceButtonMode) {
+      console.log("[ProductGrid] 🧪 Button mode forced via URL parameter (DEV ONLY)");
+    }
 
     // Simple grid calculation - match server-side
     function getCardsPerRow() {
@@ -530,17 +594,69 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     // Check if infinite scroll is needed
     if (allCards.length <= visibleCount) {
       trigger.style.display = "none";
+      if (loadMoreContainer) loadMoreContainer.style.display = "none";
       console.log("[ProductGrid] ✅ All products fit on screen");
       return;
     }
 
-    trigger.style.display = "flex";
-    console.log(
-      `[ProductGrid] ✅ Showing ${visibleCount}/${allCards.length} initially`
-    );
+    // Function to load more cards
+    function loadMoreCards() {
+      const cardsToAdd = cardsPerRow * 2;
+      const newVisibleCount = Math.min(
+        visibleCount + cardsToAdd,
+        allCards.length
+      );
 
-    // Create an IntersectionObserver for infinite scroll card animations
-    const cardAnimationObserver = new IntersectionObserver(
+      // Track the starting index for this batch for proper animation timing
+      const batchStartIndex = visibleCount;
+
+      // Show the new cards
+      for (let i = visibleCount; i < newVisibleCount; i++) {
+        if (allCards[i]) {
+          const card = allCards[i] as HTMLElement;
+          card.style.display = "";
+          card.classList.remove("opacity-100");
+          card.classList.add("opacity-0");
+
+          // Store batch-relative index for animation timing
+          card.dataset.batchIndex = String(i - batchStartIndex);
+
+          // Add to animation observer for smooth animations (both modes)
+          if (cardAnimationObserver) {
+            cardAnimationObserver.observe(card);
+          } else {
+            // Fallback immediate display
+            card.classList.remove("opacity-0");
+            card.classList.add("opacity-100");
+          }
+        }
+      }
+
+      visibleCount = newVisibleCount;
+      console.log(
+        `[ProductGrid] Now showing ${visibleCount}/${allCards.length}`
+      );
+
+      // Announce to screen readers
+      announceToScreenReader(
+        `Loaded ${cardsToAdd} more products. ${visibleCount} of ${allCards.length} total products shown.`
+      );
+
+      // Update grid aria-busy state
+      if (grid) grid.setAttribute("aria-busy", "false");
+
+      // Hide controls when done
+      if (visibleCount >= allCards.length) {
+        if (trigger) trigger.style.display = "none";
+        if (loadMoreContainer) loadMoreContainer.style.display = "none";
+        console.log("[ProductGrid] ✅ All products loaded");
+        announceToScreenReader(`All ${allCards.length} products loaded.`);
+      }
+    }
+
+    // Create animation observer for both modes (infinite scroll and button)
+    // MUST be created before mode branching
+    cardAnimationObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
@@ -550,21 +666,29 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
             if (prefersReducedMotion) {
               card.classList.remove("opacity-0");
               card.classList.add("opacity-100");
-              cardAnimationObserver.unobserve(card);
+              if (cardAnimationObserver) cardAnimationObserver.unobserve(card);
               return;
             }
 
             animationQueue.run(() => {
-              const index = parseInt(card.dataset.initialIndex || "0");
-              const cardsPerRow = getCardsPerRow();
+              const card = entry.target as HTMLElement;
 
-              // Calculate animation timing based on the card's position in the newly loaded batch
-              // Find the index within the current batch (relative to when it was loaded)
-              const batchStartIndex =
-                Math.floor(index / (cardsPerRow * 2)) * (cardsPerRow * 2);
-              const cardIndexInBatch = index - batchStartIndex;
-              const rowIndex = Math.floor(cardIndexInBatch / cardsPerRow);
-              const cardInRow = cardIndexInBatch % cardsPerRow;
+              // Use batch-relative index if available (for newly loaded cards via button/infinite scroll)
+              // Otherwise calculate from batch (for initial page load)
+              let cardIndexForAnimation;
+              if (card.dataset.batchIndex !== undefined) {
+                cardIndexForAnimation = parseInt(card.dataset.batchIndex);
+              } else {
+                const index = parseInt(card.dataset.initialIndex || "0");
+                const cardsPerRow = getCardsPerRow();
+                const batchStartIndex =
+                  Math.floor(index / (cardsPerRow * 2)) * (cardsPerRow * 2);
+                cardIndexForAnimation = index - batchStartIndex;
+              }
+
+              const cardsPerRow = getCardsPerRow();
+              const rowIndex = Math.floor(cardIndexForAnimation / cardsPerRow);
+              const cardInRow = cardIndexForAnimation % cardsPerRow;
 
               // Add animating class for will-change optimization
               card.classList.add("animating");
@@ -577,18 +701,20 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
               const cardDelay = cardInRow * (cardStaggerDelay / 2);
               const totalDelay = baseRowDelay + cardDelay;
 
-              setTimeout(() => {
+              const timeout1 = setTimeout(() => {
                 card.classList.remove("opacity-0");
                 card.classList.add("opacity-100");
 
                 // Remove will-change after animation completes
-                setTimeout(() => {
+                const timeout2 = setTimeout(() => {
                   card.classList.remove("animating");
                 }, ANIMATION_CONFIG.duration);
+                animationTimeouts.push(timeout2);
               }, totalDelay);
+              animationTimeouts.push(timeout1);
 
               // Stop observing this card
-              cardAnimationObserver.unobserve(card);
+              if (cardAnimationObserver) cardAnimationObserver.unobserve(card);
             });
           }
         });
@@ -599,12 +725,46 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       }
     );
 
+    // Use Load More button for accessible mode
+    if (useAccessibleMode) {
+      if (loadMoreContainer && loadMoreButton) {
+        loadMoreContainer.style.display = "flex";
+        trigger.style.display = "none";
+
+        loadMoreButton.addEventListener("click", () => {
+          if (grid) grid.setAttribute("aria-busy", "true");
+          loadMoreButton.textContent = "Loading...";
+          loadMoreButton.setAttribute("disabled", "true");
+
+          // Small delay to show loading state (track timeout)
+          const buttonTimeout = setTimeout(() => {
+            loadMoreCards();
+            loadMoreButton.textContent = "Load More Products";
+            loadMoreButton.removeAttribute("disabled");
+          }, 100);
+          animationTimeouts.push(buttonTimeout);
+        });
+
+        console.log(
+          "[ProductGrid] ✅ Load More button initialized (accessible mode)"
+        );
+      }
+      return;
+    }
+
+    // Standard infinite scroll mode
+    trigger.style.display = "flex";
+    if (loadMoreContainer) loadMoreContainer.style.display = "none";
+    console.log(
+      `[ProductGrid] ✅ Showing ${visibleCount}/${allCards.length} initially`
+    );
+
     // PHASE 5: Debounced load more to prevent rapid-fire loading
     let isLoading = false;
-    let loadTimeout: ReturnType<typeof setTimeout>;
+    let loadTimeout: ReturnType<typeof setTimeout> | null = null;
 
     // SIMPLE: Basic intersection observer for loading more cards
-    const loadMoreObserver = new IntersectionObserver(
+    loadMoreObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (
@@ -613,54 +773,28 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
             !isLoading
           ) {
             // Debounce to prevent rapid loading
-            clearTimeout(loadTimeout);
+            if (loadTimeout) {
+              clearTimeout(loadTimeout);
+              const index = animationTimeouts.indexOf(loadTimeout);
+              if (index > -1) animationTimeouts.splice(index, 1);
+            }
+
             loadTimeout = setTimeout(() => {
               isLoading = true;
+              if (grid) grid.setAttribute("aria-busy", "true");
               console.log("[ProductGrid] Loading more...");
 
-              // Load 2 more rows
-              const cardsToAdd = cardsPerRow * 2;
-              const newVisibleCount = Math.min(
-                visibleCount + cardsToAdd,
-                allCards.length
-              );
-
-              // Show the new cards but DON'T animate them immediately
-              // Let the cardAnimationObserver handle the animation when they come into view
-              for (let i = visibleCount; i < newVisibleCount; i++) {
-                if (allCards[i]) {
-                  const card = allCards[i] as HTMLElement;
-
-                  // Show the card but keep it in opacity-0 state for animation
-                  card.style.display = "";
-                  card.classList.remove("opacity-100");
-                  card.classList.add("opacity-0");
-
-                  // Add to animation observer so it animates when it comes into view
-                  cardAnimationObserver.observe(card);
-                }
-              }
-
-              visibleCount = newVisibleCount;
-              console.log(
-                `[ProductGrid] Now showing ${visibleCount}/${allCards.length}`
-              );
-
-              // Hide trigger when done
-              if (visibleCount >= allCards.length) {
-                trigger.style.display = "none";
-                console.log("[ProductGrid] ✅ All products loaded");
-              }
-
+              loadMoreCards();
               isLoading = false;
             }, 100); // PHASE 5: 100ms debounce delay
+            animationTimeouts.push(loadTimeout);
           }
         });
       },
       { threshold: 0.1, rootMargin: "200px" } // PHASE 5: Increased from 100px
     );
 
-    loadMoreObserver.observe(trigger);
+    if (loadMoreObserver && trigger) loadMoreObserver.observe(trigger);
     console.log("[ProductGrid] ✅ Simple infinite scroll initialized");
 
     // Dispatch event to signal grid is ready (eliminates polling in ProductFilters)
@@ -689,9 +823,48 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
 
   window.addEventListener("resize", handleResize);
 
+  // Store observers for cleanup
+  let cardAnimationObserver: IntersectionObserver | null = null;
+  let loadMoreObserver: IntersectionObserver | null = null;
+  let liveRegion: HTMLElement | null = null;
+  let pageLoadObserver: IntersectionObserver | null = null; // NEW: Store page load observer
+  let animationTimeouts: ReturnType<typeof setTimeout>[] = []; // NEW: Track timeouts
+  let isInitialized = false; // NEW: Prevent dual initialization
+
   // Cleanup on navigation
   document.addEventListener("astro:before-swap", () => {
     window.removeEventListener("resize", handleResize);
     clearTimeout(resizeTimeout);
+
+    // Clean up observers to prevent memory leaks
+    if (cardAnimationObserver) {
+      cardAnimationObserver.disconnect();
+      cardAnimationObserver = null;
+    }
+    if (loadMoreObserver) {
+      loadMoreObserver.disconnect();
+      loadMoreObserver = null;
+    }
+    if (pageLoadObserver) {
+      pageLoadObserver.disconnect();
+      pageLoadObserver = null;
+    }
+
+    // Clean up live region
+    if (liveRegion && liveRegion.parentNode) {
+      liveRegion.parentNode.removeChild(liveRegion);
+      liveRegion = null;
+    }
+
+    // Clear all pending timeouts
+    animationTimeouts.forEach((timeout) => clearTimeout(timeout));
+    animationTimeouts = [];
+
+    // Clear animation queue
+    animationQueue.pending = [];
+    animationQueue.running = false;
+
+    // Reset initialization flag
+    isInitialized = false;
   });
 </script>
