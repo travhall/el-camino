@@ -1,6 +1,6 @@
 ---
 // src/components/Modal.astro
-import { siteConfig } from '@/lib/site-config';
+import { siteConfig } from "@/lib/site-config";
 
 // Serialize config for client-side use
 const serializedSiteConfig = JSON.stringify(siteConfig);
@@ -32,16 +32,16 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
 
   // Parse the site config from the data attribute when DOM is ready
   let clientSiteConfig: SiteConfig | null = null;
-  
+
   function initializeSiteConfig() {
-    const siteConfigElement = document.querySelector('[data-site-config]');
+    const siteConfigElement = document.querySelector("[data-site-config]");
     if (siteConfigElement) {
-      const configData = siteConfigElement.getAttribute('data-site-config');
+      const configData = siteConfigElement.getAttribute("data-site-config");
       if (configData) {
         try {
           clientSiteConfig = JSON.parse(configData);
         } catch (error) {
-          console.error('Failed to parse site config:', error);
+          console.error("Failed to parse site config:", error);
         }
       }
     }
@@ -87,7 +87,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       // Create modal backdrop with initial animation state
       const backdrop = document.createElement("div");
       backdrop.className =
-        "fixed inset-0 bg-(--ui-modal-overlay)/80 backdrop-blur-sm z-9998 flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 ease-out";
+        "fixed inset-0 bg-(--ui-modal-overlay)/95 z-[9998] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 ease-out";
       backdrop.setAttribute("role", "dialog");
       backdrop.setAttribute("aria-modal", "true");
       backdrop.setAttribute("aria-labelledby", "modal-title");
@@ -200,8 +200,14 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       }
 
       // Use the imported siteConfig directly through the data attribute
-      const siteConfigElement = document.querySelector('[data-site-config]');
-      const config = clientSiteConfig || (siteConfigElement ? JSON.parse(siteConfigElement.getAttribute('data-site-config') || '{}') : null);
+      const siteConfigElement = document.querySelector("[data-site-config]");
+      const config =
+        clientSiteConfig ||
+        (siteConfigElement
+          ? JSON.parse(
+              siteConfigElement.getAttribute("data-site-config") || "{}"
+            )
+          : null);
 
       if (!config) {
         console.error("Site config not available!");
@@ -214,7 +220,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       // Create modal backdrop with initial animation state
       const backdrop = document.createElement("div");
       backdrop.className =
-        "fixed inset-0 bg-(--ui-modal-overlay)/80 backdrop-blur-sm z-9998 flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 ease-out";
+        "fixed inset-0 bg-(--ui-modal-overlay)/95 z-[9998] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 ease-out";
       backdrop.setAttribute("role", "dialog");
       backdrop.setAttribute("aria-modal", "true");
       backdrop.setAttribute("aria-labelledby", "location-modal-title");
@@ -225,12 +231,16 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
         "bg-(--ui-modal-surface) text-(--ui-modal-text) border border-(--ui-modal-border) rounded shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out";
 
       // Generate hours HTML dynamically from config
-      const hoursHTML = config.hours.map((hour: any) => `
+      const hoursHTML = config.hours
+        .map(
+          (hour: any) => `
         <div class="flex justify-between">
           <span class="text-(--content-body)">${hour.day}</span>
-          <span class="text-(--content-${hour.isOpen ? 'body' : 'meta'})">${hour.hours}</span>
+          <span class="text-(--content-${hour.isOpen ? "body" : "meta"})">${hour.hours}</span>
         </div>
-      `).join('');
+      `
+        )
+        .join("");
 
       modal.innerHTML = `
       <div class="p-6">
@@ -291,7 +301,9 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       // Wait for DOM insertion before setting up event listeners
       setTimeout(() => {
         // Find close button after DOM insertion
-        const closeButton = modal.querySelector("#modal-close") as HTMLButtonElement;
+        const closeButton = modal.querySelector(
+          "#modal-close"
+        ) as HTMLButtonElement;
 
         // Event listeners
         const handleClose = (e: Event) => {
@@ -317,7 +329,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
           closeButton.addEventListener("click", handleClose);
           closeButton.focus();
         }
-        
+
         document.addEventListener("keydown", handleKeydown);
         backdrop.addEventListener("click", handleBackdropClick);
 
@@ -374,15 +386,16 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
   // Function to initialize modal functions
   function initializeModalFunctions() {
     initializeSiteConfig();
-    
+
     // Assign to window object
     window.showModal = modalManager.showModal.bind(modalManager);
-    window.showLocationModal = modalManager.showLocationModal.bind(modalManager);
+    window.showLocationModal =
+      modalManager.showLocationModal.bind(modalManager);
   }
 
   // Initialize when DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeModalFunctions);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeModalFunctions);
   } else {
     initializeModalFunctions();
   }
