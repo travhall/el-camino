@@ -149,27 +149,38 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     }
   }
 
-  /* SMOOTH FILTERING: Prevent layout shifts with opacity transitions */
+  /* SMOOTH FILTERING: Prevent layout shifts with transitions */
   .product-card-wrapper {
-    transition:
+    min-height: 280px; /* Minimum card height */
+    transform: translate3d(0, 0, 0); /* GPU acceleration */
+    
+    /* Bidirectional transitions for entry AND exit */
+    transition: 
       opacity var(--card-transition-duration) ease,
       transform var(--card-transition-duration) ease;
-    will-change: opacity, transform;
-    transform: translate3d(0, 0, 0); /* GPU acceleration */
-    min-height: 280px; /* Minimum card height */
+    
+    /* Stagger delay only applies when entering (via --animation-order) */
+    transition-delay: 
+      calc(var(--animation-order, 0) * var(--card-stagger-delay)),
+      calc(var(--animation-order, 0) * var(--card-stagger-delay));
   }
 
+  /* Exit state */
   .product-card-wrapper.opacity-0 {
     opacity: 0;
     transform: scale(0.95) translate3d(0, 10px, 0);
+    /* Remove delay on exit for immediate response */
+    transition-delay: 0s, 0s;
   }
 
+  /* Entry state */
   .product-card-wrapper.opacity-100 {
     opacity: 1;
     transform: scale(1) translate3d(0, 0, 0);
+    /* Delay is inherited from base rule for staggered entrance */
   }
 
-  /* Animation states for different scenarios */
+  /* Temporary will-change during animation only */
   .product-card-wrapper.animating {
     will-change: opacity, transform;
   }
@@ -338,38 +349,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     "(prefers-reduced-motion: reduce)"
   ).matches;
 
-  // Animation state management
-  // NOTE: This animation queue handles PRODUCT CARD animations only
-  // Navigation animations are handled by mobileOptimization.ts
-  const animationQueue = {
-    running: false,
-    pending: [] as (() => void)[],
-
-    async run(animationFn: () => void) {
-      if (prefersReducedMotion) {
-        // Skip animations entirely for reduced motion
-        animationFn();
-        return;
-      }
-
-      this.pending.push(animationFn);
-
-      if (!this.running) {
-        this.running = true;
-        while (this.pending.length > 0) {
-          const fn = this.pending.shift();
-          if (fn)
-            await new Promise((resolve) => {
-              fn();
-              // Small delay between queued animations
-              setTimeout(resolve, 50);
-            });
-        }
-        this.running = false;
-      }
-    },
-  };
-
   // PHASE 5: Properly parse animation timing from CSS custom properties
   function getAnimationTiming() {
     const style = getComputedStyle(document.documentElement);
@@ -403,7 +382,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
   // Animation configuration
   const ANIMATION_CONFIG = getAnimationTiming();
 
-  // Enhanced page load entrance animations with combined row + individual card stagger
+  // Simplified page load entrance animations using CSS
   function initializePageLoadAnimations() {
     // FIXED: Only animate cards that are initially visible (no display: none style)
     const cards = document.querySelectorAll(".product-card-wrapper.opacity-0");
@@ -424,7 +403,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       return;
     }
 
-    // Calculate cards per row for row-based animation
+    // Calculate cards per row for row-based animation order
     function getCardsPerRow() {
       const width = window.innerWidth;
       if (width >= 1536) return 6; // 2xl:grid-cols-6
@@ -434,43 +413,46 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       return 2; // fallback
     }
 
+    const cardsPerRow = getCardsPerRow();
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            animationQueue.run(() => {
-              const card = entry.target as HTMLElement;
-              const index = parseInt(card.dataset.initialIndex || "0");
-              const cardsPerRow = getCardsPerRow();
-              const rowIndex = Math.floor(index / cardsPerRow);
-              const cardInRow = index % cardsPerRow;
+            const card = entry.target as HTMLElement;
+            const index = parseInt(card.dataset.initialIndex || "0");
+            const rowIndex = Math.floor(index / cardsPerRow);
+            const cardInRow = index % cardsPerRow;
 
-              // Add animating class for will-change optimization
-              card.classList.add("animating");
+            // Calculate animation order combining row and card position
+            // Row stagger is more significant (2x multiplier)
+            const animationOrder = rowIndex * 2 + cardInRow * 0.5;
 
-              // Combined stagger: row delay + individual card delay
-              const rowStaggerDelay = ANIMATION_CONFIG.rowStaggerDelay;
-              const cardStaggerDelay = ANIMATION_CONFIG.staggerDelay;
+            // Set CSS custom property for animation delay
+            card.style.setProperty(
+              "--animation-order",
+              animationOrder.toString()
+            );
 
-              const baseRowDelay = rowIndex * rowStaggerDelay;
-              const cardDelay = cardInRow * (cardStaggerDelay / 2);
-              const totalDelay = baseRowDelay + cardDelay;
+            // Add animating class for temporary will-change
+            card.classList.add("animating");
 
-              const timeout1 = setTimeout(() => {
-                card.classList.remove("opacity-0");
-                card.classList.add("opacity-100");
+            // Trigger CSS animation
+            card.classList.remove("opacity-0");
+            card.classList.add("opacity-100");
 
-                // Remove will-change after animation completes
-                const timeout2 = setTimeout(() => {
-                  card.classList.remove("animating");
-                }, ANIMATION_CONFIG.duration);
-                animationTimeouts.push(timeout2);
-              }, totalDelay);
-              animationTimeouts.push(timeout1);
+            // Remove will-change after animation completes
+            const duration = ANIMATION_CONFIG.duration;
+            const totalAnimationTime =
+              duration + animationOrder * ANIMATION_CONFIG.staggerDelay;
 
-              // Stop observing this card
-              observer.unobserve(card);
-            });
+            const timeout = setTimeout(() => {
+              card.classList.remove("animating");
+            }, totalAnimationTime);
+            animationTimeouts.push(timeout);
+
+            // Stop observing this card
+            observer.unobserve(card);
           }
         });
       },
@@ -495,9 +477,10 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       grid.style.opacity = "1";
     }
 
-    // Initialize animations and infinite scroll
+    // Initialize animations FIRST, then infinite scroll
+    // This creates the pageLoadObserver that infinite scroll will use
     initializePageLoadAnimations();
-    initializeInfiniteScroll();
+    initializeInfiniteScroll(); // Will add newly revealed cards to observer
 
     console.log("[ProductGrid] 📡 Simple initialization complete");
     document.dispatchEvent(new CustomEvent("productGridReady"));
@@ -508,8 +491,10 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     if (isInitialized) return;
     isInitialized = true;
 
+    // Initialize animations FIRST, then infinite scroll
     initializePageLoadAnimations();
-    initializeInfiniteScroll();
+    initializeInfiniteScroll(); // Will add newly revealed cards to observer
+    
     console.log("[ProductGrid] 📡 DOMContentLoaded initialization complete");
     document.dispatchEvent(new CustomEvent("productGridReady"));
   });
@@ -579,19 +564,72 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       return 2; // base
     }
 
+    // Adaptive batch size calculation based on viewport
+    function calculateAdaptiveBatchSize() {
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      const minCardHeight = 280; // From CSS min-height
+      const cardsPerRow = getCardsPerRow();
+
+      // Calculate how many rows fit in viewport
+      const visibleRows = Math.ceil(viewportHeight / minCardHeight);
+
+      // Buffer: 1.5x viewport for smooth scrolling
+      const bufferRows = Math.ceil(visibleRows * 1.5);
+      const totalRows = visibleRows + bufferRows;
+
+      // Calculate total items
+      let batchSize = totalRows * cardsPerRow;
+
+      // Apply device-specific constraints
+      if (viewportWidth < 768) {
+        // Mobile: smaller batches for memory
+        batchSize = Math.max(Math.min(batchSize, 12), 8);
+      } else if (viewportWidth < 1440) {
+        // Desktop: balanced approach
+        batchSize = Math.max(Math.min(batchSize, 36), 18);
+      } else {
+        // Ultra-wide/4K: ensure scrollability cSpell:ignore scrollability
+        batchSize = Math.max(Math.min(batchSize, 60), 30);
+      }
+
+      console.log("[ProductGrid] 📐 Adaptive batch:", {
+        viewport: `${viewportWidth}x${viewportHeight}`,
+        cardsPerRow,
+        visibleRows,
+        bufferRows,
+        batchSize,
+      });
+
+      return batchSize;
+    }
+
     const cardsPerRow = getCardsPerRow();
-    const initialRows = 4;
-    let visibleCount = cardsPerRow * initialRows;
+    const initialBatchSize = calculateAdaptiveBatchSize();
+    let visibleCount = initialBatchSize;
 
     // Show initial cards, hide the rest
+    const cardsToAnimate: HTMLElement[] = [];
     allCards.forEach((card, index) => {
       const htmlCard = card as HTMLElement;
       if (index < visibleCount) {
         htmlCard.style.display = "";
+        // If this card has opacity-0, it needs to be animated
+        if (htmlCard.classList.contains("opacity-0")) {
+          cardsToAnimate.push(htmlCard);
+        }
       } else {
         htmlCard.style.display = "none";
       }
     });
+
+    // Add newly revealed cards to the page load observer
+    if (pageLoadObserver && cardsToAnimate.length > 0) {
+      console.log(`[ProductGrid] 🎬 Adding ${cardsToAnimate.length} cards to animation observer`);
+      cardsToAnimate.forEach(card => {
+        pageLoadObserver?.observe(card);
+      });
+    }
 
     // Check if infinite scroll is needed
     if (allCards.length <= visibleCount) {
@@ -603,6 +641,8 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
 
     // Function to load more cards
     function loadMoreCards() {
+      // Use fixed increment for infinite scroll (not adaptive)
+      // Adaptive sizing is only for initial load
       const cardsToAdd = cardsPerRow * 2;
       const newVisibleCount = Math.min(
         visibleCount + cardsToAdd,
@@ -672,52 +712,52 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
               return;
             }
 
-            animationQueue.run(() => {
-              const card = entry.target as HTMLElement;
-
-              // Use batch-relative index if available (for newly loaded cards via button/infinite scroll)
-              // Otherwise calculate from batch (for initial page load)
-              let cardIndexForAnimation;
-              if (card.dataset.batchIndex !== undefined) {
-                cardIndexForAnimation = parseInt(card.dataset.batchIndex);
-              } else {
-                const index = parseInt(card.dataset.initialIndex || "0");
-                const cardsPerRow = getCardsPerRow();
-                const batchStartIndex =
-                  Math.floor(index / (cardsPerRow * 2)) * (cardsPerRow * 2);
-                cardIndexForAnimation = index - batchStartIndex;
-              }
-
+            // Use batch-relative index if available (for newly loaded cards via button/infinite scroll)
+            // Otherwise calculate from batch (for initial page load)
+            let cardIndexForAnimation;
+            if (card.dataset.batchIndex !== undefined) {
+              cardIndexForAnimation = parseInt(card.dataset.batchIndex);
+            } else {
+              const index = parseInt(card.dataset.initialIndex || "0");
               const cardsPerRow = getCardsPerRow();
-              const rowIndex = Math.floor(cardIndexForAnimation / cardsPerRow);
-              const cardInRow = cardIndexForAnimation % cardsPerRow;
+              const batchStartIndex =
+                Math.floor(index / (cardsPerRow * 2)) * (cardsPerRow * 2);
+              cardIndexForAnimation = index - batchStartIndex;
+            }
 
-              // Add animating class for will-change optimization
-              card.classList.add("animating");
+            const cardsPerRow = getCardsPerRow();
+            const rowIndex = Math.floor(cardIndexForAnimation / cardsPerRow);
+            const cardInRow = cardIndexForAnimation % cardsPerRow;
 
-              // Combined stagger: row delay + individual card delay (same as initial load)
-              const rowStaggerDelay = ANIMATION_CONFIG.rowStaggerDelay;
-              const cardStaggerDelay = ANIMATION_CONFIG.staggerDelay;
+            // Calculate animation order combining row and card position
+            // Row stagger is more significant (2x multiplier)
+            const animationOrder = rowIndex * 2 + cardInRow * 0.5;
 
-              const baseRowDelay = rowIndex * rowStaggerDelay;
-              const cardDelay = cardInRow * (cardStaggerDelay / 2);
-              const totalDelay = baseRowDelay + cardDelay;
+            // Set CSS custom property for animation delay
+            card.style.setProperty(
+              "--animation-order",
+              animationOrder.toString()
+            );
 
-              const timeout1 = setTimeout(() => {
-                card.classList.remove("opacity-0");
-                card.classList.add("opacity-100");
+            // Add animating class for temporary will-change
+            card.classList.add("animating");
 
-                // Remove will-change after animation completes
-                const timeout2 = setTimeout(() => {
-                  card.classList.remove("animating");
-                }, ANIMATION_CONFIG.duration);
-                animationTimeouts.push(timeout2);
-              }, totalDelay);
-              animationTimeouts.push(timeout1);
+            // Trigger CSS animation
+            card.classList.remove("opacity-0");
+            card.classList.add("opacity-100");
 
-              // Stop observing this card
-              if (cardAnimationObserver) cardAnimationObserver.unobserve(card);
-            });
+            // Remove will-change after animation completes
+            const duration = ANIMATION_CONFIG.duration;
+            const totalAnimationTime =
+              duration + animationOrder * ANIMATION_CONFIG.staggerDelay;
+
+            const timeout = setTimeout(() => {
+              card.classList.remove("animating");
+            }, totalAnimationTime);
+            animationTimeouts.push(timeout);
+
+            // Stop observing this card
+            if (cardAnimationObserver) cardAnimationObserver.unobserve(card);
           }
         });
       },
@@ -861,10 +901,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     // Clear all pending timeouts
     animationTimeouts.forEach((timeout) => clearTimeout(timeout));
     animationTimeouts = [];
-
-    // Clear animation queue
-    animationQueue.pending = [];
-    animationQueue.running = false;
 
     // Reset initialization flag
     isInitialized = false;

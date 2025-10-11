@@ -119,13 +119,13 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   <!-- Mobile Overlay -->
   <div
     id="mobile-filter-overlay"
-    class="lg:hidden fixed inset-0 bg-(--ui-modal-overlay)/95 z-40 opacity-0 pointer-events-none transition-opacity duration-300"
+    class="lg:hidden fixed inset-0 bg-(--ui-modal-overlay)/90 z-40 opacity-0 pointer-events-none transition-opacity duration-300"
   ></div>
 
   <!-- Single Form - Desktop Static, Mobile Drawer -->
   <div
     id="filter-container"
-    class="filters-disabled lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-[28rem] lg:w-auto bg-(--surface-secondary) lg:bg-transparent z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+    class="filters-disabled lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-[28rem] lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-secondary)/50 z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
   >
     <form class="px-4 lg:p-2" id="filter-form">
       <!-- Mobile Header -->
@@ -276,15 +276,12 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 </div>
 
 <script>
-  // UNIFIED: View Transitions architecture - no client-side filtering engine needed
-
   class ResponsiveFilters {
     private form: HTMLFormElement | null = null;
     private container: HTMLElement | null = null;
     private overlay: HTMLElement | null = null;
     private showMoreToggle: HTMLButtonElement | null = null;
     private isExpanded: boolean = false;
-    // UNIFIED: No filterEngine needed - View Transitions handle all filtering
 
     constructor() {
       // Direct element assignment
@@ -407,8 +404,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       
       console.log('[ResponsiveFilters] ✅ Filter controls enabled');
     }
-    
-    // UNIFIED: No initializeFilterEngine method needed - View Transitions handle all filtering
 
     private setupEventListeners(): void {
       this.setupMobileDrawer();
@@ -576,8 +571,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         }
       });
     }
-    
-    // UNIFIED: No buildFilterCriteria needed - View Transitions handle form data directly
 
     private setupShowMoreToggle(): void {
       if (!this.showMoreToggle) return;
