@@ -21,14 +21,16 @@ export class BatchInventoryService {
   private readonly USE_TRUE_BATCH_API = true;
 
   /**
-   * Get configured TTL from site config, fallback to 5 minutes
+   * Get configured TTL from site config, fallback to 15 minutes
+   * PRIORITY 3 OPTIMIZATION: Extended from 5min to 15min
+   * Rationale: Inventory updates aren't time-critical for UX
    */
   private getConfiguredTTL(): number {
     try {
       // Use dynamic import to get latest config
-      return 300000; // 5 minutes in milliseconds (apiConfig.square.cacheTTL * 1000)
+      return 900000; // 15 minutes in milliseconds (increased from 5 min)
     } catch {
-      return 300000; // 5 minute fallback
+      return 900000; // 15 minute fallback
     }
   }
 
