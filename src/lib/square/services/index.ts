@@ -3,6 +3,7 @@ import { squareClient } from "../client";
 import { defaultCircuitBreaker } from "../apiUtils";
 import { Cache } from "../cacheUtils";
 import { ProductService } from "./ProductService";
+import { InventoryService } from "./InventoryService";
 
 // Create singleton instances of services with caching
 
@@ -16,8 +17,21 @@ export const productService = new ProductService(
   new Cache("products", 600) // 10 minutes
 );
 
-// Export service instances
-export { ProductService };
+// Inventory service with 15-minute cache (matches existing inventoryCache)
+export const inventoryService = new InventoryService(
+  squareClient,
+  defaultCircuitBreaker,
+  { locationId },
+  new Cache("inventory", 900) // 15 minutes
+);
+
+// Export service classes
+export { ProductService, InventoryService };
 
 // Export types
-export type { ProductServiceOptions } from "../types/services";
+export type { 
+  ProductServiceOptions, 
+  InventoryServiceOptions,
+  BulkInventoryResult,
+  InventoryUpdateEvent
+} from "../types/services";
