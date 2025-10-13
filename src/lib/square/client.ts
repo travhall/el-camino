@@ -357,105 +357,65 @@ export async function fetchProduct(id: string): Promise<Product | null> {
           .filter((v) => v.itemVariationData?.imageIds?.[0])
           .map((v) => v.itemVariationData!.imageIds![0]);
 
-        // Fetch all variation images in parallel
+        // Get all measurement unit IDs for batch fetching
+        const measurementUnitIds = variations
+          .map((v) => v.itemVariationData?.measurementUnitId)
+          .filter(Boolean) as string[];
+
+        // Fetch all variation images and measurement units in parallel
         const variationImagePromise =
           variationImageIds.length > 0
             ? batchGetImageUrls(variationImageIds)
             : Promise.resolve({} as Record<string, string>);
 
-        // Wait for both promises to resolve
-        const [mainImage, variationImages] = await Promise.all([
+        const measurementUnitsPromise =
+          measurementUnitIds.length > 0
+            ? fetchMeasurementUnits(measurementUnitIds)
+            : Promise.resolve({} as Record<string, string>);
+
+        // Wait for all promises to resolve
+        const [mainImage, variationImages, unitsMap] = await Promise.all([
           imagePromise,
           variationImagePromise,
+          measurementUnitsPromise,
         ]);
 
         if (mainImage) {
           imageUrl = mainImage;
         }
 
-        // Process all variations with their data including proper measurement units
-        const productVariations = await Promise.all(
-          variations.map(async (v) => {
-            const priceMoney = v.itemVariationData?.priceMoney;
+        // Process all variations with their data including measurement units
+        const productVariations = variations.map((v) => {
+          const priceMoney = v.itemVariationData?.priceMoney;
 
-            // Check for variation-specific images
-            let variationImageUrl: string | undefined = undefined;
-            if (v.itemVariationData?.imageIds?.[0]) {
-              const imageId = v.itemVariationData.imageIds[0];
-              variationImageUrl =
-                variationImages[imageId as keyof typeof variationImages];
-            }
+          // Check for variation-specific images
+          let variationImageUrl: string | undefined = undefined;
+          if (v.itemVariationData?.imageIds?.[0]) {
+            const imageId = v.itemVariationData.imageIds[0];
+            variationImageUrl =
+              variationImages[imageId as keyof typeof variationImages];
+          }
 
-            // FIXED: Properly fetch measurement unit data instead of hardcoding "each"
-            let unit = "";
-            if (v.itemVariationData?.measurementUnitId) {
-              try {
-                console.log(
-                  `[fetchProduct] Fetching measurement unit: ${v.itemVariationData.measurementUnitId}`
-                );
+          // Get measurement unit from batched results
+          const unit = v.itemVariationData?.measurementUnitId
+            ? unitsMap[v.itemVariationData.measurementUnitId] || ""
+            : "";
 
-                const { result: measurementResult } =
-                  await squareClient.catalogApi.retrieveCatalogObject(
-                    v.itemVariationData.measurementUnitId
-                  );
+          // Parse variation attributes from the name
+          const attributes = parseVariationName(
+            v.itemVariationData?.name || ""
+          );
 
-                if (measurementResult.object?.type === "MEASUREMENT_UNIT") {
-                  const unitData = measurementResult.object.measurementUnitData;
-                  console.log(
-                    `[fetchProduct] Measurement unit data:`,
-                    JSON.stringify(unitData, null, 2)
-                  );
-
-                  // Priority order: custom unit name > custom abbreviation > standard unit type
-                  if (unitData?.measurementUnit?.customUnit?.name) {
-                    unit = unitData.measurementUnit.customUnit.name;
-                    console.log(
-                      `[fetchProduct] Using custom unit name: ${unit}`
-                    );
-                  } else if (
-                    unitData?.measurementUnit?.customUnit?.abbreviation
-                  ) {
-                    unit = unitData.measurementUnit.customUnit.abbreviation;
-                    console.log(
-                      `[fetchProduct] Using custom unit abbreviation: ${unit}`
-                    );
-                  } else if (unitData?.measurementUnit?.type) {
-                    // Convert standard unit types to readable format
-                    const unitType = unitData.measurementUnit.type;
-                    unit = unitType.toLowerCase().replace(/_/g, " ");
-                    console.log(
-                      `[fetchProduct] Using standard unit type: ${unit}`
-                    );
-                  }
-                }
-              } catch (error) {
-                logApiError(
-                  `fetchProduct:measurementUnit:${v.itemVariationData.measurementUnitId}`,
-                  error
-                );
-                // Don't fail the entire product fetch for unit errors - just leave unit empty
-                console.warn(
-                  `[fetchProduct] Failed to fetch measurement unit, using empty unit`
-                );
-              }
-            }
-
-            // Parse variation attributes from the name
-            const attributes = parseVariationName(
-              v.itemVariationData?.name || ""
-            );
-
-            return {
-              id: v.id,
-              variationId: v.id,
-              name: v.itemVariationData?.name || "",
-              price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
-              image: variationImageUrl,
-              unit: unit || undefined, // Only include unit if it exists
-              attributes: attributes, // Add parsed attributes
-            };
-          })
-        );
+          return {
+            id: v.id,
+            variationId: v.id,
+            name: v.itemVariationData?.name || "",
+            price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
+            image: variationImageUrl,
+            unit: unit || undefined, // Only include unit if it exists
+            attributes: attributes, // Add parsed attributes
+          };
+        });
 
         // Build available attributes map
         const availableAttributes = buildAvailableAttributes(productVariations);

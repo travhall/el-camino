@@ -391,7 +391,7 @@ import Button from "@/components/Button.astro";
       const title = document.getElementById("quick-view-title-text");
       if (title) title.textContent = product.title;
 
-      this.updateViewDetailsButton(product.url);
+      this.updateViewDetailsButton(product);
     }
 
     private renderVariations(product: Product): void {
@@ -765,14 +765,15 @@ import Button from "@/components/Button.astro";
       }
     }
 
-    private updateViewDetailsButton(productUrl?: string): void {
+    private updateViewDetailsButton(product: Product): void {
       const button = document.getElementById(
         "quick-view-full-details"
       ) as HTMLButtonElement;
-      if (button && productUrl) {
+      if (button && product) {
         button.onclick = () => {
           this.closeModal();
-          window.location.href = productUrl;
+          // Use ID URL for fast path (skips fetchProducts)
+          window.location.href = `/product/${product.id}`;
         };
       }
     }

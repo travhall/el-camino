@@ -22,37 +22,38 @@ import {
   EL_CAMINO_LOADER_DATA_URI,
 } from "@/lib/constants/assets";
 
-// Get the slug from URL params (note: still called 'id' because file is [id].astro)
-const { id: slug } = Astro.params;
+// Get the slug or ID from URL params
+const { id: slugOrId } = Astro.params;
 const variantParam = Astro.url.searchParams.get("variant");
 
-if (!slug) {
+if (!slugOrId) {
   return Astro.redirect("/404");
 }
 
-// Create slug mapping (in production, this should be cached/built at build time)
-const allProducts = await fetchProducts();
-const slugMapping = createSlugMapping(allProducts);
+// Check if this looks like a Square ID (uppercase alphanumeric, 24+ chars)
+const looksLikeSquareId = /^[A-Z0-9]{24,}$/.test(slugOrId);
 
-// Get Square ID from slug
-const id = extractIdFromSlug(slug, slugMapping);
+let product;
+let id;
 
-if (!id) {
-  console.error(`No ID found for slug: ${slug}`);
-  return Astro.redirect("/404");
+if (looksLikeSquareId) {
+  // Direct ID URL - fast path, no slug mapping needed
+  product = await fetchProduct(slugOrId);
+  id = slugOrId;
+} else {
+  // Slug URL - need to resolve to ID
+  const allProducts = await fetchProducts();
+  const slugMapping = createSlugMapping(allProducts);
+  id = extractIdFromSlug(slugOrId, slugMapping);
+  
+  if (id) {
+    product = await fetchProduct(id);
+  }
 }
 
-// Fetch product data
-const product = await fetchProduct(id);
 if (!product) {
-  console.error(`Product not found for ID: ${id}`);
+  console.error(`Product not found for: ${slugOrId}`);
   return Astro.redirect("/404");
-}
-
-// Handle old ID-only URLs - redirect to new format
-if (slug === id) {
-  const productSlug = createSlug(product.title);
-  return Astro.redirect(`/product/${productSlug}`, 301);
 }
 
 // Handle variant parameter
@@ -68,8 +69,7 @@ if (variantParam && product.variations) {
     }
   } else {
     // Invalid variant parameter - redirect to base product
-    const baseSlug = createSlug(product.title);
-    return Astro.redirect(`/product/${baseSlug}`, 301);
+    return Astro.redirect(`/product/${id}`, 301);
   }
 }
 
