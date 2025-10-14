@@ -65,7 +65,15 @@ export const GET: APIRoute = async ({ url }) => {
     }
 
     return new Response(JSON.stringify(product), {
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        'Content-Type': 'application/json',
+        // Browser: Cache for 1 minute
+        'Cache-Control': 'public, max-age=60, must-revalidate',
+        // Netlify CDN: Fresh for 5 minutes, stale for 1 hour
+        'Netlify-CDN-Cache-Control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable',
+        // Cache tag for invalidation
+        'Netlify-Cache-Tag': `product-${productId},products,quick-view`
+      },
     });
   } catch (error) {
     const appError = processSquareError(error, "quick-view-product");

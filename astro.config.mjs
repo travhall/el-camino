@@ -26,7 +26,7 @@ export default defineConfig({
   // ENHANCED: Prefetch configuration for navigation performance
   prefetch: {
     prefetchAll: false, // Selective prefetching for performance
-    defaultStrategy: "hover", // Balance performance with resource usage
+    defaultStrategy: "viewport", // Prefetch when visible in viewport - better for mobile
   },
 
   experimental: {

@@ -54,13 +54,49 @@ if (looksLikeSquareId) {
   product = await fetchProduct(slugOrId);
   id = slugOrId;
 } else {
-  // Slug URL - need to resolve to ID
-  allProductsCache = await fetchProducts();
-  const slugMapping = createSlugMapping(allProductsCache);
-  id = extractIdFromSlug(slugOrId, slugMapping);
-
-  if (id) {
-    product = await fetchProduct(id);
+  // Slug URL - resolve to ID via API route (cached at edge)
+  // This keeps readable URLs while making resolution faster
+  try {
+    const apiUrl = new URL('/api/resolve-product', Astro.url.origin);
+    apiUrl.searchParams.set('slug', slugOrId);
+    
+    console.log(`[PDP] Resolving slug via API: ${slugOrId}`);
+    const response = await fetch(apiUrl.toString());
+    
+    if (response.ok) {
+      const data = await response.json();
+      id = data.id;
+      console.log(`[PDP] API resolved slug "${slugOrId}" to ID: ${id}`);
+      
+      // Fetch product with resolved ID
+      product = await fetchProduct(id);
+    } else {
+      console.log(`[PDP] API route failed with status ${response.status}, falling back to direct resolution`);
+      // API returned error, fallback to direct slug resolution
+      allProductsCache = await fetchProducts();
+      const slugMapping = createSlugMapping(allProductsCache);
+      id = extractIdFromSlug(slugOrId, slugMapping);
+      
+      if (id) {
+        console.log(`[PDP] Fallback resolved slug "${slugOrId}" to ID: ${id}`);
+        product = await fetchProduct(id);
+      } else {
+        console.error(`[PDP] Failed to resolve slug: ${slugOrId}`);
+      }
+    }
+  } catch (error) {
+    console.error('[PDP] Error calling resolve-product API:', error);
+    // Fallback to direct slug resolution
+    allProductsCache = await fetchProducts();
+    const slugMapping = createSlugMapping(allProductsCache);
+    id = extractIdFromSlug(slugOrId, slugMapping);
+    
+    if (id) {
+      console.log(`[PDP] Fallback (after error) resolved slug "${slugOrId}" to ID: ${id}`);
+      product = await fetchProduct(id);
+    } else {
+      console.error(`[PDP] Failed to resolve slug after error: ${slugOrId}`);
+    }
   }
 }
 
@@ -68,6 +104,8 @@ if (!product) {
   console.error(`Product not found for: ${slugOrId}`);
   return Astro.redirect("/404");
 }
+
+console.log(`[PDP] Successfully loaded product: ${product.title} (ID: ${product.id})`);
 
 // Handle variant parameter
 if (variantParam && product.variations) {
@@ -93,17 +131,29 @@ if (!product) {
 // Set default variation ID and prepare for inventory checking
 let defaultVariationId = product.variationId;
 let variations = product.variations || [];
-let inventoryMap: Record<string, number> = {};
 
-// Check inventory for all variations at once
+// Prepare cached products for related products lookup
+const allProductsForRelated = allProductsCache || (await fetchProducts());
+
+// Fetch inventory and related products in parallel for better performance
+const [inventoryMap, relatedProductsData] = await Promise.all([
+  // Inventory check
+  variations.length > 0
+    ? checkBulkInventory(variations.map((v) => v.variationId))
+    : Promise.resolve({} as Record<string, number>),
+  
+  // Related products
+  getRelatedProducts(product, allProductsForRelated, { maxResults: 6, excludeOutOfStock: false })
+    .then((related) => related.products)
+    .catch((err) => {
+      console.error('Failed to fetch related products:', err);
+      return [] as Product[];
+    })
+]);
+
+// Process inventory results
 if (variations.length > 0) {
   try {
-    // Get all variation IDs for batch inventory check
-    const variationIds = variations.map((v) => v.variationId);
-
-    // Get inventory for all variations in a single request
-    inventoryMap = await checkBulkInventory(variationIds);
-
     // Update variation data with inventory information
     variations = variations.map((v) => ({
       ...v,
@@ -127,7 +177,7 @@ if (variations.length > 0) {
     }
   } catch (err) {
     console.error(
-      `Inventory check error: ${err instanceof Error ? err.message : String(err)}`
+      `Inventory processing error: ${err instanceof Error ? err.message : String(err)}`
     );
     // Default to allowing purchases if inventory check fails
     variations = variations.map((v) => ({
@@ -169,23 +219,6 @@ const formattedPrice = MoneyUtils.format(
 // Check if we have multiple variations
 const hasMultipleVariations = variations.length > 1;
 
-// Fetch related products
-let relatedProductsData: Product[] = [];
-try {
-  // Reuse cached products if available, otherwise fetch now
-  const allProductsForRelated = allProductsCache || (await fetchProducts());
-
-  const related = await getRelatedProducts(product, allProductsForRelated, {
-    maxResults: 6,
-    excludeOutOfStock: false,
-  });
-
-  relatedProductsData = related.products;
-} catch (err) {
-  console.error("Failed to fetch related products:", err);
-  // Non-critical, continue without related products
-}
-
 // Generate structured data and social meta tags
 const baseUrl = Astro.url.origin;
 
@@ -217,6 +250,23 @@ const selectedVariationForSEO =
     : undefined;
 const fullTitle = createSEOTitle(product, selectedVariationForSEO);
 const unitDisplay = selectedVariation?.unit || product.unit || "";
+
+// Set response caching headers for performance optimization
+// Browser: Cache for 1 minute, then revalidate
+Astro.response.headers.set('Cache-Control', 'public, max-age=60, must-revalidate');
+
+// Netlify CDN: Serve fresh for 5 minutes, then serve stale for 1 hour while revalidating
+// durable directive shares cache globally across all edge nodes
+Astro.response.headers.set(
+  'Netlify-CDN-Cache-Control', 
+  'public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable'
+);
+
+// Add cache tag for per-product invalidation via webhooks
+Astro.response.headers.set('Netlify-Cache-Tag', `product-${product.id},products`);
+
+// Vary header for cookie-based personalization (if needed in future)
+Astro.response.headers.set('Netlify-Vary', 'cookie');
 ---
 
 <Layout title={fullTitle} structuredData={productSchema}>
