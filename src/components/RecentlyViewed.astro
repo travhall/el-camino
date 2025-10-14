@@ -1,0 +1,131 @@
+---
+// /src/components/RecentlyViewed.astro
+import { MoneyUtils } from "@/lib/square/money";
+
+interface Props {
+  currentProductId: string;
+  title?: string;
+}
+
+const { currentProductId, title = "Recently Viewed" } = Astro.props;
+---
+
+<section
+  class="recently-viewed"
+  id="recently-viewed-section"
+  style="display: none;"
+>
+  <h2
+    class="text-2xl lg:text-3xl font-display font-bold mb-4 text-(--content-heading)"
+  >
+    {title}
+  </h2>
+
+  <div
+    id="recently-viewed-container"
+    class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1"
+  >
+    <!-- Products will be inserted here by JavaScript -->
+  </div>
+</section>
+
+<script>
+  import { recentlyViewed } from "@/lib/product/recentlyViewed";
+  import { MoneyUtils } from "@/lib/square/money";
+
+  function renderRecentlyViewed() {
+    const section = document.getElementById("recently-viewed-section");
+    const container = document.getElementById("recently-viewed-container");
+
+    if (!section || !container) return;
+
+    const currentProductId = section.getAttribute("data-current-product-id");
+    const items = recentlyViewed
+      .get(6)
+      .filter((item) => item.id !== currentProductId);
+
+    if (items.length === 0) {
+      section.style.display = "none";
+      return;
+    }
+
+    section.style.display = "block";
+
+    container.innerHTML = items
+      .map((item) => {
+        const formattedPrice = MoneyUtils.format(
+          MoneyUtils.fromFloat(item.price)
+        );
+
+        return `
+        <div class="group relative w-full h-full">
+          <a
+            href="${item.url}"
+            data-astro-prefetch="hover"
+            class="grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-(--ui-card-surface) text-(--ui-card-text) hover:bg-(--ui-card-surface-hover) transition-all duration-200"
+          >
+            <div class="relative aspect-square overflow-hidden">
+              <img
+                src="${item.image}"
+                alt="${item.title}"
+                class="object-cover w-full h-full lg:group-hover:scale-105 transition-all duration-300"
+                loading="lazy"
+              />
+            </div>
+
+            <div class="grid px-1">
+              <div class="self-start">
+                ${
+                  item.brand
+                    ? `
+                  <p class="text-xs uppercase text-(--content-meta) !mb-0">
+                    ${item.brand}
+                  </p>
+                `
+                    : ""
+                }
+                <p class="text-base text-(--product-heading) font-light leading-tight line-clamp-2 mb-1">
+                  ${item.title}
+                </p>
+              </div>
+
+              <div class="text-(--product-price) self-end mb-2 lg:mb-0">
+                <span class="font-display font-semibold text-3xl whitespace-nowrap">
+                  ${formattedPrice}
+                </span>
+              </div>
+            </div>
+          </a>
+        </div>
+      `;
+      })
+      .join("");
+  }
+
+  function initRecentlyViewed() {
+    const section = document.getElementById("recently-viewed-section");
+    if (section) {
+      const variationData = document.getElementById(
+        "variation-data"
+      ) as HTMLInputElement;
+      if (variationData?.value) {
+        try {
+          const data = JSON.parse(variationData.value);
+          section.setAttribute("data-current-product-id", data.productId);
+        } catch (e) {
+          console.error("Failed to parse product data:", e);
+        }
+      }
+
+      renderRecentlyViewed();
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initRecentlyViewed);
+  } else {
+    initRecentlyViewed();
+  }
+
+  document.addEventListener("astro:page-load", initRecentlyViewed);
+</script>

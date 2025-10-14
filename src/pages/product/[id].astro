@@ -2,6 +2,9 @@
 import Layout from "@/layouts/Layout.astro";
 import Button from "@/components/Button.astro";
 import Modal from "@/components/Modal.astro";
+import RelatedProducts from "@/components/RelatedProducts.astro";
+import RecentlyViewed from "@/components/RecentlyViewed.astro";
+import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import { fetchProduct } from "@/lib/square/client";
 import { MoneyUtils } from "@/lib/square/money";
 import { checkBulkInventory } from "@/lib/square/inventory";
@@ -10,6 +13,7 @@ import {
   getAttributeDisplayName,
 } from "@/lib/square/variationParser";
 import { fetchProducts } from "@/lib/square/client";
+import type { Product } from "@/lib/square/types";
 import {
   extractIdFromSlug,
   createSlug,
@@ -21,6 +25,14 @@ import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
 } from "@/lib/constants/assets";
+import { getRelatedProducts } from "@/lib/product/relatedProducts";
+import {
+  generateProductSchema,
+  generateOGData,
+  generateTwitterCardData,
+} from "@/lib/product/structuredData";
+import { generateBreadcrumbs } from "@/lib/product/breadcrumbs";
+import { fetchCategories } from "@/lib/square/categories";
 
 // Get the slug or ID from URL params
 const { id: slugOrId } = Astro.params;
@@ -35,6 +47,7 @@ const looksLikeSquareId = /^[A-Z0-9]{24,}$/.test(slugOrId);
 
 let product;
 let id;
+let allProductsCache: Product[] | undefined;
 
 if (looksLikeSquareId) {
   // Direct ID URL - fast path, no slug mapping needed
@@ -42,10 +55,10 @@ if (looksLikeSquareId) {
   id = slugOrId;
 } else {
   // Slug URL - need to resolve to ID
-  const allProducts = await fetchProducts();
-  const slugMapping = createSlugMapping(allProducts);
+  allProductsCache = await fetchProducts();
+  const slugMapping = createSlugMapping(allProductsCache);
   id = extractIdFromSlug(slugOrId, slugMapping);
-  
+
   if (id) {
     product = await fetchProduct(id);
   }
@@ -156,6 +169,44 @@ const formattedPrice = MoneyUtils.format(
 // Check if we have multiple variations
 const hasMultipleVariations = variations.length > 1;
 
+// Fetch related products
+let relatedProductsData: Product[] = [];
+try {
+  // Reuse cached products if available, otherwise fetch now
+  const allProductsForRelated = allProductsCache || (await fetchProducts());
+
+  const related = await getRelatedProducts(product, allProductsForRelated, {
+    maxResults: 6,
+    excludeOutOfStock: false,
+  });
+
+  relatedProductsData = related.products;
+} catch (err) {
+  console.error("Failed to fetch related products:", err);
+  // Non-critical, continue without related products
+}
+
+// Generate structured data and social meta tags
+const baseUrl = Astro.url.origin;
+
+// Generate breadcrumbs
+let breadcrumbPath;
+try {
+  const categories = await fetchCategories();
+  breadcrumbPath = await generateBreadcrumbs(product, categories, baseUrl);
+} catch (err) {
+  console.error("Failed to generate breadcrumbs:", err);
+  // Non-critical, continue without breadcrumbs
+}
+
+const productSchema = generateProductSchema(
+  product,
+  selectedVariation,
+  baseUrl
+);
+const ogData = generateOGData(product, selectedVariation, baseUrl);
+const twitterData = generateTwitterCardData(product, baseUrl);
+
 // Set product metadata
 const pageTitle = product.title;
 const selectedVariationForSEO =
@@ -168,7 +219,36 @@ const fullTitle = createSEOTitle(product, selectedVariationForSEO);
 const unitDisplay = selectedVariation?.unit || product.unit || "";
 ---
 
-<Layout title={fullTitle}>
+<Layout title={fullTitle} structuredData={productSchema}>
+  <!-- Open Graph Tags -->
+  <meta property="og:title" content={ogData.title} slot="head" />
+  <meta property="og:description" content={ogData.description} slot="head" />
+  <meta property="og:image" content={ogData.image} slot="head" />
+  <meta property="og:url" content={ogData.url} slot="head" />
+  <meta property="og:type" content={ogData.type} slot="head" />
+  <meta property="og:site_name" content={ogData.siteName} slot="head" />
+  <meta property="product:price:amount" content={ogData.price} slot="head" />
+  <meta
+    property="product:price:currency"
+    content={ogData.currency}
+    slot="head"
+  />
+  <meta
+    property="product:availability"
+    content={ogData.availability}
+    slot="head"
+  />
+
+  <!-- Twitter Card Tags -->
+  <meta name="twitter:card" content={twitterData.card} slot="head" />
+  <meta name="twitter:title" content={twitterData.title} slot="head" />
+  <meta
+    name="twitter:description"
+    content={twitterData.description}
+    slot="head"
+  />
+  <meta name="twitter:image" content={twitterData.image} slot="head" />
+
   <section class="p-4 sm:p-6 lg:p-8 relative">
     <div
       class="lg:grid lg:grid-cols-2 lg:gap-x-8 xl:gap-x-12 2xl:gap-x-16 items-start"
@@ -218,7 +298,9 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
       </div>
 
       <!-- Product Info -->
-      <div class="product-info mt-4 xl:mt-8 max-w-xl">
+      <div class="product-info mt-4 xl:mt-0 max-w-xl">
+        <!-- Breadcrumbs -->
+        {breadcrumbPath && <Breadcrumbs breadcrumbPath={breadcrumbPath} />}
         <h1
           class="flex flex-col font-display font-bold text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl leading-[0.8] text-(--content-heading) text-balance"
         >
@@ -474,12 +556,29 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
       </div>
     </div>
   </section>
+
+  <!-- Related Products Section -->
+  {
+    relatedProductsData.length > 0 && (
+      <div class="px-4 sm:px-6 lg:px-8 mt-8 lg:mt-12">
+        <RelatedProducts products={relatedProductsData} />
+      </div>
+    )
+  }
+
+  <!-- Recently Viewed Section -->
+  <div class="px-4 sm:px-6 lg:px-8 mt-8 lg:mt-12">
+    <RecentlyViewed currentProductId={product.id} />
+  </div>
+
   <Modal />
 </Layout>
 
 <script>
   import { PDPController } from "@/lib/product/pdpController";
   import { processSquareError, logError } from "@/lib/square/errorUtils";
+  import { recentlyViewed } from "@/lib/product/recentlyViewed";
+  import type { Product } from "@/lib/square/types";
 
   let pdpController: PDPController | null = null;
 
@@ -549,6 +648,44 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
     if (isProductPage) {
       console.log("Product page detected, calling initializePDP()");
+
+      // Track recently viewed product
+      try {
+        const productButton = document.getElementById("add-to-cart-button");
+        if (productButton) {
+          const productDataStr = productButton.getAttribute("data-product");
+          if (productDataStr) {
+            const productData = JSON.parse(productDataStr);
+
+            // Build full product object for recently viewed
+            const productImage =
+              (document.getElementById("product-image") as HTMLImageElement)
+                ?.src || "";
+            const productBrand =
+              document.querySelector(".product-info span")?.textContent ||
+              undefined;
+
+            const product: Product = {
+              id: productData.id,
+              catalogObjectId: productData.catalogObjectId,
+              variationId: productData.variationId,
+              title: productData.title,
+              image: productImage,
+              price: productData.price,
+              url: window.location.pathname,
+              brand: productBrand,
+              unit: productData.unit,
+            };
+
+            recentlyViewed.add(product);
+            console.log("Added to recently viewed:", product.title);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to track recently viewed:", error);
+        // Non-critical, don't fail page load
+      }
+
       if (!initializePDP()) {
         console.error("Failed to initialize PDP controller");
       }

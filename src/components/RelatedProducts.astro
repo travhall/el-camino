@@ -1,0 +1,78 @@
+---
+// /src/components/RelatedProducts.astro
+import type { Product } from "@/lib/square/types";
+import { MoneyUtils } from "@/lib/square/money";
+
+interface Props {
+  products: Product[];
+  title?: string;
+}
+
+const { products, title = "Complete Your Setup" } = Astro.props;
+
+if (products.length === 0) {
+  return null;
+}
+---
+
+<section class="related-products">
+  <h2 class="text-2xl lg:text-3xl font-display font-bold mb-4 text-(--content-heading)">
+    {title}
+  </h2>
+
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1">
+    {products.map((product) => {
+      const formattedPrice = MoneyUtils.format(
+        MoneyUtils.fromFloat(product.price)
+      );
+      const isOutOfStock = product.variations?.every(v => !v.inStock) ?? false;
+
+      return (
+        <div class="group relative w-full h-full">
+          <a
+            href={product.url}
+            data-astro-prefetch="hover"
+            class={`grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-(--ui-card-surface) text-(--ui-card-text) hover:bg-(--ui-card-surface-hover) transition-all duration-200 ${isOutOfStock ? "opacity-75" : ""}`}
+          >
+            <!-- Product Image -->
+            <div class="relative aspect-square overflow-hidden">
+              <img
+                src={product.image}
+                alt={product.title}
+                class={`object-cover w-full h-full lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""}`}
+                loading="lazy"
+              />
+              
+              {isOutOfStock && (
+                <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-sm font-bold rounded-br-sm z-20">
+                  Sold Out
+                </div>
+              )}
+            </div>
+
+            <!-- Product Info -->
+            <div class="grid px-1">
+              <div class={`self-start ${isOutOfStock ? "opacity-50" : ""}`}>
+                {product.brand && (
+                  <p class="text-xs uppercase text-(--content-meta) !mb-0">
+                    {product.brand}
+                  </p>
+                )}
+                <p class="text-base text-(--product-heading) font-light leading-tight line-clamp-2 mb-1">
+                  {product.title}
+                </p>
+              </div>
+
+              <div class={`text-(--product-price) self-end mb-2 lg:mb-0 ${isOutOfStock ? "opacity-50" : ""}`}>
+                <span class="font-display font-semibold text-3xl whitespace-nowrap">
+                  {formattedPrice}
+                  {product.unit && <span class="text-lg ml-1">{product.unit}</span>}
+                </span>
+              </div>
+            </div>
+          </a>
+        </div>
+      );
+    })}
+  </div>
+</section>
