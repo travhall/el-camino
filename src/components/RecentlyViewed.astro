@@ -33,7 +33,7 @@ const { currentProductId, title = "Recently Viewed" } = Astro.props;
   import { recentlyViewed } from "@/lib/product/recentlyViewed";
   import { MoneyUtils } from "@/lib/square/money";
 
-  function renderRecentlyViewed() {
+  async function renderRecentlyViewed() {
     const section = document.getElementById("recently-viewed-section");
     const container = document.getElementById("recently-viewed-container");
 
@@ -51,30 +51,39 @@ const { currentProductId, title = "Recently Viewed" } = Astro.props;
 
     section.style.display = "block";
 
+    // Fetch inventory for all items
+    const inventoryMap = await fetchInventoryForItems(items);
+
     container.innerHTML = items
       .map((item) => {
         const formattedPrice = MoneyUtils.format(
           MoneyUtils.fromFloat(item.price)
         );
+        const isOutOfStock = !inventoryMap[item.variationId];
 
         return `
         <div class="group relative w-full h-full">
           <a
             href="${item.url}"
             data-astro-prefetch="viewport"
-            class="grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-(--ui-card-surface) text-(--ui-card-text) hover:bg-(--ui-card-surface-hover) transition-all duration-200"
+            class="grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-(--ui-card-surface) text-(--ui-card-text) hover:bg-(--ui-card-surface-hover) transition-all duration-200 ${isOutOfStock ? "opacity-75" : ""}"
           >
             <div class="relative aspect-square overflow-hidden">
               <img
                 src="${item.image}"
                 alt="${item.title}"
-                class="object-cover w-full h-full lg:group-hover:scale-105 transition-all duration-300"
+                class="object-cover w-full h-full lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""}"
                 loading="lazy"
               />
+              ${
+                isOutOfStock
+                  ? `<div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-sm font-bold rounded-br-sm z-20">Sold Out</div>`
+                  : ""
+              }
             </div>
 
             <div class="grid px-1">
-              <div class="self-start">
+              <div class="self-start ${isOutOfStock ? "opacity-50" : ""}">
                 ${
                   item.brand
                     ? `
@@ -89,7 +98,7 @@ const { currentProductId, title = "Recently Viewed" } = Astro.props;
                 </p>
               </div>
 
-              <div class="text-(--product-price) self-end mb-2 lg:mb-0">
+              <div class="text-(--product-price) self-end mb-2 lg:mb-0 ${isOutOfStock ? "opacity-50" : ""}">
                 <span class="font-display font-semibold text-3xl whitespace-nowrap">
                   ${formattedPrice}
                 </span>
@@ -100,6 +109,50 @@ const { currentProductId, title = "Recently Viewed" } = Astro.props;
       `;
       })
       .join("");
+  }
+
+  /**
+   * Fetch inventory for recently viewed items
+   */
+  async function fetchInventoryForItems(items: any[]): Promise<Record<string, boolean>> {
+    try {
+      const variationIds = items.map((item) => item.variationId);
+      
+      const response = await fetch("/api/cart-inventory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ variationIds }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to fetch inventory for recently viewed");
+        // Default to in stock on error
+        return Object.fromEntries(variationIds.map(id => [id, true]));
+      }
+
+      const data = await response.json();
+      
+      if (!data.success || !data.inventory) {
+        console.error("Invalid inventory response");
+        return Object.fromEntries(variationIds.map(id => [id, true]));
+      }
+      
+      // Convert to boolean map: true if quantity > 0
+      const inventoryMap: Record<string, boolean> = {};
+      for (const id of variationIds) {
+        inventoryMap[id] = (data.inventory[id] || 0) > 0;
+      }
+
+      return inventoryMap;
+    } catch (error) {
+      console.error("Error fetching inventory for recently viewed:", error);
+      // Default to in stock on error
+      return Object.fromEntries(
+        items.map(item => [item.variationId, true])
+      );
+    }
   }
 
   function initRecentlyViewed() {

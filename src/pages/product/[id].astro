@@ -602,21 +602,6 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     </div>
   </section>
 
-  <!-- Related Products Section (Lazy Loaded) -->
-  <div class="px-4 sm:px-6 lg:px-8 mt-8 lg:mt-12" id="related-products-container" data-product-id={product.id}>
-    <!-- Loading skeleton -->
-    <div class="related-products-skeleton">
-      <h2 class="text-2xl lg:text-3xl font-display font-bold mb-4 text-(--content-heading)">
-        Complete Your Setup
-      </h2>
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1">
-        {Array.from({ length: 6 }).map(() => (
-          <div class="aspect-square bg-(--surface-secondary) animate-pulse rounded"></div>
-        ))}
-      </div>
-    </div>
-  </div>
-
   <!-- Recently Viewed Section -->
   <div class="px-4 sm:px-6 lg:px-8 mt-8 lg:mt-12">
     <RecentlyViewed currentProductId={product.id} />
@@ -713,7 +698,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
               (document.getElementById("product-image") as HTMLImageElement)
                 ?.src || "";
             const productBrand =
-              document.querySelector(".product-info span")?.textContent ||
+              document.querySelector(".product-info h1 span.uppercase")?.textContent?.trim() ||
               undefined;
 
             const product: Product = {
@@ -740,106 +725,9 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
       if (!initializePDP()) {
         console.error("Failed to initialize PDP controller");
       }
-
-      // Load related products asynchronously
-      loadRelatedProducts();
     } else {
       console.log("Not a product page, skipping PDP initialization");
     }
-  }
-
-  /**
-   * Load related products after page renders
-   */
-  async function loadRelatedProducts() {
-    const container = document.getElementById("related-products-container");
-    if (!container) return;
-
-    const productId = container.getAttribute("data-product-id");
-    if (!productId) return;
-
-    try {
-      console.log("[PDP] Loading related products...");
-      const startTime = Date.now();
-
-      const response = await fetch(
-        `/api/related-products?productId=${productId}&maxResults=6`
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      const duration = Date.now() - startTime;
-      console.log(
-        `[PDP] Loaded ${data.products.length} related products in ${duration}ms`
-      );
-
-      if (data.products && data.products.length > 0) {
-        // Build HTML for related products
-        const html = buildRelatedProductsHTML(data.products);
-        container.innerHTML = html;
-      } else {
-        // Hide container if no related products
-        container.style.display = "none";
-      }
-    } catch (error) {
-      console.error("[PDP] Failed to load related products:", error);
-      // Hide container on error
-      container.style.display = "none";
-    }
-  }
-
-  /**
-   * Build HTML for related products
-   */
-  function buildRelatedProductsHTML(products: any[]): string {
-    const productsHTML = products
-      .map(
-        (product) => `
-      <div class="group relative w-full h-full">
-        <a
-          href="${product.url}"
-          data-astro-prefetch="viewport"
-          class="grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-(--ui-card-surface) text-(--ui-card-text) hover:bg-(--ui-card-surface-hover) transition-all duration-200"
-        >
-          <div class="relative aspect-square overflow-hidden">
-            <img
-              src="${product.image}"
-              alt="${product.title}"
-              class="object-cover w-full h-full lg:group-hover:scale-105 transition-all duration-300"
-              loading="lazy"
-            />
-          </div>
-          <div class="grid px-1">
-            <div class="self-start">
-              ${product.brand ? `<p class="text-xs uppercase text-(--content-meta) !mb-0">${product.brand}</p>` : ""}
-              <p class="text-base text-(--product-heading) font-light leading-tight line-clamp-2 mb-1">${product.title}</p>
-            </div>
-            <div class="text-(--product-price) self-end mb-2 lg:mb-0">
-              <span class="font-display font-semibold text-3xl whitespace-nowrap">
-                $${(product.price / 100).toFixed(2)}
-                ${product.unit ? `<span class="text-lg ml-1">${product.unit}</span>` : ""}
-              </span>
-            </div>
-          </div>
-        </a>
-      </div>
-    `
-      )
-      .join("");
-
-    return `
-      <section class="related-products">
-        <h2 class="text-2xl lg:text-3xl font-display font-bold mb-4 text-(--content-heading)">
-          Complete Your Setup
-        </h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1">
-          ${productsHTML}
-        </div>
-      </section>
-    `;
   }
 
   // Run on DOM ready
