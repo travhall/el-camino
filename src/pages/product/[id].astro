@@ -2,17 +2,15 @@
 import Layout from "@/layouts/Layout.astro";
 import Button from "@/components/Button.astro";
 import Modal from "@/components/Modal.astro";
-import RelatedProducts from "@/components/RelatedProducts.astro";
 import RecentlyViewed from "@/components/RecentlyViewed.astro";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
-import { fetchProduct } from "@/lib/square/client";
+import { fetchProduct, fetchProducts } from "@/lib/square/client";
 import { MoneyUtils } from "@/lib/square/money";
 import { checkBulkInventory } from "@/lib/square/inventory";
 import {
   createInitialSelectionState,
   getAttributeDisplayName,
 } from "@/lib/square/variationParser";
-import { fetchProducts } from "@/lib/square/client";
 import type { Product } from "@/lib/square/types";
 import {
   extractIdFromSlug,
@@ -25,7 +23,6 @@ import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
 } from "@/lib/constants/assets";
-import { getRelatedProducts } from "@/lib/product/relatedProducts";
 import {
   generateProductSchema,
   generateOGData,
@@ -57,26 +54,28 @@ if (looksLikeSquareId) {
   // Slug URL - resolve to ID via API route (cached at edge)
   // This keeps readable URLs while making resolution faster
   try {
-    const apiUrl = new URL('/api/resolve-product', Astro.url.origin);
-    apiUrl.searchParams.set('slug', slugOrId);
-    
+    const apiUrl = new URL("/api/resolve-product", Astro.url.origin);
+    apiUrl.searchParams.set("slug", slugOrId);
+
     console.log(`[PDP] Resolving slug via API: ${slugOrId}`);
     const response = await fetch(apiUrl.toString());
-    
+
     if (response.ok) {
       const data = await response.json();
       id = data.id;
       console.log(`[PDP] API resolved slug "${slugOrId}" to ID: ${id}`);
-      
+
       // Fetch product with resolved ID
       product = await fetchProduct(id);
     } else {
-      console.log(`[PDP] API route failed with status ${response.status}, falling back to direct resolution`);
+      console.log(
+        `[PDP] API route failed with status ${response.status}, falling back to direct resolution`
+      );
       // API returned error, fallback to direct slug resolution
       allProductsCache = await fetchProducts();
       const slugMapping = createSlugMapping(allProductsCache);
       id = extractIdFromSlug(slugOrId, slugMapping);
-      
+
       if (id) {
         console.log(`[PDP] Fallback resolved slug "${slugOrId}" to ID: ${id}`);
         product = await fetchProduct(id);
@@ -85,14 +84,16 @@ if (looksLikeSquareId) {
       }
     }
   } catch (error) {
-    console.error('[PDP] Error calling resolve-product API:', error);
+    console.error("[PDP] Error calling resolve-product API:", error);
     // Fallback to direct slug resolution
     allProductsCache = await fetchProducts();
     const slugMapping = createSlugMapping(allProductsCache);
     id = extractIdFromSlug(slugOrId, slugMapping);
-    
+
     if (id) {
-      console.log(`[PDP] Fallback (after error) resolved slug "${slugOrId}" to ID: ${id}`);
+      console.log(
+        `[PDP] Fallback (after error) resolved slug "${slugOrId}" to ID: ${id}`
+      );
       product = await fetchProduct(id);
     } else {
       console.error(`[PDP] Failed to resolve slug after error: ${slugOrId}`);
@@ -105,7 +106,9 @@ if (!product) {
   return Astro.redirect("/404");
 }
 
-console.log(`[PDP] Successfully loaded product: ${product.title} (ID: ${product.id})`);
+console.log(
+  `[PDP] Successfully loaded product: ${product.title} (ID: ${product.id})`
+);
 
 // Handle variant parameter
 if (variantParam && product.variations) {
@@ -132,24 +135,10 @@ if (!product) {
 let defaultVariationId = product.variationId;
 let variations = product.variations || [];
 
-// Prepare cached products for related products lookup
-const allProductsForRelated = allProductsCache || (await fetchProducts());
-
-// Fetch inventory and related products in parallel for better performance
-const [inventoryMap, relatedProductsData] = await Promise.all([
-  // Inventory check
-  variations.length > 0
-    ? checkBulkInventory(variations.map((v) => v.variationId))
-    : Promise.resolve({} as Record<string, number>),
-  
-  // Related products
-  getRelatedProducts(product, allProductsForRelated, { maxResults: 6, excludeOutOfStock: false })
-    .then((related) => related.products)
-    .catch((err) => {
-      console.error('Failed to fetch related products:', err);
-      return [] as Product[];
-    })
-]);
+// Fetch inventory only (related products will load client-side)
+const inventoryMap = variations.length > 0
+  ? await checkBulkInventory(variations.map((v) => v.variationId))
+  : ({} as Record<string, number>);
 
 // Process inventory results
 if (variations.length > 0) {
@@ -253,20 +242,26 @@ const unitDisplay = selectedVariation?.unit || product.unit || "";
 
 // Set response caching headers for performance optimization
 // Browser: Cache for 1 minute, then revalidate
-Astro.response.headers.set('Cache-Control', 'public, max-age=60, must-revalidate');
+Astro.response.headers.set(
+  "Cache-Control",
+  "public, max-age=60, must-revalidate"
+);
 
 // Netlify CDN: Serve fresh for 5 minutes, then serve stale for 1 hour while revalidating
 // durable directive shares cache globally across all edge nodes
 Astro.response.headers.set(
-  'Netlify-CDN-Cache-Control', 
-  'public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable'
+  "Netlify-CDN-Cache-Control",
+  "public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable" //cSpell:ignore maxage
 );
 
 // Add cache tag for per-product invalidation via webhooks
-Astro.response.headers.set('Netlify-Cache-Tag', `product-${product.id},products`);
+Astro.response.headers.set(
+  "Netlify-Cache-Tag",
+  `product-${product.id},products`
+);
 
 // Vary header for cookie-based personalization (if needed in future)
-Astro.response.headers.set('Netlify-Vary', 'cookie');
+Astro.response.headers.set("Netlify-Vary", "cookie");
 ---
 
 <Layout title={fullTitle} structuredData={productSchema}>
@@ -607,14 +602,20 @@ Astro.response.headers.set('Netlify-Vary', 'cookie');
     </div>
   </section>
 
-  <!-- Related Products Section -->
-  {
-    relatedProductsData.length > 0 && (
-      <div class="px-4 sm:px-6 lg:px-8 mt-8 lg:mt-12">
-        <RelatedProducts products={relatedProductsData} />
+  <!-- Related Products Section (Lazy Loaded) -->
+  <div class="px-4 sm:px-6 lg:px-8 mt-8 lg:mt-12" id="related-products-container" data-product-id={product.id}>
+    <!-- Loading skeleton -->
+    <div class="related-products-skeleton">
+      <h2 class="text-2xl lg:text-3xl font-display font-bold mb-4 text-(--content-heading)">
+        Complete Your Setup
+      </h2>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1">
+        {Array.from({ length: 6 }).map(() => (
+          <div class="aspect-square bg-(--surface-secondary) animate-pulse rounded"></div>
+        ))}
       </div>
-    )
-  }
+    </div>
+  </div>
 
   <!-- Recently Viewed Section -->
   <div class="px-4 sm:px-6 lg:px-8 mt-8 lg:mt-12">
@@ -739,9 +740,106 @@ Astro.response.headers.set('Netlify-Vary', 'cookie');
       if (!initializePDP()) {
         console.error("Failed to initialize PDP controller");
       }
+
+      // Load related products asynchronously
+      loadRelatedProducts();
     } else {
       console.log("Not a product page, skipping PDP initialization");
     }
+  }
+
+  /**
+   * Load related products after page renders
+   */
+  async function loadRelatedProducts() {
+    const container = document.getElementById("related-products-container");
+    if (!container) return;
+
+    const productId = container.getAttribute("data-product-id");
+    if (!productId) return;
+
+    try {
+      console.log("[PDP] Loading related products...");
+      const startTime = Date.now();
+
+      const response = await fetch(
+        `/api/related-products?productId=${productId}&maxResults=6`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const duration = Date.now() - startTime;
+      console.log(
+        `[PDP] Loaded ${data.products.length} related products in ${duration}ms`
+      );
+
+      if (data.products && data.products.length > 0) {
+        // Build HTML for related products
+        const html = buildRelatedProductsHTML(data.products);
+        container.innerHTML = html;
+      } else {
+        // Hide container if no related products
+        container.style.display = "none";
+      }
+    } catch (error) {
+      console.error("[PDP] Failed to load related products:", error);
+      // Hide container on error
+      container.style.display = "none";
+    }
+  }
+
+  /**
+   * Build HTML for related products
+   */
+  function buildRelatedProductsHTML(products: any[]): string {
+    const productsHTML = products
+      .map(
+        (product) => `
+      <div class="group relative w-full h-full">
+        <a
+          href="${product.url}"
+          data-astro-prefetch="viewport"
+          class="grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-(--ui-card-surface) text-(--ui-card-text) hover:bg-(--ui-card-surface-hover) transition-all duration-200"
+        >
+          <div class="relative aspect-square overflow-hidden">
+            <img
+              src="${product.image}"
+              alt="${product.title}"
+              class="object-cover w-full h-full lg:group-hover:scale-105 transition-all duration-300"
+              loading="lazy"
+            />
+          </div>
+          <div class="grid px-1">
+            <div class="self-start">
+              ${product.brand ? `<p class="text-xs uppercase text-(--content-meta) !mb-0">${product.brand}</p>` : ""}
+              <p class="text-base text-(--product-heading) font-light leading-tight line-clamp-2 mb-1">${product.title}</p>
+            </div>
+            <div class="text-(--product-price) self-end mb-2 lg:mb-0">
+              <span class="font-display font-semibold text-3xl whitespace-nowrap">
+                $${(product.price / 100).toFixed(2)}
+                ${product.unit ? `<span class="text-lg ml-1">${product.unit}</span>` : ""}
+              </span>
+            </div>
+          </div>
+        </a>
+      </div>
+    `
+      )
+      .join("");
+
+    return `
+      <section class="related-products">
+        <h2 class="text-2xl lg:text-3xl font-display font-bold mb-4 text-(--content-heading)">
+          Complete Your Setup
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1">
+          ${productsHTML}
+        </div>
+      </section>
+    `;
   }
 
   // Run on DOM ready
