@@ -689,6 +689,42 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
   }
 
   /**
+   * Setup location modal independently of PDP controller
+   */
+  function setupLocationModal(): void {
+    const locationLink = document.getElementById("location-hours-link");
+    if (locationLink) {
+      // Check if already has a click handler by looking for a data attribute
+      if (locationLink.getAttribute('data-modal-initialized') === 'true') {
+        console.log('Location modal already initialized, skipping');
+        return;
+      }
+      
+      // Mark as initialized to prevent duplicate handlers
+      locationLink.setAttribute('data-modal-initialized', 'true');
+      
+      locationLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Location link clicked, calling showLocationModal');
+        
+        // Check if showLocationModal is available
+        if (typeof window.showLocationModal === 'function') {
+          window.showLocationModal();
+        } else {
+          console.error('showLocationModal function not found');
+          // Fallback: try to initialize modal functions if not ready
+          setTimeout(() => {
+            if (typeof window.showLocationModal === 'function') {
+              window.showLocationModal();
+            }
+          }, 100);
+        }
+      });
+    }
+  }
+
+  /**
    * ✅ ASTRO VIEW TRANSITIONS: Initialize on page load
    */
   // Run immediately since view transitions are disabled
@@ -745,6 +781,9 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
       if (!initializePDP()) {
         console.error("Failed to initialize PDP controller");
       }
+      
+      // Always setup location modal, even if PDP controller isn't initialized
+      setupLocationModal();
     } else {
       console.log("Not a product page, skipping PDP initialization");
     }

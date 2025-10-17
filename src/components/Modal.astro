@@ -189,9 +189,18 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       };
     },
 
-    showLocationModal(): void {
+    showLocationModal: function() {
+      // Store reference to modal manager for event handlers
+      const self = this;
+      
+      // If modal is already open or animating, don't open another
+      if (self.activeModal || self.isAnimating) {
+        console.log('[Modal] Modal already active, skipping');
+        return;
+      }
+      
       // Remove any existing modal
-      this.closeModal();
+      self.closeModal();
 
       const portalRoot = document.getElementById("portal-root");
       if (!portalRoot) {
@@ -296,7 +305,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
 
       backdrop.appendChild(modal);
       portalRoot.appendChild(backdrop);
-      this.activeModal = backdrop;
+      self.activeModal = backdrop;
 
       // Wait for DOM insertion before setting up event listeners
       setTimeout(() => {
@@ -309,19 +318,19 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
         const handleClose = (e: Event) => {
           e.preventDefault();
           e.stopPropagation();
-          this.closeModal();
+          self.closeModal();
         };
 
         const handleKeydown = (e: KeyboardEvent) => {
           if (e.key === "Escape") {
-            this.closeModal();
+            self.closeModal();
           }
         };
 
         const handleBackdropClick = (e: MouseEvent) => {
           // Close if clicking on backdrop (outside modal content)
           if (e.target === backdrop) {
-            this.closeModal();
+            self.closeModal();
           }
         };
 

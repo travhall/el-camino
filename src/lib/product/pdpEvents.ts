@@ -312,9 +312,18 @@ export class PDPEventManager {
   private setupLocationModal(): void {
     const locationLink = document.getElementById("location-hours-link");
     if (locationLink) {
+      // Check if already has a click handler by looking for a data attribute
+      if (locationLink.getAttribute('data-modal-initialized') === 'true') {
+        console.log('Location modal already initialized by PDP, skipping PDPEventManager setup');
+        return;
+      }
+      
       // Remove any existing listeners to prevent duplicates
       const newLocationLink = locationLink.cloneNode(true) as HTMLElement;
       locationLink.parentNode?.replaceChild(newLocationLink, locationLink);
+      
+      // Mark as initialized
+      newLocationLink.setAttribute('data-modal-initialized', 'true');
       
       // Add event listener to the cloned element
       newLocationLink.addEventListener("click", (e) => {
