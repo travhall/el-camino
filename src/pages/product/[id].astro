@@ -136,9 +136,10 @@ let defaultVariationId = product.variationId;
 let variations = product.variations || [];
 
 // Fetch inventory only (related products will load client-side)
-const inventoryMap = variations.length > 0
-  ? await checkBulkInventory(variations.map((v) => v.variationId))
-  : ({} as Record<string, number>);
+const inventoryMap =
+  variations.length > 0
+    ? await checkBulkInventory(variations.map((v) => v.variationId))
+    : ({} as Record<string, number>);
 
 // Process inventory results
 if (variations.length > 0) {
@@ -240,6 +241,22 @@ const selectedVariationForSEO =
 const fullTitle = createSEOTitle(product, selectedVariationForSEO);
 const unitDisplay = selectedVariation?.unit || product.unit || "";
 
+// Extract active category from breadcrumbs for navigation highlighting
+let activeCategory = "";
+if (breadcrumbPath && breadcrumbPath.items.length > 1) {
+  // Find the first category in breadcrumbs (after Home)
+  const categoryItem = breadcrumbPath.items.find(
+    (item, index) => index > 0 && item.url.startsWith("/category/")
+  );
+  if (categoryItem) {
+    // Extract the category slug from the URL
+    const match = categoryItem.url.match(/^\/category\/([^\/]+)/);
+    if (match) {
+      activeCategory = match[1];
+    }
+  }
+}
+
 // Set response caching headers for performance optimization
 // Browser: Cache for 1 minute, then revalidate
 Astro.response.headers.set(
@@ -264,7 +281,11 @@ Astro.response.headers.set(
 Astro.response.headers.set("Netlify-Vary", "cookie");
 ---
 
-<Layout title={fullTitle} structuredData={productSchema}>
+<Layout
+  title={fullTitle}
+  structuredData={productSchema}
+  activeCategory={activeCategory}
+>
   <!-- Open Graph Tags -->
   <meta property="og:title" content={ogData.title} slot="head" />
   <meta property="og:description" content={ogData.description} slot="head" />
@@ -300,7 +321,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     >
       <!-- Product Image -->
       <div
-        class="aspect-square border-4 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative"
+        class="aspect-square md:aspect-video lg:aspect-square border-4 border-(--border-primary) overflow-hidden bg-(--surface-secondary) relative"
       >
         <!-- Loading placeholder with logo -->
         <div
@@ -347,7 +368,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
         <!-- Breadcrumbs -->
         {breadcrumbPath && <Breadcrumbs breadcrumbPath={breadcrumbPath} />}
         <h1
-          class="flex flex-col font-display font-bold text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl leading-[0.8] text-(--content-heading) text-balance"
+          class="flex flex-col font-display font-bold text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl leading-[0.8] text-(--content-heading) text-balance mt-4 lg:mt-8"
         >
           <!-- Brand display -->
           {
@@ -514,7 +535,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                     min="1"
                     max={selectedVariationQuantity}
                     value="1"
-                    class="w-14 h-10 text-center bg-(--ui-input-surface) text-(--ui-input-text) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    class="w-14 h-10 text-center bg-(--surface-primary) text-(--ui-input-text) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <button
                     type="button"
@@ -592,7 +613,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
         {
           product.description && (
             <div class="mt-6 max-w-[52ch]">
-              <p class="text-base text-(--content-body) text-pretty">
+              <p class="text-base text-(--content-body) text-pretty max-w-[44ch]">
                 {product.description}
               </p>
             </div>
@@ -603,9 +624,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
   </section>
 
   <!-- Recently Viewed Section -->
-  <div class="px-4 sm:px-6 lg:px-8 mt-8 lg:mt-12">
-    <RecentlyViewed currentProductId={product.id} />
-  </div>
+  <RecentlyViewed currentProductId={product.id} />
 
   <Modal />
 </Layout>
@@ -698,8 +717,9 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
               (document.getElementById("product-image") as HTMLImageElement)
                 ?.src || "";
             const productBrand =
-              document.querySelector(".product-info h1 span.uppercase")?.textContent?.trim() ||
-              undefined;
+              document
+                .querySelector(".product-info h1 span.uppercase")
+                ?.textContent?.trim() || undefined;
 
             const product: Product = {
               id: productData.id,

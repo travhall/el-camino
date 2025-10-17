@@ -6,6 +6,11 @@ import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
 import { Icon } from "astro-icon/components";
 import { apiRetryClient } from "@/lib/square/apiRetry";
 
+interface Props {
+  activeCategory?: string;
+}
+
+const { activeCategory } = Astro.props;
 const { contact, social } = siteConfig;
 
 let categoryHierarchy: CategoryHierarchy[];
@@ -172,7 +177,10 @@ const isCategoryPage = currentPath.includes("/category/");
                   currentPath.startsWith("/news")) ||
                 (item.category.id !== "the-shop" &&
                   item.category.id !== "news" &&
-                  currentPath.startsWith(`/category/${item.category.slug}`)),
+                  currentPath.startsWith(`/category/${item.category.slug}`)) ||
+                (isProductPage && 
+                  activeCategory && 
+                  item.category.slug === activeCategory),
             },
           ]}
           style={`--item-index: ${index};`}
@@ -417,6 +425,26 @@ const isCategoryPage = currentPath.includes("/category/");
       this.setupResizeObserver();
       this.initializePrefetching();
       this.enhanceAccessibility();
+      this.updateActiveStates();
+    }
+
+    private updateActiveStates(): void {
+      // Get active category from body data attribute (set by server on product pages)
+      const activeCategory = document.body.getAttribute('data-active-category') || '';
+      const currentPath = window.location.pathname;
+      const isProductPage = currentPath.includes('/product/');
+      
+      if (isProductPage && activeCategory) {
+        // Find and activate the matching category nav item
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+          const href = link.getAttribute('href') || '';
+          const categorySlugMatch = href.match(/^\/category\/([^\/]+)$/);
+          if (categorySlugMatch && categorySlugMatch[1] === activeCategory) {
+            link.classList.add('lg:before:scale-x-100', 'lg:before:origin-left');
+          }
+        });
+      }
     }
 
     private initializePrefetching(): void {

@@ -13,49 +13,65 @@ if (!breadcrumbPath || breadcrumbPath.items.length <= 1) {
 }
 ---
 
-<nav aria-label="Breadcrumb" class="breadcrumb-nav mb-4" vocab="https://schema.org/" typeof="BreadcrumbList">
+<nav
+  aria-label="Breadcrumb"
+  class="breadcrumb-nav mb-4"
+  vocab="https://schema.org/"
+  typeof="BreadcrumbList"
+>
   <ol class="flex flex-wrap items-center gap-2 text-sm">
-    {breadcrumbPath.items.map((item, index) => {
-      const isLast = index === breadcrumbPath.items.length - 1;
-      const isHome = item.position === 1;
-      
-      return (
-        <li property="itemListElement" typeof="ListItem" class="flex items-center gap-2">
-          {!isLast ? (
-            <>
-              <a 
-                property="item" 
-                typeof="WebPage" 
-                href={item.url}
-                class="text-(--content-body) hover:text-(--content-emphasis) transition-colors"
+    {
+      breadcrumbPath.items.map((item, index) => {
+        const isLast = index === breadcrumbPath.items.length - 1;
+        const isHome = item.position === 1;
+
+        return (
+          <li
+            property="itemListElement"
+            typeof="ListItem"
+            class="flex items-center gap-2"
+          >
+            {!isLast ? (
+              <>
+                <a
+                  property="item"
+                  typeof="WebPage"
+                  href={item.url}
+                  class="text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all"
+                >
+                  <span property="name">{item.name}</span>
+                </a>
+                <span class="text-(--content-meta)" aria-hidden="true">
+                  /
+                </span>
+              </>
+            ) : (
+              <span
+                property="name"
+                aria-current="page"
+                class="text-(--content-meta) font-medium truncate max-w-[200px] sm:max-w-none"
               >
-                <span property="name">{item.name}</span>
-              </a>
-              <span class="text-(--content-meta)" aria-hidden="true">/</span>
-            </>
-          ) : (
-            <span 
-              property="name" 
-              aria-current="page"
-              class="text-(--content-meta) font-medium truncate max-w-[200px] sm:max-w-none"
-            >
-              {item.name}
-            </span>
-          )}
-          <meta property="position" content={String(item.position)} />
-        </li>
-      );
-    })}
+                {item.name}
+              </span>
+            )}
+            <meta property="position" content={String(item.position)} />
+          </li>
+        );
+      })
+    }
   </ol>
 </nav>
 
-<script type="application/ld+json" set:html={JSON.stringify(breadcrumbPath.structuredData)} />
+<script
+  type="application/ld+json"
+  set:html={JSON.stringify(breadcrumbPath.structuredData)}
+/>
 
 <style>
   .breadcrumb-nav {
     font-size: 0.875rem;
   }
-  
+
   @media (max-width: 640px) {
     .breadcrumb-nav li:not(:first-child):not(:last-child) {
       display: none;

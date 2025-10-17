@@ -16,9 +16,10 @@ import "@/styles/global.css";
 interface Props {
   title: string;
   structuredData?: object;
+  activeCategory?: string;
 }
 
-const { title, structuredData } = Astro.props;
+const { title, structuredData, activeCategory } = Astro.props;
 
 // Device detection for conditional component loading
 const userAgent = Astro.request.headers.get("user-agent") || "";
@@ -257,8 +258,9 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
   </head>
   <body
     class="bg-(--surface-primary) text-(--content-body) grid grid-rows-[auto_1fr_auto] min-h-screen relative"
+    data-active-category={activeCategory || ""}
   >
-    <Header />
+    <Header activeCategory={activeCategory} />
     <main
       class="bg-(--surface-primary) text-(--content-body) border-b-4 border-(--border-secondary) z-10 relative"
       id="main-content"

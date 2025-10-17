@@ -6,6 +6,12 @@ import CartButton from "./CartButton.astro";
 import CartButtonMobile from "./CartButtonMobile.astro";
 import { detectDeviceFromUA } from '@/utils/device';
 
+interface Props {
+  activeCategory?: string;
+}
+
+const { activeCategory } = Astro.props;
+
 // Device detection for conditional rendering
 const userAgent = Astro.request.headers.get('user-agent') || '';
 const deviceInfo = detectDeviceFromUA(userAgent);
@@ -23,7 +29,7 @@ const isMobile = deviceInfo.isMobile;
     />
   </a>
 
-  <Nav />
+  <Nav activeCategory={activeCategory} />
 
   <div class="utility-menu self-center justify-end lg:order-last flex">
     {isMobile ? <CartButtonMobile /> : <CartButton />}
