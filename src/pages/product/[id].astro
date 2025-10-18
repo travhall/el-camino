@@ -373,7 +373,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           <!-- Brand display -->
           {
             product.brand && (
-              <span class="text-xl font-normal uppercase">{product.brand}</span>
+              <span class="text-xl font-bold uppercase">{product.brand}</span>
             )
           }
           {product.title}
@@ -434,7 +434,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                             data-attribute-type={attributeType}
                             data-attribute-value={value}
                             class:list={[
-                              "px-2.5 py-1.5 border rounded-[4px] attribute-button",
+                              "px-2.5 py-1.5 border rounded-[4px] attribute-button cursor-pointer",
                               "bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50",
                               !isAvailable && "opacity-50",
                             ]}
@@ -469,7 +469,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                   >
                     {displayName}
                   </label>
-                  <div class="inline-block px-4 py-2 bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50 rounded-[4px]">
+                  <div class="inline-block px-4 py-2 bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50 rounded-[4px] cursor-pointer">
                     {attributeValues[0]}
                   </div>
                 </div>
@@ -496,7 +496,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                     data-image={variation.image || ""}
                     data-unit={variation.unit || ""}
                     class:list={[
-                      "px-4 py-2 border rounded-[4px]",
+                      "px-4 py-2 border rounded-[4px] cursor-pointer",
                       variation.variationId === defaultVariationId
                         ? "bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50"
                         : "bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50",
@@ -524,7 +524,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                   <button
                     type="button"
                     id="decrease-quantity"
-                    class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text)"
+                    class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
                     disabled={true}
                   >
                     -
@@ -540,7 +540,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                   <button
                     type="button"
                     id="increase-quantity"
-                    class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text)"
+                    class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
                     disabled={selectedVariationQuantity <= 1}
                   >
                     +
@@ -695,27 +695,27 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     const locationLink = document.getElementById("location-hours-link");
     if (locationLink) {
       // Check if already has a click handler by looking for a data attribute
-      if (locationLink.getAttribute('data-modal-initialized') === 'true') {
-        console.log('Location modal already initialized, skipping');
+      if (locationLink.getAttribute("data-modal-initialized") === "true") {
+        console.log("Location modal already initialized, skipping");
         return;
       }
-      
+
       // Mark as initialized to prevent duplicate handlers
-      locationLink.setAttribute('data-modal-initialized', 'true');
-      
+      locationLink.setAttribute("data-modal-initialized", "true");
+
       locationLink.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Location link clicked, calling showLocationModal');
-        
+        console.log("Location link clicked, calling showLocationModal");
+
         // Check if showLocationModal is available
-        if (typeof window.showLocationModal === 'function') {
+        if (typeof window.showLocationModal === "function") {
           window.showLocationModal();
         } else {
-          console.error('showLocationModal function not found');
+          console.error("showLocationModal function not found");
           // Fallback: try to initialize modal functions if not ready
           setTimeout(() => {
-            if (typeof window.showLocationModal === 'function') {
+            if (typeof window.showLocationModal === "function") {
               window.showLocationModal();
             }
           }, 100);
@@ -781,7 +781,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
       if (!initializePDP()) {
         console.error("Failed to initialize PDP controller");
       }
-      
+
       // Always setup location modal, even if PDP controller isn't initialized
       setupLocationModal();
     } else {
