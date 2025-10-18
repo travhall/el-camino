@@ -11,6 +11,11 @@ import {
 import { createProductUrl } from "./slugUtils";
 import { requestDeduplicator } from "./requestDeduplication";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import {
+  getSquareEnvironment,
+  getEnvironmentName,
+  validateProductionConfig,
+} from "./environment";
 
 function validateEnvironment() {
   const missingVars = [];
@@ -25,15 +30,20 @@ function validateEnvironment() {
       `Missing required environment variables: ${missingVars.join(", ")}`
     );
   }
+
+  // Validate production-specific requirements
+  validateProductionConfig();
 }
 
 validateEnvironment();
 
 export const squareClient = new Client({
   accessToken: import.meta.env.SQUARE_ACCESS_TOKEN!,
-  environment: Environment.Sandbox,
+  environment: getSquareEnvironment(),
   squareVersion: "2024-02-28",
 });
+
+console.log(`Square client initialized in ${getEnvironmentName()} mode`);
 
 export const jsonStringifyReplacer = (_key: string, value: any) => {
   if (typeof value === "bigint") {

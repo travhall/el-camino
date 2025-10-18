@@ -1,12 +1,13 @@
 // src/pages/api/create-checkout.ts
 import type { APIRoute } from "astro";
-import { Client, Environment } from "square/legacy";
+import { Client } from "square/legacy";
 import type { CartItem } from "@/lib/cart/types";
 import { checkBulkInventory } from "@/lib/square/inventory";
+import { getSquareEnvironment } from "@/lib/square/environment";
 
 const squareClient = new Client({
   accessToken: import.meta.env.SQUARE_ACCESS_TOKEN || "",
-  environment: Environment.Sandbox,
+  environment: getSquareEnvironment(),
   squareVersion: "2024-02-28",
 });
 
