@@ -104,6 +104,7 @@ import Button from "@/components/Button.astro";
   import { cart } from "@/lib/cart";
   import type { CartItem } from "@/lib/cart/types";
   import { MoneyUtils } from "@/lib/square/money";
+  import { createSlug } from "@/lib/square/slugUtils";
 
   let isUpdating = false;
   let inventoryData: Record<string, number> = {};
@@ -239,6 +240,10 @@ import Button from "@/components/Button.astro";
     const isOutOfStock = inventory <= 0;
     const canIncrement = !isOutOfStock && item.quantity < inventory;
 
+    // Generate slug-based URL to match other components
+    const productSlug = createSlug(item.title);
+    const productUrl = `/product/${productSlug}`;
+
     return `
       <div class="bg-(--surface-secondary) p-4 flex gap-4 self-start" data-item-container="${itemKey}">
         <div class="shrink-0 relative w-16 h-16 lg:w-24 lg:h-24">
@@ -268,7 +273,7 @@ import Button from "@/components/Button.astro";
           <div class="flex flex-row justify-between">
             <div class="flex flex-col mb-2 lg:mb-0">
               <h3 class="font-display text-2xl text-(--content-heading) leading-tight">
-                <a href="/product/${item.id}" class="hover:text-(--content-emphasis) transition-colors">
+                <a href="${productUrl}" data-astro-prefetch="viewport" class="hover:text-(--content-emphasis) underline underline-offset-1 decoration-(--content-emphasis)/0 hover:decoration-(--content-emphasis)/80 hover:underline-offset-4 transition-all ease-in-out duration-300">
                   ${item.title}
                 </a>
               </h3>
@@ -332,7 +337,7 @@ import Button from "@/components/Button.astro";
             <div class="flex items-center gap-4">
               <button 
                 type="button" 
-                class="font-sans font-semibold transition-all ease-in-out duration-300 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) inline-flex items-center justify-center text-xs lg:text-sm py-1 px-2 text-(--content-body) focus-visible:ring-(--ui-button-ring) hover:underline hover:underline-offset-4"
+                class="font-sans font-semibold text-xs lg:text-sm focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) inline-flex items-center justify-center py-1 px-2 text-(--content-body) bg-none border-none focus-visible:ring-(--ui-button-ring) underline underline-offset-1 decoration-(--content-body)/0 hover:decoration-(--content-body)/80 hover:underline-offset-4 transition-all ease-in-out duration-300"
                 data-item-key="${itemKey}"
                 data-item-title="${item.title}"
                 data-action="remove"

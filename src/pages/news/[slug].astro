@@ -42,6 +42,8 @@ try {
 
 let prevPost: WordPressPost | null = null;
 let nextPost: WordPressPost | null = null;
+let prevPostFeaturedImage: string | null = null;
+let nextPostFeaturedImage: string | null = null;
 
 if (post) {
   try {
@@ -50,10 +52,16 @@ if (post) {
 
     if (currentIndex > 0) {
       nextPost = allPosts[currentIndex - 1];
+      const nextEmbeddedData = extractEmbeddedData(nextPost);
+      nextPostFeaturedImage =
+        nextEmbeddedData.featuredMedia?.source_url || null;
     }
 
     if (currentIndex < allPosts.length - 1) {
       prevPost = allPosts[currentIndex + 1];
+      const prevEmbeddedData = extractEmbeddedData(prevPost);
+      prevPostFeaturedImage =
+        prevEmbeddedData.featuredMedia?.source_url || null;
     }
   } catch (e) {
     console.warn("Could not load navigation posts:", e);
@@ -230,42 +238,25 @@ const structuredData = {
   </article>
 
   <!-- Article footer -->
-  <footer class="bg-(--surface-primary) border-t-4 border-(--border-secondary)">
-    <!-- Article Tags Section -->
-    {
-      tags.length > 0 && (
-        <div class="p-4 pb-0 tags-section bg-(--surface-secondary)">
-          <h3 class="text-(--content-meta) text-sm font-medium tracking-wide mb-3">
-            Tagged
-          </h3>
-          <div class="flex flex-wrap gap-2">
-            {tags.map((tag) => (
-              <Tag tag={tag} variant="default" size="sm" clickable={true} />
-            ))}
-          </div>
-        </div>
-      )
-    }
-    {
-      category && (
-        <div class="p-4 pb-0 bg-(--surface-secondary)">
-          <span class="text-(--content-meta) text-sm">Filed under: </span>
-          <span class="text-(--content-emphasis) font-medium">
-            {category.name}
-          </span>
-        </div>
-      )
-    }
-
+  <footer>
     <div
-      class="flex p-4 justify-between items-center bg-(--surface-secondary) border-b-4 border-(--border-secondary)"
+      class="flex px-4 pb-6 lg:p-8 lg:pt-0 justify-between items-end-safe bg-(--surface-secondary) border-4 border-t-0 border-(--border-secondary)"
     >
-      <a
-        href="/news"
-        class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary)/50 hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
-      >
-        ← Back to News
-      </a>
+      <!-- Article Tags Section -->
+      {
+        tags.length > 0 && (
+          <div class="tags-section">
+            <h3 class="text-(--content-meta) text-sm font-medium tracking-wide mb-4">
+              Tagged
+            </h3>
+            <div class="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <Tag tag={tag} variant="default" size="sm" clickable={true} />
+              ))}
+            </div>
+          </div>
+        )
+      }
 
       <button
         class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary)/50 hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
@@ -275,7 +266,7 @@ const structuredData = {
       </button>
     </div>
 
-    <!-- Article Navigation (unchanged) -->
+    <!-- Article Navigation -->
     {
       (prevPost || nextPost) && (
         <nav aria-label="Article navigation">
@@ -284,9 +275,14 @@ const structuredData = {
               {prevPost && (
                 <a
                   href={`/news/${prevPost.slug}`}
-                  class="group flex flex-col w-full p-8 lg:p-12 bg-(--surface-secondary) hover:bg-(--surface-tertiary) transition-all duration-200"
+                  class="group relative flex flex-col w-full p-8 lg:p-12 bg-(--surface-secondary) hover:bg-(--surface-tertiary) transition-all duration-200"
+                  style={
+                    prevPostFeaturedImage
+                      ? `background-image: url('${prevPostFeaturedImage}'); background-size: cover; background-position: center;`
+                      : ""
+                  }
                 >
-                  <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center">
+                  <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center z-10">
                     <svg
                       class="w-4 h-4 mr-2"
                       fill="none"
@@ -302,9 +298,10 @@ const structuredData = {
                     </svg>
                     Previous Article
                   </span>
-                  <h3 class="text-(--content-heading) font-display group-hover:font-black font-semibold text-4xl md:text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all line-clamp-2">
+                  <h3 class="text-(--content-heading) font-display group-hover:mix-blend-plus-darker group-hover:font-black font-semibold text-4xl md:text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all line-clamp-2 z-10">
                     {prevPost.title.rendered}
                   </h3>
+                  <div class="absolute bg-(--surface-secondary)/95 group-hover:bg-(--surface-secondary)/80 top-0 left-0 h-full w-full z-0 transition-all" />
                 </a>
               )}
             </div>
@@ -313,9 +310,14 @@ const structuredData = {
               {nextPost && (
                 <a
                   href={`/news/${nextPost.slug}`}
-                  class="group flex flex-col w-full p-8 lg:p-12 bg-(--surface-secondary) hover:bg-(--surface-tertiary) transition-all duration-200 text-right"
+                  class="group relative flex flex-col w-full p-8 lg:p-12 bg-(--surface-secondary) hover:bg-(--surface-tertiary) transition-all duration-200 text-right"
+                  style={
+                    nextPostFeaturedImage
+                      ? `background-image: url('${nextPostFeaturedImage}'); background-size: cover; background-position: center;`
+                      : ""
+                  }
                 >
-                  <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center justify-end">
+                  <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center justify-end z-10">
                     Next Article
                     <svg
                       class="w-4 h-4 ml-2"
@@ -331,9 +333,10 @@ const structuredData = {
                       />
                     </svg>
                   </span>
-                  <h3 class="text-(--content-heading) font-display group-hover:font-black font-semibold text-4xl md:text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all line-clamp-2">
+                  <h3 class="text-(--content-heading) font-display group-hover:mix-blend-plus-darker group-hover:font-black font-semibold text-4xl md:text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all line-clamp-2 z-10">
                     {nextPost.title.rendered}
                   </h3>
+                  <div class="absolute bg-(--surface-secondary)/95 group-hover:bg-(--surface-secondary)/80 top-0 left-0 h-full w-full z-0 transition-all" />
                 </a>
               )}
             </div>

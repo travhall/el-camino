@@ -127,7 +127,7 @@ const isCategoryPage = currentPath.includes("/category/");
 >
 
 <nav
-  class="flex flex-col lg:flex-row w-full lg:gap-2 justify-center border-4 border-(--border-secondary) lg:border-0 bg-(--surface-secondary) lg:relative inset-0 top-12 lg:top-auto fixed -translate-x-full lg:translate-x-0 transition-transform duration-400 ease-in-out z-40 [&.nav-open]:translate-x-0 overflow-y-auto lg:overflow-visible"
+  class="flex flex-col lg:flex-row w-full min-h-dvh lg:min-h-auto lg:gap-2 justify-center border-4 border-(--border-secondary) lg:border-0 bg-(--surface-secondary) lg:relative inset-0 top-12 lg:top-auto fixed -translate-x-full lg:translate-x-0 transition-transform duration-400 ease-in-out z-40 [&.nav-open]:translate-x-0 overflow-y-auto lg:overflow-visible"
   role="navigation"
   aria-label="Main navigation"
   data-nav-context={JSON.stringify({
@@ -178,8 +178,8 @@ const isCategoryPage = currentPath.includes("/category/");
                 (item.category.id !== "the-shop" &&
                   item.category.id !== "news" &&
                   currentPath.startsWith(`/category/${item.category.slug}`)) ||
-                (isProductPage && 
-                  activeCategory && 
+                (isProductPage &&
+                  activeCategory &&
                   item.category.slug === activeCategory),
             },
           ]}
@@ -430,18 +430,22 @@ const isCategoryPage = currentPath.includes("/category/");
 
     private updateActiveStates(): void {
       // Get active category from body data attribute (set by server on product pages)
-      const activeCategory = document.body.getAttribute('data-active-category') || '';
+      const activeCategory =
+        document.body.getAttribute("data-active-category") || "";
       const currentPath = window.location.pathname;
-      const isProductPage = currentPath.includes('/product/');
-      
+      const isProductPage = currentPath.includes("/product/");
+
       if (isProductPage && activeCategory) {
         // Find and activate the matching category nav item
-        const navLinks = document.querySelectorAll('.nav-link');
-        navLinks.forEach(link => {
-          const href = link.getAttribute('href') || '';
+        const navLinks = document.querySelectorAll(".nav-link");
+        navLinks.forEach((link) => {
+          const href = link.getAttribute("href") || "";
           const categorySlugMatch = href.match(/^\/category\/([^\/]+)$/);
           if (categorySlugMatch && categorySlugMatch[1] === activeCategory) {
-            link.classList.add('lg:before:scale-x-100', 'lg:before:origin-left');
+            link.classList.add(
+              "lg:before:scale-x-100",
+              "lg:before:origin-left"
+            );
           }
         });
       }
