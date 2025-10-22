@@ -1,8 +1,8 @@
 ---
-// src/components/Nav.astro - Enhanced with strategic prefetching and product filtering
+// src/components/Nav.astro - Enhanced with strategic prefetching
 import { siteConfig } from "@/lib/site-config";
 import type { CategoryHierarchy } from "@/lib/square/types";
-import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
+import { fetchCategoryHierarchyForNav } from "@/lib/square/navigationUtils";
 import { Icon } from "astro-icon/components";
 import { apiRetryClient } from "@/lib/square/apiRetry";
 
@@ -17,15 +17,16 @@ let categoryHierarchy: CategoryHierarchy[];
 let navigationStatus: "loading" | "success" | "timeout" | "error" = "loading";
 
 try {
-  // Use enhanced API retry client for robust Square API calls
+  // Fetch raw category hierarchy without product filtering for fast navigation
+  // Product filtering happens on category pages, not in navigation
   categoryHierarchy = await apiRetryClient.executeWithRetry(
-    () => fetchCategoryHierarchyWithProducts(),
+    () => fetchCategoryHierarchyForNav(),
     "navigation-fetch",
     {
       maxRetries: 2,
       baseDelay: 1000,
       maxDelay: 3000,
-      timeoutMs: 8000,
+      timeoutMs: 5000, // Reduced to 5s - simple category fetch is fast
     }
   );
   navigationStatus = "success";
