@@ -31,7 +31,9 @@ validateEnvironment();
 
 export const squareClient = new Client({
   accessToken: import.meta.env.SQUARE_ACCESS_TOKEN!,
-  environment: Environment.Sandbox,
+  environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === 'production'
+    ? Environment.Production
+    : Environment.Sandbox,
   squareVersion: "2024-02-28",
 });
 
