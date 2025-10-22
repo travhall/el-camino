@@ -59,15 +59,17 @@ export async function batchCheckCategoriesHaveProducts(
     const result: Record<string, boolean> = {};
     const idsToCheck: string[] = [];
 
-    // Check cache first
-    for (const categoryId of categoryIds) {
-      const cached = categoryCache.get(`category-has-products:${categoryId}`);
-      if (cached !== undefined) {
-        result[categoryId] = cached;
-      } else {
-        idsToCheck.push(categoryId);
-      }
-    }
+    // Check cache first (now async)
+    await Promise.all(
+      categoryIds.map(async (categoryId) => {
+        const cached = await categoryCache.get(`category-has-products:${categoryId}`);
+        if (cached !== undefined) {
+          result[categoryId] = cached;
+        } else {
+          idsToCheck.push(categoryId);
+        }
+      })
+    );
 
     // Batch check remaining categories
     if (idsToCheck.length > 0) {
@@ -104,15 +106,15 @@ export async function batchCheckCategoriesHaveProducts(
                   const hasProducts = !!searchResult?.items?.length;
                   batchResult[categoryId] = hasProducts;
 
-                  // Cache individual results
-                  categoryCache.set(
+                  // Cache individual results (now async)
+                  await categoryCache.set(
                     `category-has-products:${categoryId}`,
                     hasProducts
                   );
                 } catch (error) {
                   // On error, default to showing category
                   batchResult[categoryId] = true;
-                  categoryCache.set(
+                  await categoryCache.set(
                     `category-has-products:${categoryId}`,
                     true
                   );

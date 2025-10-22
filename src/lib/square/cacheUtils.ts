@@ -132,16 +132,15 @@ export class Cache<T> {
 }
 
 // Export standard cache instances
-// PRIORITY 3 OPTIMIZATION: Extended TTLs to match business reality
-// Rationale: Catalog changes are rare (1-2x per day), inventory updates aren't time-critical
-export const inventoryCache = new Cache<number>("inventory", 900); // 15 minutes (increased from 1 min)
-export const categoryCache = new Cache<any>("category", 1800); // 30 minutes
-export const productCache = new Cache<any>("product", 900); // 15 minutes (increased from 5 min)
-export const imageCache = new Cache<string>("image", 3600); // 1 hour
-export const wordpressCache = new Cache<any>("wordpress", 300); // 5 minutes
-
-// Filter result caching - Phase 1 optimization
-export const filterCache = new Cache<any>("filter", 900); // 15 minutes (increased from 5 min)
-
-// Navigation-specific cache with longer TTL for stability
-export const navigationCache = new Cache<any>("navigation", 3600); // 1 hour for navigation data
+// UPDATED: Now using Netlify Blobs for shared cache across all functions
+// This fixes the function-per-route memory isolation issue
+// Import from blobCache instead of instantiating in-memory caches
+export {
+  inventoryCache,
+  categoryCache,
+  productCache,
+  imageCache,
+  wordpressCache,
+  filterCache,
+  navigationCache
+} from '../cache/blobCache';

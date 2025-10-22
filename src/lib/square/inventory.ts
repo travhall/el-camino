@@ -70,18 +70,20 @@ export async function checkBulkInventory(
       return {};
     }
 
-    // Process cache hits and identify items that need fetching
+    // Process cache hits and identify items that need fetching (now async)
     const resultMap: Record<string, number> = {};
     const idsToFetch: string[] = [];
 
-    uniqueIds.forEach((id) => {
-      const cached = inventoryCache.get(id);
-      if (cached !== undefined) {
-        resultMap[id] = cached;
-      } else {
-        idsToFetch.push(id);
-      }
-    });
+    await Promise.all(
+      uniqueIds.map(async (id) => {
+        const cached = await inventoryCache.get(id);
+        if (cached !== undefined) {
+          resultMap[id] = cached;
+        } else {
+          idsToFetch.push(id);
+        }
+      })
+    );
 
     // If all items were cached, return early
     if (idsToFetch.length === 0) return resultMap;
@@ -117,25 +119,29 @@ export async function checkBulkInventory(
       // Flatten and process all counts
       const allCounts = batchResults.flat();
 
-      // Process API results - only consider IN_STOCK state
-      allCounts.forEach((count) => {
-        if (count.state === "IN_STOCK" && count.catalogObjectId) {
-          const quantity = parseInt(count.quantity || "0", 10);
-          resultMap[count.catalogObjectId] = quantity;
+      // Process API results - only consider IN_STOCK state (now async)
+      await Promise.all(
+        allCounts.map(async (count) => {
+          if (count.state === "IN_STOCK" && count.catalogObjectId) {
+            const quantity = parseInt(count.quantity || "0", 10);
+            resultMap[count.catalogObjectId] = quantity;
 
-          // Update cache
-          inventoryCache.set(count.catalogObjectId, quantity);
-        }
-      });
+            // Update cache
+            await inventoryCache.set(count.catalogObjectId, quantity);
+          }
+        })
+      );
 
-      // Set zero quantities for requested items that weren't found in IN_STOCK state
-      idsToFetch.forEach((id) => {
-        if (resultMap[id] === undefined) {
-          resultMap[id] = 0;
-          // Cache zero results too
-          inventoryCache.set(id, 0);
-        }
-      });
+      // Set zero quantities for requested items that weren't found in IN_STOCK state (now async)
+      await Promise.all(
+        idsToFetch.map(async (id) => {
+          if (resultMap[id] === undefined) {
+            resultMap[id] = 0;
+            // Cache zero results too
+            await inventoryCache.set(id, 0);
+          }
+        })
+      );
 
       return resultMap;
     } catch (error) {

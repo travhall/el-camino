@@ -16,24 +16,29 @@ export interface ImageOptimizationOptions {
  * Enhanced WordPress image optimization with caching
  * Uses Photon API with multiple subdomain support for performance
  */
-export function optimizeWordPressImageCached(
+export async function optimizeWordPressImageCached(
   url: string,
   options: ImageOptimizationOptions = {}
-): string {
+): Promise<string> {
   if (!url || (!url.includes("wordpress.com") && !url.includes("wp.com"))) {
     return url;
   }
 
   const cacheKey = `wp_img_${url}_${JSON.stringify(options)}`;
 
-  return (
-    imageCache.get(cacheKey) ||
-    (() => {
-      const optimized = optimizeWordPressImage(url, options);
-      imageCache.set(cacheKey, optimized);
-      return optimized;
-    })()
-  );
+  // Check cache first (now async)
+  const cached = await imageCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // Generate optimized URL
+  const optimized = optimizeWordPressImage(url, options);
+  
+  // Cache the result (now async)
+  await imageCache.set(cacheKey, optimized);
+  
+  return optimized;
 }
 
 /**
@@ -87,22 +92,27 @@ export function optimizeWordPressImage(
 /**
  * Generate responsive srcSet for WordPress images
  */
-export function generateWordPressSrcSetCached(
+export async function generateWordPressSrcSetCached(
   url: string,
   options: ImageOptimizationOptions = {}
-): string {
+): Promise<string> {
   if (!url) return "";
 
   const cacheKey = `wp_srcset_${url}_${JSON.stringify(options)}`;
 
-  return (
-    imageCache.get(cacheKey) ||
-    (() => {
-      const srcSet = generateWordPressSrcSet(url, options);
-      imageCache.set(cacheKey, srcSet);
-      return srcSet;
-    })()
-  );
+  // Check cache first (now async)
+  const cached = await imageCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // Generate srcSet
+  const srcSet = generateWordPressSrcSet(url, options);
+  
+  // Cache the result (now async)
+  await imageCache.set(cacheKey, srcSet);
+  
+  return srcSet;
 }
 
 /**
@@ -140,14 +150,14 @@ export function generateWordPressSrcSet(
  * Batch optimize WordPress images for multiple posts
  * More efficient than individual optimization
  */
-export function batchOptimizeWordPressImages(
+export async function batchOptimizeWordPressImages(
   posts: WordPressPost[],
   options: {
     featured?: ImageOptimizationOptions;
     avatar?: ImageOptimizationOptions;
     thumbnail?: ImageOptimizationOptions;
   } = {}
-): Map<string, OptimizedWordPressImages> {
+): Promise<Map<string, OptimizedWordPressImages>> {
   const results = new Map<string, OptimizedWordPressImages>();
 
   // Extract all image URLs to avoid duplicate processing
@@ -176,19 +186,30 @@ export function batchOptimizeWordPressImages(
     }
   });
 
-  // Process images in batches
+  // Process images in batches (now with async/await)
   const processedImages = new Map<
     string,
     { optimized: string; srcSet: string }
   >();
 
-  imageUrlsToProcess.forEach(({ type }, url) => {
-    const opts = type === "avatar" ? options.avatar : options.featured;
+  // Convert to array to use Promise.all
+  const processingPromises = Array.from(imageUrlsToProcess.entries()).map(
+    async ([url, { type }]) => {
+      const opts = type === "avatar" ? options.avatar : options.featured;
 
-    const optimized = optimizeWordPressImageCached(url, opts);
-    const srcSet =
-      type === "featured" ? generateWordPressSrcSetCached(url, opts) : "";
+      const optimized = await optimizeWordPressImageCached(url, opts);
+      const srcSet =
+        type === "featured" ? await generateWordPressSrcSetCached(url, opts) : "";
 
+      return { url, optimized, srcSet };
+    }
+  );
+
+  // Wait for all images to be processed
+  const processed = await Promise.all(processingPromises);
+  
+  // Store results in map
+  processed.forEach(({ url, optimized, srcSet }) => {
     processedImages.set(url, { optimized, srcSet });
   });
 

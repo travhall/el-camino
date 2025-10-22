@@ -9,7 +9,7 @@ import { imageCache } from "./cacheUtils";
  */
 export async function getImageUrl(imageId: string): Promise<string | null> {
   // Handle the computation separately from getOrCompute to fix type issues
-  const cachedUrl = imageCache.get(imageId);
+  const cachedUrl = await imageCache.get(imageId);
   if (cachedUrl !== undefined) {
     return cachedUrl;
   }
@@ -21,8 +21,8 @@ export async function getImageUrl(imageId: string): Promise<string | null> {
     if (result.object?.type === "IMAGE") {
       const url = result.object.imageData?.url || null;
       if (url) {
-        // Cache the URL
-        imageCache.set(imageId, url);
+        // Cache the URL (now async)
+        await imageCache.set(imageId, url);
         return url;
       }
     }
@@ -44,14 +44,21 @@ export async function batchGetImageUrls(
   const uniqueIds = [...new Set(imageIds.filter(Boolean))];
   const resultMap: Record<string, string> = {};
 
-  // First check cache for all IDs
-  const uncachedIds = uniqueIds.filter((id) => !imageCache.has(id));
+  // First check cache for all IDs (now async)
+  const cacheChecks = await Promise.all(
+    uniqueIds.map(async (id) => ({
+      id,
+      cached: await imageCache.get(id)
+    }))
+  );
 
-  // Add cached results to the map
-  uniqueIds.forEach((id) => {
-    const cachedUrl = imageCache.get(id);
-    if (cachedUrl) {
-      resultMap[id] = cachedUrl;
+  // Add cached results to the map and collect uncached IDs
+  const uncachedIds: string[] = [];
+  cacheChecks.forEach(({ id, cached }) => {
+    if (cached) {
+      resultMap[id] = cached;
+    } else {
+      uncachedIds.push(id);
     }
   });
 

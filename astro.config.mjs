@@ -19,7 +19,9 @@ export default defineConfig({
       })
     : netlify({
         builders: true,
-        functionPerRoute: true,
+        // REMOVED: functionPerRoute: true
+        // This caused memory isolation - each route had separate cache
+        // Now using single function + Netlify Blobs for shared cache
         binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
       }),
 
