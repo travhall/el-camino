@@ -101,7 +101,11 @@ export class EnhancedImageOptimizer {
     src: string,
     options: ModernImageOptions = {}
   ): ResponsiveImageSet {
-    if (!src.includes('squarecdn.com')) {
+    // Support both Square CDN and Square's S3 image hosting
+    const isSquareImage = src.includes('squarecdn.com') || 
+                          src.includes('items-images-production.s3');
+    
+    if (!isSquareImage) {
       return this.fallbackImageSet(src, options);
     }
 
@@ -198,6 +202,26 @@ export class EnhancedImageOptimizer {
     try {
       const url = new URL(src);
       
+      // Check if this is S3 vs CDN
+      const isS3 = url.hostname.includes('s3.amazonaws.com');
+      
+      if (isS3) {
+        // Use Netlify Image CDN to optimize S3 images
+        const netlifyParams = new URLSearchParams({
+          url: src,
+          w: (options.width || 600).toString(),
+          q: (options.quality || 85).toString(),
+          fit: 'cover'
+        });
+        
+        if (options.format && options.format !== 'auto') {
+          netlifyParams.set('fm', options.format);
+        }
+        
+        return `/.netlify/images?${netlifyParams.toString()}`;
+      }
+      
+      // Standard CDN optimization for squarecdn.com
       if (options.width) url.searchParams.set('w', options.width.toString());
       if (options.height) url.searchParams.set('h', options.height.toString());
       if (options.quality) url.searchParams.set('q', options.quality.toString());
@@ -254,11 +278,15 @@ export class EnhancedImageOptimizer {
     src: string,
     options: ModernImageOptions = {}
   ): ResponsiveImageSet {
+    // For S3 or other non-CDN images, still provide proper responsive attributes
+    const width = options.width || 800;
+    const height = options.height || (width * 9 / 16);
+    
     return {
-      jpeg: src,
+      jpeg: src, // Original URL, can't optimize
       sizes: options.sizes || '100vw',
-      placeholder: '',
-      aspectRatio: 16 / 9
+      placeholder: SHIMMER_PLACEHOLDER_DATA_URI, // Use shimmer instead of empty
+      aspectRatio: height / width
     };
   }
 
