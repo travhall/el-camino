@@ -203,7 +203,7 @@ export class BlobCache<T> {
  * These replace the in-memory caches to fix function-per-route isolation
  */
 export const inventoryCache = new BlobCache<number>("inventory", 900); // 15 minutes
-export const categoryCache = new BlobCache<any>("category", 1800); // 30 minutes
+export const categoryCache = new BlobCache<any>("category", 600); // 10 minutes (reduced from 30 for faster consistency)
 export const productCache = new BlobCache<any>("product", 900); // 15 minutes
 export const imageCache = new BlobCache<string>("image", 3600); // 1 hour
 export const wordpressCache = new BlobCache<any>("wordpress", 300); // 5 minutes

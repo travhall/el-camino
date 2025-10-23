@@ -4,7 +4,7 @@ import ProductFilters from "@/components/ProductFilters.astro";
 import AppliedFilters from "@/components/AppliedFilters.astro";
 import ProductGrid from "@/components/ProductGrid.astro";
 import { fetchProductsByCategory } from "@/lib/square/categories";
-import { resolveCategoryPath } from "@/lib/square/categoryLookup";
+import { resolveCategoryPathWithRetry } from "@/lib/square/categoryLookup";
 import {
   parseFiltersFromURL,
   filterProductsWithCache,
@@ -15,10 +15,11 @@ import Layout from "@/layouts/Layout.astro";
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect("/404");
 
-// === OPTIMIZED CATEGORY RESOLUTION ===
-// Uses direct category lookup instead of fetching full hierarchy
-// Expected improvement: -150ms per page load
-const { category, parentCategory, subcategories } = await resolveCategoryPath(slug);
+// === OPTIMIZED CATEGORY RESOLUTION WITH RETRY ===
+// Uses direct category lookup with retry + cache invalidation
+// Handles Netlify Blobs eventual consistency (60s propagation)
+// Expected improvement: -150ms per page load + eliminates 404s
+const { category, parentCategory, subcategories } = await resolveCategoryPathWithRetry(slug);
 
 if (!category) return Astro.redirect("/404");
 

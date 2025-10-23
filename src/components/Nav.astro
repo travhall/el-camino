@@ -2,7 +2,7 @@
 // src/components/Nav.astro - Enhanced with strategic prefetching
 import { siteConfig } from "@/lib/site-config";
 import type { CategoryHierarchy } from "@/lib/square/types";
-import { fetchCategoryHierarchyForNav } from "@/lib/square/navigationUtils";
+import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
 import { Icon } from "astro-icon/components";
 import { apiRetryClient } from "@/lib/square/apiRetry";
 
@@ -17,10 +17,10 @@ let categoryHierarchy: CategoryHierarchy[];
 let navigationStatus: "loading" | "success" | "timeout" | "error" = "loading";
 
 try {
-  // Fetch raw category hierarchy without product filtering for fast navigation
-  // Product filtering happens on category pages, not in navigation
+  // Fetch category hierarchy WITH product filtering to hide empty categories
+  // This prevents "Skateboards/Wheels" and "Footwear" from showing when empty
   categoryHierarchy = await apiRetryClient.executeWithRetry(
-    () => fetchCategoryHierarchyForNav(),
+    () => fetchCategoryHierarchyWithProducts(),
     "navigation-fetch",
     {
       maxRetries: 2,
