@@ -4,6 +4,7 @@ import ProductCard from "./ProductCard.astro";
 import ProductCardSkeleton from "./ProductCardSkeleton.astro";
 import type { Product, ProductWithInventory } from "@/lib/square/types";
 import { batchInventoryService } from "@/lib/square/batchInventory";
+import { logger } from "@/lib/utils/logger";
 
 interface Props {
   products: Product[];
@@ -19,7 +20,7 @@ const {
   skipInventoryCheck = false,
 } = Astro.props;
 
-console.log("[ProductGrid] 📊 Props analysis:", {
+logger.log("[ProductGrid] 📊 Props analysis:", {
   productsCount: products?.length || 0,
   allProductsCount: allProducts?.length || 0,
   categoryPath,

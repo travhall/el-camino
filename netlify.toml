@@ -3,6 +3,14 @@ command = "pnpm run build"
 publish = "dist"
 functions = "netlify/functions"
 
+# Root page - HTTP/2 Push for critical assets
+[[headers]]
+for = "/"
+[headers.values]
+Cache-Control = "public, max-age=0, must-revalidate"
+Link = '''</fonts/AlumniSans.woff2>; rel=preload; as=font; type=font/woff2; crossorigin,
+</fonts/Cabin.woff2>; rel=preload; as=font; type=font/woff2; crossorigin'''
+
 # HTML files - short cache, always revalidate
 [[headers]]
 for = "*.html"
