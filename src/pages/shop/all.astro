@@ -1,31 +1,227 @@
 ---
-import { fetchProducts } from "@/lib/square/client"; // Fetch ALL products
-import { extractFilterOptions, parseFiltersFromURL, filterProducts as filterProductsWithCache } from "@/lib/square/filterUtils";
-import Layout from "@/layouts/Layout.astro";
-import ProductGrid from "@/components/ProductGrid.astro";
-import ProductFiltersComponent from "@/components/ProductFilters.astro"; // Renamed to avoid conflict
+// src/pages/shop/all.astro - Rebuilt using existing component architecture with working availability filter
+import ProductFilters from "@/components/ProductFilters.astro";
 import AppliedFilters from "@/components/AppliedFilters.astro";
-import Breadcrumbs from "@/components/Breadcrumbs.astro";
-import type { FilterOptions, ProductFilters as ProductFiltersType } from "@/lib/square/types"; // Alias type
-import { logger } from "@/lib/utils/logger";
+import ProductGrid from "@/components/ProductGrid.astro";
+import Layout from "@/layouts/Layout.astro";
+import { fetchProducts } from "@/lib/square/client";
+import {
+  parseFiltersFromURL,
+  extractFilterOptions,
+  filterProductsWithCache,
+} from "@/lib/square/filterUtils";
+import type {
+  Product,
+  ProductFilters as ProductFiltersType,
+  FilterOptions,
+} from "@/lib/square/types";
 
 // === PARSE URL PARAMETERS FOR FILTERING ===
 const filters = parseFiltersFromURL(Astro.url.searchParams);
 
-logger.log("[Shop/All] 🎯 URL Parameters:", {
+console.log(`[Shop/All] 🔍 URL Parsing:`, {
   searchParams: Astro.url.search,
   parsedFilters: filters,
   hasBrands: filters.brands.length > 0,
   hasAvailability: filters.availability,
 });
 
+// Phase 4: Enhanced Server-Side Caching
 // Smart cache headers based on filters
 const hasFilters = Object.values(filters).some((f) =>
   Array.isArray(f) ? f.length > 0 : f === true
 );
 
-logger.log("[Shop/All] 🎯 Cache Strategy:", {
+console.log(`[Shop/All] 📊 Filter Analysis:`, {
   hasFilters,
   filterValues: Object.values(filters),
   filtersBreakdown: filters,
 });
+
+const cacheControl = hasFilters
+  ? "public, max-age=60, s-max-age=120, stale-while-revalidate=300" // Shorter cache for filtered results
+  : "public, max-age=180, s-max-age=300, stale-while-revalidate=600"; // Longer cache for unfiltered
+
+// Set cache headers for this response
+Astro.response.headers.set("Cache-Control", cacheControl);
+Astro.response.headers.set(
+  "Netlify-CDN-Cache-Control",
+  hasFilters
+    ? "public, s-max-age=120, stale-while-revalidate=600"
+    : "public, s-max-age=300, stale-while-revalidate=1800"
+);
+
+// Add cache debugging header
+Astro.response.headers.set(
+  "X-Cache-Strategy",
+  hasFilters ? "filtered-content" : "base-catalog"
+);
+
+// === FETCH ALL PRODUCTS ===
+let allProducts: Product[] = [];
+let filteredProducts: Product[] = [];
+let filterOptions: FilterOptions = { brands: [] };
+
+try {
+  allProducts = await fetchProducts();
+
+  // Extract filter options from all products
+  filterOptions = extractFilterOptions(allProducts);
+
+  if (hasFilters) {
+    console.log(`[Shop/All] 🔄 Applying server-side filtering...`);
+    console.log(
+      `[Shop/All] 📋 Before filtering: ${allProducts.length} products`
+    );
+    console.log(`[Shop/All] 🎯 Filter criteria:`, filters);
+
+    // Apply server-side filtering using the same logic as category pages
+    filteredProducts = await filterProductsWithCache(allProducts, filters);
+
+    console.log(
+      `[Shop/All] ✅ After filtering: ${filteredProducts.length} products`
+    );
+    console.log(
+      `[Shop/All] 📋 Sample filtered products:`,
+      filteredProducts
+        .slice(0, 3)
+        .map((p) => ({ id: p.id, brand: p.brand, title: p.title }))
+    );
+  } else {
+    console.log(
+      `[Shop/All] ⚪ No filters applied - showing all ${allProducts.length} products`
+    );
+    // No filters applied - show all products
+    filteredProducts = [...allProducts];
+  }
+} catch (error) {
+  console.error("Error fetching products:", error);
+  allProducts = [];
+  filteredProducts = [];
+}
+
+// === PAGE METADATA ===
+const pageTitle = "Shop All | El Camino";
+
+// Preload critical images (first 8 products)
+const preloadImages = allProducts
+  .slice(0, 8)
+  .map((p) => p.image)
+  .filter((img) => !img.includes("placeholder"));
+
+// Current path for filter URLs
+const categoryPath = "/shop/all";
+
+// Check for active filters (for display purposes)
+const hasActiveFilters =
+  filters.brands.length > 0 || filters.availability === true;
+
+console.log(`[Shop/All] 🎬 Final data summary:`, {
+  allProductsCount: allProducts.length,
+  filteredProductsCount: filteredProducts.length,
+  hasActiveFilters,
+  categoryPath,
+  sampleFilteredProducts: filteredProducts.slice(0, 2).map((p) => p.brand),
+});
+---
+
+<Layout title={pageTitle}>
+  {preloadImages.map((img) => <link rel="preload" href={img} as="image" />)}
+
+  <!-- Responsive Grid Layout -->
+  <div class="min-h-screen bg-(--surface-primary)">
+    <!-- Shop All Header -->
+    <div class="p-4 pb-2">
+      <div
+        class="flex flex-col lg:flex-row justify-between gap-4 items-baseline"
+      >
+        <div
+          class="flex flex-row w-full lg:w-auto justify-between gap-4 items-baseline"
+        >
+          <h1
+            class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading)"
+          >
+            Shop All
+          </h1>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page Body -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-1 pb-0">
+      <!-- Filter Sidebar -->
+      <aside class="lg:col-span-1">
+        <ProductFilters
+          filterOptions={filterOptions}
+          totalProducts={allProducts.length}
+          filteredCount={filteredProducts.length}
+          categoryPath={categoryPath}
+        />
+      </aside>
+
+      <!-- Main Content -->
+      <main class="lg:col-span-3 xl:col-span-4">
+        <!-- Applied Filters Above Product Grid -->
+        <AppliedFilters categoryPath={categoryPath} classes="hidden lg:block" />
+
+        <!-- Products -->
+        {
+          filteredProducts.length > 0 ? (
+            <>
+              <ProductGrid
+                products={filteredProducts}
+                allProducts={allProducts}
+                categoryPath={categoryPath}
+              />
+            </>
+          ) : (
+            <div class="text-center py-16">
+              <div class="text-6xl mb-4 opacity-20">
+                {hasActiveFilters ? "🔍" : "🛹"}
+              </div>
+              <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
+                {hasActiveFilters
+                  ? "No products match your filters"
+                  : "No products found"}
+              </h2>
+              <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
+                {hasActiveFilters
+                  ? "Try adjusting your filters or browse all products."
+                  : "Check back soon for new products!"}
+              </p>
+              {hasActiveFilters ? (
+                <a
+                  href={categoryPath}
+                  class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+                >
+                  Clear Filters
+                </a>
+              ) : (
+                <a
+                  href="/"
+                  class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+                >
+                  Go Home
+                </a>
+              )}
+            </div>
+          )
+        }
+      </main>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Add View Transitions fallback detection
+  if (!document.startViewTransition) {
+    document.documentElement.classList.add("no-view-transitions");
+  }
+</script>
+
+<style>
+  .no-view-transitions .filtering-in-progress {
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+  }
+</style>
