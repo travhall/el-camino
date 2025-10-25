@@ -55,13 +55,25 @@ let filterOptions = {
 try {
   // Fetch ALL products for infinite scroll and client-side filtering
   console.log(
-    `[Category] Fetching all products for category: ${category.name}`
+    `[Category] Fetching all products for category: ${category.name} (ID: ${category.id})`
   );
 
-  const productData = await fetchProductsByCategory(category.id, {
+  // CRITICAL FIX: For subcategories, also include parent category products
+  // Square assigns products to parent categories, not always subcategories
+  const categoryIds = [category.id];
+  if (parentCategory) {
+    categoryIds.push(parentCategory.id);
+    console.log(`[Category] Including parent category: ${parentCategory.name} (ID: ${parentCategory.id})`);
+  }
+  
+  console.log(`[Category] Searching Square API with category IDs: ${categoryIds.join(', ')}`);
+
+  const productData = await fetchProductsByCategory(categoryIds, {
     limit: 200,
   });
   allProducts = productData.products;
+  
+  console.log(`[Category] Square API returned ${allProducts.length} products`);
 
   // Extract filter options from all products using the same logic as shop/all
   filterOptions = extractFilterOptions(allProducts);

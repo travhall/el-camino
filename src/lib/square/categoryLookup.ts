@@ -34,18 +34,27 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
       const { fetchCategoryHierarchy } = await import('./categories');
       const hierarchy = await fetchCategoryHierarchy();
       
+      console.log(`[CategoryLookup] Searching for slug: "${slug}"`);
+      
       // Search top-level categories
       for (const item of hierarchy) {
         if (item.category.slug === slug) {
+          console.log(`[CategoryLookup] ✅ Found top-level category: ${item.category.name} (ID: ${item.category.id})`);
           return item.category;
         }
         
         // Search subcategories
         const subcat = item.subcategories.find(sub => sub.slug === slug);
         if (subcat) {
+          console.log(`[CategoryLookup] ✅ Found subcategory: ${subcat.name} (ID: ${subcat.id}) under ${item.category.name}`);
           return subcat;
         }
       }
+      
+      console.warn(`[CategoryLookup] ❌ No category found for slug: "${slug}"`);
+      console.log(`[CategoryLookup] Available slugs:`, 
+        hierarchy.flatMap(h => [h.category.slug, ...h.subcategories.map(s => s.slug)]).join(', ')
+      );
       
       return null;
     })

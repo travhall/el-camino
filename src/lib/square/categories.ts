@@ -195,16 +195,19 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
 }
 
 export async function fetchProductsByCategory(
-  categoryId: string,
+  categoryId: string | string[],
   options?: ProductLoadingOptions
 ): Promise<PaginatedProducts> {
   const { limit = 24, cursor } = options || {};
-  const cacheKey = `category-${categoryId}-${cursor || "initial"}-${limit}`;
+  const categoryIds = Array.isArray(categoryId) ? categoryId : [categoryId];
+  const cacheKey = `category-${categoryIds.join(',')}-${cursor || "initial"}-${limit}`;
 
   return productCache.getOrCompute(cacheKey, async () => {
     try {
+      console.log(`[Square API] Searching for products with categoryIds: [${categoryIds.join(', ')}]`);
+      
       const searchRequest: any = {
-        categoryIds: [categoryId],
+        categoryIds: categoryIds,
         limit: Math.min(limit, 100),
       };
 
@@ -215,6 +218,8 @@ export async function fetchProductsByCategory(
       const { result } = await squareClient.catalogApi.searchCatalogItems(
         searchRequest
       );
+      
+      console.log(`[Square API] Search returned ${result?.items?.length || 0} items`);
 
       if (!result?.items?.length) {
         return {
