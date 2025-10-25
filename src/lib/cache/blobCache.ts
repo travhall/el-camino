@@ -26,7 +26,9 @@ export class BlobCache<T> {
    * @param storeName Netlify Blobs store name (default: 'square-cache')
    */
   constructor(name: string, ttlSeconds = 60, storeName = "square-cache") {
-    this.name = name;
+    // CACHE VERSION: Increment this to invalidate all caches after env changes
+    const CACHE_VERSION = 'v2-prod'; // Changed to force fresh Production cache
+    this.name = `${CACHE_VERSION}:${name}`;
     this.ttl = ttlSeconds * 1000; // Convert to ms
     this.storeName = storeName;
   }
