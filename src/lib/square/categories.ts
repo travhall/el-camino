@@ -97,19 +97,16 @@ export async function fetchCategories(): Promise<Category[]> {
             rawOrder: orderValue,
           };
 
-          // DEBUG: Log problematic categories
-          if (
-            ["Trucks", "Bearings Bolts & More", "Bottoms", "Hats"].includes(
-              category.name
-            )
-          ) {
-            // console.log(`[DEBUG] Category ${category.name}:`, {
-            //   id: category.id,
-            //   isTopLevel: category.isTopLevel,
-            //   parentCategoryId: category.parentCategoryId,
-            //   rootCategoryId: category.rootCategoryId,
-            //   slug: category.slug,
-            // });
+          // DEBUG: Log Apparel subcategories to diagnose assignment issue
+          if (category.name.includes("Tees") || category.name.includes("Hats") || 
+              category.name.includes("Bottoms") || category.name.includes("Accessories")) {
+            console.log(`[CategoryFetch] ${category.name}:`, {
+              id: category.id,
+              isTopLevel: category.isTopLevel,
+              parentCategoryId: category.parentCategoryId,
+              rootCategoryId: category.rootCategoryId,
+              slug: category.slug,
+            });
           }
 
           return category;
@@ -157,12 +154,12 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
           (subCat) => subCat.rootCategoryId === topCat.id && !subCat.isTopLevel
         );
 
-        // DEBUG: Log subcategory matching for Skateboards and Apparel
-        if (["Skateboards", "Apparel"].includes(topCat.name)) {
-          // console.log(
-          //   `[DEBUG] ${topCat.name} (${topCat.id}) subcategories:`,
-          //   subcategories.map((sub) => `${sub.name} (${sub.id})`)
-          // );
+        // DEBUG: Log subcategory matching for Apparel specifically
+        if (topCat.name === "Apparel") {
+          console.log(`[CategoryHierarchy] Apparel (${topCat.id}) subcategories:`);
+          subcategories.forEach(sub => {
+            console.log(`  - ${sub.name} (ID: ${sub.id}, slug: ${sub.slug})`);
+          });
         }
 
         // Sort subcategories by ordinal too
@@ -195,19 +192,18 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
 }
 
 export async function fetchProductsByCategory(
-  categoryId: string | string[],
+  categoryId: string,
   options?: ProductLoadingOptions
 ): Promise<PaginatedProducts> {
   const { limit = 24, cursor } = options || {};
-  const categoryIds = Array.isArray(categoryId) ? categoryId : [categoryId];
-  const cacheKey = `category-${categoryIds.join(',')}-${cursor || "initial"}-${limit}`;
+  const cacheKey = `category-${categoryId}-${cursor || "initial"}-${limit}`;
 
   return productCache.getOrCompute(cacheKey, async () => {
     try {
-      console.log(`[Square API] Searching for products with categoryIds: [${categoryIds.join(', ')}]`);
+      console.log(`[Square API] Searching for products with categoryId: ${categoryId}`);
       
       const searchRequest: any = {
-        categoryIds: categoryIds,
+        categoryIds: [categoryId],
         limit: Math.min(limit, 100),
       };
 
@@ -219,7 +215,7 @@ export async function fetchProductsByCategory(
         searchRequest
       );
       
-      console.log(`[Square API] Search returned ${result?.items?.length || 0} items`);
+      console.log(`[Square API] Search returned ${result?.items?.length || 0} items for category ${categoryId}`);
 
       if (!result?.items?.length) {
         return {
