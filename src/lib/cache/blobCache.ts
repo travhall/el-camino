@@ -202,6 +202,16 @@ export class BlobCache<T> {
 
     try {
       const value = await compute();
+      
+      // DEFENSE: Prevent caching empty arrays that might indicate API failures
+      // Legitimate empty results should be handled explicitly in calling code
+      if (Array.isArray(value) && value.length === 0) {
+        console.warn(
+          `[BlobCache:${this.name}] Empty array result for key "${key}" - not caching to prevent poisoning`
+        );
+        return value; // Return the empty array but don't cache it
+      }
+      
       await this.set(key, value);
       return value;
     } catch (error) {

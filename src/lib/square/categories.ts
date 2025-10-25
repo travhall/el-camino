@@ -202,20 +202,52 @@ export async function fetchProductsByCategory(
     try {
       console.log(`[Square API] Searching for products with categoryId: ${categoryId}`);
       
-      const searchRequest: any = {
-        categoryIds: [categoryId],
-        limit: Math.min(limit, 100),
-      };
-
-      if (cursor) {
-        searchRequest.cursor = cursor;
-      }
-
-      const { result } = await squareClient.catalogApi.searchCatalogItems(
-        searchRequest
-      );
+      // Use searchCatalogItems with retry logic to handle intermittent bug
+      // The cache validation layer prevents poisoning if empty results occur
+      let retryCount = 0;
+      const maxRetries = 3;
+      let result: any = null;
       
-      console.log(`[Square API] Search returned ${result?.items?.length || 0} items for category ${categoryId}`);
+      while (retryCount <= maxRetries) {
+        const searchRequest: any = {
+          categoryIds: [categoryId],
+          limit: Math.min(limit, 100),
+        };
+
+        if (cursor) {
+          searchRequest.cursor = cursor;
+        }
+
+        const response = await squareClient.catalogApi.searchCatalogItems(
+          searchRequest
+        );
+        
+        result = response.result;
+        
+        // If we got results, break out of retry loop
+        if (result?.items?.length > 0) {
+          console.log(`[Square API] Success: ${result.items.length} items for category ${categoryId}`);
+          break;
+        }
+        
+        // If this is the last retry, log warning
+        if (retryCount === maxRetries) {
+          console.warn(
+            `[Square API] Empty results after ${maxRetries} retries for category ${categoryId}. ` +
+            `This may be a legitimate empty category or the known Square API bug.`
+          );
+          break;
+        }
+        
+        // Increment retry and wait before next attempt
+        retryCount++;
+        console.warn(
+          `[Square API] Empty result (attempt ${retryCount}/${maxRetries}) for category ${categoryId}. Retrying...`
+        );
+        await new Promise(resolve => setTimeout(resolve, 100 * retryCount)); // Exponential backoff
+      }
+      
+      console.log(`[Square API] Final result: ${result?.items?.length || 0} items for category ${categoryId}`);
 
       if (!result?.items?.length) {
         return {
@@ -224,17 +256,20 @@ export async function fetchProductsByCategory(
         };
       }
 
-      // Parallel processing for performance
-      const imageIds = result.items
-        .map((item) => item.itemData?.imageIds?.[0])
-        .filter((id): id is string => Boolean(id));
+      // Type guard: at this point we know result.items exists and has items
+      const items = result.items as Array<any>;
 
-      const measurementUnitIds = result.items
+      // Parallel processing for performance
+      const imageIds = items
+        .map((item: any) => item.itemData?.imageIds?.[0])
+        .filter((id: any): id is string => Boolean(id));
+
+      const measurementUnitIds = items
         .map(
-          (item) =>
+          (item: any) =>
             item.itemData?.variations?.[0]?.itemVariationData?.measurementUnitId
         )
-        .filter((id): id is string => Boolean(id));
+        .filter((id: any): id is string => Boolean(id));
 
       // Batch fetch images and units
       const [imageUrlMap, measurementUnitsMap] = await Promise.all([
@@ -246,7 +281,7 @@ export async function fetchProductsByCategory(
           : Promise.resolve({} as Record<string, string>),
       ]);
 
-      const products = result.items.map((item) => {
+      const products = items.map((item: any) => {
         const variation = item.itemData?.variations?.[0];
         const priceMoney = variation?.itemVariationData?.priceMoney;
         const imageId = item.itemData?.imageIds?.[0];
