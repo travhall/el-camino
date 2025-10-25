@@ -191,85 +191,143 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
   });
 }
 
+/**
+ * Fetch ALL catalog items once and cache them
+ * Avoids the buggy searchCatalogItems(categoryIds) endpoint entirely
+ * This is more reliable and faster for most use cases
+ */
+async function fetchAllCatalogItems(): Promise<any[]> {
+  const cacheKey = "all-catalog-items";
+  
+  return productCache.getOrCompute(cacheKey, async () => {
+    try {
+      console.log(`[Square API] Fetching ALL catalog items (avoiding buggy categoryIds endpoint)`);
+      
+      const allItems: any[] = [];
+      let cursor: string | undefined = undefined;
+      let requestCount = 0;
+      const maxRequests = 20; // Safety limit
+      
+      do {
+        requestCount++;
+        if (requestCount > maxRequests) {
+          console.warn(`[Square API] Hit max requests limit (${maxRequests}) when fetching all items`);
+          break;
+        }
+        
+        const { result } = await squareClient.catalogApi.listCatalog(
+          cursor,
+          "ITEM"
+        );
+        
+        if (result.objects?.length) {
+          // Convert BigInt values to strings to avoid serialization errors
+          const sanitizedObjects = result.objects.map((obj: any) => {
+            // Deep clone and convert BigInts
+            return JSON.parse(JSON.stringify(obj, (key, value) =>
+              typeof value === 'bigint' ? value.toString() : value
+            ));
+          });
+          allItems.push(...sanitizedObjects);
+        }
+        
+        cursor = result.cursor;
+      } while (cursor);
+      
+      console.log(`[Square API] Successfully fetched ${allItems.length} total catalog items in ${requestCount} requests`);
+      return allItems;
+    } catch (error) {
+      console.error(`[Square API] Error fetching all catalog items:`, error);
+      throw error;
+    }
+  });
+}
+
+/**
+ * Check if an item belongs to a category (handles both direct and subcategory matches)
+ */
+function itemMatchesCategory(item: any, categoryId: string, allCategories: Category[]): boolean {
+  if (!item?.itemData) {
+    return false;
+  }
+  
+  const itemData = item.itemData;
+  
+  // Items can have multiple categories in an array
+  const itemCategories = itemData.categories || [];
+  
+  // Check direct match in categories array
+  const hasDirectMatch = itemCategories.some((cat: any) => cat.id === categoryId);
+  if (hasDirectMatch) {
+    return true;
+  }
+  
+  // Check reporting category (primary category)
+  if (itemData.reportingCategory?.id === categoryId) {
+    return true;
+  }
+  
+  // Check if any of the item's categories is a subcategory of the target category
+  for (const itemCat of itemCategories) {
+    const categoryDetails = allCategories.find(c => c.id === itemCat.id);
+    if (!categoryDetails) continue;
+    
+    // Check if this category's parent or root is the target category
+    if (categoryDetails.rootCategoryId === categoryId) {
+      return true;
+    }
+    if (categoryDetails.parentCategoryId === categoryId) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 export async function fetchProductsByCategory(
   categoryId: string,
   options?: ProductLoadingOptions
 ): Promise<PaginatedProducts> {
   const { limit = 24, cursor } = options || {};
-  const cacheKey = `category-${categoryId}-${cursor || "initial"}-${limit}`;
+  
+  // NOTE: We don't use cursor-based pagination with this approach
+  // Instead we fetch all items and paginate in-memory
+  // This avoids the buggy searchCatalogItems(categoryIds) endpoint
+  
+  try {
+    console.log(`[Square API] Fetching products for category: ${categoryId} (in-memory filtering)`);
+    
+    // Fetch ALL items and categories (both are cached)
+    const [allItems, allCategories] = await Promise.all([
+      fetchAllCatalogItems(),
+      fetchCategories()
+    ]);
+    
+    // Filter items by category in-memory
+    const matchingItems = allItems.filter(item => 
+      itemMatchesCategory(item, categoryId, allCategories)
+    );
+    
+    console.log(`[Square API] Found ${matchingItems.length} items matching category ${categoryId} (from ${allItems.length} total items)`);
 
-  return productCache.getOrCompute(cacheKey, async () => {
-    try {
-      console.log(`[Square API] Searching for products with categoryId: ${categoryId}`);
-      
-      // Use searchCatalogItems with retry logic to handle intermittent bug
-      // The cache validation layer prevents poisoning if empty results occur
-      let retryCount = 0;
-      const maxRetries = 3;
-      let result: any = null;
-      
-      while (retryCount <= maxRetries) {
-        const searchRequest: any = {
-          categoryIds: [categoryId],
-          limit: Math.min(limit, 100),
-        };
+    if (!matchingItems.length) {
+      return {
+        products: [],
+        hasMore: false,
+      };
+    }
 
-        if (cursor) {
-          searchRequest.cursor = cursor;
-        }
+    // Parallel processing for performance
+    const imageIds = matchingItems
+      .map((item: any) => item.itemData?.imageIds?.[0])
+      .filter((id: any): id is string => Boolean(id));
 
-        const response = await squareClient.catalogApi.searchCatalogItems(
-          searchRequest
-        );
-        
-        result = response.result;
-        
-        // If we got results, break out of retry loop
-        if (result?.items?.length > 0) {
-          console.log(`[Square API] Success: ${result.items.length} items for category ${categoryId}`);
-          break;
-        }
-        
-        // If this is the last retry, log warning
-        if (retryCount === maxRetries) {
-          console.warn(
-            `[Square API] Empty results after ${maxRetries} retries for category ${categoryId}. ` +
-            `This may be a legitimate empty category or the known Square API bug.`
-          );
-          break;
-        }
-        
-        // Increment retry and wait before next attempt
-        retryCount++;
-        console.warn(
-          `[Square API] Empty result (attempt ${retryCount}/${maxRetries}) for category ${categoryId}. Retrying...`
-        );
-        await new Promise(resolve => setTimeout(resolve, 100 * retryCount)); // Exponential backoff
-      }
-      
-      console.log(`[Square API] Final result: ${result?.items?.length || 0} items for category ${categoryId}`);
-
-      if (!result?.items?.length) {
-        return {
-          products: [],
-          hasMore: false,
-        };
-      }
-
-      // Type guard: at this point we know result.items exists and has items
-      const items = result.items as Array<any>;
-
-      // Parallel processing for performance
-      const imageIds = items
-        .map((item: any) => item.itemData?.imageIds?.[0])
-        .filter((id: any): id is string => Boolean(id));
-
-      const measurementUnitIds = items
-        .map(
-          (item: any) =>
-            item.itemData?.variations?.[0]?.itemVariationData?.measurementUnitId
-        )
-        .filter((id: any): id is string => Boolean(id));
+    const measurementUnitIds = matchingItems
+      .map(
+        (item: any) =>
+          item.itemData?.variations?.[0]?.itemVariationData?.measurementUnitId
+      )
+      .filter((id: any): id is string => Boolean(id));
 
       // Batch fetch images and units
       const [imageUrlMap, measurementUnitsMap] = await Promise.all([
@@ -281,7 +339,7 @@ export async function fetchProductsByCategory(
           : Promise.resolve({} as Record<string, string>),
       ]);
 
-      const products = items.map((item: any) => {
+    const products = matchingItems.map((item: any) => {
         const variation = item.itemData?.variations?.[0];
         const priceMoney = variation?.itemVariationData?.priceMoney;
         const imageId = item.itemData?.imageIds?.[0];
@@ -312,24 +370,23 @@ export async function fetchProductsByCategory(
           unit: unit,
           brand: brandValue || undefined, // ADDED: Include brand
         };
-      });
+    });
 
-      return {
-        products,
-        nextCursor: result.cursor,
-        hasMore: !!result.cursor,
-      };
-    } catch (error) {
-      const appError = processSquareError(
-        error,
-        `fetchProductsByCategory:${categoryId}`
-      );
-      return handleError<PaginatedProducts>(appError, {
-        products: [],
-        hasMore: false,
-      });
-    }
-  });
+    return {
+      products,
+      nextCursor: undefined, // No cursor-based pagination with in-memory filtering
+      hasMore: false, // All results returned at once
+    };
+  } catch (error) {
+    const appError = processSquareError(
+      error,
+      `fetchProductsByCategory:${categoryId}`
+    );
+    return handleError<PaginatedProducts>(appError, {
+      products: [],
+      hasMore: false,
+    });
+  }
 }
 
 // Optimized measurement unit fetching
