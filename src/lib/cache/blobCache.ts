@@ -27,7 +27,8 @@ export class BlobCache<T> {
    */
   constructor(name: string, ttlSeconds = 60, storeName = "square-cache") {
     // CACHE VERSION: Increment this to invalidate all caches after env changes
-    const CACHE_VERSION = "v3-prod"; // Changed to force fresh Production cache
+    // v4-prod: Fixed Square API bug - switched from searchCatalogItems to searchCatalogObjects
+    const CACHE_VERSION = "v4-prod";
     this.name = `${CACHE_VERSION}:${name}`;
     this.ttl = ttlSeconds * 1000; // Convert to ms
     this.storeName = storeName;

@@ -202,22 +202,44 @@ export async function fetchProductsByCategory(
     try {
       console.log(`[Square API] Searching for products with categoryId: ${categoryId}`);
       
+      // FIX: Use searchCatalogObjects instead of searchCatalogItems
+      // searchCatalogItems has a confirmed Square API bug with categoryIds parameter
+      // that intermittently returns empty results, poisoning the cache
       const searchRequest: any = {
-        categoryIds: [categoryId],
+        objectTypes: ['ITEM'],
         limit: Math.min(limit, 100),
+        query: {
+          exactQuery: {
+            attributeName: 'category_id',
+            attributeValue: categoryId
+          }
+        }
       };
 
       if (cursor) {
         searchRequest.cursor = cursor;
       }
 
-      const { result } = await squareClient.catalogApi.searchCatalogItems(
+      const { result } = await squareClient.catalogApi.searchCatalogObjects(
         searchRequest
       );
       
-      console.log(`[Square API] Search returned ${result?.items?.length || 0} items for category ${categoryId}`);
+      // Validate result to prevent caching errors as empty arrays
+      if (!result) {
+        console.error(`[Square API] Null result for category ${categoryId}`);
+        throw new Error(`Square API returned null result for category ${categoryId}`);
+      }
 
-      if (!result?.items?.length) {
+      const items = result.objects || [];
+      console.log(`[Square API] Search returned ${items.length} items for category ${categoryId}`);
+
+      // Distinguish between legitimate empty (ok to cache) and errors (should not cache)
+      if (items.length === 0 && !result.cursor) {
+        // Legitimate empty category - but log it for monitoring
+        console.warn(`[Square API] Category ${categoryId} has zero products (validated empty)`);
+      }
+
+      if (!items.length) {
         return {
           products: [],
           hasMore: false,
@@ -225,11 +247,11 @@ export async function fetchProductsByCategory(
       }
 
       // Parallel processing for performance
-      const imageIds = result.items
+      const imageIds = items
         .map((item) => item.itemData?.imageIds?.[0])
         .filter((id): id is string => Boolean(id));
 
-      const measurementUnitIds = result.items
+      const measurementUnitIds = items
         .map(
           (item) =>
             item.itemData?.variations?.[0]?.itemVariationData?.measurementUnitId
@@ -246,7 +268,7 @@ export async function fetchProductsByCategory(
           : Promise.resolve({} as Record<string, string>),
       ]);
 
-      const products = result.items.map((item) => {
+      const products = items.map((item) => {
         const variation = item.itemData?.variations?.[0];
         const priceMoney = variation?.itemVariationData?.priceMoney;
         const imageId = item.itemData?.imageIds?.[0];
