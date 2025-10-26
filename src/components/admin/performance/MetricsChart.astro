@@ -11,7 +11,7 @@ export interface Props {
   class?: string;
 }
 
-const { timeframe = '24h', height = 300, class: className = '' } = Astro.props;
+const { timeframe: _timeframe = '24h', height = 300, class: className = '' } = Astro.props;
 ---
 
 <div class={`metrics-chart ${className}`} id="metrics-chart">
@@ -98,7 +98,7 @@ const { timeframe = '24h', height = 300, class: className = '' } = Astro.props;
   import { performanceManager } from '@/lib/performance/PerformanceManager';
 
   class MetricsChartController {
-    private chart: any = null;
+    private _chart: any = null;
     private canvas: HTMLCanvasElement | null = null;
     private ctx: CanvasRenderingContext2D | null = null;
     private dataPoints: { timestamp: number; lcp: number; inp: number; cls: number }[] = [];
@@ -279,7 +279,7 @@ const { timeframe = '24h', height = 300, class: className = '' } = Astro.props;
       this.ctx.stroke();
     }
 
-    private drawThresholdLine(y: number, color: string, label: string): void {
+    private drawThresholdLine(y: number, color: string, _label: string): void {
       if (!this.ctx || !this.canvas) return;
 
       const rect = this.canvas.getBoundingClientRect();

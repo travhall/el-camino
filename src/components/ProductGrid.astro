@@ -39,11 +39,11 @@ const initialProducts = products; // Products to show immediately
 const inventoryCheckProducts =
   allProducts && allProducts.length > 0 ? allProducts : products; // Products for inventory batch check
 
-console.log("[ProductGrid] 🎯 FIXED: Rendering vs Inventory logic:", {
-  initialProducts: initialProducts?.length || 0,
-  inventoryCheckProducts: inventoryCheckProducts?.length || 0,
-  renderingFiltered: initialProducts !== inventoryCheckProducts,
-});
+// console.log("[ProductGrid] 🎯 FIXED: Rendering vs Inventory logic:", {
+//   initialProducts: initialProducts?.length || 0,
+//   inventoryCheckProducts: inventoryCheckProducts?.length || 0,
+//   renderingFiltered: initialProducts !== inventoryCheckProducts,
+// });
 
 // Batch inventory check for all products that will be displayed
 let productsWithInventory: ProductWithInventory[] = initialProducts;
@@ -86,16 +86,16 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       };
     });
 
-    console.log("[ProductGrid] ✅ Inventory applied to both sets:", {
-      checkedInventoryFor: inventoryCheckProducts.length,
-      appliedToRendered: productsWithInventory.length,
-      appliedToAll: allProductsWithInventory.length,
-      sampleWithInventory: productsWithInventory.slice(0, 2).map((p) => ({
-        id: p.id,
-        brand: p.brand,
-        isOutOfStock: p.inventoryStatus?.isOutOfStock,
-      })),
-    });
+    // console.log("[ProductGrid] ✅ Inventory applied to both sets:", {
+    //   checkedInventoryFor: inventoryCheckProducts.length,
+    //   appliedToRendered: productsWithInventory.length,
+    //   appliedToAll: allProductsWithInventory.length,
+    //   sampleWithInventory: productsWithInventory.slice(0, 2).map((p) => ({
+    //     id: p.id,
+    //     brand: p.brand,
+    //     isOutOfStock: p.inventoryStatus?.isOutOfStock,
+    //   })),
+    // });
   } catch (error) {
     console.error("Batch inventory check failed:", error);
     // Fallback: all products assumed in stock
@@ -118,9 +118,9 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     }));
   }
 } else {
-  console.log(
-    "[ProductGrid] ⚪ Skipping inventory check or no products to check"
-  );
+  // console.log(
+  //   "[ProductGrid] ⚪ Skipping inventory check or no products to check"
+  // );
 }
 ---
 
@@ -154,15 +154,16 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
   .product-card-wrapper {
     min-height: 280px; /* Minimum card height */
     transform: translate3d(0, 0, 0); /* GPU acceleration */
-    
+
     /* Bidirectional transitions for entry AND exit */
-    transition: 
+    transition:
       opacity var(--card-transition-duration) ease,
       transform var(--card-transition-duration) ease;
-    
+
     /* Stagger delay only applies when entering (via --animation-order) */
-    transition-delay: 
-      calc(var(--animation-order, 0) * var(--card-stagger-delay)),
+    transition-delay: calc(
+        var(--animation-order, 0) * var(--card-stagger-delay)
+      ),
       calc(var(--animation-order, 0) * var(--card-stagger-delay));
   }
 
@@ -285,7 +286,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     <button
       id="load-more-button"
       type="button"
-      class="font-sans font-semibold text-sm text-center lg:text-base py-3 px-6 lg:py-3 lg:px-8 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+      class="font-sans font-semibold text-sm text-center lg:text-base py-3 px-6 lg:py-3 lg:px-8 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
       aria-label="Load more products"
     >
       Load More Products
@@ -337,7 +338,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     </p>
     <a
       href={categoryPath}
-      class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+      class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
     >
       Clear Filters
     </a>
@@ -483,7 +484,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     initializePageLoadAnimations();
     initializeInfiniteScroll(); // Will add newly revealed cards to observer
 
-    console.log("[ProductGrid] 📡 Simple initialization complete");
+    // console.log("[ProductGrid] 📡 Simple initialization complete");
     document.dispatchEvent(new CustomEvent("productGridReady"));
   });
 
@@ -495,8 +496,8 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     // Initialize animations FIRST, then infinite scroll
     initializePageLoadAnimations();
     initializeInfiniteScroll(); // Will add newly revealed cards to observer
-    
-    console.log("[ProductGrid] 📡 DOMContentLoaded initialization complete");
+
+    // console.log("[ProductGrid] 📡 DOMContentLoaded initialization complete");
     document.dispatchEvent(new CustomEvent("productGridReady"));
   });
 
@@ -506,7 +507,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     const trigger = document.getElementById("infinite-scroll-trigger");
 
     if (!grid || !trigger) {
-      console.log("[ProductGrid] ❌ Missing grid or trigger element");
+      // console.log("[ProductGrid] ❌ Missing grid or trigger element");
       return;
     }
 
@@ -534,9 +535,9 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     }
 
     const allCards = Array.from(grid.querySelectorAll(".product-card-wrapper"));
-    console.log(
-      `[ProductGrid] 🔍 Simple infinite scroll for ${allCards.length} products`
-    );
+    // console.log(
+    //   `[ProductGrid] 🔍 Simple infinite scroll for ${allCards.length} products`
+    // );
 
     // Progressive enhancement check
     const supportsIntersectionObserver = "IntersectionObserver" in window;
@@ -550,9 +551,9 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     const useAccessibleMode = !supportsIntersectionObserver || forceButtonMode;
 
     if (forceButtonMode) {
-      console.log(
-        "[ProductGrid] 🧪 Button mode forced via URL parameter (DEV ONLY)"
-      );
+      // console.log(
+      //   "[ProductGrid] 🧪 Button mode forced via URL parameter (DEV ONLY)"
+      // );
     }
 
     // Simple grid calculation - match server-side
@@ -594,13 +595,13 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
         batchSize = Math.max(Math.min(batchSize, 60), 30);
       }
 
-      console.log("[ProductGrid] 📐 Adaptive batch:", {
-        viewport: `${viewportWidth}x${viewportHeight}`,
-        cardsPerRow,
-        visibleRows,
-        bufferRows,
-        batchSize,
-      });
+      // console.log("[ProductGrid] 📐 Adaptive batch:", {
+      //   viewport: `${viewportWidth}x${viewportHeight}`,
+      //   cardsPerRow,
+      //   visibleRows,
+      //   bufferRows,
+      //   batchSize,
+      // });
 
       return batchSize;
     }
@@ -626,8 +627,8 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
 
     // Add newly revealed cards to the page load observer
     if (pageLoadObserver && cardsToAnimate.length > 0) {
-      console.log(`[ProductGrid] 🎬 Adding ${cardsToAnimate.length} cards to animation observer`);
-      cardsToAnimate.forEach(card => {
+      // console.log(`[ProductGrid] 🎬 Adding ${cardsToAnimate.length} cards to animation observer`);
+      cardsToAnimate.forEach((card) => {
         pageLoadObserver?.observe(card);
       });
     }
@@ -636,7 +637,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     if (allCards.length <= visibleCount) {
       trigger.style.display = "none";
       if (loadMoreContainer) loadMoreContainer.style.display = "none";
-      console.log("[ProductGrid] ✅ All products fit on screen");
+      // console.log("[ProductGrid] ✅ All products fit on screen");
       return;
     }
 
@@ -676,9 +677,9 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       }
 
       visibleCount = newVisibleCount;
-      console.log(
-        `[ProductGrid] Now showing ${visibleCount}/${allCards.length}`
-      );
+      // console.log(
+      //   `[ProductGrid] Now showing ${visibleCount}/${allCards.length}`
+      // );
 
       // Announce to screen readers
       announceToScreenReader(
@@ -692,7 +693,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       if (visibleCount >= allCards.length) {
         if (trigger) trigger.style.display = "none";
         if (loadMoreContainer) loadMoreContainer.style.display = "none";
-        console.log("[ProductGrid] ✅ All products loaded");
+        // console.log("[ProductGrid] ✅ All products loaded");
         announceToScreenReader(`All ${allCards.length} products loaded.`);
       }
     }
@@ -788,9 +789,9 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
           animationTimeouts.push(buttonTimeout);
         });
 
-        console.log(
-          "[ProductGrid] ✅ Load More button initialized (accessible mode)"
-        );
+        // console.log(
+        //   "[ProductGrid] ✅ Load More button initialized (accessible mode)"
+        // );
       }
       return;
     }
@@ -798,9 +799,9 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     // Standard infinite scroll mode
     trigger.style.display = "flex";
     if (loadMoreContainer) loadMoreContainer.style.display = "none";
-    console.log(
-      `[ProductGrid] ✅ Showing ${visibleCount}/${allCards.length} initially`
-    );
+    // console.log(
+    //   `[ProductGrid] ✅ Showing ${visibleCount}/${allCards.length} initially`
+    // );
 
     // PHASE 5: Debounced load more to prevent rapid-fire loading
     let isLoading = false;
@@ -825,7 +826,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
             loadTimeout = setTimeout(() => {
               isLoading = true;
               if (grid) grid.setAttribute("aria-busy", "true");
-              console.log("[ProductGrid] Loading more...");
+              // console.log("[ProductGrid] Loading more...");
 
               loadMoreCards();
               isLoading = false;
@@ -838,7 +839,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     );
 
     if (loadMoreObserver && trigger) loadMoreObserver.observe(trigger);
-    console.log("[ProductGrid] ✅ Simple infinite scroll initialized");
+    // console.log("[ProductGrid] ✅ Simple infinite scroll initialized");
 
     // Dispatch event to signal grid is ready (eliminates polling in ProductFilters)
     window.dispatchEvent(
@@ -846,7 +847,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
         detail: { productCount: allCards.length },
       })
     );
-    console.log("[ProductGrid] 🎯 Grid ready event dispatched");
+    // console.log("[ProductGrid] 🎯 Grid ready event dispatched");
   }
 
   // Debounced resize handler for responsive animations
@@ -860,7 +861,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       ANIMATION_CONFIG.rowStaggerDelay = newConfig.rowStaggerDelay;
       ANIMATION_CONFIG.duration = newConfig.duration;
 
-      console.log("[ProductGrid] 📐 Animation config updated for new viewport");
+      // console.log("[ProductGrid] 📐 Animation config updated for new viewport");
     }, 250); // Debounce 250ms
   }
 

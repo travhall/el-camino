@@ -52,7 +52,7 @@ export const GET: APIRoute = async ({ request, url }) => {
       }
     );
   } catch (error) {
-    console.error("[API] Error checking inventory:", error);
+    // console.error("[API] Error checking inventory:", error);
 
     const errorMessage =
       error instanceof Error ? error.message : "Failed to check inventory";

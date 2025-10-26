@@ -16,14 +16,14 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    console.log(`[resolve-product] Resolving slug: ${slug}`);
+    // console.log(`[resolve-product] Resolving slug: ${slug}`);
     const startTime = Date.now();
 
     // Try fast path: lightweight slug resolver
     let productId = await slugResolver.resolve(slug);
 
     if (!productId) {
-      console.log(`[resolve-product] Slug not in resolver, falling back to fetchProducts`);
+      // console.log(`[resolve-product] Slug not in resolver, falling back to fetchProducts`);
       // Fallback to old method if resolver doesn't have it
       const products = await fetchProducts();
       const slugMapping = createSlugMapping(products);
@@ -31,7 +31,7 @@ export const GET: APIRoute = async ({ request }) => {
     }
 
     const duration = Date.now() - startTime;
-    console.log(`[resolve-product] Resolved in ${duration}ms`);
+    // console.log(`[resolve-product] Resolved in ${duration}ms`);
 
     if (!productId) {
       return new Response(JSON.stringify({ error: "Product not found" }), {
@@ -65,7 +65,7 @@ export const GET: APIRoute = async ({ request }) => {
 
     return response;
   } catch (error) {
-    console.error("[resolve-product] Error resolving product slug:", error);
+    // console.error("[resolve-product] Error resolving product slug:", error);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

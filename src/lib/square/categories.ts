@@ -98,8 +98,12 @@ export async function fetchCategories(): Promise<Category[]> {
           };
 
           // DEBUG: Log Apparel subcategories to diagnose assignment issue
-          if (category.name.includes("Tees") || category.name.includes("Hats") || 
-              category.name.includes("Bottoms") || category.name.includes("Accessories")) {
+          if (
+            category.name.includes("Tees") ||
+            category.name.includes("Hats") ||
+            category.name.includes("Bottoms") ||
+            category.name.includes("Accessories")
+          ) {
             console.log(`[CategoryFetch] ${category.name}:`, {
               id: category.id,
               isTopLevel: category.isTopLevel,
@@ -156,8 +160,10 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
 
         // DEBUG: Log subcategory matching for Apparel specifically
         if (topCat.name === "Apparel") {
-          console.log(`[CategoryHierarchy] Apparel (${topCat.id}) subcategories:`);
-          subcategories.forEach(sub => {
+          console.log(
+            `[CategoryHierarchy] Apparel (${topCat.id}) subcategories:`
+          );
+          subcategories.forEach((sub) => {
             console.log(`  - ${sub.name} (ID: ${sub.id}, slug: ${sub.slug})`);
           });
         }
@@ -198,43 +204,47 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
  */
 async function fetchAllCatalogItems(): Promise<any[]> {
   const cacheKey = "all-catalog-items";
-  
+
   return productCache.getOrCompute(cacheKey, async () => {
     try {
-      console.log(`[Square API] Fetching ALL catalog items (avoiding buggy categoryIds endpoint)`);
-      
+      // console.log(`[Square API] Fetching ALL catalog items (avoiding buggy categoryIds endpoint)`);
+
       const allItems: any[] = [];
       let cursor: string | undefined = undefined;
       let requestCount = 0;
       const maxRequests = 20; // Safety limit
-      
+
       do {
         requestCount++;
         if (requestCount > maxRequests) {
-          console.warn(`[Square API] Hit max requests limit (${maxRequests}) when fetching all items`);
+          console.warn(
+            `[Square API] Hit max requests limit (${maxRequests}) when fetching all items`
+          );
           break;
         }
-        
+
         const { result } = await squareClient.catalogApi.listCatalog(
           cursor,
           "ITEM"
         );
-        
+
         if (result.objects?.length) {
           // Convert BigInt values to strings to avoid serialization errors
           const sanitizedObjects = result.objects.map((obj: any) => {
             // Deep clone and convert BigInts
-            return JSON.parse(JSON.stringify(obj, (key, value) =>
-              typeof value === 'bigint' ? value.toString() : value
-            ));
+            return JSON.parse(
+              JSON.stringify(obj, (key, value) =>
+                typeof value === "bigint" ? value.toString() : value
+              )
+            );
           });
           allItems.push(...sanitizedObjects);
         }
-        
+
         cursor = result.cursor;
       } while (cursor);
-      
-      console.log(`[Square API] Successfully fetched ${allItems.length} total catalog items in ${requestCount} requests`);
+
+      // console.log(`[Square API] Successfully fetched ${allItems.length} total catalog items in ${requestCount} requests`);
       return allItems;
     } catch (error) {
       console.error(`[Square API] Error fetching all catalog items:`, error);
@@ -246,32 +256,38 @@ async function fetchAllCatalogItems(): Promise<any[]> {
 /**
  * Check if an item belongs to a category (handles both direct and subcategory matches)
  */
-function itemMatchesCategory(item: any, categoryId: string, allCategories: Category[]): boolean {
+function itemMatchesCategory(
+  item: any,
+  categoryId: string,
+  allCategories: Category[]
+): boolean {
   if (!item?.itemData) {
     return false;
   }
-  
+
   const itemData = item.itemData;
-  
+
   // Items can have multiple categories in an array
   const itemCategories = itemData.categories || [];
-  
+
   // Check direct match in categories array
-  const hasDirectMatch = itemCategories.some((cat: any) => cat.id === categoryId);
+  const hasDirectMatch = itemCategories.some(
+    (cat: any) => cat.id === categoryId
+  );
   if (hasDirectMatch) {
     return true;
   }
-  
+
   // Check reporting category (primary category)
   if (itemData.reportingCategory?.id === categoryId) {
     return true;
   }
-  
+
   // Check if any of the item's categories is a subcategory of the target category
   for (const itemCat of itemCategories) {
-    const categoryDetails = allCategories.find(c => c.id === itemCat.id);
+    const categoryDetails = allCategories.find((c) => c.id === itemCat.id);
     if (!categoryDetails) continue;
-    
+
     // Check if this category's parent or root is the target category
     if (categoryDetails.rootCategoryId === categoryId) {
       return true;
@@ -280,7 +296,7 @@ function itemMatchesCategory(item: any, categoryId: string, allCategories: Categ
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -289,26 +305,26 @@ export async function fetchProductsByCategory(
   options?: ProductLoadingOptions
 ): Promise<PaginatedProducts> {
   const { limit = 24, cursor } = options || {};
-  
+
   // NOTE: We don't use cursor-based pagination with this approach
   // Instead we fetch all items and paginate in-memory
   // This avoids the buggy searchCatalogItems(categoryIds) endpoint
-  
+
   try {
-    console.log(`[Square API] Fetching products for category: ${categoryId} (in-memory filtering)`);
-    
+    // console.log(`[Square API] Fetching products for category: ${categoryId} (in-memory filtering)`);
+
     // Fetch ALL items and categories (both are cached)
     const [allItems, allCategories] = await Promise.all([
       fetchAllCatalogItems(),
-      fetchCategories()
+      fetchCategories(),
     ]);
-    
+
     // Filter items by category in-memory
-    const matchingItems = allItems.filter(item => 
+    const matchingItems = allItems.filter((item) =>
       itemMatchesCategory(item, categoryId, allCategories)
     );
-    
-    console.log(`[Square API] Found ${matchingItems.length} items matching category ${categoryId} (from ${allItems.length} total items)`);
+
+    // console.log(`[Square API] Found ${matchingItems.length} items matching category ${categoryId} (from ${allItems.length} total items)`);
 
     if (!matchingItems.length) {
       return {
@@ -329,47 +345,46 @@ export async function fetchProductsByCategory(
       )
       .filter((id: any): id is string => Boolean(id));
 
-      // Batch fetch images and units
-      const [imageUrlMap, measurementUnitsMap] = await Promise.all([
-        imageIds.length
-          ? batchGetImageUrls(imageIds)
-          : Promise.resolve({} as Record<string, string>),
-        measurementUnitIds.length
-          ? fetchMeasurementUnits(measurementUnitIds)
-          : Promise.resolve({} as Record<string, string>),
-      ]);
+    // Batch fetch images and units
+    const [imageUrlMap, measurementUnitsMap] = await Promise.all([
+      imageIds.length
+        ? batchGetImageUrls(imageIds)
+        : Promise.resolve({} as Record<string, string>),
+      measurementUnitIds.length
+        ? fetchMeasurementUnits(measurementUnitIds)
+        : Promise.resolve({} as Record<string, string>),
+    ]);
 
     const products = matchingItems.map((item: any) => {
-        const variation = item.itemData?.variations?.[0];
-        const priceMoney = variation?.itemVariationData?.priceMoney;
-        const imageId = item.itemData?.imageIds?.[0];
-        const measurementUnitId =
-          variation?.itemVariationData?.measurementUnitId;
+      const variation = item.itemData?.variations?.[0];
+      const priceMoney = variation?.itemVariationData?.priceMoney;
+      const imageId = item.itemData?.imageIds?.[0];
+      const measurementUnitId = variation?.itemVariationData?.measurementUnitId;
 
-        const imageUrl =
-          imageId && imageUrlMap[imageId]
-            ? imageUrlMap[imageId]
-            : EL_CAMINO_LOGO_DATA_URI;
+      const imageUrl =
+        imageId && imageUrlMap[imageId]
+          ? imageUrlMap[imageId]
+          : EL_CAMINO_LOGO_DATA_URI;
 
-        const unit = measurementUnitId
-          ? measurementUnitsMap[measurementUnitId] || undefined
-          : undefined;
+      const unit = measurementUnitId
+        ? measurementUnitsMap[measurementUnitId] || undefined
+        : undefined;
 
-        // ADDED: Extract brand from custom attributes
-        const brandValue = extractBrandValue(item.customAttributeValues);
+      // ADDED: Extract brand from custom attributes
+      const brandValue = extractBrandValue(item.customAttributeValues);
 
-        return {
-          id: item.id,
-          catalogObjectId: item.id,
-          variationId: variation?.id || item.id,
-          title: item.itemData?.name || "",
-          description: item.itemData?.description || "",
-          image: imageUrl,
-          price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
-          url: createProductUrl({ title: item.itemData?.name || "" }),
-          unit: unit,
-          brand: brandValue || undefined, // ADDED: Include brand
-        };
+      return {
+        id: item.id,
+        catalogObjectId: item.id,
+        variationId: variation?.id || item.id,
+        title: item.itemData?.name || "",
+        description: item.itemData?.description || "",
+        image: imageUrl,
+        price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
+        url: createProductUrl({ title: item.itemData?.name || "" }),
+        unit: unit,
+        brand: brandValue || undefined, // ADDED: Include brand
+      };
     });
 
     return {
@@ -438,15 +453,10 @@ export function clearCategoryCache(): void {
   productCache.clear();
 }
 
-import type {
-  ProductFilters,
-} from "./types";
-import { filterProductsWithCache, extractFilterOptions } from "./filterUtils";
-
 /**
  * Fetch ALL products from category, then filter and paginate
  */
-async function fetchAllProductsFromCategory(
+async function _fetchAllProductsFromCategory(
   categoryId: string
 ): Promise<any[]> {
   const allProducts: any[] = [];

@@ -87,7 +87,7 @@ export const POST: APIRoute = async ({ request }) => {
         );
     }
   } catch (error) {
-    console.error("Cart action error:", error);
+    // console.error("Cart action error:", error);
     return new Response(
       JSON.stringify({
         success: false,

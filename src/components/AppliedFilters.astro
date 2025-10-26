@@ -2,11 +2,10 @@
 // src/components/AppliedFilters.astro
 
 export interface Props {
-  categoryPath?: string;
   classes?: string;
 }
 
-const { categoryPath = "", classes } = Astro.props;
+const { classes } = Astro.props;
 
 // Parse current filters from URL
 const currentParams = new URLSearchParams(Astro.url.search);
@@ -138,9 +137,9 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
         container.style.opacity = "1";
         container.style.transition = "opacity 200ms ease";
         sessionStorage.setItem("appliedFiltersShown", "true");
-        console.log(
-          "[AppliedFilters] ⏰ First appearance with timing protection"
-        );
+        // console.log(
+        //   "[AppliedFilters] ⏰ First appearance with timing protection"
+        // );
       }, 400); // Much shorter delay
     } else if (hasFilters) {
       // Already shown before or subsequent filters - appear immediately

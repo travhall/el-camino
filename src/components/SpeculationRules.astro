@@ -9,10 +9,10 @@ export interface Props {
 const { currentPath = "/", eager = false } = Astro.props;
 
 // Generate optimized, page-context-aware speculation rules
-function generateOptimizedRules(path: string, isEager: boolean) {
+function generateOptimizedRules(path: string, _isEager: boolean) {
   const rules: any = {
     prefetch: [],
-    prerender: []
+    prerender: [],
   };
 
   // 🏠 HOMEPAGE: Prefetch high-traffic product categories on hover
@@ -20,13 +20,13 @@ function generateOptimizedRules(path: string, isEager: boolean) {
     rules.prefetch.push({
       where: {
         or: [
-          { href_matches: "/category/*" },  // Product categories (primary)
-          { href_matches: "/shop/all" },    // All products view (primary)
-          { href_matches: "/the-shop" },    // Static content (secondary)
-          { href_matches: "/news*" }        // News content (secondary)
-        ]
+          { href_matches: "/category/*" }, // Product categories (primary)
+          { href_matches: "/shop/all" }, // All products view (primary)
+          { href_matches: "/the-shop" }, // Static content (secondary)
+          { href_matches: "/news*" }, // News content (secondary)
+        ],
       },
-      eagerness: "moderate" // Hover-based
+      eagerness: "moderate", // Hover-based
     });
 
     // Conservative prerender for high-traffic category pages
@@ -34,10 +34,10 @@ function generateOptimizedRules(path: string, isEager: boolean) {
       where: {
         or: [
           { href_matches: "/shop/all" },
-          { href_matches: "/category/skateboards*" }
-        ]
+          { href_matches: "/category/skateboards*" },
+        ],
       },
-      eagerness: "conservative"
+      eagerness: "conservative",
     });
   }
 
@@ -47,13 +47,13 @@ function generateOptimizedRules(path: string, isEager: boolean) {
     rules.prefetch.push({
       where: { href_matches: "/product/*" },
       eagerness: "moderate", // Hover only, not immediate
-      expects_no_vary_search: "params=(\"v\")" // Ignore variation params
+      expects_no_vary_search: 'params=("v")', // Ignore variation params
     });
 
     // Prefetch sibling categories on hover
     rules.prefetch.push({
       where: { href_matches: "/category/*" },
-      eagerness: "moderate"
+      eagerness: "moderate",
     });
   }
 
@@ -62,24 +62,21 @@ function generateOptimizedRules(path: string, isEager: boolean) {
     // High-probability user actions
     rules.prefetch.push({
       where: {
-        or: [
-          { href_matches: "/cart" },
-          { href_matches: "/checkout" }
-        ]
+        or: [{ href_matches: "/cart" }, { href_matches: "/checkout" }],
       },
-      eagerness: "moderate"
+      eagerness: "moderate",
     });
 
     // Conservative prerender for cart (likely next step)
     rules.prerender.push({
       where: { href_matches: "/cart" },
-      eagerness: "conservative"
+      eagerness: "conservative",
     });
 
     // Related products on hover only
     rules.prefetch.push({
       where: { href_matches: "/product/*" },
-      eagerness: "conservative" // More conservative for product-to-product
+      eagerness: "conservative", // More conservative for product-to-product
     });
   }
 
@@ -89,10 +86,10 @@ function generateOptimizedRules(path: string, isEager: boolean) {
       where: {
         or: [
           { href_matches: "/checkout*" },
-          { href_matches: "/order-confirmation" }
-        ]
+          { href_matches: "/order-confirmation" },
+        ],
       },
-      eagerness: "eager" // Critical path, prefetch immediately
+      eagerness: "eager", // Critical path, prefetch immediately
     });
   }
 
@@ -100,7 +97,7 @@ function generateOptimizedRules(path: string, isEager: boolean) {
   else if (path.startsWith("/news")) {
     rules.prefetch.push({
       where: { href_matches: "/news/*" },
-      eagerness: "moderate"
+      eagerness: "moderate",
     });
   }
 
@@ -111,17 +108,21 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
 ---
 
 <!-- Enhanced Script with Progressive Prefetching -->
-<script define:vars={{ speculationRules, currentPath }}>
+<script is:inline define:vars={{ speculationRules, currentPath }}>
   (function () {
     // Prevent duplicate insertion
-    if (document.querySelector('script[type="speculationrules"][data-astro-speculation]')) {
+    if (
+      document.querySelector(
+        'script[type="speculationrules"][data-astro-speculation]'
+      )
+    ) {
       return;
     }
 
     // Insert base speculation rules
-    const speculationScript = document.createElement('script');
-    speculationScript.type = 'speculationrules';
-    speculationScript.setAttribute('data-astro-speculation', 'true');
+    const speculationScript = document.createElement("script");
+    speculationScript.type = "speculationrules";
+    speculationScript.setAttribute("data-astro-speculation", "true");
     speculationScript.textContent = JSON.stringify(speculationRules);
     document.head.appendChild(speculationScript);
 
@@ -132,11 +133,11 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
       HTMLScriptElement.supports("speculationrules");
 
     if (supportsSpeculationRules) {
-      console.log("[Speculation Rules] ✅ Smart prefetching enabled");
+      // console.log("[Speculation Rules] ✅ Smart prefetching enabled");
 
       // 🎯 PROGRESSIVE PREFETCHING FOR CATEGORY PAGES
       // Only on category/shop pages where products are loaded progressively
-      if (currentPath.startsWith('/category/') || currentPath === '/shop/all') {
+      if (currentPath.startsWith("/category/") || currentPath === "/shop/all") {
         initializeProgressivePrefetch();
       }
 
@@ -147,7 +148,7 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
             for (const entry of list.getEntries()) {
               const navEntry = entry;
               if (navEntry.initiatorType === "speculation") {
-                console.log("[Speculation Rules] 🚀 Prerender hit:", entry.name);
+                // console.log("[Speculation Rules] 🚀 Prerender hit:", entry.name);
               }
             }
           });
@@ -157,7 +158,7 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
         }
       }
     } else {
-      console.log("[Speculation Rules] Not supported, using fallback prefetch");
+      // console.log("[Speculation Rules] Not supported, using fallback prefetch");
       initializeFallbackPrefetch();
     }
 
@@ -166,7 +167,7 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
       let prefetchedUrls = new Set();
       let scrollTimeout;
 
-      console.log("[Progressive Prefetch] 📊 Initializing for category page");
+      // console.log("[Progressive Prefetch] 📊 Initializing for category page");
 
       // Debounced prefetch on scroll to prevent thrashing
       function scheduleProgressivePrefetch() {
@@ -178,10 +179,12 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
 
       // Prefetch products that are currently visible or about to be
       function prefetchVisibleProducts() {
-        const productCards = document.querySelectorAll('.product-card:not([style*="display: none"])');
+        const productCards = document.querySelectorAll(
+          '.product-card:not([style*="display: none"])'
+        );
         const viewportHeight = window.innerHeight;
-        
-        productCards.forEach(card => {
+
+        productCards.forEach((card) => {
           const link = card.querySelector('a[href^="/product/"]');
           if (!link || prefetchedUrls.has(link.href)) return;
 
@@ -196,23 +199,25 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
       // Add URL to dynamic prefetch list
       function addToPrefetchList(url) {
         if (prefetchedUrls.has(url)) return;
-        
+
         prefetchedUrls.add(url);
-        
+
         // Use Speculation Rules API dynamically
-        const dynamicScript = document.createElement('script');
-        dynamicScript.type = 'speculationrules';
-        dynamicScript.setAttribute('data-dynamic-prefetch', 'true');
+        const dynamicScript = document.createElement("script");
+        dynamicScript.type = "speculationrules";
+        dynamicScript.setAttribute("data-dynamic-prefetch", "true");
         dynamicScript.textContent = JSON.stringify({
-          prefetch: [{
-            source: "list",
-            urls: [url],
-            eagerness: "moderate"
-          }]
+          prefetch: [
+            {
+              source: "list",
+              urls: [url],
+              eagerness: "moderate",
+            },
+          ],
         });
-        
+
         document.head.appendChild(dynamicScript);
-        console.log(`[Progressive Prefetch] 🔥 Added: ${url}`);
+        // console.log(`[Progressive Prefetch] 🔥 Added: ${url}`);
       }
 
       // Initial prefetch of visible products
@@ -221,59 +226,69 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
       }, 500);
 
       // Continue prefetching as user scrolls
-      window.addEventListener('scroll', scheduleProgressivePrefetch, { passive: true });
+      window.addEventListener("scroll", scheduleProgressivePrefetch, {
+        passive: true,
+      });
     }
 
     // Fallback prefetch for browsers without Speculation Rules support
     function initializeFallbackPrefetch() {
-      console.log("[Fallback Prefetch] 📊 Using link prefetch (no Speculation Rules)");
-      
-      // Hover-based prefetch for all navigation
-      document.addEventListener("mouseover", (e) => {
-        if (!e.target) return;
+      // console.log("[Fallback Prefetch] 📊 Using link prefetch (no Speculation Rules)");
 
-        const link = e.target.closest('a[href^="/product/"], a[href^="/category/"], a[href^="/the-shop"], a[href^="/news"], a[href^="/cart"]');
-        if (link && !link.dataset.prefetched) {
-          const prefetchLink = document.createElement("link");
-          prefetchLink.rel = "prefetch";
-          prefetchLink.href = link.href;
-          prefetchLink.crossOrigin = "anonymous";
-          document.head.appendChild(prefetchLink);
-          
-          link.dataset.prefetched = "true";
-          console.log("[Fallback Prefetch] 🖱️ Hover prefetch:", link.href);
-        }
-      }, { passive: true });
+      // Hover-based prefetch for all navigation
+      document.addEventListener(
+        "mouseover",
+        (e) => {
+          if (!e.target) return;
+
+          const link = e.target.closest(
+            'a[href^="/product/"], a[href^="/category/"], a[href^="/the-shop"], a[href^="/news"], a[href^="/cart"]'
+          );
+          if (link && !link.dataset.prefetched) {
+            const prefetchLink = document.createElement("link");
+            prefetchLink.rel = "prefetch";
+            prefetchLink.href = link.href;
+            prefetchLink.crossOrigin = "anonymous";
+            document.head.appendChild(prefetchLink);
+
+            link.dataset.prefetched = "true";
+            // console.log("[Fallback Prefetch] 🖱️ Hover prefetch:", link.href);
+          }
+        },
+        { passive: true }
+      );
 
       // 🎯 PROGRESSIVE PREFETCH FOR CATEGORY PAGES (Same as Speculation Rules version)
-      if (currentPath.startsWith('/category/') || currentPath === '/shop/all') {
-        console.log("[Progressive Prefetch - Fallback] 📊 Initializing for category page");
-        
+      if (currentPath.startsWith("/category/") || currentPath === "/shop/all") {
+        // console.log("[Progressive Prefetch - Fallback] 📊 Initializing for category page");
+
         let prefetchedUrls = new Set();
         let scrollTimeout;
 
         // Helper to prefetch a URL
         function prefetchUrl(url) {
           if (prefetchedUrls.has(url)) return;
-          
+
           prefetchedUrls.add(url);
-          
+
           const prefetchLink = document.createElement("link");
           prefetchLink.rel = "prefetch";
           prefetchLink.href = url;
           prefetchLink.crossOrigin = "anonymous";
           document.head.appendChild(prefetchLink);
-          
-          console.log(`[Progressive Prefetch - Fallback] 🔥 Added: ${url}`);
+
+          // console.log(`[Progressive Prefetch - Fallback] 🔥 Added: ${url}`);
         }
 
         // Prefetch products that are currently visible or about to be
         function prefetchVisibleProducts() {
-          const productCards = document.querySelectorAll('.product-card:not([style*="display: none"])');
+          const productCards = document.querySelectorAll(
+            '.product-card:not([style*="display: none"])'
+          );
           const viewportHeight = window.innerHeight;
-          
+
           let prefetchCount = 0;
-          productCards.forEach(card => {
+          productCards.forEach((card) => {
             const link = card.querySelector('a[href^="/product/"]');
             if (!link || prefetchedUrls.has(link.href)) return;
 
@@ -284,9 +299,9 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
               prefetchCount++;
             }
           });
-          
+
           if (prefetchCount > 0) {
-            console.log(`[Progressive Prefetch - Fallback] ⚡ Batch prefetched ${prefetchCount} products`);
+            // console.log(`[Progressive Prefetch - Fallback] ⚡ Batch prefetched ${prefetchCount} products`);
           }
         }
 
@@ -300,12 +315,14 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
 
         // Initial prefetch of visible products
         setTimeout(() => {
-          console.log("[Progressive Prefetch - Fallback] 🚀 Starting initial batch");
+          // console.log("[Progressive Prefetch - Fallback] 🚀 Starting initial batch");
           prefetchVisibleProducts();
         }, 500);
 
         // Continue prefetching as user scrolls
-        window.addEventListener('scroll', scheduleProgressivePrefetch, { passive: true });
+        window.addEventListener("scroll", scheduleProgressivePrefetch, {
+          passive: true,
+        });
       }
     }
   })();

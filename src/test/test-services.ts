@@ -3,7 +3,7 @@
 
 import { getRelatedProducts } from "@/lib/product/relatedProducts";
 import { recentlyViewed } from "@/lib/product/recentlyViewed";
-import { fetchProducts, fetchProduct } from "@/lib/square/client";
+import { fetchProducts } from "@/lib/square/client";
 
 async function testServices() {
   console.log("🧪 Testing Related Products & Recently Viewed Services\n");

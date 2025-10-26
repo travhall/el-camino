@@ -19,30 +19,31 @@ if (!slug) return Astro.redirect("/404");
 // Uses direct category lookup with retry + cache invalidation
 // Handles Netlify Blobs eventual consistency (60s propagation)
 // Expected improvement: -150ms per page load + eliminates 404s
-const { category, parentCategory, subcategories } = await resolveCategoryPathWithRetry(slug);
+const { category, parentCategory, subcategories } =
+  await resolveCategoryPathWithRetry(slug);
 
 if (!category) return Astro.redirect("/404");
 
 // === PARSE URL PARAMETERS FOR FILTERING ===
 const filters = parseFiltersFromURL(Astro.url.searchParams);
 
-console.log(`[Category] 🔍 URL Parsing:`, {
-  searchParams: Astro.url.search,
-  parsedFilters: filters,
-  hasBrands: filters.brands.length > 0,
-  hasAvailability: filters.availability,
-});
+// console.log(`[Category] 🔍 URL Parsing:`, {
+//   searchParams: Astro.url.search,
+//   parsedFilters: filters,
+//   hasBrands: filters.brands.length > 0,
+//   hasAvailability: filters.availability,
+// });
 
 // Check for active filters
 const hasFilters = Object.values(filters).some((f) =>
   Array.isArray(f) ? f.length > 0 : f === true
 );
 
-console.log(`[Category] 📊 Filter Analysis:`, {
-  hasFilters,
-  filterValues: Object.values(filters),
-  filtersBreakdown: filters,
-});
+// console.log(`[Category] 📊 Filter Analysis:`, {
+//   hasFilters,
+//   filterValues: Object.values(filters),
+//   filtersBreakdown: filters,
+// });
 
 import type { Product } from "@/lib/square/types";
 
@@ -54,50 +55,52 @@ let filterOptions = {
 
 try {
   // Fetch ALL products for infinite scroll and client-side filtering
-  console.log(
-    `[Category] Fetching all products for category: ${category.name} (ID: ${category.id})`
-  );
+  // console.log(
+  //   `[Category] Fetching all products for category: ${category.name} (ID: ${category.id})`
+  // );
 
   const productData = await fetchProductsByCategory(category.id, {
     limit: 200,
   });
   allProducts = productData.products;
-  
-  console.log(`[Category] Square API returned ${allProducts.length} products for category ID: ${category.id}`);
+
+  // console.log(
+  //   `[Category] Square API returned ${allProducts.length} products for category ID: ${category.id}`
+  // );
 
   // Extract filter options from all products using the same logic as shop/all
   filterOptions = extractFilterOptions(allProducts);
 
-  console.log(`[Category] Loaded ${allProducts.length} products for filtering`);
+  // console.log(`[Category] Loaded ${allProducts.length} products for filtering`);
 
   if (hasFilters) {
-    console.log(`[Category] 🔄 Applying server-side filtering...`);
-    console.log(
-      `[Category] 📋 Before filtering: ${allProducts.length} products`
-    );
-    console.log(`[Category] 🎯 Filter criteria:`, filters);
+    // console.log(`[Category] 🔄 Applying server-side filtering...`);
+    // console.log(
+    //   `[Category] 📋 Before filtering: ${allProducts.length} products`
+    // );
+    // console.log(`[Category] 🎯 Filter criteria:`, filters);
 
     // Apply server-side filtering using the same logic as shop/all
     filteredProducts = await filterProductsWithCache(allProducts, filters);
 
-    console.log(
-      `[Category] ✅ After filtering: ${filteredProducts.length} products`
-    );
-    console.log(
-      `[Category] 📋 Sample filtered products:`,
-      filteredProducts
-        .slice(0, 3)
-        .map((p) => ({ id: p.id, brand: p.brand, title: p.title }))
-    );
+    // console.log(
+    //   `[Category] ✅ After filtering: ${filteredProducts.length} products`
+    // );
+    // console.log(
+    //   `[Category] 📋 Sample filtered products:`,
+    //   filteredProducts
+    //     .slice(0, 3)
+    //     .map((p) => ({ id: p.id, brand: p.brand, title: p.title }))
+    // );
   } else {
-    console.log(
-      `[Category] ⚪ No filters applied - showing all ${allProducts.length} products`
-    );
+    // console.log(
+    //   `[Category] ⚪ No filters applied - showing all ${allProducts.length} products`
+    // );
     // No filters applied - show all products
     filteredProducts = [...allProducts];
   }
 } catch (error) {
-  console.error("Error fetching products:", error);
+  // console.error("Error fetching products:", error);
   allProducts = [];
   filteredProducts = [];
 }
@@ -124,13 +127,13 @@ const categoryPath = parentCategory
 const hasActiveFilters =
   filters.brands.length > 0 || filters.availability === true;
 
-console.log(`[Category] 🎬 Final data summary:`, {
-  allProductsCount: allProducts.length,
-  filteredProductsCount: filteredProducts.length,
-  hasActiveFilters,
-  categoryPath,
-  sampleFilteredProducts: filteredProducts.slice(0, 2).map((p) => p.brand),
-});
+// console.log(`[Category] 🎬 Final data summary:`, {
+//   allProductsCount: allProducts.length,
+//   filteredProductsCount: filteredProducts.length,
+//   hasActiveFilters,
+//   categoryPath,
+//   sampleFilteredProducts: filteredProducts.slice(0, 2).map((p) => p.brand),
+// });
 ---
 
 <Layout title={fullPageTitle}>
@@ -200,7 +203,7 @@ console.log(`[Category] 🎬 Final data summary:`, {
       <!-- Main Content -->
       <main class="lg:col-span-3 xl:col-span-4">
         <!-- Applied Filters Above Product Grid -->
-        <AppliedFilters categoryPath={categoryPath} classes="hidden lg:block" />
+        <AppliedFilters classes="hidden lg:block" />
 
         <!-- Products -->
         {

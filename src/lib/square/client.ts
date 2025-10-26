@@ -31,9 +31,10 @@ validateEnvironment();
 
 export const squareClient = new Client({
   accessToken: import.meta.env.SQUARE_ACCESS_TOKEN!,
-  environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === 'production'
-    ? Environment.Production
-    : Environment.Sandbox,
+  environment:
+    import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
+      ? Environment.Production
+      : Environment.Sandbox,
   squareVersion: "2024-02-28",
 });
 
@@ -258,13 +259,13 @@ export async function fetchProducts(): Promise<Product[]> {
           };
         });
 
-        console.log(
-          `[fetchProducts] Fetched ${products.length} products, ${
-            products.filter((p) => p.brand).length
-          } with brands, ${products.filter((p) => p.unit).length} with units, ${
-            products.filter((p) => p.sku).length
-          } with SKUs, ${products.length} with human-readable SKUs`
-        );
+        // console.log(
+        //   `[fetchProducts] Fetched ${products.length} products, ${
+        //     products.filter((p) => p.brand).length
+        //   } with brands, ${products.filter((p) => p.unit).length} with units, ${
+        //     products.filter((p) => p.sku).length
+        //   } with SKUs, ${products.length} with human-readable SKUs`
+        // );
 
         return products;
       } catch (error) {
@@ -325,7 +326,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
   return requestDeduplicator.dedupe(cacheKey, () =>
     defaultCircuitBreaker.execute(async () => {
       try {
-        console.log(`[fetchProduct] Fetching product: ${id}`);
+        // console.log(`[fetchProduct] Fetching product: ${id}`);
 
         const { result } = await squareClient.catalogApi.retrieveCatalogObject(
           id,
@@ -444,18 +445,18 @@ export async function fetchProduct(id: string): Promise<Product | null> {
           availableAttributes: availableAttributes, // Add available attributes
         };
 
-        console.log(
-          `[fetchProduct] Successfully fetched product: ${product.title}`,
-          {
-            variations: productVariations.length,
-            hasUnit: !!product.unit,
-            unit: product.unit,
-            brand: product.brand,
-            measurementUnitIds: variations
-              .map((v) => v.itemVariationData?.measurementUnitId)
-              .filter(Boolean),
-          }
-        );
+        // console.log(
+        //   `[fetchProduct] Successfully fetched product: ${product.title}`,
+        //   {
+        //     variations: productVariations.length,
+        //     hasUnit: !!product.unit,
+        //     unit: product.unit,
+        //     brand: product.brand,
+        //     measurementUnitIds: variations
+        //       .map((v) => v.itemVariationData?.measurementUnitId)
+        //       .filter(Boolean),
+        //   }
+        // );
 
         return product;
       } catch (error) {

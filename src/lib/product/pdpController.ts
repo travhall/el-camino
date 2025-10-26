@@ -69,7 +69,7 @@ export class PDPController {
     }
   }
 
-  private updateUIOnly(variation: any): void {
+  private _updateUIOnly(variation: any): void {
     if (!variation) return;
 
     // Use UI manager for all display updates

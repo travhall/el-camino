@@ -40,7 +40,7 @@ export const GET: APIRoute = async ({ url }) => {
           quantity: inventoryMap[v.variationId] || 0,
         }));
       } catch (error) {
-        console.error("Inventory check failed:", error);
+        // console.error("Inventory check failed:", error);
         // Default to in stock if inventory check fails
         product.variations = product.variations.map((v) => ({
           ...v,
@@ -65,14 +65,15 @@ export const GET: APIRoute = async ({ url }) => {
     }
 
     return new Response(JSON.stringify(product), {
-      headers: { 
-        'Content-Type': 'application/json',
+      headers: {
+        "Content-Type": "application/json",
         // Browser: Cache for 1 minute
-        'Cache-Control': 'public, max-age=60, must-revalidate',
+        "Cache-Control": "public, max-age=60, must-revalidate",
         // Netlify CDN: Fresh for 5 minutes, stale for 1 hour
-        'Netlify-CDN-Cache-Control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable',
+        "Netlify-CDN-Cache-Control":
+          "public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable",
         // Cache tag for invalidation
-        'Netlify-Cache-Tag': `product-${productId},products,quick-view`
+        "Netlify-Cache-Tag": `product-${productId},products,quick-view`,
       },
     });
   } catch (error) {

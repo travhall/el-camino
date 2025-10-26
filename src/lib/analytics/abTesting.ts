@@ -100,7 +100,7 @@ class ABTestingFramework {
   createProductPageTest(testName: string, variants: Record<string, any>): string {
     const testId = `pdp-${testName}-${Date.now()}`;
     
-    const variantConfigs = Object.entries(variants).map(([key, config], index) => ({
+    const variantConfigs = Object.entries(variants).map(([key, config], _index) => ({
       id: `variant-${key}`,
       name: key,
       allocation: 100 / Object.keys(variants).length,
@@ -135,7 +135,7 @@ class ABTestingFramework {
   createCartFlowTest(testName: string, variants: Record<string, any>): string {
     const testId = `cart-${testName}-${Date.now()}`;
     
-    const variantConfigs = Object.entries(variants).map(([key, config], index) => ({
+    const variantConfigs = Object.entries(variants).map(([key, config], _index) => ({
       id: `variant-${key}`,
       name: key,
       allocation: 100 / Object.keys(variants).length,

@@ -1,7 +1,7 @@
 // /src/lib/product/breadcrumbs.ts
 
 import type { Product, Category } from "@/lib/square/types";
-import { fetchProductsByCategory, fetchCategories } from "@/lib/square/categories";
+import { fetchProductsByCategory } from "@/lib/square/categories";
 import { siteConfig } from "@/lib/site-config";
 
 /**

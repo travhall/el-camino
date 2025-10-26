@@ -7,14 +7,9 @@ import type { WordPressPage } from "@/lib/wordpress/types";
 import {
   siteConfig,
   getStructuredData,
-  getBusinessHours,
 } from "@/lib/site-config";
 
 const structuredData = getStructuredData();
-
-const businessHours = getBusinessHours();
-const todayIndex = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-const today = businessHours[todayIndex === 0 ? 6 : todayIndex - 1]; // Map Sunday to index 6
 
 const currentYear = new Date().getFullYear();
 const { contact, social, tagline } = siteConfig;
@@ -162,4 +157,4 @@ try {
     <ThemeToggle classes="mb-6 lg:mb-0" />
   </div>
 </footer>
-<script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+<script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />

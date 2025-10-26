@@ -57,27 +57,27 @@ if (looksLikeSquareId) {
     const apiUrl = new URL("/api/resolve-product", Astro.url.origin);
     apiUrl.searchParams.set("slug", slugOrId);
 
-    console.log(`[PDP] Resolving slug via API: ${slugOrId}`);
+    // console.log(`[PDP] Resolving slug via API: ${slugOrId}`);
     const response = await fetch(apiUrl.toString());
 
     if (response.ok) {
       const data = await response.json();
       id = data.id;
-      console.log(`[PDP] API resolved slug "${slugOrId}" to ID: ${id}`);
+      // console.log(`[PDP] API resolved slug "${slugOrId}" to ID: ${id}`);
 
       // Fetch product with resolved ID
       product = await fetchProduct(id);
     } else {
-      console.log(
-        `[PDP] API route failed with status ${response.status}, falling back to direct resolution`
-      );
+      // console.log(
+      //   `[PDP] API route failed with status ${response.status}, falling back to direct resolution`
+      // );
       // API returned error, fallback to direct slug resolution
       allProductsCache = await fetchProducts();
       const slugMapping = createSlugMapping(allProductsCache);
       id = extractIdFromSlug(slugOrId, slugMapping);
 
       if (id) {
-        console.log(`[PDP] Fallback resolved slug "${slugOrId}" to ID: ${id}`);
+        // console.log(`[PDP] Fallback resolved slug "${slugOrId}" to ID: ${id}`);
         product = await fetchProduct(id);
       } else {
         console.error(`[PDP] Failed to resolve slug: ${slugOrId}`);
@@ -91,9 +91,9 @@ if (looksLikeSquareId) {
     id = extractIdFromSlug(slugOrId, slugMapping);
 
     if (id) {
-      console.log(
-        `[PDP] Fallback (after error) resolved slug "${slugOrId}" to ID: ${id}`
-      );
+      // console.log(
+      //   `[PDP] Fallback (after error) resolved slug "${slugOrId}" to ID: ${id}`
+      // );
       product = await fetchProduct(id);
     } else {
       console.error(`[PDP] Failed to resolve slug after error: ${slugOrId}`);
@@ -106,9 +106,9 @@ if (!product) {
   return Astro.redirect("/404");
 }
 
-console.log(
-  `[PDP] Successfully loaded product: ${product.title} (ID: ${product.id})`
-);
+// console.log(
+//   `[PDP] Successfully loaded product: ${product.title} (ID: ${product.id})`
+// );
 
 // Handle variant parameter
 if (variantParam && product.variations) {
@@ -434,7 +434,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                             data-attribute-type={attributeType}
                             data-attribute-value={value}
                             class:list={[
-                              "px-2.5 py-1.5 border rounded-[4px] attribute-button cursor-pointer",
+                              "px-2.5 py-1.5 border rounded-sm attribute-button cursor-pointer",
                               "bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50",
                               !isAvailable && "opacity-50",
                             ]}
@@ -469,7 +469,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                   >
                     {displayName}
                   </label>
-                  <div class="inline-block px-4 py-2 bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50 rounded-[4px] cursor-pointer">
+                  <div class="inline-block px-4 py-2 bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50 rounded-sm cursor-pointer">
                     {attributeValues[0]}
                   </div>
                 </div>
@@ -496,7 +496,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                     data-image={variation.image || ""}
                     data-unit={variation.unit || ""}
                     class:list={[
-                      "px-4 py-2 border rounded-[4px] cursor-pointer",
+                      "px-4 py-2 border rounded-sm cursor-pointer",
                       variation.variationId === defaultVariationId
                         ? "bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50"
                         : "bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50",
@@ -520,7 +520,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                 <label for="quantity-input" class="text-sm font-medium">
                   Quantity
                 </label>
-                <div class="flex border border-(--ui-input-border)/50 rounded-[4px] overflow-hidden">
+                <div class="flex border border-(--ui-input-border)/50 rounded-sm overflow-hidden">
                   <button
                     type="button"
                     id="decrease-quantity"

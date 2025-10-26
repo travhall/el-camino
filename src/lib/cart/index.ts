@@ -1,6 +1,6 @@
 // src/lib/cart/index.ts - COMPLETE FIXED VERSION
 import type { CartItem, CartEvent, CartState } from "./types";
-import type { OrderRequest, ProductAvailabilityInfo } from "../square/types";
+import type { ProductAvailabilityInfo } from "../square/types";
 import { checkBulkInventory } from "../square/inventory";
 import { ProductAvailabilityState, getAvailabilityInfo } from "../square/types";
 
@@ -123,16 +123,16 @@ class CartManager implements ICartManager {
     }
 
     try {
-      console.log("Loading cart from localStorage");
+      // console.log("Loading cart from localStorage");
       const savedCart = this.storage.getItem(CART_STORAGE_KEY);
 
       if (!savedCart) {
-        console.log("No saved cart found in localStorage");
+        // console.log("No saved cart found in localStorage");
         return;
       }
 
       const items = JSON.parse(savedCart);
-      console.log(`Loaded ${items.length} items from localStorage:`, items);
+      // console.log(`Loaded ${items.length} items from localStorage:`, items);
 
       // Clear existing items and add loaded ones
       this.items.clear();
@@ -140,9 +140,9 @@ class CartManager implements ICartManager {
       if (Array.isArray(items)) {
         items.forEach((item: CartItem) => {
           if (item && item.id && item.quantity > 0) {
-            console.log(
-              `Adding item to cart from storage: ${item.title || item.id}`
-            );
+            // console.log(
+            //   `Adding item to cart from storage: ${item.title || item.id}`
+            // );
             // Create compound key for each item
             const itemKey = `${item.id}:${item.variationId}`;
             this.items.set(itemKey, item);
@@ -152,7 +152,7 @@ class CartManager implements ICartManager {
         console.warn("Saved cart is not an array:", items);
       }
 
-      console.log(`Cart now has ${this.items.size} items after loading`);
+      // console.log(`Cart now has ${this.items.size} items after loading`);
     } catch (error) {
       console.error("Error loading cart:", error);
       this.items.clear();
@@ -166,17 +166,17 @@ class CartManager implements ICartManager {
     }
 
     try {
-      console.log("Saving cart to localStorage");
+      // console.log("Saving cart to localStorage");
       const items = Array.from(this.items.values());
 
       // Create deep clone to avoid reference issues
       const itemsToSave = items.map((item) => ({ ...item }));
 
       // Log what we're saving
-      console.log(
-        `Saving ${itemsToSave.length} items to localStorage:`,
-        itemsToSave
-      );
+      // console.log(
+      //   `Saving ${itemsToSave.length} items to localStorage:`,
+      //   itemsToSave
+      // );
 
       // Serialize and save
       const serialized = JSON.stringify(itemsToSave);
@@ -185,9 +185,9 @@ class CartManager implements ICartManager {
       // Verify data was saved correctly
       const savedData = this.storage.getItem(CART_STORAGE_KEY);
       const parsedData = savedData ? JSON.parse(savedData) : [];
-      console.log(
-        `Verification: saved ${parsedData.length} items to localStorage`
-      );
+      // console.log(
+      //   `Verification: saved ${parsedData.length} items to localStorage`
+      // );
 
       // Dispatch event after successful save
       this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
@@ -207,7 +207,7 @@ class CartManager implements ICartManager {
         }));
 
         this.storage.setItem(CART_STORAGE_KEY, JSON.stringify(simpleItems));
-        console.log("Saved cart with simplified data");
+        // console.log("Saved cart with simplified data");
       } catch (fallbackError) {
         console.error("Critical error saving cart:", fallbackError);
       }
@@ -369,13 +369,13 @@ class CartManager implements ICartManager {
       this.init();
     }
 
-    console.log(`Starting to add item ${item.title} (${item.variationId})`);
+    // console.log(`Starting to add item ${item.title} (${item.variationId})`);
 
     try {
       // Ensure quantity is a valid number
       const requestedQuantity =
         item.quantity && item.quantity > 0 ? item.quantity : 1;
-      console.log(`Requested quantity: ${requestedQuantity}`);
+      // console.log(`Requested quantity: ${requestedQuantity}`);
 
       // Check if item is in stock using backend API
       let availableQuantity = 0;
@@ -398,9 +398,9 @@ class CartManager implements ICartManager {
           throw new Error(data.error || "Unknown inventory check error");
         }
 
-        console.log(
-          `Item ${item.variationId} available quantity: ${availableQuantity}`
-        );
+        // console.log(
+        //   `Item ${item.variationId} available quantity: ${availableQuantity}`
+        // );
       } catch (inventoryError) {
         console.warn(
           "Inventory check failed, proceeding with add:",
@@ -413,7 +413,7 @@ class CartManager implements ICartManager {
 
       // Only block completely out of stock items
       if (availableQuantity <= 0) {
-        console.log(`Item is out of stock`);
+        // console.log(`Item is out of stock`);
         return {
           success: false,
           message: "This item is out of stock",
@@ -426,16 +426,16 @@ class CartManager implements ICartManager {
       // Check if this specific variation is already in the cart
       const existingItem = this.items.get(itemKey);
 
-      console.log(`Checking cart for item with key: ${itemKey}`);
-      console.log(`Existing item found?`, existingItem ? "Yes" : "No");
+      // console.log(`Checking cart for item with key: ${itemKey}`);
+      // console.log(`Existing item found?`, existingItem ? "Yes" : "No");
 
       // Calculate current cart quantity and new total
       const currentCartQty = existingItem?.quantity || 0;
       const newTotalQty = currentCartQty + requestedQuantity;
 
-      console.log(
-        `Current quantity in cart: ${currentCartQty}, Adding: ${requestedQuantity}, New total would be: ${newTotalQty}, Available: ${availableQuantity}`
-      );
+      // console.log(
+      //   `Current quantity in cart: ${currentCartQty}, Adding: ${requestedQuantity}, New total would be: ${newTotalQty}, Available: ${availableQuantity}`
+      // );
 
       // Check if adding would exceed available inventory
       if (newTotalQty > availableQuantity) {
@@ -454,12 +454,12 @@ class CartManager implements ICartManager {
           // Update existing item to maximum
           existingItem.quantity = availableQuantity;
           this.items.set(itemKey, existingItem);
-          console.log(`Updated item quantity to maximum: ${availableQuantity}`);
+          // console.log(`Updated item quantity to maximum: ${availableQuantity}`);
         } else {
           // Add new item with maximum quantity
           const newItem = { ...item, quantity: possibleToAdd };
           this.items.set(itemKey, newItem);
-          console.log(`Added new item with maximum quantity: ${possibleToAdd}`);
+          // console.log(`Added new item with maximum quantity: ${possibleToAdd}`);
         }
 
         // Save changes
@@ -478,7 +478,7 @@ class CartManager implements ICartManager {
         // Update with the NEW TOTAL quantity
         existingItem.quantity = newTotalQty;
         this.items.set(itemKey, existingItem);
-        console.log(`Updated existing item, new quantity: ${newTotalQty}`);
+        // console.log(`Updated existing item, new quantity: ${newTotalQty}`);
       } else {
         // Create a deep copy with the requested quantity
         const newItem = {
@@ -495,7 +495,7 @@ class CartManager implements ICartManager {
         };
 
         this.items.set(itemKey, newItem);
-        console.log(`Added new item with quantity: ${requestedQuantity}`);
+        // console.log(`Added new item with quantity: ${requestedQuantity}`);
       }
 
       // Save changes and dispatch events

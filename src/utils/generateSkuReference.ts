@@ -5,7 +5,6 @@ import { fetchProducts } from "@/lib/square/client";
 import { fetchCategoryHierarchy } from "@/lib/square/categories";
 import { squareClient } from "@/lib/square/client";
 import type { Product } from "@/lib/square/types";
-import type { CategoryHierarchy } from "@/lib/square/types";
 
 export interface SkuReference {
   humanReadableSku: string;
@@ -156,7 +155,7 @@ export async function generateSkuReference(): Promise<{
  * Get category assignments for products by searching Square catalog
  * Handles both legacy categoryId and modern categories array
  */
-async function getProductCategoryMappings(products: Product[]): Promise<Map<string, { categoryId: string }>> {
+async function getProductCategoryMappings(_products: Product[]): Promise<Map<string, { categoryId: string }>> {
   const mappings = new Map<string, { categoryId: string }>();
   
   try {

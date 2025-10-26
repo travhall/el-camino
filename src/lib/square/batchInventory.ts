@@ -15,7 +15,7 @@ export class BatchInventoryService {
   private cache = new Map<string, { data: InventoryStatus; expires: number }>();
   private readonly MAX_BATCH_SIZE = 50; // Square API limit
   private readonly DEFAULT_CACHE_TTL = this.getConfiguredTTL();
-  
+
   // Feature flag: Set to true to use TRUE batch API (recommended)
   // Set to false to use fallback individual calls (current behavior)
   private readonly USE_TRUE_BATCH_API = true;
@@ -161,32 +161,35 @@ export class BatchInventoryService {
   ): Promise<Map<string, InventoryStatus>> {
     // Feature flag: Use true batch API or fallback to individual calls
     if (!this.USE_TRUE_BATCH_API) {
-      console.log('[BatchInventory] Using FALLBACK individual calls (feature flag disabled)');
+      // console.log('[BatchInventory] Using FALLBACK individual calls (feature flag disabled)');
       return this.processBatchFallback(variationIds);
     }
 
     return defaultCircuitBreaker.execute(async () => {
       try {
         const startTime = performance.now();
-        console.log(
-          `[BatchInventory] Using TRUE batch API for ${variationIds.length} items`
-        );
+        // console.log(
+        //   `[BatchInventory] Using TRUE batch API for ${variationIds.length} items`
+        // );
 
         // Get location ID from environment
         const locationId = import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
         if (!locationId) {
-          console.warn('[BatchInventory] No location ID found, falling back to individual calls');
+          console.warn(
+            "[BatchInventory] No location ID found, falling back to individual calls"
+          );
           return this.processBatchFallback(variationIds);
         }
 
         // TRUE BATCH API CALL (Legacy SDK method name)
         // variationIds work directly as catalogObjectIds (confirmed by research)
-        const response = await squareClient.inventoryApi.batchRetrieveInventoryCounts({
-          catalogObjectIds: variationIds,
-          locationIds: [locationId],
-          states: ['IN_STOCK'], // Only fetch in-stock quantities
-          limit: 100 // Square's maximum per batch
-        });
+        const response =
+          await squareClient.inventoryApi.batchRetrieveInventoryCounts({
+            catalogObjectIds: variationIds,
+            locationIds: [locationId],
+            states: ["IN_STOCK"], // Only fetch in-stock quantities
+            limit: 100, // Square's maximum per batch
+          });
 
         const batchResults = new Map<string, InventoryStatus>();
         let processedCount = 0;
@@ -194,14 +197,12 @@ export class BatchInventoryService {
         // Process response from legacy SDK
         // Response structure: { result: { counts: [...], cursor: ... } }
         const counts = response.result?.counts || [];
-        
+
         for (const count of counts) {
           const variationId = count.catalogObjectId;
           if (!variationId) continue;
 
-          const quantity = count.quantity 
-            ? parseInt(count.quantity, 10) 
-            : 0;
+          const quantity = count.quantity ? parseInt(count.quantity, 10) : 0;
 
           batchResults.set(variationId, {
             isOutOfStock: quantity <= 0,
@@ -209,7 +210,7 @@ export class BatchInventoryService {
             totalQuantity: quantity,
             error: false,
           });
-          
+
           processedCount++;
         }
 
@@ -227,12 +228,19 @@ export class BatchInventoryService {
 
         const duration = performance.now() - startTime;
         console.log(
-          `[BatchInventory] ✅ TRUE batch processed ${processedCount}/${variationIds.length} items in ${duration.toFixed(2)}ms (${(duration / variationIds.length).toFixed(2)}ms per item)`
+          `[BatchInventory] ✅ TRUE batch processed ${processedCount}/${
+            variationIds.length
+          } items in ${duration.toFixed(2)}ms (${(
+            duration / variationIds.length
+          ).toFixed(2)}ms per item)`
         );
 
         return batchResults;
       } catch (error) {
-        console.error('[BatchInventory] TRUE batch API failed, falling back to individual calls:', error);
+        console.error(
+          "[BatchInventory] TRUE batch API failed, falling back to individual calls:",
+          error
+        );
         // Fallback to individual calls if batch fails
         return this.processBatchFallback(variationIds);
       }
@@ -257,16 +265,23 @@ export class BatchInventoryService {
         // Use individual inventory calls in parallel
         const inventoryPromises = variationIds.map(async (variationId) => {
           try {
-            const response = await squareClient.inventoryApi.retrieveInventoryCount(variationId);
-            
+            const response =
+              await squareClient.inventoryApi.retrieveInventoryCount(
+                variationId
+              );
+
             // Process the response similar to individual inventory check
             const counts = response.result.counts || [];
-            const inStockCount = counts.find((count) => count.state === "IN_STOCK");
-            const quantity = inStockCount?.quantity ? parseInt(inStockCount.quantity, 10) : 0;
-            
+            const inStockCount = counts.find(
+              (count) => count.state === "IN_STOCK"
+            );
+            const quantity = inStockCount?.quantity
+              ? parseInt(inStockCount.quantity, 10)
+              : 0;
+
             const isOutOfStock = quantity <= 0;
             const hasLimitedOptions = quantity > 0 && quantity <= 3;
-            
+
             return {
               variationId,
               status: {
@@ -274,10 +289,13 @@ export class BatchInventoryService {
                 hasLimitedOptions,
                 totalQuantity: quantity,
                 error: false,
-              }
+              },
             };
           } catch (error) {
-            console.error(`[BatchInventory] Error checking inventory for ${variationId}:`, error);
+            console.error(
+              `[BatchInventory] Error checking inventory for ${variationId}:`,
+              error
+            );
             return {
               variationId,
               status: {
@@ -285,23 +303,27 @@ export class BatchInventoryService {
                 hasLimitedOptions: false,
                 totalQuantity: 0,
                 error: true,
-              }
+              },
             };
           }
         });
 
         const results = await Promise.all(inventoryPromises);
         const batchResults = new Map<string, InventoryStatus>();
-        
+
         results.forEach(({ variationId, status }) => {
           batchResults.set(variationId, status);
         });
 
         const duration = performance.now() - startTime;
         console.log(
-          `[BatchInventory] ⚠️ FALLBACK processed ${batchResults.size} items in ${duration.toFixed(2)}ms (${(duration / variationIds.length).toFixed(2)}ms per item)`
+          `[BatchInventory] ⚠️ FALLBACK processed ${
+            batchResults.size
+          } items in ${duration.toFixed(2)}ms (${(
+            duration / variationIds.length
+          ).toFixed(2)}ms per item)`
         );
-        
+
         return batchResults;
       } catch (error) {
         const appError = processSquareError(error, "processBatchFallback");

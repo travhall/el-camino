@@ -8,7 +8,7 @@ interface Props {
   baseURL: string;
 }
 
-const { currentPage, totalPages, totalPosts, postsPerPage, baseURL } =
+const { currentPage, totalPages, totalPosts, postsPerPage, baseURL: _baseURL } =
   Astro.props;
 
 // Don't render if only one page
@@ -55,23 +55,6 @@ function generatePageNumbers(
 }
 
 const pageNumbers = generatePageNumbers(currentPage, totalPages);
-
-// URL generation that preserves current filters and view using news-aware utility
-import { createNewsAwareURL } from "@/utils/newsNavigation";
-
-const buildNewsURL = (page: number): string => {
-  const currentParams = new URLSearchParams(
-    typeof window !== "undefined" ? window.location.search : ""
-  );
-
-  if (page > 1) {
-    currentParams.set("page", page.toString());
-  } else {
-    currentParams.delete("page");
-  }
-
-  return createNewsAwareURL(baseURL, currentParams);
-};
 
 // Calculate result range for display
 const startResult = (currentPage - 1) * postsPerPage + 1;

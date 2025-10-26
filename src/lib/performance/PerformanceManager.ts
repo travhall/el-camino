@@ -3,7 +3,7 @@
  * File: src/lib/performance/PerformanceManager.ts
  */
 
-import { onCLS, onFCP, onLCP, onTTFB, onINP } from 'web-vitals';
+import { onCLS, onFCP, onLCP, onTTFB, onINP } from "web-vitals";
 
 export interface PerformanceMetrics {
   lcp: number | null;
@@ -60,14 +60,14 @@ class PerformanceManager {
     cls: null,
     inp: null,
     ttfb: null,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   };
 
   private cacheMetrics: CacheMetrics = {
     hitRate: 0,
     missCount: 0,
     totalRequests: 0,
-    avgResponseTime: 0
+    avgResponseTime: 0,
   };
 
   private imageMetrics: ImageOptimizationMetrics = {
@@ -75,7 +75,7 @@ class PerformanceManager {
     webpUsage: 0,
     jpegUsage: 0,
     avgLoadTime: 0,
-    totalImages: 0
+    totalImages: 0,
   };
 
   private pwaMetrics: PWAMetrics = {
@@ -83,18 +83,23 @@ class PerformanceManager {
     installPromptShown: false,
     installAccepted: false,
     offlinePageViews: 0,
-    cacheHits: 0
+    cacheHits: 0,
   };
 
   private initialized = false;
   private reportingEndpoint: string | null = null;
 
   // Non-blocking storage properties
-  private storageQueue: Array<{metric: string, value: number, timestamp: number, url: string}> = [];
+  private storageQueue: Array<{
+    metric: string;
+    value: number;
+    timestamp: number;
+    url: string;
+  }> = [];
   private storeTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       this.init();
     }
   }
@@ -104,23 +109,23 @@ class PerformanceManager {
 
     // Initialize Web Vitals monitoring
     this.initWebVitalsTracking();
-    
+
     // Initialize resource monitoring
     this.initResourceMonitoring();
-    
+
     // Initialize PWA monitoring
     this.initPWAMonitoring();
-    
+
     // Initialize image optimization tracking
     this.initImageOptimizationTracking();
 
     // Report metrics periodically
     this.startPeriodicReporting();
-    
+
     this.initialized = true;
 
     if (import.meta.env.DEV) {
-      console.log('[PerformanceManager] Initialized with monitoring');
+      console.log("[PerformanceManager] Initialized with monitoring");
     }
   }
 
@@ -129,31 +134,31 @@ class PerformanceManager {
     onLCP((metric) => {
       this.metrics.lcp = metric.value;
       this.metrics.timestamp = Date.now();
-      this.reportMetric('lcp', metric.value);
+      this.reportMetric("lcp", metric.value);
     });
 
     // Track First Contentful Paint
     onFCP((metric) => {
       this.metrics.fcp = metric.value;
-      this.reportMetric('fcp', metric.value);
+      this.reportMetric("fcp", metric.value);
     });
 
     // Track Cumulative Layout Shift
     onCLS((metric) => {
       this.metrics.cls = metric.value;
-      this.reportMetric('cls', metric.value);
+      this.reportMetric("cls", metric.value);
     });
 
     // Track Interaction to Next Paint
     onINP((metric) => {
       this.metrics.inp = metric.value;
-      this.reportMetric('inp', metric.value);
+      this.reportMetric("inp", metric.value);
     });
 
     // Track Time to First Byte
     onTTFB((metric) => {
       this.metrics.ttfb = metric.value;
-      this.reportMetric('ttfb', metric.value);
+      this.reportMetric("ttfb", metric.value);
     });
   }
 
@@ -166,25 +171,29 @@ class PerformanceManager {
     window.fetch = async (...args) => {
       const startTime = performance.now();
       requestCount++;
-      
+
       try {
         const response = await originalFetch(...args);
         const endTime = performance.now();
         const responseTime = endTime - startTime;
-        
+
         totalResponseTime += responseTime;
         this.cacheMetrics.totalRequests = requestCount;
         this.cacheMetrics.avgResponseTime = totalResponseTime / requestCount;
-        
+
         // Check if response came from cache
-        if (response.headers.get('X-Cache') === 'HIT' || 
-            response.headers.get('CF-Cache-Status') === 'HIT') {
-          this.cacheMetrics.hitRate = ((this.cacheMetrics.hitRate * (requestCount - 1)) + 1) / requestCount;
+        if (
+          response.headers.get("X-Cache") === "HIT" ||
+          response.headers.get("CF-Cache-Status") === "HIT"
+        ) {
+          this.cacheMetrics.hitRate =
+            (this.cacheMetrics.hitRate * (requestCount - 1) + 1) / requestCount;
         } else {
           this.cacheMetrics.missCount++;
-          this.cacheMetrics.hitRate = ((this.cacheMetrics.hitRate * (requestCount - 1)) + 0) / requestCount;
+          this.cacheMetrics.hitRate =
+            (this.cacheMetrics.hitRate * (requestCount - 1) + 0) / requestCount;
         }
-        
+
         return response;
       } catch (error) {
         this.cacheMetrics.missCount++;
@@ -195,29 +204,29 @@ class PerformanceManager {
 
   private initPWAMonitoring(): void {
     // Check if service worker is active
-    if ('serviceWorker' in navigator) {
+    if ("serviceWorker" in navigator) {
       navigator.serviceWorker.ready.then(() => {
         this.pwaMetrics.serviceWorkerActive = true;
       });
 
       // Listen for service worker messages
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data?.type === 'CACHE_HIT') {
+      navigator.serviceWorker.addEventListener("message", (event) => {
+        if (event.data?.type === "CACHE_HIT") {
           this.pwaMetrics.cacheHits++;
         }
-        if (event.data?.type === 'OFFLINE_PAGE_VIEW') {
+        if (event.data?.type === "OFFLINE_PAGE_VIEW") {
           this.pwaMetrics.offlinePageViews++;
         }
       });
     }
 
     // Monitor install prompt
-    window.addEventListener('beforeinstallprompt', () => {
+    window.addEventListener("beforeinstallprompt", () => {
       this.pwaMetrics.installPromptShown = true;
     });
 
     // Monitor app installation
-    window.addEventListener('appinstalled', () => {
+    window.addEventListener("appinstalled", () => {
       this.pwaMetrics.installAccepted = true;
     });
   }
@@ -229,8 +238,11 @@ class PerformanceManager {
         mutation.addedNodes.forEach((node) => {
           if (node.nodeType === Node.ELEMENT_NODE) {
             const element = node as Element;
-            const images = element.tagName === 'IMG' ? [element] : element.querySelectorAll('img');
-            
+            const images =
+              element.tagName === "IMG"
+                ? [element]
+                : element.querySelectorAll("img");
+
             images.forEach((img) => {
               this.trackImageLoad(img as HTMLImageElement);
             });
@@ -241,43 +253,44 @@ class PerformanceManager {
 
     observer.observe(document.body, {
       childList: true,
-      subtree: true
+      subtree: true,
     });
 
     // Track existing images
-    document.querySelectorAll('img').forEach((img) => {
+    document.querySelectorAll("img").forEach((img) => {
       this.trackImageLoad(img);
     });
   }
 
   private trackImageLoad(img: HTMLImageElement): void {
     const startTime = performance.now();
-    
+
     const handleLoad = () => {
       const loadTime = performance.now() - startTime;
       const src = img.currentSrc || img.src;
-      
+
       this.imageMetrics.totalImages++;
-      this.imageMetrics.avgLoadTime = 
-        ((this.imageMetrics.avgLoadTime * (this.imageMetrics.totalImages - 1)) + loadTime) / 
+      this.imageMetrics.avgLoadTime =
+        (this.imageMetrics.avgLoadTime * (this.imageMetrics.totalImages - 1) +
+          loadTime) /
         this.imageMetrics.totalImages;
 
       // Detect format
-      if (src.includes('.avif') || src.includes('f=avif')) {
+      if (src.includes(".avif") || src.includes("f=avif")) {
         this.imageMetrics.avifUsage++;
-      } else if (src.includes('.webp') || src.includes('f=webp')) {
+      } else if (src.includes(".webp") || src.includes("f=webp")) {
         this.imageMetrics.webpUsage++;
       } else {
         this.imageMetrics.jpegUsage++;
       }
 
-      img.removeEventListener('load', handleLoad);
+      img.removeEventListener("load", handleLoad);
     };
 
     if (img.complete) {
       handleLoad();
     } else {
-      img.addEventListener('load', handleLoad);
+      img.addEventListener("load", handleLoad);
     }
   }
 
@@ -291,17 +304,19 @@ class PerformanceManager {
     this.storeMetricLocally(metric, value);
 
     if (import.meta.env.DEV) {
-      console.log(`[PerformanceManager] ${metric.toUpperCase()}: ${value.toFixed(2)}`);
+      console.log(
+        `[PerformanceManager] ${metric.toUpperCase()}: ${value.toFixed(2)}`
+      );
     }
   }
 
   private shouldAlert(metric: string, value: number): boolean {
     const thresholds = {
-      lcp: 2500,   // 2.5 seconds
-      cls: 0.1,    // 0.1
-      inp: 200,    // 200ms
-      fcp: 1800,   // 1.8 seconds
-      ttfb: 800    // 800ms
+      lcp: 2500, // 2.5 seconds
+      cls: 0.1, // 0.1
+      inp: 200, // 200ms
+      fcp: 1800, // 1.8 seconds
+      ttfb: 800, // 800ms
     };
 
     return value > (thresholds[metric as keyof typeof thresholds] || Infinity);
@@ -311,56 +326,56 @@ class PerformanceManager {
     if (!this.reportingEndpoint) return;
 
     fetch(this.reportingEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        type: 'performance_alert',
+        type: "performance_alert",
         metric,
         value,
         url: window.location.href,
         userAgent: navigator.userAgent,
-        timestamp: Date.now()
-      })
+        timestamp: Date.now(),
+      }),
     }).catch(console.error);
   }
 
   private storeMetricLocally(metric: string, value: number): void {
     // NON-BLOCKING: Queue for batch storage
-    this.storageQueue.push({ 
-      metric, 
-      value, 
+    this.storageQueue.push({
+      metric,
+      value,
       timestamp: Date.now(),
-      url: window.location.pathname
+      url: window.location.pathname,
     });
-    
+
     if (this.storeTimeout) clearTimeout(this.storeTimeout);
     this.storeTimeout = setTimeout(() => this.flushStorageQueue(), 1000);
   }
 
   private flushStorageQueue(): void {
     if (this.storageQueue.length === 0) return;
-    
+
     // Use requestIdleCallback to avoid blocking main thread
     const flush = () => {
       try {
-        const stored = localStorage.getItem('performance_metrics') || '[]';
+        const stored = localStorage.getItem("performance_metrics") || "[]";
         const metrics = JSON.parse(stored);
         metrics.push(...this.storageQueue);
-        
+
         // Keep only last 100 entries
         if (metrics.length > 100) {
           metrics.splice(0, metrics.length - 100);
         }
-        
-        localStorage.setItem('performance_metrics', JSON.stringify(metrics));
+
+        localStorage.setItem("performance_metrics", JSON.stringify(metrics));
         this.storageQueue = [];
       } catch (error) {
-        console.warn('[PerformanceManager] Storage failed:', error);
+        console.warn("[PerformanceManager] Storage failed:", error);
         this.storageQueue = [];
       }
     };
 
-    if ('requestIdleCallback' in window) {
+    if ("requestIdleCallback" in window) {
       requestIdleCallback(flush);
     } else {
       // Fallback for browsers without requestIdleCallback
@@ -379,15 +394,15 @@ class PerformanceManager {
     if (!this.reportingEndpoint) return;
 
     const data = this.getAllMetrics();
-    
+
     fetch(this.reportingEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        type: 'comprehensive_metrics',
+        type: "comprehensive_metrics",
         data,
-        timestamp: Date.now()
-      })
+        timestamp: Date.now(),
+      }),
     }).catch(console.error);
   }
 
@@ -397,7 +412,7 @@ class PerformanceManager {
       coreWebVitals: { ...this.metrics },
       cacheMetrics: { ...this.cacheMetrics },
       imageOptimization: { ...this.imageMetrics },
-      pwaMetrics: { ...this.pwaMetrics }
+      pwaMetrics: { ...this.pwaMetrics },
     };
   }
 
@@ -408,7 +423,7 @@ class PerformanceManager {
   public updateCacheMetrics(newMetrics: Partial<CacheMetrics>): void {
     this.cacheMetrics = {
       ...this.cacheMetrics,
-      ...newMetrics
+      ...newMetrics,
     };
   }
 
@@ -424,12 +439,12 @@ class PerformanceManager {
       issues.push(`LCP too slow: ${this.metrics.lcp}ms`);
       score -= 20;
     }
-    
+
     if (this.metrics.cls && this.metrics.cls > 0.1) {
       issues.push(`CLS too high: ${this.metrics.cls}`);
       score -= 15;
     }
-    
+
     if (this.metrics.inp && this.metrics.inp > 200) {
       issues.push(`INP too slow: ${this.metrics.inp}ms`);
       score -= 15;
@@ -437,15 +452,20 @@ class PerformanceManager {
 
     // Check cache performance
     if (this.cacheMetrics.hitRate < 0.5) {
-      issues.push(`Low cache hit rate: ${(this.cacheMetrics.hitRate * 100).toFixed(1)}%`);
+      issues.push(
+        `Low cache hit rate: ${(this.cacheMetrics.hitRate * 100).toFixed(1)}%`
+      );
       score -= 10;
     }
 
     // Check image optimization
-    const modernFormatUsage = (this.imageMetrics.avifUsage + this.imageMetrics.webpUsage) / 
-                              this.imageMetrics.totalImages;
+    const modernFormatUsage =
+      (this.imageMetrics.avifUsage + this.imageMetrics.webpUsage) /
+      this.imageMetrics.totalImages;
     if (modernFormatUsage < 0.7) {
-      issues.push(`Low modern format usage: ${(modernFormatUsage * 100).toFixed(1)}%`);
+      issues.push(
+        `Low modern format usage: ${(modernFormatUsage * 100).toFixed(1)}%`
+      );
       score -= 10;
     }
 
@@ -470,34 +490,50 @@ class PerformanceManager {
 /**
  * Track cache performance metrics for monitoring and optimization
  */
-export function trackCachePerformance(cacheType: string, hit: boolean, responseTime: number): void {
+export function trackCachePerformance(
+  cacheType: string,
+  hit: boolean,
+  responseTime: number
+): void {
   const metrics = {
     type: cacheType,
     hit,
     responseTime,
     timestamp: Date.now(),
-    url: typeof window !== 'undefined' ? window.location.pathname : 'unknown'
+    url: typeof window !== "undefined" ? window.location.pathname : "unknown",
   };
-  
+
   // Store metrics for dashboard
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     try {
-      const cacheMetrics = JSON.parse(localStorage.getItem('cacheMetrics') || '[]');
+      const cacheMetrics = JSON.parse(
+        localStorage.getItem("cacheMetrics") || "[]"
+      );
       cacheMetrics.push(metrics);
       if (cacheMetrics.length > 500) cacheMetrics.shift(); // Keep last 500 entries
-      localStorage.setItem('cacheMetrics', JSON.stringify(cacheMetrics));
-      
+      localStorage.setItem("cacheMetrics", JSON.stringify(cacheMetrics));
+
       // Also update the performance manager cache metrics
       performanceManager.updateCacheMetrics({
         lastUpdate: Date.now(),
         totalRequests: cacheMetrics.length,
-        hitRate: cacheMetrics.filter((m: CacheMetricEntry) => m.hit).length / cacheMetrics.length,
-        avgResponseTime: cacheMetrics.reduce((sum: number, m: CacheMetricEntry) => sum + m.responseTime, 0) / cacheMetrics.length
+        hitRate:
+          cacheMetrics.filter((m: CacheMetricEntry) => m.hit).length /
+          cacheMetrics.length,
+        avgResponseTime:
+          cacheMetrics.reduce(
+            (sum: number, m: CacheMetricEntry) => sum + m.responseTime,
+            0
+          ) / cacheMetrics.length,
       });
-      
-      console.log(`[CacheTracker] ${cacheType}: ${hit ? 'HIT' : 'MISS'} (${responseTime}ms)`);
+
+      console.log(
+        `[CacheTracker] ${cacheType}: ${
+          hit ? "HIT" : "MISS"
+        } (${responseTime}ms)`
+      );
     } catch (error) {
-      console.warn('[CacheTracker] Failed to store cache metrics:', error);
+      console.warn("[CacheTracker] Failed to store cache metrics:", error);
     }
   }
 }
@@ -505,16 +541,16 @@ export function trackCachePerformance(cacheType: string, hit: boolean, responseT
 export const performanceManager = new PerformanceManager();
 
 // Initialize immediately if in browser
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   performanceManager;
-  
+
   // Ensure storage queue is flushed on page unload
-  window.addEventListener('beforeunload', () => {
+  window.addEventListener("beforeunload", () => {
     performanceManager.cleanup();
   });
-  
+
   // Also flush on Astro page transitions
-  document.addEventListener('astro:before-preparation', () => {
+  document.addEventListener("astro:before-preparation", () => {
     performanceManager.cleanup();
   });
 }

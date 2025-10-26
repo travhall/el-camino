@@ -36,7 +36,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
     );
   } catch (error) {
-    console.error("[API] Load more products error:", error);
+    // console.error("[API] Load more products error:", error);
     return new Response(
       JSON.stringify({
         success: false,

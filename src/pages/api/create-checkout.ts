@@ -6,9 +6,10 @@ import { checkBulkInventory } from "@/lib/square/inventory";
 
 const squareClient = new Client({
   accessToken: import.meta.env.SQUARE_ACCESS_TOKEN || "",
-  environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === 'production'
-    ? Environment.Production
-    : Environment.Sandbox,
+  environment:
+    import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
+      ? Environment.Production
+      : Environment.Sandbox,
   squareVersion: "2024-02-28",
 });
 
@@ -133,7 +134,7 @@ export const POST: APIRoute = async ({ request }) => {
       })
     );
   } catch (error) {
-    console.error("Checkout error:", error);
+    // console.error("Checkout error:", error);
     return new Response(
       JSON.stringify({
         success: false,

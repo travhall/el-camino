@@ -19,7 +19,7 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    console.log(`[related-products] Fetching for product: ${productId}`);
+    // console.log(`[related-products] Fetching for product: ${productId}`);
     const startTime = Date.now();
 
     // Fetch all products (this will be cached)
@@ -42,9 +42,9 @@ export const GET: APIRoute = async ({ request }) => {
     });
 
     const duration = Date.now() - startTime;
-    console.log(
-      `[related-products] Found ${result.products.length} related products in ${duration}ms`
-    );
+    // console.log(
+    //   `[related-products] Found ${result.products.length} related products in ${duration}ms`
+    // );
 
     const response = new Response(
       JSON.stringify({ products: result.products }),
@@ -67,7 +67,7 @@ export const GET: APIRoute = async ({ request }) => {
 
     return response;
   } catch (error) {
-    console.error("[related-products] Error:", error);
+    // console.error("[related-products] Error:", error);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

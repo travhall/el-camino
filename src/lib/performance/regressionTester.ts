@@ -108,7 +108,7 @@ class RegressionTester {
         // Perform some DOM operations
         testElement.classList.add('test-class');
         testElement.setAttribute('data-test', 'value');
-        const textContent = testElement.textContent;
+        const _textContent = testElement.textContent;
         
         // Clean up
         document.body.removeChild(testElement);

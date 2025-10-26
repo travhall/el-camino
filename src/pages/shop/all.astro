@@ -19,24 +19,23 @@ import type {
 // === PARSE URL PARAMETERS FOR FILTERING ===
 const filters = parseFiltersFromURL(Astro.url.searchParams);
 
-console.log(`[Shop/All] 🔍 URL Parsing:`, {
-  searchParams: Astro.url.search,
-  parsedFilters: filters,
-  hasBrands: filters.brands.length > 0,
-  hasAvailability: filters.availability,
-});
+// console.log(`[Shop/All] 🔍 URL Parsing:`, {
+//   searchParams: Astro.url.search,
+//   parsedFilters: filters,
+//   hasBrands: filters.brands.length > 0,
+//   hasAvailability: filters.availability,
+// });
 
-// Phase 4: Enhanced Server-Side Caching
 // Smart cache headers based on filters
 const hasFilters = Object.values(filters).some((f) =>
   Array.isArray(f) ? f.length > 0 : f === true
 );
 
-console.log(`[Shop/All] 📊 Filter Analysis:`, {
-  hasFilters,
-  filterValues: Object.values(filters),
-  filtersBreakdown: filters,
-});
+// console.log(`[Shop/All] 📊 Filter Analysis:`, {
+//   hasFilters,
+//   filterValues: Object.values(filters),
+//   filtersBreakdown: filters,
+// });
 
 const cacheControl = hasFilters
   ? "public, max-age=60, s-max-age=120, stale-while-revalidate=300" // Shorter cache for filtered results
@@ -69,28 +68,28 @@ try {
   filterOptions = extractFilterOptions(allProducts);
 
   if (hasFilters) {
-    console.log(`[Shop/All] 🔄 Applying server-side filtering...`);
-    console.log(
-      `[Shop/All] 📋 Before filtering: ${allProducts.length} products`
-    );
-    console.log(`[Shop/All] 🎯 Filter criteria:`, filters);
+    // console.log(`[Shop/All] 🔄 Applying server-side filtering...`);
+    // console.log(
+    //   `[Shop/All] 📋 Before filtering: ${allProducts.length} products`
+    // );
+    // console.log(`[Shop/All] 🎯 Filter criteria:`, filters);
 
     // Apply server-side filtering using the same logic as category pages
     filteredProducts = await filterProductsWithCache(allProducts, filters);
 
-    console.log(
-      `[Shop/All] ✅ After filtering: ${filteredProducts.length} products`
-    );
-    console.log(
-      `[Shop/All] 📋 Sample filtered products:`,
-      filteredProducts
-        .slice(0, 3)
-        .map((p) => ({ id: p.id, brand: p.brand, title: p.title }))
-    );
+    // console.log(
+    //   `[Shop/All] ✅ After filtering: ${filteredProducts.length} products`
+    // );
+    // console.log(
+    //   `[Shop/All] 📋 Sample filtered products:`,
+    //   filteredProducts
+    //     .slice(0, 3)
+    //     .map((p) => ({ id: p.id, brand: p.brand, title: p.title }))
+    // );
   } else {
-    console.log(
-      `[Shop/All] ⚪ No filters applied - showing all ${allProducts.length} products`
-    );
+    // console.log(
+    //   `[Shop/All] ⚪ No filters applied - showing all ${allProducts.length} products`
+    // );
     // No filters applied - show all products
     filteredProducts = [...allProducts];
   }
@@ -116,13 +115,13 @@ const categoryPath = "/shop/all";
 const hasActiveFilters =
   filters.brands.length > 0 || filters.availability === true;
 
-console.log(`[Shop/All] 🎬 Final data summary:`, {
-  allProductsCount: allProducts.length,
-  filteredProductsCount: filteredProducts.length,
-  hasActiveFilters,
-  categoryPath,
-  sampleFilteredProducts: filteredProducts.slice(0, 2).map((p) => p.brand),
-});
+// console.log(`[Shop/All] 🎬 Final data summary:`, {
+//   allProductsCount: allProducts.length,
+//   filteredProductsCount: filteredProducts.length,
+//   hasActiveFilters,
+//   categoryPath,
+//   sampleFilteredProducts: filteredProducts.slice(0, 2).map((p) => p.brand),
+// });
 ---
 
 <Layout title={pageTitle}>
@@ -162,7 +161,7 @@ console.log(`[Shop/All] 🎬 Final data summary:`, {
       <!-- Main Content -->
       <main class="lg:col-span-3 xl:col-span-4">
         <!-- Applied Filters Above Product Grid -->
-        <AppliedFilters categoryPath={categoryPath} classes="hidden lg:block" />
+        <AppliedFilters classes="hidden lg:block" />
 
         <!-- Products -->
         {

@@ -46,7 +46,6 @@ describe('Cart Integration Critical Tests', () => {
 
   describe('State synchronization', () => {
     it('maintains cart badge sync', () => {
-      const badge = { updateCount: vi.fn() };
       mockCart.addItem({ id: 'var-1', quantity: 2 });
       // Cart should notify badge of changes
       expect(mockCart.addItem).toHaveBeenCalled();

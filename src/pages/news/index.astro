@@ -235,7 +235,7 @@ const paginatedPosts = displayPosts.slice(
               {hasFilters && (
                 <a
                   href="/news"
-                  class="font-sans font-semibold text-sm text-center py-2 px-4 border-2 rounded-[4px] text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all"
+                  class="font-sans font-semibold text-sm text-center py-2 px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all"
                 >
                   Clear All Filters
                 </a>
@@ -249,36 +249,36 @@ const paginatedPosts = displayPosts.slice(
 </Layout>
 
 <script>
-  console.log("🚨 NEWS PAGE SCRIPT RUNNING!");
-  console.log("🚨 Location:", window.location.href);
+  // console.log("🚨 NEWS PAGE SCRIPT RUNNING!");
+  // console.log("🚨 Location:", window.location.href);
   
   setTimeout(() => {
-    console.log("🚨 Testing DOM elements...");
+    // console.log("🚨 Testing DOM elements...");
     
     // Test if NewsSearchSort component rendered
     const newsSearchSort = document.querySelector('[class*="NewsSearchSort"], .news-search-sort');
-    console.log("🚨 NewsSearchSort element:", newsSearchSort);
+    // console.log("🚨 NewsSearchSort element:", newsSearchSort);
     
     // Test view toggle buttons specifically
     const viewButtons = document.querySelectorAll('.view-toggle');
-    console.log("🚨 View toggle buttons:", viewButtons.length);
+    // console.log("🚨 View toggle buttons:", viewButtons.length);
     viewButtons.forEach((btn, i) => {
-      console.log(`🚨 Button ${i}:`, btn, btn.getAttribute('data-view'));
+      // console.log(`🚨 Button ${i}:`, btn, btn.getAttribute('data-view'));
     });
     
     // Test for any buttons at all
     const allButtons = document.querySelectorAll('button');
-    console.log("🚨 All buttons on page:", allButtons.length);
+    // console.log("🚨 All buttons on page:", allButtons.length);
     
     // Test clear search button
     const clearBtn = document.querySelector('.clear-search-btn');
-    console.log("🚨 Clear search button:", clearBtn);
+    // console.log("🚨 Clear search button:", clearBtn);
     
     // REAL FUNCTIONALITY - Add actual working handlers
     if (viewButtons.length > 0) {
       viewButtons.forEach((btn, i) => {
         btn.addEventListener('click', () => {
-          console.log(`🚨 REAL HANDLER - Button ${i} clicked!`);
+          // console.log(`🚨 REAL HANDLER - Button ${i} clicked!`);
           const view = btn.getAttribute('data-view');
           const currentParams = new URLSearchParams(window.location.search);
           
@@ -292,31 +292,31 @@ const paginatedPosts = displayPosts.slice(
           try {
             localStorage.setItem('newsViewPreference', view || 'grid');
           } catch (e) {
-            console.log('localStorage failed:', e);
+            // console.log('localStorage failed:', e);
           }
           
           const newUrl = window.location.pathname + (currentParams.toString() ? '?' + currentParams.toString() : '');
-          console.log(`🚨 Navigating to: ${newUrl}`);
+          // console.log(`🚨 Navigating to: ${newUrl}`);
           window.location.href = newUrl;
         });
       });
-      console.log("🚨 Added REAL view toggle handlers");
+      // console.log("🚨 Added REAL view toggle handlers");
     }
     
     // REAL CLEAR BUTTON FUNCTIONALITY
     if (clearBtn) {
       clearBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        console.log("🚨 REAL CLEAR HANDLER clicked!");
+        // console.log("🚨 REAL CLEAR HANDLER clicked!");
         const currentParams = new URLSearchParams(window.location.search);
         currentParams.delete('search');
         currentParams.delete('page'); // Reset pagination
         
         const newUrl = window.location.pathname + (currentParams.toString() ? '?' + currentParams.toString() : '');
-        console.log(`🚨 Clearing search, navigating to: ${newUrl}`);
+        // console.log(`🚨 Clearing search, navigating to: ${newUrl}`);
         window.location.href = newUrl;
       });
-      console.log("🚨 Added REAL clear button handler");
+      // console.log("🚨 Added REAL clear button handler");
     }
     
   }, 2000);

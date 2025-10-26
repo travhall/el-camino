@@ -59,7 +59,6 @@ export class PerformanceMonitor {
     this.setupObserver();
 
     // Simple INP tracking using existing Performance API
-    const startTime = performance.now();
     document.addEventListener("click", this.handleInteraction.bind(this), {
       passive: true,
       once: true,

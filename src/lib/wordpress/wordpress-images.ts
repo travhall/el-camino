@@ -34,10 +34,10 @@ export async function optimizeWordPressImageCached(
 
   // Generate optimized URL
   const optimized = optimizeWordPressImage(url, options);
-  
+
   // Cache the result (now async)
   await imageCache.set(cacheKey, optimized);
-  
+
   return optimized;
 }
 
@@ -108,10 +108,10 @@ export async function generateWordPressSrcSetCached(
 
   // Generate srcSet
   const srcSet = generateWordPressSrcSet(url, options);
-  
+
   // Cache the result (now async)
   await imageCache.set(cacheKey, srcSet);
-  
+
   return srcSet;
 }
 
@@ -199,7 +199,9 @@ export async function batchOptimizeWordPressImages(
 
       const optimized = await optimizeWordPressImageCached(url, opts);
       const srcSet =
-        type === "featured" ? await generateWordPressSrcSetCached(url, opts) : "";
+        type === "featured"
+          ? await generateWordPressSrcSetCached(url, opts)
+          : "";
 
       return { url, optimized, srcSet };
     }
@@ -207,7 +209,7 @@ export async function batchOptimizeWordPressImages(
 
   // Wait for all images to be processed
   const processed = await Promise.all(processingPromises);
-  
+
   // Store results in map
   processed.forEach(({ url, optimized, srcSet }) => {
     processedImages.set(url, { optimized, srcSet });
@@ -359,7 +361,7 @@ function hashCode(str: string): number {
 export function clearWordPressImageCache(): void {
   // This would require access to imageCache internals or a method to filter keys
   // For now, we can clear the entire image cache or add a method to Cache class
-  console.log("[WordPress Images] Cache would be cleared here");
+  // console.log("[WordPress Images] Cache would be cleared here");
   // imageCache.clearByPrefix('wp_img_');
 }
 

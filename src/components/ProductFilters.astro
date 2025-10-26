@@ -6,10 +6,10 @@ interface Props {
   filterOptions: FilterOptions;
   totalProducts: number;
   filteredCount: number;
-  categoryPath?: string;
+  categoryPath: string;
 }
 
-const { filterOptions, totalProducts, filteredCount, categoryPath = "" } = Astro.props;
+const { filterOptions, totalProducts, filteredCount, categoryPath: _categoryPath } = Astro.props;
 
 // Parse current filters from URL for server-side rendering
 const currentParams = new URLSearchParams(Astro.url.search);
@@ -125,7 +125,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   <!-- Single Form - Desktop Static, Mobile Drawer -->
   <div
     id="filter-container"
-    class="filters-disabled lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-[28rem] lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-secondary)/0 z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+    class="filters-disabled lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-md lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-secondary)/0 z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
   >
     <form class="px-4 lg:p-2" id="filter-form">
       <!-- Mobile Header -->
@@ -338,14 +338,14 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             
             if (hasValidData) {
               gridReady = true;
-              console.log('[ResponsiveFilters] ✅ Grid with valid data detected - enabling filters');
+              // console.log('[ResponsiveFilters] ✅ Grid with valid data detected - enabling filters');
               this.enableFilterControls();
               // UNIFIED: No filter engine initialization needed - View Transitions handle all filtering
             } else {
               console.warn('[ResponsiveFilters] ⚠️ Grid found but data appears to be empty');
             }
           } else {
-            console.log('[ResponsiveFilters] 🔍 Grid not ready yet - waiting...');
+            // console.log('[ResponsiveFilters] 🔍 Grid not ready yet - waiting...');
           }
         }
       };
@@ -402,7 +402,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         filterContainer.classList.remove('filters-disabled');
       }
       
-      console.log('[ResponsiveFilters] ✅ Filter controls enabled');
+      // console.log('[ResponsiveFilters] ✅ Filter controls enabled');
     }
 
     private setupEventListeners(): void {
@@ -464,18 +464,18 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
           const forceDesktop = urlParams.get('test-desktop') === 'true';
           const isMobile = !forceDesktop && window.innerWidth < 1024;
           
-          console.log(`[ResponsiveFilters] Checkbox changed: ${(event.target as HTMLInputElement).name}=${(event.target as HTMLInputElement).value}, device=${isMobile ? 'mobile' : 'desktop'}`);
+          // console.log(`[ResponsiveFilters] Checkbox changed: ${(event.target as HTMLInputElement).name}=${(event.target as HTMLInputElement).value}, device=${isMobile ? 'mobile' : 'desktop'}`);
           
           if (isMobile) {
             // MOBILE: Multi-select drawer workflow - no immediate action
-            console.log('[ResponsiveFilters] 📱 Mobile: Checkbox change saved for Apply Filters');
+            // console.log('[ResponsiveFilters] 📱 Mobile: Checkbox change saved for Apply Filters');
             sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
             // Don't prevent - let checkboxes accumulate for drawer workflow
             return;
             
           } else {
             // DESKTOP: Immediate View Transitions filtering with exit animation coordination
-            console.log('[ResponsiveFilters] 🖥️ Desktop: Using immediate View Transitions filtering');
+            // console.log('[ResponsiveFilters] 🖥️ Desktop: Using immediate View Transitions filtering');
             
             // PREVENT form submission temporarily
             event.preventDefault();
@@ -535,15 +535,15 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         const forceDesktop = urlParams.get('test-desktop') === 'true';
         const isMobile = !forceDesktop && window.innerWidth < 1024;
         
-        console.log('[ResponsiveFilters] 📝 FORM SUBMISSION', {
-          device: isMobile ? 'mobile' : 'desktop',
-          screenWidth: window.innerWidth,
-          forceDesktop: forceDesktop
-        });
+        // console.log('[ResponsiveFilters] 📝 FORM SUBMISSION', {
+        //   device: isMobile ? 'mobile' : 'desktop',
+        //   screenWidth: window.innerWidth,
+        //   forceDesktop: forceDesktop
+        // });
         
         if (isMobile) {
           // MOBILE: Drawer workflow with View Transitions
-          console.log('[ResponsiveFilters] 📱 Mobile: Using drawer + View Transitions');
+          // console.log('[ResponsiveFilters] 📱 Mobile: Using drawer + View Transitions');
           
           // Close drawer FIRST for smooth View Transitions
           if (this.container && this.overlay) {
@@ -566,7 +566,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
           // DESKTOP: Form submission shouldn't happen (checkboxes handle immediately)
           // But if it does, treat it as immediate filtering
           event.preventDefault();
-          console.log('[ResponsiveFilters] 🖥️ Desktop: Form submission intercepted - should be handled by checkbox change');
+          // console.log('[ResponsiveFilters] 🖥️ Desktop: Form submission intercepted - should be handled by checkbox change');
           return false;
         }
       });
@@ -658,7 +658,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     private setupViewTransitionsCoordination(): void {
       // UNIFIED: Enhanced View Transitions coordination for both mobile and desktop
       document.addEventListener('astro:before-preparation', () => {
-        console.log('[ResponsiveFilters] 🚀 View Transitions preparation - unified cleanup');
+        // console.log('[ResponsiveFilters] 🚀 View Transitions preparation - unified cleanup');
         
         // Force close mobile drawer before any navigation
         if (this.container && this.overlay) {
@@ -679,7 +679,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       
       // UNIFIED: Coordinate with product grid animations during View Transitions
       document.addEventListener('astro:after-swap', () => {
-        console.log('[ResponsiveFilters] ✨ View Transitions swap complete - coordinating animations');
+        // console.log('[ResponsiveFilters] ✨ View Transitions swap complete - coordinating animations');
         
         // Ensure product cards start in the correct state for entrance animations
         const cards = document.querySelectorAll('.product-card-wrapper');
@@ -715,7 +715,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             }
             
             // Enhanced fallback for any navigation scenario
-            console.log('[GlobalClearAll] 🔄 Post-navigation fallback');
+            // console.log('[GlobalClearAll] 🔄 Post-navigation fallback');
             const visibleCards = document.querySelectorAll('.product-card-wrapper:not([style*="display: none"])');
             const basePath = window.location.pathname;
             
@@ -734,7 +734,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
 
     public clearAllFilters(): void {
-      console.log('[ResponsiveFilters] 🧹 Clearing all filters');
+      // console.log('[ResponsiveFilters] 🧹 Clearing all filters');
       
       const urlParams = new URLSearchParams(window.location.search);
       const forceDesktop = urlParams.get('test-desktop') === 'true';
@@ -746,7 +746,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         const visibleCards = document.querySelectorAll('.product-card-wrapper:not([style*="display: none"])');
         
         if (visibleCards.length > 0) {
-          console.log('[ResponsiveFilters] 📱 Mobile: Clear All with exit animation');
+          // console.log('[ResponsiveFilters] 📱 Mobile: Clear All with exit animation');
           this.closeMobileDrawer();
           
           // Exit animation
@@ -778,7 +778,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         
       } else {
         // DESKTOP: Clear All with coordinated exit animation + View Transitions
-        console.log('[ResponsiveFilters] 🖥️ Desktop: Clear All with coordinated View Transitions');
+        // console.log('[ResponsiveFilters] 🖥️ Desktop: Clear All with coordinated View Transitions');
         
         const grid = document.getElementById("filterable-product-grid");
         if (grid) {
@@ -808,7 +808,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
     // UNIFIED: Proper cleanup for View Transitions architecture
     public destroy(): void {
-      console.log('[ResponsiveFilters] 🧹 Cleaning up View Transitions architecture');
+      // console.log('[ResponsiveFilters] 🧹 Cleaning up View Transitions architecture');
       
       // Clean up DOM state
       document.body.style.overflow = "";
@@ -830,7 +830,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       // Clean up session storage
       sessionStorage.removeItem("filtering-in-progress");
       
-      console.log('[ResponsiveFilters] ✅ View Transitions cleanup complete');
+      // console.log('[ResponsiveFilters] ✅ View Transitions cleanup complete');
     }
   }
 
@@ -876,7 +876,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       }
       
       // Enhanced fallback that works from any component
-      console.log('[GlobalClearAll] 🔄 Using enhanced global fallback');
+      // console.log('[GlobalClearAll] 🔄 Using enhanced global fallback');
       const visibleCards = document.querySelectorAll('.product-card-wrapper:not([style*="display: none"])');
       const basePath = window.location.pathname;
       const isMobile = window.innerWidth < 1024;
@@ -913,11 +913,11 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     document.addEventListener('submit', (e) => {
       const target = e.target as HTMLElement;
       if (target?.id === 'filter-form') {
-        console.log('[GLOBAL] 🚨 Form submission detected outside our handler!', {
-          timestamp: Date.now(),
-          target: e.target,
-          defaultPrevented: e.defaultPrevented
-        });
+        // console.log('[GLOBAL] 🚨 Form submission detected outside our handler!', {
+        //   timestamp: Date.now(),
+        //   target: e.target,
+        //   defaultPrevented: e.defaultPrevented
+        // });
       }
     }, true); // Use capture to catch early
   }
@@ -927,7 +927,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   
   // Enhanced Astro navigation cleanup with View Transitions support
   document.addEventListener("astro:before-preparation", () => {
-    console.log('[ResponsiveFilters] 🚀 Enhanced Astro navigation cleanup');
+    // console.log('[ResponsiveFilters] 🚀 Enhanced Astro navigation cleanup');
     if (currentInstance) {
       currentInstance.destroy();
       currentInstance = null;

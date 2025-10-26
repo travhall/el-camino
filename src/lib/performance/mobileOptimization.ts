@@ -1,6 +1,6 @@
 // src/lib/performance/mobileOptimization.ts - Mobile-specific navigation optimizations
 
-import { getDeviceInfo, type DeviceInfo } from '@/utils/device';
+import { getDeviceInfo, type DeviceInfo } from "@/utils/device";
 
 interface MobileContext extends DeviceInfo {
   // MobileContext now extends DeviceInfo for consistency
