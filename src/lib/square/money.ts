@@ -1,16 +1,17 @@
 // src/lib/square/money.ts
-import type { Money } from './types';
-import type { Money as SquareMoney } from 'square/legacy';
+import type { Money, SquareMoneyObject } from './types';
 
 export class MoneyUtils {
     static readonly DEFAULT_CURRENCY = 'USD';
 
-    static format(money: Money | SquareMoney): string {
-        if (!money?.amount) {
+    static format(money: Money | SquareMoneyObject): string {
+        if (!money?.amount || money.amount === null) {
             return `$0.00`;
         }
 
         const amount = typeof money.amount === 'bigint'
+            ? Number(money.amount)
+            : typeof money.amount === 'string'
             ? Number(money.amount)
             : money.amount;
 
@@ -31,8 +32,8 @@ export class MoneyUtils {
         return money.amount / 100;
     }
 
-    static fromSquareMoney(squareMoney: SquareMoney | null | undefined): Money {
-        if (!squareMoney || !squareMoney.amount) {
+    static fromSquareMoney(squareMoney: SquareMoneyObject | null | undefined): Money {
+        if (!squareMoney || !squareMoney.amount || squareMoney.amount === null) {
             return { amount: 0, currency: MoneyUtils.DEFAULT_CURRENCY };
         }
 
@@ -46,7 +47,7 @@ export class MoneyUtils {
         };
     }
 
-    static toSquareMoney(money: Money): SquareMoney {
+    static toSquareMoney(money: Money): SquareMoneyObject {
         return {
             amount: BigInt(money.amount),
             currency: money.currency || MoneyUtils.DEFAULT_CURRENCY

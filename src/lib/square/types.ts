@@ -39,7 +39,7 @@ export interface ProductData {
 }
 
 export type SquareMoneyObject = {
-  amount?: string | number | bigint;
+  amount?: string | number | bigint | null;
   currency?: string;
 };
 

@@ -112,10 +112,9 @@ export default defineConfig({
               return 'mobile-features';
             }
             
-            // Square SDK
-            if (id.includes('square')) {
-              return 'square';
-            }
+            // ✅ REMOVED: Square SDK client-side bundling (was 230KB)
+            // Square is server-only in Astro SSR - doesn't need client chunk
+            // This was forcing unnecessary 230KB into every page load
             
             // Core vendor code
             if (id.includes('node_modules')) {

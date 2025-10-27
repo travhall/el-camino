@@ -4,6 +4,7 @@ import Layout from "@/layouts/Layout.astro";
 import { squareClient } from "@/lib/square/client";
 import { MoneyUtils } from "@/lib/square/money";
 import type { OrderLineItem, Order } from "square/legacy";
+import type { SquareMoneyObject } from "@/lib/square/types";
 import { Image } from "astro:assets";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 
@@ -121,7 +122,7 @@ if (!orderId) {
   }
 }
 
-function formatMoney(money: OrderLineItem["totalMoney"]): string {
+function formatMoney(money: SquareMoneyObject | undefined | null): string {
   if (!money) return "$0.00";
   return MoneyUtils.format(money);
 }
