@@ -22,10 +22,12 @@ export async function categoryHasProducts(
         // Use enhanced API retry client for robust Square API calls
         const result = await apiRetryClient.executeWithRetry(
           async () => {
-            const { result } = await squareClient.catalogApi.searchCatalogItems({
-              categoryIds: [categoryId],
-              limit: 1, // We only need to know if ANY exist
-            });
+            const { result } = await squareClient.catalogApi.searchCatalogItems(
+              {
+                categoryIds: [categoryId],
+                limit: 1, // We only need to know if ANY exist
+              }
+            );
             return result;
           },
           `categoryHasProducts:${categoryId}`,
@@ -62,7 +64,9 @@ export async function batchCheckCategoriesHaveProducts(
     // Check cache first (now async)
     await Promise.all(
       categoryIds.map(async (categoryId) => {
-        const cached = await categoryCache.get(`category-has-products:${categoryId}`);
+        const cached = await categoryCache.get(
+          `category-has-products:${categoryId}`
+        );
         if (cached !== undefined) {
           result[categoryId] = cached;
         } else {
@@ -93,10 +97,11 @@ export async function batchCheckCategoriesHaveProducts(
                 try {
                   const searchResult = await apiRetryClient.executeWithRetry(
                     async () => {
-                      const { result } = await squareClient.catalogApi.searchCatalogItems({
-                        categoryIds: [categoryId],
-                        limit: 1,
-                      });
+                      const { result } =
+                        await squareClient.catalogApi.searchCatalogItems({
+                          categoryIds: [categoryId],
+                          limit: 1,
+                        });
                       return result;
                     },
                     `batchCategoryCheck:${categoryId}`,
@@ -232,9 +237,9 @@ export async function fetchCategoryHierarchyWithProducts(): Promise<
       // The original hierarchy is already sorted by ordinals, so we preserve that order
 
       if (import.meta.env.DEV) {
-        console.log(
-          `[Navigation] Loaded ${filteredHierarchy.length} categories with products (cached for 1 hour)`
-        );
+        // console.log(
+        //   `[Navigation] Loaded ${filteredHierarchy.length} categories with products (cached for 1 hour)`
+        // );
       }
 
       return filteredHierarchy;

@@ -152,20 +152,20 @@ export async function filterProductsWithCache(
   )}-${productIds.slice(0, 50)}`;
 
   return filterCache.getOrCompute(filterKey, async () => {
-    console.log(
-      `[FilterCache] Computing filter result for: ${filterKey.slice(0, 100)}...`
-    );
+    // console.log(
+    //   `[FilterCache] Computing filter result for: ${filterKey.slice(0, 100)}...`
+    // );
     const startTime = performance.now();
 
     // Use the optimized filterProducts function (now with batch inventory)
     const result = await filterProducts(products, filters);
 
     const duration = performance.now() - startTime;
-    console.log(
-      `[FilterCache] Filtered ${products.length} → ${
-        result.length
-      } products in ${duration.toFixed(2)}ms`
-    );
+    // console.log(
+    //   `[FilterCache] Filtered ${products.length} → ${
+    //     result.length
+    //   } products in ${duration.toFixed(2)}ms`
+    // );
 
     return result;
   });

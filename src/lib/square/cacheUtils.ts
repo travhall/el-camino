@@ -80,7 +80,7 @@ export class Cache<T> {
    */
   clear(): void {
     this.cache = {};
-    console.log(`[Cache] Cleared ${this.name}`);
+    // console.log(`[Cache] Cleared ${this.name}`);
   }
 
   /**
@@ -99,7 +99,7 @@ export class Cache<T> {
     });
 
     if (count > 0) {
-      console.log(`[Cache] Pruned ${count} expired entries from ${this.name}`);
+      // console.log(`[Cache] Pruned ${count} expired entries from ${this.name}`);
     }
 
     return count;
@@ -122,10 +122,10 @@ export class Cache<T> {
       this.set(key, value);
       return value;
     } catch (error) {
-      console.error(
-        `[Cache] Error computing value for ${key} in ${this.name}:`,
-        error
-      );
+      // console.error(
+      //   `[Cache] Error computing value for ${key} in ${this.name}:`,
+      //   error
+      // );
       throw error;
     }
   }
@@ -142,5 +142,5 @@ export {
   imageCache,
   wordpressCache,
   filterCache,
-  navigationCache
-} from '../cache/blobCache';
+  navigationCache,
+} from "../cache/blobCache";

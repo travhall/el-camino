@@ -49,7 +49,7 @@ class SlugResolver {
    * Only fetches minimal data needed for slug generation
    */
   private async buildSlugMap(): Promise<Map<string, string>> {
-    console.log("[SlugResolver] Building slug map...");
+    // console.log("[SlugResolver] Building slug map...");
     const startTime = Date.now();
 
     try {
@@ -74,13 +74,13 @@ class SlugResolver {
       this.cache.set(this.CACHE_KEY, map);
 
       const duration = Date.now() - startTime;
-      console.log(
-        `[SlugResolver] Built map with ${map.size} slugs in ${duration}ms`
-      );
+      // console.log(
+      //   `[SlugResolver] Built map with ${map.size} slugs in ${duration}ms`
+      // );
 
       return map;
     } catch (error) {
-      console.error("[SlugResolver] Failed to build slug map:", error);
+      // console.error("[SlugResolver] Failed to build slug map:", error);
       // Return empty map on error - fallback will handle it
       return new Map();
     }
@@ -90,7 +90,7 @@ class SlugResolver {
    * Manually refresh the slug map (e.g., after webhook)
    */
   async refresh(): Promise<void> {
-    console.log("[SlugResolver] Refreshing slug map...");
+    // console.log("[SlugResolver] Refreshing slug map...");
     this.cache.delete(this.CACHE_KEY);
     await this.buildSlugMap();
   }

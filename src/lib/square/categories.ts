@@ -104,13 +104,13 @@ export async function fetchCategories(): Promise<Category[]> {
             category.name.includes("Bottoms") ||
             category.name.includes("Accessories")
           ) {
-            console.log(`[CategoryFetch] ${category.name}:`, {
-              id: category.id,
-              isTopLevel: category.isTopLevel,
-              parentCategoryId: category.parentCategoryId,
-              rootCategoryId: category.rootCategoryId,
-              slug: category.slug,
-            });
+            // console.log(`[CategoryFetch] ${category.name}:`, {
+            //   id: category.id,
+            //   isTopLevel: category.isTopLevel,
+            //   parentCategoryId: category.parentCategoryId,
+            //   rootCategoryId: category.rootCategoryId,
+            //   slug: category.slug,
+            // });
           }
 
           return category;
@@ -157,16 +157,6 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
         let subcategories = allCategories.filter(
           (subCat) => subCat.rootCategoryId === topCat.id && !subCat.isTopLevel
         );
-
-        // DEBUG: Log subcategory matching for Apparel specifically
-        if (topCat.name === "Apparel") {
-          console.log(
-            `[CategoryHierarchy] Apparel (${topCat.id}) subcategories:`
-          );
-          subcategories.forEach((sub) => {
-            console.log(`  - ${sub.name} (ID: ${sub.id}, slug: ${sub.slug})`);
-          });
-        }
 
         // Sort subcategories by ordinal too
         subcategories.sort((a, b) => {
@@ -312,7 +302,7 @@ export async function fetchProductsByCategory(
   // This avoids the buggy searchCatalogItems(categoryIds) endpoint
 
   try {
-    console.log(`[Perf] Fetching products for category: ${categoryId}`);
+    // console.log(`[Perf] Fetching products for category: ${categoryId}`);
 
     // Fetch ALL items and categories (both are cached)
     const fetchStart = Date.now();
@@ -320,19 +310,19 @@ export async function fetchProductsByCategory(
       fetchAllCatalogItems(),
       fetchCategories(),
     ]);
-    console.log(`[Perf] Data fetch: ${Date.now() - fetchStart}ms`);
+    // console.log(`[Perf] Data fetch: ${Date.now() - fetchStart}ms`);
 
     // Filter items by category in-memory
     const filterStart = Date.now();
     const matchingItems = allItems.filter((item) =>
       itemMatchesCategory(item, categoryId, allCategories)
     );
-    console.log(
-      `[Perf] Filtering: ${Date.now() - filterStart}ms (${matchingItems.length} items)`
-    );
+    // console.log(
+    //   `[Perf] Filtering: ${Date.now() - filterStart}ms (${matchingItems.length} items)`
+    // );
 
     if (!matchingItems.length) {
-      console.log(`[Perf] Total: ${Date.now() - startTime}ms (no results)`);
+      // console.log(`[Perf] Total: ${Date.now() - startTime}ms (no results)`);
       return {
         products: [],
         hasMore: false,
@@ -351,7 +341,7 @@ export async function fetchProductsByCategory(
           item.itemData?.variations?.[0]?.itemVariationData?.measurementUnitId
       )
       .filter((id: any): id is string => Boolean(id));
-    console.log(`[Perf] Extract IDs: ${Date.now() - extractStart}ms`);
+    // console.log(`[Perf] Extract IDs: ${Date.now() - extractStart}ms`);
 
     // Batch fetch images and units
     const batchStart = Date.now();
@@ -363,9 +353,9 @@ export async function fetchProductsByCategory(
         ? fetchMeasurementUnits(measurementUnitIds)
         : Promise.resolve({} as Record<string, string>),
     ]);
-    console.log(
-      `[Perf] Batch fetch (images + units): ${Date.now() - batchStart}ms`
-    );
+    // console.log(
+    //   `[Perf] Batch fetch (images + units): ${Date.now() - batchStart}ms`
+    // );
 
     const transformStart = Date.now();
     const products = matchingItems.map((item: any) => {
@@ -399,16 +389,16 @@ export async function fetchProductsByCategory(
         brand: brandValue || undefined, // ADDED: Include brand
       };
     });
-    console.log(`[Perf] Transform: ${Date.now() - transformStart}ms`);
+    // console.log(`[Perf] Transform: ${Date.now() - transformStart}ms`);
 
     const totalTime = Date.now() - startTime;
-    console.log(`[Perf] TOTAL fetchProductsByCategory: ${totalTime}ms`);
+    // console.log(`[Perf] TOTAL fetchProductsByCategory: ${totalTime}ms`);
 
     // Alert if slow
     if (totalTime > 1000) {
-      console.warn(
-        `[Perf] ⚠️ Slow category fetch: ${totalTime}ms for ${categoryId}`
-      );
+      // console.warn(
+      //   `[Perf] ⚠️ Slow category fetch: ${totalTime}ms for ${categoryId}`
+      // );
     }
 
     return {
@@ -417,7 +407,7 @@ export async function fetchProductsByCategory(
       hasMore: false, // All results returned at once
     };
   } catch (error) {
-    console.error(`[Perf] Error after ${Date.now() - startTime}ms:`, error);
+    // console.error(`[Perf] Error after ${Date.now() - startTime}ms:`, error);
     const appError = processSquareError(
       error,
       `fetchProductsByCategory:${categoryId}`
@@ -430,7 +420,10 @@ export async function fetchProductsByCategory(
 }
 
 // In-memory cache for measurement units (simple, works in dev and prod)
-const measurementUnitCache = new Map<string, { value: Record<string, string>; timestamp: number }>();
+const measurementUnitCache = new Map<
+  string,
+  { value: Record<string, string>; timestamp: number }
+>();
 const MEASUREMENT_UNIT_TTL = 3600000; // 1 hour in ms
 
 // Optimized measurement unit fetching with in-memory caching
@@ -449,15 +442,16 @@ async function fetchMeasurementUnits(
     return cached.value;
   }
 
-  console.log(
-    `[Cache] Fetching ${uniqueIds.length} measurement units from Square API`
-  );
+  // console.log(
+  //   `[Cache] Fetching ${uniqueIds.length} measurement units from Square API`
+  // );
 
   const results = await Promise.allSettled(
     uniqueIds.map(async (unitId) => {
       try {
-        const { result } =
-          await squareClient.catalogApi.retrieveCatalogObject(unitId);
+        const { result } = await squareClient.catalogApi.retrieveCatalogObject(
+          unitId
+        );
 
         if (result.object?.type === "MEASUREMENT_UNIT") {
           const unitData = result.object.measurementUnitData;
@@ -492,12 +486,12 @@ async function fetchMeasurementUnits(
   // Store in cache
   measurementUnitCache.set(cacheKey, {
     value: unitMap,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   });
 
-  console.log(
-    `[Cache] Cached ${Object.keys(unitMap).length} measurement units`
-  );
+  // console.log(
+  //   `[Cache] Cached ${Object.keys(unitMap).length} measurement units`
+  // );
   return unitMap;
 }
 

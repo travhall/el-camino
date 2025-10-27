@@ -175,9 +175,9 @@ export class BatchInventoryService {
         // Get location ID from environment
         const locationId = import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
         if (!locationId) {
-          console.warn(
-            "[BatchInventory] No location ID found, falling back to individual calls"
-          );
+          // console.warn(
+          //   "[BatchInventory] No location ID found, falling back to individual calls"
+          // );
           return this.processBatchFallback(variationIds);
         }
 
@@ -227,20 +227,20 @@ export class BatchInventoryService {
         });
 
         const duration = performance.now() - startTime;
-        console.log(
-          `[BatchInventory] ✅ TRUE batch processed ${processedCount}/${
-            variationIds.length
-          } items in ${duration.toFixed(2)}ms (${(
-            duration / variationIds.length
-          ).toFixed(2)}ms per item)`
-        );
+        // console.log(
+        //   `[BatchInventory] ✅ TRUE batch processed ${processedCount}/${
+        //     variationIds.length
+        //   } items in ${duration.toFixed(2)}ms (${(
+        //     duration / variationIds.length
+        //   ).toFixed(2)}ms per item)`
+        // );
 
         return batchResults;
       } catch (error) {
-        console.error(
-          "[BatchInventory] TRUE batch API failed, falling back to individual calls:",
-          error
-        );
+        // console.error(
+        //   "[BatchInventory] TRUE batch API failed, falling back to individual calls:",
+        //   error
+        // );
         // Fallback to individual calls if batch fails
         return this.processBatchFallback(variationIds);
       }
@@ -257,9 +257,9 @@ export class BatchInventoryService {
   ): Promise<Map<string, InventoryStatus>> {
     return defaultCircuitBreaker.execute(async () => {
       const startTime = performance.now();
-      console.log(
-        `[BatchInventory] Using FALLBACK individual calls for ${variationIds.length} items`
-      );
+      // console.log(
+      //   `[BatchInventory] Using FALLBACK individual calls for ${variationIds.length} items`
+      // );
 
       try {
         // Use individual inventory calls in parallel
@@ -292,10 +292,10 @@ export class BatchInventoryService {
               },
             };
           } catch (error) {
-            console.error(
-              `[BatchInventory] Error checking inventory for ${variationId}:`,
-              error
-            );
+            // console.error(
+            //   `[BatchInventory] Error checking inventory for ${variationId}:`,
+            //   error
+            // );
             return {
               variationId,
               status: {
@@ -316,13 +316,13 @@ export class BatchInventoryService {
         });
 
         const duration = performance.now() - startTime;
-        console.log(
-          `[BatchInventory] ⚠️ FALLBACK processed ${
-            batchResults.size
-          } items in ${duration.toFixed(2)}ms (${(
-            duration / variationIds.length
-          ).toFixed(2)}ms per item)`
-        );
+        // console.log(
+        //   `[BatchInventory] ⚠️ FALLBACK processed ${
+        //     batchResults.size
+        //   } items in ${duration.toFixed(2)}ms (${(
+        //     duration / variationIds.length
+        //   ).toFixed(2)}ms per item)`
+        // );
 
         return batchResults;
       } catch (error) {

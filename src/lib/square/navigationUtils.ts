@@ -25,9 +25,9 @@ export async function fetchCategoryHierarchyForNav(): Promise<
           item.category.slug.trim() !== ""
       );
 
-      console.log(
-        `[Navigation] Cached ${validHierarchy.length} valid categories for navigation`
-      );
+      // console.log(
+      //   `[Navigation] Cached ${validHierarchy.length} valid categories for navigation`
+      // );
       return validHierarchy;
     } catch (error) {
       console.warn(
@@ -179,10 +179,10 @@ export function prefetchHighPriorityTargets(context: NavigationContext): void {
 
   // Log prefetch attempts in development
   if (import.meta.env.DEV && highPriorityUrls.length > 0) {
-    console.log(
-      "[Navigation] Prefetching high-priority targets:",
-      highPriorityUrls
-    );
+    // console.log(
+    //   "[Navigation] Prefetching high-priority targets:",
+    //   highPriorityUrls
+    // );
   }
 }
 
