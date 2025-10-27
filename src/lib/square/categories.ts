@@ -304,6 +304,7 @@ export async function fetchProductsByCategory(
   categoryId: string,
   options?: ProductLoadingOptions
 ): Promise<PaginatedProducts> {
+  const startTime = Date.now(); // Performance tracking
   const { limit = 24, cursor } = options || {};
 
   // NOTE: We don't use cursor-based pagination with this approach
@@ -311,22 +312,27 @@ export async function fetchProductsByCategory(
   // This avoids the buggy searchCatalogItems(categoryIds) endpoint
 
   try {
-    // console.log(`[Square API] Fetching products for category: ${categoryId} (in-memory filtering)`);
+    console.log(`[Perf] Fetching products for category: ${categoryId}`);
 
     // Fetch ALL items and categories (both are cached)
+    const fetchStart = Date.now();
     const [allItems, allCategories] = await Promise.all([
       fetchAllCatalogItems(),
       fetchCategories(),
     ]);
+    console.log(`[Perf] Data fetch: ${Date.now() - fetchStart}ms`);
 
     // Filter items by category in-memory
+    const filterStart = Date.now();
     const matchingItems = allItems.filter((item) =>
       itemMatchesCategory(item, categoryId, allCategories)
     );
-
-    // console.log(`[Square API] Found ${matchingItems.length} items matching category ${categoryId} (from ${allItems.length} total items)`);
+    console.log(
+      `[Perf] Filtering: ${Date.now() - filterStart}ms (${matchingItems.length} items)`
+    );
 
     if (!matchingItems.length) {
+      console.log(`[Perf] Total: ${Date.now() - startTime}ms (no results)`);
       return {
         products: [],
         hasMore: false,
@@ -334,6 +340,7 @@ export async function fetchProductsByCategory(
     }
 
     // Parallel processing for performance
+    const extractStart = Date.now();
     const imageIds = matchingItems
       .map((item: any) => item.itemData?.imageIds?.[0])
       .filter((id: any): id is string => Boolean(id));
@@ -344,8 +351,10 @@ export async function fetchProductsByCategory(
           item.itemData?.variations?.[0]?.itemVariationData?.measurementUnitId
       )
       .filter((id: any): id is string => Boolean(id));
+    console.log(`[Perf] Extract IDs: ${Date.now() - extractStart}ms`);
 
     // Batch fetch images and units
+    const batchStart = Date.now();
     const [imageUrlMap, measurementUnitsMap] = await Promise.all([
       imageIds.length
         ? batchGetImageUrls(imageIds)
@@ -354,7 +363,11 @@ export async function fetchProductsByCategory(
         ? fetchMeasurementUnits(measurementUnitIds)
         : Promise.resolve({} as Record<string, string>),
     ]);
+    console.log(
+      `[Perf] Batch fetch (images + units): ${Date.now() - batchStart}ms`
+    );
 
+    const transformStart = Date.now();
     const products = matchingItems.map((item: any) => {
       const variation = item.itemData?.variations?.[0];
       const priceMoney = variation?.itemVariationData?.priceMoney;
@@ -386,6 +399,17 @@ export async function fetchProductsByCategory(
         brand: brandValue || undefined, // ADDED: Include brand
       };
     });
+    console.log(`[Perf] Transform: ${Date.now() - transformStart}ms`);
+
+    const totalTime = Date.now() - startTime;
+    console.log(`[Perf] TOTAL fetchProductsByCategory: ${totalTime}ms`);
+
+    // Alert if slow
+    if (totalTime > 1000) {
+      console.warn(
+        `[Perf] ⚠️ Slow category fetch: ${totalTime}ms for ${categoryId}`
+      );
+    }
 
     return {
       products,
@@ -393,6 +417,7 @@ export async function fetchProductsByCategory(
       hasMore: false, // All results returned at once
     };
   } catch (error) {
+    console.error(`[Perf] Error after ${Date.now() - startTime}ms:`, error);
     const appError = processSquareError(
       error,
       `fetchProductsByCategory:${categoryId}`
@@ -404,16 +429,35 @@ export async function fetchProductsByCategory(
   }
 }
 
-// Optimized measurement unit fetching
+// In-memory cache for measurement units (simple, works in dev and prod)
+const measurementUnitCache = new Map<string, { value: Record<string, string>; timestamp: number }>();
+const MEASUREMENT_UNIT_TTL = 3600000; // 1 hour in ms
+
+// Optimized measurement unit fetching with in-memory caching
 async function fetchMeasurementUnits(
   unitIds: string[]
 ): Promise<Record<string, string>> {
+  if (!unitIds.length) return {};
+
+  // Deduplicate and sort IDs for cache key
+  const uniqueIds = [...new Set(unitIds)];
+  const cacheKey = uniqueIds.sort().join(",");
+
+  // Check in-memory cache
+  const cached = measurementUnitCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < MEASUREMENT_UNIT_TTL) {
+    return cached.value;
+  }
+
+  console.log(
+    `[Cache] Fetching ${uniqueIds.length} measurement units from Square API`
+  );
+
   const results = await Promise.allSettled(
-    unitIds.map(async (unitId) => {
+    uniqueIds.map(async (unitId) => {
       try {
-        const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-          unitId
-        );
+        const { result } =
+          await squareClient.catalogApi.retrieveCatalogObject(unitId);
 
         if (result.object?.type === "MEASUREMENT_UNIT") {
           const unitData = result.object.measurementUnitData;
@@ -445,6 +489,15 @@ async function fetchMeasurementUnits(
     }
   });
 
+  // Store in cache
+  measurementUnitCache.set(cacheKey, {
+    value: unitMap,
+    timestamp: Date.now()
+  });
+
+  console.log(
+    `[Cache] Cached ${Object.keys(unitMap).length} measurement units`
+  );
   return unitMap;
 }
 

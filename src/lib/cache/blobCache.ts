@@ -228,9 +228,10 @@ export class BlobCache<T> {
  * Export standard cache instances using Netlify Blobs
  * These replace the in-memory caches to fix function-per-route isolation
  */
+// UPDATED: Longer TTLs since catalog data changes infrequently
 export const inventoryCache = new BlobCache<number>("inventory", 900); // 15 minutes
-export const categoryCache = new BlobCache<any>("category", 600); // 10 minutes (reduced from 30 for faster consistency)
-export const productCache = new BlobCache<any>("product", 900); // 15 minutes
+export const categoryCache = new BlobCache<any>("category", 3600); // 1 hour (was 10 min)
+export const productCache = new BlobCache<any>("product", 3600); // 1 hour (was 15 min)
 export const imageCache = new BlobCache<string>("image", 3600); // 1 hour
 export const wordpressCache = new BlobCache<any>("wordpress", 300); // 5 minutes
 export const filterCache = new BlobCache<any>("filter", 900); // 15 minutes
