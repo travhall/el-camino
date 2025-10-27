@@ -79,17 +79,51 @@ const placeholderId = `placeholder-${product.id}`;
 const isDynamicPriority = priority || index < 12;
 
 // Enhanced image optimization using new system
-const imageSet = EnhancedImageOptimizer.generateOptimizedSources(
-  product.image,
-  {
+// Only generate srcsets if we have a valid image URL
+const hasValidImage = product.image && product.image.length > 0 && product.image.startsWith('http');
+
+let optimizedImageSrc = EL_CAMINO_LOGO_DATA_URI; // Default fallback
+let avifSrcSet: string | undefined;
+let webpSrcSet: string | undefined;
+let jpegSrcSet: string | undefined;
+let imageSizes = "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 16vw";
+
+if (hasValidImage) {
+  const imageSet = EnhancedImageOptimizer.generateOptimizedSources(
+    product.image,
+    {
+      width: 600,
+      height: 400,
+      quality: 85,
+      priority: isDynamicPriority,
+    }
+  );
+
+  optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
+
+  // Generate responsive srcset for each format
+  avifSrcSet = imageSet.avif 
+    ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'avif', {
+        width: 600,
+        height: 400,
+        quality: 85
+      })
+    : undefined;
+
+  webpSrcSet = imageSet.webp
+    ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'webp', {
+        width: 600,
+        height: 400,
+        quality: 85
+      })
+    : undefined;
+
+  jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'jpeg', {
     width: 600,
     height: 400,
-    quality: 85,
-    priority: isDynamicPriority,
-  }
-);
-
-const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
+    quality: 85
+  });
+}
 ---
 
 <div
@@ -107,32 +141,75 @@ const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
   >
     <!-- Product Image Container -->
     <div class="relative aspect-video sm:aspect-square overflow-hidden">
-      <!-- Unified Loading Placeholder with Logo -->
-      <div
-        class="loading-skeleton loading-image absolute inset-0"
-        id={placeholderId}
-        aria-hidden="true"
-      >
-        <!-- El Camino logo using data URI -->
-        <div
-          class="absolute inset-0 flex items-center justify-center"
-          style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
-        >
-        </div>
-      </div>
-      <!-- Enhanced Image -->
-      <img
-        id={imageId}
-        src={optimizedImageSrc}
-        alt={enhancedAltText}
-        class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""} image-enhanced will-change-transform`}
-        loading={isDynamicPriority ? "eager" : "lazy"}
-        fetchpriority={isDynamicPriority ? "high" : "auto"}
-        decoding={isDynamicPriority ? "sync" : "async"}
-        data-placeholder-id={placeholderId}
-        onload={`this.classList.add('opacity-100', 'loaded'); document.getElementById('${placeholderId}')?.remove()`}
-        onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100', 'error'); document.getElementById('${placeholderId}')?.remove()`}
-      />
+      <!-- Unified Loading Placeholder with Logo - Only show for valid images -->
+      {
+        hasValidImage && (
+          <div
+            class="loading-skeleton loading-image absolute inset-0"
+            id={placeholderId}
+            aria-hidden="true"
+          >
+            <!-- El Camino logo using data URI -->
+            <div
+              class="absolute inset-0 flex items-center justify-center"
+              style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
+            >
+            </div>
+          </div>
+        )
+      }
+      <!-- Enhanced Image with Responsive srcset -->
+      {
+        hasValidImage ? (
+          <picture>
+            {/* AVIF format (best compression) */}
+            {avifSrcSet && (
+              <source
+                type="image/avif"
+                srcset={avifSrcSet}
+                sizes={imageSizes}
+              />
+            )}
+
+            {/* WebP format (good compression) */}
+            {webpSrcSet && (
+              <source
+                type="image/webp"
+                srcset={webpSrcSet}
+                sizes={imageSizes}
+              />
+            )}
+
+            {/* JPEG fallback */}
+            <img
+              id={imageId}
+              src={optimizedImageSrc}
+              srcset={jpegSrcSet}
+              sizes={imageSizes}
+              alt={enhancedAltText}
+              class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""} image-enhanced will-change-transform`}
+              loading={isDynamicPriority ? "eager" : "lazy"}
+              fetchpriority={isDynamicPriority ? "high" : "auto"}
+              decoding={isDynamicPriority ? "sync" : "async"}
+              width="600"
+              height="400"
+              data-placeholder-id={placeholderId}
+              onload={`this.classList.add('opacity-100', 'loaded'); document.getElementById('${placeholderId}')?.remove()`}
+              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100', 'error'); document.getElementById('${placeholderId}')?.remove()`}
+            />
+          </picture>
+        ) : (
+          <img
+            id={imageId}
+            src={EL_CAMINO_LOGO_DATA_URI}
+            alt={enhancedAltText}
+            class={`object-cover w-full h-full opacity-100 ${isOutOfStock ? "opacity-50" : ""} image-enhanced error`}
+            loading="eager"
+            width="600"
+            height="400"
+          />
+        )
+      }
 
       <!-- Stock status overlay - only Sold Out -->
       {
