@@ -8,15 +8,7 @@ import {
   logError,
 } from "@/lib/square/errorUtils";
 import type { AppError } from "@/lib/square/errorUtils";
-
-// Add WordPress cache to existing cache exports in square/cacheUtils.ts
-// export const wordpressCache = new Cache<any>('wordpress', 300); // 5 minutes
-
-// Import the WordPress cache (this would be added to cacheUtils.ts)
-const wordpressCache = new (await import("@/lib/square/cacheUtils")).Cache<any>(
-  "wordpress",
-  300
-);
+import { wordpressCache } from "@/lib/square/cacheUtils";
 
 // Configuration
 const WP_URL =

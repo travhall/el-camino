@@ -236,3 +236,4 @@ export const imageCache = new BlobCache<string>("image", 3600); // 1 hour
 export const wordpressCache = new BlobCache<any>("wordpress", 300); // 5 minutes
 export const filterCache = new BlobCache<any>("filter", 900); // 15 minutes
 export const navigationCache = new BlobCache<any>("navigation", 3600); // 1 hour
+export const slugCache = new BlobCache<Record<string, string>>("slug-map", 3600); // 1 hour
