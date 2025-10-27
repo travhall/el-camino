@@ -23,11 +23,12 @@ for = "/shop/*"
 [headers.values]
 Cache-Control = "public, max-age=60, s-maxage=180, stale-while-revalidate=600"
 
-# Category pages - conservative caching for better performance
+# Category pages - IMPROVED: Better caching with extended stale-while-revalidate
+# Serves stale content while revalidating in background for instant page loads
 [[headers]]
 for = "/category/*"
 [headers.values]
-Cache-Control = "public, max-age=60, s-maxage=180, stale-while-revalidate=600"
+Cache-Control = "public, max-age=300, s-maxage=600, stale-while-revalidate=3600"
 
 # Product pages - aggressive caching for performance
 [[headers]]
@@ -47,11 +48,19 @@ for = "/fonts/*"
 [headers.values]
 Cache-Control = "public, max-age=31536000, immutable"
 
-# Images - medium cache
+# Images - CRITICAL LCP FIX: Aggressive caching with stale-while-revalidate
+# Was: max-age=86400 (1 day), s-maxage=604800 (7 days)
+# Now: Longer cache + stale-while-revalidate for instant serving
 [[headers]]
 for = "*.@(jpg|jpeg|png|gif|ico|svg|webp|avif)"
 [headers.values]
-Cache-Control = "public, max-age=86400, s-maxage=604800"
+Cache-Control = "public, max-age=604800, s-maxage=2592000, stale-while-revalidate=86400, immutable"
+
+# Netlify Image CDN - Aggressive caching for transformed images
+[[headers]]
+for = "/.netlify/images/*"
+[headers.values]
+Cache-Control = "public, max-age=2592000, s-maxage=31536000, stale-while-revalidate=86400, immutable"
 
 # JS/CSS - long cache with versioning
 [[headers]]

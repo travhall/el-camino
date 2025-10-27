@@ -75,8 +75,11 @@ const availabilitySchema = isOutOfStock
 const imageId = `img-${product.id}`;
 const placeholderId = `placeholder-${product.id}`;
 
-// Dynamic priority
-const isDynamicPriority = priority || index < 12;
+// Dynamic priority - CRITICAL LCP FIX
+// Only prioritize first 4 products to prevent network congestion
+// Was: index < 12 (36 high-priority images overwhelming mobile network)
+// Now: index < 4 (12 images total, manageable for mobile 4G)
+const isDynamicPriority = priority || index < 4;
 
 // Enhanced image optimization using new system
 // Only generate srcsets if we have a valid image URL

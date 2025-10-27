@@ -112,11 +112,20 @@ const pageTitle = parentCategory
 
 const fullPageTitle = `Shop ${pageTitle} | El Camino`;
 
-// Preload critical images (first 8 products)
-const preloadImages = allProducts
-  .slice(0, 8)
-  .map((p) => p.image)
-  .filter((img) => !img.includes("placeholder"));
+// CRITICAL LCP FIX: Preload only the first product image (LCP element)
+// Was: 8 images (excessive preloading hurts performance)
+// Now: 1 image with modern format support (AVIF/WebP/JPEG)
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
+
+const firstProduct = allProducts[0];
+const lcpImage = firstProduct?.image && !firstProduct.image.includes("placeholder")
+  ? EnhancedImageOptimizer.generateOptimizedSources(firstProduct.image, {
+      width: 600,
+      height: 400,
+      quality: 85,
+      priority: true,
+    })
+  : null;
 
 // Current category path for filter URLs
 const categoryPath = parentCategory
@@ -137,7 +146,41 @@ const hasActiveFilters =
 ---
 
 <Layout title={fullPageTitle}>
-  {preloadImages.map((img) => <link rel="preload" href={img} as="image" />)}
+  {/* CRITICAL LCP PRELOAD: Load first product image with format negotiation */}
+  {lcpImage && (
+    <>
+      {/* Preload AVIF (best compression) if available */}
+      {lcpImage.avif && (
+        <link
+          rel="preload"
+          href={lcpImage.avif}
+          as="image"
+          type="image/avif"
+          fetchpriority="high"
+        />
+      )}
+      {/* Fallback to WebP if AVIF not available */}
+      {!lcpImage.avif && lcpImage.webp && (
+        <link
+          rel="preload"
+          href={lcpImage.webp}
+          as="image"
+          type="image/webp"
+          fetchpriority="high"
+        />
+      )}
+      {/* JPEG fallback */}
+      {!lcpImage.avif && !lcpImage.webp && lcpImage.jpeg && (
+        <link
+          rel="preload"
+          href={lcpImage.jpeg}
+          as="image"
+          type="image/jpeg"
+          fetchpriority="high"
+        />
+      )}
+    </>
+  )}
 
   <!-- Responsive Grid Layout -->
   <div class="min-h-screen bg-(--surface-primary)">
