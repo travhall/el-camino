@@ -4,6 +4,7 @@ import ProductFilters from "@/components/ProductFilters.astro";
 import AppliedFilters from "@/components/AppliedFilters.astro";
 import ProductGrid from "@/components/ProductGrid.astro";
 import Layout from "@/layouts/Layout.astro";
+import { INITIAL_PAGE_SIZE, INFINITE_SCROLL_THRESHOLD } from "@/lib/constants/pagination";
 import { fetchProducts } from "@/lib/square/client";
 import {
   parseFiltersFromURL,
@@ -56,16 +57,41 @@ Astro.response.headers.set(
   hasFilters ? "filtered-content" : "base-catalog"
 );
 
-// === FETCH ALL PRODUCTS ===
+// === OPTIMIZED PRODUCT FETCHING ===
 let allProducts: Product[] = [];
 let filteredProducts: Product[] = [];
 let filterOptions: FilterOptions = { brands: [] };
 
 try {
-  allProducts = await fetchProducts();
+  // Fetch all products initially
+  const allProductsFull = await fetchProducts();
+  
+  const totalProductCount = allProductsFull.length;
+  const needsPagination = totalProductCount > INFINITE_SCROLL_THRESHOLD;
+  
+  if (needsPagination) {
+    // Large catalog: Use progressive loading for better TTI
+    // Initial load: 24 products, rest loaded via infinite scroll
+    allProducts = allProductsFull.slice(0, INITIAL_PAGE_SIZE);
+    
+    if (import.meta.env.DEV) {
+      console.log(
+        `[Shop/All] Large catalog: ${totalProductCount} products. Loading first ${INITIAL_PAGE_SIZE} for optimal performance.`
+      );
+    }
+  } else {
+    // Small catalog: Load all products
+    allProducts = allProductsFull;
+    
+    if (import.meta.env.DEV) {
+      console.log(
+        `[Shop/All] Small catalog: ${totalProductCount} products. Loading all upfront.`
+      );
+    }
+  }
 
-  // Extract filter options from all products
-  filterOptions = extractFilterOptions(allProducts);
+  // Extract filter options from ALL products (for filter UI)
+  filterOptions = extractFilterOptions(allProductsFull);
 
   if (hasFilters) {
     // console.log(`[Shop/All] 🔄 Applying server-side filtering...`);

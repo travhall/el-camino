@@ -113,23 +113,8 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <link rel="dns-prefetch" href="https://squarecdn.com" />
     <link rel="preconnect" href="https://web.squarecdn.com" crossorigin />
 
-    <!-- CRITICAL: Font preloading for FOUT prevention during View Transitions -->
-    <link
-      rel="preload"
-      href="/fonts/AlumniSans.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
-    />
-    <link
-      rel="preload"
-      href="/fonts/Cabin.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
-    />
-
-    <!-- Enhanced font preloading with fetchpriority -->
+    <!-- OPTIMIZED: Font preloading for FOUT prevention during View Transitions -->
+    <!-- Alumni Sans: Display font - high priority for headings/LCP -->
     <link
       rel="preload"
       href="/fonts/AlumniSans.woff2"
@@ -138,13 +123,13 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
       crossorigin="anonymous"
       fetchpriority="high"
     />
+    <!-- Cabin: Body font - standard priority -->
     <link
       rel="preload"
       href="/fonts/Cabin.woff2"
       as="font"
       type="font/woff2"
       crossorigin="anonymous"
-      fetchpriority="high"
     />
 
     <!-- Critical font styling to prevent FOUT on h1 elements cSpell:ignore Segoe -->
@@ -172,16 +157,21 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
       }
     </style>
 
-    <!-- Performance optimizations -->
+    <!-- OPTIMIZED: Resource hints for external domains -->
+    <!-- High-priority: Early connection for critical resources -->
+    <link
+      rel="preconnect"
+      href="https://items-images-production.s3.us-west-2.amazonaws.com"
+      crossorigin
+    />
     <link
       rel="preconnect"
       href="https://elcaminoskateshop.wordpress.com"
       crossorigin
     />
     <link rel="preconnect" href="https://connect.squareup.com" crossorigin />
-    <link rel="preconnect" href="https://squarecdn.com" crossorigin />
-    <link rel="dns-prefetch" href="https://elcaminoskateshop.wordpress.com" />
-    <link rel="dns-prefetch" href="https://connect.squareup.com" />
+    
+    <!-- Medium-priority: DNS prefetch only -->
     <link rel="dns-prefetch" href="https://squarecdn.com" />
 
     <SEOMetadata
@@ -197,17 +187,6 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
       type="website"
       astroGenerator={true}
     />
-
-    <!-- Enhanced preconnect strategy -->
-    <link
-      rel="preconnect"
-      href="https://elcaminoskateshop.wordpress.com"
-      crossorigin
-    />
-    <link rel="preconnect" href="https://connect.squareup.com" crossorigin />
-    <link rel="dns-prefetch" href="https://elcaminoskateshop.wordpress.com" />
-    <link rel="dns-prefetch" href="https://connect.squareup.com" />
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
 
     <!-- Speculation Rules for Advanced Prefetching -->
     <SpeculationRules currentPath={currentPath} eager={isHighTrafficPage} />

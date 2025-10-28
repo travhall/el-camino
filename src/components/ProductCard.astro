@@ -75,11 +75,13 @@ const availabilitySchema = isOutOfStock
 const imageId = `img-${product.id}`;
 const placeholderId = `placeholder-${product.id}`;
 
-// Dynamic priority - CRITICAL LCP FIX
-// Only prioritize first 4 products to prevent network congestion
-// Was: index < 12 (36 high-priority images overwhelming mobile network)
-// Now: index < 4 (12 images total, manageable for mobile 4G)
-const isDynamicPriority = priority || index < 4;
+// Dynamic priority - OPTIMIZED FOR MOBILE NETWORKS
+// Conservative prefetching to prevent network congestion
+// Each product = 3 image formats (AVIF, WebP, JPEG)
+// 2 products × 3 formats = 6 high-priority images (optimal for mobile 4G)
+// Previous: index < 4 (12 images) was still overwhelming slower connections
+const MAX_PRIORITY_IMAGES = 2;
+const isDynamicPriority = priority || index < MAX_PRIORITY_IMAGES;
 
 // Enhanced image optimization using new system
 // Only generate srcsets if we have a valid image URL
