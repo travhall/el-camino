@@ -37,6 +37,15 @@ const getCardVariant = (_index: number) => {
   return "masonry"; // Home page masonry layout
 };
 
+// OPTIMIZATION: Priority loading for first viewport images
+// Home page: first image only
+// News grid: first 3 images (above fold on most screens)
+// News list: first 2 images (larger cards take more space)
+const shouldPrioritize = (index: number) => {
+  if (!filterable) return index === 0; // Home page - first only
+  return view === 'grid' ? index < 3 : index < 2; // News page - optimize viewport
+};
+
 // Get container classes based on layout mode
 const getContainerClasses = () => {
   if (filterable) {
@@ -87,7 +96,7 @@ const getSkeletonVariant = () => {
           <ArticleCard
             post={post}
             featured={!filterable && index === 0}
-            priority={index === 0}
+            priority={shouldPrioritize(index)}
             variant={getCardVariant(index)}
             data-variant={getCardVariant(index)}
           />
