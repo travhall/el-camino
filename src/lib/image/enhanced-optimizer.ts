@@ -189,6 +189,7 @@ export class EnhancedImageOptimizer {
 
   /**
    * Optimize Square CDN URL with enhanced parameters
+   * PHASE 2: Proxy ALL Square images through Netlify Image CDN
    */
   private static optimizeSquareImageUrl(
     src: string,
@@ -202,11 +203,14 @@ export class EnhancedImageOptimizer {
     try {
       const url = new URL(src);
       
-      // Check if this is S3 vs CDN
-      const isS3 = url.hostname.includes('s3.amazonaws.com');
+      // Check if this is a Square image (S3 or squarecdn.com)
+      const isSquareImage = 
+        url.hostname.includes('s3.amazonaws.com') || 
+        url.hostname.includes('squarecdn.com');
       
-      if (isS3) {
-        // Use Netlify Image CDN to optimize S3 images
+      if (isSquareImage) {
+        // Proxy ALL Square images through Netlify Image CDN
+        // Enables automatic AVIF/WebP conversion + edge caching
         const netlifyParams = new URLSearchParams({
           url: src,
           w: (options.width || 600).toString(),
@@ -214,24 +218,14 @@ export class EnhancedImageOptimizer {
           fit: 'cover'
         });
         
-        if (options.format && options.format !== 'auto') {
-          netlifyParams.set('fm', options.format);
-        }
+        // Let Netlify handle format conversion via Accept header
+        // Don't set 'fm' parameter - auto format negotiation is better
         
         return `/.netlify/images?${netlifyParams.toString()}`;
       }
       
-      // Standard CDN optimization for squarecdn.com
-      if (options.width) url.searchParams.set('w', options.width.toString());
-      if (options.height) url.searchParams.set('h', options.height.toString());
-      if (options.quality) url.searchParams.set('q', options.quality.toString());
-      if (options.format) url.searchParams.set('f', options.format);
-      
-      // Add optimization flags
-      url.searchParams.set('auto', 'compress');
-      url.searchParams.set('fit', 'crop');
-      
-      return url.toString();
+      // Non-Square images pass through unchanged
+      return src;
     } catch {
       return src;
     }

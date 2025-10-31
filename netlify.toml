@@ -3,6 +3,15 @@ command = "pnpm run build"
 publish = "dist"
 # functions = "netlify/functions"  # Not currently using serverless functions
 
+# === PHASE 2: NETLIFY IMAGE CDN CONFIGURATION ===
+# Enable automatic format conversion (AVIF/WebP) for Square images
+# Expected: 74% bandwidth reduction (540 KiB → 150 KiB per page)
+[images]
+remote_images = [
+  "https://.*\\.squarecdn\\.com/.*",
+  "https://.*\\.s3\\..*\\.amazonaws\\.com/.*"
+]
+
 # Root page - HTTP/2 Push for critical assets
 [[headers]]
 for = "/"
