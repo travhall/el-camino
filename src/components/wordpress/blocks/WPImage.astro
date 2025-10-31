@@ -11,9 +11,11 @@ interface Props {
   caption?: string;
   alignment?: "default" | "wide" | "full";
   priority?: boolean;
+  width?: number;
+  height?: number;
 }
 
-const { src, alt, caption, alignment = "default", priority = false } = Astro.props;
+const { src, alt, caption, alignment = "default", priority = false, width, height } = Astro.props;
 
 const alignmentClasses = {
   default: "max-w-4xl mx-auto",
@@ -28,10 +30,14 @@ const sizeSettings = {
   default: { width: 600, height: 400 }
 };
 
+// Use provided dimensions or alignment defaults
+const imgWidth = width || sizeSettings[alignment as keyof typeof sizeSettings].width;
+const imgHeight = height || sizeSettings[alignment as keyof typeof sizeSettings].height;
+
 // Generate optimized sources using EnhancedImageOptimizer
 const imageSet = EnhancedImageOptimizer.generateOptimizedSources(src, {
-  width: sizeSettings[alignment as keyof typeof sizeSettings].width,
-  height: sizeSettings[alignment as keyof typeof sizeSettings].height,
+  width: imgWidth,
+  height: imgHeight,
   quality: 85,
   priority: priority
 });
@@ -75,6 +81,8 @@ const placeholderId = `${imageId}-placeholder`;
       id={imageId}
       src={optimizedSrc}
       alt={alt}
+      width={imgWidth}
+      height={imgHeight}
       class="w-full h-auto object-cover opacity-0 transition-opacity duration-300"
       loading="lazy"
       onload={`this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove();`}
