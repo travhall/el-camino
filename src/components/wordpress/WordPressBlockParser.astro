@@ -763,25 +763,33 @@ const parsedBlocks = parseWordPressBlocks(content);
 <!-- Render parsed blocks with selective WordPress content styling -->
 <div>
   {
-    parsedBlocks.map((block, index) => {
-      const isLastBlock = index === parsedBlocks.length - 1;
-      const blockClasses = isLastBlock ? "" : "mb-6";
+    (() => {
+      let imageCounter = 0;
+      
+      return parsedBlocks.map((block, index) => {
+        const isLastBlock = index === parsedBlocks.length - 1;
+        const blockClasses = isLastBlock ? "" : "mb-6";
 
-      // Define which blocks need WordPress content styling (content-only blocks)
-      const needsWordPressContentStyling = [
-        "paragraph",
-        "heading",
-        "list",
-        "quote",
-        "image",
-        "gallery",
-        "columns",
-        "separator",
-        "table",
-        "embed",
-        "video",
-        "audio",
-      ].includes(block.type);
+        // Track images for priority loading (first 2 images load eagerly)
+        const isPriorityImage = block.type === "image";
+        const currentImagePriority = isPriorityImage && imageCounter < 2;
+        if (isPriorityImage) imageCounter++;
+
+        // Define which blocks need WordPress content styling (content-only blocks)
+        const needsWordPressContentStyling = [
+          "paragraph",
+          "heading",
+          "list",
+          "quote",
+          "image",
+          "gallery",
+          "columns",
+          "separator",
+          "table",
+          "embed",
+          "video",
+          "audio",
+        ].includes(block.type);
 
       switch (block.type) {
         case "product-showcase":
@@ -875,7 +883,7 @@ const parsedBlocks = parseWordPressBlocks(content);
         case "image":
           return block.data.src ? (
             <div class={blockClasses}>
-              <WPImage {...block.data} />
+              <WPImage {...block.data} priority={currentImagePriority} />
             </div>
           ) : (
             <div
@@ -916,6 +924,7 @@ const parsedBlocks = parseWordPressBlocks(content);
 
           return <div class={wrapperClass} set:html={block.html} />;
       }
-    })
+      });
+    })()
   }
 </div>

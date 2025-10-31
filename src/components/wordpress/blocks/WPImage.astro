@@ -13,9 +13,10 @@ interface Props {
   priority?: boolean;
   width?: number;
   height?: number;
+  loading?: "eager" | "lazy";
 }
 
-const { src, alt, caption, alignment = "default", priority = false, width, height } = Astro.props;
+const { src, alt, caption, alignment = "default", priority = false, width, height, loading } = Astro.props;
 
 const alignmentClasses = {
   default: "max-w-4xl mx-auto",
@@ -33,6 +34,10 @@ const sizeSettings = {
 // Use provided dimensions or alignment defaults
 const imgWidth = width || sizeSettings[alignment as keyof typeof sizeSettings].width;
 const imgHeight = height || sizeSettings[alignment as keyof typeof sizeSettings].height;
+
+// Smart loading strategy: priority images load eagerly, others lazy
+const imageLoading = loading || (priority ? "eager" : "lazy");
+const fetchPriority = priority ? "high" : "auto";
 
 // Generate optimized sources using EnhancedImageOptimizer
 const imageSet = EnhancedImageOptimizer.generateOptimizedSources(src, {
@@ -83,8 +88,10 @@ const placeholderId = `${imageId}-placeholder`;
       alt={alt}
       width={imgWidth}
       height={imgHeight}
+      loading={imageLoading}
+      fetchpriority={fetchPriority}
+      decoding="async"
       class="w-full h-auto object-cover opacity-0 transition-opacity duration-300"
-      loading="lazy"
       onload={`this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove();`}
       onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove();`}
     />

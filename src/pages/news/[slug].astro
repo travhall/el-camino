@@ -122,6 +122,23 @@ const structuredData = {
 </style>
 
 <Layout title={fullTitle}>
+  <!-- Resource Hints for WordPress CDN -->
+  <link rel="dns-prefetch" href="https://i0.wp.com" slot="head" />
+  <link rel="dns-prefetch" href="https://i1.wp.com" slot="head" />
+  <link rel="dns-prefetch" href="https://i2.wp.com" slot="head" />
+  <link rel="preconnect" href="https://i0.wp.com" slot="head" crossorigin />
+  
+  <!-- Preload LCP Image (Featured Image) -->
+  {imageUrl && (
+    <link
+      rel="preload"
+      as="image"
+      href={imageUrl}
+      fetchpriority="high"
+      slot="head"
+    />
+  )}
+
   <script
     is:inline
     type="application/ld+json"
