@@ -56,14 +56,48 @@ const getImageDimensions = () => {
 
 const { width: imageWidth, height: imageHeight } = getImageDimensions();
 
-// Enhanced image optimization
-const optimizedImageUrl = imageUrl
-  ? EnhancedImageOptimizer.generateOptimizedSources(imageUrl, {
-      width: imageWidth,
-      height: imageHeight,
-      priority: priority,
-    }).jpeg
-  : "";
+// Enhanced image optimization - Generate all formats like ProductCard
+let optimizedImageUrl = "";
+let avifSrcSet: string | undefined;
+let webpSrcSet: string | undefined;
+let jpegSrcSet: string | undefined;
+let imageSizes = variant === "list" 
+  ? "(max-width: 768px) 0px, 256px"
+  : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
+
+if (imageUrl) {
+  const imageSet = EnhancedImageOptimizer.generateOptimizedSources(imageUrl, {
+    width: imageWidth,
+    height: imageHeight,
+    quality: 85,
+    priority: priority,
+  });
+
+  optimizedImageUrl = imageSet.avif || imageSet.webp || imageSet.jpeg;
+
+  // Generate responsive srcset for each format
+  avifSrcSet = imageSet.avif 
+    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, 'avif', {
+        width: imageWidth,
+        height: imageHeight,
+        quality: 85
+      })
+    : undefined;
+
+  webpSrcSet = imageSet.webp
+    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, 'webp', {
+        width: imageWidth,
+        height: imageHeight,
+        quality: 85
+      })
+    : undefined;
+
+  jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, 'jpeg', {
+    width: imageWidth,
+    height: imageHeight,
+    quality: 85
+  });
+}
 
 // Get the proper display category
 const displayCategory = getDisplayCategory(post);
@@ -166,29 +200,52 @@ const getExcerptClasses = () => {
   class={getCardClasses()}
   aria-label={`Read article: ${actualFallbackContent.title}`}
 >
-  <!-- FIXED: Simplified image structure like ProductCard, preserves all layouts -->
+  <!-- Enhanced Image with AVIF/WebP support -->
   {
     optimizedImageUrl ? (
-      <img
-        src={optimizedImageUrl}
-        alt={actualFallbackContent.imageAlt}
-        width={imageWidth}
-        height={imageHeight}
-        class={`${getImageClasses()} opacity-0`}
-        loading={priority ? "eager" : "lazy"}
-        fetchpriority={priority ? "high" : "auto"}
-        decoding={priority ? "sync" : "async"}
-        onload={
-          variant === "masonry" && !featured
-            ? `this.style.opacity=''; this.classList.add('loaded');`
-            : `this.style.opacity='1'; this.classList.add('loaded');`
-        }
-        onerror={
-          variant === "masonry" && !featured
-            ? `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity=''; this.classList.add('error');`
-            : `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; this.classList.add('error');`
-        }
-      />
+      <picture>
+        {/* AVIF format (best compression) */}
+        {avifSrcSet && (
+          <source
+            type="image/avif"
+            srcset={avifSrcSet}
+            sizes={imageSizes}
+          />
+        )}
+
+        {/* WebP format (good compression) */}
+        {webpSrcSet && (
+          <source
+            type="image/webp"
+            srcset={webpSrcSet}
+            sizes={imageSizes}
+          />
+        )}
+
+        {/* JPEG fallback */}
+        <img
+          src={optimizedImageUrl}
+          srcset={jpegSrcSet}
+          sizes={imageSizes}
+          alt={actualFallbackContent.imageAlt}
+          width={imageWidth}
+          height={imageHeight}
+          class={`${getImageClasses()} opacity-0`}
+          loading={priority ? "eager" : "lazy"}
+          fetchpriority={priority ? "high" : "auto"}
+          decoding={priority ? "sync" : "async"}
+          onload={
+            variant === "masonry" && !featured
+              ? `this.style.opacity=''; this.classList.add('loaded');`
+              : `this.style.opacity='1'; this.classList.add('loaded');`
+          }
+          onerror={
+            variant === "masonry" && !featured
+              ? `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity=''; this.classList.add('error');`
+              : `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; this.classList.add('error');`
+          }
+        />
+      </picture>
     ) : (
       <img
         src={EL_CAMINO_LOGO_DATA_URI}
