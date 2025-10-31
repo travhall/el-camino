@@ -23,12 +23,13 @@ for = "/shop/*"
 [headers.values]
 Cache-Control = "public, max-age=60, s-maxage=180, stale-while-revalidate=600"
 
-# Category pages - IMPROVED: Better caching with extended stale-while-revalidate
-# Serves stale content while revalidating in background for instant page loads
+# Category pages - PHASE 1: ISR EDGE CACHING
+# Let Astro pages set their own Cache-Control headers for ISR
+# Cache different filters separately for optimal performance
 [[headers]]
 for = "/category/*"
 [headers.values]
-Cache-Control = "public, max-age=300, s-maxage=600, stale-while-revalidate=3600"
+Netlify-Vary = "query=brand,query=availability"
 
 # Product pages - aggressive caching for performance
 [[headers]]
