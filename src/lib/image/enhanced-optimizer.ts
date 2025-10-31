@@ -204,8 +204,10 @@ export class EnhancedImageOptimizer {
       const url = new URL(src);
       
       // Check if this is a Square image (S3 or squarecdn.com)
+      // Fix: S3 regional URLs include region (e.g., s3.us-west-2.amazonaws.com)
       const isSquareImage = 
-        url.hostname.includes('s3.amazonaws.com') || 
+        url.hostname.includes('.s3.') ||  // Matches s3.us-west-2.amazonaws.com
+        url.hostname.includes('.s3-') ||  // Matches s3-region.amazonaws.com
         url.hostname.includes('squarecdn.com');
       
       if (isSquareImage) {
