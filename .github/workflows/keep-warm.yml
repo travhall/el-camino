@@ -1,0 +1,28 @@
+# Function Warmup Workflow
+# PHASE 3: Eliminate cold start penalties (200-500ms)
+# Pings production endpoints every 5 minutes to keep functions warm
+# Expected: 0% cold starts, consistent response times
+
+name: Keep Functions Warm
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes
+  workflow_dispatch:  # Manual trigger for testing
+
+jobs:
+  warmup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping production endpoints
+        run: |
+          echo "Warming up functions..."
+          
+          # Warmup endpoint
+          curl -s https://elcaminoskateshop.netlify.app/api/warmup || true
+          
+          # Key category pages that trigger SSR functions
+          curl -s https://elcaminoskateshop.netlify.app/ || true
+          curl -s https://elcaminoskateshop.netlify.app/category/skateboards || true
+          curl -s https://elcaminoskateshop.netlify.app/category/apparel || true
+          
+          echo "✅ Warmup complete"
