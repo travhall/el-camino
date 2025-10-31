@@ -65,43 +65,6 @@ const optimizedImageUrl = imageUrl
     }).jpeg
   : "";
 
-// Generate responsive srcsets for modern formats (like ProductCard)
-let avifSrcSet: string | undefined;
-let webpSrcSet: string | undefined;
-let jpegSrcSet: string | undefined;
-
-if (imageUrl) {
-  const imageSet = EnhancedImageOptimizer.generateOptimizedSources(imageUrl, {
-    width: imageWidth,
-    height: imageHeight,
-    priority: priority,
-  });
-
-  // Generate responsive srcsets for each format
-  // OPTIMIZATION: Reduced AVIF quality to 75 (highly efficient format)
-  avifSrcSet = imageSet.avif
-    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, 'avif', {
-        width: imageWidth,
-        height: imageHeight,
-        quality: 75,
-      })
-    : undefined;
-
-  webpSrcSet = imageSet.webp
-    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, 'webp', {
-        width: imageWidth,
-        height: imageHeight,
-        quality: 80,
-      })
-    : undefined;
-
-  jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, 'jpeg', {
-    width: imageWidth,
-    height: imageHeight,
-    quality: 85,
-  });
-}
-
 // Get the proper display category
 const displayCategory = getDisplayCategory(post);
 
@@ -203,52 +166,29 @@ const getExcerptClasses = () => {
   class={getCardClasses()}
   aria-label={`Read article: ${actualFallbackContent.title}`}
 >
-  <!-- OPTIMIZED: Enhanced image with picture element (like ProductCard) -->
+  <!-- FIXED: Simplified image structure like ProductCard, preserves all layouts -->
   {
     optimizedImageUrl ? (
-      <picture>
-        {/* AVIF format (best compression) */}
-        {avifSrcSet && (
-          <source
-            type="image/avif"
-            srcset={avifSrcSet}
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-        )}
-
-        {/* WebP format (good compression) */}
-        {webpSrcSet && (
-          <source
-            type="image/webp"
-            srcset={webpSrcSet}
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-        )}
-
-        {/* JPEG fallback */}
-        <img
-          src={optimizedImageUrl}
-          srcset={jpegSrcSet}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          alt={actualFallbackContent.imageAlt}
-          width={imageWidth}
-          height={imageHeight}
-          class={`${getImageClasses()} opacity-0`}
-          loading={priority ? "eager" : "lazy"}
-          fetchpriority={priority ? "high" : "auto"}
-          decoding={priority ? "sync" : "async"}
-          onload={
-            variant === "masonry" && !featured
-              ? `this.style.opacity=''; this.classList.add('loaded');`
-              : `this.style.opacity='1'; this.classList.add('loaded');`
-          }
-          onerror={
-            variant === "masonry" && !featured
-              ? `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity=''; this.classList.add('error');`
-              : `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; this.classList.add('error');`
-          }
-        />
-      </picture>
+      <img
+        src={optimizedImageUrl}
+        alt={actualFallbackContent.imageAlt}
+        width={imageWidth}
+        height={imageHeight}
+        class={`${getImageClasses()} opacity-0`}
+        loading={priority ? "eager" : "lazy"}
+        fetchpriority={priority ? "high" : "auto"}
+        decoding={priority ? "sync" : "async"}
+        onload={
+          variant === "masonry" && !featured
+            ? `this.style.opacity=''; this.classList.add('loaded');`
+            : `this.style.opacity='1'; this.classList.add('loaded');`
+        }
+        onerror={
+          variant === "masonry" && !featured
+            ? `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity=''; this.classList.add('error');`
+            : `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; this.classList.add('error');`
+        }
+      />
     ) : (
       <img
         src={EL_CAMINO_LOGO_DATA_URI}
