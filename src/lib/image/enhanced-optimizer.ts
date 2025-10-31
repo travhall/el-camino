@@ -101,11 +101,14 @@ export class EnhancedImageOptimizer {
     src: string,
     options: ModernImageOptions = {}
   ): ResponsiveImageSet {
-    // Support both Square CDN and Square's S3 image hosting
+    // Support Square CDN, Square's S3, and WordPress images
     const isSquareImage = src.includes('squarecdn.com') || 
                           src.includes('items-images-production.s3');
     
-    if (!isSquareImage) {
+    const isWordPressImage = src.includes('wordpress.com') ||
+                             src.includes('wp.com');
+    
+    if (!isSquareImage && !isWordPressImage) {
       return this.fallbackImageSet(src, options);
     }
 
@@ -188,8 +191,8 @@ export class EnhancedImageOptimizer {
   }
 
   /**
-   * Optimize Square CDN URL with enhanced parameters
-   * PHASE 2: Proxy ALL Square images through Netlify Image CDN
+   * Optimize image URLs through Netlify CDN
+   * PHASE 2+: Proxy Square AND WordPress images through Netlify Image CDN
    */
   private static optimizeSquareImageUrl(
     src: string,
@@ -210,8 +213,13 @@ export class EnhancedImageOptimizer {
         url.hostname.includes('.s3-') ||  // Matches s3-region.amazonaws.com
         url.hostname.includes('squarecdn.com');
       
-      if (isSquareImage) {
-        // Proxy ALL Square images through Netlify Image CDN
+      // Check if this is a WordPress image
+      const isWordPressImage =
+        url.hostname.includes('wordpress.com') ||
+        url.hostname.includes('wp.com');
+      
+      if (isSquareImage || isWordPressImage) {
+        // Proxy ALL supported images through Netlify Image CDN
         // Enables automatic AVIF/WebP conversion + edge caching
         const netlifyParams = new URLSearchParams({
           url: src,
@@ -226,7 +234,7 @@ export class EnhancedImageOptimizer {
         return `/.netlify/images?${netlifyParams.toString()}`;
       }
       
-      // Non-Square images pass through unchanged
+      // Non-supported images pass through unchanged
       return src;
     } catch {
       return src;

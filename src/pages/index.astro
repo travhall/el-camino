@@ -21,9 +21,68 @@ try {
 } catch (e) {
   error = e instanceof Error ? e.message : "An error occurred loading posts";
 }
+
+// === ISR CACHING: Enable Edge Caching for Home Page ===
+// WordPress content changes less frequently than inventory
+// Cache for 10 min, serve stale for 7 days while revalidating
+Astro.response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+Astro.response.headers.set('Netlify-CDN-Cache-Control', 
+  'public, durable, s-maxage=600, stale-while-revalidate=604800'
+);
+
+// === LCP OPTIMIZATION: Preload first article image ===
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
+import { extractEmbeddedData } from "@/lib/wordpress/types";
+
+const firstPost = posts[0];
+const firstPostData = firstPost ? extractEmbeddedData(firstPost) : null;
+const lcpImage = firstPostData?.featuredMedia?.source_url
+  ? EnhancedImageOptimizer.generateOptimizedSources(firstPostData.featuredMedia.source_url, {
+      width: 800,
+      height: 533,
+      quality: 85,
+      priority: true,
+    })
+  : null;
 ---
 
 <Layout title="Welcome Home, we're glad you're here | El Camino">
+  {/* LCP PRELOAD: Load first article image with format negotiation */}
+  {lcpImage && (
+    <Fragment slot="head">
+      {/* Preload AVIF (best compression) if available */}
+      {lcpImage.avif && (
+        <link
+          rel="preload"
+          href={lcpImage.avif}
+          as="image"
+          type="image/avif"
+          fetchpriority="high"
+        />
+      )}
+      {/* Fallback to WebP if AVIF not available */}
+      {!lcpImage.avif && lcpImage.webp && (
+        <link
+          rel="preload"
+          href={lcpImage.webp}
+          as="image"
+          type="image/webp"
+          fetchpriority="high"
+        />
+      )}
+      {/* JPEG fallback */}
+      {!lcpImage.avif && !lcpImage.webp && lcpImage.jpeg && (
+        <link
+          rel="preload"
+          href={lcpImage.jpeg}
+          as="image"
+          type="image/jpeg"
+          fetchpriority="high"
+        />
+      )}
+    </Fragment>
+  )}
+
   <section>
     <ArticleGrid posts={posts} error={error} showSidebar={true} />
   </section>
