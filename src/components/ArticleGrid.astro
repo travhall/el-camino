@@ -37,13 +37,13 @@ const getCardVariant = (_index: number) => {
   return "masonry"; // Home page masonry layout
 };
 
-// OPTIMIZATION: Priority loading for first viewport images
-// Home page: first image only
-// News grid: first 3 images (above fold on most screens)
-// News list: first 2 images (larger cards take more space)
+// OPTIMIZATION: Conservative priority loading
+// Home page: first image only (LCP critical)
+// News grid: first 2 images (reduce eager loading for mobile)
+// News list: first image only (large cards)
 const shouldPrioritize = (index: number) => {
   if (!filterable) return index === 0; // Home page - first only
-  return view === 'grid' ? index < 3 : index < 2; // News page - optimize viewport
+  return view === 'grid' ? index < 2 : index === 0; // News - more conservative
 };
 
 // Get container classes based on layout mode
