@@ -77,21 +77,26 @@ const tags = embeddedData.tags;
 
 // PHASE 4 TRACK B: Optimize hero image through Netlify CDN
 // Reduces quality to 75 and explicitly requests AVIF for -400ms to -700ms LCP improvement
+// CLS FIX: Use actual image dimensions from WordPress to prevent layout shift
 const rawImageUrl = featuredMedia?.source_url;
+const heroImageWidth = featuredMedia?.media_details?.width || 1200;
+const heroImageHeight = featuredMedia?.media_details?.height || 675;
+const heroAspectRatio = heroImageWidth / heroImageHeight;
+
 const imageUrl = rawImageUrl 
   ? EnhancedImageOptimizer.generateOptimizedSources(rawImageUrl, {
-      width: 1200,
-      height: 675,
+      width: heroImageWidth,
+      height: heroImageHeight,
       quality: 75,  // Aggressive compression for hero image
       priority: true
     }).avif || EnhancedImageOptimizer.generateOptimizedSources(rawImageUrl, {
-      width: 1200,
-      height: 675,
+      width: heroImageWidth,
+      height: heroImageHeight,
       quality: 75,
       priority: true
     }).webp || EnhancedImageOptimizer.generateOptimizedSources(rawImageUrl, {
-      width: 1200,
-      height: 675,
+      width: heroImageWidth,
+      height: heroImageHeight,
       quality: 75,
       priority: true
     }).jpeg
@@ -250,7 +255,8 @@ const structuredData = {
       </div>
 
       <div
-        class="aspect-video border-4 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative basis-2/3 2xl:basis-3/5 self-center"
+        class="border-4 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative basis-2/3 2xl:basis-3/5 self-center"
+        style={`aspect-ratio: ${heroAspectRatio}`}
       >
         {
           imageUrl && (
@@ -272,8 +278,8 @@ const structuredData = {
               <img
                 src={imageUrl}
                 alt={featuredMedia?.alt_text || post.title.rendered}
-                width="1200"
-                height="675"
+                width={heroImageWidth}
+                height={heroImageHeight}
                 class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
                 loading="eager"
                 fetchpriority="high"
