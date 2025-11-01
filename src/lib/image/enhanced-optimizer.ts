@@ -35,9 +35,10 @@ export interface FormatSupport {
 export class EnhancedImageOptimizer {
   private static formatSupport: FormatSupport | null = null;
   private static readonly QUALITY_SETTINGS = {
+    // PHASE 4: Optimized quality settings for WordPress LCP improvement
     avif: { high: 65, medium: 50, low: 35 },
-    webp: { high: 85, medium: 75, low: 60 },
-    jpeg: { high: 90, medium: 80, low: 70 }
+    webp: { high: 82, medium: 72, low: 58 },  // Reduced from 85/75/60
+    jpeg: { high: 88, medium: 78, low: 68 }   // Reduced from 90/80/70
   };
 
   /**
@@ -192,7 +193,7 @@ export class EnhancedImageOptimizer {
 
   /**
    * Optimize image URLs through Netlify CDN
-   * PHASE 2+: Proxy Square AND WordPress images through Netlify Image CDN
+   * PHASE 4: Enhanced WordPress image optimization for LCP improvement
    */
   private static optimizeSquareImageUrl(
     src: string,
@@ -219,17 +220,27 @@ export class EnhancedImageOptimizer {
         url.hostname.includes('wp.com');
       
       if (isSquareImage || isWordPressImage) {
+        // PHASE 4 ENHANCEMENT: Optimized quality for WordPress images
+        // WordPress images default to quality=80 (vs 85) for better compression
+        // while maintaining visual quality
+        const optimizedQuality = isWordPressImage 
+          ? Math.min(options.quality || 80, 80)  // Cap at 80 for WordPress
+          : (options.quality || 85);              // 85 for Square images
+        
         // Proxy ALL supported images through Netlify Image CDN
         // Enables automatic AVIF/WebP conversion + edge caching
         const netlifyParams = new URLSearchParams({
           url: src,
           w: (options.width || 600).toString(),
-          q: (options.quality || 85).toString(),
+          q: optimizedQuality.toString(),
           fit: 'cover'
         });
         
-        // Let Netlify handle format conversion via Accept header
-        // Don't set 'fm' parameter - auto format negotiation is better
+        // PHASE 4 ENHANCEMENT: Explicit format request for better compression
+        // Request format based on option, with fallback to auto-negotiation
+        if (options.format && options.format !== 'auto') {
+          netlifyParams.set('fm', options.format);
+        }
         
         return `/.netlify/images?${netlifyParams.toString()}`;
       }

@@ -122,25 +122,41 @@ const structuredData = {
 </style>
 
 <Layout title={fullTitle}>
-  <!-- Resource Hints for WordPress CDN -->
+  <!-- PHASE 4: Enhanced Resource Hints for WordPress CDN -->
+  <!-- DNS Prefetch for early domain resolution -->
   <link rel="dns-prefetch" href="https://i0.wp.com" slot="head" />
   <link rel="dns-prefetch" href="https://i1.wp.com" slot="head" />
   <link rel="dns-prefetch" href="https://i2.wp.com" slot="head" />
+  
+  <!-- Preconnect with crossorigin for image CDN (includes TLS handshake) -->
   <link rel="preconnect" href="https://i0.wp.com" slot="head" crossorigin />
+  <link rel="preconnect" href="https://i1.wp.com" slot="head" crossorigin />
   
   <!-- Gravatar for author avatars -->
   <link rel="dns-prefetch" href="https://secure.gravatar.com" slot="head" />
   <link rel="preconnect" href="https://secure.gravatar.com" slot="head" crossorigin />
   
-  <!-- Preload LCP Image (Featured Image) -->
+  <!-- PHASE 4: Preload LCP Image with explicit AVIF hint -->
+  <!-- This triggers earlier fetch and format negotiation -->
   {imageUrl && (
-    <link
-      rel="preload"
-      as="image"
-      href={imageUrl}
-      fetchpriority="high"
-      slot="head"
-    />
+    <>
+      <link
+        rel="preload"
+        as="image"
+        href={imageUrl}
+        fetchpriority="high"
+        type="image/avif"
+        slot="head"
+      />
+      <link
+        rel="preload"
+        as="image"
+        href={imageUrl}
+        fetchpriority="high"
+        type="image/webp"
+        slot="head"
+      />
+    </>
   )}
 
   <script

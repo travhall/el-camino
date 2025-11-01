@@ -3,15 +3,18 @@ command = "pnpm run build"
 publish = "dist"
 # functions = "netlify/functions"  # Not currently using serverless functions
 
-# === PHASE 2: NETLIFY IMAGE CDN CONFIGURATION ===
-# Enable automatic format conversion (AVIF/WebP) for Square images
-# Expected: 74% bandwidth reduction (540 KiB → 150 KiB per page)
+# === PHASE 4: ENHANCED NETLIFY IMAGE CDN CONFIGURATION ===
+# Enable automatic format conversion (AVIF/WebP) for ALL external images
+# Phase 4 Enhancement: Broader WordPress patterns + quality optimization
+# Expected: Additional 15-25% LCP improvement on article pages
 [images]
 remote_images = [
   "https://.*\\.squarecdn\\.com/.*",
   "https://.*\\.s3\\..*\\.amazonaws\\.com/.*",
   "https://.*\\.wordpress\\.com/.*",
-  "https://i[0-9]\\.wp\\.com/.*"
+  "https://i[0-9]\\.wp\\.com/.*",
+  "https://.*\\.wp\\.com/.*",           # Broader WordPress.com pattern
+  "https://secure\\.gravatar\\.com/.*"  # Gravatar avatars
 ]
 
 # Root page - HTTP/2 Push for critical assets
