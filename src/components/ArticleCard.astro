@@ -132,12 +132,26 @@ const getCardClasses = () => {
   }
 };
 
+const getImageContainerClasses = () => {
+  switch (variant) {
+    case "list":
+      return "flex-shrink-0 overflow-hidden";
+
+    case "grid":
+      return "overflow-hidden";
+
+    case "masonry":
+    default:
+      return "w-full h-full";
+  }
+};
+
 const getImageClasses = () => {
-  const baseClasses = "object-cover transition-all duration-300 relative";
+  const baseClasses = "object-cover transition-all duration-300";
 
   switch (variant) {
     case "list":
-      return `${baseClasses} hidden md:block w-56 lg:w-72 h-auto aspect-video group-hover:scale-105`;
+      return `${baseClasses} hidden md:block w-56 lg:w-72 h-full aspect-video group-hover:scale-105`;
 
     case "grid":
       return `${baseClasses} w-full h-48 group-hover:scale-105`;
@@ -158,7 +172,7 @@ const getContentClasses = () => {
       return "flex flex-col p-4 flex-1 min-w-0 gap-2";
 
     case "grid":
-      return "flex flex-col p-4 flex-1 gap-2";
+      return "flex flex-col p-4 flex-1 gap-2 h-auto";
 
     case "masonry":
     default:
@@ -208,7 +222,7 @@ const getExcerptClasses = () => {
   <!-- Enhanced Image with AVIF/WebP support -->
   {
     optimizedImageUrl ? (
-      <picture class="h-full">
+      <picture class={getImageContainerClasses()}>
         {/* AVIF format (best compression) */}
         {avifSrcSet && (
           <source type="image/avif" srcset={avifSrcSet} sizes={imageSizes} />
