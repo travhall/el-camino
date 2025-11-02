@@ -315,6 +315,17 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
   />
   <meta name="twitter:image" content={twitterData.image} slot="head" />
 
+  <!-- Preload LCP image for faster loading -->
+  {product.image && (
+    <link
+      rel="preload"
+      as="image"
+      href={product.image}
+      fetchpriority="high"
+      slot="head"
+    />
+  )}
+
   <section class="p-4 sm:p-6 lg:p-8 relative">
     <div
       class="lg:grid lg:grid-cols-2 lg:gap-x-8 xl:gap-x-12 2xl:gap-x-16 items-start"
@@ -337,18 +348,30 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           </div>
         </div>
 
-        <img
-          id="product-image"
-          src={product.image}
-          alt={product.title}
-          class={`w-full h-full object-cover opacity-0 transition-opacity duration-300 ${!selectedVariationInStock ? "opacity-75" : ""}`}
-          loading="eager"
-          fetchpriority="high"
-          onload="this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()"
-          onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()`}
-          role="img"
-          aria-label={product.title || "Product image"}
-        />
+        <picture>
+          <source
+            srcset={`/.netlify/images?url=${encodeURIComponent(product.image)}&fm=avif&w=800&q=80`}
+            type="image/avif"
+          />
+          <source
+            srcset={`/.netlify/images?url=${encodeURIComponent(product.image)}&fm=webp&w=800&q=80`}
+            type="image/webp"
+          />
+          <img
+            id="product-image"
+            src={product.image}
+            alt={product.title}
+            width="800"
+            height="800"
+            class={`w-full h-full object-cover opacity-0 transition-opacity duration-300 ${!selectedVariationInStock ? "opacity-75" : ""}`}
+            loading="eager"
+            fetchpriority="high"
+            onload="this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()"
+            onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()`}
+            role="img"
+            aria-label={product.title || "Product image"}
+          />
+        </picture>
 
         {/* Out of stock overlay */}
         {
