@@ -9,7 +9,12 @@ interface Props {
   categoryPath: string;
 }
 
-const { filterOptions, totalProducts, filteredCount, categoryPath: _categoryPath } = Astro.props;
+const {
+  filterOptions,
+  totalProducts,
+  filteredCount,
+  categoryPath: _categoryPath,
+} = Astro.props;
 
 // Parse current filters from URL for server-side rendering
 const currentParams = new URLSearchParams(Astro.url.search);
@@ -22,8 +27,8 @@ const shouldShowToggle = filterOptions.brands.length > DEFAULT_VISIBLE_BRANDS;
 
 // FOUC Fix: Determine initial expanded state server-side
 // Check if there are any selected brands beyond the default visible count
-const hasSelectedBrandsBelow = currentBrands.some(brand => {
-  const brandIndex = filterOptions.brands.findIndex(b => b.name === brand);
+const hasSelectedBrandsBelow = currentBrands.some((brand) => {
+  const brandIndex = filterOptions.brands.findIndex((b) => b.name === brand);
   return brandIndex >= DEFAULT_VISIBLE_BRANDS;
 });
 
@@ -36,44 +41,45 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   .brand-filter-list {
     transition: none;
   }
-  
+
   .product-card-wrapper[style*="display: none"] {
     display: none !important;
   }
-  
+
   /* Disabled state styling for phantom click prevention */
   /* ENHANCED: Phantom click prevention without visual flicker during View Transitions */
   :disabled {
     cursor: not-allowed;
     pointer-events: none;
   }
-  
+
   /* Only show opacity reduction when not during filtering process */
   body:not(.filtering-in-progress) :disabled {
     opacity: 0.6;
   }
-  
+
   /* Smooth transition for opacity changes */
-  input[type="checkbox"], button {
+  input[type="checkbox"],
+  button {
     transition: opacity 0.15s ease;
   }
-  
+
   /* Disabled button styling - consistent with general disabled styling */
   body:not(.filtering-in-progress) button:disabled {
     opacity: 0.6;
   }
-  
+
   button:disabled {
     cursor: not-allowed;
     pointer-events: none;
   }
-  
+
   /* Simple disabled container state */
   .filters-disabled {
     opacity: 0.6;
     pointer-events: none;
   }
-  
+
   /* Respect reduced motion for View Transitions */
   @media (prefers-reduced-motion: reduce) {
     html::view-transition-old(root),
@@ -81,7 +87,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       animation: none !important;
     }
   }
-  
+
   /* Screen reader only content */
   .sr-only {
     position: absolute;
@@ -107,33 +113,59 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   >
     Filters
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"></path>
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"
+      ></path>
     </svg>
-    {currentBrands.length > 0 && (
-      <span class="absolute -top-1 -right-1 bg-(--ui-button-surface) text-(--ui-button-text) font-bold text-sm rounded-full min-w-5 h-5 flex items-center justify-center px-1">
-        {currentBrands.length}
-      </span>
-    )}
+    {
+      currentBrands.length > 0 && (
+        <span class="absolute -top-1 -right-1 bg-(--ui-button-surface) text-(--ui-button-text) font-bold text-sm rounded-full min-w-5 h-5 flex items-center justify-center px-1">
+          {currentBrands.length}
+        </span>
+      )
+    }
   </button>
 
   <!-- Mobile Overlay -->
   <div
     id="mobile-filter-overlay"
     class="lg:hidden fixed inset-0 bg-(--ui-modal-overlay)/90 z-40 opacity-0 pointer-events-none transition-opacity duration-300"
-  ></div>
+  >
+  </div>
 
   <!-- Single Form - Desktop Static, Mobile Drawer -->
   <div
     id="filter-container"
-    class="filters-disabled lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-md lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-secondary)/0 z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+    class="filters-disabled lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-md lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-secondary)/0 border-4 border-(--border-tertiary) z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
   >
     <form class="px-4 lg:p-2" id="filter-form">
       <!-- Mobile Header -->
-      <div class="flex items-center justify-between mb-4 p-6 -mx-4 bg-(--surface-secondary) border border-b-(--border-tertiary) sticky top-0 z-50 lg:hidden">
-        <h2 class="text-lg font-semibold text-(--content-heading)">Filter Products</h2>
-        <button type="button" id="mobile-filter-close" class="p-1 text-(--content-meta) hover:text-(--content-emphasis)" aria-label="Close Filters">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+      <div
+        class="flex items-center justify-between mb-4 p-6 -mx-4 bg-(--surface-secondary) border-b-4 border-(--border-tertiary) sticky top-0 z-50 lg:hidden"
+      >
+        <h2 class="text-lg font-semibold text-(--content-heading)">
+          Filter Products
+        </h2>
+        <button
+          type="button"
+          id="mobile-filter-close"
+          class="p-1 text-(--content-meta) hover:text-(--content-emphasis)"
+          aria-label="Close Filters"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
       </div>
@@ -146,98 +178,117 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
           </p>
         </div>
         <div class="hidden lg:block">
-          <p class="text-sm lg:text-base text-(--content-meta) font-medium" data-result-count>
-            {filteredCount === totalProducts
-              ? `${totalProducts} products`
-              : `${filteredCount} of ${totalProducts} products`
+          <p
+            class="text-sm lg:text-base text-(--content-meta) font-medium"
+            data-result-count
+          >
+            {
+              filteredCount === totalProducts
+                ? `${totalProducts} products`
+                : `${filteredCount} of ${totalProducts} products`
             }
           </p>
         </div>
-        
+
         <!-- Screen Reader Live Region for Filter Updates -->
-        <div 
-          id="filter-results-live-region" 
-          aria-live="polite" 
-          aria-atomic="true" 
+        <div
+          id="filter-results-live-region"
+          aria-live="polite"
+          aria-atomic="true"
           class="sr-only"
         >
-          {filteredCount === totalProducts
-            ? `Showing all ${totalProducts} products`
-            : `Filtered to ${filteredCount} of ${totalProducts} products`
+          {
+            filteredCount === totalProducts
+              ? `Showing all ${totalProducts} products`
+              : `Filtered to ${filteredCount} of ${totalProducts} products`
           }
         </div>
       </div>
 
       <!-- Brand Filter Section -->
-      {filterOptions.brands.length > 0 && (
-        <div class="mb-6 lg:mb-4">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-xl font-medium font-display text-(--content-heading)">Brand</h3>
-            <button
-              type="button"
-              id="clear-brands-button"
-              data-clear-filters
-              disabled
-              class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors lg:mr-2"
-              style={currentBrands.length === 0 ? "display: none;" : ""}
-            >
-              Clear ({currentBrands.length})
-            </button>
-          </div>
-
-          <!-- Brand List with FOUC Fix -->
-          <div class="space-y-3 lg:space-y-1 max-h-64 lg:max-h-none overflow-y-auto lg:overflow-visible brand-filter-list" data-brand-list>
-            {filterOptions.brands.map((brand, index) => {
-              const isHidden = index >= DEFAULT_VISIBLE_BRANDS;
-              // FOUC Fix: Apply server-side visibility logic
-              const serverHiddenClass = isHidden && !shouldStartExpanded ? "lg:hidden" : "";
-
-              return (
-                <label
-                  class={`flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors ${isHidden ? `brand-extra-item ${serverHiddenClass}` : ""}`}
-                >
-                  <div class="flex items-center">
-                    <input
-                      type="checkbox"
-                      name="brands"
-                      value={brand.name}
-                      checked={currentBrands.includes(brand.name)}
-                      disabled
-                      class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
-                    />
-                    <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
-                      {brand.name}
-                    </span>
-                  </div>
-                  <span class="text-sm text-(--content-meta) lg:mr-2">({brand.count})</span>
-                </label>
-              );
-            })}
-
-            {shouldShowToggle && (
+      {
+        filterOptions.brands.length > 0 && (
+          <div class="mb-6 lg:mb-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-2xl font-medium font-display text-(--content-heading)">
+                Brand
+              </h3>
               <button
                 type="button"
-                id="show-more-toggle"
-                class="hidden lg:block w-full text-left text-sm text-ui-accent hover:text-ui-accent-hover transition-colors p-1 font-medium"
-                data-collapsed-text={`+ Show ${filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more`}
-                data-expanded-text="- Show less"
-                data-initial-expanded={shouldStartExpanded.toString()}
+                id="clear-brands-button"
+                data-clear-filters
+                disabled
+                class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors lg:mr-2"
+                style={currentBrands.length === 0 ? "display: none;" : ""}
               >
-                {shouldStartExpanded 
-                  ? "- Show less"
-                  : `+ Show ${filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more`
-                }
+                Clear ({currentBrands.length})
               </button>
-            )}
+            </div>
+
+            <div
+              class="space-y-3 lg:space-y-1 max-h-64 lg:max-h-none overflow-y-auto lg:overflow-visible brand-filter-list"
+              data-brand-list
+            >
+              {filterOptions.brands.map((brand, index) => {
+                const isHidden = index >= DEFAULT_VISIBLE_BRANDS;
+                // FOUC Fix: Apply server-side visibility logic
+                const serverHiddenClass =
+                  isHidden && !shouldStartExpanded ? "lg:hidden" : "";
+
+                return (
+                  <label
+                    class={`flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors ${isHidden ? `brand-extra-item ${serverHiddenClass}` : ""}`}
+                  >
+                    <div class="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="brands"
+                        value={brand.name}
+                        checked={currentBrands.includes(brand.name)}
+                        disabled
+                        class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                      />
+                      <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
+                        {brand.name}
+                      </span>
+                    </div>
+                    <span class="text-sm text-(--content-meta) lg:mr-2">
+                      ({brand.count})
+                    </span>
+                  </label>
+                );
+              })}
+
+              {shouldShowToggle && (
+                <button
+                  type="button"
+                  id="show-more-toggle"
+                  class="hidden lg:block w-full text-left text-sm text-ui-accent hover:text-ui-accent-hover transition-colors p-1 font-medium"
+                  data-collapsed-text={`+ Show ${filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more`}
+                  data-expanded-text="- Show less"
+                  data-initial-expanded={shouldStartExpanded.toString()}
+                >
+                  {shouldStartExpanded
+                    ? "- Show less"
+                    : `+ Show ${filterOptions.brands.length - DEFAULT_VISIBLE_BRANDS} more`}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       <!-- Availability Filter Section -->
       <div class="mb-6 lg:mb-4">
-        <h3 class="text-xl font-medium font-display text-(--content-heading) mb-3">Availability</h3>
+        <h3
+          class="text-xl font-medium font-display text-(--content-heading) mb-3"
+        >
+          Availability
+        </h3>
 
-        <label class="flex items-center group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors">
+        <label
+          class="flex items-center group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors"
+        >
           <input
             type="checkbox"
             name="availability"
@@ -246,24 +297,30 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             disabled
             class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
           />
-          <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
+          <span
+            class="text-(--content-body) group-hover:text-(--content-emphasis)"
+          >
             In stock only
           </span>
         </label>
       </div>
 
       <!-- Mobile Actions -->
-      <div class="flex gap-3 p-6 -mx-4 bg-(--surface-secondary) border-t-(--border-tertiary) sticky bottom-0 lg:hidden">
-        {(currentBrands.length > 0 || currentAvailability) && (
-          <button
-            type="button"
-            data-clear-filters-mobile
-            disabled
-            class="flex-1 py-3 px-4 border border-(--ui-button-border) text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
-          >
-            Clear Filters
-          </button>
-        )}
+      <div
+        class="flex gap-3 p-6 -mx-4 bg-(--surface-secondary) border-t-4 border-(--border-tertiary) sticky bottom-0 lg:hidden"
+      >
+        {
+          (currentBrands.length > 0 || currentAvailability) && (
+            <button
+              type="button"
+              data-clear-filters-mobile
+              disabled
+              class="flex-1 py-3 px-4 border border-(--ui-button-border) text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
+            >
+              Clear Filters
+            </button>
+          )
+        }
         <button
           type="submit"
           class="flex-1 py-3 px-4 bg-(--ui-button-surface) text-(--ui-button-text) rounded-sm hover:bg-ui-button-primary-hover transition-colors font-medium"
@@ -288,120 +345,144 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       this.form = document.getElementById("filter-form") as HTMLFormElement;
       this.container = document.getElementById("filter-container");
       this.overlay = document.getElementById("mobile-filter-overlay");
-      this.showMoreToggle = document.getElementById("show-more-toggle") as HTMLButtonElement;
-      
+      this.showMoreToggle = document.getElementById(
+        "show-more-toggle"
+      ) as HTMLButtonElement;
+
       if (!this.form) {
-        console.warn("[ResponsiveFilters] Form element not found. Filters may not work correctly.");
+        console.warn(
+          "[ResponsiveFilters] Form element not found. Filters may not work correctly."
+        );
         return;
       }
-      
+
       // Initialize immediately with progressive enhancement
       this.setupEventListeners();
       this.initializeMenuState();
       this.setupViewTransitionsCoordination();
-      
+
       // Initialize filter engine when ProductGrid is ready (with fallback)
       this.initializeWithGridReady();
     }
-    
+
     private initializeWithGridReady(): void {
       let gridReady = false;
-      
+
       const enableFiltering = () => {
         if (!gridReady) {
           // Enhanced grid detection with data validation
           const grid = document.getElementById("filterable-product-grid");
           const hasAllProducts = grid?.dataset.allProducts;
           const hasInitialProducts = grid?.dataset.initialProducts;
-          
+
           if (grid && (hasAllProducts || hasInitialProducts)) {
             // Validate data is not just empty arrays
             let hasValidData = false;
-            
+
             try {
               if (hasAllProducts) {
                 const allProductsParsed = JSON.parse(hasAllProducts);
-                if (Array.isArray(allProductsParsed) && allProductsParsed.length > 0) {
+                if (
+                  Array.isArray(allProductsParsed) &&
+                  allProductsParsed.length > 0
+                ) {
                   hasValidData = true;
                 }
               }
-              
+
               if (!hasValidData && hasInitialProducts) {
                 const initialProductsParsed = JSON.parse(hasInitialProducts);
-                if (Array.isArray(initialProductsParsed) && initialProductsParsed.length > 0) {
+                if (
+                  Array.isArray(initialProductsParsed) &&
+                  initialProductsParsed.length > 0
+                ) {
                   hasValidData = true;
                 }
               }
             } catch (error) {
-              console.error('[ResponsiveFilters] ❌ Error parsing grid data:', error);
+              console.error(
+                "[ResponsiveFilters] ❌ Error parsing grid data:",
+                error
+              );
             }
-            
+
             if (hasValidData) {
               gridReady = true;
               // console.log('[ResponsiveFilters] ✅ Grid with valid data detected - enabling filters');
               this.enableFilterControls();
               // UNIFIED: No filter engine initialization needed - View Transitions handle all filtering
             } else {
-              console.warn('[ResponsiveFilters] ⚠️ Grid found but data appears to be empty');
+              console.warn(
+                "[ResponsiveFilters] ⚠️ Grid found but data appears to be empty"
+              );
             }
           } else {
             // console.log('[ResponsiveFilters] 🔍 Grid not ready yet - waiting...');
           }
         }
       };
-      
+
       // Multiple detection methods for reliability
-      document.addEventListener('productGridReady', enableFiltering);
-      document.addEventListener('DOMContentLoaded', enableFiltering);
-      
+      document.addEventListener("productGridReady", enableFiltering);
+      document.addEventListener("DOMContentLoaded", enableFiltering);
+
       // Event-based grid detection (eliminates polling)
       const handleGridReady = () => {
         if (!gridReady) {
           enableFiltering();
         }
       };
-      
+
       // Listen for grid ready event
-      window.addEventListener('product-grid-ready', handleGridReady);
-      
+      window.addEventListener("product-grid-ready", handleGridReady);
+
       // Immediate check in case grid already loaded
-      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      if (
+        document.readyState === "complete" ||
+        document.readyState === "interactive"
+      ) {
         enableFiltering();
       }
-      
+
       // Cleanup on navigation
-      document.addEventListener('astro:before-swap', () => {
-        window.removeEventListener('product-grid-ready', handleGridReady);
+      document.addEventListener("astro:before-swap", () => {
+        window.removeEventListener("product-grid-ready", handleGridReady);
       });
     }
-    
+
     private enableFilterControls(): void {
       // Enable all form controls for phantom click prevention
-      const checkboxes = document.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
-      const clearButtons = document.querySelectorAll('[data-clear-filters], [data-clear-filters-mobile]') as NodeListOf<HTMLButtonElement>;
-      const mobileToggle = document.getElementById('mobile-filter-toggle') as HTMLButtonElement;
-      const filterContainer = document.getElementById('filter-container');
-      
+      const checkboxes = document.querySelectorAll(
+        'input[type="checkbox"]'
+      ) as NodeListOf<HTMLInputElement>;
+      const clearButtons = document.querySelectorAll(
+        "[data-clear-filters], [data-clear-filters-mobile]"
+      ) as NodeListOf<HTMLButtonElement>;
+      const mobileToggle = document.getElementById(
+        "mobile-filter-toggle"
+      ) as HTMLButtonElement;
+      const filterContainer = document.getElementById("filter-container");
+
       // Enable checkboxes
-      checkboxes.forEach(checkbox => {
+      checkboxes.forEach((checkbox) => {
         checkbox.disabled = false;
       });
-      
+
       // Enable clear buttons
-      clearButtons.forEach(button => {
+      clearButtons.forEach((button) => {
         button.disabled = false;
       });
-      
+
       // Enable mobile toggle
       if (mobileToggle) {
         mobileToggle.disabled = false;
       }
-      
+
       // Remove disabled visual state
       if (filterContainer) {
-        filterContainer.classList.remove('filters-disabled');
+        filterContainer.classList.remove("filters-disabled");
       }
-      
+
       // console.log('[ResponsiveFilters] ✅ Filter controls enabled');
     }
 
@@ -423,26 +504,33 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
     private openMobileDrawer(): void {
       this.overlay?.classList.remove("pointer-events-none", "opacity-0");
-      this.container?.classList.remove("translate-y-full", "opacity-0", "pointer-events-none");
+      this.container?.classList.remove(
+        "translate-y-full",
+        "opacity-0",
+        "pointer-events-none"
+      );
       document.body.style.overflow = "hidden";
     }
 
     private closeMobileDrawer(): void {
       this.overlay?.classList.add("opacity-0");
       this.container?.classList.add("translate-y-full", "opacity-0");
-      
+
       // Use transitionend event instead of fixed timeout
       const handleTransitionEnd = () => {
         this.overlay?.classList.add("pointer-events-none");
         this.container?.classList.add("pointer-events-none");
-        this.container?.removeEventListener('transitionend', handleTransitionEnd);
+        this.container?.removeEventListener(
+          "transitionend",
+          handleTransitionEnd
+        );
       };
-      
-      this.container?.addEventListener('transitionend', handleTransitionEnd);
-      
+
+      this.container?.addEventListener("transitionend", handleTransitionEnd);
+
       // Fallback timeout in case transitionend doesn't fire
       setTimeout(handleTransitionEnd, 350);
-      
+
       document.body.style.overflow = "";
     }
 
@@ -450,118 +538,129 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       if (!this.form) return;
 
       const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
-      
+
       // UNIFIED: Server-side filtering with View Transitions for ALL devices
       // Device-appropriate UX: Mobile = drawer workflow, Desktop = immediate filtering
-      
+
       checkboxes.forEach((checkbox) => {
         // Remove all existing event listeners by cloning the element
         const newCheckbox = checkbox.cloneNode(true) as HTMLInputElement;
         checkbox.parentNode?.replaceChild(newCheckbox, checkbox);
-        
+
         newCheckbox.addEventListener("change", (event) => {
           const urlParams = new URLSearchParams(window.location.search);
-          const forceDesktop = urlParams.get('test-desktop') === 'true';
+          const forceDesktop = urlParams.get("test-desktop") === "true";
           const isMobile = !forceDesktop && window.innerWidth < 1024;
-          
+
           // console.log(`[ResponsiveFilters] Checkbox changed: ${(event.target as HTMLInputElement).name}=${(event.target as HTMLInputElement).value}, device=${isMobile ? 'mobile' : 'desktop'}`);
-          
+
           if (isMobile) {
             // MOBILE: Multi-select drawer workflow - no immediate action
             // console.log('[ResponsiveFilters] 📱 Mobile: Checkbox change saved for Apply Filters');
-            sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+            sessionStorage.setItem(
+              "filter-menu-expanded",
+              this.isExpanded.toString()
+            );
             // Don't prevent - let checkboxes accumulate for drawer workflow
             return;
-            
           } else {
             // DESKTOP: Immediate View Transitions filtering with exit animation coordination
             // console.log('[ResponsiveFilters] 🖥️ Desktop: Using immediate View Transitions filtering');
-            
+
             // PREVENT form submission temporarily
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
-            
+
             // ANTI-FLICKER: Add class to prevent disabled opacity during filtering
-            document.body.classList.add('filtering-in-progress');
-            
+            document.body.classList.add("filtering-in-progress");
+
             // STEP 1: Start exit animation (identical to current system)
             const grid = document.getElementById("filterable-product-grid");
             if (grid) {
-              const allCards = Array.from(grid.querySelectorAll('.product-card-wrapper'));
-              
+              const allCards = Array.from(
+                grid.querySelectorAll(".product-card-wrapper")
+              );
+
               // Exit animation (matching current desktop behavior)
-              allCards.forEach(card => {
-                card.classList.remove('opacity-100');
-                card.classList.add('opacity-0');
+              allCards.forEach((card) => {
+                card.classList.remove("opacity-100");
+                card.classList.add("opacity-0");
               });
-              
+
               // STEP 2: Trigger View Transitions navigation at optimal timing
               // Wait for exit animation to be mostly complete (250ms of 300ms)
               setTimeout(() => {
                 // Save state and trigger form submission
-                sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+                sessionStorage.setItem(
+                  "filter-menu-expanded",
+                  this.isExpanded.toString()
+                );
                 sessionStorage.setItem("filtering-in-progress", "true");
-                
+
                 // Create and submit form programmatically for View Transitions
                 const formData = new FormData(this.form!);
                 const params = new URLSearchParams();
-                
+
                 // Build URL with current filter state
-                const brands = formData.getAll('brands') as string[];
-                const availability = formData.get('availability') === 'true';
-                
-                brands.forEach(brand => params.append('brands', brand));
-                if (availability) params.set('availability', 'true');
-                
+                const brands = formData.getAll("brands") as string[];
+                const availability = formData.get("availability") === "true";
+
+                brands.forEach((brand) => params.append("brands", brand));
+                if (availability) params.set("availability", "true");
+
                 const queryString = params.toString();
                 const basePath = window.location.pathname;
                 const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
-                
+
                 // Navigate with View Transitions (Astro handles this automatically)
                 window.location.href = newUrl;
-                
               }, 250); // Wait until exit is nearly complete to minimize gap
             }
-            
+
             return false;
           }
         });
       });
-      
+
       // UNIFIED: Form submission handling for both mobile and desktop
-      this.form.addEventListener('submit', (event) => {
+      this.form.addEventListener("submit", (event) => {
         const urlParams = new URLSearchParams(window.location.search);
-        const forceDesktop = urlParams.get('test-desktop') === 'true';
+        const forceDesktop = urlParams.get("test-desktop") === "true";
         const isMobile = !forceDesktop && window.innerWidth < 1024;
-        
+
         // console.log('[ResponsiveFilters] 📝 FORM SUBMISSION', {
         //   device: isMobile ? 'mobile' : 'desktop',
         //   screenWidth: window.innerWidth,
         //   forceDesktop: forceDesktop
         // });
-        
+
         if (isMobile) {
           // MOBILE: Drawer workflow with View Transitions
           // console.log('[ResponsiveFilters] 📱 Mobile: Using drawer + View Transitions');
-          
+
           // Close drawer FIRST for smooth View Transitions
           if (this.container && this.overlay) {
             this.closeMobileDrawer();
-            
+
             setTimeout(() => {
-              sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+              sessionStorage.setItem(
+                "filter-menu-expanded",
+                this.isExpanded.toString()
+              );
               sessionStorage.setItem("filtering-in-progress", "true");
               // Let form submit naturally - View Transitions handle smoothly
             }, 50);
           } else {
-            sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+            sessionStorage.setItem(
+              "filter-menu-expanded",
+              this.isExpanded.toString()
+            );
             sessionStorage.setItem("filtering-in-progress", "true");
           }
-          
+
           // Let form submit naturally for View Transitions
           return;
-          
         } else {
           // DESKTOP: Form submission shouldn't happen (checkboxes handle immediately)
           // But if it does, treat it as immediate filtering
@@ -578,28 +677,39 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       this.showMoreToggle.addEventListener("click", (e) => {
         e.preventDefault();
         this.isExpanded ? this.collapseFilters() : this.expandFilters();
-        sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+        sessionStorage.setItem(
+          "filter-menu-expanded",
+          this.isExpanded.toString()
+        );
       });
     }
 
     private initializeMenuState(): void {
-      const initialExpanded = this.showMoreToggle?.dataset.initialExpanded === "true";
-      const wasExpanded = sessionStorage.getItem("filter-menu-expanded") === "true";
-      const shouldExpand = sessionStorage.getItem("filter-menu-expanded") !== null ? wasExpanded : initialExpanded;
+      const initialExpanded =
+        this.showMoreToggle?.dataset.initialExpanded === "true";
+      const wasExpanded =
+        sessionStorage.getItem("filter-menu-expanded") === "true";
+      const shouldExpand =
+        sessionStorage.getItem("filter-menu-expanded") !== null
+          ? wasExpanded
+          : initialExpanded;
 
       this.isExpanded = shouldExpand;
 
       setTimeout(() => {
-        const filterList = document.querySelector('.brand-filter-list') as HTMLElement;
+        const filterList = document.querySelector(
+          ".brand-filter-list"
+        ) as HTMLElement;
         if (filterList) {
-          filterList.style.transition = '';
+          filterList.style.transition = "";
         }
       }, 100);
     }
 
     private collapseFilters(): void {
       const extraItems = document.querySelectorAll(".brand-extra-item");
-      const collapsedText = this.showMoreToggle?.dataset.collapsedText || "+ Show more";
+      const collapsedText =
+        this.showMoreToggle?.dataset.collapsedText || "+ Show more";
 
       extraItems.forEach((item) => {
         const element = item as HTMLElement;
@@ -612,7 +722,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
     private expandFilters(): void {
       const extraItems = document.querySelectorAll(".brand-extra-item");
-      const expandedText = this.showMoreToggle?.dataset.expandedText || "- Show less";
+      const expandedText =
+        this.showMoreToggle?.dataset.expandedText || "- Show less";
 
       extraItems.forEach((item) => {
         const element = item as HTMLElement;
@@ -625,7 +736,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
     private setupClearButtons(): void {
       const clearBtn = document.querySelector("[data-clear-filters]");
-      const clearBtnMobile = document.querySelector("[data-clear-filters-mobile]");
+      const clearBtnMobile = document.querySelector(
+        "[data-clear-filters-mobile]"
+      );
 
       // UNIFIED: Bulletproof Clear All implementation
       const handleClearAll = () => {
@@ -634,20 +747,22 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         if (filterInstance?.clearAllFilters) {
           return filterInstance.clearAllFilters();
         }
-        
+
         // Secondary: Use global fallback function
         const globalClearAll = (window as any).globalClearAllFilters;
         if (globalClearAll) {
           return globalClearAll();
         }
-        
+
         // Tertiary: Direct fallback (should rarely be needed)
-        console.warn('[ProductFilters] ⚠️ Using direct fallback - animation may be inconsistent');
+        console.warn(
+          "[ProductFilters] ⚠️ Using direct fallback - animation may be inconsistent"
+        );
         window.location.href = window.location.pathname;
       };
 
       clearBtn?.addEventListener("click", handleClearAll);
-      
+
       clearBtnMobile?.addEventListener("click", () => {
         // Close mobile drawer first, then clear
         this.closeMobileDrawer();
@@ -657,74 +772,80 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
     private setupViewTransitionsCoordination(): void {
       // UNIFIED: Enhanced View Transitions coordination for both mobile and desktop
-      document.addEventListener('astro:before-preparation', () => {
+      document.addEventListener("astro:before-preparation", () => {
         // console.log('[ResponsiveFilters] 🚀 View Transitions preparation - unified cleanup');
-        
+
         // Force close mobile drawer before any navigation
         if (this.container && this.overlay) {
-          this.container.classList.add("translate-y-full", "opacity-0", "pointer-events-none");
+          this.container.classList.add(
+            "translate-y-full",
+            "opacity-0",
+            "pointer-events-none"
+          );
           this.overlay.classList.add("pointer-events-none", "opacity-0");
           document.body.style.overflow = "";
         }
-        
+
         // Clean up any clearing messages from previous transitions
-        const existingMessage = document.getElementById('clearing-message');
+        const existingMessage = document.getElementById("clearing-message");
         if (existingMessage) {
           existingMessage.remove();
         }
-        
+
         // Clean up session storage
         sessionStorage.removeItem("filtering-in-progress");
       });
-      
+
       // UNIFIED: Coordinate with product grid animations during View Transitions
-      document.addEventListener('astro:after-swap', () => {
+      document.addEventListener("astro:after-swap", () => {
         // console.log('[ResponsiveFilters] ✨ View Transitions swap complete - coordinating animations');
-        
+
         // Ensure product cards start in the correct state for entrance animations
-        const cards = document.querySelectorAll('.product-card-wrapper');
-        cards.forEach(card => {
+        const cards = document.querySelectorAll(".product-card-wrapper");
+        cards.forEach((card) => {
           const htmlCard = card as HTMLElement;
-          if (!htmlCard.classList.contains('opacity-100')) {
-            htmlCard.classList.add('opacity-0');
+          if (!htmlCard.classList.contains("opacity-100")) {
+            htmlCard.classList.add("opacity-0");
           }
         });
       });
-      
+
       // UNIFIED: Prevent FOUC by managing grid visibility during transitions
-      document.addEventListener('astro:page-load', () => {
-        const grid = document.getElementById('filterable-product-grid');
+      document.addEventListener("astro:page-load", () => {
+        const grid = document.getElementById("filterable-product-grid");
         if (grid) {
           // Ensure grid is ready for animations
-          grid.style.visibility = 'visible';
-          grid.style.opacity = '1';
+          grid.style.visibility = "visible";
+          grid.style.opacity = "1";
         }
-        
+
         // ANTI-FLICKER: Clean up filtering class after View Transitions
-        document.body.classList.remove('filtering-in-progress');
-        
+        document.body.classList.remove("filtering-in-progress");
+
         // Update live region with new filter results
         updateFilterResultsLiveRegion();
-        
+
         // Re-establish global Clear All function after page load
         const currentInstance = (window as any).currentFilterInstance;
         if (currentInstance) {
-          (window as any).globalClearAllFilters = function() {
+          (window as any).globalClearAllFilters = function () {
             if (currentInstance?.clearAllFilters) {
               return currentInstance.clearAllFilters();
             }
-            
+
             // Enhanced fallback for any navigation scenario
             // console.log('[GlobalClearAll] 🔄 Post-navigation fallback');
-            const visibleCards = document.querySelectorAll('.product-card-wrapper:not([style*="display: none"])');
+            const visibleCards = document.querySelectorAll(
+              '.product-card-wrapper:not([style*="display: none"])'
+            );
             const basePath = window.location.pathname;
-            
+
             if (visibleCards.length > 0) {
-              visibleCards.forEach(card => {
-                card.classList.remove('opacity-100');
-                card.classList.add('opacity-0');
+              visibleCards.forEach((card) => {
+                card.classList.remove("opacity-100");
+                card.classList.add("opacity-0");
               });
-              setTimeout(() => window.location.href = basePath, 150);
+              setTimeout(() => (window.location.href = basePath), 150);
             } else {
               window.location.href = basePath;
             }
@@ -735,71 +856,86 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
     public clearAllFilters(): void {
       // console.log('[ResponsiveFilters] 🧹 Clearing all filters');
-      
+
       const urlParams = new URLSearchParams(window.location.search);
-      const forceDesktop = urlParams.get('test-desktop') === 'true';
+      const forceDesktop = urlParams.get("test-desktop") === "true";
       const isMobile = !forceDesktop && window.innerWidth < 1024;
       const basePath = window.location.pathname;
-      
+
       if (isMobile) {
         // MOBILE: Enhanced clear with exit animation
-        const visibleCards = document.querySelectorAll('.product-card-wrapper:not([style*="display: none"])');
-        
+        const visibleCards = document.querySelectorAll(
+          '.product-card-wrapper:not([style*="display: none"])'
+        );
+
         if (visibleCards.length > 0) {
           // console.log('[ResponsiveFilters] 📱 Mobile: Clear All with exit animation');
           this.closeMobileDrawer();
-          
+
           // Exit animation
           visibleCards.forEach((card, index) => {
             const htmlCard = card as HTMLElement;
             const rowIndex = Math.floor(index / 2); // 2 cards per row on mobile
             const cardInRow = index % 2;
             const totalDelay = rowIndex * 50 + cardInRow * 25;
-            
+
             setTimeout(() => {
-              htmlCard.classList.remove('opacity-100');
-              htmlCard.classList.add('opacity-0');
+              htmlCard.classList.remove("opacity-100");
+              htmlCard.classList.add("opacity-0");
             }, totalDelay);
           });
-          
+
           // Navigate during exit animation
           const maxDelay = Math.ceil(visibleCards.length / 2) * 50 + 25 + 100;
           setTimeout(() => {
-            sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+            sessionStorage.setItem(
+              "filter-menu-expanded",
+              this.isExpanded.toString()
+            );
             window.location.href = basePath;
           }, maxDelay);
-          
         } else {
           // No cards to animate
           this.closeMobileDrawer();
-          sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+          sessionStorage.setItem(
+            "filter-menu-expanded",
+            this.isExpanded.toString()
+          );
           window.location.href = basePath;
         }
-        
       } else {
         // DESKTOP: Clear All with coordinated exit animation + View Transitions
         // console.log('[ResponsiveFilters] 🖥️ Desktop: Clear All with coordinated View Transitions');
-        
+
         const grid = document.getElementById("filterable-product-grid");
         if (grid) {
-          const visibleCards = Array.from(grid.querySelectorAll('.product-card-wrapper:not([style*="display: none"])'));
-          
+          const visibleCards = Array.from(
+            grid.querySelectorAll(
+              '.product-card-wrapper:not([style*="display: none"])'
+            )
+          );
+
           if (visibleCards.length > 0) {
             // Exit animation (matching desktop filtering pattern)
-            visibleCards.forEach(card => {
-              card.classList.remove('opacity-100');
-              card.classList.add('opacity-0');
+            visibleCards.forEach((card) => {
+              card.classList.remove("opacity-100");
+              card.classList.add("opacity-0");
             });
-            
+
             // Navigate at optimal timing (same as regular filtering)
             setTimeout(() => {
-              sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+              sessionStorage.setItem(
+                "filter-menu-expanded",
+                this.isExpanded.toString()
+              );
               window.location.href = basePath;
             }, 250); // Same 250ms timing as regular desktop filtering
-            
           } else {
             // No cards to animate
-            sessionStorage.setItem("filter-menu-expanded", this.isExpanded.toString());
+            sessionStorage.setItem(
+              "filter-menu-expanded",
+              this.isExpanded.toString()
+            );
             window.location.href = basePath;
           }
         }
@@ -809,43 +945,51 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     // UNIFIED: Proper cleanup for View Transitions architecture
     public destroy(): void {
       // console.log('[ResponsiveFilters] 🧹 Cleaning up View Transitions architecture');
-      
+
       // Clean up DOM state
       document.body.style.overflow = "";
-      
+
       // UNIFIED: No filter engine to clean up anymore
-      
+
       // Reset mobile drawer to CLOSED state (not open)
       if (this.container) {
         // Ensure drawer is closed on mobile, visible on desktop
-        this.container.classList.add("translate-y-full", "opacity-0", "pointer-events-none");
-        this.container.classList.add("lg:translate-y-0", "lg:opacity-100", "lg:pointer-events-auto");
+        this.container.classList.add(
+          "translate-y-full",
+          "opacity-0",
+          "pointer-events-none"
+        );
+        this.container.classList.add(
+          "lg:translate-y-0",
+          "lg:opacity-100",
+          "lg:pointer-events-auto"
+        );
       }
-      
+
       if (this.overlay) {
         // Ensure overlay is hidden
         this.overlay.classList.add("pointer-events-none", "opacity-0");
       }
-      
+
       // Clean up session storage
       sessionStorage.removeItem("filtering-in-progress");
-      
+
       // console.log('[ResponsiveFilters] ✅ View Transitions cleanup complete');
     }
   }
 
   // Function to update filter results live region for screen readers
   function updateFilterResultsLiveRegion() {
-    const liveRegion = document.getElementById('filter-results-live-region');
-    const resultCountElement = document.querySelector('[data-result-count]');
-    
+    const liveRegion = document.getElementById("filter-results-live-region");
+    const resultCountElement = document.querySelector("[data-result-count]");
+
     if (liveRegion && resultCountElement) {
       // Extract count from the visible result text
-      const resultText = resultCountElement.textContent || '';
-      const message = resultText.includes('of') 
-        ? `Filtered to ${resultText}` 
+      const resultText = resultCountElement.textContent || "";
+      const message = resultText.includes("of")
+        ? `Filtered to ${resultText}`
         : `Showing ${resultText}`;
-      
+
       // Update live region with slight delay to ensure it's announced
       setTimeout(() => {
         liveRegion.textContent = message;
@@ -862,69 +1006,77 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     if (currentInstance) {
       currentInstance.destroy();
     }
-    
+
     // Create new instance
     currentInstance = new ResponsiveFilters();
-    
+
     // Expose instance globally for AppliedFilters and all Clear All buttons
     (window as any).currentFilterInstance = currentInstance;
-    
+
     // UNIFIED: Global Clear All coordination to prevent FOUT from any source
-    (window as any).globalClearAllFilters = function() {
+    (window as any).globalClearAllFilters = function () {
       if (currentInstance?.clearAllFilters) {
         return currentInstance.clearAllFilters();
       }
-      
+
       // Enhanced fallback that works from any component
       // console.log('[GlobalClearAll] 🔄 Using enhanced global fallback');
-      const visibleCards = document.querySelectorAll('.product-card-wrapper:not([style*="display: none"])');
+      const visibleCards = document.querySelectorAll(
+        '.product-card-wrapper:not([style*="display: none"])'
+      );
       const basePath = window.location.pathname;
       const isMobile = window.innerWidth < 1024;
-      
+
       if (visibleCards.length > 0) {
         // Exit animation
         visibleCards.forEach((card, index) => {
           const htmlCard = card as HTMLElement;
-          
+
           if (isMobile) {
             const rowIndex = Math.floor(index / 2);
             const cardInRow = index % 2;
             const totalDelay = rowIndex * 50 + cardInRow * 25;
-            
+
             setTimeout(() => {
-              htmlCard.classList.remove('opacity-100');
-              htmlCard.classList.add('opacity-0');
+              htmlCard.classList.remove("opacity-100");
+              htmlCard.classList.add("opacity-0");
             }, totalDelay);
           } else {
-            htmlCard.classList.remove('opacity-100');
-            htmlCard.classList.add('opacity-0');
+            htmlCard.classList.remove("opacity-100");
+            htmlCard.classList.add("opacity-0");
           }
         });
-        
+
         // Navigate during exit animation
-        const delay = isMobile ? Math.ceil(visibleCards.length / 2) * 50 + 25 + 100 : 250;
-        setTimeout(() => window.location.href = basePath, delay);
+        const delay = isMobile
+          ? Math.ceil(visibleCards.length / 2) * 50 + 25 + 100
+          : 250;
+        setTimeout(() => (window.location.href = basePath), delay);
       } else {
         window.location.href = basePath;
       }
     };
-    
+
     // DEBUGGING: Monitor all form submissions globally
-    document.addEventListener('submit', (e) => {
-      const target = e.target as HTMLElement;
-      if (target?.id === 'filter-form') {
-        // console.log('[GLOBAL] 🚨 Form submission detected outside our handler!', {
-        //   timestamp: Date.now(),
-        //   target: e.target,
-        //   defaultPrevented: e.defaultPrevented
-        // });
-      }
-    }, true); // Use capture to catch early
+    document.addEventListener(
+      "submit",
+      (e) => {
+        const target = e.target as HTMLElement;
+        if (target?.id === "filter-form") {
+          // console.log('[GLOBAL] 🚨 Form submission detected outside our handler!', {
+          //   timestamp: Date.now(),
+          //   target: e.target,
+          //   defaultPrevented: e.defaultPrevented
+          // });
+        }
+      },
+      true
+    ); // Use capture to catch early
   }
 
   // Handle both initial load and Astro navigation
   document.addEventListener("astro:page-load", initializeFilters);
-  
+
   // Enhanced Astro navigation cleanup with View Transitions support
   document.addEventListener("astro:before-preparation", () => {
     // console.log('[ResponsiveFilters] 🚀 Enhanced Astro navigation cleanup');
@@ -932,13 +1084,13 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       currentInstance.destroy();
       currentInstance = null;
     }
-    
+
     // Clean up any ongoing View Transitions
     sessionStorage.removeItem("filtering-in-progress");
   });
 
   // Initialize immediately if DOM is already ready
-  if (document.readyState !== 'loading') {
+  if (document.readyState !== "loading") {
     initializeFilters();
   }
 </script>
