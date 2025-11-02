@@ -46,10 +46,17 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
   : null;
 ---
 
-<Layout title="Welcome Home, we're glad you're here | El Camino">
+<Layout title="El Camino Skate Shop | Skater Owned & Operated in Eau Claire, WI">
   {/* LCP PRELOAD: Load first article image with format negotiation */}
   {lcpImage && (
     <Fragment slot="head">
+      {/* Meta description for SEO */}
+      <meta 
+        name="description" 
+        content="El Camino Skate Shop is a 100% skater owned and operated skateboard shop in downtown Eau Claire, WI. Shop skateboards, apparel, and accessories." 
+        slot="head"
+      />
+      
       {/* Preconnect to WordPress CDN for faster image loading */}
       <link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" crossorigin />
       <link rel="dns-prefetch" href="https://elcaminoskateshop.wordpress.com" />
@@ -95,6 +102,9 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
       )}
     </Fragment>
   )}
+
+  {/* SEO H1 - Visually hidden but present for search engines */}
+  <h1 class="sr-only">El Camino Skate Shop - Eau Claire's Premier Skateboard Shop</h1>
 
   <section>
     <ArticleGrid posts={posts} error={error} showSidebar={true} />
