@@ -1,6 +1,11 @@
 ---
-// src/components/wordpress/blocks/WPTeamMember.astro
+// src/components/wordpress/blocks/WPTeamMember.astro - Updated with Pattern A Image Optimization
 import WPProductShowcase from "./WPProductShowcase.astro";
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
+import {
+  EL_CAMINO_LOGO_DATA_URI,
+  EL_CAMINO_LOADER_DATA_URI,
+} from "@/lib/constants/assets";
 
 interface Props {
   name: string;
@@ -13,7 +18,7 @@ interface Props {
     tiktok?: string;
     website?: string;
   };
-  favoriteProducts?: string[]; // Product IDs (for now, SKUs in future)
+  favoriteProducts?: string[];
   setupDetails?: {
     deck?: string;
     trucks?: string;
@@ -39,6 +44,55 @@ const {
   hometown,
 } = Astro.props;
 
+// Pattern A: Image Optimization (1200x800px hero images, lazy loading)
+let optimizedImageSrc = EL_CAMINO_LOGO_DATA_URI;
+let avifSrcSet: string | undefined;
+let webpSrcSet: string | undefined;
+let jpegSrcSet: string | undefined;
+const imageSizes =
+  "(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1200px";
+const imageId = `team-img-${name.replace(/\s+/g, "-")}`;
+const placeholderId = `team-placeholder-${name.replace(/\s+/g, "-")}`;
+const hasValidImage =
+  imageUrl && imageUrl.length > 0 && imageUrl.startsWith("http");
+
+if (hasValidImage) {
+  const imageSet = EnhancedImageOptimizer.generateOptimizedSources(imageUrl, {
+    width: 1200,
+    height: 800,
+    quality: 85,
+    priority: false,
+  });
+
+  optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
+
+  avifSrcSet = imageSet.avif
+    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, "avif", {
+        width: 1200,
+        height: 800,
+        quality: 85,
+      })
+    : undefined;
+
+  webpSrcSet = imageSet.webp
+    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, "webp", {
+        width: 1200,
+        height: 800,
+        quality: 85,
+      })
+    : undefined;
+
+  jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(
+    imageUrl,
+    "jpeg",
+    {
+      width: 1200,
+      height: 800,
+      quality: 85,
+    }
+  );
+}
+
 // Structured data for team member
 const personStructuredData = {
   "@context": "https://schema.org",
@@ -56,26 +110,75 @@ const personStructuredData = {
 ---
 
 <div class="wp-team-member bg-(--surface-primary) overflow-hidden mb-6">
-  <!-- Team member structured data -->
   <script
     is:inline
     type="application/ld+json"
     set:html={JSON.stringify(personStructuredData)}
   />
 
-  <!-- Header Section with Hero Image -->
+  {/* Pattern A: Enhanced Hero Image with AVIF/WebP/JPEG + Shimmer Loading */}
   <div class="relative">
     <div class="aspect-[3/2] lg:aspect-[2/1] overflow-hidden">
-      <img
-        src={imageUrl}
-        alt={`${name}, ${role} at El Camino`}
-        class="w-full h-full object-cover"
-        loading="lazy"
-        decoding="async"
-      />
+      {
+        hasValidImage ? (
+          <div class="relative w-full h-full">
+            {/* Shimmer Loading Placeholder */}
+            <div
+              class="loading-skeleton loading-image absolute inset-0"
+              id={placeholderId}
+              aria-hidden="true"
+            >
+              <div
+                class="absolute inset-0 flex items-center justify-center"
+                style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
+              />
+            </div>
+
+            {/* Enhanced Image with Multiple Format Support */}
+            <picture>
+              {avifSrcSet && (
+                <source
+                  type="image/avif"
+                  srcset={avifSrcSet}
+                  sizes={imageSizes}
+                />
+              )}
+              {webpSrcSet && (
+                <source
+                  type="image/webp"
+                  srcset={webpSrcSet}
+                  sizes={imageSizes}
+                />
+              )}
+              <img
+                id={imageId}
+                src={optimizedImageSrc}
+                srcset={jpegSrcSet}
+                sizes={imageSizes}
+                alt={`${name}, ${role} at El Camino`}
+                width="1200"
+                height="800"
+                class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
+                loading="lazy"
+                fetchpriority="auto"
+                decoding="async"
+                onload={`this.classList.add('opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
+                onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
+              />
+            </picture>
+          </div>
+        ) : (
+          <img
+            src={EL_CAMINO_LOGO_DATA_URI}
+            alt={`${name}, ${role} at El Camino`}
+            class="w-full h-full object-cover"
+            width="1200"
+            height="800"
+          />
+        )
+      }
     </div>
 
-    <!-- Overlay Info -->
     <div
       class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 text-white"
     >
@@ -102,14 +205,11 @@ const personStructuredData = {
     </div>
   </div>
 
-  <!-- Content Section -->
   <div class="p-6">
-    <!-- Bio -->
     <div class="mb-6">
       <p class="text-(--content-body) leading-relaxed text-lg">{bio}</p>
     </div>
 
-    <!-- Social Links with Enhanced Icons -->
     {
       Object.keys(socialLinks).length > 0 && (
         <div class="mb-6">
@@ -187,7 +287,6 @@ const personStructuredData = {
       )
     }
 
-    <!-- Current Setup -->
     {
       setupDetails && (
         <div class="mb-6">
@@ -236,7 +335,6 @@ const personStructuredData = {
       )
     }
 
-    <!-- Achievements -->
     {
       achievements.length > 0 && (
         <div class="mb-6">
@@ -265,7 +363,6 @@ const personStructuredData = {
       )
     }
 
-    <!-- Favorite Products -->
     {
       favoriteProducts.length > 0 && (
         <div>

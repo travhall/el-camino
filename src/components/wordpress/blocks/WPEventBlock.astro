@@ -1,6 +1,11 @@
 ---
-// src/components/wordpress/blocks/WPEventBlock.astro
+// src/components/wordpress/blocks/WPEventBlock.astro - Updated with Pattern A Image Optimization
 import WPProductShowcase from "./WPProductShowcase.astro";
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
+import {
+  EL_CAMINO_LOGO_DATA_URI,
+  EL_CAMINO_LOADER_DATA_URI,
+} from "@/lib/constants/assets";
 
 interface Props {
   title: string;
@@ -9,7 +14,7 @@ interface Props {
   location?: string;
   description: string;
   rsvpUrl?: string;
-  featuredProducts?: string[]; // Product IDs (for now, SKUs in future)
+  featuredProducts?: string[];
   imageUrl?: string;
   registrationRequired?: boolean;
 }
@@ -46,21 +51,17 @@ try {
     day: "numeric",
   });
 
-  // Extract start time from time range for structured data
   const startTime = time.split(" - ")[0] || time.split("-")[0] || time;
   const cleanStartTime = startTime.trim();
 
-  // Try to create a complete datetime string for structured data
   try {
     const fullDateTime = new Date(`${date} ${cleanStartTime}`);
     if (!isNaN(fullDateTime.getTime())) {
       startDateISO = fullDateTime.toISOString();
     } else {
-      // Fallback: just use the date
       startDateISO = eventDate.toISOString();
     }
   } catch {
-    // Fallback: just use the date
     startDateISO = eventDate.toISOString();
   }
 } catch (error) {
@@ -71,18 +72,66 @@ try {
   startDateISO = new Date().toISOString();
 }
 
+// Pattern A: Image Optimization (640x480px event images, lazy loading)
+let optimizedImageSrc = EL_CAMINO_LOGO_DATA_URI;
+let avifSrcSet: string | undefined;
+let webpSrcSet: string | undefined;
+let jpegSrcSet: string | undefined;
+const imageSizes = "(max-width: 1024px) 100vw, 320px";
+const imageId = `event-img-${title.replace(/\s+/g, "-")}`;
+const placeholderId = `event-placeholder-${title.replace(/\s+/g, "-")}`;
+const hasValidImage =
+  imageUrl && imageUrl.length > 0 && imageUrl.startsWith("http");
+
+if (hasValidImage) {
+  const imageSet = EnhancedImageOptimizer.generateOptimizedSources(imageUrl, {
+    width: 640,
+    height: 480,
+    quality: 85,
+    priority: false,
+  });
+
+  optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
+
+  avifSrcSet = imageSet.avif
+    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, "avif", {
+        width: 640,
+        height: 480,
+        quality: 85,
+      })
+    : undefined;
+
+  webpSrcSet = imageSet.webp
+    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, "webp", {
+        width: 640,
+        height: 480,
+        quality: 85,
+      })
+    : undefined;
+
+  jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(
+    imageUrl,
+    "jpeg",
+    {
+      width: 640,
+      height: 480,
+      quality: 85,
+    }
+  );
+}
+
 // Structured data for events
 const eventStructuredData = {
   "@context": "https://schema.org",
   "@type": "Event",
   name: title,
-  startDate: startDateISO, // Use the validated ISO date we created above
+  startDate: startDateISO,
   location: {
     "@type": "Place",
     name: location || "El Camino Skate Shop",
     address: {
       "@type": "PostalAddress",
-      streetAddress: "123 Skate Street", // Update with actual address
+      streetAddress: "123 Skate Street",
       addressLocality: "Your City",
       addressRegion: "State",
       postalCode: "12345",
@@ -101,7 +150,6 @@ const eventStructuredData = {
 <div
   class="wp-event-block bg-linear-to-r from-(--ui-accent)/10 to-(--ui-accent)/5 border-l-4 border-(--ui-accent) p-6 mb-6"
 >
-  <!-- Event structured data -->
   <script
     is:inline
     type="application/ld+json"
@@ -110,7 +158,6 @@ const eventStructuredData = {
 
   <div class="flex flex-col lg:flex-row gap-6">
     <div class="flex-1">
-      <!-- Event Status Badge -->
       <div class="flex items-center gap-2 mb-2">
         <svg
           class="w-5 h-5 text-(--ui-accent)"
@@ -147,7 +194,6 @@ const eventStructuredData = {
         {title}
       </h3>
 
-      <!-- Event Details Grid -->
       <div
         class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-(--content-body)"
       >
@@ -216,7 +262,6 @@ const eventStructuredData = {
         {description}
       </p>
 
-      <!-- Action Buttons -->
       <div class="flex flex-wrap gap-3">
         {
           isUpcoming && rsvpUrl && (
@@ -247,22 +292,61 @@ const eventStructuredData = {
       </div>
     </div>
 
+    {/* Pattern A: Enhanced Image with AVIF/WebP/JPEG + Shimmer Loading */}
     {
-      imageUrl && (
+      hasValidImage && (
         <div class="lg:w-80 shrink-0">
-          <img
-            src={imageUrl}
-            alt={title}
-            class="w-full h-48 lg:h-full object-cover rounded-sm"
-            loading="lazy"
-            decoding="async"
-          />
+          <div class="relative aspect-[4/3] overflow-hidden rounded-sm">
+            {/* Shimmer Loading Placeholder */}
+            <div
+              class="loading-skeleton loading-image absolute inset-0"
+              id={placeholderId}
+              aria-hidden="true"
+            >
+              <div
+                class="absolute inset-0 flex items-center justify-center"
+                style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
+              />
+            </div>
+
+            {/* Enhanced Image with Multiple Format Support */}
+            <picture>
+              {avifSrcSet && (
+                <source
+                  type="image/avif"
+                  srcset={avifSrcSet}
+                  sizes={imageSizes}
+                />
+              )}
+              {webpSrcSet && (
+                <source
+                  type="image/webp"
+                  srcset={webpSrcSet}
+                  sizes={imageSizes}
+                />
+              )}
+              <img
+                id={imageId}
+                src={optimizedImageSrc}
+                srcset={jpegSrcSet}
+                sizes={imageSizes}
+                alt={title}
+                width="640"
+                height="480"
+                class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
+                loading="lazy"
+                fetchpriority="auto"
+                decoding="async"
+                onload={`this.classList.add('opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
+                onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
+              />
+            </picture>
+          </div>
         </div>
       )
     }
   </div>
 
-  <!-- Featured Products Section -->
   {
     featuredProducts.length > 0 && (
       <div class="mt-6 pt-6 border-t border-(--border-secondary)">
