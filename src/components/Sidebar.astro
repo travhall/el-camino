@@ -1,8 +1,9 @@
 ---
-// src/components/Sidebar.astro - Updated with Unified Loading System
+// src/components/Sidebar.astro - Updated with Pattern A (EnhancedImageOptimizer)
 import { getCategoriesForSidebar } from "@/lib/square/categoryUtils";
 import { squareClient } from "@/lib/square/client";
 import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 
 interface Props {
   class?: string;
@@ -105,6 +106,14 @@ const prodCats = categoriesWithImages.map(item => ({
       const placeholderId = `category-placeholder-${e.id || e.category}`;
       const staggerDelay = index * 0.1;
 
+      // Generate optimized image sources using Pattern A
+      const imageSet = EnhancedImageOptimizer.generateOptimizedSources(e.src, {
+        width: 600,
+        height: 338,
+        quality: 85,
+        priority: index < 2,
+      });
+
       return (
         <a
           href={e.url}
@@ -124,18 +133,56 @@ const prodCats = categoriesWithImages.map(item => ({
             ></div>
           </div>
 
-          <img
-            id={imageId}
-            src={e.src}
-            alt={e.category}
-            class="category-img loading-to-content object-cover w-full h-full will-change-transform"
-            loading={index < 2 ? "eager" : "lazy"}
-            decoding={index < 2 ? "sync" : "async"}
-            fetchpriority={index < 2 ? "high" : "auto"}
-            data-placeholder-id={placeholderId}
-            onload={`this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
-            onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
-          />
+          <!-- Pattern A: Picture element with AVIF/WebP/JPEG -->
+          <picture>
+            {/* AVIF format (best compression) */}
+            {imageSet.avif && (
+              <source
+                type="image/avif"
+                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(e.src, 'avif', {
+                  width: 600,
+                  height: 338,
+                  quality: 85
+                })}
+                sizes="(max-width: 768px) 50vw, 600px"
+              />
+            )}
+
+            {/* WebP format (good compression) */}
+            {imageSet.webp && (
+              <source
+                type="image/webp"
+                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(e.src, 'webp', {
+                  width: 600,
+                  height: 338,
+                  quality: 85
+                })}
+                sizes="(max-width: 768px) 50vw, 600px"
+              />
+            )}
+
+            {/* JPEG fallback */}
+            <img
+              id={imageId}
+              src={imageSet.jpeg}
+              srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(e.src, 'jpeg', {
+                width: 600,
+                height: 338,
+                quality: 85
+              })}
+              sizes="(max-width: 768px) 50vw, 600px"
+              alt={e.category}
+              width="600"
+              height="338"
+              class="category-img loading-to-content object-cover w-full h-full will-change-transform opacity-0 transition-opacity duration-300"
+              loading={index < 2 ? "eager" : "lazy"}
+              decoding={index < 2 ? "sync" : "async"}
+              fetchpriority={index < 2 ? "high" : "auto"}
+              data-placeholder-id={placeholderId}
+              onload={`this.classList.add('loaded', 'opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
+              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('loaded', 'opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
+            />
+          </picture>
 
           <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-(--border-secondary) border-b-0 bg-(--surface-secondary) text-(--content-heading) transition-all">
             {e.category}
@@ -149,7 +196,6 @@ const prodCats = categoriesWithImages.map(item => ({
 <style>
   /* Component-specific styles only */
   .category-link:hover .category-img.loaded {
-    opacity: 1;
     scale: 1.05;
   }
   
@@ -157,13 +203,13 @@ const prodCats = categoriesWithImages.map(item => ({
     font-weight: bold;
   }
 
-  /* Category image states */
+  /* Category image loaded state - low opacity by default */
   .category-img.loaded {
-    opacity: 0.2; /* Default opacity for category images */
+    opacity: 0.2 !important; /* Override inline opacity for category aesthetic */
   }
 
   .category-img.error {
-    opacity: 0.2;
+    opacity: 0.2 !important;
     filter: grayscale(100%);
   }
 </style>

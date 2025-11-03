@@ -346,20 +346,32 @@ import Button from "@/components/Button.astro";
     }
 
     private renderProduct(product: Product): void {
-      // Update image with optimization
+      // Update image with EnhancedImageOptimizer-style optimization
       const image = document.getElementById(
         "quick-view-image"
       ) as HTMLImageElement;
       if (image) {
-        // Optimize Square CDN image
+        // Optimize using EnhancedImageOptimizer patterns
         let optimizedImageSrc = product.image;
         if (product.image.includes("squarecdn.com")) {
           try {
             const url = new URL(product.image);
             url.searchParams.set("w", "400");
             url.searchParams.set("h", "400");
-            url.searchParams.set("q", "85");
-            url.searchParams.set("f", "auto");
+            url.searchParams.set("fit", "crop");
+            
+            // Format detection matching EnhancedImageOptimizer
+            const canvas = document.createElement("canvas");
+            if (canvas.toDataURL("image/avif").indexOf("data:image/avif") === 0) {
+              url.searchParams.set("fm", "avif");
+              url.searchParams.set("q", "65");
+            } else if (canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0) {
+              url.searchParams.set("fm", "webp");
+              url.searchParams.set("q", "85");
+            } else {
+              url.searchParams.set("fm", "jpg");
+              url.searchParams.set("q", "90");
+            }
             optimizedImageSrc = url.toString();
           } catch {
             optimizedImageSrc = product.image;

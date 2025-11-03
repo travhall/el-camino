@@ -140,39 +140,42 @@ import Button from "@/components/Button.astro";
     return cart;
   }
 
-  // Client-side image optimization for cart items
+  // Enhanced client-side image optimization matching EnhancedImageOptimizer patterns
   function optimizeCartImage(src: string): string {
-    if (!src || !src.includes("squarecdn.com")) {
-      return src;
-    }
+    if (!src) return src;
 
     try {
-      const url = new URL(src);
-
-      // Cart images are small (64x64), optimize accordingly
-      url.searchParams.set("w", "64");
-      url.searchParams.set("h", "64");
-      url.searchParams.set("q", "85");
-      url.searchParams.set("auto", "compress");
-      url.searchParams.set("fit", "crop");
-
-      // Use AVIF if supported, fallback to WebP, then auto
-      if (typeof window !== "undefined") {
-        const testCanvas = document.createElement("canvas");
-        if (
-          testCanvas.toDataURL("image/avif").indexOf("data:image/avif") === 0
-        ) {
-          url.searchParams.set("f", "avif");
-        } else if (
-          testCanvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
-        ) {
-          url.searchParams.set("f", "webp");
-        } else {
-          url.searchParams.set("f", "auto");
+      // For Square CDN images
+      if (src.includes("squarecdn.com")) {
+        const url = new URL(src);
+        // Cart thumbnails: 100x100 for better quality on retina
+        url.searchParams.set("w", "100");
+        url.searchParams.set("h", "100");
+        url.searchParams.set("fit", "crop");
+        
+        // Format detection matching EnhancedImageOptimizer priority
+        if (typeof window !== "undefined") {
+          const canvas = document.createElement("canvas");
+          if (canvas.toDataURL("image/avif").indexOf("data:image/avif") === 0) {
+            url.searchParams.set("fm", "avif");
+            url.searchParams.set("q", "65"); // AVIF quality
+          } else if (canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0) {
+            url.searchParams.set("fm", "webp");
+            url.searchParams.set("q", "85"); // WebP quality
+          } else {
+            url.searchParams.set("fm", "jpg");
+            url.searchParams.set("q", "90"); // JPEG quality
+          }
         }
+        return url.toString();
       }
 
-      return url.toString();
+      // For other CDNs, use Netlify Image CDN if available
+      if (src.startsWith("http")) {
+        return `/.netlify/images?url=${encodeURIComponent(src)}&w=100&h=100&fit=cover&fm=avif&q=65`;
+      }
+
+      return src;
     } catch {
       return src;
     }

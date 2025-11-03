@@ -47,7 +47,7 @@ const placeholderId = `blog-placeholder-${product.id}-${index}`;
 // Dynamic priority (same as ProductCard)
 const isDynamicPriority = priority || index < 12;
 
-// Enhanced image optimization using EnhancedImageOptimizer
+// Enhanced image optimization using EnhancedImageOptimizer with full Pattern A
 const imageSet = EnhancedImageOptimizer.generateOptimizedSources(
   product.image,
   {
@@ -58,8 +58,34 @@ const imageSet = EnhancedImageOptimizer.generateOptimizedSources(
   }
 );
 
-// Use best available format
-const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
+// Generate responsive srcsets for all formats
+const avifSrcSet = imageSet.avif
+  ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, "avif", {
+      width: 600,
+      height: 400,
+      quality: 85,
+    })
+  : undefined;
+
+const webpSrcSet = imageSet.webp
+  ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, "webp", {
+      width: 600,
+      height: 400,
+      quality: 85,
+    })
+  : undefined;
+
+const jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(
+  product.image,
+  "jpeg",
+  {
+    width: 600,
+    height: 400,
+    quality: 85,
+  }
+);
+
+const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 ---
 
 <!-- LIST VARIANT -->{
@@ -72,13 +98,29 @@ const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
       itemtype="http://schema.org/Product"
     >
       <div class="aspect-square w-48 lg:w-56 overflow-hidden bg-(--surface-secondary) rounded-xs relative">
-        <img
-          src={optimizedImageSrc}
-          alt={product.title}
-          class={`object-cover w-full h-full ${isOutOfStock ? "opacity-50" : ""}`}
-          loading={isDynamicPriority ? "eager" : "lazy"}
-          itemprop="image"
-        />
+        <picture>
+          {avifSrcSet && (
+            <source type="image/avif" srcset={avifSrcSet} sizes={imageSizes} />
+          )}
+          {webpSrcSet && (
+            <source type="image/webp" srcset={webpSrcSet} sizes={imageSizes} />
+          )}
+          <img
+            src={imageSet.jpeg}
+            srcset={jpegSrcSet}
+            sizes={imageSizes}
+            alt={product.title}
+            width="600"
+            height="400"
+            class={`object-cover w-full h-full opacity-0 transition-opacity duration-300 ${isOutOfStock ? "opacity-50" : ""}`}
+            loading={isDynamicPriority ? "eager" : "lazy"}
+            fetchpriority={isDynamicPriority ? "high" : "auto"}
+            decoding={isDynamicPriority ? "sync" : "async"}
+            onload="this.classList.add('opacity-100');"
+            onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100');`}
+            itemprop="image"
+          />
+        </picture>
         {isOutOfStock && (
           <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-xs font-bold rounded-br-sm z-10">
             Sold Out
@@ -149,20 +191,32 @@ const optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
           />
         </div>
 
-        {/* Enhanced Image (same as ProductCard) */}
-        <img
-          id={imageId}
-          src={optimizedImageSrc}
-          alt={product.title}
-          class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""} image-enhanced will-change-transform`}
-          loading={isDynamicPriority ? "eager" : "lazy"}
-          fetchpriority={isDynamicPriority ? "high" : "auto"}
-          decoding={isDynamicPriority ? "sync" : "async"}
-          data-placeholder-id={placeholderId}
-          onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100', 'error'); document.getElementById('${placeholderId}')?.remove()`}
-          onload={`this.classList.add('opacity-100', 'loaded'); document.getElementById('${placeholderId}')?.remove()`}
-          itemprop="image"
-        />
+        {/* Enhanced Image with Pattern A - Picture elements */}
+        <picture>
+          {avifSrcSet && (
+            <source type="image/avif" srcset={avifSrcSet} sizes={imageSizes} />
+          )}
+          {webpSrcSet && (
+            <source type="image/webp" srcset={webpSrcSet} sizes={imageSizes} />
+          )}
+          <img
+            id={imageId}
+            src={imageSet.jpeg}
+            srcset={jpegSrcSet}
+            sizes={imageSizes}
+            alt={product.title}
+            width="600"
+            height="400"
+            class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""} image-enhanced will-change-transform`}
+            loading={isDynamicPriority ? "eager" : "lazy"}
+            fetchpriority={isDynamicPriority ? "high" : "auto"}
+            decoding={isDynamicPriority ? "sync" : "async"}
+            data-placeholder-id={placeholderId}
+            onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100', 'error'); document.getElementById('${placeholderId}')?.remove()`}
+            onload={`this.classList.add('opacity-100', 'loaded'); document.getElementById('${placeholderId}')?.remove()`}
+            itemprop="image"
+          />
+        </picture>
 
         {/* Stock status overlay (same as ProductCard) */}
         {isOutOfStock && (
