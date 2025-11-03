@@ -116,28 +116,24 @@ import Button from "@/components/Button.astro";
     }
 
     try {
+      // Cart images: lg:w-24 = 96px, use 128px for retina quality
       const url = new URL(src);
-
-      // Cart images are larger than mini-cart (w-16/h-16 lg:w-24/h-24)
-      url.searchParams.set("w", "96"); // lg:w-24 = 96px
-      url.searchParams.set("h", "96"); // lg:h-24 = 96px
-      url.searchParams.set("q", "85");
-      url.searchParams.set("auto", "compress");
+      url.searchParams.set("w", "128");
+      url.searchParams.set("h", "128");
       url.searchParams.set("fit", "crop");
 
-      // Use AVIF if supported, fallback to WebP, then auto
+      // Format detection matching EnhancedImageOptimizer
       if (typeof window !== "undefined") {
-        const testCanvas = document.createElement("canvas");
-        if (
-          testCanvas.toDataURL("image/avif").indexOf("data:image/avif") === 0
-        ) {
-          url.searchParams.set("f", "avif");
-        } else if (
-          testCanvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
-        ) {
-          url.searchParams.set("f", "webp");
+        const canvas = document.createElement("canvas");
+        if (canvas.toDataURL("image/avif").indexOf("data:image/avif") === 0) {
+          url.searchParams.set("fm", "avif");
+          url.searchParams.set("q", "65");
+        } else if (canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0) {
+          url.searchParams.set("fm", "webp");
+          url.searchParams.set("q", "85");
         } else {
-          url.searchParams.set("f", "auto");
+          url.searchParams.set("fm", "jpg");
+          url.searchParams.set("q", "90");
         }
       }
 
@@ -404,8 +400,9 @@ import Button from "@/components/Button.astro";
       showConfirmModal(
         "Remove Item",
         `Are you sure you want to remove "${item.title}" from your cart?`,
-        () => {
+        async () => {
           cart.clear();
+          await updateDisplay();
           showNotification("Cart cleared successfully");
         }
       );
@@ -413,8 +410,9 @@ import Button from "@/components/Button.astro";
       showConfirmModal(
         "Clear Cart",
         `Are you sure you want to remove all ${itemCount} item${itemCount > 1 ? "s" : ""} from your cart?`,
-        () => {
+        async () => {
           cart.clear();
+          await updateDisplay();
           showNotification("Cart cleared successfully");
         }
       );

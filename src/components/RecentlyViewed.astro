@@ -32,6 +32,43 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
   import { recentlyViewed } from "@/lib/product/recentlyViewed";
   import { MoneyUtils } from "@/lib/square/money";
 
+  // Client-side image optimization matching EnhancedImageOptimizer
+  function optimizeProductImage(src: string): string {
+    if (!src) return src;
+
+    try {
+      if (src.includes("squarecdn.com")) {
+        const url = new URL(src);
+        url.searchParams.set("w", "400");
+        url.searchParams.set("h", "400");
+        url.searchParams.set("fit", "crop");
+
+        // Format detection matching EnhancedImageOptimizer
+        const canvas = document.createElement("canvas");
+        if (canvas.toDataURL("image/avif").indexOf("data:image/avif") === 0) {
+          url.searchParams.set("fm", "avif");
+          url.searchParams.set("q", "65");
+        } else if (canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0) {
+          url.searchParams.set("fm", "webp");
+          url.searchParams.set("q", "85");
+        } else {
+          url.searchParams.set("fm", "jpg");
+          url.searchParams.set("q", "90");
+        }
+        return url.toString();
+      }
+
+      // Non-Square images: use Netlify Image CDN
+      if (src.startsWith("http")) {
+        return `/.netlify/images?url=${encodeURIComponent(src)}&w=400&h=400&fit=cover&fm=avif&q=65`;
+      }
+
+      return src;
+    } catch {
+      return src;
+    }
+  }
+
   async function renderRecentlyViewed() {
     const section = document.getElementById("recently-viewed-section");
     const container = document.getElementById("recently-viewed-container");
@@ -59,6 +96,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
           MoneyUtils.fromFloat(item.price)
         );
         const isOutOfStock = !inventoryMap[item.variationId];
+        const optimizedImage = optimizeProductImage(item.image);
 
         return `
         <div class="group relative w-full h-full">
@@ -69,10 +107,12 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
           >
             <div class="relative aspect-square overflow-hidden">
               <img
-                src="${item.image}"
+                src="${optimizedImage}"
                 alt="${item.title}"
                 class="object-cover w-full h-full lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""}"
                 loading="lazy"
+                width="400"
+                height="400"
               />
               ${
                 isOutOfStock

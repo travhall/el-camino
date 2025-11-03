@@ -218,6 +218,9 @@ export class PDPEventManager {
         );
         this.uiManager.resetQuantityToOne();
         this.callbacks.onCartUpdate();
+
+        // Open MiniCart to show the item was added
+        window.dispatchEvent(new CustomEvent("openMiniCart"));
       } else {
         window.showNotification(
           result.message || "Failed to add to cart",
