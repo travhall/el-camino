@@ -98,6 +98,18 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
       itemtype="http://schema.org/Product"
     >
       <div class="aspect-square w-48 lg:w-56 overflow-hidden bg-(--surface-secondary) rounded-xs relative">
+        {/* Loading placeholder with shimmer */}
+        <div
+          class="loading-skeleton loading-image absolute inset-0"
+          id={`${placeholderId}-list`}
+          aria-hidden="true"
+        >
+          <div
+            class="absolute inset-0 flex items-center justify-center"
+            style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
+          />
+        </div>
+
         <picture>
           {avifSrcSet && (
             <source type="image/avif" srcset={avifSrcSet} sizes={imageSizes} />
@@ -112,11 +124,13 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
             alt={product.title}
             width="600"
             height="400"
-            class={`object-cover w-full h-full ${isOutOfStock ? "opacity-50" : ""}`}
+            class={`object-cover w-full h-full opacity-0 transition-opacity duration-300 ${isOutOfStock ? "opacity-50" : ""}`}
             loading={isDynamicPriority ? "eager" : "lazy"}
             fetchpriority={isDynamicPriority ? "high" : "auto"}
             decoding={isDynamicPriority ? "sync" : "async"}
-            onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}';`}
+            data-placeholder-id={`${placeholderId}-list`}
+            onload={`this.classList.add('opacity-100'); document.getElementById('${placeholderId}-list')?.remove();`}
+            onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100'); document.getElementById('${placeholderId}-list')?.remove();`}
             itemprop="image"
           />
         </picture>

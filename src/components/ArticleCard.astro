@@ -11,7 +11,10 @@ import {
   generateFallbackContent,
 } from "@/lib/wordpress/types";
 import { formatDate } from "@/utils/dates";
-import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import {
+  EL_CAMINO_LOGO_DATA_URI,
+  EL_CAMINO_LOADER_DATA_URI,
+} from "@/lib/constants/assets";
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 import Tag from "./Tag.astro";
 
@@ -223,6 +226,18 @@ const getExcerptClasses = () => {
   {
     optimizedImageUrl ? (
       <picture class={getImageContainerClasses()}>
+        {/* Loading placeholder with shimmer - only for images that will load */}
+        <div
+          class="loading-skeleton loading-image absolute inset-0"
+          id={`article-placeholder-${post.id}`}
+          aria-hidden="true"
+        >
+          <div
+            class="absolute inset-0 flex items-center justify-center"
+            style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
+          />
+        </div>
+
         {/* AVIF format (best compression) */}
         {avifSrcSet && (
           <source type="image/avif" srcset={avifSrcSet} sizes={imageSizes} />
@@ -245,15 +260,16 @@ const getExcerptClasses = () => {
           loading={priority ? "eager" : "lazy"}
           fetchpriority={priority ? "high" : "auto"}
           decoding={priority ? "sync" : "async"}
+          data-placeholder-id={`article-placeholder-${post.id}`}
           onload={
             variant === "masonry" && !featured
-              ? `this.style.opacity=''; this.classList.add('loaded');`
-              : `this.style.opacity='1'; this.classList.add('loaded');`
+              ? `this.style.opacity=''; this.classList.add('loaded'); document.getElementById('article-placeholder-${post.id}')?.remove();`
+              : `this.style.opacity='1'; this.classList.add('loaded'); document.getElementById('article-placeholder-${post.id}')?.remove();`
           }
           onerror={
             variant === "masonry" && !featured
-              ? `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity=''; this.classList.add('error');`
-              : `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; this.classList.add('error');`
+              ? `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity=''; this.classList.add('error'); document.getElementById('article-placeholder-${post.id}')?.remove();`
+              : `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; this.classList.add('error'); document.getElementById('article-placeholder-${post.id}')?.remove();`
           }
         />
       </picture>
