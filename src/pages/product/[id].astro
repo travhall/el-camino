@@ -30,6 +30,7 @@ import {
 } from "@/lib/product/structuredData";
 import { generateBreadcrumbs } from "@/lib/product/breadcrumbs";
 import { fetchCategories } from "@/lib/square/categories";
+import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 
 // Get the slug or ID from URL params
 const { id: slugOrId } = Astro.params;
@@ -256,6 +257,16 @@ if (breadcrumbPath && breadcrumbPath.items.length > 1) {
     }
   }
 }
+
+// Generate optimized image sources using EnhancedImageOptimizer
+const imageSet = product.image 
+  ? EnhancedImageOptimizer.generateOptimizedSources(product.image, {
+      width: 800,
+      height: 800,
+      quality: 85,
+      priority: true,
+    })
+  : null;
 
 // Set response caching headers for performance optimization
 // Browser: Cache for 1 minute, then revalidate
