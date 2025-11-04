@@ -233,9 +233,16 @@ export class EnhancedImageOptimizer {
         const netlifyParams = new URLSearchParams({
           url: src,
           w: (options.width || 600).toString(),
-          q: optimizedQuality.toString(),
-          fit: 'cover'
+          q: optimizedQuality.toString()
         });
+        
+        // For WordPress content images: preserve aspect ratio by only setting width
+        // For Square product images: use fit=cover for consistent product displays
+        if (isSquareImage && options.height) {
+          netlifyParams.set('fit', 'cover');
+          netlifyParams.set('h', options.height.toString());
+        }
+        // WordPress images: only width set, aspect ratio preserved
         
         // PHASE 4 TRACK B: Explicit format prioritization for faster negotiation
         // Prefer AVIF > WebP > auto, reducing negotiation overhead
