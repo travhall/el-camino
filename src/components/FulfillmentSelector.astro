@@ -34,7 +34,7 @@ const freeShippingThreshold =
 
   <div class="fulfillment-options flex flex-col lg:flex-row gap-2">
     <!-- Shipping Option -->
-    <label class="fulfillment-option block lg:basis-1/2 cursor-pointer">
+    <label class="fulfillment-option block lg:basis-1/2">
       <input
         type="radio"
         name="fulfillment"
@@ -43,8 +43,10 @@ const freeShippingThreshold =
         class="sr-only peer"
       />
       <div
-        class="border-2 border-(--border-primary) peer-checked:border-(--content-emphasis) peer-checked:bg-(--surface-primary) p-4 transition-all hover:border-(--content-emphasis)/50"
+        class="border-2 border-(--border-primary) p-4 transition-all hover:border-(--content-emphasis)/50 cursor-pointer"
         data-option-card="shipping"
+        data-selected="false"
+        data-expanded="false"
       >
         <div class="flex items-start justify-between">
           <div class="flex items-start gap-3">
@@ -58,18 +60,30 @@ const freeShippingThreshold =
               </p>
             </div>
           </div>
-          <div class="text-right">
-            {
-              applicableRate.rate === 0 ? (
-                <span class="inline-block px-2 py-1 bg-green-600 text-white text-sm font-semibold">
-                  FREE
-                </span>
-              ) : (
-                <span class="font-display text-xl text-(--content-emphasis)">
-                  ${applicableRate.rate.toFixed(2)}
-                </span>
-              )
-            }
+          <div class="flex items-center gap-3">
+            <div class="text-right">
+              {
+                applicableRate.rate === 0 ? (
+                  <span class="inline-block px-2 py-1 bg-green-600 text-white text-sm font-semibold">
+                    FREE
+                  </span>
+                ) : (
+                  <span class="font-display text-xl text-(--content-emphasis)">
+                    ${applicableRate.rate.toFixed(2)}
+                  </span>
+                )
+              }
+            </div>
+            <!-- Chevron indicator -->
+            <svg 
+              class="w-6 h-6 text-(--content-body) transition-transform duration-300"
+              data-chevron="shipping"
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
         </div>
 
@@ -272,7 +286,7 @@ const freeShippingThreshold =
     </label>
 
     <!-- Pickup Option -->
-    <label class="fulfillment-option block lg:basis-1/2 cursor-pointer">
+    <label class="fulfillment-option block lg:basis-1/2">
       <input
         type="radio"
         name="fulfillment"
@@ -281,8 +295,10 @@ const freeShippingThreshold =
         class="sr-only peer"
       />
       <div
-        class="border-2 border-(--border-primary) peer-checked:border-(--content-emphasis) peer-checked:bg-(--surface-primary) p-4 transition-all hover:border-(--content-emphasis)/50"
+        class="border-2 border-(--border-primary) p-4 transition-all hover:border-(--content-emphasis)/50 cursor-pointer"
         data-option-card="pickup"
+        data-selected="false"
+        data-expanded="false"
       >
         <div class="flex items-start justify-between">
           <div class="flex items-start gap-3">
@@ -294,10 +310,22 @@ const freeShippingThreshold =
               <p class="text-sm text-(--content-meta)">Ready in 2-4 hours</p>
             </div>
           </div>
-          <span
-            class="inline-block px-2 py-1 bg-green-600 text-white text-sm font-semibold"
-            >FREE</span
-          >
+          <div class="flex items-center gap-3">
+            <span
+              class="inline-block px-2 py-1 bg-green-600 text-white text-sm font-semibold"
+              >FREE</span
+            >
+            <!-- Chevron indicator -->
+            <svg 
+              class="w-6 h-6 text-(--content-body) transition-transform duration-300"
+              data-chevron="pickup"
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
         </div>
 
         <!-- Pickup Contact Form - Initially Hidden -->
@@ -404,66 +432,116 @@ const freeShippingThreshold =
   const FREE_SHIPPING_THRESHOLD = 75.0;
 
   function initFulfillmentSelector() {
-    const selector = document.querySelector(
-      '[data-component="fulfillment-selector"]'
-    );
+    const selector = document.querySelector('[data-component="fulfillment-selector"]');
     if (!selector) return;
 
     const radios = selector.querySelectorAll('input[name="fulfillment"]');
-    const shippingForm = selector.querySelector("[data-shipping-form]");
-    const pickupForm = selector.querySelector("[data-pickup-form]");
+    const shippingCard = selector.querySelector('[data-option-card="shipping"]');
+    const pickupCard = selector.querySelector('[data-option-card="pickup"]');
+    const shippingForm = selector.querySelector('[data-shipping-form]');
+    const pickupForm = selector.querySelector('[data-pickup-form]');
+    const shippingChevron = selector.querySelector('[data-chevron="shipping"]');
+    const pickupChevron = selector.querySelector('[data-chevron="pickup"]');
 
-    // Initially hide BOTH forms since nothing is selected
-    shippingForm?.classList.add("hidden");
-    pickupForm?.classList.add("hidden");
-
-    // Remove required from ALL fields initially
-    shippingForm?.querySelectorAll("input, select").forEach((el) => {
+    // Initially hide both forms and remove required from all fields
+    shippingForm?.classList.add('hidden');
+    pickupForm?.classList.add('hidden');
+    
+    shippingForm?.querySelectorAll('input, select').forEach((el) => {
       (el as HTMLInputElement | HTMLSelectElement).required = false;
     });
-    pickupForm?.querySelectorAll("input").forEach((el) => {
+    pickupForm?.querySelectorAll('input').forEach((el) => {
       (el as HTMLInputElement).required = false;
     });
 
-    radios.forEach((radio) => {
-      const radioInput = radio as HTMLInputElement;
-      radioInput.addEventListener("change", () => {
-        if (radioInput.value === "shipping") {
-          shippingForm?.classList.remove("hidden");
-          pickupForm?.classList.add("hidden");
+    // Handle card click - combines selection and toggle
+    function handleCardClick(method: 'shipping' | 'pickup') {
+      const clickedCard = method === 'shipping' ? shippingCard : pickupCard;
+      const otherCard = method === 'shipping' ? pickupCard : shippingCard;
+      const clickedForm = method === 'shipping' ? shippingForm : pickupForm;
+      const otherForm = method === 'shipping' ? pickupForm : shippingForm;
+      const clickedChevron = method === 'shipping' ? shippingChevron : pickupChevron;
+      const otherChevron = method === 'shipping' ? pickupChevron : shippingChevron;
+      const clickedRadio = Array.from(radios).find(
+        (r) => (r as HTMLInputElement).value === method
+      ) as HTMLInputElement;
 
-          // Set shipping fields as required
-          shippingForm
-            ?.querySelectorAll("input[required], select[required]")
-            .forEach((el) => {
-              (el as HTMLInputElement | HTMLSelectElement).required = true;
-            });
-          // Remove required from pickup fields
-          pickupForm?.querySelectorAll("input").forEach((el) => {
+      const isCurrentlySelected = clickedCard?.getAttribute('data-selected') === 'true';
+      const isCurrentlyExpanded = clickedCard?.getAttribute('data-expanded') === 'true';
+
+      if (!isCurrentlySelected) {
+        // First-time selection: select + expand
+        
+        // Check the radio and trigger change event
+        if (clickedRadio) {
+          clickedRadio.checked = true;
+          clickedRadio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        // Update selection states
+        clickedCard?.setAttribute('data-selected', 'true');
+        clickedCard?.classList.add('bg-(--surface-secondary)');
+        otherCard?.setAttribute('data-selected', 'false');
+        otherCard?.classList.remove('bg-(--surface-secondary)');
+
+        // Expand clicked, collapse other
+        clickedCard?.setAttribute('data-expanded', 'true');
+        clickedForm?.classList.remove('hidden');
+        clickedChevron?.classList.add('rotate-180');
+
+        otherCard?.setAttribute('data-expanded', 'false');
+        otherForm?.classList.add('hidden');
+        otherChevron?.classList.remove('rotate-180');
+
+        // Set required fields
+        if (method === 'shipping') {
+          shippingForm?.querySelectorAll('input[required], select[required]').forEach((el) => {
+            (el as HTMLInputElement | HTMLSelectElement).required = true;
+          });
+          pickupForm?.querySelectorAll('input').forEach((el) => {
             (el as HTMLInputElement).required = false;
           });
         } else {
-          shippingForm?.classList.add("hidden");
-          pickupForm?.classList.remove("hidden");
-
-          // Remove required from shipping fields
-          shippingForm?.querySelectorAll("input, select").forEach((el) => {
-            (el as HTMLInputElement | HTMLSelectElement).required = false;
-          });
-          // Set pickup fields as required
-          pickupForm?.querySelectorAll("input").forEach((el) => {
+          pickupForm?.querySelectorAll('input').forEach((el) => {
             (el as HTMLInputElement).required = true;
           });
+          shippingForm?.querySelectorAll('input, select').forEach((el) => {
+            (el as HTMLInputElement | HTMLSelectElement).required = false;
+          });
         }
 
-        // Trigger order summary update when method changes
-        if (typeof window !== "undefined" && (window as any).updateOrderSummaryOnFulfillmentChange) {
+        // Trigger order summary update
+        if (typeof window !== 'undefined' && (window as any).updateOrderSummaryOnFulfillmentChange) {
           (window as any).updateOrderSummaryOnFulfillmentChange();
         }
-      });
-    });
+      } else {
+        // Already selected: just toggle expand/collapse
+        if (isCurrentlyExpanded) {
+          // Collapse
+          clickedCard?.setAttribute('data-expanded', 'false');
+          clickedForm?.classList.add('hidden');
+          clickedChevron?.classList.remove('rotate-180');
+        } else {
+          // Expand
+          clickedCard?.setAttribute('data-expanded', 'true');
+          clickedForm?.classList.remove('hidden');
+          clickedChevron?.classList.add('rotate-180');
+        }
+      }
+    }
 
-    // DO NOT trigger initial change event - let forms stay hidden until user selects
+    // Attach click handlers to cards
+    shippingCard?.addEventListener('click', () => handleCardClick('shipping'));
+    pickupCard?.addEventListener('click', () => handleCardClick('pickup'));
+
+    // Prevent form clicks from bubbling to card
+    shippingForm?.addEventListener('click', (e) => e.stopPropagation());
+    pickupForm?.addEventListener('click', (e) => e.stopPropagation());
+
+    // Prevent radio clicks from bubbling (they're hidden anyway, but safety)
+    radios.forEach((radio) => {
+      radio.addEventListener('click', (e) => e.stopPropagation());
+    });
   }
 
   function updateFreeShippingTracker(subtotal: number): void {

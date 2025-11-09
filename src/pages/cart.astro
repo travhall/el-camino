@@ -37,7 +37,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     <!-- Cart Content Grid -->
     <div id="cart-content" class="hidden grid md:grid-cols-3 gap-1 items-start">
       <!-- Cart Items Column -->
-      <div class="md:col-span-2 space-y-1 grid">
+      <div class="md:col-span-2 space-y-1 grid pb-4">
         <!-- Fulfillment Selector -->
         <FulfillmentSelector subtotal={0} />
         <div class="flex justify-between items-center px-4">
@@ -48,7 +48,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             id="clear-cart-button"
             variant="ghost"
             size="sm"
-            classes="justify-self-end -mt-1 mb-1"
+            classes="justify-self-end"
           >
             Clear Cart
           </Button>
@@ -898,7 +898,6 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
   }
 
   function setupFulfillmentListeners(): void {
-    // Get checkout button
     const checkoutButton = document.getElementById(
       "checkout-button"
     ) as HTMLButtonElement;
@@ -909,7 +908,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       checkoutButton.classList.add("opacity-50", "cursor-not-allowed");
     }
 
-    // Listen for fulfillment method changes
+    // Listen for radio changes (triggered by card selection)
     const fulfillmentRadios = document.querySelectorAll(
       'input[name="fulfillment"]'
     );
