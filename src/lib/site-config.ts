@@ -29,6 +29,7 @@ export interface SiteConfig {
       display: string;
     };
     email: string;
+    support: string;
   };
   hours: BusinessHours[];
   social: SocialLink[];
@@ -59,6 +60,7 @@ export const siteConfig: SiteConfig = {
       display: "(715) 912-1169",
     },
     email: "elcaminoboardshop@gmail.com",
+    support: "elcaminoboardshop@gmail.com",
   },
   hours: [
     { day: "Monday", hours: "Closed", isOpen: false },
@@ -119,6 +121,7 @@ export function getStructuredData() {
     image: `${siteConfig.url}${siteConfig.seo.defaultImage}`,
     telephone: siteConfig.contact.phone.number,
     email: siteConfig.contact.email,
+    support: siteConfig.contact.support,
     address: {
       "@type": "PostalAddress",
       streetAddress: siteConfig.contact.address.street,

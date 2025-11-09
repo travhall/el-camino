@@ -2,6 +2,7 @@
 // src/pages/cart.astro
 import Layout from "@/layouts/Layout.astro";
 import Button from "@/components/Button.astro";
+import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 ---
 
 <Layout title="Your Shopping Cart | El Camino">
@@ -15,7 +16,7 @@ import Button from "@/components/Button.astro";
     <!-- Loading/Content Container -->
     <div
       id="cart-loading"
-      class="text-center min-h-[50dvh] flex items-center justify-center py-12"
+      class="text-center min-h-[90dvh] flex items-center justify-center py-12"
     >
       <div
         class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-(--content-heading)"
@@ -27,7 +28,7 @@ import Button from "@/components/Button.astro";
     <!-- Empty Cart State -->
     <div
       id="empty-cart"
-      class="hidden flex flex-col min-h-[50dvh] items-center justify-center"
+      class="hidden flex flex-col min-h-[90dvh] items-center justify-center"
     >
       <p class="text-lg mb-6 text-(--content-body)">Your cart is empty</p>
       <Button href="/shop/all" variant="outline"> Continue Shopping </Button>
@@ -37,38 +38,68 @@ import Button from "@/components/Button.astro";
     <div id="cart-content" class="hidden grid md:grid-cols-3 gap-1 items-start">
       <!-- Cart Items Column -->
       <div class="md:col-span-2 space-y-1 grid">
-        <Button
-          id="clear-cart-button"
-          variant="ghost"
-          size="sm"
-          classes="justify-self-end -mt-1 mb-1"
-        >
-          Clear Cart
-        </Button>
+        <!-- Fulfillment Selector -->
+        <FulfillmentSelector subtotal={0} />
+        <div class="flex justify-between items-center px-4">
+          <h2 class="font-display text-3xl mb-2 text-(--content-heading)">
+            Cart Items
+          </h2>
+          <Button
+            id="clear-cart-button"
+            variant="ghost"
+            size="sm"
+            classes="justify-self-end -mt-1 mb-1"
+          >
+            Clear Cart
+          </Button>
+        </div>
         <div id="cart-items-list" class="grid gap-1"></div>
       </div>
 
       <!-- Order Summary Column (Static) -->
-      <div class="md:col-span-1">
+      <div class="md:col-span-1 space-y-1">
+        <!-- Order Summary -->
         <div class="bg-(--surface-secondary) p-4 sticky top-4">
           <h2 class="font-display text-3xl mb-2 text-(--content-heading)">
             Order Summary
           </h2>
-          <div class="order-summary lg:space-y-2 mb-2">
+          <div class="order-summary space-y-2 mb-4">
             <div class="flex justify-between text-(--content-body)">
               <span>Subtotal</span>
               <span
-                class="font-display font-bold text-5xl text-(--content-caption)"
+                class="font-display font-bold text-2xl text-(--content-caption)"
                 id="subtotal">$0.00</span
+              >
+            </div>
+            <div class="flex justify-between text-(--content-body)">
+              <span>Sales Tax</span>
+              <span class="font-semibold" id="tax-amount">$0.00</span>
+            </div>
+            <div
+              class="flex justify-between text-(--content-body)"
+              id="shipping-row"
+            >
+              <span>Shipping</span>
+              <span class="font-semibold" id="shipping-cost">$0.00</span>
+            </div>
+            <div
+              class="flex justify-between text-(--content-body) text-lg pt-2 border-t border-(--border-secondary)"
+            >
+              <span class="font-semibold">Order Total</span>
+              <span
+                class="font-display font-bold text-5xl text-(--content-heading)"
+                id="order-total">$0.00</span
               >
             </div>
           </div>
           <div class="space-y-2">
-            <p class="italic my-4">
-              Shipping &amp; taxes are calculated at checkout
-            </p>
-            <Button id="checkout-button" variant="primary" classes="w-full">
-              Proceed to Checkout
+            <Button
+              id="checkout-button"
+              variant="primary"
+              classes="w-full"
+              data-disabled="true"
+            >
+              Continue to Payment
             </Button>
             <Button
               href="/shop/all"
@@ -85,7 +116,7 @@ import Button from "@/components/Button.astro";
     <!-- Processing Indicator -->
     <div
       id="loading-overlay"
-      class="fixed inset-0 bg-(--surface-primary)/50 min-h-[50dvh] items-center justify-center hidden z-50"
+      class="fixed inset-0 bg-(--surface-primary)/50 min-h-[90dvh] items-center justify-center hidden z-50"
     >
       <div class="bg-(--surface-secondary) p-4 rounded-sm">
         <div class="flex items-center justify-center">
@@ -128,7 +159,9 @@ import Button from "@/components/Button.astro";
         if (canvas.toDataURL("image/avif").indexOf("data:image/avif") === 0) {
           url.searchParams.set("fm", "avif");
           url.searchParams.set("q", "65");
-        } else if (canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0) {
+        } else if (
+          canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
+        ) {
           url.searchParams.set("fm", "webp");
           url.searchParams.set("q", "85");
         } else {
@@ -160,23 +193,6 @@ import Button from "@/components/Button.astro";
       (window as any).showNotification(message, type);
       return;
     }
-
-    // Fallback (should not be needed but kept for safety)
-    // const notification = document.createElement("div");
-    // notification.className = `fixed top-4 right-4 z-70 px-4 py-2 rounded-sm text-white transform translate-x-full transition-transform duration-300 ${
-    //   type === "success" ? "bg-green-600" : "bg-red-600"
-    // }`;
-    // notification.textContent = message;
-
-    // document.body.appendChild(notification);
-    // requestAnimationFrame(() =>
-    //   notification.classList.remove("translate-x-full")
-    // );
-
-    // setTimeout(() => {
-    //   notification.classList.add("translate-x-full");
-    //   setTimeout(() => notification.remove(), 300);
-    // }, 3000);
   }
 
   function showConfirmModal(
@@ -241,7 +257,7 @@ import Button from "@/components/Button.astro";
     const productUrl = `/product/${productSlug}`;
 
     return `
-      <div class="bg-(--surface-secondary) p-4 flex gap-4 self-start" data-item-container="${itemKey}">
+      <div class="bg-(--surface-secondary) mx-4 p-4 flex gap-4 self-start" data-item-container="${itemKey}">
         <div class="shrink-0 relative w-16 h-16 lg:w-24 lg:h-24">
           <!-- Loading placeholder -->
           <div 
@@ -355,12 +371,126 @@ import Button from "@/components/Button.astro";
         return;
       }
 
+      // Check if fulfillment method is selected
+      const fulfillmentRadio = document.querySelector(
+        'input[name="fulfillment"]:checked'
+      ) as HTMLInputElement;
+
+      if (!fulfillmentRadio) {
+        // Scroll to fulfillment selector
+        const selector = document.querySelector(
+          '[data-component="fulfillment-selector"]'
+        );
+        selector?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        // Add visual indication
+        selector?.classList.add("border-4", "border-red-500", "rounded");
+        setTimeout(() => {
+          selector?.classList.remove("border-4", "border-red-500", "rounded");
+        }, 3000);
+
+        showNotification("Please choose a shipping method", "error");
+        return;
+      }
+
+      const fulfillmentMethod = fulfillmentRadio.value as "shipping" | "pickup";
+
+      let requestBody: any = { items, fulfillmentMethod };
+
+      // Collect fulfillment details based on method
+      if (fulfillmentMethod === "shipping") {
+        const form = document.querySelector(
+          "[data-shipping-form]"
+        ) as HTMLElement;
+        if (!form) {
+          showNotification("Shipping form not found", "error");
+          return;
+        }
+
+        // Validate required fields
+        const requiredFields = form.querySelectorAll(
+          "input[required], select[required]"
+        );
+        let isValid = true;
+        requiredFields.forEach((field) => {
+          const input = field as HTMLInputElement;
+          if (!input.value.trim()) {
+            isValid = false;
+            input.classList.add("border-red-500");
+          } else {
+            input.classList.remove("border-red-500");
+          }
+        });
+
+        if (!isValid) {
+          showNotification(
+            "Please fill in all required shipping fields",
+            "error"
+          );
+          return;
+        }
+
+        requestBody.shippingAddress = {
+          name: (form.querySelector("#ship-name") as HTMLInputElement).value,
+          email: (form.querySelector("#ship-email") as HTMLInputElement).value,
+          phone: (form.querySelector("#ship-phone") as HTMLInputElement).value,
+          street1: (form.querySelector("#ship-street1") as HTMLInputElement)
+            .value,
+          street2:
+            (form.querySelector("#ship-street2") as HTMLInputElement).value ||
+            undefined,
+          city: (form.querySelector("#ship-city") as HTMLInputElement).value,
+          state: (form.querySelector("#ship-state") as HTMLSelectElement).value,
+          zip: (form.querySelector("#ship-zip") as HTMLInputElement).value,
+        };
+      } else if (fulfillmentMethod === "pickup") {
+        const form = document.querySelector(
+          "[data-pickup-form]"
+        ) as HTMLElement;
+        if (!form) {
+          showNotification("Pickup form not found", "error");
+          return;
+        }
+
+        // Validate required fields
+        const requiredFields = form.querySelectorAll("input[required]");
+        let isValid = true;
+        requiredFields.forEach((field) => {
+          const input = field as HTMLInputElement;
+          if (!input.value.trim()) {
+            isValid = false;
+            input.classList.add("border-red-500");
+          } else {
+            input.classList.remove("border-red-500");
+          }
+        });
+
+        if (!isValid) {
+          showNotification(
+            "Please fill in all required pickup contact fields",
+            "error"
+          );
+          return;
+        }
+
+        requestBody.pickupContact = {
+          name: (form.querySelector("#pickup-name") as HTMLInputElement).value,
+          email: (form.querySelector("#pickup-email") as HTMLInputElement)
+            .value,
+          phone: (form.querySelector("#pickup-phone") as HTMLInputElement)
+            .value,
+          instructions:
+            (form.querySelector("#pickup-instructions") as HTMLTextAreaElement)
+              ?.value || undefined,
+        };
+      }
+
       setLoading(true);
 
       const response = await fetch("/api/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -621,6 +751,102 @@ import Button from "@/components/Button.astro";
     if (subtotalEl) {
       subtotalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(total));
     }
+
+    // Update order summary
+    updateOrderSummary(total);
+  }
+
+  async function updateOrderSummary(subtotal: number): Promise<void> {
+    // Get selected fulfillment method
+    const fulfillmentRadio = document.querySelector(
+      'input[name="fulfillment"]:checked'
+    ) as HTMLInputElement;
+
+    const subtotalEl = document.getElementById("subtotal");
+    const taxEl = document.getElementById("tax-amount");
+    const shippingEl = document.getElementById("shipping-cost");
+    const totalEl = document.getElementById("order-total");
+
+    // Always show subtotal
+    if (subtotalEl) {
+      subtotalEl.textContent = MoneyUtils.format(
+        MoneyUtils.fromFloat(subtotal)
+      );
+    }
+
+    // If no method selected, show placeholder values
+    if (!fulfillmentRadio) {
+      if (taxEl) taxEl.textContent = "—";
+      if (shippingEl) shippingEl.textContent = "—";
+      if (totalEl) {
+        totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
+      }
+      return;
+    }
+
+    const fulfillmentMethod = fulfillmentRadio.value as "shipping" | "pickup";
+
+    try {
+      // Call Square CalculateOrder API to get real tax
+      const response = await fetch("/api/calculate-cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cart.getItems(),
+          fulfillmentMethod,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || "Calculation failed");
+      }
+
+      // Use Square-calculated values
+      const shippingCost = data.shipping;
+      const taxAmount = data.tax;
+      const orderTotal = data.total;
+
+      // Format shipping display
+      const shippingDisplay =
+        shippingCost === 0 ? "FREE" : `$${shippingCost.toFixed(2)}`;
+
+      // Update displays
+      const subtotalEl = document.getElementById("subtotal");
+      const taxEl = document.getElementById("tax-amount");
+      const shippingEl = document.getElementById("shipping-cost");
+      const totalEl = document.getElementById("order-total");
+
+      if (subtotalEl) {
+        subtotalEl.textContent = MoneyUtils.format(
+          MoneyUtils.fromFloat(subtotal)
+        );
+      }
+      if (taxEl) {
+        taxEl.textContent = `$${taxAmount.toFixed(2)}`;
+      }
+      if (shippingEl) {
+        shippingEl.textContent = shippingDisplay;
+      }
+      if (totalEl) {
+        totalEl.textContent = `$${orderTotal.toFixed(2)}`;
+      }
+
+      // Update free shipping tracker
+      if (typeof (window as any).updateFreeShippingTracker === "function") {
+        (window as any).updateFreeShippingTracker(subtotal);
+      }
+    } catch (error) {
+      console.error("Error calculating order summary:", error);
+      // Fallback to showing subtotal at minimum
+      const subtotalEl = document.getElementById("subtotal");
+      if (subtotalEl) {
+        subtotalEl.textContent = MoneyUtils.format(
+          MoneyUtils.fromFloat(subtotal)
+        );
+      }
+    }
   }
 
   async function updateDisplay(): Promise<void> {
@@ -660,6 +886,9 @@ import Button from "@/components/Button.astro";
         subtotalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(total));
 
         setupCartItemEventListeners();
+
+        // Update order summary with tax, shipping, total
+        updateOrderSummary(total);
       }
     } catch (error) {
       console.error("Error updating cart display:", error);
@@ -668,9 +897,46 @@ import Button from "@/components/Button.astro";
     }
   }
 
+  function setupFulfillmentListeners(): void {
+    // Get checkout button
+    const checkoutButton = document.getElementById(
+      "checkout-button"
+    ) as HTMLButtonElement;
+
+    // Initially disable checkout button
+    if (checkoutButton) {
+      checkoutButton.disabled = true;
+      checkoutButton.classList.add("opacity-50", "cursor-not-allowed");
+    }
+
+    // Listen for fulfillment method changes
+    const fulfillmentRadios = document.querySelectorAll(
+      'input[name="fulfillment"]'
+    );
+    fulfillmentRadios.forEach((radio) => {
+      radio.addEventListener("change", () => {
+        // Enable checkout button when selection is made
+        if (checkoutButton) {
+          checkoutButton.disabled = false;
+          checkoutButton.classList.remove("opacity-50", "cursor-not-allowed");
+        }
+
+        const total = cart.getTotal();
+        updateOrderSummary(total);
+      });
+    });
+
+    // Make update function available globally for FulfillmentSelector
+    (window as any).updateOrderSummaryOnFulfillmentChange = () => {
+      const total = cart.getTotal();
+      updateOrderSummary(total);
+    };
+  }
+
   function handlePageLoad() {
     attachEventListeners();
     updateDisplay();
+    setupFulfillmentListeners();
   }
 
   document.addEventListener("astro:page-load", handlePageLoad);

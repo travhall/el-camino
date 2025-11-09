@@ -1,0 +1,499 @@
+---
+// src/components/FulfillmentSelector.astro
+import {
+  SHIPPING_RATES,
+  PICKUP_LOCATION,
+  calculateShippingRate,
+} from "@/lib/config/shipping";
+
+interface Props {
+  subtotal: number;
+}
+
+const { subtotal } = Astro.props;
+
+// Calculate which shipping rate applies
+const applicableRate = calculateShippingRate(subtotal);
+const freeShippingThreshold =
+  SHIPPING_RATES.find((r) => r.id === "free")?.freeThreshold || 75;
+---
+
+<div 
+  class="fulfillment-selector p-4" 
+  data-component="fulfillment-selector"
+  role="radiogroup"
+  aria-required="true"
+  aria-label="Shipping method selection"
+>
+  <h2 class="font-display text-3xl my-4 text-(--content-heading)">
+    Choose Shipping Method <span class="text-red-600">*</span>
+  </h2>
+  <p class="text-sm text-(--content-meta) mb-3">
+    Please select how you'd like to receive your order
+  </p>
+
+  <div class="fulfillment-options flex flex-col lg:flex-row gap-2">
+    <!-- Shipping Option -->
+    <label class="fulfillment-option block lg:basis-1/2 cursor-pointer">
+      <input
+        type="radio"
+        name="fulfillment"
+        value="shipping"
+        data-method="shipping"
+        class="sr-only peer"
+      />
+      <div
+        class="border-2 border-(--border-primary) peer-checked:border-(--content-emphasis) peer-checked:bg-(--surface-primary) p-4 transition-all hover:border-(--content-emphasis)/50"
+        data-option-card="shipping"
+      >
+        <div class="flex items-start justify-between">
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">📦</span>
+            <div>
+              <h3 class="font-display text-xl text-(--content-heading)">
+                Ship to Me
+              </h3>
+              <p class="text-sm text-(--content-meta)">
+                {applicableRate.description}
+              </p>
+            </div>
+          </div>
+          <div class="text-right">
+            {
+              applicableRate.rate === 0 ? (
+                <span class="inline-block px-2 py-1 bg-green-600 text-white text-sm font-semibold">
+                  FREE
+                </span>
+              ) : (
+                <span class="font-display text-xl text-(--content-emphasis)">
+                  ${applicableRate.rate.toFixed(2)}
+                </span>
+              )
+            }
+          </div>
+        </div>
+
+        <!-- Shipping Address Form - Initially Hidden -->
+        <div
+          class="shipping-address-form space-y-3 pt-3 mt-3 border-t border-(--border-secondary) hidden"
+          data-shipping-form
+        >
+          <h4 class="font-semibold text-(--content-body)">Shipping Address</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="md:col-span-2">
+              <label
+                for="ship-name"
+                class="block text-sm text-(--content-body) mb-1"
+                >Full Name *</label
+              >
+              <input
+                type="text"
+                id="ship-name"
+                name="name"
+                required
+                autocomplete="name"
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
+              />
+            </div>
+
+            <div class="md:col-span-2">
+              <label
+                for="ship-email"
+                class="block text-sm text-(--content-body) mb-1">Email *</label
+              >
+              <input
+                type="email"
+                id="ship-email"
+                name="email"
+                required
+                autocomplete="email"
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
+              />
+            </div>
+
+            <div class="md:col-span-2">
+              <label
+                for="ship-phone"
+                class="block text-sm text-(--content-body) mb-1">Phone *</label
+              >
+              <input
+                type="tel"
+                id="ship-phone"
+                name="phone"
+                required
+                autocomplete="tel"
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
+              />
+            </div>
+
+            <div class="md:col-span-2">
+              <label
+                for="ship-street1"
+                class="block text-sm text-(--content-body) mb-1"
+                >Street Address *</label
+              >
+              <input
+                type="text"
+                id="ship-street1"
+                name="street1"
+                required
+                autocomplete="address-line1"
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
+              />
+            </div>
+
+            <div class="md:col-span-2">
+              <label
+                for="ship-street2"
+                class="block text-sm text-(--content-body) mb-1"
+                >Apt/Suite (Optional)</label
+              >
+              <input
+                type="text"
+                id="ship-street2"
+                name="street2"
+                autocomplete="address-line2"
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
+              />
+            </div>
+
+            <div>
+              <label
+                for="ship-city"
+                class="block text-sm text-(--content-body) mb-1">City *</label
+              >
+              <input
+                type="text"
+                id="ship-city"
+                name="city"
+                required
+                autocomplete="address-level2"
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
+              />
+            </div>
+
+            <div>
+              <label
+                for="ship-state"
+                class="block text-sm text-(--content-body) mb-1">State *</label
+              >
+              <select
+                id="ship-state"
+                name="state"
+                required
+                autocomplete="address-level1"
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
+              >
+                <option value="">Select State...</option>
+                <option value="AL">Alabama</option>
+                <option value="AZ">Arizona</option>
+                <option value="AR">Arkansas</option>
+                <option value="CA">California</option>
+                <option value="CO">Colorado</option>
+                <option value="CT">Connecticut</option>
+                <option value="DE">Delaware</option>
+                <option value="FL">Florida</option>
+                <option value="GA">Georgia</option>
+                <option value="ID">Idaho</option>
+                <option value="IL">Illinois</option>
+                <option value="IN">Indiana</option>
+                <option value="IA">Iowa</option>
+                <option value="KS">Kansas</option>
+                <option value="KY">Kentucky</option>
+                <option value="LA">Louisiana</option>
+                <option value="ME">Maine</option>
+                <option value="MD">Maryland</option>
+                <option value="MA">Massachusetts</option>
+                <option value="MI">Michigan</option>
+                <option value="MN">Minnesota</option>
+                <option value="MS">Mississippi</option>
+                <option value="MO">Missouri</option>
+                <option value="MT">Montana</option>
+                <option value="NE">Nebraska</option>
+                <option value="NV">Nevada</option>
+                <option value="NH">New Hampshire</option>
+                <option value="NJ">New Jersey</option>
+                <option value="NM">New Mexico</option>
+                <option value="NY">New York</option>
+                <option value="NC">North Carolina</option>
+                <option value="ND">North Dakota</option>
+                <option value="OH">Ohio</option>
+                <option value="OK">Oklahoma</option>
+                <option value="OR">Oregon</option>
+                <option value="PA">Pennsylvania</option>
+                <option value="RI">Rhode Island</option>
+                <option value="SC">South Carolina</option>
+                <option value="SD">South Dakota</option>
+                <option value="TN">Tennessee</option>
+                <option value="TX">Texas</option>
+                <option value="UT">Utah</option>
+                <option value="VT">Vermont</option>
+                <option value="VA">Virginia</option>
+                <option value="WA">Washington</option>
+                <option value="WV">West Virginia</option>
+                <option value="WI" selected>Wisconsin</option>
+                <option value="WY">Wyoming</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                for="ship-zip"
+                class="block text-sm text-(--content-body) mb-1"
+                >ZIP Code *</label
+              >
+              <input
+                type="text"
+                id="ship-zip"
+                name="zip"
+                required
+                pattern="[0-9]{5}"
+                maxlength="5"
+                autocomplete="postal-code"
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
+              />
+            </div>
+          </div>
+
+          <!-- Dynamic Free Shipping Tracker -->
+          <div
+            id="free-shipping-tracker"
+            class="hidden mt-3 p-3 bg-blue-50 border-l-4 border-blue-500"
+          >
+            <div class="flex items-center gap-2 text-sm text-blue-800">
+              <span>💡</span>
+              <span id="free-shipping-message">
+                <!-- JavaScript will populate this -->
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </label>
+
+    <!-- Pickup Option -->
+    <label class="fulfillment-option block lg:basis-1/2 cursor-pointer">
+      <input
+        type="radio"
+        name="fulfillment"
+        value="pickup"
+        data-method="pickup"
+        class="sr-only peer"
+      />
+      <div
+        class="border-2 border-(--border-primary) peer-checked:border-(--content-emphasis) peer-checked:bg-(--surface-primary) p-4 transition-all hover:border-(--content-emphasis)/50"
+        data-option-card="pickup"
+      >
+        <div class="flex items-start justify-between">
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">🏪</span>
+            <div>
+              <h3 class="font-display text-xl text-(--content-heading)">
+                Store Pickup
+              </h3>
+              <p class="text-sm text-(--content-meta)">Ready in 2-4 hours</p>
+            </div>
+          </div>
+          <span
+            class="inline-block px-2 py-1 bg-green-600 text-white text-sm font-semibold"
+            >FREE</span
+          >
+        </div>
+
+        <!-- Pickup Contact Form - Initially Hidden -->
+        <div
+          class="pickup-contact-form space-y-3 pt-3 mt-3 border-t border-(--border-secondary) hidden"
+          data-pickup-form
+        >
+          <h4 class="font-semibold text-(--content-body)">
+            Contact Information
+          </h4>
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label
+                for="pickup-name"
+                class="block text-sm text-(--content-body) mb-1"
+                >Full Name *</label
+              >
+              <input
+                type="text"
+                id="pickup-name"
+                name="name"
+                autocomplete="name"
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
+              />
+            </div>
+
+            <div>
+              <label
+                for="pickup-email"
+                class="block text-sm text-(--content-body) mb-1">Email *</label
+              >
+              <input
+                type="email"
+                id="pickup-email"
+                name="email"
+                autocomplete="email"
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
+              />
+            </div>
+
+            <div>
+              <label
+                for="pickup-phone"
+                class="block text-sm text-(--content-body) mb-1">Phone *</label
+              >
+              <input
+                type="tel"
+                id="pickup-phone"
+                name="phone"
+                autocomplete="tel"
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
+              />
+            </div>
+
+            <div>
+              <label
+                for="pickup-instructions"
+                class="block text-sm text-(--content-body) mb-1"
+              >
+                Delivery Instructions (Optional)
+              </label>
+              <textarea
+                id="pickup-instructions"
+                name="instructions"
+                rows="3"
+                placeholder="e.g., Call when arriving, preferred pickup time, special requests..."
+                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis) resize-none"
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="mt-3 p-3">
+            <h5 class="font-semibold text-sm text-(--content-heading) mb-2">
+              Pickup Location
+            </h5>
+            <address class="not-italic text-sm text-(--content-body) space-y-1">
+              <div class="font-semibold">{PICKUP_LOCATION.name}</div>
+              <div>{PICKUP_LOCATION.address.street1}</div>
+              <div>
+                {PICKUP_LOCATION.address.city}, {PICKUP_LOCATION.address.state}
+                {PICKUP_LOCATION.address.zip}
+              </div>
+              <div>
+                <a href={`tel:${PICKUP_LOCATION.phone}`} class="underline"
+                  >{PICKUP_LOCATION.phone}</a
+                >
+              </div>
+            </address>
+            {
+              PICKUP_LOCATION.instructions && (
+                <p class="mt-2 text-sm text-(--content-meta) italic">
+                  {PICKUP_LOCATION.instructions}
+                </p>
+              )
+            }
+          </div>
+        </div>
+      </div>
+    </label>
+  </div>
+</div>
+
+<script>
+  const FREE_SHIPPING_THRESHOLD = 75.0;
+
+  function initFulfillmentSelector() {
+    const selector = document.querySelector(
+      '[data-component="fulfillment-selector"]'
+    );
+    if (!selector) return;
+
+    const radios = selector.querySelectorAll('input[name="fulfillment"]');
+    const shippingForm = selector.querySelector("[data-shipping-form]");
+    const pickupForm = selector.querySelector("[data-pickup-form]");
+
+    // Initially hide BOTH forms since nothing is selected
+    shippingForm?.classList.add("hidden");
+    pickupForm?.classList.add("hidden");
+
+    // Remove required from ALL fields initially
+    shippingForm?.querySelectorAll("input, select").forEach((el) => {
+      (el as HTMLInputElement | HTMLSelectElement).required = false;
+    });
+    pickupForm?.querySelectorAll("input").forEach((el) => {
+      (el as HTMLInputElement).required = false;
+    });
+
+    radios.forEach((radio) => {
+      const radioInput = radio as HTMLInputElement;
+      radioInput.addEventListener("change", () => {
+        if (radioInput.value === "shipping") {
+          shippingForm?.classList.remove("hidden");
+          pickupForm?.classList.add("hidden");
+
+          // Set shipping fields as required
+          shippingForm
+            ?.querySelectorAll("input[required], select[required]")
+            .forEach((el) => {
+              (el as HTMLInputElement | HTMLSelectElement).required = true;
+            });
+          // Remove required from pickup fields
+          pickupForm?.querySelectorAll("input").forEach((el) => {
+            (el as HTMLInputElement).required = false;
+          });
+        } else {
+          shippingForm?.classList.add("hidden");
+          pickupForm?.classList.remove("hidden");
+
+          // Remove required from shipping fields
+          shippingForm?.querySelectorAll("input, select").forEach((el) => {
+            (el as HTMLInputElement | HTMLSelectElement).required = false;
+          });
+          // Set pickup fields as required
+          pickupForm?.querySelectorAll("input").forEach((el) => {
+            (el as HTMLInputElement).required = true;
+          });
+        }
+
+        // Trigger order summary update when method changes
+        if (typeof window !== "undefined" && (window as any).updateOrderSummaryOnFulfillmentChange) {
+          (window as any).updateOrderSummaryOnFulfillmentChange();
+        }
+      });
+    });
+
+    // DO NOT trigger initial change event - let forms stay hidden until user selects
+  }
+
+  function updateFreeShippingTracker(subtotal: number): void {
+    const tracker = document.getElementById("free-shipping-tracker");
+    const message = document.getElementById("free-shipping-message");
+
+    if (!tracker || !message) return;
+
+    // Get selected fulfillment method
+    const shippingRadio = document.querySelector(
+      'input[value="shipping"]:checked'
+    );
+
+    // Only show for shipping, not pickup or when nothing is selected
+    if (!shippingRadio) {
+      tracker.classList.add("hidden");
+      return;
+    }
+
+    if (subtotal >= FREE_SHIPPING_THRESHOLD) {
+      tracker.classList.add("hidden");
+    } else {
+      const amountNeeded = FREE_SHIPPING_THRESHOLD - subtotal;
+      message.innerHTML = `Add <strong>$${amountNeeded.toFixed(2)}</strong> more for free shipping!`;
+      tracker.classList.remove("hidden");
+    }
+  }
+
+  // Make function globally available for cart.astro
+  (window as any).updateFreeShippingTracker = updateFreeShippingTracker;
+
+  document.addEventListener("astro:page-load", initFulfillmentSelector);
+</script>

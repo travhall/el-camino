@@ -108,17 +108,10 @@ import Button from "@/components/Button.astro";
 
       <div class="space-y-2">
         <Button id="mini-cart-checkout" variant="primary" classes="w-full">
-          <span class="checkout-text">Proceed to Checkout</span>
-          <div class="checkout-loading hidden">
-            <div
-              class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"
-            >
-            </div>
-            Processing...
-          </div>
+          Proceed to Checkout
         </Button>
-        <Button id="view-full-cart" variant="outline" classes="w-full">
-          View Full Cart
+        <Button id="continue-shopping-footer" variant="outline" classes="w-full">
+          Continue Shopping
         </Button>
       </div>
     </div>
@@ -152,14 +145,16 @@ import Button from "@/components/Button.astro";
         url.searchParams.set("w", "100");
         url.searchParams.set("h", "100");
         url.searchParams.set("fit", "crop");
-        
+
         // Format detection matching EnhancedImageOptimizer priority
         if (typeof window !== "undefined") {
           const canvas = document.createElement("canvas");
           if (canvas.toDataURL("image/avif").indexOf("data:image/avif") === 0) {
             url.searchParams.set("fm", "avif");
             url.searchParams.set("q", "65"); // AVIF quality
-          } else if (canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0) {
+          } else if (
+            canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
+          ) {
             url.searchParams.set("fm", "webp");
             url.searchParams.set("q", "85"); // WebP quality
           } else {
@@ -214,65 +209,6 @@ import Button from "@/components/Button.astro";
       notification.classList.add("translate-x-full");
       setTimeout(() => notification.remove(), 300);
     }, 3000);
-  }
-
-  async function handleCheckout(): Promise<void> {
-    const checkoutButton = document.getElementById(
-      "mini-cart-checkout"
-    ) as HTMLButtonElement;
-    const checkoutText = document.querySelector(
-      ".checkout-text"
-    ) as HTMLElement;
-    const checkoutLoading = document.querySelector(
-      ".checkout-loading"
-    ) as HTMLElement;
-
-    if (!checkoutButton || !checkoutText || !checkoutLoading) return;
-
-    try {
-      const cartInstance = await loadCart();
-      const items = cartInstance.getItems();
-
-      if (items.length === 0) {
-        showNotification("Your cart is empty", "error");
-        return;
-      }
-
-      checkoutButton.disabled = true;
-      checkoutText.classList.add("hidden");
-      checkoutLoading.classList.remove("hidden");
-
-      const response = await fetch("/api/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || "Checkout failed");
-      }
-
-      if (!data.checkoutUrl) {
-        throw new Error("No checkout URL returned");
-      }
-
-      showNotification("Redirecting to checkout...", "success");
-      window.location.href = data.checkoutUrl;
-    } catch (error) {
-      console.error("Checkout error:", error);
-      showNotification(
-        error instanceof Error
-          ? error.message
-          : "Checkout failed. Please try again.",
-        "error"
-      );
-
-      checkoutButton.disabled = false;
-      checkoutText.classList.remove("hidden");
-      checkoutLoading.classList.add("hidden");
-    }
   }
 
   function renderCartItem(item: CartItem): string {
@@ -445,7 +381,7 @@ import Button from "@/components/Button.astro";
       .querySelector(`[data-item-key="${itemKey}"]`)
       ?.closest(".p-3") as HTMLElement;
     if (itemContainer) {
-      const quantitySpan = itemContainer.querySelector(".w-8.text-center");
+      const quantitySpan = itemContainer.querySelector(".w-10.text-center");
       if (quantitySpan) {
         quantitySpan.textContent = item.quantity.toString();
       }
@@ -486,9 +422,6 @@ import Button from "@/components/Button.astro";
     const countEl = document.getElementById("mini-cart-count");
     const totalEl = document.getElementById("mini-cart-total");
     const itemsListEl = document.getElementById("items-list");
-    const checkoutButton = document.getElementById(
-      "mini-cart-checkout"
-    ) as HTMLButtonElement;
 
     if (
       !loadingEl ||
@@ -518,7 +451,6 @@ import Button from "@/components/Button.astro";
         emptyEl.classList.remove("hidden");
         itemsEl.classList.add("hidden");
         footerEl.classList.add("hidden");
-        if (checkoutButton) checkoutButton.disabled = true;
       } else {
         emptyEl.classList.add("hidden");
         itemsEl.classList.remove("hidden");
@@ -526,8 +458,6 @@ import Button from "@/components/Button.astro";
 
         itemsListEl.innerHTML = items.map(renderCartItem).join("");
         totalEl.textContent = formatPrice(total);
-
-        if (checkoutButton) checkoutButton.disabled = false;
 
         setupQuantityControls();
       }
@@ -696,8 +626,8 @@ import Button from "@/components/Button.astro";
     const panel = document.getElementById("mini-cart-panel");
     const closeButton = document.getElementById("close-mini-cart");
     const continueShoppingButton = document.getElementById("continue-shopping");
+    const continueShoppingFooterButton = document.getElementById("continue-shopping-footer");
     const checkoutButton = document.getElementById("mini-cart-checkout");
-    const viewCartButton = document.getElementById("view-full-cart");
 
     // Early return if essential elements missing
     if (!overlay || !panel || !closeButton) {
@@ -739,16 +669,27 @@ import Button from "@/components/Button.astro";
     closeButton.addEventListener("click", closeMiniCart);
     overlay.addEventListener("click", closeMiniCart);
 
+    // Continue shopping buttons close the mini cart
     if (continueShoppingButton) {
       continueShoppingButton.addEventListener("click", closeMiniCart);
     }
 
-    if (checkoutButton) {
-      checkoutButton.addEventListener("click", handleCheckout);
+    if (continueShoppingFooterButton) {
+      continueShoppingFooterButton.addEventListener("click", closeMiniCart);
     }
 
-    if (viewCartButton) {
-      viewCartButton.addEventListener("click", () => {
+    // Checkout button navigates to cart page
+    if (checkoutButton) {
+      checkoutButton.addEventListener("click", async () => {
+        const cartInstance = await loadCart();
+        const items = cartInstance.getItems();
+
+        if (items.length === 0) {
+          showNotification("Your cart is empty", "error");
+          return;
+        }
+
+        // Navigate to cart page (which is now the checkout page)
         window.location.href = "/cart";
       });
     }
