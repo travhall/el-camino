@@ -35,11 +35,15 @@ export const GET: APIRoute = async () => {
       return {
         productName: item.itemData?.name,
         productId: item.id,
+        // Check item-level fields
+        itemLevelFields: item.itemData ? Object.keys(item.itemData) : [],
+        itemCustomAttributes: item.customAttributeValues,
         firstVariation: {
           id: firstVariation?.id,
           name: firstVariation?.itemVariationData?.name,
           priceMoney: firstVariation?.itemVariationData?.priceMoney,
           locationOverrides: firstVariation?.itemVariationData?.locationOverrides,
+          customAttributes: firstVariation?.customAttributeValues,
           // Show ALL fields
           allFields: firstVariation?.itemVariationData ? Object.keys(firstVariation.itemVariationData) : []
         }
