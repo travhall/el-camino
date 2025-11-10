@@ -4,6 +4,11 @@
 import type { APIRoute } from "astro";
 import { squareClient } from "@/lib/square/client";
 
+// Convert BigInt to string for JSON serialization
+function bigIntReplacer(key: string, value: any) {
+  return typeof value === 'bigint' ? value.toString() : value;
+}
+
 export const GET: APIRoute = async () => {
   try {
     // Fetch first 3 items to find one with sale price
@@ -39,7 +44,7 @@ export const GET: APIRoute = async () => {
     return new Response(JSON.stringify({
       message: "First 3 products from Square API",
       items: itemsData
-    }, null, 2), {
+    }, bigIntReplacer, 2), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
