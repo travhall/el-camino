@@ -1,6 +1,6 @@
 // /src/lib/square/client.ts
 import { Client, Environment } from "square/legacy";
-import type { Product } from "./types";
+import type { Product, SaleInfo } from "./types";
 import { getImageUrl, batchGetImageUrls } from "./imageUtils";
 import { defaultCircuitBreaker, logApiError } from "./apiUtils";
 import { processSquareError, logError } from "./errorUtils";
@@ -67,6 +67,61 @@ function extractBrandValue(customAttributeValues: any): string {
   }
 
   return "";
+}
+
+/**
+ * Extract sale information from variation custom attributes
+ * @param customAttributeValues - Variation-level custom attributes
+ * @param regularPrice - Regular price from priceMoney (in dollars)
+ * @returns SaleInfo object or null if no valid sale pricing
+ */
+export function extractSaleInfo(
+  customAttributeValues: any,
+  regularPrice: number
+): SaleInfo | null {
+  if (!customAttributeValues) return null;
+
+  // Look for sale_price attribute
+  const salePriceAttr = Object.values(customAttributeValues).find(
+    (attr: any) =>
+      attr?.name?.toLowerCase() === "sale price" ||
+      attr?.key?.toLowerCase() === "sale_price"
+  ) as any;
+
+  if (!salePriceAttr || salePriceAttr.type !== "NUMBER") return null;
+
+  // Parse sale price (Square stores as string)
+  const salePrice = salePriceAttr.numberValue
+    ? Number(salePriceAttr.numberValue)
+    : null;
+
+  if (!salePrice || salePrice <= 0 || salePrice >= regularPrice) return null;
+
+  // Calculate discount percentage
+  const discountPercent = Math.round(
+    ((regularPrice - salePrice) / regularPrice) * 100
+  );
+
+  // Optional: Extract sale end date
+  const saleEndDateAttr = Object.values(customAttributeValues).find(
+    (attr: any) =>
+      attr?.name?.toLowerCase() === "sale end date" ||
+      attr?.key?.toLowerCase() === "sale_end_date"
+  ) as any;
+
+  const saleEndDate =
+    saleEndDateAttr?.type === "STRING" && saleEndDateAttr.stringValue
+      ? saleEndDateAttr.stringValue
+      : undefined;
+
+  const saleInfoResult = {
+    salePrice,
+    originalPrice: regularPrice,
+    discountPercent,
+    saleEndDate,
+  };
+
+  return saleInfoResult;
 }
 
 /**
@@ -390,6 +445,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         // Process all variations with their data including measurement units
         const productVariations = variations.map((v) => {
           const priceMoney = v.itemVariationData?.priceMoney;
+          const regularPrice = priceMoney ? Number(priceMoney.amount) / 100 : 0;
 
           // Check for variation-specific images
           let variationImageUrl: string | undefined = undefined;
@@ -409,14 +465,21 @@ export async function fetchProduct(id: string): Promise<Product | null> {
             v.itemVariationData?.name || ""
           );
 
+          // Extract sale information from variation custom attributes
+          const saleInfo = extractSaleInfo(
+            v.customAttributeValues,
+            regularPrice
+          );
+
           return {
             id: v.id,
             variationId: v.id,
             name: v.itemVariationData?.name || "",
-            price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
+            price: regularPrice,
             image: variationImageUrl,
             unit: unit || undefined, // Only include unit if it exists
             attributes: attributes, // Add parsed attributes
+            saleInfo: saleInfo || undefined, // Add sale info if present
           };
         });
 

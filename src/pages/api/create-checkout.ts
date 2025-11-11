@@ -137,11 +137,24 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Build line items array
-    const lineItems = validItems.map((item) => ({
-      quantity: String(item.quantity),
-      catalogObjectId: item.variationId,
-      itemType: "ITEM" as const,
-    }));
+    const lineItems = validItems.map((item) => {
+      const lineItem: any = {
+        quantity: String(item.quantity),
+        catalogObjectId: item.variationId,
+        itemType: "ITEM" as const,
+      };
+
+      // Override price if item has sale pricing
+      const saleInfo = (item as any).saleInfo;
+      if (saleInfo?.salePrice) {
+        lineItem.basePriceMoney = {
+          amount: Math.round(saleInfo.salePrice * 100), // Convert to cents
+          currency: "USD",
+        };
+      }
+
+      return lineItem;
+    });
 
     // Add shipping as a custom line item if shipping is selected
     if (fulfillmentMethod === "shipping" && shippingRate > 0) {

@@ -203,9 +203,19 @@ const selectedVariation =
   variations.find((v) => v.variationId === defaultVariationId) || variations[0];
 const selectedVariationInStock = selectedVariation?.inStock || false;
 const selectedVariationQuantity = selectedVariation?.quantity || 0;
-const formattedPrice = MoneyUtils.format(
-  MoneyUtils.fromFloat(selectedVariation?.price || product.price)
-);
+
+// Get sale info from selected variation
+const saleInfo = selectedVariation?.saleInfo;
+const isOnSale = !!saleInfo && selectedVariationInStock;
+
+// Format prices based on sale status
+const formattedPrice = saleInfo
+  ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.salePrice))
+  : MoneyUtils.format(MoneyUtils.fromFloat(selectedVariation?.price || product.price));
+
+const formattedOriginalPrice = saleInfo
+  ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))
+  : null;
 
 // Check if we have multiple variations
 const hasMultipleVariations = variations.length > 1;
@@ -425,16 +435,23 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           />
         )}
 
-        {/* Out of stock overlay */}
+        {/* Out of stock overlay - takes priority over sale badge */}
         {
-          !selectedVariationInStock && (
+          !selectedVariationInStock ? (
             <div
               id="stock-overlay"
               class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-br-sm"
             >
               Sold Out
             </div>
-          )
+          ) : isOnSale && saleInfo ? (
+            <div
+              id="sale-overlay"
+              class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-md font-bold rounded-br-sm"
+            >
+              {saleInfo.discountPercent}% Off
+            </div>
+          ) : null
         }
       </div>
 
@@ -456,9 +473,17 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
 
         <!-- Price Display -->
         <div class="mt-2">
+          {/* Original price strikethrough when on sale */}
+          {
+            isOnSale && formattedOriginalPrice && (
+              <div class="text-lg text-(--content-meta) line-through mb-1">
+                {formattedOriginalPrice}
+              </div>
+            )
+          }
           <h2
             id="price-display"
-            class="text-4xl xl:text-5xl font-display font-bold text-(--content-emphasis)"
+            class={`text-4xl xl:text-5xl font-display font-bold ${isOnSale ? "text-state-success-text" : "text-(--content-emphasis)"}`}
           >
             {formattedPrice}
             {/* Unit display */}
@@ -664,6 +689,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
               image: product.image,
               unit: unitDisplay,
               variationName: selectedVariation?.name || "",
+              saleInfo: selectedVariation?.saleInfo || undefined,
             })}
             id="add-to-cart-button"
             disabled={!selectedVariationInStock}

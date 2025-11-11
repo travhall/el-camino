@@ -282,6 +282,27 @@ import Button from "@/components/Button.astro";
             : ""
         }
 
+        ${(() => {
+          const saleInfo = (item as any).saleInfo;
+          const displayPrice = saleInfo?.salePrice || item.price;
+          const itemTotal = displayPrice * item.quantity;
+
+          if (saleInfo) {
+            return `
+              <div class="mt-2 text-xs">
+                <div class="text-(--content-meta) line-through">${formatPrice(saleInfo.originalPrice)} each</div>
+                <div class="text-state-success-text font-medium">${formatPrice(saleInfo.salePrice)} each</div>
+              </div>
+              <div class="font-display font-semibold text-state-success-text mt-1">${formatPrice(itemTotal)}</div>
+            `;
+          } else {
+            return `
+              <div class="mt-2 text-xs text-(--content-meta)">${formatPrice(item.price)} each</div>
+              <div class="font-display font-semibold text-(--content-emphasis) mt-1">${formatPrice(itemTotal)}</div>
+            `;
+          }
+        })()}
+
         <div class="flex items-center justify-between mt-2">
           <!-- Remove button on the left -->
           <button

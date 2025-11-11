@@ -64,6 +64,13 @@ export interface SquareProduct {
   imageUrl?: string;
 }
 
+export interface SaleInfo {
+  salePrice: number; // Sale price in dollars (e.g., 19.99)
+  originalPrice: number; // Original price in dollars (e.g., 29.99)
+  discountPercent: number; // Calculated discount percentage (e.g., 33)
+  saleEndDate?: string; // Optional ISO date string (e.g., "2025-12-31")
+}
+
 export interface ProductVariation {
   id: string;
   variationId: string;
@@ -75,6 +82,7 @@ export interface ProductVariation {
   unit?: string; // Add this
   sku?: string; // SKU for this specific variation
   attributes?: Record<string, string>; // Add this
+  saleInfo?: SaleInfo; // Sale pricing information
 }
 
 export interface InventoryStatus {

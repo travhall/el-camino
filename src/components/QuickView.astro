@@ -124,6 +124,12 @@ import Button from "@/components/Button.astro";
 
           <!-- Price -->
           <div>
+            <!-- Original price (hidden by default, shown when on sale) -->
+            <div
+              id="quick-view-original-price"
+              class="text-sm text-(--content-meta) line-through mb-1 hidden"
+            ></div>
+            <!-- Sale/Regular price -->
             <span
               id="quick-view-price"
               class="font-display font-semibold text-2xl md:text-3xl lg:text-4xl text-(--product-price)"
@@ -525,7 +531,7 @@ import Button from "@/components/Button.astro";
     private showOutOfStockState(): void {
       if (!this.currentVariation) return;
 
-      this.updatePrice(this.currentVariation.price);
+      this.updatePrice(this.currentVariation.price, this.currentVariation.saleInfo);
 
       // Get out of stock availability info
       const outOfStockInfo = cart.getProductAvailability(
@@ -542,7 +548,7 @@ import Button from "@/components/Button.astro";
       if (!this.currentVariation || !this.currentProduct) return;
 
       // EXACTLY mirror PDP updateProductUI pattern
-      this.updatePrice(this.currentVariation.price);
+      this.updatePrice(this.currentVariation.price, this.currentVariation.saleInfo);
       this.updateUnit(this.currentVariation.unit || this.currentProduct.unit);
 
       if (this.currentVariation.image) {
@@ -585,6 +591,7 @@ import Button from "@/components/Button.astro";
           unit: variation.unit || this.currentProduct.unit || "",
           variationName: variation.name || "",
           quantity: 1, // Will be updated in addToCart with actual quantity
+          saleInfo: variation.saleInfo || undefined,
         };
 
         // EXACTLY mirror PDP: conditionally update image if variation has one
@@ -597,10 +604,29 @@ import Button from "@/components/Button.astro";
       }
     }
 
-    private updatePrice(price: number): void {
+    private updatePrice(price: number, saleInfo?: any): void {
       const priceEl = document.getElementById("quick-view-price");
-      if (priceEl) {
+      const originalPriceEl = document.getElementById("quick-view-original-price");
+      
+      if (!priceEl) return;
+
+      if (saleInfo) {
+        // Show original price with strikethrough
+        if (originalPriceEl) {
+          originalPriceEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice));
+          originalPriceEl.classList.remove("hidden");
+        }
+        // Show sale price in green
+        priceEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.salePrice));
+        priceEl.classList.add("text-state-success-text");
+      } else {
+        // Regular price display
         priceEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(price));
+        priceEl.classList.remove("text-state-success-text");
+        // Hide original price
+        if (originalPriceEl) {
+          originalPriceEl.classList.add("hidden");
+        }
       }
     }
 
@@ -766,11 +792,21 @@ import Button from "@/components/Button.astro";
 
       if (!stockOverlay || !productImage) return;
 
+      // Check if item is out of stock (takes priority over sale badge)
       if (info.state === ProductAvailabilityState.OUT_OF_STOCK) {
         stockOverlay.textContent = getButtonText(info.state);
+        stockOverlay.className = "absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-sm font-bold rounded-br-sm";
         stockOverlay.classList.remove("hidden");
         productImage.classList.add("opacity-75");
+      } else if (this.currentVariation?.saleInfo) {
+        // Show sale badge if item is in stock and on sale
+        const discountPercent = this.currentVariation.saleInfo.discountPercent;
+        stockOverlay.textContent = `${discountPercent}% Off`;
+        stockOverlay.className = "absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-sm font-bold rounded-br-sm";
+        stockOverlay.classList.remove("hidden");
+        productImage.classList.remove("opacity-75");
       } else {
+        // No badge needed
         stockOverlay.classList.add("hidden");
         productImage.classList.remove("opacity-75");
       }

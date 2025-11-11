@@ -1,11 +1,12 @@
 // src/lib/square/categories.ts - WITH COMPREHENSIVE DEBUGGING
-import { squareClient } from "./client";
+import { squareClient, extractSaleInfo } from "./client";
 import { batchGetImageUrls } from "./imageUtils";
 import type {
   Category,
   CategoryHierarchy,
   PaginatedProducts,
   ProductLoadingOptions,
+  SaleInfo,
 } from "./types";
 import { categoryCache, productCache } from "./cacheUtils";
 import { processSquareError, handleError } from "./errorUtils";
@@ -359,10 +360,11 @@ export async function fetchProductsByCategory(
 
     const transformStart = Date.now();
     const products = matchingItems.map((item: any) => {
-      const variation = item.itemData?.variations?.[0];
-      const priceMoney = variation?.itemVariationData?.priceMoney;
+      const variations = item.itemData?.variations || [];
+      const defaultVariation = variations[0];
+      const priceMoney = defaultVariation?.itemVariationData?.priceMoney;
       const imageId = item.itemData?.imageIds?.[0];
-      const measurementUnitId = variation?.itemVariationData?.measurementUnitId;
+      const measurementUnitId = defaultVariation?.itemVariationData?.measurementUnitId;
 
       const imageUrl =
         imageId && imageUrlMap[imageId]
@@ -373,20 +375,38 @@ export async function fetchProductsByCategory(
         ? measurementUnitsMap[measurementUnitId] || undefined
         : undefined;
 
-      // ADDED: Extract brand from custom attributes
+      // Extract brand from custom attributes
       const brandValue = extractBrandValue(item.customAttributeValues);
+
+      // Build variations array with sale info
+      const productVariations = variations.map((v: any) => {
+        const variationPrice = v.itemVariationData?.priceMoney;
+        const regularPrice = variationPrice ? Number(variationPrice.amount) / 100 : 0;
+        
+        // Extract sale info from variation custom attributes
+        const saleInfo = extractSaleInfo(v.customAttributeValues, regularPrice);
+
+        return {
+          id: v.id,
+          variationId: v.id,
+          name: v.itemVariationData?.name || "",
+          price: regularPrice,
+          saleInfo: saleInfo || undefined,
+        };
+      });
 
       return {
         id: item.id,
         catalogObjectId: item.id,
-        variationId: variation?.id || item.id,
+        variationId: defaultVariation?.id || item.id,
         title: item.itemData?.name || "",
         description: item.itemData?.description || "",
         image: imageUrl,
         price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
         url: createProductUrl({ title: item.itemData?.name || "" }),
         unit: unit,
-        brand: brandValue || undefined, // ADDED: Include brand
+        brand: brandValue || undefined,
+        variations: productVariations.length > 0 ? productVariations : undefined,
       };
     });
     // console.log(`[Perf] Transform: ${Date.now() - transformStart}ms`);
