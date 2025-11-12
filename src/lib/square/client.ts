@@ -279,11 +279,12 @@ export async function fetchProducts(): Promise<Product[]> {
             : Promise.resolve({} as Record<string, string>),
         ]);
 
-        // Assemble final products with brand data, units, and SKUs
+        // Assemble final products with brand data, units, SKUs, and variations
         const products = productsWithBasicInfo.map((p) => {
-          // Get the variation data to extract SKU
+          // Get the item data for variations
           const item = response.result.objects?.find((obj) => obj.id === p.id);
-          const variation = item?.itemData?.variations?.[0];
+          const variations = item?.itemData?.variations || [];
+          const variation = variations[0];
           const actualSku = variation?.itemVariationData?.sku || "";
 
           // Generate human-readable SKU for content creators
@@ -292,6 +293,23 @@ export async function fetchProducts(): Promise<Product[]> {
             p.brand,
             variation?.itemVariationData?.name || undefined
           );
+
+          // Build variations array with sale info (same pattern as categories.ts)
+          const productVariations = variations.map((v: any) => {
+            const variationPrice = v.itemVariationData?.priceMoney;
+            const regularPrice = variationPrice ? Number(variationPrice.amount) / 100 : 0;
+            
+            // Extract sale info from variation custom attributes
+            const saleInfo = extractSaleInfo(v.customAttributeValues, regularPrice);
+
+            return {
+              id: v.id,
+              variationId: v.id,
+              name: v.itemVariationData?.name || "",
+              price: regularPrice,
+              saleInfo: saleInfo || undefined,
+            };
+          });
 
           return {
             id: p.id,
@@ -311,6 +329,7 @@ export async function fetchProducts(): Promise<Product[]> {
               : undefined, // NEW: Include unit
             sku: actualSku || undefined, // Square's actual SKU if present
             humanReadableSku: humanReadableSku, // Always generate for content creators
+            variations: productVariations.length > 0 ? productVariations : undefined,
           };
         });
 

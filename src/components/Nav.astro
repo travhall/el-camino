@@ -84,6 +84,23 @@ const staticNavItems = [
   },
 ];
 
+// ============================================================
+// SALE NAV ITEM - Comment out this block to hide Sale link
+// ============================================================
+const saleNavItem = {
+  category: {
+    id: "sale",
+    name: "Sale",
+    slug: "sale",
+    isTopLevel: true,
+    parentCategoryId: undefined,
+    rootCategoryId: undefined,
+  },
+  subcategories: [],
+  prefetchStrategy: "hover", // Prefetch on hover
+};
+// ============================================================
+
 // Enhanced navigation items with prefetch strategies and error-aware fallback
 const navItems =
   categoryHierarchy.length > 0
@@ -93,11 +110,13 @@ const navItems =
           // Assign prefetch strategy based on category importance
           prefetchStrategy: getPrefetchStrategyForCategory(item.category.name),
         })),
-        staticNavItems[0], // "The Shop" after dynamic categories
+        saleNavItem, // Add Sale link after categories (comment out to hide)
+        staticNavItems[0], // "The Shop" after sale
         staticNavItems[1], // "News" last navigation item
       ]
     : [
         // Minimal safe navigation when categories fail to load
+        saleNavItem, // Sale still available in minimal nav
         staticNavItems[0], // "The Shop" - always works
         staticNavItems[1], // "News" - always works
       ];
@@ -166,7 +185,9 @@ const isCategoryPage = currentPath.includes("/category/");
               ? "/the-shop"
               : item.category.id === "news"
                 ? "/news"
-                : `/category/${item.category.slug}`
+                : item.category.id === "sale"
+                  ? "/shop/sale"
+                  : `/category/${item.category.slug}`
           }
           class:list={[
             "nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 lg:p-4 text-(--ui-nav-text) hover:text-(--ui-nav-hover) transition-all duration-300 ease-in-out relative focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) focus-visible:ring-(--content-body) before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left nav-link",
@@ -176,8 +197,11 @@ const isCategoryPage = currentPath.includes("/category/");
                   currentPath.startsWith("/the-shop")) ||
                 (item.category.id === "news" &&
                   currentPath.startsWith("/news")) ||
+                (item.category.id === "sale" &&
+                  currentPath.startsWith("/shop/sale")) ||
                 (item.category.id !== "the-shop" &&
                   item.category.id !== "news" &&
+                  item.category.id !== "sale" &&
                   currentPath.startsWith(`/category/${item.category.slug}`)) ||
                 (isProductPage &&
                   activeCategory &&

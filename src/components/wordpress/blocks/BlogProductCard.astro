@@ -32,8 +32,19 @@ if (!skipInventoryCheck && product) {
   isOutOfStock = stockStatus.isOutOfStock;
 }
 
-// Format price (same as ProductCard)
-const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(product.price));
+// Check for sale pricing (from first variation)
+const defaultVariation = product.variations?.[0];
+const saleInfo = defaultVariation?.saleInfo;
+const isOnSale = !!saleInfo && !isOutOfStock;
+
+// Format prices based on sale status
+const formattedPrice = saleInfo
+  ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.salePrice))
+  : MoneyUtils.format(MoneyUtils.fromFloat(product.price));
+
+const formattedOriginalPrice = saleInfo
+  ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))
+  : null;
 
 // Schema.org availability (same as ProductCard)
 const availabilitySchema = isOutOfStock
@@ -134,11 +145,16 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
             itemprop="image"
           />
         </picture>
-        {isOutOfStock && (
+        {/* Stock/Sale status overlay - Sold Out takes priority */}
+        {isOutOfStock ? (
           <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-2 py-1 text-xs font-bold rounded-br-sm z-10">
             Sold Out
           </div>
-        )}
+        ) : isOnSale && saleInfo ? (
+          <div class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-2 py-1 text-xs font-bold rounded-br-sm z-10">
+            {saleInfo.discountPercent}% Off
+          </div>
+        ) : null}
       </div>
 
       {/* Product Info */}
@@ -161,13 +177,19 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
           class={`text-(--product-price) self-end mb-2 lg:mb-0 ${isOutOfStock ? "opacity-50" : ""}`}
         >
           <meta itemprop="availability" content={availabilitySchema} />
+          {/* Original price strikethrough when on sale */}
+          {isOnSale && formattedOriginalPrice && (
+            <div class="text-sm text-(--content-meta) line-through mb-1">
+              {formattedOriginalPrice}
+            </div>
+          )}
           <span
-            class="font-display font-semibold text-3xl whitespace-nowrap"
+            class={`font-display font-semibold text-3xl whitespace-nowrap ${isOnSale ? "text-state-success-text" : ""}`}
             itemprop="offers"
             itemscope
             itemtype="http://schema.org/Offer"
           >
-            <meta itemprop="price" content={product.price.toString()} />
+            <meta itemprop="price" content={(saleInfo?.salePrice || product.price).toString()} />
             <meta itemprop="priceCurrency" content="USD" />
             <meta itemprop="availability" content={availabilitySchema} />
             {formattedPrice}
@@ -231,12 +253,16 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
           />
         </picture>
 
-        {/* Stock status overlay (same as ProductCard) */}
-        {isOutOfStock && (
+        {/* Stock/Sale status overlay - Sold Out takes priority */}
+        {isOutOfStock ? (
           <div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-sm font-bold rounded-sm rounded-tl-none z-10">
             Sold Out
           </div>
-        )}
+        ) : isOnSale && saleInfo ? (
+          <div class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-sm font-bold rounded-sm rounded-tl-none z-10">
+            {saleInfo.discountPercent}% Off
+          </div>
+        ) : null}
       </div>
 
       {/* Product Info */}
@@ -262,13 +288,19 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
           class={`text-(--product-price) self-end mb-2 lg:mb-0 ${isOutOfStock ? "opacity-50" : ""}`}
         >
           <meta itemprop="availability" content={availabilitySchema} />
+          {/* Original price strikethrough when on sale */}
+          {isOnSale && formattedOriginalPrice && (
+            <div class="text-sm text-(--content-meta) line-through mb-1">
+              {formattedOriginalPrice}
+            </div>
+          )}
           <span
-            class="font-display font-semibold text-3xl whitespace-nowrap"
+            class={`font-display font-semibold text-3xl whitespace-nowrap ${isOnSale ? "text-state-success-text" : ""}`}
             itemprop="offers"
             itemscope
             itemtype="http://schema.org/Offer"
           >
-            <meta itemprop="price" content={product.price.toString()} />
+            <meta itemprop="price" content={(saleInfo?.salePrice || product.price).toString()} />
             <meta itemprop="priceCurrency" content="USD" />
             <meta itemprop="availability" content={availabilitySchema} />
             {formattedPrice}

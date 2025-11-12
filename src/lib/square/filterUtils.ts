@@ -242,3 +242,17 @@ export function hasActiveFilters(filters: ProductFilters): boolean {
 export function clearAllFilters(): ProductFilters {
   return { brands: [] };
 }
+
+/**
+ * Filter products to only those with sale pricing
+ * Returns products where ANY variation has saleInfo
+ */
+export function filterSaleProducts(products: Product[]): Product[] {
+  return products.filter((product) => {
+    // Check if any variation has sale pricing
+    if (product.variations && product.variations.length > 0) {
+      return product.variations.some((variation) => variation.saleInfo);
+    }
+    return false;
+  });
+}

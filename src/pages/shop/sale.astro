@@ -1,0 +1,260 @@
+---
+// src/pages/shop/sale.astro - Sale items page following all.astro pattern
+import ProductFilters from "@/components/ProductFilters.astro";
+import AppliedFilters from "@/components/AppliedFilters.astro";
+import ProductGrid from "@/components/ProductGrid.astro";
+import Layout from "@/layouts/Layout.astro";
+import { INITIAL_PAGE_SIZE, INFINITE_SCROLL_THRESHOLD } from "@/lib/constants/pagination";
+import { fetchProducts } from "@/lib/square/client";
+import {
+  parseFiltersFromURL,
+  extractFilterOptions,
+  filterProductsWithCache,
+  filterSaleProducts,
+} from "@/lib/square/filterUtils";
+import type {
+  Product,
+  ProductFilters as ProductFiltersType,
+  FilterOptions,
+} from "@/lib/square/types";
+
+// === PARSE URL PARAMETERS FOR FILTERING ===
+const filters = parseFiltersFromURL(Astro.url.searchParams);
+
+// Smart cache headers based on filters
+const hasFilters = Object.values(filters).some((f) =>
+  Array.isArray(f) ? f.length > 0 : f === true
+);
+
+const cacheControl = hasFilters
+  ? "public, max-age=60, s-max-age=120, stale-while-revalidate=300" // Shorter cache for filtered results
+  : "public, max-age=180, s-max-age=300, stale-while-revalidate=600"; // Longer cache for unfiltered
+
+// Set cache headers for this response
+Astro.response.headers.set("Cache-Control", cacheControl);
+Astro.response.headers.set(
+  "Netlify-CDN-Cache-Control",
+  hasFilters
+    ? "public, s-max-age=120, stale-while-revalidate=600"
+    : "public, s-max-age=300, stale-while-revalidate=1800"
+);
+
+// Add cache debugging header
+Astro.response.headers.set(
+  "X-Cache-Strategy",
+  hasFilters ? "filtered-sale-content" : "base-sale-catalog"
+);
+
+// === OPTIMIZED PRODUCT FETCHING ===
+let allProducts: Product[] = [];
+let saleProducts: Product[] = [];
+let filteredProducts: Product[] = [];
+let filterOptions: FilterOptions = { brands: [] };
+
+try {
+  // Fetch all products initially
+  const allProductsFull = await fetchProducts();
+  
+  // Filter to only products with sale pricing
+  saleProducts = filterSaleProducts(allProductsFull);
+  
+  const totalProductCount = saleProducts.length;
+  const needsPagination = totalProductCount > INFINITE_SCROLL_THRESHOLD;
+  
+  // Always pass sale products to ProductGrid
+  // ProductGrid handles progressive display via infinite scroll
+  allProducts = saleProducts;
+  
+  if (import.meta.env.DEV) {
+    if (needsPagination) {
+      console.log(
+        `[Shop/Sale] Large catalog: ${totalProductCount} sale products. ProductGrid will use infinite scroll.`
+      );
+    } else {
+      console.log(
+        `[Shop/Sale] ${totalProductCount} sale products. Displaying all upfront.`
+      );
+    }
+  }
+
+  // Extract filter options from SALE products only (for filter UI)
+  filterOptions = extractFilterOptions(saleProducts);
+
+  if (hasFilters) {
+    // Apply additional filters (brand, availability) to sale products
+    filteredProducts = await filterProductsWithCache(saleProducts, filters);
+  } else {
+    // No additional filters - show all sale products
+    filteredProducts = [...saleProducts];
+  }
+} catch (error) {
+  console.error("Error fetching sale products:", error);
+  allProducts = [];
+  filteredProducts = [];
+}
+
+// === PAGE METADATA ===
+const pageTitle = "Sale | El Camino";
+const pageDescription = "Shop sale items at El Camino Skate Shop. Save on skateboards, decks, apparel, and accessories from top brands.";
+
+// Preload critical images (first 8 products)
+const preloadImages = allProducts
+  .slice(0, 8)
+  .map((p) => p.image)
+  .filter((img) => !img.includes("placeholder"));
+
+// Current path for filter URLs
+const categoryPath = "/shop/sale";
+
+// Check for active filters (for display purposes)
+const hasActiveFilters =
+  filters.brands.length > 0 || filters.availability === true;
+
+// Structured data for sale items (ItemList schema)
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Sale Items",
+  "description": pageDescription,
+  "numberOfItems": filteredProducts.length,
+  "itemListElement": filteredProducts.slice(0, 20).map((product, index) => {
+    // Get the sale price from the first variation with saleInfo
+    const saleVariation = product.variations?.find(v => v.saleInfo);
+    const salePrice = saleVariation?.saleInfo?.salePrice || product.price;
+    const originalPrice = saleVariation?.saleInfo?.originalPrice || product.price;
+
+    return {
+      "@type": "ListItem",
+      "position": index + 1,
+      "item": {
+        "@type": "Product",
+        "name": product.title,
+        "image": product.image,
+        "url": `${Astro.site?.origin || ""}${product.url}`,
+        "offers": {
+          "@type": "Offer",
+          "price": salePrice.toFixed(2),
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock",
+          "priceValidUntil": new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+        },
+      },
+    };
+  }),
+};
+---
+
+<Layout 
+  title={pageTitle}
+  structuredData={structuredData}
+>
+  <Fragment slot="seo">
+    <meta name="description" content={pageDescription} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={`${Astro.site?.origin || ""}/shop/sale`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={pageDescription} />
+  </Fragment>
+
+  {preloadImages.map((img) => <link rel="preload" href={img} as="image" />)}
+
+  <!-- Responsive Grid Layout -->
+  <div class="min-h-screen bg-(--surface-primary)">
+    <!-- Sale Header -->
+    <div class="p-4 pb-2">
+      <div
+        class="flex flex-col lg:flex-row justify-between gap-4 items-baseline"
+      >
+        <div
+          class="flex flex-row w-full lg:w-auto justify-between gap-4 items-baseline"
+        >
+          <h1
+            class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading)"
+          >
+            Sale
+          </h1>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page Body -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-1 pb-0">
+      <!-- Filter Sidebar -->
+      <aside class="lg:col-span-1">
+        <ProductFilters
+          filterOptions={filterOptions}
+          totalProducts={allProducts.length}
+          filteredCount={filteredProducts.length}
+          categoryPath={categoryPath}
+        />
+      </aside>
+
+      <!-- Main Content -->
+      <main class="lg:col-span-3 xl:col-span-4">
+        <!-- Applied Filters Above Product Grid -->
+        <AppliedFilters classes="hidden lg:block" />
+
+        <!-- Products -->
+        {
+          filteredProducts.length > 0 ? (
+            <>
+              <ProductGrid
+                products={filteredProducts}
+                allProducts={allProducts}
+                categoryPath={categoryPath}
+              />
+            </>
+          ) : (
+            <div class="text-center py-16">
+              <div class="text-6xl mb-4 opacity-20">
+                {hasActiveFilters ? "🔍" : "🛹"}
+              </div>
+              <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
+                {hasActiveFilters
+                  ? "No sale items match your filters"
+                  : "No sale items right now"}
+              </h2>
+              <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
+                {hasActiveFilters
+                  ? "Try adjusting your filters or browse all sale items."
+                  : "Check back soon for new deals!"}
+              </p>
+              {hasActiveFilters ? (
+                <a
+                  href={categoryPath}
+                  class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+                >
+                  Clear Filters
+                </a>
+              ) : (
+                <a
+                  href="/shop/all"
+                  class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+                >
+                  Shop All Products
+                </a>
+              )}
+            </div>
+          )
+        }
+      </main>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Add View Transitions fallback detection
+  if (!document.startViewTransition) {
+    document.documentElement.classList.add("no-view-transitions");
+  }
+</script>
+
+<style>
+  .no-view-transitions .filtering-in-progress {
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+  }
+</style>
