@@ -87,14 +87,27 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
 
     section.style.display = "block";
 
-    // Fetch inventory for all items
-    const inventoryMap = await fetchInventoryForItems(items);
+    // Fetch inventory and sale info for all items in parallel
+    const [inventoryMap, saleInfoMap] = await Promise.all([
+      fetchInventoryForItems(items),
+      fetchSaleInfoForItems(items),
+    ]);
+
+    console.log('[RecentlyViewed] Sale info fetched:', saleInfoMap);
 
     container.innerHTML = items
       .map((item) => {
+        const saleInfo = saleInfoMap[item.variationId];
+        const isOnSale = !!saleInfo;
+        
+        const displayPrice = saleInfo?.salePrice || item.price;
         const formattedPrice = MoneyUtils.format(
-          MoneyUtils.fromFloat(item.price)
+          MoneyUtils.fromFloat(displayPrice)
         );
+        const formattedOriginalPrice = saleInfo
+          ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))
+          : null;
+        
         const isOutOfStock = !inventoryMap[item.variationId];
         const optimizedImage = optimizeProductImage(item.image);
 
@@ -117,6 +130,8 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
               ${
                 isOutOfStock
                   ? `<div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-sm font-bold rounded-br-sm z-20">Sold Out</div>`
+                  : isOnSale && saleInfo
+                  ? `<div class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-sm font-bold rounded-br-sm z-20">${saleInfo.discountPercent}% Off</div>`
                   : ""
               }
             </div>
@@ -138,7 +153,12 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
               </div>
 
               <div class="text-(--product-price) self-end mb-2 lg:mb-0 ${isOutOfStock ? "opacity-50" : ""}">
-                <span class="font-display font-semibold text-3xl whitespace-nowrap">
+                ${
+                  isOnSale && formattedOriginalPrice
+                    ? `<div class="text-xs text-(--content-meta) line-through mb-1">${formattedOriginalPrice}</div>`
+                    : ""
+                }
+                <span class="font-display font-semibold text-3xl whitespace-nowrap ${isOnSale ? "text-state-success-text" : ""}">
                   ${formattedPrice}
                 </span>
               </div>
@@ -191,6 +211,48 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
       console.error("Error fetching inventory for recently viewed:", error);
       // Default to in stock on error
       return Object.fromEntries(items.map((item) => [item.variationId, true]));
+    }
+  }
+
+  /**
+   * Fetch sale info for recently viewed items
+   */
+  async function fetchSaleInfoForItems(
+    items: any[]
+  ): Promise<Record<string, any>> {
+    try {
+      const variationIds = items.map((item) => item.variationId);
+      console.log('[RecentlyViewed] Fetching sale info for:', variationIds);
+
+      const response = await fetch("/api/sale-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ variationIds }),
+      });
+
+      console.log('[RecentlyViewed] Sale info response status:', response.status);
+
+      if (!response.ok) {
+        console.error("Failed to fetch sale info for recently viewed");
+        // Return empty map on error
+        return {};
+      }
+
+      const data = await response.json();
+      console.log('[RecentlyViewed] Sale info data:', data);
+
+      if (!data.success || !data.saleInfo) {
+        console.error("Invalid sale info response");
+        return {};
+      }
+
+      return data.saleInfo;
+    } catch (error) {
+      console.error("Error fetching sale info for recently viewed:", error);
+      // Return empty map on error
+      return {};
     }
   }
 
