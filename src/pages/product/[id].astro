@@ -211,7 +211,9 @@ const isOnSale = !!saleInfo && selectedVariationInStock;
 // Format prices based on sale status
 const formattedPrice = saleInfo
   ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.salePrice))
-  : MoneyUtils.format(MoneyUtils.fromFloat(selectedVariation?.price || product.price));
+  : MoneyUtils.format(
+      MoneyUtils.fromFloat(selectedVariation?.price || product.price)
+    );
 
 const formattedOriginalPrice = saleInfo
   ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))
@@ -269,7 +271,7 @@ if (breadcrumbPath && breadcrumbPath.items.length > 1) {
 }
 
 // Generate optimized image sources using EnhancedImageOptimizer
-const imageSet = product.image 
+const imageSet = product.image
   ? EnhancedImageOptimizer.generateOptimizedSources(product.image, {
       width: 800,
       height: 800,
@@ -335,17 +337,19 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     slot="head"
   />
   <meta name="twitter:image" content={twitterData.image} slot="head" />
-  
+
   <!-- Preload LCP image for faster loading -->
-  {imageSet && (
-    <link
-      rel="preload"
-      as="image"
-      href={imageSet.avif || imageSet.webp || imageSet.jpeg}
-      fetchpriority="high"
-      slot="head"
-    />
-  )}
+  {
+    imageSet && (
+      <link
+        rel="preload"
+        as="image"
+        href={imageSet.avif || imageSet.webp || imageSet.jpeg}
+        fetchpriority="high"
+        slot="head"
+      />
+    )
+  }
 
   <section class="p-4 sm:p-6 lg:p-8 relative">
     <div
@@ -369,71 +373,85 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           </div>
         </div>
 
-        {imageSet ? (
-          <picture>
-            {/* AVIF format (best compression) */}
-            {imageSet.avif && (
-              <source
-                type="image/avif"
-                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'avif', {
-                  width: 800,
-                  height: 800,
-                  quality: 85
-                })}
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
-              />
-            )}
+        {
+          imageSet ? (
+            <picture>
+              {/* AVIF format (best compression) */}
+              {imageSet.avif && (
+                <source
+                  type="image/avif"
+                  srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+                    product.image,
+                    "avif",
+                    {
+                      width: 800,
+                      height: 800,
+                      quality: 85,
+                    }
+                  )}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
+                />
+              )}
 
-            {/* WebP format (good compression) */}
-            {imageSet.webp && (
-              <source
-                type="image/webp"
-                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'webp', {
-                  width: 800,
-                  height: 800,
-                  quality: 85
-                })}
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
-              />
-            )}
+              {/* WebP format (good compression) */}
+              {imageSet.webp && (
+                <source
+                  type="image/webp"
+                  srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+                    product.image,
+                    "webp",
+                    {
+                      width: 800,
+                      height: 800,
+                      quality: 85,
+                    }
+                  )}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
+                />
+              )}
 
-            {/* JPEG fallback */}
+              {/* JPEG fallback */}
+              <img
+                id="product-image"
+                src={imageSet.jpeg}
+                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+                  product.image,
+                  "jpeg",
+                  {
+                    width: 800,
+                    height: 800,
+                    quality: 85,
+                  }
+                )}
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
+                alt={product.title}
+                class={`w-full h-full object-cover opacity-0 transition-opacity duration-300 ${!selectedVariationInStock ? "opacity-75" : ""}`}
+                width="800"
+                height="800"
+                loading="eager"
+                fetchpriority="high"
+                decoding="sync"
+                data-placeholder-id="pdp-image-placeholder"
+                onload="this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()"
+                onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()`}
+                role="img"
+                aria-label={product.title || "Product image"}
+              />
+            </picture>
+          ) : (
             <img
               id="product-image"
-              src={imageSet.jpeg}
-              srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'jpeg', {
-                width: 800,
-                height: 800,
-                quality: 85
-              })}
-              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
+              src={EL_CAMINO_LOGO_DATA_URI}
               alt={product.title}
-              class={`w-full h-full object-cover opacity-0 transition-opacity duration-300 ${!selectedVariationInStock ? "opacity-75" : ""}`}
+              class={`w-full h-full object-contain opacity-100 ${!selectedVariationInStock ? "opacity-75" : ""}`}
               width="800"
               height="800"
               loading="eager"
-              fetchpriority="high"
-              decoding="sync"
-              data-placeholder-id="pdp-image-placeholder"
-              onload="this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()"
-              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()`}
               role="img"
               aria-label={product.title || "Product image"}
             />
-          </picture>
-        ) : (
-          <img
-            id="product-image"
-            src={EL_CAMINO_LOGO_DATA_URI}
-            alt={product.title}
-            class={`w-full h-full object-contain opacity-100 ${!selectedVariationInStock ? "opacity-75" : ""}`}
-            width="800"
-            height="800"
-            loading="eager"
-            role="img"
-            aria-label={product.title || "Product image"}
-          />
-        )}
+          )
+        }
 
         {/* Out of stock overlay - takes priority over sale badge */}
         {
@@ -483,7 +501,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           }
           <h2
             id="price-display"
-            class={`text-4xl xl:text-5xl font-display font-bold ${isOnSale ? "text-state-success-text" : "text-(--content-emphasis)"}`}
+            class="text-4xl xl:text-5xl font-display font-bold text-(--content-emphasis)"
           >
             {formattedPrice}
             {/* Unit display */}

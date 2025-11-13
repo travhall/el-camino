@@ -48,7 +48,9 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
         if (canvas.toDataURL("image/avif").indexOf("data:image/avif") === 0) {
           url.searchParams.set("fm", "avif");
           url.searchParams.set("q", "65");
-        } else if (canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0) {
+        } else if (
+          canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
+        ) {
           url.searchParams.set("fm", "webp");
           url.searchParams.set("q", "85");
         } else {
@@ -93,13 +95,13 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
       fetchSaleInfoForItems(items),
     ]);
 
-    console.log('[RecentlyViewed] Sale info fetched:', saleInfoMap);
+    console.log("[RecentlyViewed] Sale info fetched:", saleInfoMap);
 
     container.innerHTML = items
       .map((item) => {
         const saleInfo = saleInfoMap[item.variationId];
         const isOnSale = !!saleInfo;
-        
+
         const displayPrice = saleInfo?.salePrice || item.price;
         const formattedPrice = MoneyUtils.format(
           MoneyUtils.fromFloat(displayPrice)
@@ -107,7 +109,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
         const formattedOriginalPrice = saleInfo
           ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))
           : null;
-        
+
         const isOutOfStock = !inventoryMap[item.variationId];
         const optimizedImage = optimizeProductImage(item.image);
 
@@ -131,8 +133,8 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
                 isOutOfStock
                   ? `<div class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-sm font-bold rounded-br-sm z-20">Sold Out</div>`
                   : isOnSale && saleInfo
-                  ? `<div class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-sm font-bold rounded-br-sm z-20">${saleInfo.discountPercent}% Off</div>`
-                  : ""
+                    ? `<div class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-sm font-bold rounded-br-sm z-20">${saleInfo.discountPercent}% Off</div>`
+                    : ""
               }
             </div>
 
@@ -158,7 +160,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
                     ? `<div class="text-xs text-(--content-meta) line-through mb-1">${formattedOriginalPrice}</div>`
                     : ""
                 }
-                <span class="font-display font-semibold text-3xl whitespace-nowrap ${isOnSale ? "text-state-success-text" : ""}">
+                <span class="font-display font-semibold text-3xl whitespace-nowrap ${isOnSale ? "text-(--content-emphasis)" : ""}">
                   ${formattedPrice}
                 </span>
               </div>
@@ -222,7 +224,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
   ): Promise<Record<string, any>> {
     try {
       const variationIds = items.map((item) => item.variationId);
-      console.log('[RecentlyViewed] Fetching sale info for:', variationIds);
+      console.log("[RecentlyViewed] Fetching sale info for:", variationIds);
 
       const response = await fetch("/api/sale-info", {
         method: "POST",
@@ -232,7 +234,10 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
         body: JSON.stringify({ variationIds }),
       });
 
-      console.log('[RecentlyViewed] Sale info response status:', response.status);
+      console.log(
+        "[RecentlyViewed] Sale info response status:",
+        response.status
+      );
 
       if (!response.ok) {
         console.error("Failed to fetch sale info for recently viewed");
@@ -241,7 +246,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
       }
 
       const data = await response.json();
-      console.log('[RecentlyViewed] Sale info data:', data);
+      console.log("[RecentlyViewed] Sale info data:", data);
 
       if (!data.success || !data.saleInfo) {
         console.error("Invalid sale info response");
