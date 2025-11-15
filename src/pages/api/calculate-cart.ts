@@ -35,10 +35,11 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // Calculate subtotal
+    // Calculate subtotal using sale prices when available
     const subtotal = items.reduce((sum, item) => {
-      const priceInDollars = (item.price || 0) / 100;
-      return sum + priceInDollars * item.quantity;
+      // Use sale price if available, otherwise regular price
+      const effectivePrice = item.saleInfo?.salePrice ?? item.price;
+      return sum + effectivePrice * item.quantity;
     }, 0);
 
     // Calculate shipping
@@ -48,12 +49,24 @@ export const POST: APIRoute = async ({ request }) => {
       shippingCost = rate.rate;
     }
 
-    // Build line items
-    const lineItems = items.map((item) => ({
-      quantity: String(item.quantity),
-      catalogObjectId: item.variationId,
-      itemType: "ITEM" as const,
-    }));
+    // Build line items - use sale prices when available
+    const lineItems = items.map((item) => {
+      const lineItem: any = {
+        quantity: String(item.quantity),
+        catalogObjectId: item.variationId,
+        itemType: "ITEM" as const,
+      };
+
+      // Override price if item has sale pricing
+      if (item.saleInfo?.salePrice) {
+        lineItem.basePriceMoney = {
+          amount: Math.round(item.saleInfo.salePrice * 100),
+          currency: "USD",
+        };
+      }
+
+      return lineItem;
+    });
 
     // Add shipping as line item if applicable
     if (shippingCost > 0) {

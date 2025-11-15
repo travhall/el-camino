@@ -1,4 +1,6 @@
 // /src/lib/cart/types.ts
+import type { SaleInfo } from "../square/types";
+
 export interface CartItem {
   id: string;
   catalogObjectId: string;
@@ -11,6 +13,7 @@ export interface CartItem {
   variationName?: string;
   unit?: string; // Add unit property
   catalogVersion?: number; // Add for test compatibility
+  saleInfo?: SaleInfo; // Sale pricing information
 }
 
 export interface CartState {

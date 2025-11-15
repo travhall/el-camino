@@ -18,8 +18,8 @@ const freeShippingThreshold =
   SHIPPING_RATES.find((r) => r.id === "free")?.freeThreshold || 75;
 ---
 
-<div 
-  class="fulfillment-selector p-4" 
+<div
+  class="fulfillment-selector p-4"
   data-component="fulfillment-selector"
   role="radiogroup"
   aria-required="true"
@@ -75,14 +75,18 @@ const freeShippingThreshold =
               }
             </div>
             <!-- Chevron indicator -->
-            <svg 
+            <svg
               class="w-6 h-6 text-(--content-body) transition-transform duration-300"
               data-chevron="shipping"
-              fill="none" 
-              stroke="currentColor" 
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"></path>
             </svg>
           </div>
         </div>
@@ -316,14 +320,18 @@ const freeShippingThreshold =
               >FREE</span
             >
             <!-- Chevron indicator -->
-            <svg 
+            <svg
               class="w-6 h-6 text-(--content-body) transition-transform duration-300"
               data-chevron="pickup"
-              fill="none" 
-              stroke="currentColor" 
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"></path>
             </svg>
           </div>
         </div>
@@ -432,115 +440,134 @@ const freeShippingThreshold =
   const FREE_SHIPPING_THRESHOLD = 75.0;
 
   function initFulfillmentSelector() {
-    const selector = document.querySelector('[data-component="fulfillment-selector"]');
+    const selector = document.querySelector(
+      '[data-component="fulfillment-selector"]'
+    );
     if (!selector) return;
 
     const radios = selector.querySelectorAll('input[name="fulfillment"]');
-    const shippingCard = selector.querySelector('[data-option-card="shipping"]');
+    const shippingCard = selector.querySelector(
+      '[data-option-card="shipping"]'
+    );
     const pickupCard = selector.querySelector('[data-option-card="pickup"]');
-    const shippingForm = selector.querySelector('[data-shipping-form]');
-    const pickupForm = selector.querySelector('[data-pickup-form]');
+    const shippingForm = selector.querySelector("[data-shipping-form]");
+    const pickupForm = selector.querySelector("[data-pickup-form]");
     const shippingChevron = selector.querySelector('[data-chevron="shipping"]');
     const pickupChevron = selector.querySelector('[data-chevron="pickup"]');
 
     // Initially hide both forms and remove required from all fields
-    shippingForm?.classList.add('hidden');
-    pickupForm?.classList.add('hidden');
-    
-    shippingForm?.querySelectorAll('input, select').forEach((el) => {
+    shippingForm?.classList.add("hidden");
+    pickupForm?.classList.add("hidden");
+
+    shippingForm?.querySelectorAll("input, select").forEach((el) => {
       (el as HTMLInputElement | HTMLSelectElement).required = false;
     });
-    pickupForm?.querySelectorAll('input').forEach((el) => {
+    pickupForm?.querySelectorAll("input").forEach((el) => {
       (el as HTMLInputElement).required = false;
     });
 
     // Handle card click - combines selection and toggle
-    function handleCardClick(method: 'shipping' | 'pickup') {
-      const clickedCard = method === 'shipping' ? shippingCard : pickupCard;
-      const otherCard = method === 'shipping' ? pickupCard : shippingCard;
-      const clickedForm = method === 'shipping' ? shippingForm : pickupForm;
-      const otherForm = method === 'shipping' ? pickupForm : shippingForm;
-      const clickedChevron = method === 'shipping' ? shippingChevron : pickupChevron;
-      const otherChevron = method === 'shipping' ? pickupChevron : shippingChevron;
+    function handleCardClick(method: "shipping" | "pickup") {
+      const clickedCard = method === "shipping" ? shippingCard : pickupCard;
+      const otherCard = method === "shipping" ? pickupCard : shippingCard;
+      const clickedForm = method === "shipping" ? shippingForm : pickupForm;
+      const otherForm = method === "shipping" ? pickupForm : shippingForm;
+      const clickedChevron =
+        method === "shipping" ? shippingChevron : pickupChevron;
+      const otherChevron =
+        method === "shipping" ? pickupChevron : shippingChevron;
       const clickedRadio = Array.from(radios).find(
         (r) => (r as HTMLInputElement).value === method
       ) as HTMLInputElement;
 
-      const isCurrentlySelected = clickedCard?.getAttribute('data-selected') === 'true';
-      const isCurrentlyExpanded = clickedCard?.getAttribute('data-expanded') === 'true';
+      const isCurrentlySelected =
+        clickedCard?.getAttribute("data-selected") === "true";
+      const isCurrentlyExpanded =
+        clickedCard?.getAttribute("data-expanded") === "true";
 
       if (!isCurrentlySelected) {
         // First-time selection: select + expand
-        
+
         // Check the radio and trigger change event
         if (clickedRadio) {
           clickedRadio.checked = true;
-          clickedRadio.dispatchEvent(new Event('change', { bubbles: true }));
+          clickedRadio.dispatchEvent(new Event("change", { bubbles: true }));
         }
 
         // Update selection states
-        clickedCard?.setAttribute('data-selected', 'true');
-        clickedCard?.classList.add('bg-(--surface-secondary)');
-        otherCard?.setAttribute('data-selected', 'false');
-        otherCard?.classList.remove('bg-(--surface-secondary)');
+        clickedCard?.setAttribute("data-selected", "true");
+        clickedCard?.classList.add(
+          "bg-(--surface-secondary)",
+          "border-(--content-emphasis)"
+        );
+        otherCard?.setAttribute("data-selected", "false");
+        otherCard?.classList.remove(
+          "bg-(--surface-secondary)",
+          "border-(--content-emphasis)"
+        );
 
         // Expand clicked, collapse other
-        clickedCard?.setAttribute('data-expanded', 'true');
-        clickedForm?.classList.remove('hidden');
-        clickedChevron?.classList.add('rotate-180');
+        clickedCard?.setAttribute("data-expanded", "true");
+        clickedForm?.classList.remove("hidden");
+        clickedChevron?.classList.add("rotate-180");
 
-        otherCard?.setAttribute('data-expanded', 'false');
-        otherForm?.classList.add('hidden');
-        otherChevron?.classList.remove('rotate-180');
+        otherCard?.setAttribute("data-expanded", "false");
+        otherForm?.classList.add("hidden");
+        otherChevron?.classList.remove("rotate-180");
 
         // Set required fields
-        if (method === 'shipping') {
-          shippingForm?.querySelectorAll('input[required], select[required]').forEach((el) => {
-            (el as HTMLInputElement | HTMLSelectElement).required = true;
-          });
-          pickupForm?.querySelectorAll('input').forEach((el) => {
+        if (method === "shipping") {
+          shippingForm
+            ?.querySelectorAll("input[required], select[required]")
+            .forEach((el) => {
+              (el as HTMLInputElement | HTMLSelectElement).required = true;
+            });
+          pickupForm?.querySelectorAll("input").forEach((el) => {
             (el as HTMLInputElement).required = false;
           });
         } else {
-          pickupForm?.querySelectorAll('input').forEach((el) => {
+          pickupForm?.querySelectorAll("input").forEach((el) => {
             (el as HTMLInputElement).required = true;
           });
-          shippingForm?.querySelectorAll('input, select').forEach((el) => {
+          shippingForm?.querySelectorAll("input, select").forEach((el) => {
             (el as HTMLInputElement | HTMLSelectElement).required = false;
           });
         }
 
         // Trigger order summary update
-        if (typeof window !== 'undefined' && (window as any).updateOrderSummaryOnFulfillmentChange) {
+        if (
+          typeof window !== "undefined" &&
+          (window as any).updateOrderSummaryOnFulfillmentChange
+        ) {
           (window as any).updateOrderSummaryOnFulfillmentChange();
         }
       } else {
         // Already selected: just toggle expand/collapse
         if (isCurrentlyExpanded) {
           // Collapse
-          clickedCard?.setAttribute('data-expanded', 'false');
-          clickedForm?.classList.add('hidden');
-          clickedChevron?.classList.remove('rotate-180');
+          clickedCard?.setAttribute("data-expanded", "false");
+          clickedForm?.classList.add("hidden");
+          clickedChevron?.classList.remove("rotate-180");
         } else {
           // Expand
-          clickedCard?.setAttribute('data-expanded', 'true');
-          clickedForm?.classList.remove('hidden');
-          clickedChevron?.classList.add('rotate-180');
+          clickedCard?.setAttribute("data-expanded", "true");
+          clickedForm?.classList.remove("hidden");
+          clickedChevron?.classList.add("rotate-180");
         }
       }
     }
 
     // Attach click handlers to cards
-    shippingCard?.addEventListener('click', () => handleCardClick('shipping'));
-    pickupCard?.addEventListener('click', () => handleCardClick('pickup'));
+    shippingCard?.addEventListener("click", () => handleCardClick("shipping"));
+    pickupCard?.addEventListener("click", () => handleCardClick("pickup"));
 
     // Prevent form clicks from bubbling to card
-    shippingForm?.addEventListener('click', (e) => e.stopPropagation());
-    pickupForm?.addEventListener('click', (e) => e.stopPropagation());
+    shippingForm?.addEventListener("click", (e) => e.stopPropagation());
+    pickupForm?.addEventListener("click", (e) => e.stopPropagation());
 
     // Prevent radio clicks from bubbling (they're hidden anyway, but safety)
     radios.forEach((radio) => {
-      radio.addEventListener('click', (e) => e.stopPropagation());
+      radio.addEventListener("click", (e) => e.stopPropagation());
     });
   }
 

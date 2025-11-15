@@ -149,7 +149,8 @@ export function isValidWordPressPage(page: any): page is WordPressPage {
 }
 
 /**
- * Get the primary category for display, preferring non-Featured categories
+ * Get the primary category for display, skipping "Featured" and default "El Camino"
+ * Returns null if only default/featured categories exist (triggers "El Camino" fallback)
  */
 export function getPrimaryCategory(
   categories: WordPressTerm[]
@@ -158,17 +159,20 @@ export function getPrimaryCategory(
     return null;
   }
 
-  // First, try to find a non-Featured category
-  const nonFeaturedCategory = categories.find(
-    (cat) => cat.name.toLowerCase() !== "featured"
+  // Find first category that isn't Featured or the default El Camino
+  const displayCategory = categories.find(
+    (cat) => {
+      const slug = cat.slug.toLowerCase();
+      const name = cat.name.toLowerCase();
+      return slug !== "featured" && 
+             name !== "featured" && 
+             slug !== "el-camino" && 
+             name !== "el camino";
+    }
   );
 
-  if (nonFeaturedCategory) {
-    return nonFeaturedCategory;
-  }
-
-  // If only Featured categories exist, return the first one
-  return categories[0];
+  // Return the category or null (null triggers "El Camino" fallback)
+  return displayCategory || null;
 }
 
 /**
@@ -228,13 +232,14 @@ export function isFeaturedPost(post: WordPressPost): boolean {
 }
 
 /**
- * Get display-friendly category name with fallback logic
+ * Get display-friendly category name with fallback to "El Camino"
+ * Returns "El Camino" if no category exists or only "Featured" category
  */
-export function getDisplayCategory(post: WordPressPost): string | null {
+export function getDisplayCategory(post: WordPressPost): string {
   const embeddedData = extractEmbeddedData(post);
 
   if (!embeddedData.category) {
-    return null;
+    return "El Camino";
   }
 
   return embeddedData.category.name;

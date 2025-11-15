@@ -6,7 +6,9 @@ export function getItemKey(item: CartItem): string {
 }
 
 export function calculateItemSubtotal(item: CartItem): number {
-  return item.price * item.quantity;
+  // Use sale price if available, otherwise use regular price
+  const effectivePrice = item.saleInfo?.salePrice ?? item.price;
+  return effectivePrice * item.quantity;
 }
 
 export function getStockStatus(inventory: number) {

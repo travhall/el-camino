@@ -153,9 +153,62 @@ class CartManager implements ICartManager {
       }
 
       // console.log(`Cart now has ${this.items.size} items after loading`);
+      
+      // Fetch sale info for all items after loading - dispatch event when complete
+      if (this.items.size > 0) {
+        this.fetchSaleInfoForCartItems();
+      }
     } catch (error) {
       console.error("Error loading cart:", error);
       this.items.clear();
+    }
+  }
+
+  /**
+   * Fetch sale pricing information for all items in the cart
+   */
+  private async fetchSaleInfoForCartItems(): Promise<void> {
+    if (this.items.size === 0) return;
+
+    try {
+      const variationIds = Array.from(this.items.values()).map(
+        (item) => item.variationId
+      );
+
+      const response = await fetch("/api/sale-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variationIds }),
+      });
+
+      if (!response.ok) {
+        console.warn("Failed to fetch sale info:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.saleInfo) {
+        // Update cart items with sale info
+        let updated = false;
+        for (const [itemKey, item] of this.items.entries()) {
+          const saleInfo = data.saleInfo[item.variationId];
+          if (saleInfo) {
+            item.saleInfo = saleInfo;
+            this.items.set(itemKey, item);
+            updated = true;
+          }
+        }
+
+        // Save cart if any items were updated with sale info
+        if (updated) {
+          this.saveCart();
+          // Dispatch event to trigger UI refresh with sale pricing
+          this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+        }
+      }
+    } catch (error) {
+      console.warn("Error fetching sale info for cart items:", error);
     }
   }
 
@@ -241,10 +294,11 @@ class CartManager implements ICartManager {
   }
 
   public getTotal(): number {
-    return Array.from(this.items.values()).reduce(
-      (total, item) => total + item.price * item.quantity,
-      0
-    );
+    return Array.from(this.items.values()).reduce((total, item) => {
+      // Use sale price if available, otherwise use regular price
+      const effectivePrice = item.saleInfo?.salePrice ?? item.price;
+      return total + effectivePrice * item.quantity;
+    }, 0);
   }
 
   public getItemCount(): number {
@@ -457,10 +511,17 @@ class CartManager implements ICartManager {
           // console.log(`Updated item quantity to maximum: ${availableQuantity}`);
         } else {
           // Add new item with maximum quantity
-          const newItem = { ...item, quantity: possibleToAdd };
+          const newItem = { 
+            ...item, 
+            quantity: possibleToAdd,
+            saleInfo: item.saleInfo, // Preserve sale info if provided
+          };
           this.items.set(itemKey, newItem);
           // console.log(`Added new item with maximum quantity: ${possibleToAdd}`);
         }
+
+        // Fetch sale info for the added item
+        await this.fetchSaleInfoForItem(item.variationId);
 
         // Save changes
         this.saveCart();
@@ -492,11 +553,15 @@ class CartManager implements ICartManager {
           image: item.image,
           variationName: item.variationName,
           unit: item.unit,
+          saleInfo: item.saleInfo, // Preserve sale info if provided
         };
 
         this.items.set(itemKey, newItem);
         // console.log(`Added new item with quantity: ${requestedQuantity}`);
       }
+
+      // Fetch sale info for the added item
+      await this.fetchSaleInfoForItem(item.variationId);
 
       // Save changes and dispatch events
       this.saveCart();
@@ -518,6 +583,39 @@ class CartManager implements ICartManager {
         success: false,
         message: `Error adding item to cart: ${errorMessage}`,
       };
+    }
+  }
+
+  /**
+   * Fetch sale info for a single item and update it in the cart
+   */
+  private async fetchSaleInfoForItem(variationId: string): Promise<void> {
+    try {
+      const response = await fetch("/api/sale-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variationIds: [variationId] }),
+      });
+
+      if (!response.ok) {
+        console.warn("Failed to fetch sale info:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.saleInfo && data.saleInfo[variationId]) {
+        // Find and update the item with this variation ID
+        for (const [itemKey, item] of this.items.entries()) {
+          if (item.variationId === variationId) {
+            item.saleInfo = data.saleInfo[variationId];
+            this.items.set(itemKey, item);
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("Error fetching sale info for item:", error);
     }
   }
 

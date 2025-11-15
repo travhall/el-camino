@@ -310,9 +310,6 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                   <div class="text-(--content-meta) text-xs line-through">
                     ${MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))} each
                   </div>
-                  <div class="text-state-success-text text-sm font-medium">
-                    ${MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.salePrice))} each
-                  </div>
                 `
                     : `
                   <div class="text-(--content-meta) text-sm">
@@ -320,7 +317,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                   </div>
                 `
                 }
-                <div class="font-display font-bold text-2xl ${saleInfo ? "text-state-success-text" : "text-(--content-emphasis)"}">
+                <div class="font-display font-bold text-2xl text-(--content-emphasis)">
                   ${MoneyUtils.format(MoneyUtils.fromFloat(itemSubtotal))}
                 </div>
               </div>
@@ -717,7 +714,10 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     }
 
     const inventory = inventoryData[item.variationId] || 999;
-    const itemSubtotal = item.price * item.quantity;
+    // Use sale price if available, otherwise regular price
+    const saleInfo = (item as any).saleInfo;
+    const displayPrice = saleInfo?.salePrice || item.price;
+    const itemSubtotal = displayPrice * item.quantity;
     const total = cart.getTotal();
 
     // Update quantity display

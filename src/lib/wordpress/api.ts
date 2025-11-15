@@ -120,26 +120,26 @@ async function fetchWithCache<T>(
 }
 
 /**
- * Process WordPress post data with error handling - UPDATED to handle tags
+ * Process WordPress post data with error handling - UPDATED to handle ALL categories and tags
  */
 function processPost(post: any): WordPressPost {
   try {
-    // Extract first category for display (WordPress.com returns categories as object with names as keys)
-    let firstCategory: WordPressTerm | null = null;
+    // Extract ALL categories (WordPress.com returns categories as object with names as keys)
+    let extractedCategories: WordPressTerm[] = [];
     if (post.categories && typeof post.categories === "object") {
       const categoryNames = Object.keys(post.categories);
-      if (categoryNames.length > 0) {
-        const categoryData = post.categories[categoryNames[0]];
-        firstCategory = {
-          name: categoryData.name || categoryNames[0],
+      extractedCategories = categoryNames.map((categoryName) => {
+        const categoryData = post.categories[categoryName];
+        return {
+          name: categoryData.name || categoryName,
           slug: categoryData.slug || "",
           taxonomy: "category",
           description: categoryData.description || "",
         };
-      }
+      });
     }
 
-    // NEW: Extract tags for display (WordPress.com returns tags as object with names as keys)
+    // Extract ALL tags (WordPress.com returns tags as object with names as keys)
     let extractedTags: WordPressTerm[] = [];
     if (post.tags && typeof post.tags === "object") {
       const tagNames = Object.keys(post.tags);
@@ -174,13 +174,13 @@ function processPost(post: any): WordPressPost {
             }
           : {}),
 
-        // Categories and Tags - UPDATED to include both
+        // Categories and Tags - ALL categories and tags included
         // NOTE: In WordPress REST API, both categories and tags come under wp:term
         // Structure: "wp:term": [ [term1, term2, term3] ]
-        ...(firstCategory || extractedTags.length > 0
+        ...(extractedCategories.length > 0 || extractedTags.length > 0
           ? {
               "wp:term": [
-                [...(firstCategory ? [firstCategory] : []), ...extractedTags],
+                [...extractedCategories, ...extractedTags],
               ],
             }
           : {}),
