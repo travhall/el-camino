@@ -4,7 +4,7 @@ import Nav from "@/components/Nav.astro";
 import { Icon } from "astro-icon/components";
 import CartButton from "./CartButton.astro";
 import CartButtonMobile from "./CartButtonMobile.astro";
-import { detectDeviceFromUA } from '@/utils/device';
+import { detectDeviceFromUA } from "@/utils/device";
 
 interface Props {
   activeCategory?: string;
@@ -13,7 +13,7 @@ interface Props {
 const { activeCategory } = Astro.props;
 
 // Device detection for conditional rendering
-const userAgent = Astro.request.headers.get('user-agent') || '';
+const userAgent = Astro.request.headers.get("user-agent") || "";
 const deviceInfo = detectDeviceFromUA(userAgent);
 const isMobile = deviceInfo.isMobile;
 ---
@@ -21,7 +21,11 @@ const isMobile = deviceInfo.isMobile;
 <header
   class="flex flex-row items-center justify-between -mb-1 sticky top-0 z-50 border-4 border-(--border-secondary) bg-(--surface-secondary)"
 >
-  <a href="/" class="flex self-center justify-start" aria-label="Home Link">
+  <a
+    href="/"
+    class="flex self-center justify-start hover:opacity-60 focus-within:opacity-60 transition-opacity"
+    aria-label="Home Link"
+  >
     <Icon
       name="Logo"
       class="w-48 xl:w-56 h-auto p-2 text-(--content-heading)"
