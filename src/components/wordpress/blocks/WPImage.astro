@@ -3,7 +3,10 @@
 // Enhanced image component for wp-block-image with optimized loading
 
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
-import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
+import {
+  EL_CAMINO_LOGO_DATA_URI,
+  EL_CAMINO_LOADER_DATA_URI,
+} from "@/lib/constants/assets";
 
 interface Props {
   src: string;
@@ -16,7 +19,16 @@ interface Props {
   loading?: "eager" | "lazy";
 }
 
-const { src, alt, caption, alignment = "default", priority = false, width, height, loading } = Astro.props;
+const {
+  src,
+  alt,
+  caption,
+  alignment = "default",
+  priority = false,
+  width,
+  height,
+  loading,
+} = Astro.props;
 
 const alignmentClasses = {
   default: "max-w-4xl mx-auto",
@@ -28,12 +40,14 @@ const alignmentClasses = {
 const sizeSettings = {
   full: { width: 1200, height: 800 },
   wide: { width: 800, height: 600 },
-  default: { width: 600, height: 400 }
+  default: { width: 600, height: 400 },
 };
 
 // Use provided dimensions or alignment defaults
-const imgWidth = width || sizeSettings[alignment as keyof typeof sizeSettings].width;
-const imgHeight = height || sizeSettings[alignment as keyof typeof sizeSettings].height;
+const imgWidth =
+  width || sizeSettings[alignment as keyof typeof sizeSettings].width;
+const imgHeight =
+  height || sizeSettings[alignment as keyof typeof sizeSettings].height;
 
 // Smart loading strategy: priority images load eagerly, others lazy
 const imageLoading = loading || (priority ? "eager" : "lazy");
@@ -44,8 +58,8 @@ const fetchPriority = priority ? "high" : "auto";
 const imageSet = EnhancedImageOptimizer.generateOptimizedSources(src, {
   width: imgWidth,
   height: imgHeight,
-  quality: 75,  // Reduced from 85 for better compression
-  priority: priority
+  quality: 75, // Reduced from 85 for better compression
+  priority: priority,
 });
 
 // Use best available format
@@ -54,34 +68,22 @@ const imageId = `wp-img-${Math.random().toString(36).substring(2, 11)}`;
 const placeholderId = `${imageId}-placeholder`;
 ---
 
-<style>
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-  
-  .loading-skeleton {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
-  }
-</style>
-
 <figure class={`wp-image my-8 ${alignmentClasses[alignment]}`}>
   <div class="relative overflow-hidden bg-(--surface-secondary)">
     <!-- Loading placeholder -->
-    <div 
+    <div
       class="loading-skeleton absolute inset-0"
       id={placeholderId}
       style={`aspect-ratio: ${imgWidth} / ${imgHeight}; animation: shimmer 1.5s ease-in-out infinite;`}
     >
       <!-- El Camino logo as loading indicator -->
-      <div 
+      <div
         class="absolute inset-0 flex items-center justify-center opacity-70"
         style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: 48px 42px; background-position: center; background-repeat: no-repeat;`}
-      ></div>
+      >
+      </div>
     </div>
-    
+
     <!-- Optimized image -->
     <img
       id={imageId}

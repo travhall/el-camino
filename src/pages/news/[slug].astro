@@ -8,7 +8,10 @@ import { extractEmbeddedData } from "@/lib/wordpress/types";
 import Tag from "@/components/Tag.astro";
 import WordPressBlockParser from "@/components/wordpress/WordPressBlockParser.astro";
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
-import { EL_CAMINO_LOADER_DATA_URI, EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import {
+  EL_CAMINO_LOADER_DATA_URI,
+  EL_CAMINO_LOGO_DATA_URI,
+} from "@/lib/constants/assets";
 
 export async function getStaticPaths() {
   const posts = await getPosts();
@@ -85,12 +88,12 @@ const heroImageHeight = featuredMedia?.media_details?.height || 675;
 const heroAspectRatio = heroImageWidth / heroImageHeight;
 
 // Generate optimized image sources using Pattern A (single call)
-const imageSet = rawImageUrl 
+const imageSet = rawImageUrl
   ? EnhancedImageOptimizer.generateOptimizedSources(rawImageUrl, {
       width: heroImageWidth,
       height: heroImageHeight,
-      quality: 75,  // Aggressive compression for hero image
-      priority: true
+      quality: 75, // Aggressive compression for hero image
+      priority: true,
     })
   : null;
 
@@ -102,7 +105,7 @@ const structuredData = {
   "@context": "https://schema.org",
   "@type": "Article",
   headline: pageTitle,
-  image: imageSet ? (imageSet.avif || imageSet.webp || imageSet.jpeg) : undefined,
+  image: imageSet ? imageSet.avif || imageSet.webp || imageSet.jpeg : undefined,
   author: {
     "@type": "Person",
     name: author?.name || "El Camino",
@@ -123,50 +126,40 @@ const structuredData = {
 };
 ---
 
-<style>
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
-  }
-
-  .loading-skeleton {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
-  }
-</style>
-
 <Layout title={fullTitle}>
   <!-- PHASE 4: Enhanced Resource Hints for WordPress CDN -->
   <!-- DNS Prefetch for early domain resolution -->
   <link rel="dns-prefetch" href="https://i0.wp.com" slot="head" />
   <link rel="dns-prefetch" href="https://i1.wp.com" slot="head" />
   <link rel="dns-prefetch" href="https://i2.wp.com" slot="head" />
-  
+
   <!-- Preconnect with crossorigin for image CDN (includes TLS handshake) -->
   <link rel="preconnect" href="https://i0.wp.com" slot="head" crossorigin />
   <link rel="preconnect" href="https://i1.wp.com" slot="head" crossorigin />
-  
+
   <!-- Gravatar for author avatars -->
   <link rel="dns-prefetch" href="https://secure.gravatar.com" slot="head" />
-  <link rel="preconnect" href="https://secure.gravatar.com" slot="head" crossorigin />
-  
+  <link
+    rel="preconnect"
+    href="https://secure.gravatar.com"
+    slot="head"
+    crossorigin
+  />
+
   <!-- PHASE 4: Preload LCP Image with explicit format hint -->
   <!-- This triggers earlier fetch and format negotiation -->
-  {imageSet && (
-    <link
-      rel="preload"
-      as="image"
-      href={imageSet.avif || imageSet.webp || imageSet.jpeg}
-      fetchpriority="high"
-      type="image/avif"
-      slot="head"
-    />
-  )}
+  {
+    imageSet && (
+      <link
+        rel="preload"
+        as="image"
+        href={imageSet.avif || imageSet.webp || imageSet.jpeg}
+        fetchpriority="high"
+        type="image/avif"
+        slot="head"
+      />
+    )
+  }
 
   <script
     is:inline
@@ -241,70 +234,86 @@ const structuredData = {
         style={`aspect-ratio: ${heroAspectRatio}`}
       >
         {/* Hero image loading placeholder - sibling to picture element */}
-        {imageSet && (
-          <div
-            class="loading-skeleton loading-image absolute inset-0 w-full h-full"
-            id="article-hero-placeholder"
-            aria-hidden="true"
-          >
-            {/* El Camino logo as loading indicator */}
+        {
+          imageSet && (
             <div
-              class="absolute inset-0 flex items-center justify-center"
-              style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: 48px 42px; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
-            />
-          </div>
-        )}
+              class="loading-skeleton loading-image absolute inset-0 w-full h-full"
+              id="article-hero-placeholder"
+              aria-hidden="true"
+            >
+              {/* El Camino logo as loading indicator */}
+              <div
+                class="absolute inset-0 flex items-center justify-center"
+                style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: 48px 42px; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
+              />
+            </div>
+          )
+        }
 
         {/* Pattern A: Picture element with AVIF/WebP/JPEG */}
-        {imageSet ? (
-          <picture>
-            {/* AVIF format (best compression) */}
-            {imageSet.avif && (
-              <source
-                type="image/avif"
-                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(rawImageUrl!, 'avif', {
-                  width: heroImageWidth,
-                  height: heroImageHeight,
-                  quality: 75
-                })}
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 66vw, 1200px"
-              />
-            )}
+        {
+          imageSet ? (
+            <picture>
+              {/* AVIF format (best compression) */}
+              {imageSet.avif && (
+                <source
+                  type="image/avif"
+                  srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+                    rawImageUrl!,
+                    "avif",
+                    {
+                      width: heroImageWidth,
+                      height: heroImageHeight,
+                      quality: 75,
+                    }
+                  )}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 66vw, 1200px"
+                />
+              )}
 
-            {/* WebP format (good compression) */}
-            {imageSet.webp && (
-              <source
-                type="image/webp"
-                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(rawImageUrl!, 'webp', {
-                  width: heroImageWidth,
-                  height: heroImageHeight,
-                  quality: 75
-                })}
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 66vw, 1200px"
-              />
-            )}
+              {/* WebP format (good compression) */}
+              {imageSet.webp && (
+                <source
+                  type="image/webp"
+                  srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+                    rawImageUrl!,
+                    "webp",
+                    {
+                      width: heroImageWidth,
+                      height: heroImageHeight,
+                      quality: 75,
+                    }
+                  )}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 66vw, 1200px"
+                />
+              )}
 
-            {/* JPEG fallback */}
-            <img
-              src={imageSet.jpeg}
-              srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(rawImageUrl!, 'jpeg', {
-                width: heroImageWidth,
-                height: heroImageHeight,
-                quality: 75
-              })}
-              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 66vw, 1200px"
-              alt={featuredMedia?.alt_text || post.title.rendered}
-              width={heroImageWidth}
-              height={heroImageHeight}
-              style={`aspect-ratio: ${heroAspectRatio}`}
-              class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
-              loading="eager"
-              fetchpriority="high"
-              onload="this.style.opacity='0.9'; document.getElementById('article-hero-placeholder')?.remove();"
-              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('article-hero-placeholder')?.remove();`}
-            />
-          </picture>
-        ) : null}
+              {/* JPEG fallback */}
+              <img
+                src={imageSet.jpeg}
+                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+                  rawImageUrl!,
+                  "jpeg",
+                  {
+                    width: heroImageWidth,
+                    height: heroImageHeight,
+                    quality: 75,
+                  }
+                )}
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 66vw, 1200px"
+                alt={featuredMedia?.alt_text || post.title.rendered}
+                width={heroImageWidth}
+                height={heroImageHeight}
+                style={`aspect-ratio: ${heroAspectRatio}`}
+                class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
+                loading="eager"
+                fetchpriority="high"
+                onload="this.style.opacity='0.9'; document.getElementById('article-hero-placeholder')?.remove();"
+                onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('article-hero-placeholder')?.remove();`}
+              />
+            </picture>
+          ) : null
+        }
       </div>
     </header>
 
