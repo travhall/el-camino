@@ -18,7 +18,6 @@ let navigationStatus: "loading" | "success" | "timeout" | "error" = "loading";
 
 try {
   // Fetch category hierarchy WITH product filtering to hide empty categories
-  // This prevents "Skateboards/Wheels" and "Footwear" from showing when empty
   categoryHierarchy = await apiRetryClient.executeWithRetry(
     () => fetchCategoryHierarchyWithProducts(),
     "navigation-fetch",
@@ -142,7 +141,7 @@ const isCategoryPage = currentPath.includes("/category/");
 <!-- Skip to content link -->
 <a
   href="#main-content"
-  class="skip-link font-bold bg-(--surface-secondary) border border-(--border-primary) rounded absolute left-2 -top-16 focus-visible:top-2 p-2 z-50 transition-all"
+  class="skip-link font-bold bg-(--surface-secondary) border border-(--border-primary) rounded-xs absolute left-2 -top-16 focus-visible:top-2 p-2 z-50 transition-all"
   >Skip to main content</a
 >
 
@@ -257,7 +256,7 @@ const isCategoryPage = currentPath.includes("/category/");
         {/* Enhanced dropdown menu with correct nested URLs */}
         {item.subcategories.length > 0 && (
           <div class="dropdown-menu lg:hidden lg:group-hover:block lg:group-focus-within:block absolute left-0 top-full z-50 min-w-[200px] origin-top lg:opacity-100 lg:transition-none">
-            <div class="bg-(--ui-nav-surface) border border-(--ui-nav-border)/20 shadow-lg rounded-sm p-1 overflow-hidden">
+            <div class="bg-(--ui-nav-surface) border border-(--ui-nav-border)/20 shadow-lg rounded-xs p-1 overflow-hidden">
               {item.subcategories.map((subcategory) => (
                 <a
                   href={

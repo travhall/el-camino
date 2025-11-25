@@ -78,6 +78,7 @@ import {
       </div>
     </header>
 
+    <!-- OUR STORY -->
     <div
       class="bg-(--surface-secondary) flex flex-col lg:flex-row items-start lg:items-center relative"
     >
@@ -112,9 +113,8 @@ import {
             <p class="text-(--content-meta) italic mb-8">
               Skateboarding is sticking around... for better or worse.
             </p>
-            <Button variant="outline" href="#shop-team">Meet the Team</Button>
-            <Button variant="ghost" href="#the-space">Check out the Shop</Button
-            >
+            <!-- <Button variant="outline" href="#shop-team">Meet the Team</Button>
+            <Button variant="ghost" href="#the-space">Check out the Shop</Button> -->
           </div>
         </div>
       </div>
@@ -158,7 +158,8 @@ import {
       </div>
     </div>
 
-    <div
+    <!-- SHOP TEAM -->
+    <!-- <div
       class="bg-(--surface-primary) flex flex-col lg:flex-row items-start lg:items-center relative"
     >
       <div id="shop-team" class="absolute h-16 -top-16" aria-hidden="true">
@@ -180,9 +181,10 @@ import {
         {/* Shop Team Cards will go here - component TBD */}
         <div class="team-card-container"></div>
       </div>
-    </div>
+    </div> -->
 
-    <div
+    <!-- THE SPACE -->
+    <!-- <div
       class="bg-(--surface-primary) flex flex-col lg:flex-row-reverse items-start lg:items-center relative"
     >
       <div id="the-space" class="absolute h-16 -top-16" aria-hidden="true">
@@ -258,10 +260,11 @@ import {
           </picture>
         </div>
       </div>
-    </div>
+    </div> -->
 
-    <div
-      class="bg-(--surface-primary) flex flex-col lg:flex-row items-start lg:items-center relative"
+    <!-- COMMUNITY -->
+    <!-- <div
+      class="bg-(--surface-secondary) flex flex-col lg:flex-row items-start lg:items-center relative"
     >
       <div id="community" class="absolute h-16 -top-16" aria-hidden="true">
       </div>
@@ -283,10 +286,11 @@ import {
         <Button variant="primary" href="/news">See Latest News & Events</Button>
         {/* Community article cards will go here - component TBD */}
       </div>
-    </div>
+    </div> -->
 
+    <!-- CONTACT -->
     <div
-      class="bg-(--surface-secondary) flex flex-col lg:flex-row items-start lg:items-center relative"
+      class="bg-(--surface-primary) flex flex-col lg:flex-row-reverse items-start lg:items-center relative"
     >
       <div id="contact" class="absolute h-16 -top-16" aria-hidden="true"></div>
       <div class="relative lg:basis-1/2 px-4 py-8 lg:p-8 xl:p-12 my-8">
@@ -294,75 +298,82 @@ import {
           <h2
             class="flex flex-col-reverse font-display font-black text-4xl leading-none md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl text-(--content-heading) text-balance mb-2"
           >
-            Time & Space
-            <small
-              class="font-sans font-semibold text-sm lg:text-md tracking-wide uppercase text-(--content-meta)"
-            >
-              Come Visit Us
-            </small>
+            Come Visit El Camino
           </h2>
 
-          <div class="space-y-6 w-full">
-            <div>
-              <h3 class="font-semibold text-lg mb-2">Address</h3>
-              <p class="text-pretty">
-                {siteConfig.contact.address.street}<br />
-                {siteConfig.contact.address.city}, {
-                  siteConfig.contact.address.state
-                }
-                {siteConfig.contact.address.zip}
-              </p>
-            </div>
+          <div class="grid gap-6 mt-6 w-full">
+            <div class="flex flex-col lg:flex-row justify-between gap-4">
+              <!-- ADDRESS -->
+              <div class="lg:basis-1/2 lg:border-r-2 border-(--border-primary)">
+                <h3 class="font-semibold text-lg mb-1">Address</h3>
+                <p class="text-pretty">
+                  {siteConfig.contact.address.street}<br />
+                  {siteConfig.contact.address.city}, {
+                    siteConfig.contact.address.state
+                  }
+                  {siteConfig.contact.address.zip}
+                </p>
+              </div>
 
-            <div>
-              <h3 class="font-semibold text-lg mb-3">Store Hours</h3>
-              <div class="space-y-1">
-                {
-                  siteConfig.hours.map((day) => (
-                    <div class="flex justify-between">
-                      <span class={!day.isOpen ? "text-(--content-meta)" : ""}>
-                        {day.day}
-                      </span>
-                      <span class={!day.isOpen ? "text-(--content-meta)" : ""}>
-                        {day.hours}
-                      </span>
-                    </div>
-                  ))
-                }
+              <!-- CONTACT -->
+              <div class="lg:basis-1/2">
+                <h3 class="font-semibold text-lg mb-1">Get in Touch</h3>
+                <a
+                  href={`tel:${siteConfig.contact.phone.number}`}
+                  class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left"
+                >
+                  {siteConfig.contact.phone.display}
+                </a><br />
+                <a
+                  href={`mailto:${siteConfig.contact.email}`}
+                  class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left"
+                >
+                  {siteConfig.contact.email}
+                </a>
+
+                <div class="flex gap-2 mt-2">
+                  {
+                    siteConfig.social.map((social) => (
+                      <a
+                        href={social.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-(--content-body) hover:text-(--content-emphasis) transition-colors"
+                        aria-label={`Visit us on ${social.platform}`}
+                      >
+                        <Icon
+                          name={social.icon}
+                          class="w-6 h-auto"
+                          aria-hidden="true"
+                        />
+                      </a>
+                    ))
+                  }
+                </div>
               </div>
             </div>
 
             <div>
-              <h3 class="font-semibold text-lg mb-2">Get in Touch</h3>
-              <a
-                href={`tel:${siteConfig.contact.phone.number}`}
-                class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left"
-              >
-                {siteConfig.contact.phone.display}
-              </a><br />
-              <a
-                href={`mailto:${siteConfig.contact.email}`}
-                class="relative font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left"
-              >
-                {siteConfig.contact.email}
-              </a>
-
-              <div class="flex gap-2 mt-2">
+              <h3 class="font-semibold text-lg mb-2">Store Hours</h3>
+              <div class="space-y-1">
                 {
-                  siteConfig.social.map((social) => (
-                    <a
-                      href={social.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-(--content-body) hover:text-(--content-emphasis) transition-colors"
-                      aria-label={`Visit us on ${social.platform}`}
-                    >
-                      <Icon
-                        name={social.icon}
-                        class="w-6 h-auto"
-                        aria-hidden="true"
-                      />
-                    </a>
+                  siteConfig.hours.map((day) => (
+                    <div class="flex justify-between border-b-2 border-(--border-primary) last-of-type:border-b-0 py-2">
+                      <span
+                        class={
+                          !day.isOpen ? "text-(--content-meta) opacity-70" : ""
+                        }
+                      >
+                        {day.day}
+                      </span>
+                      <span
+                        class={
+                          !day.isOpen ? "text-(--content-meta) opacity-70" : ""
+                        }
+                      >
+                        {day.hours}
+                      </span>
+                    </div>
                   ))
                 }
               </div>
