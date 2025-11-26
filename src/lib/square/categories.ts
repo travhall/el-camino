@@ -194,7 +194,8 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
  * This is more reliable and faster for most use cases
  */
 async function fetchAllCatalogItems(): Promise<any[]> {
-  const cacheKey = "all-catalog-items";
+  // Cache key with version to bust old cached object format
+  const cacheKey = "all-catalog-items-v2";
 
   return productCache.getOrCompute(cacheKey, async () => {
     try {
@@ -312,6 +313,12 @@ export async function fetchProductsByCategory(
       fetchCategories(),
     ]);
     // console.log(`[Perf] Data fetch: ${Date.now() - fetchStart}ms`);
+
+    // Defensive check: ensure allItems is an array
+    if (!Array.isArray(allItems)) {
+      console.error('[ERROR] fetchAllCatalogItems() did not return an array:', typeof allItems, allItems);
+      throw new Error(`fetchAllCatalogItems() returned ${typeof allItems} instead of array`);
+    }
 
     // Filter items by category in-memory
     const filterStart = Date.now();

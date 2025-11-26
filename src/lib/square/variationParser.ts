@@ -29,8 +29,51 @@ export const VARIATION_CONFIG: VariationConfig = {
 };
 
 /**
+ * Detect attribute type based on value heuristics
+ * Uses common patterns to guess if a value is a size, color, etc.
+ */
+function detectAttributeType(value: string): string | null {
+  const valueLower = value.toLowerCase().trim();
+  
+  // Size patterns: numbers, X/XL patterns, numeric + measurements
+  const sizePatterns = [
+    /^\d+$/,  // Pure numbers: 28, 30, 32
+    /^[xms]+l$/,  // XS, S, M, L, XL, XXL, XXXL
+    /^\d+\.?\d*\s*(in|inch|inches|cm)?$/,  // 8.25, 8.25 inches
+    /^(small|medium|large|extra)/, // small, medium, large, extra large
+  ];
+  
+  if (sizePatterns.some(pattern => pattern.test(valueLower))) {
+    return 'size';
+  }
+  
+  // Color patterns: common color names
+  const commonColors = [
+    'black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple',
+    'pink', 'brown', 'gray', 'grey', 'navy', 'tan', 'beige', 'khaki',
+    'denim', 'indigo', 'maroon', 'olive', 'teal', 'cream', 'ivory'
+  ];
+  
+  if (commonColors.some(color => valueLower.includes(color))) {
+    return 'color';
+  }
+  
+  // Material patterns
+  const commonMaterials = [
+    'cotton', 'polyester', 'leather', 'suede', 'canvas', 'denim',
+    'wool', 'silk', 'nylon', 'fleece', 'mesh'
+  ];
+  
+  if (commonMaterials.some(material => valueLower.includes(material))) {
+    return 'material';
+  }
+  
+  return null;
+}
+
+/**
  * Parse a variation name into structured attributes
- * Handles position-based parsing: "Large, Red, Cotton" → {size: "Large", color: "Red", material: "Cotton"}
+ * Uses heuristics to detect attribute types when possible, falls back to position-based parsing
  *
  * @param name - The variation name to parse (e.g., "Large, Red" or "Medium, Black, Cotton")
  * @returns Structured attributes object
@@ -50,7 +93,38 @@ export function parseVariationName(name: string): Record<string, string> {
     return {};
   }
 
-  // Get attribute mapping for this number of parts
+  // For 2-part variations (most common: size + color), try to detect which is which
+  if (parts.length === 2) {
+    const type0 = detectAttributeType(parts[0]);
+    const type1 = detectAttributeType(parts[1]);
+    
+    // If we can detect both types, use them
+    if (type0 && type1 && type0 !== type1) {
+      return {
+        [type0]: parts[0],
+        [type1]: parts[1]
+      };
+    }
+    
+    // If we can only detect one, use it and guess the other
+    if (type0) {
+      const otherType = type0 === 'size' ? 'color' : 'size';
+      return {
+        [type0]: parts[0],
+        [otherType]: parts[1]
+      };
+    }
+    
+    if (type1) {
+      const otherType = type1 === 'size' ? 'color' : 'size';
+      return {
+        [otherType]: parts[0],
+        [type1]: parts[1]
+      };
+    }
+  }
+
+  // Fallback to position-based parsing
   const attributeNames =
     VARIATION_CONFIG.attributeMappings[parts.length] ||
     // Fallback for unknown counts - generate generic names
@@ -231,12 +305,26 @@ export function getAttributeDisplayName(attributeType: string): string {
 export function createInitialSelectionState(
   variations: ProductVariation[]
 ): VariationSelectionState {
-  // Ensure all variations have parsed attributes
-  variations.forEach((variation) => {
-    if (!variation.attributes) {
-      variation.attributes = parseVariationName(variation.name);
-    }
-  });
+  // For single-variation products, don't parse attributes to avoid showing "Option: Product Name"
+  // Only parse if there are multiple variations OR if the name contains commas (Item Options)
+  const shouldParseAttributes = variations.length > 1 || 
+    (variations.length === 1 && variations[0].name.includes(','));
+
+  if (shouldParseAttributes) {
+    // Ensure all variations have parsed attributes
+    variations.forEach((variation) => {
+      if (!variation.attributes) {
+        variation.attributes = parseVariationName(variation.name);
+      }
+    });
+  } else {
+    // Single variation with no commas - leave attributes empty
+    variations.forEach((variation) => {
+      if (!variation.attributes) {
+        variation.attributes = {};
+      }
+    });
+  }
 
   const availableAttributes = buildAvailableAttributes(variations);
   const defaultAttributes = getDefaultAttributes(variations);
