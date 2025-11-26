@@ -4,10 +4,7 @@ import type { Product, SaleInfo } from "./types";
 import { getImageUrl, batchGetImageUrls } from "./imageUtils";
 import { defaultCircuitBreaker, logApiError } from "./apiUtils";
 import { processSquareError, logError } from "./errorUtils";
-import {
-  parseVariationName,
-  buildAvailableAttributes,
-} from "./variationParser";
+import { buildAvailableAttributes } from "./variationParser";
 import { createProductUrl } from "./slugUtils";
 import { requestDeduplicator } from "./requestDeduplication";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
@@ -479,11 +476,6 @@ export async function fetchProduct(id: string): Promise<Product | null> {
             ? unitsMap[v.itemVariationData.measurementUnitId] || ""
             : "";
 
-          // Parse variation attributes from the name
-          const attributes = parseVariationName(
-            v.itemVariationData?.name || ""
-          );
-
           // Extract sale information from variation custom attributes
           const saleInfo = extractSaleInfo(
             v.customAttributeValues,
@@ -497,7 +489,8 @@ export async function fetchProduct(id: string): Promise<Product | null> {
             price: regularPrice,
             image: variationImageUrl,
             unit: unit || undefined, // Only include unit if it exists
-            attributes: attributes, // Add parsed attributes
+            // Don't set attributes here - let createInitialSelectionState handle it
+            // to properly skip single variations
             saleInfo: saleInfo || undefined, // Add sale info if present
           };
         });
