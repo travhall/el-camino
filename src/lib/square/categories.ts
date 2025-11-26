@@ -314,12 +314,6 @@ export async function fetchProductsByCategory(
     ]);
     // console.log(`[Perf] Data fetch: ${Date.now() - fetchStart}ms`);
 
-    // Defensive check: ensure allItems is an array
-    if (!Array.isArray(allItems)) {
-      console.error('[ERROR] fetchAllCatalogItems() did not return an array:', typeof allItems, allItems);
-      throw new Error(`fetchAllCatalogItems() returned ${typeof allItems} instead of array`);
-    }
-
     // Filter items by category in-memory
     const filterStart = Date.now();
     const matchingItems = allItems.filter((item) =>

@@ -154,8 +154,9 @@ export function buildAvailableAttributes(
   const attributeMap: Record<string, Set<string>> = {};
 
   variations.forEach((variation) => {
-    if (!variation.attributes) {
-      // Parse attributes if not already done
+    // Only parse if attributes is completely missing (undefined/null)
+    // Don't re-parse if it's an empty object {} (intentionally set by createInitialSelectionState)
+    if (variation.attributes === undefined || variation.attributes === null) {
       variation.attributes = parseVariationName(variation.name);
     }
 
@@ -306,7 +307,10 @@ export function createInitialSelectionState(
   variations: ProductVariation[]
 ): VariationSelectionState {
   // For single-variation products, don't parse attributes to avoid showing "Option: Product Name"
-  // Only parse if there are multiple variations OR if the name contains commas (Item Options)
+  // Skip parsing if:
+  // 1. Only one variation AND
+  // 2. No commas in name (not using Item Options) AND
+  // 3. Name is a default/generic variation name
   const shouldParseAttributes = variations.length > 1 || 
     (variations.length === 1 && variations[0].name.includes(','));
 
