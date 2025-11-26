@@ -343,12 +343,10 @@ export function createInitialSelectionState(
       }
     });
   } else {
-    console.log('[createInitialSelectionState] Skipping parse - setting empty attributes for single variation');
-    // Single variation with no commas - leave attributes empty
+    console.log('[createInitialSelectionState] Skipping parse - FORCING empty attributes for single variation');
+    // Single variation with no commas - FORCE empty attributes (override any existing)
     variations.forEach((variation) => {
-      if (!variation.attributes) {
-        variation.attributes = {};
-      }
+      variation.attributes = {}; // Force empty, don't check if it exists
     });
   }
 
