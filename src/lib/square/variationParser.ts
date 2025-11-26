@@ -153,11 +153,23 @@ export function buildAvailableAttributes(
 ): Record<string, string[]> {
   const attributeMap: Record<string, Set<string>> = {};
 
-  variations.forEach((variation) => {
+  variations.forEach((variation, index) => {
+    // DEBUG: Log what we're seeing
+    console.log(`[buildAvailableAttributes] Variation ${index}:`, {
+      name: variation.name,
+      attributesType: typeof variation.attributes,
+      attributesValue: variation.attributes,
+      isUndefined: variation.attributes === undefined,
+      isNull: variation.attributes === null,
+      isEmpty: variation.attributes && Object.keys(variation.attributes).length === 0
+    });
+
     // Only parse if attributes is completely missing (undefined/null)
     // Don't re-parse if it's an empty object {} (intentionally set by createInitialSelectionState)
     if (variation.attributes === undefined || variation.attributes === null) {
+      console.log(`[buildAvailableAttributes] Parsing variation ${index} name: "${variation.name}"`);
       variation.attributes = parseVariationName(variation.name);
+      console.log(`[buildAvailableAttributes] Result:`, variation.attributes);
     }
 
     // Add each attribute value to the appropriate set
