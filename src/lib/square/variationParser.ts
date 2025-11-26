@@ -190,7 +190,7 @@ export function findVariationByAttributes(
   selectedAttributes: Record<string, string>
 ): ProductVariation | undefined {
   return variations.find((variation) => {
-    if (!variation.attributes) {
+    if (variation.attributes === undefined || variation.attributes === null) {
       variation.attributes = parseVariationName(variation.name);
     }
 
@@ -217,7 +217,7 @@ export function getAttributeValues(
   const values = new Set<string>();
 
   variations.forEach((variation) => {
-    if (!variation.attributes) {
+    if (variation.attributes === undefined || variation.attributes === null) {
       variation.attributes = parseVariationName(variation.name);
     }
 
@@ -257,7 +257,7 @@ export function getDefaultAttributes(
     return {};
   }
 
-  if (!defaultVariation.attributes) {
+  if (defaultVariation.attributes === undefined || defaultVariation.attributes === null) {
     defaultVariation.attributes = parseVariationName(defaultVariation.name);
   }
 
@@ -276,7 +276,7 @@ export function hasAttributeType(
   attributeType: string
 ): boolean {
   return variations.some((variation) => {
-    if (!variation.attributes) {
+    if (variation.attributes === undefined || variation.attributes === null) {
       variation.attributes = parseVariationName(variation.name);
     }
     return variation.attributes[attributeType] !== undefined;
