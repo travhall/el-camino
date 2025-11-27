@@ -153,23 +153,11 @@ export function buildAvailableAttributes(
 ): Record<string, string[]> {
   const attributeMap: Record<string, Set<string>> = {};
 
-  variations.forEach((variation, index) => {
-    // DEBUG: Log what we're seeing
-    console.log(`[buildAvailableAttributes] Variation ${index}:`, {
-      name: variation.name,
-      attributesType: typeof variation.attributes,
-      attributesValue: variation.attributes,
-      isUndefined: variation.attributes === undefined,
-      isNull: variation.attributes === null,
-      isEmpty: variation.attributes && Object.keys(variation.attributes).length === 0
-    });
-
+  variations.forEach((variation) => {
     // Only parse if attributes is completely missing (undefined/null)
     // Don't re-parse if it's an empty object {} (intentionally set by createInitialSelectionState)
     if (variation.attributes === undefined || variation.attributes === null) {
-      console.log(`[buildAvailableAttributes] Parsing variation ${index} name: "${variation.name}"`);
       variation.attributes = parseVariationName(variation.name);
-      console.log(`[buildAvailableAttributes] Result:`, variation.attributes);
     }
 
     // Add each attribute value to the appropriate set
@@ -318,12 +306,6 @@ export function getAttributeDisplayName(attributeType: string): string {
 export function createInitialSelectionState(
   variations: ProductVariation[]
 ): VariationSelectionState {
-  console.log('[createInitialSelectionState] Called with variations:', variations.map(v => ({
-    name: v.name,
-    hasAttributes: !!v.attributes,
-    attributes: v.attributes
-  })));
-
   // For single-variation products, don't parse attributes to avoid showing "Option: Product Name"
   // Skip parsing if:
   // 1. Only one variation AND
@@ -332,10 +314,7 @@ export function createInitialSelectionState(
   const shouldParseAttributes = variations.length > 1 || 
     (variations.length === 1 && variations[0].name.includes(','));
 
-  console.log('[createInitialSelectionState] shouldParseAttributes:', shouldParseAttributes);
-
   if (shouldParseAttributes) {
-    console.log('[createInitialSelectionState] Parsing attributes for multi-variation or comma-name product');
     // Ensure all variations have parsed attributes
     variations.forEach((variation) => {
       if (!variation.attributes) {
@@ -343,17 +322,11 @@ export function createInitialSelectionState(
       }
     });
   } else {
-    console.log('[createInitialSelectionState] Skipping parse - FORCING empty attributes for single variation');
     // Single variation with no commas - FORCE empty attributes (override any existing)
     variations.forEach((variation) => {
       variation.attributes = {}; // Force empty, don't check if it exists
     });
   }
-
-  console.log('[createInitialSelectionState] After processing:', variations.map(v => ({
-    name: v.name,
-    attributes: v.attributes
-  })));
 
   const availableAttributes = buildAvailableAttributes(variations);
   const defaultAttributes = getDefaultAttributes(variations);

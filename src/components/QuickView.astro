@@ -458,34 +458,29 @@ import {
           });
       }
 
-      // EXACTLY mirror PDP: Single-value attributes as static displays (always show these)
-      attributeTypes
-        .filter(
-          (attributeType) =>
-            selectionState.availableAttributes[attributeType].length === 1
-        )
-        .forEach((attributeType) => {
+      // EXACTLY mirror PDP: Single-variation attributes as plain text labels
+      if (product.variations.length === 1 && attributeTypes.length > 0) {
+        attributeTypes.forEach((attributeType) => {
           const attributeValues =
             selectionState.availableAttributes[attributeType];
           const displayName = getAttributeDisplayName(attributeType);
 
           const section = document.createElement("div");
-          section.className = "mt-4";
+          section.className = "mt-2";
 
-          const heading = document.createElement("h4");
-          heading.className =
-            "text-sm font-medium text-(--content-heading) mb-2";
-          heading.textContent = displayName;
+          const label = document.createElement("span");
+          label.className = "text-sm font-medium text-(--content-heading)";
+          label.textContent = `${displayName}:`;
 
-          const staticDisplay = document.createElement("div");
-          staticDisplay.className =
-            "inline-block px-4 py-2 bg-(--ui-button-surface) text-sm text-(--ui-button-text) border-(--ui-button-border)/50 rounded-sm";
-          staticDisplay.textContent = attributeValues[0];
+          const value = document.createElement("span");
+          value.className = "ml-1 text-sm font-bold text-(--content-emphasis)";
+          value.textContent = attributeValues[0];
 
-          section.appendChild(heading);
-          section.appendChild(staticDisplay);
+          section.appendChild(label);
+          section.appendChild(value);
           container.appendChild(section);
         });
+      }
     }
 
     private handleAttributeSelection(

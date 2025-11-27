@@ -570,26 +570,20 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
 
         <!-- Single attribute display (when not varying) -->
         {
-          attributeTypes
-            .filter(
-              (attributeType) =>
-                availableAttributes[attributeType]?.length === 1
-            )
-            .map((attributeType) => {
+          !hasMultipleVariations &&
+            attributeTypes.length > 0 &&
+            attributeTypes.map((attributeType) => {
               const attributeValues = availableAttributes[attributeType];
               const displayName = getAttributeDisplayName(attributeType);
 
               return (
-                <div class="mt-4">
-                  <label
-                    for="quantity-input"
-                    class="text-sm font-medium block mb-1"
-                  >
-                    {displayName}
-                  </label>
-                  <div class="inline-block px-4 py-2 bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50 rounded-sm cursor-pointer">
+                <div class="mt-2">
+                  <span class="text-sm font-medium text-(--content-heading)">
+                    {displayName}:
+                  </span>
+                  <span class="ml-1 text-sm font-bold text-(--content-emphasis)">
                     {attributeValues[0]}
-                  </div>
+                  </span>
                 </div>
               );
             })
