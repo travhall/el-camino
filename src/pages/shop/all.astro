@@ -32,22 +32,16 @@ const hasFilters = Object.values(filters).some((f) =>
   Array.isArray(f) ? f.length > 0 : f === true
 );
 
-// console.log(`[Shop/All] 📊 Filter Analysis:`, {
-//   hasFilters,
-//   filterValues: Object.values(filters),
-//   filtersBreakdown: filters,
-// });
-
 const cacheControl = hasFilters
-  ? "public, max-age=60, s-max-age=120, stale-while-revalidate=300" // Shorter cache for filtered results
-  : "public, max-age=180, s-max-age=300, stale-while-revalidate=600"; // Longer cache for unfiltered
+  ? "public, max-age=120, s-max-age=180, stale-while-revalidate=900" // 2min browser, 3min server, 15min stale for filtered
+  : "public, max-age=300, s-max-age=300, stale-while-revalidate=1800"; // 5min browser/server, 30min stale for unfiltered
 
 // Set cache headers for this response
 Astro.response.headers.set("Cache-Control", cacheControl);
 Astro.response.headers.set(
   "Netlify-CDN-Cache-Control",
   hasFilters
-    ? "public, s-max-age=120, stale-while-revalidate=600"
+    ? "public, s-max-age=180, stale-while-revalidate=900"
     : "public, s-max-age=300, stale-while-revalidate=1800"
 );
 

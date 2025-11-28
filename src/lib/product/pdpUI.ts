@@ -130,26 +130,12 @@ export class PDPUIManager {
   updateImageOverlay(info: ProductAvailabilityInfo, saleInfo?: any): void {
     const { imageContainer, productImage } = this.elements;
 
-    console.log('[updateImageOverlay] imageContainer:', imageContainer);
-    console.log('[updateImageOverlay] productImage:', productImage);
-    console.log('[updateImageOverlay] info.state:', info.state);
-    console.log('[updateImageOverlay] saleInfo:', saleInfo);
+    if (!imageContainer) return;
 
-    if (!imageContainer) {
-      console.error('[updateImageOverlay] No imageContainer found!');
-      return;
-    }
-
-    // Remove existing overlay (search within container, not globally)
     const existingOverlay = imageContainer.querySelector('[data-overlay]');
-    if (existingOverlay) {
-      console.log('[updateImageOverlay] Removing existing overlay');
-      existingOverlay.remove();
-    }
+    if (existingOverlay) existingOverlay.remove();
 
-    // Check if item is out of stock (takes priority over sale badge)
     if (info.state === ProductAvailabilityState.OUT_OF_STOCK) {
-      console.log('[updateImageOverlay] Creating out-of-stock overlay');
       const overlay = document.createElement("div");
       overlay.setAttribute('data-overlay', 'stock');
       overlay.className =
@@ -159,8 +145,6 @@ export class PDPUIManager {
 
       if (productImage) productImage.classList.add("opacity-75");
     } else if (saleInfo) {
-      // Show sale badge if item is in stock and on sale
-      console.log('[updateImageOverlay] Creating sale overlay');
       const discountPercent = saleInfo.discountPercent;
       const overlay = document.createElement("div");
       overlay.setAttribute('data-overlay', 'sale');
@@ -171,8 +155,6 @@ export class PDPUIManager {
 
       if (productImage) productImage.classList.remove("opacity-75");
     } else {
-      console.log('[updateImageOverlay] No overlay needed');
-      // No badge needed
       if (productImage) productImage.classList.remove("opacity-75");
     }
   }
@@ -248,24 +230,12 @@ export class PDPUIManager {
   updateProductImage(imageUrl: string): void {
     const { productImage } = this.elements;
     
-    console.log('[updateProductImage] Called with:', imageUrl);
-    console.log('[updateProductImage] productImage element:', productImage);
-    
-    if (!productImage || !imageUrl) {
-      console.log('[updateProductImage] Missing productImage or imageUrl, skipping');
-      return;
-    }
+    if (!productImage || !imageUrl) return;
 
-    // Update the img src
-    console.log('[updateProductImage] Setting img.src to:', imageUrl);
     productImage.src = imageUrl;
     
-    // Check if the img has a srcset attribute (Netlify Image CDN pattern)
-    const hasSrcset = productImage.hasAttribute('srcset');
-    console.log('[updateProductImage] Image has srcset:', hasSrcset);
-    
-    if (hasSrcset) {
-      // Generate new srcset with Netlify Image CDN URLs for the new image
+    // Update srcset if present (Netlify Image CDN)
+    if (productImage.hasAttribute('srcset')) {
       const sizes = [320, 640, 768, 1024];
       const srcsetParts = sizes.map(size => {
         const params = new URLSearchParams({
@@ -278,12 +248,8 @@ export class PDPUIManager {
         return `/.netlify/images?${params.toString()} ${size}w`;
       });
       
-      const newSrcset = srcsetParts.join(', ');
-      console.log('[updateProductImage] Setting new srcset:', newSrcset);
-      productImage.setAttribute('srcset', newSrcset);
+      productImage.setAttribute('srcset', srcsetParts.join(', '));
     }
-    
-    console.log('[updateProductImage] Complete');
   }
 
   updateButtonProductData(productData: any): void {

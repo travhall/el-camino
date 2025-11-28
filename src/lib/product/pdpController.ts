@@ -95,19 +95,9 @@ export class PDPController {
   private updateProductUI(variation: any): void {
     if (!variation) return;
 
-    console.log('[PDPController] updateProductUI called with variation:', {
-      variationId: variation.variationId,
-      name: variation.name,
-      hasImage: !!variation.image,
-      image: variation.image,
-      price: variation.price,
-      saleInfo: variation.saleInfo
-    });
-
     this.currentVariation = variation;
     this.updateVariantUrl(variation);
     
-    // Use UI manager for all display updates
     const availabilityInfo = cart.getProductAvailability(
       this.productData.productId,
       variation.variationId,
@@ -121,10 +111,7 @@ export class PDPController {
     });
 
     if (variation.image) {
-      console.log('[PDPController] Calling updateProductImage with:', variation.image);
       this.uiManager.updateProductImage(variation.image);
-    } else {
-      console.log('[PDPController] No variation image, skipping image update');
     }
 
     this.updateButtonProductData(variation);

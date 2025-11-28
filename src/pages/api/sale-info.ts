@@ -55,7 +55,12 @@ export const POST: APIRoute = async ({ request }) => {
       }),
       {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=120, s-maxage=300, stale-while-revalidate=1800",
+          "Netlify-CDN-Cache-Control": "public, s-maxage=300, stale-while-revalidate=1800",
+          "Netlify-Cache-Tag": "sale-info,products",
+        },
       }
     );
   } catch (error) {

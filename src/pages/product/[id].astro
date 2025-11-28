@@ -32,6 +32,10 @@ import { generateBreadcrumbs } from "@/lib/product/breadcrumbs";
 import { fetchCategories } from "@/lib/square/categories";
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 
+// Enable aggressive caching for PDP pages
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
+Astro.response.headers.set('Netlify-CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
+
 // Get the slug or ID from URL params
 const { id: slugOrId } = Astro.params;
 const variantParam = Astro.url.searchParams.get("variant");

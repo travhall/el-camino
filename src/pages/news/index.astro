@@ -154,10 +154,9 @@ const paginatedPosts = displayPosts.slice(
 // === ISR CACHING: Enable Edge Caching for News Page ===
 // WordPress content changes less frequently than inventory
 // Cache for 10 min, serve stale for 7 days while revalidating
-Astro.response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
-Astro.response.headers.set('Netlify-CDN-Cache-Control', 
-  'public, durable, s-maxage=600, stale-while-revalidate=604800'
-);
+// Aggressive caching for news index (5min server, 30min stale)
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
+Astro.response.headers.set('Netlify-CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
 
 // === LCP OPTIMIZATION: Preload first article image ===
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
