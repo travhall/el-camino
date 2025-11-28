@@ -357,6 +357,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     >
       <!-- Product Image -->
       <div
+        id="product-image-container"
         class="aspect-square md:aspect-video lg:aspect-square border-4 border-(--border-primary) overflow-hidden bg-(--surface-secondary) relative"
       >
         <!-- Loading placeholder with logo -->
@@ -453,20 +454,14 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           )
         }
 
-        {/* Out of stock overlay - takes priority over sale badge */}
+        <!-- Initial overlay (updated by JavaScript on variation change) -->
         {
           !selectedVariationInStock ? (
-            <div
-              id="stock-overlay"
-              class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-br-sm"
-            >
+            <div data-overlay="stock" class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-br-sm">
               Sold Out
             </div>
           ) : isOnSale && saleInfo ? (
-            <div
-              id="sale-overlay"
-              class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-md font-bold rounded-br-sm"
-            >
+            <div data-overlay="sale" class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-md font-bold rounded-br-sm">
               {saleInfo.discountPercent}% Off
             </div>
           ) : null
@@ -492,13 +487,16 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
         <!-- Price Display -->
         <div class="my-2">
           {/* Original price strikethrough when on sale */}
-          {
-            isOnSale && formattedOriginalPrice && (
-              <div class="text-lg text-(--content-meta) line-through">
-                {formattedOriginalPrice}
-              </div>
-            )
-          }
+          <div 
+            id="original-price-display" 
+            class:list={[
+              "text-lg text-(--content-meta) line-through",
+              !isOnSale || !formattedOriginalPrice ? "hidden" : ""
+            ]}
+          >
+            {formattedOriginalPrice || ""}
+          </div>
+          {/* Sale/Regular price */}
           <h2
             id="price-display"
             class="text-4xl lg:text-5xl xl:text-6xl font-display font-bold text-(--content-emphasis)"

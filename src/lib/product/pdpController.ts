@@ -80,7 +80,10 @@ export class PDPController {
     );
 
     this.uiManager.updateAvailabilityDisplay(availabilityInfo, variation.saleInfo);
-    this.uiManager.updatePriceDisplay(variation.price, variation.unit);
+    this.uiManager.updatePriceDisplay(variation.price, {
+      unit: variation.unit,
+      saleInfo: variation.saleInfo
+    });
 
     if (variation.image) {
       this.uiManager.updateProductImage(variation.image);
@@ -112,7 +115,10 @@ export class PDPController {
     );
 
     this.uiManager.updateAvailabilityDisplay(availabilityInfo, variation.saleInfo);
-    this.uiManager.updatePriceDisplay(variation.price, variation.unit);
+    this.uiManager.updatePriceDisplay(variation.price, {
+      unit: variation.unit,
+      saleInfo: variation.saleInfo
+    });
 
     if (variation.image) {
       console.log('[PDPController] Calling updateProductImage with:', variation.image);
