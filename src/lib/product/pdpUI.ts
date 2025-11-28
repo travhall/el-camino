@@ -55,17 +55,17 @@ export class PDPUIManager {
     };
   }
 
-  updateAvailabilityDisplay(info: ProductAvailabilityInfo): void {
+  updateAvailabilityDisplay(info: ProductAvailabilityInfo, saleInfo?: any): void {
     this.updateQuantityControls(info);
     this.updateAddToCartButton(info);
-    this.updateImageOverlay(info);
+    this.updateImageOverlay(info, saleInfo);
     this.updateInventoryDisplay(info);
   }
 
   updateQuantityControls(info: ProductAvailabilityInfo): void {
     // Re-cache elements in case they were cloned/replaced
     this.cacheElements();
-    
+
     const { quantityInput, decreaseButton, increaseButton } = this.elements;
     if (!quantityInput) return;
 
@@ -99,27 +99,39 @@ export class PDPUIManager {
     }
   }
 
-  updateImageOverlay(info: ProductAvailabilityInfo): void {
+  updateImageOverlay(info: ProductAvailabilityInfo, saleInfo?: any): void {
     const { imageContainer, productImage } = this.elements;
 
     // Remove existing overlay
     const stockOverlay = document.getElementById("stock-overlay");
     if (stockOverlay) stockOverlay.remove();
 
-    if (
-      info.state === ProductAvailabilityState.OUT_OF_STOCK &&
-      imageContainer
-    ) {
+    if (!imageContainer) return;
+
+    // Check if item is out of stock (takes priority over sale badge)
+    if (info.state === ProductAvailabilityState.OUT_OF_STOCK) {
       const overlay = document.createElement("div");
       overlay.id = "stock-overlay";
       overlay.className =
-        "absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-sm";
+        "absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-br-sm";
       overlay.textContent = getButtonText(info.state);
       imageContainer.appendChild(overlay);
 
       if (productImage) productImage.classList.add("opacity-75");
-    } else if (productImage) {
-      productImage.classList.remove("opacity-75");
+    } else if (saleInfo) {
+      // Show sale badge if item is in stock and on sale
+      const discountPercent = saleInfo.discountPercent;
+      const overlay = document.createElement("div");
+      overlay.id = "stock-overlay";
+      overlay.className =
+        "absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-md font-bold rounded-br-sm";
+      overlay.textContent = `${discountPercent}% Off`;
+      imageContainer.appendChild(overlay);
+
+      if (productImage) productImage.classList.remove("opacity-75");
+    } else {
+      // No badge needed
+      if (productImage) productImage.classList.remove("opacity-75");
     }
   }
 
@@ -167,9 +179,43 @@ export class PDPUIManager {
 
   updateProductImage(imageUrl: string): void {
     const { productImage } = this.elements;
-    if (productImage && imageUrl) {
-      productImage.src = imageUrl;
+    
+    console.log('[updateProductImage] Called with:', imageUrl);
+    console.log('[updateProductImage] productImage element:', productImage);
+    
+    if (!productImage || !imageUrl) {
+      console.log('[updateProductImage] Missing productImage or imageUrl, skipping');
+      return;
     }
+
+    // Update the img src
+    console.log('[updateProductImage] Setting img.src to:', imageUrl);
+    productImage.src = imageUrl;
+    
+    // Check if the img has a srcset attribute (Netlify Image CDN pattern)
+    const hasSrcset = productImage.hasAttribute('srcset');
+    console.log('[updateProductImage] Image has srcset:', hasSrcset);
+    
+    if (hasSrcset) {
+      // Generate new srcset with Netlify Image CDN URLs for the new image
+      const sizes = [320, 640, 768, 1024];
+      const srcsetParts = sizes.map(size => {
+        const params = new URLSearchParams({
+          url: imageUrl,
+          w: size.toString(),
+          q: '85',
+          fit: 'cover',
+          h: size.toString()
+        });
+        return `/.netlify/images?${params.toString()} ${size}w`;
+      });
+      
+      const newSrcset = srcsetParts.join(', ');
+      console.log('[updateProductImage] Setting new srcset:', newSrcset);
+      productImage.setAttribute('srcset', newSrcset);
+    }
+    
+    console.log('[updateProductImage] Complete');
   }
 
   updateButtonProductData(productData: any): void {

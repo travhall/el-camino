@@ -79,7 +79,7 @@ export class PDPController {
       variation.quantity || 0
     );
 
-    this.uiManager.updateAvailabilityDisplay(availabilityInfo);
+    this.uiManager.updateAvailabilityDisplay(availabilityInfo, variation.saleInfo);
     this.uiManager.updatePriceDisplay(variation.price, variation.unit);
 
     if (variation.image) {
@@ -92,6 +92,15 @@ export class PDPController {
   private updateProductUI(variation: any): void {
     if (!variation) return;
 
+    console.log('[PDPController] updateProductUI called with variation:', {
+      variationId: variation.variationId,
+      name: variation.name,
+      hasImage: !!variation.image,
+      image: variation.image,
+      price: variation.price,
+      saleInfo: variation.saleInfo
+    });
+
     this.currentVariation = variation;
     this.updateVariantUrl(variation);
     
@@ -102,11 +111,14 @@ export class PDPController {
       variation.quantity || 0
     );
 
-    this.uiManager.updateAvailabilityDisplay(availabilityInfo);
+    this.uiManager.updateAvailabilityDisplay(availabilityInfo, variation.saleInfo);
     this.uiManager.updatePriceDisplay(variation.price, variation.unit);
 
     if (variation.image) {
+      console.log('[PDPController] Calling updateProductImage with:', variation.image);
       this.uiManager.updateProductImage(variation.image);
+    } else {
+      console.log('[PDPController] No variation image, skipping image update');
     }
 
     this.updateButtonProductData(variation);
@@ -164,7 +176,7 @@ export class PDPController {
       "out-of-stock",
       0
     );
-    this.uiManager.updateAvailabilityDisplay(outOfStockInfo);
+    this.uiManager.updateAvailabilityDisplay(outOfStockInfo, this.currentVariation.saleInfo);
   }
 
   private handleAttributeSelection(attributeType: string, value: string): void {
@@ -193,7 +205,7 @@ export class PDPController {
       this.currentVariation.quantity || 0
     );
 
-    this.uiManager.updateAvailabilityDisplay(availabilityInfo);
+    this.uiManager.updateAvailabilityDisplay(availabilityInfo, this.currentVariation.saleInfo);
     this.updateAttributeButtonStates();
   }
 
