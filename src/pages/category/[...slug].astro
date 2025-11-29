@@ -152,6 +152,56 @@ const hasActiveFilters =
 //   categoryPath,
 //   sampleFilteredProducts: filteredProducts.slice(0, 2).map((p) => p.brand),
 // });
+
+// PHASE 4: Prepare lightweight filter metadata for SSR injection
+import { batchInventoryService } from "@/lib/square/batchInventory";
+import type { FilterMetadata } from "@/pages/api/filter-metadata";
+
+let filterMetadata: FilterMetadata[] = [];
+try {
+  // Get variation IDs for batch inventory check
+  const variationIds = allProducts
+    .map((p) => p.variationId)
+    .filter(Boolean) as string[];
+
+  // Batch inventory check
+  const inventoryMap = await batchInventoryService.getBatchInventoryStatus(
+    variationIds
+  );
+
+  // Build lightweight metadata
+  filterMetadata = allProducts.map((product) => {
+    const inventoryStatus = inventoryMap.get(product.variationId) || {
+      isOutOfStock: false,
+      hasLimitedOptions: false,
+      totalQuantity: 0,
+    };
+
+    return {
+      id: product.id,
+      brand: product.brand || null,
+      isInStock: !inventoryStatus.isOutOfStock,
+      variationId: product.variationId,
+      imageUrl: product.imageUrl || null,
+      name: product.name,
+      price: product.price,
+      salePrice: product.salePrice,
+    };
+  });
+
+  console.log(
+    `[Category] 🚀 PHASE 4: Prepared ${filterMetadata.length} product metadata for SSR injection`
+  );
+} catch (error) {
+  console.error("[Category] Failed to prepare filter metadata:", error);
+}
+
+// Prepare metadata JSON for inline script
+const metadataJson = JSON.stringify({
+  products: filterMetadata,
+  brands: filterOptions.brands.map((b) => b.name),
+  timestamp: Date.now(),
+});
 ---
 
 <Layout title={fullPageTitle}>
@@ -190,6 +240,14 @@ const hasActiveFilters =
       )}
     </>
   )}
+
+  <!-- PHASE 4: Inject filter metadata for instant client-side filtering -->
+  <script is:inline define:vars={{ metadataJson }}>
+    window.__FILTER_METADATA__ = JSON.parse(metadataJson);
+    console.log(
+      `[SSR Metadata] ✅ Injected ${window.__FILTER_METADATA__.products.length} products`
+    );
+  </script>
 
   <!-- Responsive Grid Layout -->
   <div class="min-h-screen bg-(--surface-primary)">

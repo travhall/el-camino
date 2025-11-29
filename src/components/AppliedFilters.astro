@@ -103,66 +103,26 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
 </div>
 
 <script>
+  // ENHANCED: Client-side filter badge removal with no navigation
   document.addEventListener("astro:page-load", () => {
-    setupTimedAppearance();
     setupFilterHandlers();
   });
-
-  function setupTimedAppearance() {
-    const container = document.getElementById("applied-filters-container");
-    if (!container) return;
-
-    // Check if we have filters
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentBrands = urlParams.getAll("brands") || [];
-    const currentAvailability = urlParams.get("availability") === "true";
-    const hasFilters = currentBrands.length > 0 || currentAvailability;
-
-    // Only apply timing logic ONCE per session and only for first filter application
-    const hasShownBefore =
-      sessionStorage.getItem("appliedFiltersShown") === "true";
-
-    if (
-      hasFilters &&
-      !hasShownBefore &&
-      !container.classList.contains("no-filters")
-    ) {
-      // First time showing AppliedFilters in this session - apply timing
-      container.style.visibility = "hidden";
-      container.style.opacity = "0";
-
-      // Shorter delay - just enough for ProductGrid to start settling
-      setTimeout(() => {
-        container.style.visibility = "visible";
-        container.style.opacity = "1";
-        container.style.transition = "opacity 200ms ease";
-        sessionStorage.setItem("appliedFiltersShown", "true");
-        // console.log(
-        //   "[AppliedFilters] ⏰ First appearance with timing protection"
-        // );
-      }, 400); // Much shorter delay
-    } else if (hasFilters) {
-      // Already shown before or subsequent filters - appear immediately
-      container.style.visibility = "visible";
-      container.style.opacity = "1";
-    }
-  }
 
   function setupFilterHandlers() {
     // Individual brand removal
     document.querySelectorAll("[data-remove-brand]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
+      btn.addEventListener("click", async (e) => {
         const target = e.currentTarget as HTMLElement;
         const brand = target?.dataset.removeBrand;
-        if (brand) removeFilter("brand", brand);
+        if (brand) await removeFilter("brand", brand);
       });
     });
 
     // Availability removal
     document
       .querySelector("[data-remove-availability]")
-      ?.addEventListener("click", () => {
-        removeFilter("availability");
+      ?.addEventListener("click", async () => {
+        await removeFilter("availability");
       });
 
     // Clear All - use existing global system
@@ -173,12 +133,101 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
         if (globalClearAll) {
           globalClearAll();
         } else {
-          window.location.href = window.location.pathname;
+          // Fallback: Try client-side clear
+          clearAllFiltersClientSide();
         }
       });
   }
 
-  function removeFilter(type: string, value: string | null = null) {
+  async function removeFilter(type: string, value: string | null = null) {
+    // Try client-side filtering first (desktop)
+    const filterForm = document.getElementById("filter-form") as HTMLFormElement;
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceDesktop = urlParams.get("test-desktop") === "true";
+    const isMobile = !forceDesktop && window.innerWidth < 1024;
+
+    if (!isMobile && filterForm) {
+      // DESKTOP: Use client-side filtering
+      const currentParams = new URLSearchParams(window.location.search);
+      const currentBrands = currentParams.getAll("brands") || [];
+      const currentAvailability = currentParams.get("availability") === "true";
+
+      // Update form checkboxes to reflect the removal
+      if (type === "brand" && value) {
+        const checkbox = filterForm.querySelector(
+          `input[name="brands"][value="${value}"]`
+        ) as HTMLInputElement;
+        if (checkbox) {
+          checkbox.checked = false;
+        }
+      } else if (type === "availability") {
+        const checkbox = filterForm.querySelector(
+          'input[name="availability"]'
+        ) as HTMLInputElement;
+        if (checkbox) {
+          checkbox.checked = false;
+        }
+      }
+
+      // Build new filter state
+      const newBrands =
+        type === "brand" && value
+          ? currentBrands.filter((b) => b !== value)
+          : currentBrands;
+      const newAvailability =
+        type === "availability" ? false : currentAvailability;
+
+      // Get filter engine and apply
+      try {
+        const { getFilterEngine } = await import(
+          "@/lib/square/clientFilterEngine"
+        );
+        const grid = document.getElementById("filterable-product-grid");
+        const categoryPath = grid?.dataset.categoryPath;
+        const categoryId = categoryPath ? categoryPath.split("/").pop() : undefined;
+        const engine = getFilterEngine(categoryId);
+
+        // Ensure metadata is loaded
+        await engine.loadMetadata();
+
+        // Apply filter
+        const filters = {
+          brands: newBrands,
+          availability: newAvailability,
+        };
+
+        const filteredIds = engine.getFilteredProductIds(filters);
+        const totalCount = engine.getTotalCount();
+
+        console.log(
+          `[AppliedFilters] ⚡ Removed filter - ${totalCount} → ${filteredIds.length} products`
+        );
+
+        // Update URL without navigation
+        updateURLWithoutNavigation(filters);
+
+        // Apply filter to grid
+        applyClientSideFilter(filteredIds);
+
+        // Update result count
+        updateResultCount(filteredIds.length, totalCount);
+
+        // Update applied filters display
+        updateAppliedFiltersDisplay(filters);
+      } catch (error) {
+        console.warn(
+          "[AppliedFilters] ⚠️ Client-side filtering failed, falling back to navigation:",
+          error
+        );
+        navigateToFilters(type, value);
+      }
+    } else {
+      // MOBILE or no filter form: Use server-side navigation
+      navigateToFilters(type, value);
+    }
+  }
+
+  function navigateToFilters(type: string, value: string | null = null) {
     const currentParams = new URLSearchParams(window.location.search);
     const currentBrands = currentParams.getAll("brands") || [];
     const currentAvailability = currentParams.get("availability") === "true";
@@ -196,5 +245,143 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
     const queryString = params.toString();
     const url = `${window.location.pathname}${queryString ? "?" + queryString : ""}`;
     window.location.href = url;
+  }
+
+  function updateURLWithoutNavigation(filters: {
+    brands: string[];
+    availability: boolean;
+  }): void {
+    const params = new URLSearchParams();
+
+    filters.brands.forEach((brand) => params.append("brands", brand));
+    if (filters.availability) {
+      params.set("availability", "true");
+    }
+
+    const queryString = params.toString();
+    const newURL = `${window.location.pathname}${queryString ? "?" + queryString : ""}`;
+
+    window.history.pushState({}, "", newURL);
+  }
+
+  function applyClientSideFilter(filteredIds: string[]): void {
+    const grid = document.getElementById("filterable-product-grid");
+    if (!grid) return;
+
+    const allCards = grid.querySelectorAll(".product-card-wrapper");
+    const filteredIdSet = new Set(filteredIds);
+
+    allCards.forEach((card) => {
+      const htmlCard = card as HTMLElement;
+      const productId = htmlCard.dataset.productId;
+      const shouldShow = productId && filteredIdSet.has(productId);
+
+      if (shouldShow) {
+        htmlCard.style.display = "";
+        htmlCard.classList.remove("opacity-0");
+        htmlCard.classList.add("opacity-100");
+      } else {
+        htmlCard.classList.remove("opacity-100");
+        htmlCard.classList.add("opacity-0");
+
+        setTimeout(() => {
+          if (htmlCard.classList.contains("opacity-0")) {
+            htmlCard.style.display = "none";
+          }
+        }, 300);
+      }
+    });
+
+    // Show "no results" if needed
+    const noResults = document.getElementById("no-results");
+    if (noResults) {
+      if (filteredIds.length === 0) {
+        noResults.style.display = "flex";
+      } else {
+        noResults.style.display = "none";
+      }
+    }
+  }
+
+  function updateResultCount(filtered: number, total: number): void {
+    const resultCountElements = document.querySelectorAll(
+      "[data-result-count]"
+    );
+
+    resultCountElements.forEach((el) => {
+      if (filtered === total) {
+        el.textContent = `${total} products`;
+      } else {
+        el.textContent = `${filtered} of ${total} products`;
+      }
+    });
+
+    // Update screen reader live region
+    const liveRegion = document.getElementById("filter-results-live-region");
+    if (liveRegion) {
+      const message =
+        filtered === total
+          ? `Showing all ${total} products`
+          : `Filtered to ${filtered} of ${total} products`;
+
+      setTimeout(() => {
+        liveRegion.textContent = message;
+      }, 100);
+    }
+  }
+
+  function updateAppliedFiltersDisplay(filters: {
+    brands: string[];
+    availability: boolean;
+  }): void {
+    const container = document.getElementById("applied-filters-container");
+    if (!container) return;
+
+    const hasFilters = filters.brands.length > 0 || filters.availability;
+
+    if (!hasFilters) {
+      // Fade out and hide
+      container.classList.add("no-filters");
+    } else {
+      container.classList.remove("no-filters");
+    }
+  }
+
+  async function clearAllFiltersClientSide(): Promise<void> {
+    const filterForm = document.getElementById("filter-form") as HTMLFormElement;
+    if (!filterForm) {
+      window.location.href = window.location.pathname;
+      return;
+    }
+
+    // Uncheck all checkboxes
+    const checkboxes = filterForm.querySelectorAll(
+      'input[type="checkbox"]'
+    ) as NodeListOf<HTMLInputElement>;
+    checkboxes.forEach((cb) => {
+      cb.checked = false;
+    });
+
+    try {
+      const { getFilterEngine } = await import("@/lib/square/clientFilterEngine");
+      const grid = document.getElementById("filterable-product-grid");
+      const categoryPath = grid?.dataset.categoryPath;
+      const categoryId = categoryPath ? categoryPath.split("/").pop() : undefined;
+      const engine = getFilterEngine(categoryId);
+
+      await engine.loadMetadata();
+      const totalCount = engine.getTotalCount();
+      const allIds = engine.getFilteredProductIds({ brands: [], availability: false });
+
+      console.log(`[AppliedFilters] 🧹 Cleared all filters - showing ${totalCount} products`);
+
+      updateURLWithoutNavigation({ brands: [], availability: false });
+      applyClientSideFilter(allIds);
+      updateResultCount(totalCount, totalCount);
+      updateAppliedFiltersDisplay({ brands: [], availability: false });
+    } catch (error) {
+      console.warn("[AppliedFilters] ⚠️ Clear all failed, falling back to navigation");
+      window.location.href = window.location.pathname;
+    }
   }
 </script>

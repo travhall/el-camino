@@ -80,6 +80,37 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     pointer-events: none;
   }
 
+  /* PHASE 3A: Subtle loading state during metadata fetch */
+  .filters-loading {
+    position: relative;
+  }
+
+  .filters-loading::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--ui-accent, #3b82f6),
+      transparent
+    );
+    animation: loading-slide 1.5s ease-in-out infinite;
+    z-index: 10;
+  }
+
+  @keyframes loading-slide {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
   /* Respect reduced motion for View Transitions */
   @media (prefers-reduced-motion: reduce) {
     html::view-transition-old(root),
@@ -410,7 +441,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
               gridReady = true;
               // console.log('[ResponsiveFilters] ✅ Grid with valid data detected - enabling filters');
               this.enableFilterControls();
-              // UNIFIED: No filter engine initialization needed - View Transitions handle all filtering
+              // PHASE 2: Initialize client-side filter engine for instant filtering
+              this.initializeClientSideFiltering();
             } else {
               console.warn(
                 "[ResponsiveFilters] ⚠️ Grid found but data appears to be empty"
@@ -448,6 +480,298 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       document.addEventListener("astro:before-swap", () => {
         window.removeEventListener("product-grid-ready", handleGridReady);
       });
+    }
+
+    // PHASE 2: Client-side filtering with lightweight metadata
+    // PHASE 3A: Enhanced with loading state to prevent flicker
+    private async initializeClientSideFiltering(): Promise<void> {
+      // PHASE 3A: Disable filters during metadata load to prevent flicker
+      this.setFilterLoadingState(true);
+
+      try {
+        // Dynamically import the filter engine
+        const { getFilterEngine } = await import(
+          "@/lib/square/clientFilterEngine"
+        );
+
+        // Get category ID from grid data
+        const grid = document.getElementById("filterable-product-grid");
+        const categoryPath = grid?.dataset.categoryPath;
+        const categoryId = categoryPath ? categoryPath.split("/").pop() : undefined;
+
+        // Initialize filter engine
+        const engine = getFilterEngine(categoryId);
+
+        // Load metadata in background
+        console.log("[ClientFiltering] 🔄 Loading filter metadata...");
+        await engine.loadMetadata();
+        console.log("[ClientFiltering] ✅ Filter metadata loaded and ready");
+
+        // Enable instant client-side filtering
+        this.enableInstantFiltering(engine);
+
+        // PHASE 3A: Re-enable filters after metadata loads
+        this.setFilterLoadingState(false);
+      } catch (error) {
+        console.warn(
+          "[ClientFiltering] ⚠️ Failed to initialize, falling back to server-side:",
+          error
+        );
+        // PHASE 3A: Re-enable filters on error (falls back to server-side)
+        this.setFilterLoadingState(false);
+        // Fallback: current server-side filtering still works
+      }
+    }
+
+    // PHASE 3A: Visual loading state management
+    private setFilterLoadingState(isLoading: boolean): void {
+      const filterContainer = document.getElementById("filter-container");
+
+      if (isLoading) {
+        // Add subtle loading indicator without disrupting layout
+        filterContainer?.classList.add("filters-loading");
+        filterContainer?.setAttribute("aria-busy", "true");
+      } else {
+        filterContainer?.classList.remove("filters-loading");
+        filterContainer?.setAttribute("aria-busy", "false");
+      }
+    }
+
+    // Enable instant client-side filtering using metadata
+    private enableInstantFiltering(engine: any): void {
+      if (!this.form) return;
+
+      const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
+      const urlParams = new URLSearchParams(window.location.search);
+      const forceDesktop = urlParams.get("test-desktop") === "true";
+      const isMobile = !forceDesktop && window.innerWidth < 1024;
+
+      // PHASE 3B: Enable client-side clear for mobile too
+      if (isMobile) {
+        console.log(
+          "[ClientFiltering] 📱 Mobile detected - enabling instant clear (server-side filtering for checkboxes)"
+        );
+        // Enable instant clear for mobile
+        this.enableInstantMobileClear(engine);
+        return;
+      }
+
+      console.log("[ClientFiltering] 🖥️ Desktop - enabling instant filtering with debouncing");
+
+      // PHASE 6: Debouncing state
+      let filterTimeout: ReturnType<typeof setTimeout> | null = null;
+      let pendingFilters: Set<string> = new Set();
+
+      // Replace checkbox handlers with debounced client-side filtering
+      checkboxes.forEach((checkbox) => {
+        const input = checkbox as HTMLInputElement;
+
+        // Remove old event listener by cloning
+        const newCheckbox = checkbox.cloneNode(true) as HTMLInputElement;
+        checkbox.parentNode?.replaceChild(newCheckbox, checkbox);
+
+        newCheckbox.addEventListener("change", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+
+          // PHASE 6: Add to pending changes
+          const checkboxId = newCheckbox.name + ":" + newCheckbox.value;
+          pendingFilters.add(checkboxId);
+
+          // PHASE 6: Clear existing timeout
+          if (filterTimeout) {
+            clearTimeout(filterTimeout);
+          }
+
+          // PHASE 6: Debounce filter application (150ms)
+          filterTimeout = setTimeout(() => {
+            // Get current filter state
+            const formData = new FormData(this.form!);
+            const filters = {
+              brands: formData.getAll("brands") as string[],
+              availability: formData.get("availability") === "true",
+            };
+
+            // Get filtered product IDs from engine
+            const filteredIds = engine.getFilteredProductIds(filters);
+            const totalCount = engine.getTotalCount();
+            const filteredCount = filteredIds.length;
+
+            console.log(
+              `[ClientFiltering] ⚡ Filtered ${totalCount} → ${filteredCount} products (batched ${pendingFilters.size} changes)`
+            );
+
+            // Update URL without navigation
+            this.updateURLWithoutNavigation(filters);
+
+            // Show/hide products instantly
+            this.applyClientSideFilter(filteredIds);
+
+            // Update result count
+            this.updateResultCount(filteredCount, totalCount);
+
+            // Reset pending filters
+            pendingFilters.clear();
+            filterTimeout = null;
+          }, 150); // PHASE 6: 150ms debounce - feels instant but batches rapid clicks
+
+          return false;
+        });
+      });
+    }
+
+    // PHASE 3B: Instant mobile clear without navigation delay
+    private enableInstantMobileClear(engine: any): void {
+      const clearBtnMobile = document.querySelector(
+        "[data-clear-filters-mobile]"
+      ) as HTMLButtonElement;
+
+      if (!clearBtnMobile) return;
+
+      // Replace the mobile clear button handler
+      const newClearBtn = clearBtnMobile.cloneNode(true) as HTMLButtonElement;
+      clearBtnMobile.parentNode?.replaceChild(newClearBtn, clearBtnMobile);
+
+      newClearBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        console.log("[ClientFiltering] 📱 Mobile instant clear triggered");
+
+        // Close drawer immediately
+        this.closeMobileDrawer();
+
+        // Clear all checkboxes instantly
+        if (this.form) {
+          const checkboxes = this.form.querySelectorAll(
+            'input[type="checkbox"]'
+          ) as NodeListOf<HTMLInputElement>;
+          checkboxes.forEach((cb) => {
+            cb.checked = false;
+          });
+        }
+
+        // Show all products with ProductGrid's smooth animations
+        const grid = document.getElementById("filterable-product-grid");
+        if (grid) {
+          const allCards = grid.querySelectorAll(".product-card-wrapper");
+          allCards.forEach((card) => {
+            const htmlCard = card as HTMLElement;
+            htmlCard.style.display = "";
+            htmlCard.classList.remove("opacity-0");
+            htmlCard.classList.add("opacity-100");
+          });
+        }
+
+        // Update URL without navigation
+        const basePath = window.location.pathname;
+        window.history.pushState({}, "", basePath);
+
+        // Update result count
+        const totalCount = engine.getTotalCount();
+        this.updateResultCount(totalCount, totalCount);
+
+        // Hide no-results
+        const noResults = document.getElementById("no-results");
+        if (noResults) {
+          noResults.style.display = "none";
+        }
+
+        console.log("[ClientFiltering] ✅ Mobile clear complete - instant!");
+      });
+    }
+
+    // Update URL without triggering navigation
+    private updateURLWithoutNavigation(filters: {
+      brands: string[];
+      availability: boolean;
+    }): void {
+      const params = new URLSearchParams();
+
+      filters.brands.forEach((brand) => params.append("brands", brand));
+      if (filters.availability) {
+        params.set("availability", "true");
+      }
+
+      const queryString = params.toString();
+      const newURL = `${window.location.pathname}${queryString ? "?" + queryString : ""}`;
+
+      window.history.pushState({}, "", newURL);
+    }
+
+    // Apply client-side filter by showing/hiding products
+    // PHASE 3A: Optimized to eliminate flicker - synchronous visibility updates
+    // Uses ProductGrid's existing animation system (opacity-0/opacity-100)
+    private applyClientSideFilter(filteredIds: string[]): void {
+      const grid = document.getElementById("filterable-product-grid");
+      if (!grid) return;
+
+      const allCards = grid.querySelectorAll(".product-card-wrapper");
+      const filteredIdSet = new Set(filteredIds);
+
+      // Use ProductGrid's existing opacity classes for smooth animations
+      allCards.forEach((card) => {
+        const htmlCard = card as HTMLElement;
+        const productId = htmlCard.dataset.productId;
+        const shouldShow = productId && filteredIdSet.has(productId);
+
+        if (shouldShow) {
+          // Show with ProductGrid's entrance animation
+          htmlCard.style.display = "";
+          htmlCard.classList.remove("opacity-0");
+          htmlCard.classList.add("opacity-100");
+        } else {
+          // Hide with ProductGrid's exit animation
+          htmlCard.classList.remove("opacity-100");
+          htmlCard.classList.add("opacity-0");
+
+          // Remove from layout after animation completes
+          setTimeout(() => {
+            if (htmlCard.classList.contains("opacity-0")) {
+              htmlCard.style.display = "none";
+            }
+          }, 300); // Match ProductGrid's transition duration
+        }
+      });
+
+      // Show "no results" if needed
+      const noResults = document.getElementById("no-results");
+      if (noResults) {
+        if (filteredIds.length === 0) {
+          noResults.style.display = "flex";
+        } else {
+          noResults.style.display = "none";
+        }
+      }
+    }
+
+    // Update result count display
+    private updateResultCount(filtered: number, total: number): void {
+      const resultCountElements = document.querySelectorAll(
+        "[data-result-count]"
+      );
+
+      resultCountElements.forEach((el) => {
+        if (filtered === total) {
+          el.textContent = `${total} products`;
+        } else {
+          el.textContent = `${filtered} of ${total} products`;
+        }
+      });
+
+      // Update screen reader live region
+      const liveRegion = document.getElementById("filter-results-live-region");
+      if (liveRegion) {
+        const message =
+          filtered === total
+            ? `Showing all ${total} products`
+            : `Filtered to ${filtered} of ${total} products`;
+
+        setTimeout(() => {
+          liveRegion.textContent = message;
+        }, 100);
+      }
     }
 
     private enableFilterControls(): void {
@@ -488,9 +812,11 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
     private setupEventListeners(): void {
       this.setupMobileDrawer();
-      this.setupHybridFiltering();
+      // DISABLED: Old server-side filtering system replaced by client-side filtering (Phases 1-8)
+      // this.setupHybridFiltering();
       this.setupShowMoreToggle();
       this.setupClearButtons();
+      this.setupIntelligentPrefetching(); // PHASE 1: Hover-based prefetching
     }
 
     private setupMobileDrawer(): void {
@@ -589,7 +915,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
               });
 
               // STEP 2: Trigger View Transitions navigation at optimal timing
-              // Wait for exit animation to be mostly complete (250ms of 300ms)
+              // OPTIMIZED: Start navigation immediately, let View Transitions handle smoothness
               setTimeout(() => {
                 // Save state and trigger form submission
                 sessionStorage.setItem(
@@ -613,9 +939,16 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
                 const basePath = window.location.pathname;
                 const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
 
-                // Navigate with View Transitions (Astro handles this automatically)
-                window.location.href = newUrl;
-              }, 250); // Wait until exit is nearly complete to minimize gap
+                // OPTIMIZED: Use View Transition API if available for smoother transitions
+                if (document.startViewTransition) {
+                  document.startViewTransition(() => {
+                    window.location.href = newUrl;
+                  });
+                } else {
+                  // Fallback to direct navigation (Astro still handles transitions)
+                  window.location.href = newUrl;
+                }
+              }, 150); // Reduced from 250ms - View Transitions handle the smoothness
             }
 
             return false;
@@ -767,6 +1100,162 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         // Close mobile drawer first, then clear
         this.closeMobileDrawer();
         setTimeout(handleClearAll, 100); // Small delay after drawer close
+      });
+    }
+
+    // PHASE 1: Intelligent Prefetching System
+    // Prefetch filtered results on hover for instant perceived performance
+    private setupIntelligentPrefetching(): void {
+      if (!this.form) return;
+
+      // Check if Speculation Rules API is supported
+      const supportsSpeculationRules =
+        "HTMLScriptElement" in window &&
+        "supports" in HTMLScriptElement &&
+        HTMLScriptElement.supports &&
+        HTMLScriptElement.supports("speculationrules");
+
+      if (!supportsSpeculationRules) {
+        // console.log("[PrefetchFilters] Speculation Rules not supported, using link prefetch fallback");
+        this.setupFallbackPrefetching();
+        return;
+      }
+
+      const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
+      const prefetchedUrls = new Set<string>();
+
+      checkboxes.forEach((checkbox) => {
+        const input = checkbox as HTMLInputElement;
+        let hoverTimeout: ReturnType<typeof setTimeout>;
+
+        // Prefetch on hover (300ms delay to avoid excessive prefetching)
+        input.parentElement?.addEventListener("mouseenter", () => {
+          hoverTimeout = setTimeout(() => {
+            const targetUrl = this.generateFilterUrl(input);
+
+            if (!prefetchedUrls.has(targetUrl)) {
+              this.prefetchWithSpeculationRules(targetUrl);
+              prefetchedUrls.add(targetUrl);
+              // console.log(`[PrefetchFilters] 🔥 Prefetched: ${targetUrl}`);
+            }
+          }, 300);
+        });
+
+        input.parentElement?.addEventListener("mouseleave", () => {
+          clearTimeout(hoverTimeout);
+        });
+      });
+
+      // Also prefetch "Clear" action
+      const clearBtn = document.querySelector("[data-clear-filters]");
+      if (clearBtn) {
+        let clearHoverTimeout: ReturnType<typeof setTimeout>;
+
+        clearBtn.addEventListener("mouseenter", () => {
+          clearHoverTimeout = setTimeout(() => {
+            const basePath = window.location.pathname;
+            if (!prefetchedUrls.has(basePath)) {
+              this.prefetchWithSpeculationRules(basePath);
+              prefetchedUrls.add(basePath);
+              // console.log(`[PrefetchFilters] 🔥 Prefetched clear: ${basePath}`);
+            }
+          }, 300);
+        });
+
+        clearBtn.addEventListener("mouseleave", () => {
+          clearTimeout(clearHoverTimeout);
+        });
+      }
+    }
+
+    // Generate the URL that would result from toggling a checkbox
+    private generateFilterUrl(checkbox: HTMLInputElement): string {
+      if (!this.form) return window.location.href;
+
+      // Clone current form data
+      const formData = new FormData(this.form);
+      const params = new URLSearchParams();
+
+      // Simulate the checkbox toggle
+      const currentBrands = formData.getAll("brands") as string[];
+      const availability = formData.get("availability") === "true";
+
+      let targetBrands = [...currentBrands];
+
+      if (checkbox.name === "brands") {
+        if (checkbox.checked) {
+          // Would be unchecked - remove it
+          targetBrands = targetBrands.filter((b) => b !== checkbox.value);
+        } else {
+          // Would be checked - add it
+          targetBrands.push(checkbox.value);
+        }
+      }
+
+      // Build URL
+      targetBrands.forEach((brand) => params.append("brands", brand));
+
+      if (checkbox.name === "availability") {
+        if (!checkbox.checked) {
+          params.set("availability", "true");
+        }
+      } else if (availability) {
+        params.set("availability", "true");
+      }
+
+      const queryString = params.toString();
+      const basePath = window.location.pathname;
+      return `${basePath}${queryString ? "?" + queryString : ""}`;
+    }
+
+    // Prefetch using Speculation Rules API
+    private prefetchWithSpeculationRules(url: string): void {
+      const script = document.createElement("script");
+      script.type = "speculationrules";
+      script.setAttribute("data-filter-prefetch", "true");
+      script.textContent = JSON.stringify({
+        prerender: [
+          {
+            source: "list",
+            urls: [url],
+            eagerness: "immediate",
+          },
+        ],
+      });
+
+      document.head.appendChild(script);
+    }
+
+    // Fallback prefetching for browsers without Speculation Rules
+    private setupFallbackPrefetching(): void {
+      if (!this.form) return;
+
+      const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
+      const prefetchedUrls = new Set<string>();
+
+      checkboxes.forEach((checkbox) => {
+        const input = checkbox as HTMLInputElement;
+        let hoverTimeout: ReturnType<typeof setTimeout>;
+
+        input.parentElement?.addEventListener("mouseenter", () => {
+          hoverTimeout = setTimeout(() => {
+            const targetUrl = this.generateFilterUrl(input);
+
+            if (!prefetchedUrls.has(targetUrl)) {
+              const link = document.createElement("link");
+              link.rel = "prefetch";
+              link.href = targetUrl;
+              link.crossOrigin = "anonymous";
+              document.head.appendChild(link);
+              prefetchedUrls.add(targetUrl);
+              // console.log(`[PrefetchFilters] 🔥 Fallback prefetched: ${targetUrl}`);
+            }
+          }, 300);
+        });
+
+        input.parentElement?.addEventListener("mouseleave", () => {
+          clearTimeout(hoverTimeout);
+        });
       });
     }
 
