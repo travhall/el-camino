@@ -1,6 +1,7 @@
 // src/pages/api/filter-metadata.ts
 // PHASE 2: Lightweight filter metadata API for instant client-side filtering
 import type { APIRoute } from "astro";
+import type { Product } from "@/lib/square/types";
 import { fetchProducts } from "@/lib/square/client";
 import { fetchProductsByCategory } from "@/lib/square/categories";
 import { batchInventoryService } from "@/lib/square/batchInventory";
@@ -27,13 +28,16 @@ export const GET: APIRoute = async ({ url }) => {
 
   try {
     // Fetch products (either all or by category)
-    const products = categoryId
+    const result = categoryId
       ? await fetchProductsByCategory(categoryId, { limit: 200 })
       : await fetchProducts();
 
+    // Handle both PaginatedProducts and Product[] return types
+    const productList: Product[] = Array.isArray(result) ? result : result.products;
+
     // Extract variation IDs for batch inventory check
-    const variationIds = products
-      .map((p) => p.variationId)
+    const variationIds = productList
+      .map((p: Product) => p.variationId)
       .filter(Boolean) as string[];
 
     // Batch inventory check
@@ -41,7 +45,7 @@ export const GET: APIRoute = async ({ url }) => {
       await batchInventoryService.getBatchInventoryStatus(variationIds);
 
     // Build lightweight metadata
-    const metadata: FilterMetadata[] = products.map((product) => {
+    const metadata: FilterMetadata[] = productList.map((product: Product) => {
       const inventoryStatus = inventoryMap.get(product.variationId) || {
         isOutOfStock: false,
         hasLimitedOptions: false,
@@ -53,16 +57,16 @@ export const GET: APIRoute = async ({ url }) => {
         brand: product.brand || null,
         isInStock: !inventoryStatus.isOutOfStock,
         variationId: product.variationId,
-        imageUrl: product.imageUrl || null,
-        name: product.name,
+        imageUrl: product.image || null,
+        name: product.title,
         price: product.price,
-        salePrice: product.salePrice,
+        salePrice: undefined, // Product type doesn't have salePrice at top level
       };
     });
 
     // Extract unique brands
     const brands = [
-      ...new Set(products.map((p) => p.brand).filter(Boolean)),
+      ...new Set(productList.map((p: Product) => p.brand).filter(Boolean)),
     ] as string[];
 
     const response: FilterMetadataResponse = {
