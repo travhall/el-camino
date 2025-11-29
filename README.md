@@ -2,10 +2,10 @@
 
 A modern e-commerce platform built with Astro and Square integration, featuring dynamic product catalogs, cart management, and seamless checkout experiences.
 
-![Astro](https://img.shields.io/badge/Astro-5.12.2-orange?logo=astro&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue?logo=typescript&logoColor=white)
-![Square](https://img.shields.io/badge/Square-43.0.1-success?logo=square&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.1.11-blue?logo=tailwind-css&logoColor=white)
+![Astro](https://img.shields.io/badge/Astro-5.16.0-orange?logo=astro&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-blue?logo=typescript&logoColor=white)
+![Square](https://img.shields.io/badge/Square-43.2.0-success?logo=square&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.1.17-blue?logo=tailwind-css&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Production_Ready-brightgreen)
 
 ## 🛍️ Features
@@ -16,25 +16,30 @@ A modern e-commerce platform built with Astro and Square integration, featuring 
 - **Product Variations** - Size, color, and style options with individual inventory tracking
 - **Real-time Inventory** - Live stock validation and out-of-stock indicators
 - **Smart Cart Management** - Persistent cart state with navigation preservation
-- **Secure Checkout** - Square-powered payment processing
+- **Secure Checkout** - Square-powered payment processing with Payment Links
 - **Brand Management** - Custom attribute integration for product brands
 - **Measurement Units** - Flexible unit display (each, lb, oz, etc.)
+- **Sale Pricing** - Full sale price support with discount badges and dedicated pages
+- **QuickView** - Instant product preview modal with add-to-cart functionality
+- **Fulfillment Options** - Multiple fulfillment methods including shipping selector
 
 ### Technical Highlights
 
 - **Server-Side Rendering** - Optimized for performance and SEO
 - **Type-Safe Development** - Full TypeScript implementation with 0 errors
 - **Resilient Architecture** - Circuit breaker patterns and error recovery
-- **Intelligent Caching** - Request deduplication and TTL-based caching
-- **Performance Monitoring** - Built-in monitoring and analytics
+- **Netlify Blobs Caching** - Distributed caching with Netlify Blobs for serverless optimization
+- **Performance Monitoring** - Built-in Core Web Vitals tracking and regression testing
 - **Mobile-First Design** - Responsive interface with Tailwind CSS v4
+- **View Transitions** - SPA-like navigation with View Transitions API
+- **Image Optimization** - Enhanced image loading with format detection (AVIF, WebP) and placeholders
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Node.js ≥20.0.0
-- ppnpm 9.15.0 (enforced)
+- pnpm 9.15.0 (enforced)
 - Square Developer Account
 
 ### Installation
@@ -45,7 +50,7 @@ git clone https://github.com/travhall/el-camino.git
 cd el-camino
 
 # Install dependencies
-ppnpm install
+pnpm install
 
 # Configure environment
 cp .env.example .env
@@ -66,101 +71,154 @@ SQUARE_WEBHOOK_SIGNATURE_KEY=your_webhook_signature_key
 
 ```bash
 # Start development server
-ppnpm dev
+pnpm dev
 
 # Run type checking
-ppnpm check
+pnpm check
 
 # Build for production
-ppnpm build
+pnpm build
 
-# Preview production build
-ppnpm preview
+# Preview production build locally
+pnpm preview-local
+
+# Run unit tests
+pnpm test
+
+# Run E2E tests
+pnpm test:e2e
 ```
 
 ## 📁 Project Structure
 
 ```
 src/
-├── components/          # Reusable UI components
+├── components/          # Reusable UI components (36 components)
 │   ├── ProductCard.astro       # Product display cards
-│   ├── CartButton.astro        # Add to cart functionality
+│   ├── QuickView.astro         # Quick view modal
+│   ├── ProductFilters.astro    # Filtering interface
+│   ├── ProductGrid.astro       # Product grid layout
 │   ├── MiniCart.astro          # Shopping cart dropdown
-│   ├── Modal.astro             # Modal system
-│   └── Header.astro            # Site navigation
+│   ├── Nav.astro               # Main navigation
+│   ├── wordpress/              # WordPress block renderers
+│   └── admin/                  # Admin dashboard components
+│       └── performance/        # Performance monitoring UI
 ├── layouts/            # Page layouts
-│   └── Layout.astro
+│   └── Layout.astro            # Main layout with SEO, fonts, device detection
 ├── lib/               # Business logic
 │   ├── cart/          # Cart management system
-│   │   ├── index.ts           # CartManager class
+│   │   ├── index.ts           # CartManager singleton
 │   │   ├── types.ts           # Cart type definitions
 │   │   └── cartHelpers.ts     # Utility functions
-│   ├── square/        # Square API integration
+│   ├── square/        # Square API integration (23 files)
 │   │   ├── client.ts          # Square client configuration
-│   │   ├── inventory.ts       # Inventory management
-│   │   ├── types.ts           # Square type definitions
+│   │   ├── categories.ts      # Category management
+│   │   ├── variationParser.ts # Product variation parsing
+│   │   ├── batchInventory.ts  # Bulk inventory checks
+│   │   ├── inventory.ts       # Real-time stock validation
 │   │   ├── apiUtils.ts        # Circuit breaker & utilities
-│   │   ├── cacheUtils.ts      # Caching strategies
-│   │   └── errorUtils.ts      # Error handling
-│   └── wordpress/     # WordPress CMS integration
+│   │   ├── errorUtils.ts      # Error handling
+│   │   ├── imageUtils.ts      # Image URL processing
+│   │   └── types.ts           # Square type definitions
+│   ├── product/       # Product logic & PDP controller
+│   │   ├── pdpController.ts   # Product Detail Page controller
+│   │   ├── pdpEvents.ts       # Event handling
+│   │   ├── pdpUI.ts           # UI state management
+│   │   └── relatedProducts.ts # Related product logic
+│   ├── wordpress/     # WordPress CMS integration
+│   │   ├── api.ts             # WordPress REST API client
+│   │   ├── types.ts           # WordPress type definitions
+│   │   └── block-config.ts    # Block renderer configuration
+│   ├── cache/         # Netlify Blobs caching layer
+│   │   └── blobCache.ts       # Distributed cache implementation
+│   ├── performance/   # Performance monitoring
+│   │   ├── PerformanceManager.ts      # Core Web Vitals tracking
+│   │   ├── BudgetManager.ts           # Resource budget tracking
+│   │   └── ScrollPerformanceMonitor.ts # Scroll optimization
+│   └── image/         # Enhanced image optimization
 ├── pages/             # Routes and API endpoints
-│   ├── api/           # Server endpoints
-│   │   ├── create-checkout.ts # Square checkout API
-│   │   ├── cart-actions.ts    # Cart operations
-│   │   └── check-inventory.ts # Inventory validation
+│   ├── api/           # Server endpoints (16 endpoints)
+│   │   ├── list-catalog.ts         # Product catalog
+│   │   ├── create-checkout.ts      # Square checkout
+│   │   ├── cart-actions.ts         # Cart operations
+│   │   ├── cart-inventory.ts       # Bulk inventory validation
+│   │   ├── check-inventory.ts      # Single item stock check
+│   │   ├── get-categories.ts       # Category listing
+│   │   ├── load-more-products.ts   # Pagination
+│   │   ├── quick-view-product.ts   # Quick view data
+│   │   └── sale-info.ts            # Sale pricing
 │   ├── product/       # Dynamic product pages
 │   │   └── [id].astro
-│   ├── shop/          # Product catalog pages
+│   ├── category/      # Dynamic category pages
+│   │   └── [...slug].astro
+│   ├── shop/          # Shop pages
+│   ├── news/          # WordPress content pages
+│   ├── admin/         # Admin dashboards
 │   ├── cart.astro     # Shopping cart page
 │   └── order-confirmation.astro
-└── styles/            # Global styles
+├── scripts/           # Client-side scripts
+├── styles/            # Global styles
+└── utils/             # Utility functions
 ```
 
 ## 🔧 Key Integrations
 
-### Square Commerce (v43.0.1)
+### Square Commerce (v43.2.0)
 
 - **Catalog Management** - Automatic product sync with Square POS
 - **Inventory Tracking** - Real-time stock levels with bulk validation
 - **Payment Processing** - Secure checkout with Square Payment Links
 - **Order Management** - Complete order lifecycle integration
-- **Custom Attributes** - Brand and measurement unit extraction
+- **Custom Attributes** - Brand, measurement units, and sale pricing extraction
+- **Product Variations** - Advanced variation parsing with type detection
 
 ### Advanced Features
 
-- **Product Variations** - Complex SKU management with attributes
-- **Cart Persistence** - Survives page navigation and browser sessions
-- **Inventory Validation** - Prevents overselling with real-time checks
+- **Product Variations** - Complex SKU management with type detection and attributes
+- **Cart Persistence** - Survives page navigation, browser sessions, and View Transitions
+- **Inventory Validation** - Prevents overselling with real-time checks and bulk validation
 - **Error Recovery** - Graceful API failure handling with circuit breakers
 - **Request Deduplication** - Eliminates duplicate API calls
-- **Performance Caching** - Intelligent caching with TTL strategies
+- **Netlify Blobs Caching** - Distributed caching for serverless functions with smart invalidation
+- **QuickView Integration** - Instant product preview with full add-to-cart functionality
+- **Sale Pricing System** - Complete sale price support with badges and filtering
 
 ### WordPress Integration
 
-- **Content Management** - News and blog content via WordPress API
+- **Content Management** - News and blog content via WordPress REST API
+- **Block-Based Rendering** - WordPress block renderers for rich content
 - **SEO Optimization** - Structured data and meta tag management
-- **Image Processing** - Optimized image delivery and responsive handling
+- **Image Processing** - Optimized image delivery with format conversion (AVIF, WebP)
 
 ## 🛠️ API Endpoints
 
-| Endpoint               | Method | Purpose                    |
-| ---------------------- | ------ | -------------------------- |
-| `/api/list-catalog`    | GET    | Fetch product catalog      |
-| `/api/create-checkout` | POST   | Initialize Square checkout |
-| `/api/cart-actions`    | POST   | Cart operations            |
-| `/api/cart-inventory`  | POST   | Bulk inventory validation  |
-| `/api/check-inventory` | GET    | Single item stock check    |
-| `/api/get-categories`  | GET    | Product categories         |
-| `/api/load-more-products` | GET | Paginated product loading  |
+| Endpoint                  | Method | Purpose                        |
+| ------------------------- | ------ | ------------------------------ |
+| `/api/list-catalog`       | GET    | Fetch product catalog          |
+| `/api/create-checkout`    | POST   | Initialize Square checkout     |
+| `/api/cart-actions`       | POST   | Cart operations                |
+| `/api/cart-inventory`     | POST   | Bulk inventory validation      |
+| `/api/check-inventory`    | GET    | Single item stock check        |
+| `/api/get-categories`     | GET    | Product categories             |
+| `/api/load-more-products` | GET    | Paginated product loading      |
+| `/api/quick-view-product` | GET    | Quick view product data        |
+| `/api/calculate-cart`     | POST   | Calculate cart totals          |
+| `/api/sale-info`          | GET    | Sale pricing information       |
+| `/api/related-products`   | GET    | Related products               |
+| `/api/resolve-product`    | GET    | Product resolution             |
+| `/api/warmup`             | GET    | Cache warming endpoint         |
 
 ## 📱 Pages
 
-- **`/`** - Product catalog homepage with filtering
-- **`/product/[id]`** - Dynamic product detail pages with variations
+- **`/`** - Product catalog homepage with filtering and QuickView
+- **`/product/[id]`** - Dynamic product detail pages with variations and related products
+- **`/category/[...slug]`** - Dynamic category pages with breadcrumbs
 - **`/shop/all`** - Complete product catalog with advanced filtering
-- **`/cart`** - Shopping cart management with quantity controls
+- **`/shop/sale`** - Sale items with discount badges
+- **`/cart`** - Shopping cart management with quantity controls and fulfillment options
 - **`/order-confirmation`** - Post-purchase confirmation with order details
 - **`/news`** - WordPress-powered blog and news section
+- **`/admin/performance`** - Performance monitoring dashboard (admin only)
 
 ## 🎨 Styling
 
@@ -175,14 +233,20 @@ Built with Tailwind CSS v4 featuring:
 ## 🧪 Testing
 
 ```bash
-# Run Square integration tests
-ppnpm test
+# Run unit tests with Vitest
+pnpm test
+
+# Run E2E tests with Playwright
+pnpm test:e2e
+
+# Run E2E tests with UI
+pnpm test:e2e:ui
 
 # Type checking (0 errors across 83 files)
-ppnpm check
+pnpm check
 
 # Build verification
-ppnpm build
+pnpm build
 ```
 
 ## 🚀 Deployment
@@ -191,19 +255,21 @@ Optimized for Netlify with automatic builds:
 
 ```bash
 # Production build
-ppnpm build
+pnpm build
 
 # Preview locally
-ppnpm preview-local
+pnpm preview-local
 ```
 
 ### Netlify Configuration
 
-- **Build Command**: `ppnpm build`
+- **Build Command**: `pnpm build`
 - **Publish Directory**: `dist`
 - **Node Version**: 20.x
-- **Package Manager**: pnpm
-- **Function Per Route**: Enabled for optimal performance
+- **Package Manager**: pnpm 9.15.0
+- **Adapter**: @astrojs/netlify with SSR
+- **Image CDN**: Enabled with AVIF/WebP conversion
+- **Caching**: Netlify Blobs for distributed state management
 
 ## 🔒 Security
 
@@ -217,51 +283,60 @@ ppnpm preview-local
 ## 📊 Performance
 
 - **SSR Optimization** - Server-side rendering for dynamic content
-- **Asset Optimization** - Automatic image and code optimization
-- **Intelligent Caching** - Multi-layer caching for API responses with smart invalidation
-- **Bundle Splitting** - Optimal JavaScript delivery
+- **Asset Optimization** - Automatic image and code optimization with Sharp
+- **Netlify Blobs Caching** - Distributed caching for serverless functions with smart invalidation
+- **Bundle Splitting** - Optimal JavaScript delivery with code splitting
 - **Circuit Breakers** - API resilience and failure recovery
 - **Request Deduplication** - Eliminates redundant API calls
-- **Real-time Monitoring** - Performance tracking and automated alerts
+- **Core Web Vitals Monitoring** - Real-time performance tracking with automated alerts
+- **Prefetching** - Viewport-based prefetching with Speculation Rules API
+- **View Transitions** - SPA-like navigation for improved perceived performance
+- **Lazy Loading** - Deferred Square script loading and conditional component loading
+- **Image Optimization** - Format detection, responsive images, and loading placeholders
 
 ### Performance Optimizations ⚡
 Recent comprehensive performance optimization strategy implementation:
-- **30-50% faster API responses** through intelligent caching
-- **Real-time cache monitoring** with automated health detection
-- **Smart cache invalidation** preventing stale data issues
-- **9 console debugging commands** for ongoing optimization
-- **Automated performance alerts** for proactive issue detection
-
-For detailed performance documentation, see [`docs/performance/`](docs/performance/).
+- **Netlify Blobs Migration** - Solved serverless function memory isolation with distributed caching
+- **Enhanced Image Loading** - Format detection (AVIF, WebP), shimmer placeholders, and responsive images
+- **Core Web Vitals Tracking** - Built-in performance monitoring with regression testing
+- **Mobile Optimizations** - Device-specific component loading and mobile-first design
+- **Cache Warming** - Automated cache warming via GitHub Actions
+- **Performance Budgets** - Resource budget tracking and alerts
 
 ### Performance Metrics
 - **Build Time**: ~3 seconds
 - **TypeScript Compilation**: 0 errors across 83 files
-- **API Response Times**: <500ms average
-- **Bundle Size**: Optimized with proper chunking
+- **Codebase Size**: ~48,894 lines of code across 169 files
+- **Test Coverage**: 80% threshold with Vitest
+- **API Response Times**: Optimized with Netlify Blobs caching
+- **Bundle Size**: Optimized with code splitting and lazy loading
 - **Lighthouse Scores**: Optimized for Core Web Vitals
 
 ## 🏗️ Architecture Highlights
 
 ### Enterprise Patterns
+- **Singleton Pattern** - CartManager and PerformanceManager for centralized state
 - **Circuit Breaker Pattern** - API resilience and failure recovery
 - **Request Deduplication** - Prevents duplicate API calls
-- **Intelligent Caching** - TTL-based caching with invalidation
+- **Observer Pattern** - Event-driven cart and performance monitoring
+- **Netlify Blobs Caching** - Distributed caching strategy for serverless functions
 - **Error Recovery** - Graceful degradation and user feedback
-- **Type Safety** - End-to-end TypeScript implementation
+- **Type Safety** - End-to-end TypeScript implementation with strict mode
 
 ### Square SDK Integration
 - **Migration Strategy**: Using `square/legacy` for ES module compatibility
 - **Separation of Concerns**: Backend API calls, frontend state management
 - **Error Handling**: Comprehensive Square API error processing
 - **Performance**: Batch operations for inventory and images
+- **Custom Attributes**: Brand, measurement units, and sale pricing extraction
+- **Variation Parsing**: Advanced type detection for product variations
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
 3. Follow TypeScript strict mode
-4. Ensure all tests pass (`ppnpm check`)
+4. Ensure all tests pass (`pnpm check && pnpm test`)
 5. Submit pull request
 
 ### Development Guidelines
@@ -285,46 +360,54 @@ Additional documentation available:
 ## 🔧 Dependencies
 
 ### Core Framework
-- **Astro 5.12.2** - Modern web framework with SSR
-- **TypeScript 5.8.3** - Type safety and developer experience
-- **Tailwind CSS 4.1.11** - Utility-first CSS framework
+- **Astro 5.16.0** - Modern web framework with SSR
+- **TypeScript 5.9.3** - Type safety and developer experience
+- **Tailwind CSS 4.1.17** - Utility-first CSS framework v4
 
 ### E-commerce Integration
-- **Square SDK 43.0.1** - Payment processing and inventory
+- **Square SDK 43.2.0** - Payment processing and inventory
 - **Square Legacy Support** - ES module compatibility
+- **@netlify/blobs 10.3.3** - Distributed caching layer
 
 ### Performance & Optimization
-- **@astrojs/netlify** - Deployment adapter with function-per-route
-- **astro-icon** - Optimized icon system
-- **astro-seo-metadata** - SEO optimization
-- **sharp** - Image processing and optimization
+- **@astrojs/netlify 6.6.2** - Deployment adapter with SSR
+- **astro-icon 1.1.5** - Optimized icon system
+- **astro-seo-metadata 0.6.0** - SEO optimization
+- **sharp 0.34.5** - Image processing and optimization
+- **web-vitals 5.1.0** - Core Web Vitals monitoring
 
 ### Development Tools
-- **@astrojs/node** - Local development adapter
-- **Vitest** - Testing framework for Square integrations
-- **pnpm** - Fast, disk space efficient package manager
+- **@astrojs/node 9.5.1** - Local development adapter
+- **Vitest 4.0.8** - Unit testing framework with 80% coverage
+- **Playwright 1.56.1** - E2E testing across browsers
+- **pnpm 9.15.0** - Fast, disk space efficient package manager
 
 ## 📈 Roadmap
 
-### Immediate (Next Quarter)
+### Completed ✅
 - [x] Core e-commerce functionality
 - [x] Square API integration
 - [x] Cart and checkout system
-- [ ] Sale badge implementation
-- [ ] Customer account system
+- [x] Sale pricing and badges
+- [x] QuickView modal
+- [x] Product variations with type detection
+- [x] Netlify Blobs caching
+- [x] Performance monitoring dashboard
+- [x] WordPress content integration
+- [x] E2E test suite with Playwright
 
-### Medium Term (6 months)
-- [ ] Advanced search and filtering
+### In Progress 🚧
+- [ ] Enhanced search functionality
+- [ ] Customer account system
 - [ ] Order history and tracking
+
+### Future Enhancements 🔮
 - [ ] Inventory management dashboard
 - [ ] Customer analytics and insights
-
-### Long Term (12+ months)
 - [ ] Multi-currency support
 - [ ] International shipping
 - [ ] B2B wholesale features
-- [ ] Mobile app development
-- [ ] Advanced personalization
+- [ ] Advanced personalization engine
 
 ## 🆘 Support
 
@@ -346,12 +429,16 @@ For issues and questions:
 - **Performance**: Optimized for production
 
 ### Recent Achievements
-- ✅ Successful Square SDK v43 migration using legacy approach
-- ✅ Complete cart system implementation with persistence
-- ✅ Real-time inventory validation and stock management
-- ✅ Product variations with attribute parsing
-- ✅ WordPress content integration
-- ✅ Performance optimization with caching and circuit breakers
+- ✅ Successful Square SDK v43.2.0 migration using legacy approach
+- ✅ Complete cart system implementation with View Transitions persistence
+- ✅ Real-time inventory validation and stock management with bulk validation
+- ✅ Product variations with advanced type detection and attribute parsing
+- ✅ WordPress content integration with block-based rendering
+- ✅ Netlify Blobs caching migration for distributed state
+- ✅ QuickView modal with full add-to-cart functionality
+- ✅ Sale pricing system with discount badges and filtering
+- ✅ Core Web Vitals monitoring and performance regression testing
+- ✅ Enhanced image optimization with format detection (AVIF, WebP)
 
 ---
 
@@ -363,4 +450,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 Built with ❤️ using Astro, TypeScript, and Square Commerce APIs
 
-*Last updated: July 2025*
+*Last updated: November 2025*
