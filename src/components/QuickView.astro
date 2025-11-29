@@ -492,14 +492,12 @@ import {
       attributeType: string,
       value: string
     ): void {
-      // EXACTLY mirror PDP attribute selection
       this.selectedAttributes[attributeType] = value;
       this.updateCurrentVariation();
       this.updateAttributeButtonStates();
     }
 
     private updateCurrentVariation(): void {
-      // EXACTLY mirror PDP variation update logic
       try {
         const matchingVariation = findVariationByAttributes(
           this.productData.variations,
@@ -510,6 +508,16 @@ import {
           this.currentVariation = matchingVariation;
           this.updateProductUI();
         } else {
+          // No exact match - find closest variation matching selected color for image
+          const selectedColor = this.selectedAttributes.color;
+          const colorMatchVariation = selectedColor 
+            ? this.productData.variations.find((v: any) => v.attributes?.color === selectedColor)
+            : null;
+          
+          if (colorMatchVariation?.image) {
+            this.uiManager.updateProductImage(colorMatchVariation.image);
+          }
+          
           this.showOutOfStockState();
         }
       } catch (error) {
@@ -521,7 +529,7 @@ import {
     private showOutOfStockState(): void {
       if (!this.currentVariation) return;
 
-      // Use centralized UI manager for price display
+      // Update price
       this.uiManager.updatePriceDisplay(
         this.currentVariation.price,
         {
@@ -529,6 +537,11 @@ import {
           unit: this.currentVariation.unit || this.currentProduct?.unit
         }
       );
+
+      // Update image if variation has one
+      if (this.currentVariation.image) {
+        this.uiManager.updateProductImage(this.currentVariation.image);
+      }
 
       // Get out of stock availability info
       const outOfStockInfo = cart.getProductAvailability(
@@ -539,7 +552,10 @@ import {
       this.uiManager.updateQuantityControls(outOfStockInfo);
       this.uiManager.updateAddToCartButton(outOfStockInfo);
       this.uiManager.updateImageOverlay(outOfStockInfo);
-      this.uiManager.updateInventoryDisplay(outOfStockInfo); // Add this to update "X available"
+      this.uiManager.updateInventoryDisplay(outOfStockInfo);
+
+      // Update button product data
+      this.uiManager.updateButtonProductData(this.buildProductData(this.currentVariation));
     }
 
     private updateProductUI(): void {
