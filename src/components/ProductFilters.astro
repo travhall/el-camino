@@ -542,6 +542,10 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       // UNIFIED: Server-side filtering with View Transitions for ALL devices
       // Device-appropriate UX: Mobile = drawer workflow, Desktop = immediate filtering
 
+      // Debounce timer for rapid filter changes
+      let debounceTimer: number | null = null;
+      const DEBOUNCE_DELAY = 300; // 300ms debounce
+
       checkboxes.forEach((checkbox) => {
         // Remove all existing event listeners by cloning the element
         const newCheckbox = checkbox.cloneNode(true) as HTMLInputElement;
@@ -572,51 +576,58 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             event.stopPropagation();
             event.stopImmediatePropagation();
 
-            // ANTI-FLICKER: Add class to prevent disabled opacity during filtering
-            document.body.classList.add("filtering-in-progress");
-
-            // STEP 1: Start exit animation (identical to current system)
-            const grid = document.getElementById("filterable-product-grid");
-            if (grid) {
-              const allCards = Array.from(
-                grid.querySelectorAll(".product-card-wrapper")
-              );
-
-              // Exit animation (matching current desktop behavior)
-              allCards.forEach((card) => {
-                card.classList.remove("opacity-100");
-                card.classList.add("opacity-0");
-              });
-
-              // STEP 2: Trigger View Transitions navigation at optimal timing
-              // Wait for exit animation to be mostly complete (250ms of 300ms)
-              setTimeout(() => {
-                // Save state and trigger form submission
-                sessionStorage.setItem(
-                  "filter-menu-expanded",
-                  this.isExpanded.toString()
-                );
-                sessionStorage.setItem("filtering-in-progress", "true");
-
-                // Create and submit form programmatically for View Transitions
-                const formData = new FormData(this.form!);
-                const params = new URLSearchParams();
-
-                // Build URL with current filter state
-                const brands = formData.getAll("brands") as string[];
-                const availability = formData.get("availability") === "true";
-
-                brands.forEach((brand) => params.append("brands", brand));
-                if (availability) params.set("availability", "true");
-
-                const queryString = params.toString();
-                const basePath = window.location.pathname;
-                const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
-
-                // Navigate with View Transitions (Astro handles this automatically)
-                window.location.href = newUrl;
-              }, 250); // Wait until exit is nearly complete to minimize gap
+            // DEBOUNCE: Clear existing timer and set new one
+            if (debounceTimer) {
+              clearTimeout(debounceTimer);
             }
+
+            debounceTimer = window.setTimeout(() => {
+              // ANTI-FLICKER: Add class to prevent disabled opacity during filtering
+              document.body.classList.add("filtering-in-progress");
+
+              // STEP 1: Start exit animation (identical to current system)
+              const grid = document.getElementById("filterable-product-grid");
+              if (grid) {
+                const allCards = Array.from(
+                  grid.querySelectorAll(".product-card-wrapper")
+                );
+
+                // Exit animation (matching current desktop behavior)
+                allCards.forEach((card) => {
+                  card.classList.remove("opacity-100");
+                  card.classList.add("opacity-0");
+                });
+
+                // STEP 2: Trigger View Transitions navigation at optimal timing
+                // Wait for exit animation to be mostly complete (250ms of 300ms)
+                setTimeout(() => {
+                  // Save state and trigger form submission
+                  sessionStorage.setItem(
+                    "filter-menu-expanded",
+                    this.isExpanded.toString()
+                  );
+                  sessionStorage.setItem("filtering-in-progress", "true");
+
+                  // Create and submit form programmatically for View Transitions
+                  const formData = new FormData(this.form!);
+                  const params = new URLSearchParams();
+
+                  // Build URL with current filter state
+                  const brands = formData.getAll("brands") as string[];
+                  const availability = formData.get("availability") === "true";
+
+                  brands.forEach((brand) => params.append("brands", brand));
+                  if (availability) params.set("availability", "true");
+
+                  const queryString = params.toString();
+                  const basePath = window.location.pathname;
+                  const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
+
+                  // Navigate with View Transitions (Astro handles this automatically)
+                  window.location.href = newUrl;
+                }, 250); // Wait until exit is nearly complete to minimize gap
+              }
+            }, DEBOUNCE_DELAY);
 
             return false;
           }

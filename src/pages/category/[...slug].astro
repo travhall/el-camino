@@ -51,8 +51,14 @@ const hasFilters = Object.values(filters).some((f) =>
 // Subsequent requests: ~50-100ms (edge cache hit)
 // After 5 min: ~50-100ms (serves stale, revalidates in background)
 // Aggressive caching for category pages (5min server, 30min stale)
-Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
-Astro.response.headers.set('Netlify-CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
+Astro.response.headers.set(
+  "Cache-Control",
+  "public, s-maxage=300, stale-while-revalidate=1800"
+);
+Astro.response.headers.set(
+  "Netlify-CDN-Cache-Control",
+  "public, s-maxage=300, stale-while-revalidate=1800"
+);
 
 import type { Product } from "@/lib/square/types";
 
@@ -83,24 +89,8 @@ try {
   // console.log(`[Category] Loaded ${allProducts.length} products for filtering`);
 
   if (hasFilters) {
-    // console.log(`[Category] 🔄 Applying server-side filtering...`);
-    // console.log(
-    //   `[Category] 📋 Before filtering: ${allProducts.length} products`
-    // );
-    // console.log(`[Category] 🎯 Filter criteria:`, filters);
-
     // Apply server-side filtering using the same logic as shop/all
     filteredProducts = await filterProductsWithCache(allProducts, filters);
-
-    // console.log(
-    //   `[Category] ✅ After filtering: ${filteredProducts.length} products`
-    // );
-    // console.log(
-    //   `[Category] 📋 Sample filtered products:`,
-    //   filteredProducts
-    //     .slice(0, 3)
-    //     .map((p) => ({ id: p.id, brand: p.brand, title: p.title }))
-    // );
   } else {
     // console.log(
     //   `[Category] ⚪ No filters applied - showing all ${allProducts.length} products`
@@ -127,14 +117,15 @@ const fullPageTitle = `Shop ${pageTitle} | El Camino`;
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 
 const firstProduct = allProducts[0];
-const lcpImage = firstProduct?.image && !firstProduct.image.includes("placeholder")
-  ? EnhancedImageOptimizer.generateOptimizedSources(firstProduct.image, {
-      width: 600,
-      height: 400,
-      quality: 85,
-      priority: true,
-    })
-  : null;
+const lcpImage =
+  firstProduct?.image && !firstProduct.image.includes("placeholder")
+    ? EnhancedImageOptimizer.generateOptimizedSources(firstProduct.image, {
+        width: 600,
+        height: 400,
+        quality: 85,
+        priority: true,
+      })
+    : null;
 
 // Current category path for filter URLs
 const categoryPath = parentCategory
@@ -156,40 +147,42 @@ const hasActiveFilters =
 
 <Layout title={fullPageTitle}>
   {/* CRITICAL LCP PRELOAD: Load first product image with format negotiation */}
-  {lcpImage && (
-    <>
-      {/* Preload AVIF (best compression) if available */}
-      {lcpImage.avif && (
-        <link
-          rel="preload"
-          href={lcpImage.avif}
-          as="image"
-          type="image/avif"
-          fetchpriority="high"
-        />
-      )}
-      {/* Fallback to WebP if AVIF not available */}
-      {!lcpImage.avif && lcpImage.webp && (
-        <link
-          rel="preload"
-          href={lcpImage.webp}
-          as="image"
-          type="image/webp"
-          fetchpriority="high"
-        />
-      )}
-      {/* JPEG fallback */}
-      {!lcpImage.avif && !lcpImage.webp && lcpImage.jpeg && (
-        <link
-          rel="preload"
-          href={lcpImage.jpeg}
-          as="image"
-          type="image/jpeg"
-          fetchpriority="high"
-        />
-      )}
-    </>
-  )}
+  {
+    lcpImage && (
+      <>
+        {/* Preload AVIF (best compression) if available */}
+        {lcpImage.avif && (
+          <link
+            rel="preload"
+            href={lcpImage.avif}
+            as="image"
+            type="image/avif"
+            fetchpriority="high"
+          />
+        )}
+        {/* Fallback to WebP if AVIF not available */}
+        {!lcpImage.avif && lcpImage.webp && (
+          <link
+            rel="preload"
+            href={lcpImage.webp}
+            as="image"
+            type="image/webp"
+            fetchpriority="high"
+          />
+        )}
+        {/* JPEG fallback */}
+        {!lcpImage.avif && !lcpImage.webp && lcpImage.jpeg && (
+          <link
+            rel="preload"
+            href={lcpImage.jpeg}
+            as="image"
+            type="image/jpeg"
+            fetchpriority="high"
+          />
+        )}
+      </>
+    )
+  }
 
   <!-- Responsive Grid Layout -->
   <div class="min-h-screen bg-(--surface-primary)">

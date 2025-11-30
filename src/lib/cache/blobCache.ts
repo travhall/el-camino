@@ -18,6 +18,17 @@ export class BlobCache<T> {
   private storeName: string;
   private ttl: number;
   private name: string;
+  private isDevelopment: boolean;
+
+  // Fallback in-memory cache for when Netlify Blobs fails
+  private fallbackCache = new Map<string, CacheEntry<T>>();
+
+  // Circuit breaker state
+  private failureCount = 0;
+  private lastFailureTime = 0;
+  private circuitBreakerThreshold = 5; // Disable after 5 consecutive failures
+  private circuitBreakerTimeout = 60000; // 1 minute timeout
+  private blobOperationsDisabled = false;
 
   /**
    * Create a new blob-backed cache
@@ -31,12 +42,35 @@ export class BlobCache<T> {
     this.name = `${CACHE_VERSION}:${name}`;
     this.ttl = ttlSeconds * 1000; // Convert to ms
     this.storeName = storeName;
+
+    // Simple development detection - disable blobs in development
+    this.isDevelopment =
+      process.env.NODE_ENV === "development" ||
+      process.env.ASTRO_NODE_ENV === "development" ||
+      !process.env.NETLIFY_BLOBS_STORE_ID;
+
+    if (this.isDevelopment) {
+      this.blobOperationsDisabled = true;
+      console.info(
+        `[BlobCache:${this.name}] Development mode - using fallback cache only`
+      );
+    }
+
+    // Set up periodic cleanup of fallback cache (every 5 minutes)
+    setInterval(() => {
+      this.cleanupFallbackCache();
+    }, 300000);
   }
 
   /**
    * Get store instance (lazy initialization)
    */
   private getStore() {
+    // Always return null in development - Netlify Blobs doesn't work locally
+    if (this.isDevelopment) {
+      return null;
+    }
+
     try {
       return getStore(this.storeName);
     } catch (error) {
@@ -45,6 +79,45 @@ export class BlobCache<T> {
         error
       );
       return null;
+    }
+  }
+
+  /**
+   * Handle failures and implement circuit breaker logic
+   */
+  private handleFailure(operation: string, error: any) {
+    this.failureCount++;
+    this.lastFailureTime = Date.now();
+
+    console.warn(
+      `[BlobCache:${this.name}] ${operation} failed (${this.failureCount}/${this.circuitBreakerThreshold}):`,
+      error
+    );
+
+    // Disable blob operations after threshold reached
+    if (this.failureCount >= this.circuitBreakerThreshold) {
+      this.blobOperationsDisabled = true;
+      console.warn(
+        `[BlobCache:${this.name}] Circuit breaker activated - disabling blob operations for ${this.circuitBreakerTimeout / 1000}s`
+      );
+
+      // Re-enable after timeout
+      setTimeout(() => {
+        this.blobOperationsDisabled = false;
+        this.failureCount = 0;
+        console.info(
+          `[BlobCache:${this.name}] Circuit breaker reset - re-enabling blob operations`
+        );
+      }, this.circuitBreakerTimeout);
+    }
+  }
+
+  /**
+   * Reset failure count on successful operation
+   */
+  private handleSuccess() {
+    if (this.failureCount > 0) {
+      this.failureCount = Math.max(0, this.failureCount - 1);
     }
   }
 
@@ -164,6 +237,30 @@ export class BlobCache<T> {
   }
 
   /**
+   * Clean up expired entries from fallback cache
+   * Call this periodically to prevent memory leaks
+   */
+  cleanupFallbackCache(): number {
+    const now = Date.now();
+    let cleanedCount = 0;
+
+    for (const [key, entry] of this.fallbackCache.entries()) {
+      if (now - entry.timestamp > entry.ttl) {
+        this.fallbackCache.delete(key);
+        cleanedCount++;
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(
+        `[BlobCache:${this.name}] Cleaned ${cleanedCount} expired entries from fallback cache`
+      );
+    }
+
+    return cleanedCount;
+  }
+
+  /**
    * Remove expired entries (not needed for Blobs - auto-expires)
    * Kept for API compatibility with old Cache class
    * Returns 0 immediately (sync) since Blobs handles expiration automatically
@@ -195,14 +292,53 @@ export class BlobCache<T> {
    * @returns The cached or computed value
    */
   async getOrCompute(key: string, compute: () => Promise<T>): Promise<T> {
-    const cached = await this.get(key);
-    if (cached !== undefined) {
-      return cached;
+    const cacheKey = this.getCacheKey(key);
+
+    // Try fallback cache first (fastest)
+    const fallbackEntry = this.fallbackCache.get(cacheKey);
+    if (fallbackEntry) {
+      const now = Date.now();
+      if (now - fallbackEntry.timestamp <= fallbackEntry.ttl) {
+        return fallbackEntry.value;
+      } else {
+        // Remove expired fallback entry
+        this.fallbackCache.delete(cacheKey);
+      }
     }
 
+    // Try blob cache
+    const store = this.getStore();
+    let cachedValue: T | undefined = undefined;
+
+    if (store) {
+      try {
+        const cached = await store.get(cacheKey, {
+          consistency: "strong",
+          type: "text",
+        });
+
+        if (cached) {
+          const entry: CacheEntry<T> = JSON.parse(cached as string);
+          const now = Date.now();
+
+          // Check if expired
+          if (now - entry.timestamp <= entry.ttl) {
+            // Update fallback cache with fresh data
+            this.fallbackCache.set(cacheKey, entry);
+            this.handleSuccess();
+            return entry.value;
+          }
+        }
+      } catch (error) {
+        this.handleFailure("get", error);
+        // Continue to compute function
+      }
+    }
+
+    // Cache miss or expired - compute new value
     try {
       const value = await compute();
-      
+
       // DEFENSE: Prevent caching empty arrays that might indicate API failures
       // Legitimate empty results should be handled explicitly in calling code
       if (Array.isArray(value) && value.length === 0) {
@@ -211,8 +347,32 @@ export class BlobCache<T> {
         );
         return value; // Return the empty array but don't cache it
       }
-      
-      await this.set(key, value);
+
+      // ALWAYS store in fallback cache first
+      const entry: CacheEntry<T> = {
+        value,
+        timestamp: Date.now(),
+        ttl: this.ttl,
+      };
+      this.fallbackCache.set(cacheKey, entry);
+
+      // Try to store in blob cache (don't wait for it)
+      if (store) {
+        store
+          .set(cacheKey, JSON.stringify(entry), {
+            metadata: {
+              cacheName: this.name,
+              expires: Date.now() + this.ttl,
+            },
+          })
+          .then(() => {
+            this.handleSuccess();
+          })
+          .catch((error) => {
+            this.handleFailure("set", error);
+          });
+      }
+
       return value;
     } catch (error) {
       console.error(
@@ -236,4 +396,7 @@ export const imageCache = new BlobCache<string>("image", 3600); // 1 hour
 export const wordpressCache = new BlobCache<any>("wordpress", 300); // 5 minutes
 export const filterCache = new BlobCache<any>("filter", 900); // 15 minutes
 export const navigationCache = new BlobCache<any>("navigation", 3600); // 1 hour
-export const slugCache = new BlobCache<Record<string, string>>("slug-map", 3600); // 1 hour
+export const slugCache = new BlobCache<Record<string, string>>(
+  "slug-map",
+  3600
+); // 1 hour

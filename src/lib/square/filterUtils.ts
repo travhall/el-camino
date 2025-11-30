@@ -70,9 +70,8 @@ export async function filterProducts(
       }
 
       // Single batch API call instead of individual calls
-      const inventoryMap = await batchInventoryService.getBatchInventoryStatus(
-        variationIds
-      );
+      const inventoryMap =
+        await batchInventoryService.getBatchInventoryStatus(variationIds);
 
       // Filter products based on batch results
       filteredProducts = filteredProducts.filter((product) => {
