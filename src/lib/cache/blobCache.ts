@@ -18,7 +18,7 @@ export class BlobCache<T> {
   private storeName: string;
   private ttl: number;
   private name: string;
-  private isDevelopment: boolean;
+  private isDevelopment: boolean = false;
 
   // Fallback in-memory cache for when Netlify Blobs fails
   private fallbackCache = new Map<string, CacheEntry<T>>();
@@ -43,7 +43,19 @@ export class BlobCache<T> {
     this.ttl = ttlSeconds * 1000; // Convert to ms
     this.storeName = storeName;
 
-    // Debug: Log environment variables for troubleshooting
+    // Check if we're in a browser environment (client-side)
+    const isBrowser = typeof window !== "undefined";
+
+    if (isBrowser) {
+      // Always disable in browser - environment variables not available client-side
+      this.blobOperationsDisabled = true;
+      console.info(
+        `[BlobCache:${this.name}] Browser environment - using fallback cache only`
+      );
+      return;
+    }
+
+    // Debug: Log environment variables for troubleshooting (server-side only)
     console.log(`[BlobCache:${this.name}] Environment debug:`);
     console.log(`  NODE_ENV: ${process.env.NODE_ENV}`);
     console.log(`  ASTRO_NODE_ENV: ${process.env.ASTRO_NODE_ENV}`);
@@ -54,13 +66,15 @@ export class BlobCache<T> {
     // Simple development detection - disable blobs in development
     const nodeEnvDev = process.env.NODE_ENV === "development";
     const astroEnvDev = process.env.ASTRO_NODE_ENV === "development";
-    const noStoreId = !process.env.NETLIFY_BLOBS_STORE_ID;
+
+    // Only treat as development if explicitly in dev environment
+    this.isDevelopment = nodeEnvDev || astroEnvDev;
 
     console.log(`  nodeEnvDev: ${nodeEnvDev}`);
     console.log(`  astroEnvDev: ${astroEnvDev}`);
-    console.log(`  noStoreId: ${noStoreId}`);
-
-    this.isDevelopment = nodeEnvDev || astroEnvDev || noStoreId;
+    console.log(
+      `  NETLIFY_BLOBS_STORE_ID configured: ${!!process.env.NETLIFY_BLOBS_STORE_ID}`
+    );
 
     if (this.isDevelopment) {
       this.blobOperationsDisabled = true;
