@@ -55,35 +55,15 @@ export class BlobCache<T> {
       return;
     }
 
-    // Debug: Log environment variables for troubleshooting (server-side only)
-    console.log(`[BlobCache:${this.name}] Environment debug:`);
-    console.log(`  NODE_ENV: ${process.env.NODE_ENV}`);
-    console.log(`  ASTRO_NODE_ENV: ${process.env.ASTRO_NODE_ENV}`);
-    console.log(
-      `  NETLIFY_BLOBS_STORE_ID: ${process.env.NETLIFY_BLOBS_STORE_ID}`
-    );
-
     // Simple development detection - disable blobs in development
-    const nodeEnvDev = process.env.NODE_ENV === "development";
-    const astroEnvDev = process.env.ASTRO_NODE_ENV === "development";
-
-    // Only treat as development if explicitly in dev environment
-    this.isDevelopment = nodeEnvDev || astroEnvDev;
-
-    console.log(`  nodeEnvDev: ${nodeEnvDev}`);
-    console.log(`  astroEnvDev: ${astroEnvDev}`);
-    console.log(
-      `  NETLIFY_BLOBS_STORE_ID configured: ${!!process.env.NETLIFY_BLOBS_STORE_ID}`
-    );
+    this.isDevelopment =
+      process.env.NODE_ENV === "development" ||
+      process.env.ASTRO_NODE_ENV === "development";
 
     if (this.isDevelopment) {
       this.blobOperationsDisabled = true;
-      console.warn(
-        `[BlobCache:${this.name}] DEVELOPMENT MODE DETECTED - using fallback cache only`
-      );
-    } else {
       console.info(
-        `[BlobCache:${this.name}] PRODUCTION MODE - Netlify Blobs enabled`
+        `[BlobCache:${this.name}] Development mode - using fallback cache only`
       );
     }
 
