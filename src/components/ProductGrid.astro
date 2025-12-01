@@ -4,6 +4,7 @@ import ProductCard from "./ProductCard.astro";
 import ProductCardSkeleton from "./ProductCardSkeleton.astro";
 import type { Product, ProductWithInventory } from "@/lib/square/types";
 import { batchInventoryService } from "@/lib/square/batchInventory";
+import { FilterCoordinator } from "@/lib/filterCoordinator";
 // import { logger } from "@/lib/utils/logger";
 
 interface Props {
@@ -20,14 +21,6 @@ const {
   skipInventoryCheck = false,
 } = Astro.props;
 
-// logger.log("[ProductGrid] 📊 Props analysis:", {
-//   productsCount: products?.length || 0,
-//   allProductsCount: allProducts?.length || 0,
-//   categoryPath,
-//   sampleProducts:
-//     products?.slice(0, 3).map((p) => ({ id: p.id, brand: p.brand })) || [],
-// });
-
 // FIXED: Separate rendering products from inventory checking products
 // - products: What to render (server-filtered for mobile, all for desktop)
 // - allProducts: What to use for client-side filtering data
@@ -38,12 +31,6 @@ const initialProducts = products; // Products to show immediately
 // For inventory checking: check inventory for all products that might be needed
 const inventoryCheckProducts =
   allProducts && allProducts.length > 0 ? allProducts : products; // Products for inventory batch check
-
-// console.log("[ProductGrid] 🎯 FIXED: Rendering vs Inventory logic:", {
-//   initialProducts: initialProducts?.length || 0,
-//   inventoryCheckProducts: inventoryCheckProducts?.length || 0,
-//   renderingFiltered: initialProducts !== inventoryCheckProducts,
-// });
 
 // Batch inventory check for all products that will be displayed
 let productsWithInventory: ProductWithInventory[] = initialProducts;
@@ -85,17 +72,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
         inventoryStatus,
       };
     });
-
-    // console.log("[ProductGrid] ✅ Inventory applied to both sets:", {
-    //   checkedInventoryFor: inventoryCheckProducts.length,
-    //   appliedToRendered: productsWithInventory.length,
-    //   appliedToAll: allProductsWithInventory.length,
-    //   sampleWithInventory: productsWithInventory.slice(0, 2).map((p) => ({
-    //     id: p.id,
-    //     brand: p.brand,
-    //     isOutOfStock: p.inventoryStatus?.isOutOfStock,
-    //   })),
-    // });
   } catch (error) {
     console.error("Batch inventory check failed:", error);
     // Fallback: all products assumed in stock
@@ -118,9 +94,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     }));
   }
 } else {
-  // console.log(
-  //   "[ProductGrid] ⚪ Skipping inventory check or no products to check"
-  // );
 }
 ---
 
@@ -469,7 +442,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     visibleCards.forEach((card) => observer.observe(card));
   }
 
-  // SIMPLE: Initialize on page load (prevent dual initialization)
+  // SIMPLE: Initialize on page load using unified coordinator
   document.addEventListener("astro:page-load", () => {
     if (isInitialized) return;
     isInitialized = true;
@@ -479,26 +452,23 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       grid.style.opacity = "1";
     }
 
-    // Initialize animations FIRST, then infinite scroll
-    // This creates the pageLoadObserver that infinite scroll will use
+    // Initialize animations and infinite scroll
     initializePageLoadAnimations();
-    initializeInfiniteScroll(); // Will add newly revealed cards to observer
-
-    // console.log("[ProductGrid] 📡 Simple initialization complete");
-    document.dispatchEvent(new CustomEvent("productGridReady"));
+    initializeInfiniteScroll();
   });
 
-  // Initialize on DOMContentLoaded as fallback
+  // Fallback for non-Astro navigation
   document.addEventListener("DOMContentLoaded", () => {
     if (isInitialized) return;
     isInitialized = true;
 
-    // Initialize animations FIRST, then infinite scroll
-    initializePageLoadAnimations();
-    initializeInfiniteScroll(); // Will add newly revealed cards to observer
+    const grid = document.getElementById("filterable-product-grid");
+    if (grid) {
+      grid.style.opacity = "1";
+    }
 
-    // console.log("[ProductGrid] 📡 DOMContentLoaded initialization complete");
-    document.dispatchEvent(new CustomEvent("productGridReady"));
+    initializePageLoadAnimations();
+    initializeInfiniteScroll();
   });
 
   // BACK TO BASICS: Simple infinite scroll without complex logic
@@ -507,7 +477,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     const trigger = document.getElementById("infinite-scroll-trigger");
 
     if (!grid || !trigger) {
-      // console.log("[ProductGrid] ❌ Missing grid or trigger element");
       return;
     }
 
@@ -535,9 +504,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     }
 
     const allCards = Array.from(grid.querySelectorAll(".product-card-wrapper"));
-    // console.log(
-    //   `[ProductGrid] 🔍 Simple infinite scroll for ${allCards.length} products`
-    // );
 
     // Progressive enhancement check
     const supportsIntersectionObserver = "IntersectionObserver" in window;
@@ -551,9 +517,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     const useAccessibleMode = !supportsIntersectionObserver || forceButtonMode;
 
     if (forceButtonMode) {
-      // console.log(
-      //   "[ProductGrid] 🧪 Button mode forced via URL parameter (DEV ONLY)"
-      // );
+      // Button mode for testing
     }
 
     // Simple grid calculation - match server-side
@@ -596,14 +560,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
         batchSize = Math.max(Math.min(batchSize, 60), 30);
       }
 
-      // console.log("[ProductGrid] 📐 Adaptive batch:", {
-      //   viewport: `${viewportWidth}x${viewportHeight}`,
-      //   cardsPerRow,
-      //   visibleRows,
-      //   bufferRows,
-      //   batchSize,
-      // });
-
       return batchSize;
     }
 
@@ -628,7 +584,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
 
     // Add newly revealed cards to the page load observer
     if (pageLoadObserver && cardsToAnimate.length > 0) {
-      // console.log(`[ProductGrid] 🎬 Adding ${cardsToAnimate.length} cards to animation observer`);
       cardsToAnimate.forEach((card) => {
         pageLoadObserver?.observe(card);
       });
@@ -638,7 +593,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     if (allCards.length <= visibleCount) {
       trigger.style.display = "none";
       if (loadMoreContainer) loadMoreContainer.style.display = "none";
-      // console.log("[ProductGrid] ✅ All products fit on screen");
       return;
     }
 
@@ -678,9 +632,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       }
 
       visibleCount = newVisibleCount;
-      // console.log(
-      //   `[ProductGrid] Now showing ${visibleCount}/${allCards.length}`
-      // );
 
       // Announce to screen readers
       announceToScreenReader(
@@ -694,7 +645,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       if (visibleCount >= allCards.length) {
         if (trigger) trigger.style.display = "none";
         if (loadMoreContainer) loadMoreContainer.style.display = "none";
-        // console.log("[ProductGrid] ✅ All products loaded");
         announceToScreenReader(`All ${allCards.length} products loaded.`);
       }
     }
@@ -789,10 +739,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
           }, 100);
           animationTimeouts.push(buttonTimeout);
         });
-
-        // console.log(
-        //   "[ProductGrid] ✅ Load More button initialized (accessible mode)"
-        // );
       }
       return;
     }
@@ -800,9 +746,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     // Standard infinite scroll mode
     trigger.style.display = "flex";
     if (loadMoreContainer) loadMoreContainer.style.display = "none";
-    // console.log(
-    //   `[ProductGrid] ✅ Showing ${visibleCount}/${allCards.length} initially`
-    // );
 
     // PHASE 5: Debounced load more to prevent rapid-fire loading
     let isLoading = false;
@@ -827,28 +770,18 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
             loadTimeout = setTimeout(() => {
               isLoading = true;
               if (grid) grid.setAttribute("aria-busy", "true");
-              // console.log("[ProductGrid] Loading more...");
 
               loadMoreCards();
               isLoading = false;
-            }, 100); // PHASE 5: 100ms debounce delay
+            }, 100); // 100ms debounce delay
             animationTimeouts.push(loadTimeout);
           }
         });
       },
-      { threshold: 0.1, rootMargin: "200px" } // PHASE 5: Increased from 100px
+      { threshold: 0.1, rootMargin: "200px" }
     );
 
     if (loadMoreObserver && trigger) loadMoreObserver.observe(trigger);
-    // console.log("[ProductGrid] ✅ Simple infinite scroll initialized");
-
-    // Dispatch event to signal grid is ready (eliminates polling in ProductFilters)
-    window.dispatchEvent(
-      new CustomEvent("product-grid-ready", {
-        detail: { productCount: allCards.length },
-      })
-    );
-    // console.log("[ProductGrid] 🎯 Grid ready event dispatched");
   }
 
   // Debounced resize handler for responsive animations
@@ -856,13 +789,11 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
   function handleResize() {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
-      // PHASE 5: Recalculate animation config on resize using proper parsing
+      // Recalculate animation config on resize
       const newConfig = getAnimationTiming();
       ANIMATION_CONFIG.staggerDelay = newConfig.staggerDelay;
       ANIMATION_CONFIG.rowStaggerDelay = newConfig.rowStaggerDelay;
       ANIMATION_CONFIG.duration = newConfig.duration;
-
-      // console.log("[ProductGrid] 📐 Animation config updated for new viewport");
     }, 250); // Debounce 250ms
   }
 
@@ -872,9 +803,9 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
   let cardAnimationObserver: IntersectionObserver | null = null;
   let loadMoreObserver: IntersectionObserver | null = null;
   let liveRegion: HTMLElement | null = null;
-  let pageLoadObserver: IntersectionObserver | null = null; // NEW: Store page load observer
-  let animationTimeouts: ReturnType<typeof setTimeout>[] = []; // NEW: Track timeouts
-  let isInitialized = false; // NEW: Prevent dual initialization
+  let pageLoadObserver: IntersectionObserver | null = null;
+  let animationTimeouts: ReturnType<typeof setTimeout>[] = [];
+  let isInitialized = false;
 
   // Cleanup on navigation
   document.addEventListener("astro:before-swap", () => {

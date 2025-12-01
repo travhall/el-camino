@@ -1,5 +1,6 @@
 ---
 // src/components/AppliedFilters.astro
+import { FilterCoordinator } from "@/lib/filterCoordinator";
 
 export interface Props {
   classes?: string;
@@ -103,50 +104,14 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
 </div>
 
 <script>
+  import { FilterCoordinator } from "@/lib/filterCoordinator";
+
+  // Initialize the unified filter system
+  FilterCoordinator.initialize();
+
   document.addEventListener("astro:page-load", () => {
-    setupTimedAppearance();
     setupFilterHandlers();
   });
-
-  function setupTimedAppearance() {
-    const container = document.getElementById("applied-filters-container");
-    if (!container) return;
-
-    // Check if we have filters
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentBrands = urlParams.getAll("brands") || [];
-    const currentAvailability = urlParams.get("availability") === "true";
-    const hasFilters = currentBrands.length > 0 || currentAvailability;
-
-    // Only apply timing logic ONCE per session and only for first filter application
-    const hasShownBefore =
-      sessionStorage.getItem("appliedFiltersShown") === "true";
-
-    if (
-      hasFilters &&
-      !hasShownBefore &&
-      !container.classList.contains("no-filters")
-    ) {
-      // First time showing AppliedFilters in this session - apply timing
-      container.style.visibility = "hidden";
-      container.style.opacity = "0";
-
-      // Shorter delay - just enough for ProductGrid to start settling
-      setTimeout(() => {
-        container.style.visibility = "visible";
-        container.style.opacity = "1";
-        container.style.transition = "opacity 200ms ease";
-        sessionStorage.setItem("appliedFiltersShown", "true");
-        // console.log(
-        //   "[AppliedFilters] ⏰ First appearance with timing protection"
-        // );
-      }, 400); // Much shorter delay
-    } else if (hasFilters) {
-      // Already shown before or subsequent filters - appear immediately
-      container.style.visibility = "visible";
-      container.style.opacity = "1";
-    }
-  }
 
   function setupFilterHandlers() {
     // Individual brand removal
@@ -165,16 +130,13 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
         removeFilter("availability");
       });
 
-    // Clear All - use existing global system
+    // Clear All - simple direct navigation
     document
       .querySelector("[data-clear-all-filters]")
       ?.addEventListener("click", () => {
-        const globalClearAll = (window as any).globalClearAllFilters;
-        if (globalClearAll) {
-          globalClearAll();
-        } else {
+        FilterCoordinator.coordinateExit(() => {
           window.location.href = window.location.pathname;
-        }
+        });
       });
   }
 
@@ -195,6 +157,10 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
 
     const queryString = params.toString();
     const url = `${window.location.pathname}${queryString ? "?" + queryString : ""}`;
-    window.location.href = url;
+
+    // Use coordinated exit for consistent behavior
+    FilterCoordinator.coordinateExit(() => {
+      window.location.href = url;
+    });
   }
 </script>

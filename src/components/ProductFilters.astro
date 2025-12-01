@@ -1,6 +1,7 @@
 ---
-// src/components/ProductFilters.astro - Cleaned with restored pageSize input
+// src/components/ProductFilters.astro
 import type { FilterOptions } from "@/lib/square/types";
+import { FilterCoordinator } from "@/lib/filterCoordinator";
 
 interface Props {
   filterOptions: FilterOptions;
@@ -66,7 +67,8 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
   /* Disabled button styling - consistent with general disabled styling */
   body:not(.filtering-in-progress) button:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   button:disabled {
@@ -333,15 +335,28 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 </div>
 
 <script>
-  class ResponsiveFilters {
+  import { FilterCoordinator } from "@/lib/filterCoordinator";
+
+  class ProductFilters {
     private form: HTMLFormElement | null = null;
     private container: HTMLElement | null = null;
     private overlay: HTMLElement | null = null;
     private showMoreToggle: HTMLButtonElement | null = null;
     private isExpanded: boolean = false;
+    private isInitialized: boolean = false;
 
     constructor() {
-      // Direct element assignment
+      this.initializeElements();
+      if (this.form) {
+        this.setupEventListeners();
+        this.initializeMenuState();
+        this.setupViewTransitionsCoordination();
+        this.enableFilterControls();
+        this.isInitialized = true;
+      }
+    }
+
+    private initializeElements(): void {
       this.form = document.getElementById("filter-form") as HTMLFormElement;
       this.container = document.getElementById("filter-container");
       this.overlay = document.getElementById("mobile-filter-overlay");
@@ -351,139 +366,26 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
       if (!this.form) {
         console.warn(
-          "[ResponsiveFilters] Form element not found. Filters may not work correctly."
+          "[ProductFilters] Form element not found. Filters may not work correctly."
         );
         return;
       }
-
-      // Initialize immediately with progressive enhancement
-      this.setupEventListeners();
-      this.initializeMenuState();
-      this.setupViewTransitionsCoordination();
-
-      // Initialize filter engine when ProductGrid is ready (with fallback)
-      this.initializeWithGridReady();
-    }
-
-    private initializeWithGridReady(): void {
-      let gridReady = false;
-
-      const enableFiltering = () => {
-        if (!gridReady) {
-          // Enhanced grid detection with data validation
-          const grid = document.getElementById("filterable-product-grid");
-          const hasAllProducts = grid?.dataset.allProducts;
-          const hasInitialProducts = grid?.dataset.initialProducts;
-
-          if (grid && (hasAllProducts || hasInitialProducts)) {
-            // Validate data is not just empty arrays
-            let hasValidData = false;
-
-            try {
-              if (hasAllProducts) {
-                const allProductsParsed = JSON.parse(hasAllProducts);
-                if (
-                  Array.isArray(allProductsParsed) &&
-                  allProductsParsed.length > 0
-                ) {
-                  hasValidData = true;
-                }
-              }
-
-              if (!hasValidData && hasInitialProducts) {
-                const initialProductsParsed = JSON.parse(hasInitialProducts);
-                if (
-                  Array.isArray(initialProductsParsed) &&
-                  initialProductsParsed.length > 0
-                ) {
-                  hasValidData = true;
-                }
-              }
-            } catch (error) {
-              console.error(
-                "[ResponsiveFilters] ❌ Error parsing grid data:",
-                error
-              );
-            }
-
-            if (hasValidData) {
-              gridReady = true;
-              // console.log('[ResponsiveFilters] ✅ Grid with valid data detected - enabling filters');
-              this.enableFilterControls();
-              // UNIFIED: No filter engine initialization needed - View Transitions handle all filtering
-            } else {
-              console.warn(
-                "[ResponsiveFilters] ⚠️ Grid found but data appears to be empty"
-              );
-            }
-          } else {
-            // console.log('[ResponsiveFilters] 🔍 Grid not ready yet - waiting...');
-          }
-        }
-      };
-
-      // Multiple detection methods for reliability
-      document.addEventListener("productGridReady", enableFiltering);
-      document.addEventListener("DOMContentLoaded", enableFiltering);
-
-      // Event-based grid detection (eliminates polling)
-      const handleGridReady = () => {
-        if (!gridReady) {
-          enableFiltering();
-        }
-      };
-
-      // Listen for grid ready event
-      window.addEventListener("product-grid-ready", handleGridReady);
-
-      // Immediate check in case grid already loaded
-      if (
-        document.readyState === "complete" ||
-        document.readyState === "interactive"
-      ) {
-        enableFiltering();
-      }
-
-      // Cleanup on navigation
-      document.addEventListener("astro:before-swap", () => {
-        window.removeEventListener("product-grid-ready", handleGridReady);
-      });
     }
 
     private enableFilterControls(): void {
-      // Enable all form controls for phantom click prevention
-      const checkboxes = document.querySelectorAll(
-        'input[type="checkbox"]'
-      ) as NodeListOf<HTMLInputElement>;
-      const clearButtons = document.querySelectorAll(
-        "[data-clear-filters], [data-clear-filters-mobile]"
-      ) as NodeListOf<HTMLButtonElement>;
-      const mobileToggle = document.getElementById(
-        "mobile-filter-toggle"
-      ) as HTMLButtonElement;
-      const filterContainer = document.getElementById("filter-container");
+      const controls =
+        this.form?.querySelectorAll('input[type="checkbox"], button') || [];
+      const mobileToggle = document.getElementById("mobile-filter-toggle");
 
-      // Enable checkboxes
-      checkboxes.forEach((checkbox) => {
-        checkbox.disabled = false;
+      controls.forEach((control) => {
+        (control as HTMLInputElement).disabled = false;
       });
 
-      // Enable clear buttons
-      clearButtons.forEach((button) => {
-        button.disabled = false;
-      });
-
-      // Enable mobile toggle
       if (mobileToggle) {
-        mobileToggle.disabled = false;
+        (mobileToggle as HTMLButtonElement).disabled = false;
       }
 
-      // Remove disabled visual state
-      if (filterContainer) {
-        filterContainer.classList.remove("filters-disabled");
-      }
-
-      // console.log('[ResponsiveFilters] ✅ Filter controls enabled');
+      this.container?.classList.remove("filters-disabled");
     }
 
     private setupEventListeners(): void {
@@ -537,149 +439,59 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     private setupHybridFiltering(): void {
       if (!this.form) return;
 
+      // Simple form-based approach with View Transitions
+      this.form.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        const isMobile = window.innerWidth < 1024;
+
+        if (isMobile) {
+          this.closeMobileDrawer();
+          setTimeout(() => this.submitForm(), 300);
+        } else {
+          this.submitForm();
+        }
+      });
+
+      // Desktop: immediate filtering on checkbox change
       const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
-
-      // UNIFIED: Server-side filtering with View Transitions for ALL devices
-      // Device-appropriate UX: Mobile = drawer workflow, Desktop = immediate filtering
-
-      // Debounce timer for rapid filter changes
-      let debounceTimer: number | null = null;
-      const DEBOUNCE_DELAY = 300; // 300ms debounce
-
       checkboxes.forEach((checkbox) => {
-        // Remove all existing event listeners by cloning the element
-        const newCheckbox = checkbox.cloneNode(true) as HTMLInputElement;
-        checkbox.parentNode?.replaceChild(newCheckbox, checkbox);
-
-        newCheckbox.addEventListener("change", (event) => {
-          const urlParams = new URLSearchParams(window.location.search);
-          const forceDesktop = urlParams.get("test-desktop") === "true";
-          const isMobile = !forceDesktop && window.innerWidth < 1024;
-
-          // console.log(`[ResponsiveFilters] Checkbox changed: ${(event.target as HTMLInputElement).name}=${(event.target as HTMLInputElement).value}, device=${isMobile ? 'mobile' : 'desktop'}`);
-
-          if (isMobile) {
-            // MOBILE: Multi-select drawer workflow - no immediate action
-            // console.log('[ResponsiveFilters] 📱 Mobile: Checkbox change saved for Apply Filters');
-            sessionStorage.setItem(
-              "filter-menu-expanded",
-              this.isExpanded.toString()
-            );
-            // Don't prevent - let checkboxes accumulate for drawer workflow
-            return;
-          } else {
-            // DESKTOP: Immediate View Transitions filtering with exit animation coordination
-            // console.log('[ResponsiveFilters] 🖥️ Desktop: Using immediate View Transitions filtering');
-
-            // PREVENT form submission temporarily
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-
-            // DEBOUNCE: Clear existing timer and set new one
-            if (debounceTimer) {
-              clearTimeout(debounceTimer);
-            }
-
-            debounceTimer = window.setTimeout(() => {
-              // ANTI-FLICKER: Add class to prevent disabled opacity during filtering
-              document.body.classList.add("filtering-in-progress");
-
-              // STEP 1: Start exit animation (identical to current system)
-              const grid = document.getElementById("filterable-product-grid");
-              if (grid) {
-                const allCards = Array.from(
-                  grid.querySelectorAll(".product-card-wrapper")
-                );
-
-                // Exit animation (matching current desktop behavior)
-                allCards.forEach((card) => {
-                  card.classList.remove("opacity-100");
-                  card.classList.add("opacity-0");
-                });
-
-                // STEP 2: Trigger View Transitions navigation at optimal timing
-                // Wait for exit animation to be mostly complete (250ms of 300ms)
-                setTimeout(() => {
-                  // Save state and trigger form submission
-                  sessionStorage.setItem(
-                    "filter-menu-expanded",
-                    this.isExpanded.toString()
-                  );
-                  sessionStorage.setItem("filtering-in-progress", "true");
-
-                  // Create and submit form programmatically for View Transitions
-                  const formData = new FormData(this.form!);
-                  const params = new URLSearchParams();
-
-                  // Build URL with current filter state
-                  const brands = formData.getAll("brands") as string[];
-                  const availability = formData.get("availability") === "true";
-
-                  brands.forEach((brand) => params.append("brands", brand));
-                  if (availability) params.set("availability", "true");
-
-                  const queryString = params.toString();
-                  const basePath = window.location.pathname;
-                  const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
-
-                  // Navigate with View Transitions (Astro handles this automatically)
-                  window.location.href = newUrl;
-                }, 250); // Wait until exit is nearly complete to minimize gap
-              }
-            }, DEBOUNCE_DELAY);
-
-            return false;
+        checkbox.addEventListener("change", () => {
+          if (window.innerWidth >= 1024) {
+            this.submitForm();
           }
         });
       });
+    }
 
-      // UNIFIED: Form submission handling for both mobile and desktop
-      this.form.addEventListener("submit", (event) => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const forceDesktop = urlParams.get("test-desktop") === "true";
-        const isMobile = !forceDesktop && window.innerWidth < 1024;
+    private submitForm(): void {
+      try {
+        const formData = new FormData(this.form!);
+        const params = new URLSearchParams();
 
-        // console.log('[ResponsiveFilters] 📝 FORM SUBMISSION', {
-        //   device: isMobile ? 'mobile' : 'desktop',
-        //   screenWidth: window.innerWidth,
-        //   forceDesktop: forceDesktop
-        // });
+        const brands = formData.getAll("brands") as string[];
+        const availability = formData.get("availability") === "true";
 
-        if (isMobile) {
-          // MOBILE: Drawer workflow with View Transitions
-          // console.log('[ResponsiveFilters] 📱 Mobile: Using drawer + View Transitions');
+        brands.forEach((brand) => params.append("brands", brand));
+        if (availability) params.set("availability", "true");
 
-          // Close drawer FIRST for smooth View Transitions
-          if (this.container && this.overlay) {
-            this.closeMobileDrawer();
+        const queryString = params.toString();
+        const basePath = window.location.pathname;
+        const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
 
-            setTimeout(() => {
-              sessionStorage.setItem(
-                "filter-menu-expanded",
-                this.isExpanded.toString()
-              );
-              sessionStorage.setItem("filtering-in-progress", "true");
-              // Let form submit naturally - View Transitions handle smoothly
-            }, 50);
-          } else {
-            sessionStorage.setItem(
-              "filter-menu-expanded",
-              this.isExpanded.toString()
-            );
-            sessionStorage.setItem("filtering-in-progress", "true");
-          }
-
-          // Let form submit naturally for View Transitions
-          return;
-        } else {
-          // DESKTOP: Form submission shouldn't happen (checkboxes handle immediately)
-          // But if it does, treat it as immediate filtering
-          event.preventDefault();
-          // console.log('[ResponsiveFilters] 🖥️ Desktop: Form submission intercepted - should be handled by checkbox change');
-          return false;
-        }
-      });
+        // Use coordinated exit animation (now with actual animations)
+        FilterCoordinator.coordinateExit(() => {
+          sessionStorage.setItem(
+            FilterCoordinator.getStorageKeys().filterMenuExpanded,
+            this.isExpanded.toString()
+          );
+          window.location.href = newUrl;
+        });
+      } catch (error) {
+        console.error("[ProductFilters] Error submitting form:", error);
+        // Fallback to simple navigation
+        window.location.href = window.location.pathname;
+      }
     }
 
     private setupShowMoreToggle(): void {
@@ -777,16 +589,13 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       clearBtnMobile?.addEventListener("click", () => {
         // Close mobile drawer first, then clear
         this.closeMobileDrawer();
-        setTimeout(handleClearAll, 100); // Small delay after drawer close
+        setTimeout(handleClearAll, 100);
       });
     }
 
     private setupViewTransitionsCoordination(): void {
-      // UNIFIED: Enhanced View Transitions coordination for both mobile and desktop
       document.addEventListener("astro:before-preparation", () => {
-        // console.log('[ResponsiveFilters] 🚀 View Transitions preparation - unified cleanup');
-
-        // Force close mobile drawer before any navigation
+        // Close mobile drawer before navigation
         if (this.container && this.overlay) {
           this.container.classList.add(
             "translate-y-full",
@@ -797,21 +606,14 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
           document.body.style.overflow = "";
         }
 
-        // Clean up any clearing messages from previous transitions
+        // Clean up clearing messages
         const existingMessage = document.getElementById("clearing-message");
-        if (existingMessage) {
-          existingMessage.remove();
-        }
-
-        // Clean up session storage
+        existingMessage?.remove();
         sessionStorage.removeItem("filtering-in-progress");
       });
 
-      // UNIFIED: Coordinate with product grid animations during View Transitions
       document.addEventListener("astro:after-swap", () => {
-        // console.log('[ResponsiveFilters] ✨ View Transitions swap complete - coordinating animations');
-
-        // Ensure product cards start in the correct state for entrance animations
+        // Ensure product cards start in correct state for animations
         const cards = document.querySelectorAll(".product-card-wrapper");
         cards.forEach((card) => {
           const htmlCard = card as HTMLElement;
@@ -821,150 +623,41 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         });
       });
 
-      // UNIFIED: Prevent FOUC by managing grid visibility during transitions
       document.addEventListener("astro:page-load", () => {
         const grid = document.getElementById("filterable-product-grid");
         if (grid) {
-          // Ensure grid is ready for animations
           grid.style.visibility = "visible";
           grid.style.opacity = "1";
         }
 
-        // ANTI-FLICKER: Clean up filtering class after View Transitions
         document.body.classList.remove("filtering-in-progress");
-
-        // Update live region with new filter results
         updateFilterResultsLiveRegion();
-
-        // Re-establish global Clear All function after page load
-        const currentInstance = (window as any).currentFilterInstance;
-        if (currentInstance) {
-          (window as any).globalClearAllFilters = function () {
-            if (currentInstance?.clearAllFilters) {
-              return currentInstance.clearAllFilters();
-            }
-
-            // Enhanced fallback for any navigation scenario
-            // console.log('[GlobalClearAll] 🔄 Post-navigation fallback');
-            const visibleCards = document.querySelectorAll(
-              '.product-card-wrapper:not([style*="display: none"])'
-            );
-            const basePath = window.location.pathname;
-
-            if (visibleCards.length > 0) {
-              visibleCards.forEach((card) => {
-                card.classList.remove("opacity-100");
-                card.classList.add("opacity-0");
-              });
-              setTimeout(() => (window.location.href = basePath), 150);
-            } else {
-              window.location.href = basePath;
-            }
-          };
-        }
       });
     }
 
     public clearAllFilters(): void {
-      // console.log('[ResponsiveFilters] 🧹 Clearing all filters');
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const forceDesktop = urlParams.get("test-desktop") === "true";
-      const isMobile = !forceDesktop && window.innerWidth < 1024;
       const basePath = window.location.pathname;
+      const isMobile = window.innerWidth < 1024;
 
       if (isMobile) {
-        // MOBILE: Enhanced clear with exit animation
-        const visibleCards = document.querySelectorAll(
-          '.product-card-wrapper:not([style*="display: none"])'
-        );
-
-        if (visibleCards.length > 0) {
-          // console.log('[ResponsiveFilters] 📱 Mobile: Clear All with exit animation');
-          this.closeMobileDrawer();
-
-          // Exit animation
-          visibleCards.forEach((card, index) => {
-            const htmlCard = card as HTMLElement;
-            const rowIndex = Math.floor(index / 2); // 2 cards per row on mobile
-            const cardInRow = index % 2;
-            const totalDelay = rowIndex * 50 + cardInRow * 25;
-
-            setTimeout(() => {
-              htmlCard.classList.remove("opacity-100");
-              htmlCard.classList.add("opacity-0");
-            }, totalDelay);
-          });
-
-          // Navigate during exit animation
-          const maxDelay = Math.ceil(visibleCards.length / 2) * 50 + 25 + 100;
-          setTimeout(() => {
-            sessionStorage.setItem(
-              "filter-menu-expanded",
-              this.isExpanded.toString()
-            );
-            window.location.href = basePath;
-          }, maxDelay);
-        } else {
-          // No cards to animate
-          this.closeMobileDrawer();
-          sessionStorage.setItem(
-            "filter-menu-expanded",
-            this.isExpanded.toString()
-          );
-          window.location.href = basePath;
-        }
-      } else {
-        // DESKTOP: Clear All with coordinated exit animation + View Transitions
-        // console.log('[ResponsiveFilters] 🖥️ Desktop: Clear All with coordinated View Transitions');
-
-        const grid = document.getElementById("filterable-product-grid");
-        if (grid) {
-          const visibleCards = Array.from(
-            grid.querySelectorAll(
-              '.product-card-wrapper:not([style*="display: none"])'
-            )
-          );
-
-          if (visibleCards.length > 0) {
-            // Exit animation (matching desktop filtering pattern)
-            visibleCards.forEach((card) => {
-              card.classList.remove("opacity-100");
-              card.classList.add("opacity-0");
-            });
-
-            // Navigate at optimal timing (same as regular filtering)
-            setTimeout(() => {
-              sessionStorage.setItem(
-                "filter-menu-expanded",
-                this.isExpanded.toString()
-              );
-              window.location.href = basePath;
-            }, 250); // Same 250ms timing as regular desktop filtering
-          } else {
-            // No cards to animate
-            sessionStorage.setItem(
-              "filter-menu-expanded",
-              this.isExpanded.toString()
-            );
-            window.location.href = basePath;
-          }
-        }
+        this.closeMobileDrawer();
       }
+
+      // Use coordinated exit for consistent behavior
+      FilterCoordinator.coordinateExit(() => {
+        sessionStorage.setItem(
+          FilterCoordinator.getStorageKeys().filterMenuExpanded,
+          this.isExpanded.toString()
+        );
+        window.location.href = basePath;
+      });
     }
 
-    // UNIFIED: Proper cleanup for View Transitions architecture
     public destroy(): void {
-      // console.log('[ResponsiveFilters] 🧹 Cleaning up View Transitions architecture');
-
-      // Clean up DOM state
       document.body.style.overflow = "";
 
-      // UNIFIED: No filter engine to clean up anymore
-
-      // Reset mobile drawer to CLOSED state (not open)
+      // Reset mobile drawer to closed state
       if (this.container) {
-        // Ensure drawer is closed on mobile, visible on desktop
         this.container.classList.add(
           "translate-y-full",
           "opacity-0",
@@ -978,14 +671,10 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       }
 
       if (this.overlay) {
-        // Ensure overlay is hidden
         this.overlay.classList.add("pointer-events-none", "opacity-0");
       }
 
-      // Clean up session storage
       sessionStorage.removeItem("filtering-in-progress");
-
-      // console.log('[ResponsiveFilters] ✅ View Transitions cleanup complete');
     }
   }
 
@@ -1008,99 +697,31 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
   }
 
-  // Store instance for cleanup on navigation
-  let currentInstance: ResponsiveFilters | null = null;
+  let currentInstance: ProductFilters | null = null;
 
-  // Clean initialization that works with Astro navigation
   function initializeFilters() {
-    // Clean up previous instance
     if (currentInstance) {
       currentInstance.destroy();
     }
-
-    // Create new instance
-    currentInstance = new ResponsiveFilters();
-
-    // Expose instance globally for AppliedFilters and all Clear All buttons
-    (window as any).currentFilterInstance = currentInstance;
-
-    // UNIFIED: Global Clear All coordination to prevent FOUT from any source
-    (window as any).globalClearAllFilters = function () {
-      if (currentInstance?.clearAllFilters) {
-        return currentInstance.clearAllFilters();
-      }
-
-      // Enhanced fallback that works from any component
-      // console.log('[GlobalClearAll] 🔄 Using enhanced global fallback');
-      const visibleCards = document.querySelectorAll(
-        '.product-card-wrapper:not([style*="display: none"])'
-      );
-      const basePath = window.location.pathname;
-      const isMobile = window.innerWidth < 1024;
-
-      if (visibleCards.length > 0) {
-        // Exit animation
-        visibleCards.forEach((card, index) => {
-          const htmlCard = card as HTMLElement;
-
-          if (isMobile) {
-            const rowIndex = Math.floor(index / 2);
-            const cardInRow = index % 2;
-            const totalDelay = rowIndex * 50 + cardInRow * 25;
-
-            setTimeout(() => {
-              htmlCard.classList.remove("opacity-100");
-              htmlCard.classList.add("opacity-0");
-            }, totalDelay);
-          } else {
-            htmlCard.classList.remove("opacity-100");
-            htmlCard.classList.add("opacity-0");
-          }
-        });
-
-        // Navigate during exit animation
-        const delay = isMobile
-          ? Math.ceil(visibleCards.length / 2) * 50 + 25 + 100
-          : 250;
-        setTimeout(() => (window.location.href = basePath), delay);
-      } else {
-        window.location.href = basePath;
-      }
-    };
-
-    // DEBUGGING: Monitor all form submissions globally
-    document.addEventListener(
-      "submit",
-      (e) => {
-        const target = e.target as HTMLElement;
-        if (target?.id === "filter-form") {
-          // console.log('[GLOBAL] 🚨 Form submission detected outside our handler!', {
-          //   timestamp: Date.now(),
-          //   target: e.target,
-          //   defaultPrevented: e.defaultPrevented
-          // });
-        }
-      },
-      true
-    ); // Use capture to catch early
+    currentInstance = new ProductFilters();
   }
 
-  // Handle both initial load and Astro navigation
-  document.addEventListener("astro:page-load", initializeFilters);
-
-  // Enhanced Astro navigation cleanup with View Transitions support
-  document.addEventListener("astro:before-preparation", () => {
-    // console.log('[ResponsiveFilters] 🚀 Enhanced Astro navigation cleanup');
+  function cleanupFilters() {
     if (currentInstance) {
       currentInstance.destroy();
       currentInstance = null;
     }
+    FilterCoordinator.cleanupAnimationState();
+  }
 
-    // Clean up any ongoing View Transitions
-    sessionStorage.removeItem("filtering-in-progress");
-  });
+  // Initialize the unified filter system
+  FilterCoordinator.initialize();
 
-  // Initialize immediately if DOM is already ready
+  // Handle Astro navigation
+  document.addEventListener("astro:page-load", initializeFilters);
+  document.addEventListener("astro:before-preparation", cleanupFilters);
+
+  // Initialize if DOM is ready
   if (document.readyState !== "loading") {
     initializeFilters();
   }
