@@ -15,18 +15,36 @@ const currentAvailability = currentParams.get("availability") === "true";
 
 // Only show content if there are active filters
 const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
+
+// Determine if we should start hidden (for animation) based on referrer
+// If the referrer has no query params, this is the first filter being applied
+const referrer = Astro.request.headers.get('referer') || '';
+const referrerUrl = referrer ? new URL(referrer) : null;
+const hadFiltersInReferrer = referrerUrl?.search ? referrerUrl.searchParams.toString().length > 0 : false;
+const shouldStartHidden = hasActiveFilters && !hadFiltersInReferrer;
 ---
 
 <style>
   .applied-filters-container {
     margin-bottom: 0.5rem;
-    opacity: 1;
-    transition: opacity 300ms ease;
+    /* Transition is controlled by JavaScript - not CSS */
+    /* This prevents unwanted animations on every filter change */
   }
 
   .applied-filters-container.no-filters {
     opacity: 0;
     pointer-events: none;
+    visibility: hidden;
+  }
+
+  /* Prevent View Transition from animating AppliedFilters during filter changes */
+  /* This allows JavaScript to have full control over animation timing */
+  @media (prefers-reduced-motion: no-preference) {
+    html::view-transition-old(applied-filters),
+    html::view-transition-new(applied-filters) {
+      animation: none !important;
+      transition: none !important;
+    }
   }
 </style>
 
@@ -37,6 +55,7 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
     classes,
     !hasActiveFilters ? "no-filters" : "",
   ]}
+  style={`view-transition-name: applied-filters; ${shouldStartHidden ? 'visibility: hidden; opacity: 0;' : ''}`}
 >
   <div class="flex flex-wrap items-center gap-3 my-2">
     {

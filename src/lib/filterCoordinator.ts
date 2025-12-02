@@ -114,10 +114,10 @@ export class FilterCoordinator {
 
   /**
    * Clean up animation state and session storage
+   * Note: Does NOT clear appliedFiltersShown - that tracks state across page transitions
    */
   static cleanupAnimationState(): void {
     sessionStorage.removeItem(this.STORAGE_KEYS.filteringInProgress);
-    sessionStorage.removeItem(this.STORAGE_KEYS.appliedFiltersShown);
     document.body.classList.remove("filtering-in-progress");
     this.isAnimating = false;
   }
@@ -125,11 +125,14 @@ export class FilterCoordinator {
   /**
    * Reset initialization state for page navigation
    * Allows re-initialization on new page loads
+   * Note: Preserves appliedFiltersShown state for proper transition detection
    */
   static reset(): void {
     this.cleanupAnimationState();
     this.isInitialized = false;
     this.currentInstance = null;
+    // appliedFiltersShown is intentionally NOT cleared here
+    // It's managed by coordinateAppliedFiltersEntrance based on URL state
   }
 
   /**
@@ -193,43 +196,83 @@ export class FilterCoordinator {
     const container = document.getElementById("applied-filters-container");
     if (!container) return;
 
-    // Check if we have active filters
+    // Check if we have active filters NOW
     const urlParams = new URLSearchParams(window.location.search);
     const currentBrands = urlParams.getAll("brands") || [];
     const currentAvailability = urlParams.get("availability") === "true";
     const hasFilters = currentBrands.length > 0 || currentAvailability;
 
+    // Check what the filter state was BEFORE this navigation
+    const previousFilterState = sessionStorage.getItem(
+      FilterCoordinator.STORAGE_KEYS.appliedFiltersShown
+    );
+    const hadFiltersBefore = previousFilterState === "true";
+    const hadNoFiltersBefore = previousFilterState === "false";
+
+    console.log("[AppliedFilters] State check:", {
+      hasFilters,
+      hadFiltersBefore,
+      previousFilterState,
+      currentBrands,
+      currentAvailability,
+      shouldAnimate: !hadFiltersBefore && hasFilters,
+    });
+
     if (!hasFilters) {
+      // Going FROM filters TO no filters - just hide, no animation
+      console.log("[AppliedFilters] Hiding (no filters)");
       container.classList.add("no-filters");
+      container.style.transition = "";
+      container.style.visibility = "";
+      container.style.opacity = "";
+      sessionStorage.setItem(
+        FilterCoordinator.STORAGE_KEYS.appliedFiltersShown,
+        "false"
+      );
       return;
     }
 
+    // We have filters now
     container.classList.remove("no-filters");
 
-    // Check if we should apply timing logic
-    const hasShownBefore =
-      sessionStorage.getItem(
-        FilterCoordinator.STORAGE_KEYS.appliedFiltersShown
-      ) === "true";
-
-    if (hasFilters && !hasShownBefore) {
-      // First time showing - apply coordinated timing
+    // Only animate if transitioning FROM no filters TO has filters
+    if (!hadFiltersBefore || hadNoFiltersBefore) {
+      // First time showing filters (or returning from no filters state) - animate
+      console.log("[AppliedFilters] Animating fade in");
       container.style.visibility = "hidden";
       container.style.opacity = "0";
 
       setTimeout(() => {
+        container.style.transition = "opacity 200ms ease, visibility 0s";
         container.style.visibility = "visible";
         container.style.opacity = "1";
-        container.style.transition = "opacity 200ms ease";
+
         sessionStorage.setItem(
           FilterCoordinator.STORAGE_KEYS.appliedFiltersShown,
           "true"
         );
+
+        setTimeout(() => {
+          container.style.transition = "";
+        }, 200);
       }, FilterCoordinator.TIMING.appliedFiltersDelay);
-    } else if (hasFilters) {
-      // Already shown before - appear immediately
+    } else {
+      // Already had filters - just update content instantly
+      console.log("[AppliedFilters] Instant update (already had filters)");
+      container.style.transition = "none";
       container.style.visibility = "visible";
       container.style.opacity = "1";
+
+      void container.offsetHeight;
+
+      requestAnimationFrame(() => {
+        container.style.transition = "";
+      });
+
+      sessionStorage.setItem(
+        FilterCoordinator.STORAGE_KEYS.appliedFiltersShown,
+        "true"
+      );
     }
   }
 
