@@ -76,12 +76,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     pointer-events: none;
   }
 
-  /* Simple disabled container state */
-  .filters-disabled {
-    opacity: 0.6;
-    pointer-events: none;
-  }
-
   /* Respect reduced motion for View Transitions */
   @media (prefers-reduced-motion: reduce) {
     html::view-transition-old(root),
@@ -111,7 +105,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     id="mobile-filter-toggle"
     class="lg:hidden fixed bottom-4 right-4 bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) rounded-md flex flex-row gap-2 p-4 shadow-lg z-250"
     aria-label="Open Filters"
-    disabled
   >
     Filters
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +134,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   <!-- Single Form - Desktop Static, Mobile Drawer -->
   <div
     id="filter-container"
-    class="filters-disabled lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-md lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-secondary)/0 border-4 border-(--border-tertiary) z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+    class="lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-md lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-secondary)/0 border-4 border-(--border-tertiary) z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
   >
     <form class="px-4 lg:p-2" id="filter-form">
       <!-- Mobile Header -->
@@ -215,16 +208,16 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
               <h3 class="text-2xl font-medium font-display text-(--content-heading)">
                 Brand
               </h3>
-              <button
-                type="button"
-                id="clear-brands-button"
-                data-clear-filters
-                disabled
-                class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors lg:mr-2"
-                style={currentBrands.length === 0 ? "display: none;" : ""}
-              >
-                Clear ({currentBrands.length})
-              </button>
+              {currentBrands.length > 0 && (
+                <button
+                  type="button"
+                  id="clear-brands-button"
+                  data-clear-filters
+                  class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors lg:mr-2"
+                >
+                  Clear ({currentBrands.length})
+                </button>
+              )}
             </div>
 
             <div
@@ -247,7 +240,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
                         name="brands"
                         value={brand.name}
                         checked={currentBrands.includes(brand.name)}
-                        disabled
                         class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
                       />
                       <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
@@ -296,7 +288,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             name="availability"
             value="true"
             checked={currentAvailability}
-            disabled
             class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
           />
           <span
@@ -316,7 +307,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             <button
               type="button"
               data-clear-filters-mobile
-              disabled
               class="flex-1 py-3 px-4 border border-(--ui-button-border) text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
             >
               Clear Filters
@@ -351,7 +341,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         this.setupEventListeners();
         this.initializeMenuState();
         this.setupViewTransitionsCoordination();
-        this.enableFilterControls();
         this.isInitialized = true;
       }
     }
@@ -370,22 +359,6 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         );
         return;
       }
-    }
-
-    private enableFilterControls(): void {
-      const controls =
-        this.form?.querySelectorAll('input[type="checkbox"], button') || [];
-      const mobileToggle = document.getElementById("mobile-filter-toggle");
-
-      controls.forEach((control) => {
-        (control as HTMLInputElement).disabled = false;
-      });
-
-      if (mobileToggle) {
-        (mobileToggle as HTMLButtonElement).disabled = false;
-      }
-
-      this.container?.classList.remove("filters-disabled");
     }
 
     private setupEventListeners(): void {
@@ -418,8 +391,12 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       this.overlay?.classList.add("opacity-0");
       this.container?.classList.add("translate-y-full", "opacity-0");
 
-      // Use transitionend event instead of fixed timeout
+      // Use transitionend event with proper cleanup to prevent race condition
+      let hasCompleted = false;
       const handleTransitionEnd = () => {
+        if (hasCompleted) return; // Prevent duplicate calls
+        hasCompleted = true;
+
         this.overlay?.classList.add("pointer-events-none");
         this.container?.classList.add("pointer-events-none");
         this.container?.removeEventListener(
@@ -428,7 +405,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         );
       };
 
-      this.container?.addEventListener("transitionend", handleTransitionEnd);
+      this.container?.addEventListener("transitionend", handleTransitionEnd, {
+        once: true,
+      });
 
       // Fallback timeout in case transitionend doesn't fire
       setTimeout(handleTransitionEnd, 350);
@@ -439,13 +418,14 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     private setupHybridFiltering(): void {
       if (!this.form) return;
 
+      // Use matchMedia to stay in sync with Tailwind's lg breakpoint
+      const isDesktop = () => window.matchMedia("(min-width: 1024px)").matches;
+
       // Simple form-based approach with View Transitions
       this.form.addEventListener("submit", (event) => {
         event.preventDefault();
 
-        const isMobile = window.innerWidth < 1024;
-
-        if (isMobile) {
+        if (!isDesktop()) {
           this.closeMobileDrawer();
           setTimeout(() => this.submitForm(), 300);
         } else {
@@ -457,7 +437,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       const checkboxes = this.form.querySelectorAll('input[type="checkbox"]');
       checkboxes.forEach((checkbox) => {
         checkbox.addEventListener("change", () => {
-          if (window.innerWidth >= 1024) {
+          if (isDesktop()) {
             this.submitForm();
           }
         });
@@ -563,33 +543,14 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         "[data-clear-filters-mobile]"
       );
 
-      // UNIFIED: Bulletproof Clear All implementation
-      const handleClearAll = () => {
-        // Primary: Use instance method
-        const filterInstance = (window as any).currentFilterInstance;
-        if (filterInstance?.clearAllFilters) {
-          return filterInstance.clearAllFilters();
-        }
-
-        // Secondary: Use global fallback function
-        const globalClearAll = (window as any).globalClearAllFilters;
-        if (globalClearAll) {
-          return globalClearAll();
-        }
-
-        // Tertiary: Direct fallback (should rarely be needed)
-        console.warn(
-          "[ProductFilters] ⚠️ Using direct fallback - animation may be inconsistent"
-        );
-        window.location.href = window.location.pathname;
-      };
-
-      clearBtn?.addEventListener("click", handleClearAll);
+      clearBtn?.addEventListener("click", () => {
+        this.clearAllFilters();
+      });
 
       clearBtnMobile?.addEventListener("click", () => {
         // Close mobile drawer first, then clear
         this.closeMobileDrawer();
-        setTimeout(handleClearAll, 100);
+        setTimeout(() => this.clearAllFilters(), 100);
       });
     }
 
@@ -637,7 +598,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
 
     public clearAllFilters(): void {
       const basePath = window.location.pathname;
-      const isMobile = window.innerWidth < 1024;
+      const isMobile = !window.matchMedia("(min-width: 1024px)").matches;
 
       if (isMobile) {
         this.closeMobileDrawer();
@@ -711,7 +672,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       currentInstance.destroy();
       currentInstance = null;
     }
-    FilterCoordinator.cleanupAnimationState();
+    FilterCoordinator.reset();
   }
 
   // Initialize the unified filter system

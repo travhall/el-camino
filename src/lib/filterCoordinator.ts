@@ -16,10 +16,10 @@ export class FilterCoordinator {
   private static isAnimating = false;
   private static currentInstance: FilterCoordinator | null = null;
 
-  // Session storage keys
+  // Session storage keys - consistent kebab-case naming
   private static readonly STORAGE_KEYS = {
     filteringInProgress: "filtering-in-progress",
-    appliedFiltersShown: "appliedFiltersShown",
+    appliedFiltersShown: "applied-filters-shown",
     filterMenuExpanded: "filter-menu-expanded",
   };
 
@@ -32,10 +32,15 @@ export class FilterCoordinator {
 
   /**
    * Initialize the unified filter system
-   * Called once per page load
+   * Called once per page load - prevents duplicate initialization
    */
   static initialize(): void {
-    if (this.isInitialized) return;
+    if (this.isInitialized) {
+      console.warn(
+        "[FilterCoordinator] Already initialized, skipping duplicate initialization"
+      );
+      return;
+    }
 
     this.getInstance().setupEventListeners();
     this.isInitialized = true;
@@ -80,6 +85,10 @@ export class FilterCoordinator {
           card.classList.remove("opacity-100");
           card.classList.add("opacity-0");
         });
+
+        // FIXED: Call the navigation callback after applying animations
+        // Navigation happens immediately while animations play
+        callback();
         return;
       }
     }
@@ -108,8 +117,19 @@ export class FilterCoordinator {
    */
   static cleanupAnimationState(): void {
     sessionStorage.removeItem(this.STORAGE_KEYS.filteringInProgress);
+    sessionStorage.removeItem(this.STORAGE_KEYS.appliedFiltersShown);
     document.body.classList.remove("filtering-in-progress");
     this.isAnimating = false;
+  }
+
+  /**
+   * Reset initialization state for page navigation
+   * Allows re-initialization on new page loads
+   */
+  static reset(): void {
+    this.cleanupAnimationState();
+    this.isInitialized = false;
+    this.currentInstance = null;
   }
 
   /**

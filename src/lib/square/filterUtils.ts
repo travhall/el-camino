@@ -239,7 +239,7 @@ export function hasActiveFilters(filters: ProductFilters): boolean {
  * Clear all filters
  */
 export function clearAllFilters(): ProductFilters {
-  return { brands: [] };
+  return { brands: [], availability: false };
 }
 
 /**
