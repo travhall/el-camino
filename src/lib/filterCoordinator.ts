@@ -3,12 +3,14 @@
 
 export class FilterCoordinator {
   // Shared timing constants across all components
+  // Note: exit, entrance, stagger, and rowStagger are used by ProductGrid.astro
+  // appliedFiltersDelay is used by FilterCoordinator for AppliedFilters animation
   static readonly TIMING = {
-    exit: 200, // Duration for exit animations (ms)
-    entrance: 200, // Duration for entrance animations (ms)
-    stagger: 75, // Delay between card animations (ms)
-    rowStagger: 150, // Delay between rows (ms)
-    appliedFiltersDelay: 300, // AppliedFilters appearance delay
+    exit: 200, // Duration for exit animations (ms) - ProductGrid
+    entrance: 200, // Duration for entrance animations (ms) - ProductGrid
+    stagger: 75, // Delay between card animations (ms) - ProductGrid
+    rowStagger: 150, // Delay between rows (ms) - ProductGrid
+    appliedFiltersDelay: 300, // AppliedFilters appearance delay - FilterCoordinator
   };
 
   // Shared state management
@@ -36,9 +38,6 @@ export class FilterCoordinator {
    */
   static initialize(): void {
     if (this.isInitialized) {
-      console.warn(
-        "[FilterCoordinator] Already initialized, skipping duplicate initialization"
-      );
       return;
     }
 
@@ -147,31 +146,18 @@ export class FilterCoordinator {
     }
   }
 
-  /**
-   * Check if filtering is currently in progress
-   */
-  static isFilteringInProgress(): boolean {
-    return (
-      sessionStorage.getItem(this.STORAGE_KEYS.filteringInProgress) === "true"
-    );
-  }
-
   private constructor() {}
 
   private setupEventListeners(): void {
-    // Unified page load handler
+    // Unified page load handler - coordinates entrance animations and clears filtering state
     document.addEventListener("astro:page-load", () => {
       FilterCoordinator.coordinateEntrance();
+      FilterCoordinator.setFilteringState(false);
     });
 
-    // Unified cleanup handler
+    // Unified cleanup handler - runs before page swap
     document.addEventListener("astro:before-swap", () => {
       FilterCoordinator.cleanupAnimationState();
-    });
-
-    // Unified page load complete handler
-    document.addEventListener("astro:page-load", () => {
-      FilterCoordinator.setFilteringState(false);
     });
   }
 
@@ -209,18 +195,8 @@ export class FilterCoordinator {
     const hadFiltersBefore = previousFilterState === "true";
     const hadNoFiltersBefore = previousFilterState === "false";
 
-    console.log("[AppliedFilters] State check:", {
-      hasFilters,
-      hadFiltersBefore,
-      previousFilterState,
-      currentBrands,
-      currentAvailability,
-      shouldAnimate: !hadFiltersBefore && hasFilters,
-    });
-
     if (!hasFilters) {
       // Going FROM filters TO no filters - just hide, no animation
-      console.log("[AppliedFilters] Hiding (no filters)");
       container.classList.add("no-filters");
       container.style.transition = "";
       container.style.visibility = "";
@@ -238,10 +214,10 @@ export class FilterCoordinator {
     // Only animate if transitioning FROM no filters TO has filters
     if (!hadFiltersBefore || hadNoFiltersBefore) {
       // First time showing filters (or returning from no filters state) - animate
-      console.log("[AppliedFilters] Animating fade in");
       container.style.visibility = "hidden";
       container.style.opacity = "0";
 
+      // Delay before starting fade-in animation
       setTimeout(() => {
         container.style.transition = "opacity 200ms ease, visibility 0s";
         container.style.visibility = "visible";
@@ -251,14 +227,14 @@ export class FilterCoordinator {
           FilterCoordinator.STORAGE_KEYS.appliedFiltersShown,
           "true"
         );
-
-        setTimeout(() => {
-          container.style.transition = "";
-        }, 200);
       }, FilterCoordinator.TIMING.appliedFiltersDelay);
+
+      // Clean up transition after animation completes
+      setTimeout(() => {
+        container.style.transition = "";
+      }, FilterCoordinator.TIMING.appliedFiltersDelay + 200);
     } else {
       // Already had filters - just update content instantly
-      console.log("[AppliedFilters] Instant update (already had filters)");
       container.style.transition = "none";
       container.style.visibility = "visible";
       container.style.opacity = "1";

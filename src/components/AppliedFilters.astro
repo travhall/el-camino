@@ -18,6 +18,8 @@ const hasActiveFilters = currentBrands.length > 0 || currentAvailability;
 
 // Determine if we should start hidden (for animation) based on referrer
 // If the referrer has no query params, this is the first filter being applied
+// Note: Edge cases (direct URL entry, external navigation) are handled gracefully
+// by JavaScript's session storage tracking in filterCoordinator.ts
 const referrer = Astro.request.headers.get('referer') || '';
 const referrerUrl = referrer ? new URL(referrer) : null;
 const hadFiltersInReferrer = referrerUrl?.search ? referrerUrl.searchParams.toString().length > 0 : false;
