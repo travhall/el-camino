@@ -646,23 +646,29 @@ const isCategoryPage = currentPath.includes("/category/");
     private toggleDropdown(group: Element, elementData: NavElementData): void {
       // Use requestAnimationFrame for smooth animations
       requestAnimationFrame(() => {
-        this.isAnimating = true;
+        try {
+          this.isAnimating = true;
 
-        this.closeOtherDropdowns(group);
+          this.closeOtherDropdowns(group);
 
-        const wasOpen = elementData.isOpen;
-        this.setDropdownState(group, elementData, !wasOpen);
+          const wasOpen = elementData.isOpen;
+          this.setDropdownState(group, elementData, !wasOpen);
 
-        // Announce state change for screen readers
-        const action = wasOpen ? "collapsed" : "expanded";
-        this.announceToScreenReader(
-          `${elementData.categoryName} menu ${action}`
-        );
+          // Announce state change for screen readers
+          const action = wasOpen ? "collapsed" : "expanded";
+          this.announceToScreenReader(
+            `${elementData.categoryName} menu ${action}`
+          );
 
-        // Use shorter animation timeout for better responsiveness
-        setTimeout(() => {
+          // Use shorter animation timeout for better responsiveness
+          setTimeout(() => {
+            this.isAnimating = false;
+          }, 200);
+        } catch (error) {
+          // Ensure isAnimating gets reset even if errors occur
           this.isAnimating = false;
-        }, 200);
+          throw error;
+        }
       });
     }
 
@@ -802,6 +808,36 @@ const isCategoryPage = currentPath.includes("/category/");
 
   document.addEventListener("astro:after-swap", () => {
     navController = initializeOptimizedNavigation();
+  });
+
+  // Handle page visibility changes to prevent stale state
+  // Only runs after extended idle periods (5+ minutes)
+  let hiddenTime = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      // Track when page was hidden
+      hiddenTime = Date.now();
+    } else {
+      // Page is visible again - only reset if hidden for more than 5 minutes
+      const idleDuration = Date.now() - hiddenTime;
+      if (hiddenTime > 0 && idleDuration > 300000) { // 5 minutes
+        if (navController) {
+          navController.destroy();
+        }
+        navController = initializeOptimizedNavigation();
+      }
+    }
+  });
+
+  // Handle page show event (back/forward cache)
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      // Page loaded from bfcache - reset
+      if (navController) {
+        navController.destroy();
+      }
+      navController = initializeOptimizedNavigation();
+    }
   });
 
   // Initial load

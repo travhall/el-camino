@@ -17,6 +17,7 @@ export class FilterCoordinator {
   private static isInitialized = false;
   private static isAnimating = false;
   private static currentInstance: FilterCoordinator | null = null;
+  private static timeoutIds: ReturnType<typeof setTimeout>[] = [];
 
   // Session storage keys - consistent kebab-case naming
   private static readonly STORAGE_KEYS = {
@@ -59,64 +60,70 @@ export class FilterCoordinator {
       callback();
       return;
     }
-    this.isAnimating = true;
 
-    // Set filtering state for click prevention
-    this.setFilteringState(true);
+    try {
+      this.isAnimating = true;
 
-    // Check if we need to animate out AppliedFilters
-    // If targetUrl has no query params, we're removing the last filter
-    const willHaveNoFilters = targetUrl ? !targetUrl.includes('?') : false;
-    const currentlyHasFilters = sessionStorage.getItem(this.STORAGE_KEYS.appliedFiltersShown) === 'true';
-    const needsAppliedFiltersExit = willHaveNoFilters && currentlyHasFilters;
+      // Set filtering state for click prevention
+      this.setFilteringState(true);
 
-    // Animate out AppliedFilters if needed
-    if (needsAppliedFiltersExit) {
-      const container = document.getElementById("applied-filters-container");
-      if (container) {
-        container.style.transition = "opacity 200ms ease";
-        container.style.opacity = "0";
-      }
-    }
+      // Check if we need to animate out AppliedFilters
+      // If targetUrl has no query params, we're removing the last filter
+      const willHaveNoFilters = targetUrl ? !targetUrl.includes('?') : false;
+      const currentlyHasFilters = sessionStorage.getItem(this.STORAGE_KEYS.appliedFiltersShown) === 'true';
+      const needsAppliedFiltersExit = willHaveNoFilters && currentlyHasFilters;
 
-    // Apply exit animations to product grid
-    const grid = document.getElementById(
-      "filterable-product-grid"
-    ) as HTMLElement;
-    if (grid) {
-      // Target all visible cards (not just opacity-100 ones)
-      const visibleCards = grid.querySelectorAll(
-        ".product-card-wrapper"
-      ) as NodeListOf<HTMLElement>;
-
-      if (visibleCards.length > 0) {
-        // Apply exit animation to all visible cards
-        visibleCards.forEach((card) => {
-          // Force immediate exit animation by overriding CSS delays
-          card.style.setProperty("--card-stagger-delay", "0ms");
-          card.style.setProperty("--animation-order", "0");
-          card.style.setProperty("transition-delay", "0s, 0s");
-
-          card.classList.remove("opacity-100");
-          card.classList.add("opacity-0");
-        });
-
-        // If AppliedFilters needs to exit, wait for it to complete before navigating
-        // Otherwise navigate immediately while ProductGrid animations play
-        if (needsAppliedFiltersExit) {
-          setTimeout(() => {
-            callback();
-          }, 200);
-        } else {
-          callback();
+      // Animate out AppliedFilters if needed
+      if (needsAppliedFiltersExit) {
+        const container = document.getElementById("applied-filters-container");
+        if (container) {
+          container.style.transition = "opacity 200ms ease";
+          container.style.opacity = "0";
         }
-        return;
       }
-    }
 
-    // No grid or no visible cards - navigate immediately
-    callback();
-    this.isAnimating = false;
+      // Apply exit animations to product grid
+      const grid = document.getElementById(
+        "filterable-product-grid"
+      ) as HTMLElement;
+      if (grid) {
+        // Target all visible cards (not just opacity-100 ones)
+        const visibleCards = grid.querySelectorAll(
+          ".product-card-wrapper"
+        ) as NodeListOf<HTMLElement>;
+
+        if (visibleCards.length > 0) {
+          // Apply exit animation to all visible cards
+          visibleCards.forEach((card) => {
+            // Force immediate exit animation by overriding CSS delays
+            card.style.setProperty("--card-stagger-delay", "0ms");
+            card.style.setProperty("--animation-order", "0");
+            card.style.setProperty("transition-delay", "0s, 0s");
+
+            card.classList.remove("opacity-100");
+            card.classList.add("opacity-0");
+          });
+
+          // If AppliedFilters needs to exit, wait for it to complete before navigating
+          // Otherwise navigate immediately while ProductGrid animations play
+          if (needsAppliedFiltersExit) {
+            const timeoutId = setTimeout(() => {
+              callback();
+            }, 200);
+            this.timeoutIds.push(timeoutId);
+          } else {
+            callback();
+          }
+          return;
+        }
+      }
+
+      // No grid or no visible cards - navigate immediately
+      callback();
+    } finally {
+      // Ensure isAnimating gets reset even if errors occur
+      this.isAnimating = false;
+    }
   }
 
   /**
@@ -141,6 +148,10 @@ export class FilterCoordinator {
     sessionStorage.removeItem(this.STORAGE_KEYS.filteringInProgress);
     document.body.classList.remove("filtering-in-progress");
     this.isAnimating = false;
+
+    // Clear all pending timeouts
+    this.timeoutIds.forEach(id => clearTimeout(id));
+    this.timeoutIds = [];
   }
 
   /**
@@ -164,7 +175,11 @@ export class FilterCoordinator {
       sessionStorage.setItem(this.STORAGE_KEYS.filteringInProgress, "true");
       document.body.classList.add("filtering-in-progress");
     } else {
-      this.cleanupAnimationState();
+      // Only clear the filtering state, NOT the animation timeouts
+      // The timeouts are for AppliedFilters entrance animations which need to complete
+      sessionStorage.removeItem(this.STORAGE_KEYS.filteringInProgress);
+      document.body.classList.remove("filtering-in-progress");
+      this.isAnimating = false;
     }
   }
 
@@ -180,6 +195,34 @@ export class FilterCoordinator {
     // Unified cleanup handler - runs before page swap
     document.addEventListener("astro:before-swap", () => {
       FilterCoordinator.cleanupAnimationState();
+    });
+
+    // Page visibility handler - reset animation state when page becomes visible after being hidden
+    // Only runs after extended idle periods (5+ minutes)
+    let hiddenTime = 0;
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        // Track when page was hidden
+        hiddenTime = Date.now();
+      } else {
+        // Page is visible again - only reset if hidden for more than 5 minutes
+        const idleDuration = Date.now() - hiddenTime;
+        if (hiddenTime > 0 && idleDuration > 300000) { // 5 minutes
+          FilterCoordinator.cleanupAnimationState();
+          FilterCoordinator.isInitialized = false;
+          FilterCoordinator.initialize();
+        }
+      }
+    });
+
+    // Handle page show event (fired when navigating back via browser history)
+    window.addEventListener("pageshow", (event) => {
+      // If page is loaded from bfcache (back/forward cache), reset state
+      if (event.persisted) {
+        FilterCoordinator.cleanupAnimationState();
+        FilterCoordinator.isInitialized = false;
+        FilterCoordinator.initialize();
+      }
     });
   }
 
@@ -241,7 +284,7 @@ export class FilterCoordinator {
       container.style.opacity = "0";
 
       // Delay before starting fade-in animation
-      setTimeout(() => {
+      const timeoutId1 = setTimeout(() => {
         container.style.transition = "opacity 200ms ease, visibility 0s";
         container.style.visibility = "visible";
         container.style.opacity = "1";
@@ -251,11 +294,13 @@ export class FilterCoordinator {
           "true"
         );
       }, FilterCoordinator.TIMING.appliedFiltersDelay);
+      FilterCoordinator.timeoutIds.push(timeoutId1);
 
       // Clean up transition after animation completes
-      setTimeout(() => {
+      const timeoutId2 = setTimeout(() => {
         container.style.transition = "";
       }, FilterCoordinator.TIMING.appliedFiltersDelay + 200);
+      FilterCoordinator.timeoutIds.push(timeoutId2);
     } else {
       // Already had filters - just update content instantly
       container.style.transition = "none";

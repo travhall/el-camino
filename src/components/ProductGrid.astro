@@ -768,11 +768,15 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
             }
 
             loadTimeout = setTimeout(() => {
-              isLoading = true;
-              if (grid) grid.setAttribute("aria-busy", "true");
+              try {
+                isLoading = true;
+                if (grid) grid.setAttribute("aria-busy", "true");
 
-              loadMoreCards();
-              isLoading = false;
+                loadMoreCards();
+              } finally {
+                // Ensure isLoading gets reset even if loadMoreCards throws
+                isLoading = false;
+              }
             }, 100); // 100ms debounce delay
             animationTimeouts.push(loadTimeout);
           }
@@ -807,11 +811,8 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
   let animationTimeouts: ReturnType<typeof setTimeout>[] = [];
   let isInitialized = false;
 
-  // Cleanup on navigation
-  document.addEventListener("astro:before-swap", () => {
-    window.removeEventListener("resize", handleResize);
-    clearTimeout(resizeTimeout);
-
+  // Helper function to clean up all observers and timeouts
+  function cleanupObserversAndTimeouts() {
     // Clean up observers to prevent memory leaks
     if (cardAnimationObserver) {
       cardAnimationObserver.disconnect();
@@ -826,17 +827,64 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       pageLoadObserver = null;
     }
 
+    // Clear all pending timeouts
+    animationTimeouts.forEach((timeout) => clearTimeout(timeout));
+    animationTimeouts = [];
+  }
+
+  // Cleanup on navigation
+  document.addEventListener("astro:before-swap", () => {
+    window.removeEventListener("resize", handleResize);
+    clearTimeout(resizeTimeout);
+
+    cleanupObserversAndTimeouts();
+
     // Clean up live region
     if (liveRegion && liveRegion.parentNode) {
       liveRegion.parentNode.removeChild(liveRegion);
       liveRegion = null;
     }
 
-    // Clear all pending timeouts
-    animationTimeouts.forEach((timeout) => clearTimeout(timeout));
-    animationTimeouts = [];
-
     // Reset initialization flag
     isInitialized = false;
+  });
+
+  // Handle page visibility changes to prevent stale animations
+  // Only runs after extended idle periods (5+ minutes)
+  let hiddenTime = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      // Track when page was hidden
+      hiddenTime = Date.now();
+    } else {
+      // Page is visible again - only reset if hidden for more than 5 minutes
+      const idleDuration = Date.now() - hiddenTime;
+      if (hiddenTime > 0 && idleDuration > 300000 && isInitialized) { // 5 minutes
+        cleanupObserversAndTimeouts();
+        isInitialized = false;
+
+        // Reinitialize animations with fresh state
+        const grid = document.getElementById("filterable-product-grid");
+        if (grid) {
+          initializePageLoadAnimations();
+          initializeInfiniteScroll();
+        }
+      }
+    }
+  });
+
+  // Handle page show event (back/forward cache)
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted && isInitialized) {
+      // Page loaded from bfcache - reset everything
+      cleanupObserversAndTimeouts();
+      isInitialized = false;
+
+      const grid = document.getElementById("filterable-product-grid");
+      if (grid) {
+        initializePageLoadAnimations();
+        initializeInfiniteScroll();
+      }
+    }
   });
 </script>
