@@ -27,6 +27,9 @@ interface Props {
   fallbackContent?: WordPressFallbackContent;
   // New props for different layouts
   variant?: "masonry" | "grid" | "list";
+  // Animation props (passed through for entrance animations)
+  "data-initial-index"?: number;
+  "data-variant"?: string;
 }
 
 const {
@@ -219,8 +222,10 @@ const getExcerptClasses = () => {
 
 <a
   href={`/news/${post.slug}`}
-  class={getCardClasses()}
+  class={`${getCardClasses()} article-card-wrapper opacity-0`}
   aria-label={`Read article: ${actualFallbackContent.title}`}
+  data-initial-index={Astro.props["data-initial-index"]}
+  data-variant={Astro.props["data-variant"] || variant}
 >
   <!-- Enhanced Image with AVIF/WebP support -->
   {
