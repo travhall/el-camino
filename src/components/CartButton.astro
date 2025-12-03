@@ -27,6 +27,11 @@ const cartCount = cart.getItemCount();
 <script>
   let cartLoaded = false;
   let updateTimeout: number | null = null;
+  // Initialize with server-rendered count to prevent initial flash
+  let lastKnownCount: number | null = (() => {
+    const countElement = document.getElementById("cart-count");
+    return countElement ? parseInt(countElement.textContent || "0", 10) : null;
+  })();
 
   async function loadCart() {
     if (!cartLoaded) {
@@ -37,7 +42,7 @@ const cartCount = cart.getItemCount();
     return (await import("@/lib/cart")).cart;
   }
 
-  async function updateCartCount() {
+  async function updateCartCount(force = false) {
     if (updateTimeout) window.clearTimeout(updateTimeout);
 
     updateTimeout = window.setTimeout(async () => {
@@ -47,8 +52,13 @@ const cartCount = cart.getItemCount();
       try {
         const cart = await loadCart();
         const count = cart.getItemCount();
-        countElement.textContent = count.toString();
-        countElement.classList.toggle("hidden", count === 0);
+
+        // Only update DOM if count actually changed (prevents flash)
+        if (force || lastKnownCount !== count) {
+          countElement.textContent = count.toString();
+          countElement.classList.toggle("hidden", count === 0);
+          lastKnownCount = count;
+        }
       } catch (error) {
         console.error("Error updating cart count:", error);
       }
@@ -77,7 +87,9 @@ const cartCount = cart.getItemCount();
   // Re-initialize on Astro navigation
   document.addEventListener("astro:page-load", initCartButton);
 
-  // Keep existing cart count update functionality
-  window.addEventListener("cartUpdated", updateCartCount);
-  document.addEventListener("astro:page-load", updateCartCount);
+  // Update cart count when cart is actually modified
+  window.addEventListener("cartUpdated", () => updateCartCount(true));
+
+  // On page load, only update if different (prevents flash during filtering)
+  document.addEventListener("astro:page-load", () => updateCartCount(false));
 </script>

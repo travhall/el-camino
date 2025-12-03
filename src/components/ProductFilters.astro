@@ -459,18 +459,27 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         const basePath = window.location.pathname;
         const newUrl = `${basePath}${queryString ? "?" + queryString : ""}`;
 
-        // Use coordinated exit animation (now with actual animations)
-        FilterCoordinator.coordinateExit(() => {
+        // Use coordinated exit animation with Astro's navigate() API
+        FilterCoordinator.coordinateExit(async () => {
           sessionStorage.setItem(
             FilterCoordinator.getStorageKeys().filterMenuExpanded,
             this.isExpanded.toString()
           );
-          window.location.href = newUrl;
+
+          // Use Astro's navigate() instead of window.location.href
+          // This preserves transition:persist elements and avoids full page reload
+          const { navigate } = await import('astro:transitions/client');
+          navigate(newUrl);
         });
       } catch (error) {
         console.error("[ProductFilters] Error submitting form:", error);
-        // Fallback to simple navigation
-        window.location.href = window.location.pathname;
+        // Fallback to Astro navigation
+        import('astro:transitions/client').then(({ navigate }) => {
+          navigate(window.location.pathname);
+        }).catch(() => {
+          // Last resort: full page reload
+          window.location.href = window.location.pathname;
+        });
       }
     }
 
@@ -604,13 +613,16 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         this.closeMobileDrawer();
       }
 
-      // Use coordinated exit for consistent behavior
-      FilterCoordinator.coordinateExit(() => {
+      // Use coordinated exit with Astro navigation
+      FilterCoordinator.coordinateExit(async () => {
         sessionStorage.setItem(
           FilterCoordinator.getStorageKeys().filterMenuExpanded,
           this.isExpanded.toString()
         );
-        window.location.href = basePath;
+
+        // Use Astro's navigate() to preserve transition:persist elements
+        const { navigate } = await import('astro:transitions/client');
+        navigate(basePath);
       });
     }
 

@@ -26,21 +26,34 @@ const cartCount = cart.getItemCount();
 </a>
 
 <script>
+  // Initialize with server-rendered count to prevent initial flash
+  let lastKnownCount: number | null = (() => {
+    const countElement = document.getElementById("mobile-cart-count");
+    return countElement ? parseInt(countElement.textContent || "0", 10) : null;
+  })();
+
   // Minimal cart count updates for mobile
-  function updateMobileCartCount() {
+  function updateMobileCartCount(force = false) {
     const countElement = document.getElementById("mobile-cart-count");
     if (!countElement) return;
 
     import("@/lib/cart").then(({ cart }) => {
       const count = cart.getItemCount();
-      countElement.textContent = count.toString();
-      countElement.classList.toggle("hidden", count === 0);
+
+      // Only update DOM if count actually changed (prevents flash)
+      if (force || lastKnownCount !== count) {
+        countElement.textContent = count.toString();
+        countElement.classList.toggle("hidden", count === 0);
+        lastKnownCount = count;
+      }
     }).catch(err => {
       console.error("Cart count update failed:", err);
     });
   }
 
-  // Listen for cart updates
-  window.addEventListener("cartUpdated", updateMobileCartCount);
-  document.addEventListener("astro:page-load", updateMobileCartCount);
+  // Update cart count when cart is actually modified
+  window.addEventListener("cartUpdated", () => updateMobileCartCount(true));
+
+  // On page load, only update if different (prevents flash during filtering)
+  document.addEventListener("astro:page-load", () => updateMobileCartCount(false));
 </script>

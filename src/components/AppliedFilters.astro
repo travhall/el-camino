@@ -151,17 +151,18 @@ const shouldStartHidden = hasActiveFilters && !hadFiltersInReferrer;
         removeFilter("availability");
       });
 
-    // Clear All - simple direct navigation
+    // Clear All - use Astro navigation
     document
       .querySelector("[data-clear-all-filters]")
       ?.addEventListener("click", () => {
-        FilterCoordinator.coordinateExit(() => {
-          window.location.href = window.location.pathname;
+        FilterCoordinator.coordinateExit(async () => {
+          const { navigate } = await import('astro:transitions/client');
+          navigate(window.location.pathname);
         });
       });
   }
 
-  function removeFilter(type: string, value: string | null = null) {
+  async function removeFilter(type: string, value: string | null = null) {
     const currentParams = new URLSearchParams(window.location.search);
     const currentBrands = currentParams.getAll("brands") || [];
     const currentAvailability = currentParams.get("availability") === "true";
@@ -179,9 +180,10 @@ const shouldStartHidden = hasActiveFilters && !hadFiltersInReferrer;
     const queryString = params.toString();
     const url = `${window.location.pathname}${queryString ? "?" + queryString : ""}`;
 
-    // Use coordinated exit for consistent behavior
-    FilterCoordinator.coordinateExit(() => {
-      window.location.href = url;
+    // Use Astro navigation to preserve transition:persist elements
+    FilterCoordinator.coordinateExit(async () => {
+      const { navigate } = await import('astro:transitions/client');
+      navigate(url);
     });
   }
 </script>
