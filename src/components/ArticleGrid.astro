@@ -99,22 +99,34 @@ const getSkeletonVariant = () => {
     ) : displayPosts.length > 0 ? (
       <>
         {displayPosts.map((post, index) => {
-          // Wrap all articles with animation wrapper
-          return (
-            <article
-              class="article-card-wrapper opacity-0"
-              data-initial-index={index}
-              data-variant={getCardVariant(index)}
-              data-filterable={filterable}
-            >
+          // Only wrap filterable articles with animation wrapper
+          // Home page (masonry) needs ArticleCard as direct grid child
+          if (filterable) {
+            return (
+              <div
+                class="article-card-wrapper opacity-0"
+                data-initial-index={index}
+                data-variant={getCardVariant(index)}
+              >
+                <ArticleCard
+                  post={post}
+                  featured={false}
+                  priority={shouldPrioritize(index)}
+                  variant={getCardVariant(index)}
+                />
+              </div>
+            );
+          } else {
+            // Home page - add animation classes directly to ArticleCard container
+            return (
               <ArticleCard
                 post={post}
-                featured={!filterable && index === 0}
+                featured={index === 0}
                 priority={shouldPrioritize(index)}
                 variant={getCardVariant(index)}
               />
-            </article>
-          );
+            );
+          }
         })}
 
         {/* Home page sidebar and CTA (only for non-filterable mode) */}
@@ -287,13 +299,12 @@ const getSkeletonVariant = () => {
 
   // Initialize entrance animations for article cards
   function initializeArticleAnimations() {
-    // Find either filterable grid or home page grid
+    // Only animate filterable cards (news page)
     const filterableGrid = document.getElementById("filterable-article-grid");
-    const allCards = document.querySelectorAll(".article-card-wrapper.opacity-0");
+    if (!filterableGrid) return;
 
-    if (!allCards.length) return;
-
-    const cards = allCards;
+    const cards = filterableGrid.querySelectorAll(".article-card-wrapper.opacity-0");
+    if (!cards.length) return;
 
     // Skip animations if reduced motion preferred
     if (prefersReducedMotion) {
@@ -368,15 +379,11 @@ const getSkeletonVariant = () => {
 
   // Initialize on page load
   document.addEventListener("astro:page-load", () => {
-    // Check for either filterable grid or home page cards
+    // Only run for filterable grids (news page)
     const filterableGrid = document.getElementById("filterable-article-grid");
-    const homePageCards = document.querySelectorAll(".article-card-wrapper");
-
-    if (filterableGrid || homePageCards.length > 0) {
-      // Make grid visible if it exists
-      if (filterableGrid) {
-        filterableGrid.style.opacity = "1";
-      }
+    if (filterableGrid) {
+      // Make grid visible
+      filterableGrid.style.opacity = "1";
 
       // Initialize animations
       initializeArticleAnimations();
