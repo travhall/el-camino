@@ -1,16 +1,36 @@
 // src/lib/filterCoordinator.ts
 // Unified animation and state coordination for filter components
 
+// Grid configuration for different grid types
+export interface GridConfig {
+  gridId: string;
+  cardSelector: string;
+  readyEventName: string;
+}
+
+export const GRID_CONFIGS = {
+  product: {
+    gridId: "filterable-product-grid",
+    cardSelector: ".product-card-wrapper",
+    readyEventName: "productGridReady",
+  } as GridConfig,
+  article: {
+    gridId: "filterable-article-grid",
+    cardSelector: ".article-card-wrapper",
+    readyEventName: "articleGridReady",
+  } as GridConfig,
+} as const;
+
 export class FilterCoordinator {
   // Shared timing constants across all components
-  // Note: exit, entrance, stagger, and rowStagger are used by ProductGrid.astro
+  // Note: exit, entrance, stagger, and rowStagger are used by grids (ProductGrid.astro, ArticleGrid.astro)
   // appliedFiltersDelay is used by FilterCoordinator for AppliedFilters animation
   static readonly TIMING = {
-    exit: 200, // Duration for exit animations (ms) - ProductGrid
-    entrance: 200, // Duration for entrance animations (ms) - ProductGrid
-    stagger: 75, // Delay between card animations (ms) - ProductGrid
-    rowStagger: 150, // Delay between rows (ms) - ProductGrid
-    appliedFiltersDelay: 300, // AppliedFilters appearance delay - FilterCoordinator
+    exit: 200, // Duration for exit animations (ms)
+    entrance: 200, // Duration for entrance animations (ms)
+    stagger: 75, // Delay between card animations (ms)
+    rowStagger: 150, // Delay between rows (ms)
+    appliedFiltersDelay: 300, // AppliedFilters appearance delay
   };
 
   // Shared state management
@@ -53,8 +73,16 @@ export class FilterCoordinator {
    * Coordinate exit animations before navigation
    * Exit animation visible with instant navigation for best UX
    * If removing last filter, AppliedFilters must animate out BEFORE navigation
+   *
+   * @param callback - Function to call after exit animations complete
+   * @param targetUrl - Optional target URL to determine if filters are being cleared
+   * @param config - Grid configuration (defaults to product grid)
    */
-  static coordinateExit(callback: () => void, targetUrl?: string): void {
+  static coordinateExit(
+    callback: () => void,
+    targetUrl?: string,
+    config: GridConfig = GRID_CONFIGS.product
+  ): void {
     // Prevent multiple simultaneous calls
     if (this.isAnimating) {
       callback();
@@ -67,14 +95,14 @@ export class FilterCoordinator {
       // Set filtering state for click prevention
       this.setFilteringState(true);
 
-      // Check if we need to animate out AppliedFilters
+      // Check if we need to animate out AppliedFilters (product grid only)
       // If targetUrl has no query params, we're removing the last filter
       const willHaveNoFilters = targetUrl ? !targetUrl.includes('?') : false;
       const currentlyHasFilters = sessionStorage.getItem(this.STORAGE_KEYS.appliedFiltersShown) === 'true';
       const needsAppliedFiltersExit = willHaveNoFilters && currentlyHasFilters;
 
-      // Animate out AppliedFilters if needed
-      if (needsAppliedFiltersExit) {
+      // Animate out AppliedFilters if needed (product grid only)
+      if (needsAppliedFiltersExit && config === GRID_CONFIGS.product) {
         const container = document.getElementById("applied-filters-container");
         if (container) {
           container.style.transition = "opacity 200ms ease";
@@ -82,14 +110,12 @@ export class FilterCoordinator {
         }
       }
 
-      // Apply exit animations to product grid
-      const grid = document.getElementById(
-        "filterable-product-grid"
-      ) as HTMLElement;
+      // Apply exit animations to grid
+      const grid = document.getElementById(config.gridId) as HTMLElement;
       if (grid) {
         // Target all visible cards (not just opacity-100 ones)
         const visibleCards = grid.querySelectorAll(
-          ".product-card-wrapper"
+          config.cardSelector
         ) as NodeListOf<HTMLElement>;
 
         if (visibleCards.length > 0) {
@@ -105,8 +131,8 @@ export class FilterCoordinator {
           });
 
           // If AppliedFilters needs to exit, wait for it to complete before navigating
-          // Otherwise navigate immediately while ProductGrid animations play
-          if (needsAppliedFiltersExit) {
+          // Otherwise navigate immediately while grid animations play
+          if (needsAppliedFiltersExit && config === GRID_CONFIGS.product) {
             const timeoutId = setTimeout(() => {
               callback();
             }, 200);
@@ -129,15 +155,33 @@ export class FilterCoordinator {
   /**
    * Coordinate entrance animations after page load
    * Ensures all components animate in sync
+   *
+   * @param config - Optional grid configuration (auto-detects if not provided)
    */
-  static coordinateEntrance(): void {
+  static coordinateEntrance(config?: GridConfig): void {
     const instance = this.getInstance();
 
-    // Apply entrance timing to AppliedFilters
-    instance.coordinateAppliedFiltersEntrance();
+    // Auto-detect which grid is present if not specified
+    if (!config) {
+      const hasProductGrid = !!document.getElementById(GRID_CONFIGS.product.gridId);
+      const hasArticleGrid = !!document.getElementById(GRID_CONFIGS.article.gridId);
 
-    // Apply entrance timing to ProductGrid
-    instance.coordinateProductGridEntrance();
+      if (hasProductGrid) {
+        config = GRID_CONFIGS.product;
+      } else if (hasArticleGrid) {
+        config = GRID_CONFIGS.article;
+      } else {
+        return; // No grid found
+      }
+    }
+
+    // Apply entrance timing to AppliedFilters (product grid only)
+    if (config === GRID_CONFIGS.product) {
+      instance.coordinateAppliedFiltersEntrance();
+    }
+
+    // Apply entrance timing to grid
+    instance.coordinateGridEntrance(config);
   }
 
   /**
@@ -226,18 +270,18 @@ export class FilterCoordinator {
     });
   }
 
-  private coordinateProductGridEntrance(): void {
-    const grid = document.getElementById("filterable-product-grid");
+  private coordinateGridEntrance(config: GridConfig): void {
+    const grid = document.getElementById(config.gridId);
     if (!grid) return;
 
     // Ensure grid is visible for animations
     grid.style.visibility = "visible";
     grid.style.opacity = "1";
 
-    // Trigger ProductGrid's existing entrance animation system
-    const event = new CustomEvent("productGridReady", {
+    // Trigger grid's entrance animation system
+    const event = new CustomEvent(config.readyEventName, {
       detail: {
-        productCount: grid.querySelectorAll(".product-card-wrapper").length,
+        cardCount: grid.querySelectorAll(config.cardSelector).length,
       },
     });
     window.dispatchEvent(event);

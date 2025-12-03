@@ -385,6 +385,9 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
 </script>
 
 <script>
+  import { FilterCoordinator, GRID_CONFIGS } from "@/lib/filterCoordinator";
+  import { navigate } from "astro:transitions/client";
+
   class NewsFiltersManager {
     private form!: HTMLFormElement | null;
     private container!: HTMLElement | null;
@@ -486,8 +489,33 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         clearTimeout(this.submitTimeout);
       }
       this.submitTimeout = window.setTimeout(() => {
-        this.form?.submit();
+        this.submitForm();
       }, 150);
+    }
+
+    private submitForm(): void {
+      if (!this.form) return;
+
+      // Build the target URL from form data
+      const formData = new FormData(this.form);
+      const params = new URLSearchParams();
+
+      formData.forEach((value, key) => {
+        params.append(key, value.toString());
+      });
+
+      const targetUrl = params.toString()
+        ? `${this.form.action}?${params.toString()}`
+        : this.form.action;
+
+      // Coordinate exit animation before navigation
+      FilterCoordinator.coordinateExit(
+        () => {
+          navigate(targetUrl);
+        },
+        targetUrl,
+        GRID_CONFIGS.article
+      );
     }
 
     private setupTagChips(): void {
@@ -654,9 +682,9 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
           this.removeTag(tagSlug);
         }
       });
-      
+
       this.pendingTags.clear();
-      this.form?.submit();
+      this.submitForm();
     }
 
     private setupShowMoreToggles(): void {
@@ -746,7 +774,13 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
 
     private clearAllFilters(): void {
       // Use clean news URL without any parameters
-      window.location.href = '/news';
+      FilterCoordinator.coordinateExit(
+        () => {
+          navigate('/news');
+        },
+        '/news',
+        GRID_CONFIGS.article
+      );
     }
   }
 

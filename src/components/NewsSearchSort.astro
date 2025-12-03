@@ -162,6 +162,7 @@ const {
     saveViewPreference,
   } from "@/utils/newsNavigation";
   import { navigate } from "astro:transitions/client";
+  import { FilterCoordinator, GRID_CONFIGS } from "@/lib/filterCoordinator";
 
   document.addEventListener("astro:page-load", () => {
     // Only run on news pages
@@ -172,13 +173,20 @@ const {
     // Simple debouncing to prevent double-clicks
     let isNavigating = false;
 
-    // Simplified navigation function
+    // Simplified navigation function with animation coordination
     const navigateToUrl = async (url: string) => {
       if (isNavigating) return;
       isNavigating = true;
 
       try {
-        await navigate(url);
+        // Coordinate exit animation before navigation
+        FilterCoordinator.coordinateExit(
+          () => {
+            navigate(url);
+          },
+          url,
+          GRID_CONFIGS.article
+        );
       } catch (error) {
         window.location.href = url;
       } finally {
