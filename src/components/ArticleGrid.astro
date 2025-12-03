@@ -99,33 +99,22 @@ const getSkeletonVariant = () => {
     ) : displayPosts.length > 0 ? (
       <>
         {displayPosts.map((post, index) => {
-          // Wrap filterable articles with animation wrapper
-          if (filterable) {
-            return (
-              <article
-                class="article-card-wrapper opacity-0"
-                data-initial-index={index}
-                data-variant={getCardVariant(index)}
-              >
-                <ArticleCard
-                  post={post}
-                  featured={false}
-                  priority={shouldPrioritize(index)}
-                  variant={getCardVariant(index)}
-                />
-              </article>
-            );
-          } else {
-            // Home page - no animation wrapper
-            return (
+          // Wrap all articles with animation wrapper
+          return (
+            <article
+              class="article-card-wrapper opacity-0"
+              data-initial-index={index}
+              data-variant={getCardVariant(index)}
+              data-filterable={filterable}
+            >
               <ArticleCard
                 post={post}
-                featured={index === 0}
+                featured={!filterable && index === 0}
                 priority={shouldPrioritize(index)}
                 variant={getCardVariant(index)}
               />
-            );
-          }
+            </article>
+          );
         })}
 
         {/* Home page sidebar and CTA (only for non-filterable mode) */}
@@ -275,11 +264,20 @@ const getSkeletonVariant = () => {
 
   const ANIMATION_CONFIG = getAnimationTiming();
 
-  // Calculate cards per row based on viewport
+  // Calculate cards per row based on viewport and view
   function getCardsPerRow(view: string) {
     if (view === "list") return 1; // List view is always single column
 
     const width = window.innerWidth;
+
+    // Masonry layout (home page) - use grid column count
+    if (view === "masonry") {
+      if (width >= 1536) return 8; // 2xl:grid-cols-8
+      if (width >= 640) return 6; // sm:grid-cols-6
+      return 1; // mobile - single column
+    }
+
+    // Grid view (news page)
     if (width >= 1536) return 5; // 2xl:grid-cols-5
     if (width >= 1280) return 4; // xl:grid-cols-4
     if (width >= 1024) return 3; // lg:grid-cols-3
@@ -289,11 +287,13 @@ const getSkeletonVariant = () => {
 
   // Initialize entrance animations for article cards
   function initializeArticleAnimations() {
-    const grid = document.getElementById("filterable-article-grid");
-    if (!grid) return; // Not on news page
+    // Find either filterable grid or home page grid
+    const filterableGrid = document.getElementById("filterable-article-grid");
+    const allCards = document.querySelectorAll(".article-card-wrapper.opacity-0");
 
-    const cards = grid.querySelectorAll(".article-card-wrapper.opacity-0");
-    if (!cards.length) return;
+    if (!allCards.length) return;
+
+    const cards = allCards;
 
     // Skip animations if reduced motion preferred
     if (prefersReducedMotion) {
@@ -368,10 +368,15 @@ const getSkeletonVariant = () => {
 
   // Initialize on page load
   document.addEventListener("astro:page-load", () => {
-    const grid = document.getElementById("filterable-article-grid");
-    if (grid) {
-      // Make grid visible
-      grid.style.opacity = "1";
+    // Check for either filterable grid or home page cards
+    const filterableGrid = document.getElementById("filterable-article-grid");
+    const homePageCards = document.querySelectorAll(".article-card-wrapper");
+
+    if (filterableGrid || homePageCards.length > 0) {
+      // Make grid visible if it exists
+      if (filterableGrid) {
+        filterableGrid.style.opacity = "1";
+      }
 
       // Initialize animations
       initializeArticleAnimations();
