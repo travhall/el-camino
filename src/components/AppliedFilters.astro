@@ -155,10 +155,11 @@ const shouldStartHidden = hasActiveFilters && !hadFiltersInReferrer;
     document
       .querySelector("[data-clear-all-filters]")
       ?.addEventListener("click", () => {
+        const targetUrl = window.location.pathname;
         FilterCoordinator.coordinateExit(async () => {
           const { navigate } = await import('astro:transitions/client');
-          navigate(window.location.pathname);
-        });
+          navigate(targetUrl);
+        }, targetUrl);
       });
   }
 
@@ -184,6 +185,6 @@ const shouldStartHidden = hasActiveFilters && !hadFiltersInReferrer;
     FilterCoordinator.coordinateExit(async () => {
       const { navigate } = await import('astro:transitions/client');
       navigate(url);
-    });
+    }, url);
   }
 </script>

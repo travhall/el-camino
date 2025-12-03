@@ -51,8 +51,9 @@ export class FilterCoordinator {
   /**
    * Coordinate exit animations before navigation
    * Exit animation visible with instant navigation for best UX
+   * If removing last filter, AppliedFilters must animate out BEFORE navigation
    */
-  static coordinateExit(callback: () => void): void {
+  static coordinateExit(callback: () => void, targetUrl?: string): void {
     // Prevent multiple simultaneous calls
     if (this.isAnimating) {
       callback();
@@ -62,6 +63,21 @@ export class FilterCoordinator {
 
     // Set filtering state for click prevention
     this.setFilteringState(true);
+
+    // Check if we need to animate out AppliedFilters
+    // If targetUrl has no query params, we're removing the last filter
+    const willHaveNoFilters = targetUrl ? !targetUrl.includes('?') : false;
+    const currentlyHasFilters = sessionStorage.getItem(this.STORAGE_KEYS.appliedFiltersShown) === 'true';
+    const needsAppliedFiltersExit = willHaveNoFilters && currentlyHasFilters;
+
+    // Animate out AppliedFilters if needed
+    if (needsAppliedFiltersExit) {
+      const container = document.getElementById("applied-filters-container");
+      if (container) {
+        container.style.transition = "opacity 200ms ease";
+        container.style.opacity = "0";
+      }
+    }
 
     // Apply exit animations to product grid
     const grid = document.getElementById(
@@ -85,9 +101,15 @@ export class FilterCoordinator {
           card.classList.add("opacity-0");
         });
 
-        // FIXED: Call the navigation callback after applying animations
-        // Navigation happens immediately while animations play
-        callback();
+        // If AppliedFilters needs to exit, wait for it to complete before navigating
+        // Otherwise navigate immediately while ProductGrid animations play
+        if (needsAppliedFiltersExit) {
+          setTimeout(() => {
+            callback();
+          }, 200);
+        } else {
+          callback();
+        }
         return;
       }
     }
@@ -104,11 +126,11 @@ export class FilterCoordinator {
   static coordinateEntrance(): void {
     const instance = this.getInstance();
 
-    // Apply entrance timing to ProductGrid
-    instance.coordinateProductGridEntrance();
-
     // Apply entrance timing to AppliedFilters
     instance.coordinateAppliedFiltersEntrance();
+
+    // Apply entrance timing to ProductGrid
+    instance.coordinateProductGridEntrance();
   }
 
   /**
@@ -196,11 +218,12 @@ export class FilterCoordinator {
     const hadNoFiltersBefore = previousFilterState === "false";
 
     if (!hasFilters) {
-      // Going FROM filters TO no filters - just hide, no animation
+      // No filters - just hide (exit animation already handled in coordinateExit)
       container.classList.add("no-filters");
       container.style.transition = "";
       container.style.visibility = "";
       container.style.opacity = "";
+
       sessionStorage.setItem(
         FilterCoordinator.STORAGE_KEYS.appliedFiltersShown,
         "false"
