@@ -10,6 +10,7 @@ import {
   filterProductsWithCache,
   extractFilterOptions,
 } from "@/lib/square/filterUtils";
+import { batchCheckCategoriesHaveProducts } from "@/lib/square/categoryUtils";
 import Layout from "@/layouts/Layout.astro";
 
 const { slug } = Astro.params;
@@ -23,6 +24,16 @@ const { category, parentCategory, subcategories } =
   await resolveCategoryPathWithRetry(slug);
 
 if (!category) return Astro.redirect("/404");
+
+// Filter subcategories to only show those with products (matching navigation behavior)
+let filteredSubcategories = subcategories;
+if (subcategories.length > 0) {
+  const subcategoryIds = subcategories.map((sub) => sub.id);
+  const categoryProductMap = await batchCheckCategoriesHaveProducts(subcategoryIds);
+  filteredSubcategories = subcategories.filter(
+    (sub) => categoryProductMap[sub.id] === true
+  );
+}
 
 // === PARSE URL PARAMETERS FOR FILTERING ===
 const filters = parseFiltersFromURL(Astro.url.searchParams);
@@ -203,9 +214,9 @@ const hasActiveFilters =
         <div class="hidden md:block min-w-fit">
           <!-- Subcategory Navigation -->
           {
-            subcategories.length > 0 && (
+            filteredSubcategories.length > 0 && (
               <div class="flex flex-wrap gap-2 mb-1.5">
-                {subcategories.map((subcategory) => (
+                {filteredSubcategories.map((subcategory) => (
                   <a
                     href={`/category/${category.slug}/${subcategory.slug}`}
                     class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary)/50 hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50"
@@ -273,7 +284,7 @@ const hasActiveFilters =
               <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
                 {hasActiveFilters
                   ? "Try adjusting your filters or browse all products."
-                  : subcategories.length > 0
+                  : filteredSubcategories.length > 0
                     ? "Try browsing our subcategories above, or check out other product categories."
                     : "This category is currently empty. Check back soon for new products!"}
               </p>
