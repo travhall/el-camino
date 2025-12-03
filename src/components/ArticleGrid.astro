@@ -99,8 +99,7 @@ const getSkeletonVariant = () => {
     ) : displayPosts.length > 0 ? (
       <>
         {displayPosts.map((post, index) => {
-          // Only wrap filterable articles with animation wrapper
-          // Home page (masonry) needs ArticleCard as direct grid child
+          // Pass animation data attributes to all cards
           if (filterable) {
             return (
               <div
@@ -117,13 +116,15 @@ const getSkeletonVariant = () => {
               </div>
             );
           } else {
-            // Home page - add animation classes directly to ArticleCard container
+            // Home page - pass animation props directly to ArticleCard
             return (
               <ArticleCard
                 post={post}
                 featured={index === 0}
                 priority={shouldPrioritize(index)}
                 variant={getCardVariant(index)}
+                data-initial-index={index}
+                data-variant={getCardVariant(index)}
               />
             );
           }
@@ -299,11 +300,8 @@ const getSkeletonVariant = () => {
 
   // Initialize entrance animations for article cards
   function initializeArticleAnimations() {
-    // Only animate filterable cards (news page)
-    const filterableGrid = document.getElementById("filterable-article-grid");
-    if (!filterableGrid) return;
-
-    const cards = filterableGrid.querySelectorAll(".article-card-wrapper.opacity-0");
+    // Find all article cards with animation wrapper class
+    const cards = document.querySelectorAll(".article-card-wrapper.opacity-0");
     if (!cards.length) return;
 
     // Skip animations if reduced motion preferred
@@ -379,13 +377,17 @@ const getSkeletonVariant = () => {
 
   // Initialize on page load
   document.addEventListener("astro:page-load", () => {
-    // Only run for filterable grids (news page)
+    // Check for both filterable and home page cards
     const filterableGrid = document.getElementById("filterable-article-grid");
-    if (filterableGrid) {
-      // Make grid visible
-      filterableGrid.style.opacity = "1";
+    const homePageCards = document.querySelectorAll(".article-card-wrapper");
 
-      // Initialize animations
+    if (filterableGrid) {
+      // Make filterable grid visible
+      filterableGrid.style.opacity = "1";
+    }
+
+    // Initialize animations for any cards found
+    if (homePageCards.length > 0) {
       initializeArticleAnimations();
     }
 
