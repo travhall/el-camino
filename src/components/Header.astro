@@ -18,7 +18,44 @@ const deviceInfo = detectDeviceFromUA(userAgent);
 const isMobile = deviceInfo.isMobile;
 ---
 
+<style>
+  /* One-time header fade-in animation */
+  #site-header {
+    opacity: 0; /* Hidden by default until script runs */
+  }
+
+  #site-header.header-visible {
+    opacity: 1; /* Visible without animation (subsequent page loads) */
+  }
+
+  #site-header.header-initial-load {
+    opacity: 0;
+    animation: fadeInHeader 0.6s ease-out 0.2s forwards;
+  }
+
+  @keyframes fadeInHeader {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Respect reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    #site-header.header-initial-load {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>
+
 <header
+  id="site-header"
   class="flex flex-row items-center justify-between -mb-1 sticky top-0 z-50 border-4 border-(--border-secondary) bg-(--surface-secondary)"
 >
   <a
@@ -53,6 +90,27 @@ const isMobile = deviceInfo.isMobile;
 </header>
 
 <script>
+  // One-time header fade-in animation on initial page load
+  (function initializeHeaderAnimation() {
+    const STORAGE_KEY = 'header-animated';
+    const header = document.getElementById('site-header');
+
+    if (!header) return;
+
+    // Check if this is the first page load of the session
+    const hasAnimated = sessionStorage.getItem(STORAGE_KEY);
+
+    if (!hasAnimated) {
+      // First load - apply animation class
+      header.classList.add('header-initial-load');
+      // Store flag so it doesn't animate again this session
+      sessionStorage.setItem(STORAGE_KEY, 'true');
+    } else {
+      // Already animated this session - show immediately without animation
+      header.classList.add('header-visible');
+    }
+  })();
+
   // Handle menu toggle functionality
   function setupMobileMenu() {
     const toggleButton = document.getElementById(
