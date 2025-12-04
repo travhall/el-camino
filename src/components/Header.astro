@@ -91,7 +91,7 @@ const isMobile = deviceInfo.isMobile;
 
 <script>
   // One-time header fade-in animation on initial page load
-  (function initializeHeaderAnimation() {
+  function initializeHeaderAnimation() {
     const STORAGE_KEY = 'header-animated';
     const header = document.getElementById('site-header');
 
@@ -109,7 +109,20 @@ const isMobile = deviceInfo.isMobile;
       // Already animated this session - show immediately without animation
       header.classList.add('header-visible');
     }
-  })();
+  }
+
+  // Run on initial page load
+  initializeHeaderAnimation();
+
+  // Handle view transitions - restore header visibility on page swap
+  document.addEventListener('astro:after-swap', () => {
+    const header = document.getElementById('site-header');
+    if (header) {
+      // Always show header immediately on subsequent navigations
+      header.classList.remove('header-initial-load');
+      header.classList.add('header-visible');
+    }
+  });
 
   // Handle menu toggle functionality
   function setupMobileMenu() {
