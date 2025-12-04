@@ -145,7 +145,8 @@ const getCardClasses = () => {
 const getImageContainerClasses = () => {
   switch (variant) {
     case "list":
-      return "flex-shrink-0 overflow-hidden relative max-h-56 relative";
+      // FIX: Hide entire image container on mobile, not just the image
+      return "hidden md:flex flex-shrink-0 overflow-hidden relative";
 
     case "grid":
       return "overflow-hidden relative h-48 relative";
@@ -161,7 +162,8 @@ const getImageClasses = () => {
 
   switch (variant) {
     case "list":
-      return `${baseClasses} hidden md:block w-56 lg:w-72 h-full aspect-video group-hover:scale-105`;
+      // FIX: Container is hidden on mobile, so image just needs responsive width
+      return `${baseClasses} w-full md:w-64 lg:w-72 h-full aspect-video group-hover:scale-105`;
 
     case "grid":
       return `${baseClasses} w-full h-48 group-hover:scale-105`;
