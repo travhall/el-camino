@@ -127,10 +127,10 @@ const getCardClasses = () => {
 
   switch (variant) {
     case "list":
-      return `${baseClasses} flex flex-row gap-4 p-1 transition-all duration-300`;
+      return `${baseClasses} flex flex-row gap-4 p-1 transition-all duration-300 w-full max-w-full min-w-0`;
 
     case "grid":
-      return `${baseClasses} flex flex-col p-1 transition-all duration-300`;
+      return `${baseClasses} flex flex-col p-1 transition-all duration-300 w-full max-w-full min-w-0`;
 
     case "masonry":
     default:
@@ -149,7 +149,7 @@ const getImageContainerClasses = () => {
       return "hidden md:flex flex-shrink-0 overflow-hidden relative";
 
     case "grid":
-      return "overflow-hidden relative h-48 relative";
+      return "overflow-hidden relative aspect-video";
 
     case "masonry":
     default:
@@ -166,7 +166,7 @@ const getImageClasses = () => {
       return `${baseClasses} w-full md:w-64 lg:w-72 h-full aspect-video group-hover:scale-105`;
 
     case "grid":
-      return `${baseClasses} w-full h-48 group-hover:scale-105`;
+      return `${baseClasses} w-full h-48 group-hover:scale-105 aspect-video`;
 
     case "masonry":
     default:
@@ -228,10 +228,14 @@ const getExcerptClasses = () => {
 
 <a
   href={`/news/${post.slug}`}
-  class={`${getCardClasses()} ${shouldAnimate ? 'article-card-wrapper opacity-0' : ''}`}
+  class={`${getCardClasses()} ${shouldAnimate ? "article-card-wrapper opacity-0" : ""}`}
   aria-label={`Read article: ${actualFallbackContent.title}`}
-  data-initial-index={shouldAnimate ? Astro.props["data-initial-index"] : undefined}
-  data-variant={shouldAnimate ? Astro.props["data-variant"] || variant : undefined}
+  data-initial-index={shouldAnimate
+    ? Astro.props["data-initial-index"]
+    : undefined}
+  data-variant={shouldAnimate
+    ? Astro.props["data-variant"] || variant
+    : undefined}
 >
   <!-- Enhanced Image with AVIF/WebP support -->
   {

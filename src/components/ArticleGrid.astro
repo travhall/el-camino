@@ -103,7 +103,7 @@ const getSkeletonVariant = () => {
           if (filterable) {
             return (
               <div
-                class="article-card-wrapper opacity-0"
+                class="article-card-wrapper opacity-0 w-full max-w-full"
                 data-initial-index={index}
                 data-variant={getCardVariant(index)}
               >
@@ -179,6 +179,11 @@ const getSkeletonVariant = () => {
   /* Article Card Animation Wrapper - works for both masonry and grid/list */
   .article-card-wrapper {
     transform: translate3d(0, 0, 0); /* GPU acceleration */
+
+    /* CRITICAL: Prevent wrapper from exceeding grid boundaries */
+    max-width: 100%;
+    width: 100%;
+    min-width: 0; /* Allow flex/grid children to shrink */
 
     /* Bidirectional transitions for entry AND exit */
     transition:
