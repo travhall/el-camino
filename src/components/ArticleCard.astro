@@ -41,6 +41,10 @@ const {
   variant = "masonry",
 } = Astro.props;
 
+// Only apply animation wrapper classes for masonry (home page)
+// Grid/list variants use a wrapper div for animation
+const shouldAnimate = variant === "masonry";
+
 // OPTIMIZED: Lazy computation - only process if not provided
 const actualEmbeddedData = embeddedData || extractEmbeddedData(post);
 const actualFallbackContent = fallbackContent || generateFallbackContent(post);
@@ -222,10 +226,10 @@ const getExcerptClasses = () => {
 
 <a
   href={`/news/${post.slug}`}
-  class={`${getCardClasses()} article-card-wrapper opacity-0`}
+  class={`${getCardClasses()} ${shouldAnimate ? 'article-card-wrapper opacity-0' : ''}`}
   aria-label={`Read article: ${actualFallbackContent.title}`}
-  data-initial-index={Astro.props["data-initial-index"]}
-  data-variant={Astro.props["data-variant"] || variant}
+  data-initial-index={shouldAnimate ? Astro.props["data-initial-index"] : undefined}
+  data-variant={shouldAnimate ? Astro.props["data-variant"] || variant : undefined}
 >
   <!-- Enhanced Image with AVIF/WebP support -->
   {
