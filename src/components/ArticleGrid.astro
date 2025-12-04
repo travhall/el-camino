@@ -305,20 +305,11 @@ const getSkeletonVariant = () => {
   function initializeArticleAnimations() {
     // Find all article cards and sidebar with animation wrapper class
     const cards = document.querySelectorAll(".article-card-wrapper.opacity-0");
-    console.log("🎬 ArticleGrid Animation Init:", {
-      totalCards: cards.length,
-      prefersReducedMotion,
-      location: window.location.pathname
-    });
 
-    if (!cards.length) {
-      console.log("⚠️ No cards found with .article-card-wrapper.opacity-0");
-      return;
-    }
+    if (!cards.length) return;
 
     // Skip animations if reduced motion preferred
     if (prefersReducedMotion) {
-      console.log("⚡ Skipping animations (reduced motion preferred)");
       cards.forEach((card) => {
         const htmlCard = card as HTMLElement;
         htmlCard.classList.remove("opacity-0");
@@ -334,21 +325,11 @@ const getSkeletonVariant = () => {
     const view = firstCard?.dataset.variant || "grid";
     const cardsPerRow = getCardsPerRow(view);
 
-    console.log("📐 Animation Config:", {
-      view,
-      cardsPerRow,
-      firstCardVariant: firstCard?.dataset.variant,
-      duration: ANIMATION_CONFIG.duration,
-      staggerDelay: ANIMATION_CONFIG.staggerDelay
-    });
-
     // For masonry (home page), animate all cards immediately without intersection observer
     // For grid/list (news page), use intersection observer to animate on scroll
     const isMasonryLayout = view === "masonry";
 
     if (isMasonryLayout) {
-      console.log("🏠 Home page masonry - animating all cards immediately");
-
       // Animate all cards immediately
       cards.forEach((card) => {
         const htmlCard = card as HTMLElement;
@@ -365,27 +346,8 @@ const getSkeletonVariant = () => {
           animationOrder = rowIndex * 3 + cardInRow * 1.2;
         }
 
-        console.log(`✨ Animating ${isSidebar ? 'SIDEBAR' : 'card'}:`, {
-          index,
-          variant: htmlCard.dataset.variant,
-          animationOrder,
-          delayMs: animationOrder * ANIMATION_CONFIG.staggerDelay,
-          totalTimeMs: ANIMATION_CONFIG.duration + (animationOrder * ANIMATION_CONFIG.staggerDelay)
-        });
-
         // Set animation properties
         htmlCard.style.setProperty("--animation-order", animationOrder.toString());
-
-        // Debug: Check computed styles
-        const computedStyle = window.getComputedStyle(htmlCard);
-        console.log(`🔧 Card ${index} CSS check:`, {
-          hasOpacity0: htmlCard.classList.contains('opacity-0'),
-          hasArticleWrapper: htmlCard.classList.contains('article-card-wrapper'),
-          computedTransitionDuration: computedStyle.transitionDuration,
-          computedTransitionDelay: computedStyle.transitionDelay,
-          animationOrderVar: htmlCard.style.getPropertyValue('--animation-order')
-        });
-
         htmlCard.classList.add("animating");
         htmlCard.classList.remove("opacity-0");
         htmlCard.classList.add("opacity-100");
@@ -404,43 +366,25 @@ const getSkeletonVariant = () => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          const card = entry.target as HTMLElement;
-          const index = parseInt(card.dataset.initialIndex || "0");
-          const isSidebar = card.dataset.variant === "sidebar";
-
-          console.log(`👀 IntersectionObserver entry:`, {
-            index,
-            variant: card.dataset.variant,
-            isIntersecting: entry.isIntersecting,
-            intersectionRatio: entry.intersectionRatio
-          });
-
           if (entry.isIntersecting) {
+            const card = entry.target as HTMLElement;
+            const index = parseInt(card.dataset.initialIndex || "0");
+            const isSidebar = card.dataset.variant === "sidebar";
 
             // Calculate animation order
             let animationOrder: number;
             if (isSidebar) {
               // Sidebar animates after the article cards it appears near
-              // On home page, it appears near cards 4-5, so delay slightly after card 5
               animationOrder = 9;
             } else if (view === "list") {
               // Sequential stagger for list view
               animationOrder = index * 1.5;
             } else {
               // Row-based stagger for grid/masonry view
-              // Masonry: slower, more visible cascade
               const rowIndex = Math.floor(index / cardsPerRow);
               const cardInRow = index % cardsPerRow;
               animationOrder = rowIndex * 3 + cardInRow * 1.2;
             }
-
-            console.log(`✨ Animating ${isSidebar ? 'SIDEBAR' : 'card'}:`, {
-              index,
-              variant: card.dataset.variant,
-              animationOrder,
-              delayMs: animationOrder * ANIMATION_CONFIG.staggerDelay,
-              totalTimeMs: ANIMATION_CONFIG.duration + (animationOrder * ANIMATION_CONFIG.staggerDelay)
-            });
 
             // Set CSS custom property for animation delay
             card.style.setProperty(
@@ -476,29 +420,14 @@ const getSkeletonVariant = () => {
     );
 
     // Observe all cards
-    console.log(`📋 Observing ${cards.length} cards:`,
-      Array.from(cards).map(c => ({
-        index: (c as HTMLElement).dataset.initialIndex,
-        variant: (c as HTMLElement).dataset.variant,
-        classes: (c as HTMLElement).className
-      }))
-    );
     cards.forEach((card) => observer.observe(card));
   }
 
   // Initialize on page load
   document.addEventListener("astro:page-load", () => {
-    console.log("🚀 ArticleGrid astro:page-load fired");
-
     // Check for both filterable and home page cards
     const filterableGrid = document.getElementById("filterable-article-grid");
     const homePageCards = document.querySelectorAll(".article-card-wrapper");
-
-    console.log("🔍 Found elements:", {
-      filterableGrid: !!filterableGrid,
-      homePageCards: homePageCards.length,
-      location: window.location.pathname
-    });
 
     if (filterableGrid) {
       // Make filterable grid visible
@@ -507,10 +436,7 @@ const getSkeletonVariant = () => {
 
     // Initialize animations for any cards found
     if (homePageCards.length > 0) {
-      console.log("🎯 Calling initializeArticleAnimations()");
       initializeArticleAnimations();
-    } else {
-      console.log("⚠️ No .article-card-wrapper elements found");
     }
 
     // SIMPLIFIED: Basic lazy loading without heavy intersection observer
