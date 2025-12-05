@@ -7,6 +7,13 @@ export default defineConfig(
       globals: true,
       environment: 'happy-dom',
       setupFiles: ['./src/test/setup.ts'],
+      exclude: [
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/.{idea,git,cache,output,temp}/**',
+        '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
+        'e2e/**' // Exclude Playwright e2e tests from Vitest
+      ],
       coverage: {
         provider: 'v8',
         reporter: ['text', 'json', 'html', 'lcov'],

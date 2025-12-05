@@ -199,13 +199,17 @@ describe('BlobCache', () => {
   describe('Circuit Breaker', () => {
     it('should track failures', async () => {
       mockBlobStore.get.mockRejectedValue(new Error('Blob error'));
+      mockBlobStore.set.mockRejectedValue(new Error('Blob error'));
 
       const compute = vi.fn().mockResolvedValue('fallback-value');
 
       // Trigger multiple failures
       for (let i = 0; i < 5; i++) {
-        await cache.getOrCompute('test-key', compute);
+        await cache.getOrCompute(`test-key-${i}`, compute);
       }
+
+      // Wait for async set operations to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       const status = (cache as any).failureCount;
       expect(status).toBeGreaterThanOrEqual(5);
@@ -228,12 +232,16 @@ describe('BlobCache', () => {
     it('should decrement failure count on success', async () => {
       // First, cause some failures
       mockBlobStore.get.mockRejectedValueOnce(new Error('Error'));
+      mockBlobStore.set.mockRejectedValueOnce(new Error('Error'));
 
       const compute = vi.fn().mockResolvedValue('value');
       await cache.getOrCompute('key1', compute);
 
+      // Wait for async set operation to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+
       const failureCountBefore = (cache as any).failureCount;
-      expect(failureCountBefore).toBe(1);
+      expect(failureCountBefore).toBe(2); // get + set both failed
 
       // Now succeed
       mockBlobStore.get.mockResolvedValue(null);
@@ -241,8 +249,11 @@ describe('BlobCache', () => {
 
       await cache.getOrCompute('key2', compute);
 
+      // Wait for async set operation to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+
       const failureCountAfter = (cache as any).failureCount;
-      expect(failureCountAfter).toBeLessThanOrEqual(failureCountBefore);
+      expect(failureCountAfter).toBeLessThan(failureCountBefore);
     });
   });
 
