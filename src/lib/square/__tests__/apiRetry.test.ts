@@ -201,11 +201,10 @@ describe('ApiRetryClient', () => {
         { timeoutMs: 1000 }
       );
 
-      // Run timers and catch rejection simultaneously
-      await Promise.all([
-        expect(promise).rejects.toThrow('timed out after 1000ms'),
-        vi.advanceTimersByTimeAsync(1000)
-      ]);
+      // Advance to just past timeout, then run remaining timers
+      await vi.advanceTimersByTimeAsync(1001);
+
+      await expect(promise).rejects.toThrow('timed out after 1000ms');
     });
 
     it('should succeed if operation completes before timeout', async () => {

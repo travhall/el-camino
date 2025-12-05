@@ -482,23 +482,23 @@ describe('PDPController Real Implementation Tests', () => {
       const eventManager = (controller as any).eventManager;
       const onVariationSelection = eventManager.handlers?.onVariationSelection;
 
-      // Clear after getting references but before test
-      uiManager.updateAvailabilityDisplay.mockClear();
-      uiManager.updatePriceDisplay.mockClear();
-      uiManager.updateProductImage.mockClear();
-      uiManager.updateButtonProductData.mockClear();
-      uiManager.updateAttributeButtonStates.mockClear();
+      // Get initial call counts
+      const initialAvailCalls = uiManager.updateAvailabilityDisplay.mock.calls.length;
+      const initialPriceCalls = uiManager.updatePriceDisplay.mock.calls.length;
+      const initialImageCalls = uiManager.updateProductImage.mock.calls.length;
+      const initialButtonCalls = uiManager.updateButtonProductData.mock.calls.length;
+      const initialAttrCalls = uiManager.updateAttributeButtonStates.mock.calls.length;
 
       if (onVariationSelection) {
         onVariationSelection('var-2');
       }
 
-      // All UI methods should be called
-      expect(uiManager.updateAvailabilityDisplay).toHaveBeenCalled();
-      expect(uiManager.updatePriceDisplay).toHaveBeenCalled();
-      expect(uiManager.updateProductImage).toHaveBeenCalled();
-      expect(uiManager.updateButtonProductData).toHaveBeenCalled();
-      expect(uiManager.updateAttributeButtonStates).toHaveBeenCalled();
+      // All UI methods should be called (at least once more than initial)
+      expect(uiManager.updateAvailabilityDisplay.mock.calls.length).toBeGreaterThan(initialAvailCalls);
+      expect(uiManager.updatePriceDisplay.mock.calls.length).toBeGreaterThan(initialPriceCalls);
+      expect(uiManager.updateProductImage.mock.calls.length).toBeGreaterThan(initialImageCalls);
+      expect(uiManager.updateButtonProductData.mock.calls.length).toBeGreaterThan(initialButtonCalls);
+      expect(uiManager.updateAttributeButtonStates.mock.calls.length).toBeGreaterThan(initialAttrCalls);
     });
   });
 });

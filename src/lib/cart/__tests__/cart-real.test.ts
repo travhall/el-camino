@@ -405,7 +405,7 @@ describe('CartManager Real Implementation Tests', () => {
   });
 
   describe('Availability Checks', () => {
-    it('should correctly report variation quantity in cart', () => {
+    it('should correctly report variation quantity in cart', async () => {
       const item: CartItem = {
         id: 'prod-1',
         variationId: 'var-1',
@@ -416,7 +416,7 @@ describe('CartManager Real Implementation Tests', () => {
         variationName: 'Small'
       };
 
-      cart.addItem(item);
+      await cart.addItem(item);
 
       const inCart = cart.getVariationQuantity('prod-1', 'var-1');
       expect(inCart).toBe(3);
