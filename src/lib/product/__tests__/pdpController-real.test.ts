@@ -265,10 +265,10 @@ describe('PDPController Real Implementation Tests', () => {
       expect(uiManager.updateAttributeButtonStates).toHaveBeenCalled();
     });
 
-    it('should pass correct availability info from cart', () => {
-      const { cart } = require('@/lib/cart');
+    it('should pass correct availability info from cart', async () => {
+      const { cart } = await import('@/lib/cart');
 
-      cart.getProductAvailability.mockReturnValue({
+      vi.mocked(cart.getProductAvailability).mockReturnValue({
         state: 'LOW_STOCK',
         total: 10,
         inCart: 8,
@@ -479,11 +479,15 @@ describe('PDPController Real Implementation Tests', () => {
       controller = new PDPController(mockProductData);
       const uiManager = (controller as any).uiManager;
 
-      // Clear previous calls from initialization
-      vi.clearAllMocks();
-
       const eventManager = (controller as any).eventManager;
       const onVariationSelection = eventManager.handlers?.onVariationSelection;
+
+      // Clear after getting references but before test
+      uiManager.updateAvailabilityDisplay.mockClear();
+      uiManager.updatePriceDisplay.mockClear();
+      uiManager.updateProductImage.mockClear();
+      uiManager.updateButtonProductData.mockClear();
+      uiManager.updateAttributeButtonStates.mockClear();
 
       if (onVariationSelection) {
         onVariationSelection('var-2');

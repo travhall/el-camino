@@ -63,9 +63,12 @@ describe('ApiRetryClient', () => {
         { maxRetries: 2 }
       );
 
-      await vi.runAllTimersAsync();
+      // Run timers and catch rejection simultaneously
+      const [result] = await Promise.all([
+        expect(promise).rejects.toThrow('failed after 3 attempts'),
+        vi.runAllTimersAsync()
+      ]);
 
-      await expect(promise).rejects.toThrow('failed after 3 attempts');
       expect(mockOperation).toHaveBeenCalledTimes(3); // Initial + 2 retries
     });
 
@@ -78,9 +81,12 @@ describe('ApiRetryClient', () => {
         { maxRetries: 0 }
       );
 
-      await vi.runAllTimersAsync();
+      // Run timers and catch rejection simultaneously
+      await Promise.all([
+        expect(promise).rejects.toThrow(),
+        vi.runAllTimersAsync()
+      ]);
 
-      await expect(promise).rejects.toThrow();
       expect(mockOperation).toHaveBeenCalledTimes(1); // No retries
     });
   });
@@ -112,8 +118,11 @@ describe('ApiRetryClient', () => {
       await vi.advanceTimersByTimeAsync(400);
       expect(mockOperation).toHaveBeenCalledTimes(4);
 
-      await vi.runAllTimersAsync();
-      await expect(promise).rejects.toThrow();
+      // Run timers and catch rejection simultaneously
+      await Promise.all([
+        expect(promise).rejects.toThrow(),
+        vi.runAllTimersAsync()
+      ]);
     });
 
     it('should cap delay at maxDelay', async () => {
@@ -135,8 +144,11 @@ describe('ApiRetryClient', () => {
         await vi.advanceTimersByTimeAsync(500);
       }
 
-      await vi.runAllTimersAsync();
-      await expect(promise).rejects.toThrow();
+      // Run timers and catch rejection simultaneously
+      await Promise.all([
+        expect(promise).rejects.toThrow(),
+        vi.runAllTimersAsync()
+      ]);
     });
 
     it('should apply jitter to delays', async () => {
@@ -161,11 +173,14 @@ describe('ApiRetryClient', () => {
           }
         );
 
-        await vi.runAllTimersAsync();
+        // Run timers and catch rejection simultaneously
+        await Promise.all([
+          expect(promise).rejects.toThrow(),
+          vi.runAllTimersAsync()
+        ]);
+
         const endTime = Date.now();
         delays.push(endTime - startTime);
-
-        await expect(promise).rejects.toThrow();
       }
 
       // Delays should vary due to jitter (not all the same)
@@ -186,9 +201,11 @@ describe('ApiRetryClient', () => {
         { timeoutMs: 1000 }
       );
 
-      await vi.advanceTimersByTimeAsync(1000);
-
-      await expect(promise).rejects.toThrow('timed out after 1000ms');
+      // Run timers and catch rejection simultaneously
+      await Promise.all([
+        expect(promise).rejects.toThrow('timed out after 1000ms'),
+        vi.advanceTimersByTimeAsync(1000)
+      ]);
     });
 
     it('should succeed if operation completes before timeout', async () => {
@@ -220,8 +237,11 @@ describe('ApiRetryClient', () => {
           'test-operation',
           { maxRetries: 0 }
         );
-        await vi.runAllTimersAsync();
-        await expect(promise).rejects.toThrow();
+        // Run timers and catch rejection simultaneously
+        await Promise.all([
+          expect(promise).rejects.toThrow(),
+          vi.runAllTimersAsync()
+        ]);
       }
 
       const status = client.getStatus();
@@ -239,8 +259,11 @@ describe('ApiRetryClient', () => {
           'test-operation',
           { maxRetries: 0 }
         );
-        await vi.runAllTimersAsync();
-        await expect(promise).rejects.toThrow();
+        // Run timers and catch rejection simultaneously
+        await Promise.all([
+          expect(promise).rejects.toThrow(),
+          vi.runAllTimersAsync()
+        ]);
       }
 
       // Circuit should now be open
@@ -264,8 +287,11 @@ describe('ApiRetryClient', () => {
           'test-operation',
           { maxRetries: 0 }
         );
-        await vi.runAllTimersAsync();
-        await expect(promise).rejects.toThrow();
+        // Run timers and catch rejection simultaneously
+        await Promise.all([
+          expect(promise).rejects.toThrow(),
+          vi.runAllTimersAsync()
+        ]);
       }
 
       expect(client.getStatus().circuitState).toBe(CircuitState.OPEN);
@@ -296,8 +322,11 @@ describe('ApiRetryClient', () => {
           'test-operation',
           { maxRetries: 0 }
         );
-        await vi.runAllTimersAsync();
-        await expect(promise).rejects.toThrow();
+        // Run timers and catch rejection simultaneously
+        await Promise.all([
+          expect(promise).rejects.toThrow(),
+          vi.runAllTimersAsync()
+        ]);
       }
 
       // Move to half-open
@@ -325,8 +354,11 @@ describe('ApiRetryClient', () => {
           'test-operation',
           { maxRetries: 0 }
         );
-        await vi.runAllTimersAsync();
-        await expect(promise).rejects.toThrow();
+        // Run timers and catch rejection simultaneously
+        await Promise.all([
+          expect(promise).rejects.toThrow(),
+          vi.runAllTimersAsync()
+        ]);
       }
 
       // Move to half-open
@@ -341,8 +373,11 @@ describe('ApiRetryClient', () => {
         'test-operation',
         { maxRetries: 0 }
       );
-      await vi.runAllTimersAsync();
-      await expect(promise).rejects.toThrow();
+      // Run timers and catch rejection simultaneously
+      await Promise.all([
+        expect(promise).rejects.toThrow(),
+        vi.runAllTimersAsync()
+      ]);
 
       const status = client.getStatus();
       expect(status.failureCount).toBeGreaterThan(0);
@@ -367,8 +402,11 @@ describe('ApiRetryClient', () => {
         'test-operation',
         { maxRetries: 0 }
       );
-      await vi.runAllTimersAsync();
-      await expect(promise).rejects.toThrow();
+      // Run timers and catch rejection simultaneously
+      await Promise.all([
+        expect(promise).rejects.toThrow(),
+        vi.runAllTimersAsync()
+      ]);
 
       const status = client.getStatus();
       expect(status.failureCount).toBe(1);
@@ -384,8 +422,11 @@ describe('ApiRetryClient', () => {
           'test-operation',
           { maxRetries: 0 }
         );
-        await vi.runAllTimersAsync();
-        await expect(promise).rejects.toThrow();
+        // Run timers and catch rejection simultaneously
+        await Promise.all([
+          expect(promise).rejects.toThrow(),
+          vi.runAllTimersAsync()
+        ]);
       }
 
       // Move to half-open
@@ -410,8 +451,11 @@ describe('ApiRetryClient', () => {
         'test-operation',
         { maxRetries: 0 }
       );
-      await vi.runAllTimersAsync();
-      await expect(promise).rejects.toThrow();
+      // Run timers and catch rejection simultaneously
+      await Promise.all([
+        expect(promise).rejects.toThrow(),
+        vi.runAllTimersAsync()
+      ]);
 
       const status = client.getStatus();
       expect(status.lastFailureTime).toBeGreaterThanOrEqual(beforeTime);
@@ -429,8 +473,11 @@ describe('ApiRetryClient', () => {
           'test-operation',
           { maxRetries: 0 }
         );
-        await vi.runAllTimersAsync();
-        await expect(promise).rejects.toThrow();
+        // Run timers and catch rejection simultaneously
+        await Promise.all([
+          expect(promise).rejects.toThrow(),
+          vi.runAllTimersAsync()
+        ]);
       }
 
       expect(client.getStatus().circuitState).toBe(CircuitState.OPEN);
@@ -483,9 +530,11 @@ describe('ApiRetryClient', () => {
         { maxRetries: 0 }
       );
 
-      await vi.runAllTimersAsync();
-
-      await expect(promise).rejects.toThrow('Custom error message');
+      // Run timers and catch rejection simultaneously
+      await Promise.all([
+        expect(promise).rejects.toThrow('Custom error message'),
+        vi.runAllTimersAsync()
+      ]);
     });
 
     it('should include context in final error', async () => {
@@ -497,9 +546,11 @@ describe('ApiRetryClient', () => {
         { maxRetries: 1 }
       );
 
-      await vi.runAllTimersAsync();
-
-      await expect(promise).rejects.toThrow('my-custom-operation');
+      // Run timers and catch rejection simultaneously
+      await Promise.all([
+        expect(promise).rejects.toThrow('my-custom-operation'),
+        vi.runAllTimersAsync()
+      ]);
     });
 
     it('should handle non-Error rejections', async () => {
@@ -511,9 +562,11 @@ describe('ApiRetryClient', () => {
         { maxRetries: 0 }
       );
 
-      await vi.runAllTimersAsync();
-
-      await expect(promise).rejects.toThrow('string error');
+      // Run timers and catch rejection simultaneously
+      await Promise.all([
+        expect(promise).rejects.toThrow('string error'),
+        vi.runAllTimersAsync()
+      ]);
     });
   });
 
@@ -538,8 +591,11 @@ describe('ApiRetryClient', () => {
           'test-operation',
           { maxRetries: 0 }
         );
-        await vi.runAllTimersAsync();
-        await expect(promise).rejects.toThrow();
+        // Run timers and catch rejection simultaneously
+        await Promise.all([
+          expect(promise).rejects.toThrow(),
+          vi.runAllTimersAsync()
+        ]);
       }
 
       // Get instance2 and check state
