@@ -161,7 +161,7 @@ describe('Square API Contract Tests', () => {
 
       expect(response.result.objects).toBeDefined();
       expect(response.result.objects).toHaveLength(2);
-      expect(response.result.objects.every(obj => obj.type === 'ITEM_VARIATION')).toBe(true);
+      expect(response.result.objects.every((obj: any) => obj.type === 'ITEM_VARIATION')).toBe(true);
     });
   });
 
@@ -272,10 +272,10 @@ describe('Square API Contract Tests', () => {
         locationIds: ['loc-1']
       });
 
-      const inStockCount = response.result.counts.find(c => c.state === 'IN_STOCK');
+      const inStockCount = response.result.counts.find((c: any) => c.state === 'IN_STOCK');
       expect(inStockCount?.quantity).toBe('5');
 
-      const soldCount = response.result.counts.find(c => c.state === 'SOLD');
+      const soldCount = response.result.counts.find((c: any) => c.state === 'SOLD');
       expect(soldCount).toBeDefined();
     });
   });

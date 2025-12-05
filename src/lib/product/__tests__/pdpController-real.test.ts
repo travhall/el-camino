@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PDPController } from '../pdpController';
 import type { ProductPageData } from '../pdpEvents';
+import { ProductAvailabilityState } from '@/lib/square/types';
 
 // Mock dependencies
 vi.mock('@/lib/cart', () => ({
@@ -269,18 +270,17 @@ describe('PDPController Real Implementation Tests', () => {
       const { cart } = await import('@/lib/cart');
 
       vi.mocked(cart.getProductAvailability).mockReturnValue({
-        state: 'LOW_STOCK',
-        total: 10,
+        state: ProductAvailabilityState.AVAILABLE,
+        totalInventory: 10,
         inCart: 8,
-        remaining: 2,
-        canAdd: true
+        remaining: 2
       });
 
       controller = new PDPController(mockProductData);
       const uiManager = (controller as any).uiManager;
 
       const availabilityCall = uiManager.updateAvailabilityDisplay.mock.calls[0];
-      expect(availabilityCall[0]).toHaveProperty('state', 'LOW_STOCK');
+      expect(availabilityCall[0]).toHaveProperty('state', ProductAvailabilityState.AVAILABLE);
       expect(availabilityCall[0]).toHaveProperty('remaining', 2);
     });
   });

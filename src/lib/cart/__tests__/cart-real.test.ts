@@ -454,8 +454,8 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 2,
         variationName: 'Small',
         saleInfo: {
-          isOnSale: true,
           salePrice: 2000,
+          originalPrice: 2500,
           discountPercent: 20
         }
       };
