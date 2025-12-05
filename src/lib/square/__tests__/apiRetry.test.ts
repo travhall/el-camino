@@ -106,6 +106,9 @@ describe('ApiRetryClient', () => {
         }
       );
 
+      // Add error handler to prevent unhandled rejection
+      promise.catch(() => {});
+
       // First retry: 100ms delay
       await vi.advanceTimersByTimeAsync(100);
       expect(mockOperation).toHaveBeenCalledTimes(2);
@@ -118,11 +121,9 @@ describe('ApiRetryClient', () => {
       await vi.advanceTimersByTimeAsync(400);
       expect(mockOperation).toHaveBeenCalledTimes(4);
 
-      // Run timers and catch rejection simultaneously
-      await Promise.all([
-        expect(promise).rejects.toThrow(),
-        vi.runAllTimersAsync()
-      ]);
+      // Run remaining timers and verify final rejection
+      await vi.runAllTimersAsync();
+      await expect(promise).rejects.toThrow();
     });
 
     it('should cap delay at maxDelay', async () => {
@@ -139,16 +140,17 @@ describe('ApiRetryClient', () => {
         }
       );
 
+      // Add error handler to prevent unhandled rejection
+      promise.catch(() => {});
+
       // Even after many retries, delay should not exceed maxDelay
       for (let i = 0; i < 10; i++) {
         await vi.advanceTimersByTimeAsync(500);
       }
 
-      // Run timers and catch rejection simultaneously
-      await Promise.all([
-        expect(promise).rejects.toThrow(),
-        vi.runAllTimersAsync()
-      ]);
+      // Run remaining timers and verify final rejection
+      await vi.runAllTimersAsync();
+      await expect(promise).rejects.toThrow();
     });
 
     it('should apply jitter to delays', async () => {
@@ -191,21 +193,26 @@ describe('ApiRetryClient', () => {
 
   describe('Timeout Handling', () => {
     it('should timeout long-running operations', async () => {
+      // Create a promise that never resolves
       mockOperation.mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 20000))
+        () => new Promise(() => {})
       );
 
       const promise = client.executeWithRetry(
         mockOperation,
         'test-operation',
-        { timeoutMs: 1000 }
+        { timeoutMs: 1000, maxRetries: 0 }
       );
 
-      // Advance to just past timeout, then run remaining timers
-      await vi.advanceTimersByTimeAsync(1001);
+      // Run all timers to completion
+      const timeoutPromise = vi.runAllTimersAsync();
 
-      await expect(promise).rejects.toThrow('timed out after 1000ms');
-    });
+      // Await both the timers and the promise rejection
+      await Promise.all([
+        timeoutPromise,
+        expect(promise).rejects.toThrow('timed out after 1000ms')
+      ]);
+    })
 
     it('should succeed if operation completes before timeout', async () => {
       mockOperation.mockImplementation(
