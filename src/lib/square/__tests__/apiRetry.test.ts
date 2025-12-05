@@ -215,17 +215,13 @@ describe('ApiRetryClient', () => {
 
       // Trigger failures to open circuit
       for (let i = 0; i < 5; i++) {
-        try {
-          const promise = client.executeWithRetry(
-            mockOperation,
-            'test-operation',
-            { maxRetries: 0 }
-          );
-          await vi.runAllTimersAsync();
-          await promise;
-        } catch (e) {
-          // Expected failures
-        }
+        const promise = client.executeWithRetry(
+          mockOperation,
+          'test-operation',
+          { maxRetries: 0 }
+        );
+        await vi.runAllTimersAsync();
+        await expect(promise).rejects.toThrow();
       }
 
       const status = client.getStatus();
@@ -238,17 +234,13 @@ describe('ApiRetryClient', () => {
 
       // Open the circuit
       for (let i = 0; i < 5; i++) {
-        try {
-          const promise = client.executeWithRetry(
-            mockOperation,
-            'test-operation',
-            { maxRetries: 0 }
-          );
-          await vi.runAllTimersAsync();
-          await promise;
-        } catch (e) {
-          // Expected
-        }
+        const promise = client.executeWithRetry(
+          mockOperation,
+          'test-operation',
+          { maxRetries: 0 }
+        );
+        await vi.runAllTimersAsync();
+        await expect(promise).rejects.toThrow();
       }
 
       // Circuit should now be open
@@ -267,17 +259,13 @@ describe('ApiRetryClient', () => {
 
       // Open the circuit
       for (let i = 0; i < 5; i++) {
-        try {
-          const promise = client.executeWithRetry(
-            mockOperation,
-            'test-operation',
-            { maxRetries: 0 }
-          );
-          await vi.runAllTimersAsync();
-          await promise;
-        } catch (e) {
-          // Expected
-        }
+        const promise = client.executeWithRetry(
+          mockOperation,
+          'test-operation',
+          { maxRetries: 0 }
+        );
+        await vi.runAllTimersAsync();
+        await expect(promise).rejects.toThrow();
       }
 
       expect(client.getStatus().circuitState).toBe(CircuitState.OPEN);
@@ -303,17 +291,13 @@ describe('ApiRetryClient', () => {
 
       // Open circuit
       for (let i = 0; i < 5; i++) {
-        try {
-          const promise = client.executeWithRetry(
-            mockOperation,
-            'test-operation',
-            { maxRetries: 0 }
-          );
-          await vi.runAllTimersAsync();
-          await promise;
-        } catch (e) {
-          // Expected
-        }
+        const promise = client.executeWithRetry(
+          mockOperation,
+          'test-operation',
+          { maxRetries: 0 }
+        );
+        await vi.runAllTimersAsync();
+        await expect(promise).rejects.toThrow();
       }
 
       // Move to half-open
@@ -336,17 +320,13 @@ describe('ApiRetryClient', () => {
 
       // Open circuit
       for (let i = 0; i < 5; i++) {
-        try {
-          const promise = client.executeWithRetry(
-            mockOperation,
-            'test-operation',
-            { maxRetries: 0 }
-          );
-          await vi.runAllTimersAsync();
-          await promise;
-        } catch (e) {
-          // Expected
-        }
+        const promise = client.executeWithRetry(
+          mockOperation,
+          'test-operation',
+          { maxRetries: 0 }
+        );
+        await vi.runAllTimersAsync();
+        await expect(promise).rejects.toThrow();
       }
 
       // Move to half-open
@@ -356,17 +336,13 @@ describe('ApiRetryClient', () => {
       mockOperation.mockRejectedValue(new Error('Still failing'));
 
       // Failure in half-open should increase failure count
-      try {
-        const promise = client.executeWithRetry(
-          mockOperation,
-          'test-operation',
-          { maxRetries: 0 }
-        );
-        await vi.runAllTimersAsync();
-        await promise;
-      } catch (e) {
-        // Expected
-      }
+      const promise = client.executeWithRetry(
+        mockOperation,
+        'test-operation',
+        { maxRetries: 0 }
+      );
+      await vi.runAllTimersAsync();
+      await expect(promise).rejects.toThrow();
 
       const status = client.getStatus();
       expect(status.failureCount).toBeGreaterThan(0);
@@ -386,17 +362,13 @@ describe('ApiRetryClient', () => {
     it('should track failure count', async () => {
       mockOperation.mockRejectedValue(new Error('Failure'));
 
-      try {
-        const promise = client.executeWithRetry(
-          mockOperation,
-          'test-operation',
-          { maxRetries: 0 }
-        );
-        await vi.runAllTimersAsync();
-        await promise;
-      } catch (e) {
-        // Expected
-      }
+      const promise = client.executeWithRetry(
+        mockOperation,
+        'test-operation',
+        { maxRetries: 0 }
+      );
+      await vi.runAllTimersAsync();
+      await expect(promise).rejects.toThrow();
 
       const status = client.getStatus();
       expect(status.failureCount).toBe(1);
@@ -407,17 +379,13 @@ describe('ApiRetryClient', () => {
 
       // Open circuit
       for (let i = 0; i < 5; i++) {
-        try {
-          const promise = client.executeWithRetry(
-            mockOperation,
-            'test-operation',
-            { maxRetries: 0 }
-          );
-          await vi.runAllTimersAsync();
-          await promise;
-        } catch (e) {
-          // Expected
-        }
+        const promise = client.executeWithRetry(
+          mockOperation,
+          'test-operation',
+          { maxRetries: 0 }
+        );
+        await vi.runAllTimersAsync();
+        await expect(promise).rejects.toThrow();
       }
 
       // Move to half-open
@@ -437,17 +405,13 @@ describe('ApiRetryClient', () => {
 
       const beforeTime = Date.now();
 
-      try {
-        const promise = client.executeWithRetry(
-          mockOperation,
-          'test-operation',
-          { maxRetries: 0 }
-        );
-        await vi.runAllTimersAsync();
-        await promise;
-      } catch (e) {
-        // Expected
-      }
+      const promise = client.executeWithRetry(
+        mockOperation,
+        'test-operation',
+        { maxRetries: 0 }
+      );
+      await vi.runAllTimersAsync();
+      await expect(promise).rejects.toThrow();
 
       const status = client.getStatus();
       expect(status.lastFailureTime).toBeGreaterThanOrEqual(beforeTime);
@@ -460,17 +424,13 @@ describe('ApiRetryClient', () => {
 
       // Open circuit
       for (let i = 0; i < 5; i++) {
-        try {
-          const promise = client.executeWithRetry(
-            mockOperation,
-            'test-operation',
-            { maxRetries: 0 }
-          );
-          await vi.runAllTimersAsync();
-          await promise;
-        } catch (e) {
-          // Expected
-        }
+        const promise = client.executeWithRetry(
+          mockOperation,
+          'test-operation',
+          { maxRetries: 0 }
+        );
+        await vi.runAllTimersAsync();
+        await expect(promise).rejects.toThrow();
       }
 
       expect(client.getStatus().circuitState).toBe(CircuitState.OPEN);
@@ -573,17 +533,13 @@ describe('ApiRetryClient', () => {
 
       // Open circuit using instance1
       for (let i = 0; i < 5; i++) {
-        try {
-          const promise = instance1.executeWithRetry(
-            mockOperation,
-            'test-operation',
-            { maxRetries: 0 }
-          );
-          await vi.runAllTimersAsync();
-          await promise;
-        } catch (e) {
-          // Expected
-        }
+        const promise = instance1.executeWithRetry(
+          mockOperation,
+          'test-operation',
+          { maxRetries: 0 }
+        );
+        await vi.runAllTimersAsync();
+        await expect(promise).rejects.toThrow();
       }
 
       // Get instance2 and check state

@@ -231,7 +231,7 @@ describe('Error Communication System', () => {
 
       const retryButton = container.querySelector('.error-retry');
       expect(retryButton).toBeDefined();
-      expect(retryButton?.textContent).toBe('Retry');
+      expect(retryButton?.textContent?.trim()).toBe('Retry');
     });
 
     it('should show category-specific actions', () => {
@@ -545,10 +545,10 @@ describe('Error Communication System', () => {
       expect(recoveryTime?.textContent).toContain('30s');
     });
 
-    it('should format recovery time in minutes', () => {
-      // Mock long recovery time
-      const { errorRecovery } = require('@/lib/monitoring/errorRecovery');
-      errorRecovery.getRecoveryGuidance.mockReturnValueOnce({
+    it('should format recovery time in minutes', async () => {
+      // Mock long recovery time using vi.mock
+      const { errorRecovery } = await import('@/lib/monitoring/errorRecovery');
+      vi.mocked(errorRecovery.getRecoveryGuidance).mockReturnValueOnce({
         canRetry: true,
         primaryAction: 'Wait',
         secondaryActions: [],

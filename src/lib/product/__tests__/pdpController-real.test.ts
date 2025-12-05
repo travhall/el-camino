@@ -22,23 +22,25 @@ vi.mock('@/lib/cart', () => ({
 }));
 
 vi.mock('../pdpUI', () => ({
-  PDPUIManager: vi.fn().mockImplementation(() => ({
-    updateAvailabilityDisplay: vi.fn(),
-    updatePriceDisplay: vi.fn(),
-    updateProductImage: vi.fn(),
-    updateButtonProductData: vi.fn(),
-    updateAttributeButtonStates: vi.fn()
-  }))
+  PDPUIManager: class {
+    updateAvailabilityDisplay = vi.fn();
+    updatePriceDisplay = vi.fn();
+    updateProductImage = vi.fn();
+    updateButtonProductData = vi.fn();
+    updateAttributeButtonStates = vi.fn();
+  }
 }));
 
 vi.mock('../pdpEvents', () => ({
-  PDPEventManager: vi.fn().mockImplementation((ui, data, handlers) => {
-    return {
-      setupAllEventHandlers: vi.fn(),
-      cleanup: vi.fn(),
-      handlers
-    };
-  })
+  PDPEventManager: class {
+    setupAllEventHandlers = vi.fn();
+    cleanup = vi.fn();
+    handlers: any;
+
+    constructor(_ui: any, _data: any, handlers: any) {
+      this.handlers = handlers;
+    }
+  }
 }));
 
 describe('PDPController Real Implementation Tests', () => {
