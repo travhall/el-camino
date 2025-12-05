@@ -9,10 +9,57 @@ export default defineConfig(
       setupFiles: ['./src/test/setup.ts'],
       coverage: {
         provider: 'v8',
-        reporter: ['text', 'json', 'html'],
+        reporter: ['text', 'json', 'html', 'lcov'],
+        // Exclude files from coverage
+        exclude: [
+          'node_modules/**',
+          'dist/**',
+          '.astro/**',
+          '**/*.config.{js,ts}',
+          '**/types.ts',
+          '**/*.d.ts',
+          'src/test/**',
+          'src/env.d.ts',
+          'e2e/**'
+        ],
+        // Include source files for coverage
+        include: [
+          'src/lib/**/*.{js,ts}',
+          'src/pages/api/**/*.ts'
+        ],
+        // Enforce coverage thresholds - FAIL build if not met
         thresholds: {
-          global: { branches: 80, functions: 80, lines: 80, statements: 80 }
-        }
+          // Global thresholds for all files
+          global: {
+            branches: 80,
+            functions: 80,
+            lines: 80,
+            statements: 80
+          },
+          // Per-file thresholds for critical modules
+          'src/lib/cart/index.ts': {
+            branches: 85,
+            functions: 85,
+            lines: 85,
+            statements: 85
+          },
+          'src/lib/square/apiRetry.ts': {
+            branches: 90,
+            functions: 90,
+            lines: 90,
+            statements: 90
+          },
+          'src/lib/square/inventory.ts': {
+            branches: 80,
+            functions: 80,
+            lines: 80,
+            statements: 80
+          }
+        },
+        // Report uncovered lines
+        all: true,
+        // Skip lines with coverage ignore comments
+        skipFull: false
       }
     }
   })
