@@ -97,8 +97,10 @@ export class FilterCoordinator {
 
       // Check if we need to animate out AppliedFilters (product grid only)
       // If targetUrl has no query params, we're removing the last filter
-      const willHaveNoFilters = targetUrl ? !targetUrl.includes('?') : false;
-      const currentlyHasFilters = sessionStorage.getItem(this.STORAGE_KEYS.appliedFiltersShown) === 'true';
+      const willHaveNoFilters = targetUrl ? !targetUrl.includes("?") : false;
+      const currentlyHasFilters =
+        sessionStorage.getItem(this.STORAGE_KEYS.appliedFiltersShown) ===
+        "true";
       const needsAppliedFiltersExit = willHaveNoFilters && currentlyHasFilters;
 
       // Animate out AppliedFilters if needed (product grid only)
@@ -163,8 +165,12 @@ export class FilterCoordinator {
 
     // Auto-detect which grid is present if not specified
     if (!config) {
-      const hasProductGrid = !!document.getElementById(GRID_CONFIGS.product.gridId);
-      const hasArticleGrid = !!document.getElementById(GRID_CONFIGS.article.gridId);
+      const hasProductGrid = !!document.getElementById(
+        GRID_CONFIGS.product.gridId
+      );
+      const hasArticleGrid = !!document.getElementById(
+        GRID_CONFIGS.article.gridId
+      );
 
       if (hasProductGrid) {
         config = GRID_CONFIGS.product;
@@ -194,7 +200,7 @@ export class FilterCoordinator {
     this.isAnimating = false;
 
     // Clear all pending timeouts
-    this.timeoutIds.forEach(id => clearTimeout(id));
+    this.timeoutIds.forEach((id) => clearTimeout(id));
     this.timeoutIds = [];
   }
 
@@ -238,7 +244,24 @@ export class FilterCoordinator {
 
     // Unified cleanup handler - runs before page swap
     document.addEventListener("astro:before-swap", () => {
+      // Backup: Ensure AppliedFilters is hidden (in case before-preparation didn't work)
+      const container = document.getElementById("applied-filters-container");
+      if (container && !container.classList.contains("no-filters")) {
+        container.style.transition = "opacity 100ms ease";
+        container.style.opacity = "0";
+      }
+
       FilterCoordinator.cleanupAnimationState();
+    });
+
+    // Early navigation preparation handler - runs before view transition preparation
+    document.addEventListener("astro:before-preparation", () => {
+      // Animate out AppliedFilters if visible when leaving page
+      const container = document.getElementById("applied-filters-container");
+      if (container && !container.classList.contains("no-filters")) {
+        container.style.transition = "opacity 200ms ease";
+        container.style.opacity = "0";
+      }
     });
 
     // Page visibility handler - reset animation state when page becomes visible after being hidden
@@ -251,7 +274,8 @@ export class FilterCoordinator {
       } else {
         // Page is visible again - only reset if hidden for more than 5 minutes
         const idleDuration = Date.now() - hiddenTime;
-        if (hiddenTime > 0 && idleDuration > 300000) { // 5 minutes
+        if (hiddenTime > 0 && idleDuration > 300000) {
+          // 5 minutes
           FilterCoordinator.cleanupAnimationState();
           FilterCoordinator.isInitialized = false;
           FilterCoordinator.initialize();
