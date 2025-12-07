@@ -2,7 +2,10 @@
 // src/components/Sidebar.astro - Updated with Pattern A (EnhancedImageOptimizer)
 import { getCategoriesForSidebar } from "@/lib/square/categoryUtils";
 import { squareClient } from "@/lib/square/client";
-import { EL_CAMINO_LOGO_DATA_URI, EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
+import {
+  EL_CAMINO_LOGO_DATA_URI,
+  EL_CAMINO_LOADER_DATA_URI,
+} from "@/lib/constants/assets";
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 
 interface Props {
@@ -22,15 +25,15 @@ function getCategoryImageUrl(category: { id: string; slug: string }): string {
   // Try to get image from Square if available
   if (category.id && categoryImageUrls[category.id]) {
     const squareImageUrl = categoryImageUrls[category.id];
-    
+
     // Optimize Square CDN image (same as ProductCard)
-    if (squareImageUrl.includes('squarecdn.com')) {
+    if (squareImageUrl.includes("squarecdn.com")) {
       try {
         const url = new URL(squareImageUrl);
-        url.searchParams.set('w', '600');
-        url.searchParams.set('h', '338'); // 16:9 aspect ratio
-        url.searchParams.set('q', '85');
-        url.searchParams.set('f', 'auto');
+        url.searchParams.set("w", "600");
+        url.searchParams.set("h", "338"); // 16:9 aspect ratio
+        url.searchParams.set("q", "85");
+        url.searchParams.set("f", "auto");
         return url.toString();
       } catch {
         return squareImageUrl;
@@ -68,10 +71,7 @@ for (const item of categoriesWithImages) {
       }
     }
   } catch (error) {
-    console.error(
-      `Error fetching images for category ${item.id}:`,
-      error
-    );
+    console.error(`Error fetching images for category ${item.id}:`, error);
   }
 }
 
@@ -85,9 +85,9 @@ function createSlug(name: string): string {
 }
 
 // Update image URLs in categories using enhanced Square images or local fallbacks
-const prodCats = categoriesWithImages.map(item => ({
+const prodCats = categoriesWithImages.map((item) => ({
   ...item,
-  src: getCategoryImageUrl({ id: item.id, slug: createSlug(item.category) })
+  src: getCategoryImageUrl({ id: item.id, slug: createSlug(item.category) }),
 }));
 ---
 
@@ -103,128 +103,144 @@ const prodCats = categoriesWithImages.map(item => ({
     Shop by Category
   </h3>
   <div class="grid">
-    {prodCats.map((e, index) => {
-      const imageId = `category-img-${e.id || e.category}`;
-      const placeholderId = `category-placeholder-${e.id || e.category}`;
-      const staggerDelay = index * 0.1;
+    {
+      prodCats.map((e, index) => {
+        const imageId = `category-img-${e.id || e.category}`;
+        const placeholderId = `category-placeholder-${e.id || e.category}`;
+        const staggerDelay = index * 0.1;
 
-      // Generate optimized image sources using Pattern A
-      const imageSet = EnhancedImageOptimizer.generateOptimizedSources(e.src, {
-        width: 600,
-        height: 338,
-        quality: 85,
-        priority: index < 2,
-      });
+        // Generate optimized image sources using Pattern A
+        const imageSet = EnhancedImageOptimizer.generateOptimizedSources(
+          e.src,
+          {
+            width: 600,
+            height: 338,
+            quality: 85,
+            priority: index < 2,
+          }
+        );
 
-      return (
-        <a
-          href={e.url}
-          class="category-link block relative border-t-4 border-t-(--ui-button-surface) border-b-4 border-b-(--surface-primary) overflow-hidden loading-container aspect-video"
-          style={`--loading-stagger-delay: ${staggerDelay}s`}
-        >
-          <!-- Unified Loading Placeholder -->
-          <div
-            class="loading-skeleton loading-image absolute inset-0 w-full h-full"
-            id={placeholderId}
-            aria-hidden="true"
+        return (
+          <a
+            href={e.url}
+            class="category-link block relative border-t-4 border-t-(--ui-button-surface) border-b-4 border-b-(--surface-primary) overflow-hidden loading-container aspect-video"
+            style={`--loading-stagger-delay: ${staggerDelay}s`}
           >
-            <!-- El Camino logo using data URI -->
-            <div 
-              class="absolute inset-0 flex items-center justify-center"
-              style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
-            ></div>
-          </div>
-
-          <!-- Pattern A: Picture element with AVIF/WebP/JPEG -->
-          <picture>
-            {/* AVIF format (best compression) */}
-            {imageSet.avif && (
-              <source
-                type="image/avif"
-                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(e.src, 'avif', {
-                  width: 600,
-                  height: 338,
-                  quality: 85
-                })}
-                sizes="(max-width: 768px) 50vw, 600px"
+            {/* <!-- Unified Loading Placeholder --> */}
+            <div
+              class="loading-skeleton loading-image absolute inset-0 w-full h-full"
+              id={placeholderId}
+              aria-hidden="true"
+            >
+              {/* <!-- El Camino logo using data URI --> */}
+              <div
+                class="absolute inset-0 flex items-center justify-center"
+                style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
               />
-            )}
+            </div>
 
-            {/* WebP format (good compression) */}
-            {imageSet.webp && (
-              <source
-                type="image/webp"
-                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(e.src, 'webp', {
-                  width: 600,
-                  height: 338,
-                  quality: 85
-                })}
+            {/* <!-- Pattern A: Picture element with AVIF/WebP/JPEG --> */}
+            <picture>
+              {/* AVIF format (best compression) */}
+              {imageSet.avif && (
+                <source
+                  type="image/avif"
+                  srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+                    e.src,
+                    "avif",
+                    {
+                      width: 600,
+                      height: 338,
+                      quality: 85,
+                    }
+                  )}
+                  sizes="(max-width: 768px) 50vw, 600px"
+                />
+              )}
+
+              {/* WebP format (good compression) */}
+              {imageSet.webp && (
+                <source
+                  type="image/webp"
+                  srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+                    e.src,
+                    "webp",
+                    {
+                      width: 600,
+                      height: 338,
+                      quality: 85,
+                    }
+                  )}
+                  sizes="(max-width: 768px) 50vw, 600px"
+                />
+              )}
+
+              {/* JPEG fallback */}
+              <img
+                id={imageId}
+                src={imageSet.jpeg}
+                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+                  e.src,
+                  "jpeg",
+                  {
+                    width: 600,
+                    height: 338,
+                    quality: 85,
+                  }
+                )}
                 sizes="(max-width: 768px) 50vw, 600px"
+                alt={e.category}
+                width="600"
+                height="338"
+                class="category-img loading-to-content object-cover w-full h-full will-change-transform opacity-0 transition-opacity duration-300"
+                loading={index < 2 ? "eager" : "lazy"}
+                decoding={index < 2 ? "sync" : "async"}
+                fetchpriority={index < 2 ? "high" : "auto"}
+                data-placeholder-id={placeholderId}
+                onload={`this.classList.add('loaded', 'opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
+                onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('loaded', 'opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
               />
-            )}
+            </picture>
 
-            {/* JPEG fallback */}
-            <img
-              id={imageId}
-              src={imageSet.jpeg}
-              srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(e.src, 'jpeg', {
-                width: 600,
-                height: 338,
-                quality: 85
-              })}
-              sizes="(max-width: 768px) 50vw, 600px"
-              alt={e.category}
-              width="600"
-              height="338"
-              class="category-img loading-to-content object-cover w-full h-full will-change-transform opacity-0 transition-opacity duration-300"
-              loading={index < 2 ? "eager" : "lazy"}
-              decoding={index < 2 ? "sync" : "async"}
-              fetchpriority={index < 2 ? "high" : "auto"}
-              data-placeholder-id={placeholderId}
-              onload={`this.classList.add('loaded', 'opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
-              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('loaded', 'opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
-            />
-          </picture>
-
-          <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-(--border-secondary) border-b-0 bg-(--surface-secondary) text-(--content-heading) transition-all">
-            {e.category}
-          </h4>
-        </a>
-      );
-    })}
+            <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-(--border-secondary) border-b-0 bg-(--surface-secondary) text-(--content-heading) transition-all">
+              {e.category}
+            </h4>
+          </a>
+        );
+      })
+    }
   </div>
 </aside>
 
 <style>
   /* Component-specific styles only */
-  .category-link:hover .category-img.loaded {
-    scale: 1.05;
+
+  .category-img.loaded {
+    transition: transform 0.3s ease;
+    opacity: 0.3;
+    filter: sepia(0.5);
   }
-  
+  .category-link:hover .category-img.loaded {
+    transform: scale(1.05);
+    opacity: 0.8;
+    filter: sepia(0.1);
+  }
+
   .category-link:hover .category-title {
     font-weight: bold;
-  }
-
-  /* Category image loaded state - low opacity by default */
-  .category-img.loaded {
-    opacity: 0.2 !important; /* Override inline opacity for category aesthetic */
-  }
-
-  .category-img.error {
-    opacity: 0.2 !important;
-    filter: grayscale(100%);
   }
 </style>
 
 <script>
   // Enhanced image loading for category images using unified system
   document.addEventListener("astro:page-load", () => {
-    const categoryImages = document.querySelectorAll<HTMLImageElement>(".category-img");
+    const categoryImages =
+      document.querySelectorAll<HTMLImageElement>(".category-img");
 
     categoryImages.forEach((img) => {
       // If image is already loaded (cached), trigger onload
       if (img.complete && img.naturalHeight !== 0) {
-        img.classList.add('loaded');
+        img.classList.add("loaded");
         const placeholderId = img.dataset.placeholderId;
         if (placeholderId) {
           document.getElementById(placeholderId)?.remove();

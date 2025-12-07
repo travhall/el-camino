@@ -33,8 +33,14 @@ import { fetchCategories } from "@/lib/square/categories";
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
 
 // Enable aggressive caching for PDP pages
-Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
-Astro.response.headers.set('Netlify-CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
+Astro.response.headers.set(
+  "Cache-Control",
+  "public, s-maxage=300, stale-while-revalidate=1800"
+);
+Astro.response.headers.set(
+  "Netlify-CDN-Cache-Control",
+  "public, s-maxage=300, stale-while-revalidate=1800"
+);
 
 // Get the slug or ID from URL params
 const { id: slugOrId } = Astro.params;
@@ -461,11 +467,17 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
         <!-- Initial overlay (updated by JavaScript on variation change) -->
         {
           !selectedVariationInStock ? (
-            <div data-overlay="stock" class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-br-sm">
+            <div
+              data-overlay="stock"
+              class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-br-sm"
+            >
               Sold Out
             </div>
           ) : isOnSale && saleInfo ? (
-            <div data-overlay="sale" class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-md font-bold rounded-br-sm">
+            <div
+              data-overlay="sale"
+              class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-md font-bold rounded-br-sm"
+            >
               {saleInfo.discountPercent}% Off
             </div>
           ) : null
@@ -491,11 +503,11 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
         <!-- Price Display -->
         <div class="my-2">
           {/* Original price strikethrough when on sale */}
-          <div 
-            id="original-price-display" 
+          <div
+            id="original-price-display"
             class:list={[
               "text-lg text-(--content-meta) line-through",
-              !isOnSale || !formattedOriginalPrice ? "hidden" : ""
+              !isOnSale || !formattedOriginalPrice ? "hidden" : "",
             ]}
           >
             {formattedOriginalPrice || ""}
@@ -717,7 +729,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           <span class="italic">Available for pick up at El Camino</span>
           <button
             id="location-hours-link"
-            class="relative inline-flex self-start font-semibold hover:text-ui-nav-hover before:absolute before:-bottom-0.5 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left"
+            class="relative inline-flex self-start font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all"
             type="button"
           >
             Store Location &amp; Hours

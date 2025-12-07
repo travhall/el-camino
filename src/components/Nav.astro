@@ -189,7 +189,7 @@ const isCategoryPage = currentPath.includes("/category/");
                   : `/category/${item.category.slug}`
           }
           class:list={[
-            "nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 lg:p-4 text-(--ui-nav-text) hover:text-(--ui-nav-hover) transition-all duration-300 ease-in-out relative focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) focus-visible:ring-(--content-body) before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left nav-link",
+            "nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 lg:p-4 text-(--ui-nav-text) hover:text-(--ui-nav-hover) transition-all duration-300 ease-in-out relative focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) focus-visible:ring-(--content-body) before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-center before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-center nav-link",
             {
               "lg:before:scale-x-100 lg:before:origin-left":
                 (item.category.id === "the-shop" &&
@@ -820,7 +820,8 @@ const isCategoryPage = currentPath.includes("/category/");
     } else {
       // Page is visible again - only reset if hidden for more than 5 minutes
       const idleDuration = Date.now() - hiddenTime;
-      if (hiddenTime > 0 && idleDuration > 300000) { // 5 minutes
+      if (hiddenTime > 0 && idleDuration > 300000) {
+        // 5 minutes
         if (navController) {
           navController.destroy();
         }
@@ -832,7 +833,7 @@ const isCategoryPage = currentPath.includes("/category/");
   // Handle page show event (back/forward cache)
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) {
-      // Page loaded from bfcache - reset
+      // Page loaded from bfcache - reset cSpell:ignore bfcache
       if (navController) {
         navController.destroy();
       }

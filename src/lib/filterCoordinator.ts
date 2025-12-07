@@ -285,7 +285,7 @@ export class FilterCoordinator {
 
     // Handle page show event (fired when navigating back via browser history)
     window.addEventListener("pageshow", (event) => {
-      // If page is loaded from bfcache (back/forward cache), reset state
+      // If page is loaded from bfcache (back/forward cache), reset state cSpell:ignore bfcache
       if (event.persisted) {
         FilterCoordinator.cleanupAnimationState();
         FilterCoordinator.isInitialized = false;
