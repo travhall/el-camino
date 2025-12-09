@@ -133,8 +133,7 @@ src/
 │   │   └── blobCache.ts       # Distributed cache implementation
 │   ├── performance/   # Performance monitoring
 │   │   ├── PerformanceManager.ts      # Core Web Vitals tracking
-│   │   ├── BudgetManager.ts           # Resource budget tracking
-│   │   └── ScrollPerformanceMonitor.ts # Scroll optimization
+│   │   └── BudgetManager.ts           # Resource budget tracking
 │   └── image/         # Enhanced image optimization
 ├── pages/             # Routes and API endpoints
 │   ├── api/           # Server endpoints (16 endpoints)
@@ -192,21 +191,21 @@ src/
 
 ## 🛠️ API Endpoints
 
-| Endpoint                  | Method | Purpose                        |
-| ------------------------- | ------ | ------------------------------ |
-| `/api/list-catalog`       | GET    | Fetch product catalog          |
-| `/api/create-checkout`    | POST   | Initialize Square checkout     |
-| `/api/cart-actions`       | POST   | Cart operations                |
-| `/api/cart-inventory`     | POST   | Bulk inventory validation      |
-| `/api/check-inventory`    | GET    | Single item stock check        |
-| `/api/get-categories`     | GET    | Product categories             |
-| `/api/load-more-products` | GET    | Paginated product loading      |
-| `/api/quick-view-product` | GET    | Quick view product data        |
-| `/api/calculate-cart`     | POST   | Calculate cart totals          |
-| `/api/sale-info`          | GET    | Sale pricing information       |
-| `/api/related-products`   | GET    | Related products               |
-| `/api/resolve-product`    | GET    | Product resolution             |
-| `/api/warmup`             | GET    | Cache warming endpoint         |
+| Endpoint                  | Method | Purpose                    |
+| ------------------------- | ------ | -------------------------- |
+| `/api/list-catalog`       | GET    | Fetch product catalog      |
+| `/api/create-checkout`    | POST   | Initialize Square checkout |
+| `/api/cart-actions`       | POST   | Cart operations            |
+| `/api/cart-inventory`     | POST   | Bulk inventory validation  |
+| `/api/check-inventory`    | GET    | Single item stock check    |
+| `/api/get-categories`     | GET    | Product categories         |
+| `/api/load-more-products` | GET    | Paginated product loading  |
+| `/api/quick-view-product` | GET    | Quick view product data    |
+| `/api/calculate-cart`     | POST   | Calculate cart totals      |
+| `/api/sale-info`          | GET    | Sale pricing information   |
+| `/api/related-products`   | GET    | Related products           |
+| `/api/resolve-product`    | GET    | Product resolution         |
+| `/api/warmup`             | GET    | Cache warming endpoint     |
 
 ## 📱 Pages
 
@@ -295,7 +294,9 @@ pnpm preview-local
 - **Image Optimization** - Format detection, responsive images, and loading placeholders
 
 ### Performance Optimizations ⚡
+
 Recent comprehensive performance optimization strategy implementation:
+
 - **Netlify Blobs Migration** - Solved serverless function memory isolation with distributed caching
 - **Enhanced Image Loading** - Format detection (AVIF, WebP), shimmer placeholders, and responsive images
 - **Core Web Vitals Tracking** - Built-in performance monitoring with regression testing
@@ -304,6 +305,7 @@ Recent comprehensive performance optimization strategy implementation:
 - **Performance Budgets** - Resource budget tracking and alerts
 
 ### Performance Metrics
+
 - **Build Time**: ~3 seconds
 - **TypeScript Compilation**: 0 errors across 83 files
 - **Codebase Size**: ~48,894 lines of code across 169 files
@@ -315,6 +317,7 @@ Recent comprehensive performance optimization strategy implementation:
 ## 🏗️ Architecture Highlights
 
 ### Enterprise Patterns
+
 - **Singleton Pattern** - CartManager and PerformanceManager for centralized state
 - **Circuit Breaker Pattern** - API resilience and failure recovery
 - **Request Deduplication** - Prevents duplicate API calls
@@ -324,6 +327,7 @@ Recent comprehensive performance optimization strategy implementation:
 - **Type Safety** - End-to-end TypeScript implementation with strict mode
 
 ### Square SDK Integration
+
 - **Migration Strategy**: Using `square/legacy` for ES module compatibility
 - **Separation of Concerns**: Backend API calls, frontend state management
 - **Error Handling**: Comprehensive Square API error processing
@@ -360,16 +364,19 @@ Additional documentation available:
 ## 🔧 Dependencies
 
 ### Core Framework
+
 - **Astro 5.16.0** - Modern web framework with SSR
 - **TypeScript 5.9.3** - Type safety and developer experience
 - **Tailwind CSS 4.1.17** - Utility-first CSS framework v4
 
 ### E-commerce Integration
+
 - **Square SDK 43.2.0** - Payment processing and inventory
 - **Square Legacy Support** - ES module compatibility
 - **@netlify/blobs 10.3.3** - Distributed caching layer
 
 ### Performance & Optimization
+
 - **@astrojs/netlify 6.6.2** - Deployment adapter with SSR
 - **astro-icon 1.1.5** - Optimized icon system
 - **astro-seo-metadata 0.6.0** - SEO optimization
@@ -377,6 +384,7 @@ Additional documentation available:
 - **web-vitals 5.1.0** - Core Web Vitals monitoring
 
 ### Development Tools
+
 - **@astrojs/node 9.5.1** - Local development adapter
 - **Vitest 4.0.8** - Unit testing framework with 80% coverage
 - **Playwright 1.56.1** - E2E testing across browsers
@@ -385,6 +393,7 @@ Additional documentation available:
 ## 📈 Roadmap
 
 ### Completed ✅
+
 - [x] Core e-commerce functionality
 - [x] Square API integration
 - [x] Cart and checkout system
@@ -397,11 +406,13 @@ Additional documentation available:
 - [x] E2E test suite with Playwright
 
 ### In Progress 🚧
+
 - [ ] Enhanced search functionality
 - [ ] Customer account system
 - [ ] Order history and tracking
 
 ### Future Enhancements 🔮
+
 - [ ] Inventory management dashboard
 - [ ] Customer analytics and insights
 - [ ] Multi-currency support
@@ -421,6 +432,7 @@ For issues and questions:
 ## 📊 Project Status
 
 ### Current State: Production Ready ✅
+
 - **TypeScript**: 0 errors across 83 files
 - **Build Status**: Successful
 - **Core Features**: Complete and functional
@@ -429,6 +441,7 @@ For issues and questions:
 - **Performance**: Optimized for production
 
 ### Recent Achievements
+
 - ✅ Successful Square SDK v43.2.0 migration using legacy approach
 - ✅ Complete cart system implementation with View Transitions persistence
 - ✅ Real-time inventory validation and stock management with bulk validation
@@ -450,4 +463,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 Built with ❤️ using Astro, TypeScript, and Square Commerce APIs
 
-*Last updated: November 2025*
+_Last updated: November 2025_

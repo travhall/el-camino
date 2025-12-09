@@ -65,7 +65,7 @@ const isMobile = deviceInfo.isMobile;
   >
     <Icon
       name="Logo"
-      class="w-48 xl:w-56 h-auto p-2 text-(--content-heading)"
+      class="w-48 xl:w-56 h-auto p-1 m-4 text-(--content-heading)"
       title="Go Home to El Camino"
     />
   </a>
@@ -73,7 +73,7 @@ const isMobile = deviceInfo.isMobile;
   <Nav activeCategory={activeCategory} />
 
   <div
-    class="utility-menu self-center justify-end lg:order-last flex"
+    class="utility-menu self-center justify-end lg:order-last flex mr-1 gap-2"
     transition:persist="utility-menu"
   >
     {isMobile ? <CartButtonMobile /> : <CartButton />}
@@ -92,8 +92,8 @@ const isMobile = deviceInfo.isMobile;
 <script>
   // One-time header fade-in animation on initial page load
   function initializeHeaderAnimation() {
-    const STORAGE_KEY = 'header-animated';
-    const header = document.getElementById('site-header');
+    const STORAGE_KEY = "header-animated";
+    const header = document.getElementById("site-header");
 
     if (!header) return;
 
@@ -102,12 +102,12 @@ const isMobile = deviceInfo.isMobile;
 
     if (!hasAnimated) {
       // First load - apply animation class
-      header.classList.add('header-initial-load');
+      header.classList.add("header-initial-load");
       // Store flag so it doesn't animate again this session
-      sessionStorage.setItem(STORAGE_KEY, 'true');
+      sessionStorage.setItem(STORAGE_KEY, "true");
     } else {
       // Already animated this session - show immediately without animation
-      header.classList.add('header-visible');
+      header.classList.add("header-visible");
     }
   }
 
@@ -115,12 +115,12 @@ const isMobile = deviceInfo.isMobile;
   initializeHeaderAnimation();
 
   // Handle view transitions - restore header visibility on page swap
-  document.addEventListener('astro:after-swap', () => {
-    const header = document.getElementById('site-header');
+  document.addEventListener("astro:after-swap", () => {
+    const header = document.getElementById("site-header");
     if (header) {
       // Always show header immediately on subsequent navigations
-      header.classList.remove('header-initial-load');
-      header.classList.add('header-visible');
+      header.classList.remove("header-initial-load");
+      header.classList.add("header-visible");
     }
   });
 
