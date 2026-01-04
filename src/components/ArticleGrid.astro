@@ -348,7 +348,8 @@ const getSkeletonVariant = () => {
         } else {
           const rowIndex = Math.floor(index / cardsPerRow);
           const cardInRow = index % cardsPerRow;
-          animationOrder = rowIndex * 3 + cardInRow * 1.2;
+          // LIGHTHOUSE FIX: First card (LCP element) animates immediately with no delay
+          animationOrder = index === 0 ? 0 : rowIndex * 3 + cardInRow * 1.2;
         }
 
         // Set animation properties

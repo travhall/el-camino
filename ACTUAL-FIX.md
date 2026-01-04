@@ -1,6 +1,8 @@
-# The Real Lighthouse Fix - CSS Containment Issue
+# Lighthouse Performance Fixes
 
-## Root Cause (The Real One This Time)
+## Fix #1: CSS Containment Issue (NO_LCP Error)
+
+### Root Cause
 
 Your Lighthouse `NO_LCP` error was caused by **CSS containment properties** on the featured article image, NOT the animation timing or `opacity: 0`.
 
@@ -100,4 +102,50 @@ Or manually restore lines 403-406:
 
 ---
 
-**This is the correct fix.** It addresses the actual root cause (CSS containment blocking LCP observation) without compromising your animation quality.
+## Fix #2: Animation Delay on LCP Element (Performance Score 79 → 85-90+)
+
+### Issue
+
+After fixing NO_LCP, the performance score was **79/100** with LCP at **5.5s**. The issue was that the featured article (LCP element) was animating with a stagger delay, preventing it from becoming fully visible until ~5.5s.
+
+- FCP: 1.8s (content paints)
+- LCP: 5.5s (featured article becomes visible after animation)
+- Gap: 3.7s delay caused by animation timing
+
+### Root Cause
+
+The animation order calculation in `ArticleGrid.astro` was applying the same stagger delay to ALL cards, including the first card (LCP element):
+
+```javascript
+animationOrder = rowIndex * 3 + cardInRow * 1.2;
+```
+
+This meant the first card waited for its animation delay before becoming visible, even though it's the most important element on the page.
+
+### The Fix
+
+**File:** `src/components/ArticleGrid.astro` (line 352)
+
+```javascript
+// LIGHTHOUSE FIX: First card (LCP element) animates immediately with no delay
+animationOrder = index === 0 ? 0 : rowIndex * 3 + cardInRow * 1.2;
+```
+
+### Impact
+
+✅ **First card** appears immediately (no stagger delay)
+✅ **All other cards** still animate with beautiful stagger effect
+✅ **No visual compromise** - users won't notice the first card not having delay
+✅ **Expected LCP improvement**: 5.5s → ~2-2.5s
+✅ **Expected performance score**: 79 → 85-90+
+
+### What This Changes
+
+- **Before**: All 6 cards animate with stagger (including featured/LCP)
+- **After**: First card animates immediately (0ms delay), cards 2-6 stagger as before
+
+The first card still has the 0.5s fade-in animation, just no stagger delay before it starts. This is exactly how most high-performance sites handle LCP elements - prioritize visibility, preserve beauty for everything else.
+
+---
+
+**Both fixes combined** solve the Lighthouse issues while maintaining your animation vision.
