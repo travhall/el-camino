@@ -182,96 +182,91 @@ const isCategoryPage = currentPath.includes("/category/");
   {
     navItems.map((item, index) => (
       <div class="category-group relative flex flex-col lg:flex-row group transition-all">
-        {/* Mobile: row wrapper keeps link + expand button side-by-side */}
-        <div class="flex flex-row items-center lg:contents">
-          <a
-            href={
-              item.category.id === "the-shop"
-                ? "/the-shop"
-                : item.category.id === "news"
-                  ? "/news"
-                  : item.category.id === "sale"
-                    ? "/shop/sale"
-                    : `/category/${item.category.slug}`
-            }
-            class:list={[
-              "nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 lg:p-4 text-(--ui-nav-text) hover:text-(--ui-nav-hover) transition-all duration-300 ease-in-out relative focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) focus-visible:ring-(--content-body) before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-center before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-center nav-link",
-              {
-                "lg:before:scale-x-100 lg:before:origin-left":
-                  (item.category.id === "the-shop" &&
-                    currentPath.startsWith("/the-shop")) ||
-                  (item.category.id === "news" &&
-                    currentPath.startsWith("/news")) ||
-                  (item.category.id === "sale" &&
-                    currentPath.startsWith("/shop/sale")) ||
-                  (item.category.id !== "the-shop" &&
-                    item.category.id !== "news" &&
-                    item.category.id !== "sale" &&
-                    currentPath.startsWith(`/category/${item.category.slug}`)) ||
-                  (isProductPage &&
-                    activeCategory &&
-                    item.category.slug === activeCategory),
-              },
-            ]}
-            style={`--item-index: ${index};`}
-            data-has-children={item.subcategories.length > 0}
-            data-category-name={item.category.name}
-            data-prefetch-strategy={item.prefetchStrategy || "hover"}
-            data-astro-prefetch={item.prefetchStrategy || "hover"}
-          >
-            {item.category.name}
-            {item.subcategories.length > 0 && (
-              <>
-                {/* Desktop-only chevron — visual indicator, no interaction role */}
-                <span class="dropdown-indicator hidden lg:block ml-1" aria-hidden="true">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="h-4 w-4 transform lg:group-hover:rotate-180 lg:group-focus-within:rotate-180"
-                    aria-hidden="true"
-                  >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </span>
-              </>
-            )}
-          </a>
-
-          {/* Mobile-only expand/collapse button — semantically correct toggle control */}
+        <a
+          href={
+            item.category.id === "the-shop"
+              ? "/the-shop"
+              : item.category.id === "news"
+                ? "/news"
+                : item.category.id === "sale"
+                  ? "/shop/sale"
+                  : `/category/${item.category.slug}`
+          }
+          class:list={[
+            "nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 pr-16 lg:pr-4 lg:p-4 text-(--ui-nav-text) hover:text-(--ui-nav-hover) transition-all duration-300 ease-in-out relative focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) focus-visible:ring-(--content-body) before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-center before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-center nav-link",
+            {
+              "lg:before:scale-x-100 lg:before:origin-left":
+                (item.category.id === "the-shop" &&
+                  currentPath.startsWith("/the-shop")) ||
+                (item.category.id === "news" &&
+                  currentPath.startsWith("/news")) ||
+                (item.category.id === "sale" &&
+                  currentPath.startsWith("/shop/sale")) ||
+                (item.category.id !== "the-shop" &&
+                  item.category.id !== "news" &&
+                  item.category.id !== "sale" &&
+                  currentPath.startsWith(`/category/${item.category.slug}`)) ||
+                (isProductPage &&
+                  activeCategory &&
+                  item.category.slug === activeCategory),
+            },
+          ]}
+          style={`--item-index: ${index};`}
+          data-has-children={item.subcategories.length > 0}
+          data-category-name={item.category.name}
+          data-prefetch-strategy={item.prefetchStrategy || "hover"}
+          data-astro-prefetch={item.prefetchStrategy || "hover"}
+        >
+          {item.category.name}
           {item.subcategories.length > 0 && (
-            <button
-              class="mobile-expand-btn lg:hidden flex items-center justify-center p-2 text-(--ui-nav-text) hover:text-(--ui-nav-hover) focus-visible:ring-2 outline-0 focus-visible:ring-(--content-body)"
-              aria-expanded="false"
-              aria-haspopup="menu"
-              aria-label={`Expand ${item.category.name} subcategories`}
-              data-has-children="true"
-              data-category-name={item.category.name}
-            >
+            <span class="dropdown-indicator hidden lg:block ml-1" aria-hidden="true">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 48 48"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="4"
+                stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                class="mobile-caret"
+                class="h-4 w-4 transform lg:group-hover:rotate-180 lg:group-focus-within:rotate-180"
                 aria-hidden="true"
               >
-                <polyline points="12 18 24 30 36 18" />
+                <polyline points="6 9 12 15 18 9" />
               </svg>
-            </button>
+            </span>
           )}
-        </div>
+        </a>
+
+        {/* Mobile-only expand/collapse button — absolutely positioned so it
+            sits inline with the link text without affecting desktop layout */}
+        {item.subcategories.length > 0 && (
+          <button
+            class="mobile-expand-btn lg:hidden absolute right-0 top-0 h-16 w-16 flex items-center justify-center text-(--ui-nav-text) hover:text-(--ui-nav-hover) focus-visible:ring-2 outline-0 focus-visible:ring-(--content-body)"
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label={`Expand ${item.category.name} subcategories`}
+            data-has-children="true"
+            data-category-name={item.category.name}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 48 48"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="mobile-caret"
+              aria-hidden="true"
+            >
+              <polyline points="12 18 24 30 36 18" />
+            </svg>
+          </button>
+        )}
 
         {/* Enhanced dropdown menu with correct nested URLs */}
         {item.subcategories.length > 0 && (
@@ -384,8 +379,9 @@ const isCategoryPage = currentPath.includes("/category/");
       position: static;
       max-height: 0;
       opacity: 0;
-      transform: translate3d(0, -10px, 0);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      transition:
+        max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.2s ease;
       overflow: hidden;
       background-color: rgba(var(--ui-nav-hover-rgb, 255, 255, 255), 0.05);
       border-left: 2px solid rgba(var(--ui-nav-border-rgb, 255, 255, 255), 0.1);
@@ -405,7 +401,6 @@ const isCategoryPage = currentPath.includes("/category/");
       display: block;
       max-height: 500px;
       opacity: 1;
-      transform: translate3d(0, 0, 0);
     }
 
     .category-group.open .mobile-caret {

@@ -126,7 +126,18 @@ const isMobile = deviceInfo.isMobile;
   });
 
   // Handle menu toggle functionality
+  // AbortController lets us cleanly remove ALL listeners on each page swap
+  // instead of trying to removeEventListener on locally-scoped functions.
+  let menuAbortController: AbortController | null = null;
+
   function setupMobileMenu() {
+    // Tear down previous listeners before re-registering
+    if (menuAbortController) {
+      menuAbortController.abort();
+    }
+    menuAbortController = new AbortController();
+    const signal = menuAbortController.signal;
+
     const toggleButton = document.getElementById(
       "mobile-menu-toggle"
     ) as HTMLButtonElement;
@@ -137,6 +148,14 @@ const isMobile = deviceInfo.isMobile;
     // Early return if elements don't exist
     if (!toggleButton || !menuIcon || !closeIcon || !nav) return;
 
+    // Always reset to closed state on setup — ensures icon/aria sync after page transitions
+    toggleButton.setAttribute("aria-expanded", "false");
+    toggleButton.setAttribute("aria-label", "Open navigation");
+    menuIcon.classList.remove("hidden");
+    closeIcon.classList.add("hidden");
+    nav.classList.remove("nav-open");
+    document.body.style.overflow = "unset";
+
     function openMenu() {
       toggleButton.setAttribute("aria-expanded", "true");
       toggleButton.setAttribute("aria-label", "Close navigation");
@@ -145,10 +164,9 @@ const isMobile = deviceInfo.isMobile;
       nav.classList.add("nav-open");
       document.body.style.overflow = "hidden";
 
-      // Move focus to first focusable item in nav (#6)
+      // Move focus to first focusable item in nav
       const firstNavLink = nav.querySelector<HTMLElement>("a, button");
       if (firstNavLink) {
-        // Defer to allow transition to start
         requestAnimationFrame(() => firstNavLink.focus());
       }
     }
@@ -161,11 +179,11 @@ const isMobile = deviceInfo.isMobile;
       nav.classList.remove("nav-open");
       document.body.style.overflow = "unset";
 
-      // Return focus to the toggle button (#6)
+      // Return focus to the toggle button
       toggleButton.focus();
     }
 
-    function handleToggle(e: MouseEvent) {
+    toggleButton.addEventListener("click", (e: MouseEvent) => {
       e.stopPropagation();
       const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
       if (isExpanded) {
@@ -173,12 +191,7 @@ const isMobile = deviceInfo.isMobile;
       } else {
         openMenu();
       }
-    }
-
-    // Remove existing event listener if any
-    toggleButton.removeEventListener("click", handleToggle);
-    // Add new event listener
-    toggleButton.addEventListener("click", handleToggle);
+    }, { signal });
 
     // Close menu when clicking outside
     document.addEventListener("click", (e: MouseEvent) => {
@@ -191,22 +204,18 @@ const isMobile = deviceInfo.isMobile;
       ) {
         closeMenu();
       }
-    });
+    }, { signal });
 
-    // Close menu on escape key
+    // Close menu on Escape + focus trap
     document.addEventListener("keydown", (e: KeyboardEvent) => {
-      if (
-        e.key === "Escape" &&
-        toggleButton.getAttribute("aria-expanded") === "true"
-      ) {
+      const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
+
+      if (e.key === "Escape" && isExpanded) {
         closeMenu();
+        return;
       }
-    });
 
-    // Focus trap: keep Tab/Shift+Tab within the nav while mobile menu is open (#7)
-    document.addEventListener("keydown", (e: KeyboardEvent) => {
-      if (e.key !== "Tab") return;
-      if (toggleButton.getAttribute("aria-expanded") !== "true") return;
+      if (e.key !== "Tab" || !isExpanded) return;
 
       const focusable = Array.from(
         nav.querySelectorAll<HTMLElement>(
@@ -220,25 +229,22 @@ const isMobile = deviceInfo.isMobile;
       const last = focusable[focusable.length - 1];
 
       if (e.shiftKey) {
-        // Shift+Tab from first focusable → wrap to toggle button
         if (document.activeElement === first) {
           e.preventDefault();
           toggleButton.focus();
         }
       } else {
-        // Tab from last focusable → wrap to first
-        if (document.activeElement === last || document.activeElement === toggleButton) {
-          if (document.activeElement === toggleButton) return; // let natural tab into nav
+        if (document.activeElement === last) {
           e.preventDefault();
           first.focus();
         }
       }
-    });
+    }, { signal });
   }
 
   // Initialize menu
   setupMobileMenu();
 
-  // Handle view transitions and page loads
+  // Re-initialize on each page transition — AbortController handles cleanup
   document.addEventListener("astro:after-swap", setupMobileMenu);
 </script>
