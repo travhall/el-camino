@@ -11,6 +11,22 @@ export interface NavigationState {
 export class NavigationManager {
   private state: NavigationState;
   private enabled = true;
+  private listenersAttached = false;
+
+  // Bound handler references so they can be removed with removeEventListener
+  private handleBeforePreparation = (e: any) => {
+    this.state.isViewTransitionActive = true;
+    this.state.navigationDirection =
+      e.direction === "back" ? "back" : "forward";
+    this.state.previousPath = this.state.currentPath;
+    this.state.lastTransitionStart = Date.now();
+  };
+
+  private handleAfterSwap = () => {
+    this.state.isViewTransitionActive = false;
+    this.state.currentPath = window.location.pathname;
+    this.state.lastTransitionStart = undefined;
+  };
 
   constructor() {
     this.state = {
@@ -28,20 +44,20 @@ export class NavigationManager {
   }
 
   private setupEventListeners(): void {
-    // Track view transition state - essential for coordination
-    document.addEventListener("astro:before-preparation", (e: any) => {
-      this.state.isViewTransitionActive = true;
-      this.state.navigationDirection =
-        e.direction === "back" ? "back" : "forward";
-      this.state.previousPath = this.state.currentPath;
-      this.state.lastTransitionStart = Date.now();
-    });
+    // Guard: never attach listeners more than once
+    if (this.listenersAttached) return;
 
-    document.addEventListener("astro:after-swap", () => {
-      this.state.isViewTransitionActive = false;
-      this.state.currentPath = window.location.pathname;
-      this.state.lastTransitionStart = undefined;
-    });
+    // Track view transition state - essential for coordination
+    document.addEventListener("astro:before-preparation", this.handleBeforePreparation);
+    document.addEventListener("astro:after-swap", this.handleAfterSwap);
+    this.listenersAttached = true;
+  }
+
+  /** Remove event listeners and allow re-attachment on next setupEventListeners call */
+  private teardownEventListeners(): void {
+    document.removeEventListener("astro:before-preparation", this.handleBeforePreparation);
+    document.removeEventListener("astro:after-swap", this.handleAfterSwap);
+    this.listenersAttached = false;
   }
 
   // Essential public API for components
@@ -99,8 +115,10 @@ export class NavigationManager {
     try {
       this.resetState();
 
-      // Re-establish event listeners if they were lost
+      // Re-establish event listeners if they were lost.
+      // Teardown first to avoid duplicate listeners before re-attaching.
       if (typeof window !== "undefined" && this.enabled) {
+        this.teardownEventListeners();
         this.setupEventListeners();
       }
 

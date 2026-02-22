@@ -36,14 +36,12 @@ export const GET: APIRoute = async ({ request, url }) => {
       ? parseInt(inStockCount.quantity, 10)
       : 0;
 
-    // Return the inventory data with full details for debugging
     return new Response(
       JSON.stringify({
         success: true,
         variationId,
         quantity,
         inStock: quantity > 0,
-        rawCounts: counts,
         timestamp: new Date().toISOString(),
       }),
       {
@@ -52,19 +50,13 @@ export const GET: APIRoute = async ({ request, url }) => {
       }
     );
   } catch (error) {
-    // console.error("[API] Error checking inventory:", error);
-
-    const errorMessage =
-      error instanceof Error ? error.message : "Failed to check inventory";
-
-    const errorDetails =
-      error instanceof Error ? { name: error.name, stack: error.stack } : {};
+    // Log full error server-side only — never expose stack traces to clients
+    console.error("[API] Error checking inventory:", error);
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: errorMessage,
-        details: errorDetails,
+        error: "Failed to check inventory",
         timestamp: new Date().toISOString(),
       }),
       {

@@ -245,17 +245,10 @@ export const POST: APIRoute = async ({ request }) => {
     confirmationUrl.searchParams.set("orderId", orderId);
     confirmationUrl.searchParams.set("fulfillmentMethod", fulfillmentMethod);
 
-    // Create payment link
+    // Create payment link referencing the existing order (avoids double order creation)
     const linkResponse = await squareClient.checkoutApi.createPaymentLink({
       idempotencyKey: crypto.randomUUID(),
-      order: {
-        locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
-        lineItems,
-        fulfillments: fulfillments.length > 0 ? fulfillments : undefined,
-        pricingOptions: {
-          autoApplyTaxes: true,
-        },
-      },
+      order: orderResponse.result.order,
       checkoutOptions: {
         redirectUrl: confirmationUrl.toString(),
         // Only ask for shipping address if we don't already have it

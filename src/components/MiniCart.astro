@@ -116,6 +116,16 @@ import Button from "@/components/Button.astro";
   let cart: any = null;
   let inventoryData: Record<string, number> = {};
 
+  /** Escape HTML special characters to prevent XSS in innerHTML templates */
+  function sanitize(str: string): string {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;");
+  }
+
   async function loadCart() {
     if (!cart) {
       const module = await import("@/lib/cart");
@@ -207,39 +217,46 @@ import Button from "@/components/Button.astro";
     const inventory = inventoryData[item.variationId] || 999;
     const maxQuantity = Math.min(inventory, 99);
 
+    // Sanitize all user-controlled strings before inserting into innerHTML
+    const safeItemKey = sanitize(itemKey);
+    const safeTitle = sanitize(item.title);
+    const safeVariationName = item.variationName ? sanitize(item.variationName) : "";
+
     // Generate proper slug from product title
     const productSlug = createSlug(item.title);
     const productUrl = `/product/${productSlug}`;
+    const safeProductUrl = sanitize(productUrl);
 
     // Optimize cart image using client-side optimization
     const optimizedImageSrc = item.image ? optimizeCartImage(item.image) : null;
+    const safeImageSrc = optimizedImageSrc ? sanitize(optimizedImageSrc) : null;
 
     return `
-    <div class="flex gap-3 p-3 bg-(--surface-secondary)" data-item-key="${itemKey}">
+    <div class="flex gap-3 p-3 bg-(--surface-secondary)" data-item-key="${safeItemKey}">
       <div class="relative w-16 h-16">
         ${
-          optimizedImageSrc
+          safeImageSrc
             ? `
           <!-- Loading placeholder - absolutely positioned -->
-          <div 
+          <div
             class="loading-skeleton absolute inset-0 rounded-sm transition-opacity duration-300"
-            id="mini-cart-placeholder-${itemKey}"
+            id="mini-cart-placeholder-${safeItemKey}"
           >
             <!-- El Camino logo as loading indicator -->
-            <div 
+            <div
               class="absolute inset-0 flex items-center justify-center rounded-sm opacity-70"
               style="background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: 20px 18px; background-position: center; background-repeat: no-repeat;"
             ></div>
           </div>
 
           <!-- Optimized product image - absolutely positioned -->
-          <img 
-            src="${optimizedImageSrc}" 
-            alt="${item.title}"
+          <img
+            src="${safeImageSrc}"
+            alt="${safeTitle}"
             class="absolute inset-0 w-full h-full object-cover rounded-sm bg-(--surface-secondary) opacity-0 transition-opacity duration-300"
             loading="eager"
-            onload="this.style.opacity='0.9'; document.getElementById('mini-cart-placeholder-${itemKey}')?.remove();"
-            onerror="this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('mini-cart-placeholder-${itemKey}')?.remove();"
+            onload="this.style.opacity='0.9'; document.getElementById('mini-cart-placeholder-${safeItemKey}')?.remove();"
+            onerror="this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('mini-cart-placeholder-${safeItemKey}')?.remove();"
           />
         `
             : `
@@ -255,19 +272,19 @@ import Button from "@/components/Button.astro";
 
       <div class="flex-1 min-w-0">
         <h3 class="font-medium text-(--content-heading) text-sm leading-tight line-clamp-2">
-          <a 
-            href="${productUrl}" 
+          <a
+            href="${safeProductUrl}"
             class="hover:text-(--content-emphasis) transition-colors product-link"
-            data-product-url="${productUrl}"
+            data-product-url="${safeProductUrl}"
           >
-          ${item.title}
+          ${safeTitle}
           </a>
         </h3>
 
         ${
-          item.variationName
+          safeVariationName
             ? `
-          <p class="text-xs text-(--content-meta) mt-1">${item.variationName}</p>
+          <p class="text-xs text-(--content-meta) mt-1">${safeVariationName}</p>
         `
             : ""
         }
@@ -295,8 +312,8 @@ import Button from "@/components/Button.astro";
           <button
             class="font-sans font-semibold focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) inline-flex items-center justify-center text-xs py-1 px-2 text-(--content-body) bg-none border-none focus-visible:ring-(--ui-button-ring) underline underline-offset-1 decoration-(--content-body)/0 hover:decoration-(--content-body)/80 hover:underline-offset-4 transition-all ease-in-out duration-300"
             data-action="remove"
-            data-item-key="${itemKey}"
-            data-item-title="${item.title}"
+            data-item-key="${safeItemKey}"
+            data-item-title="${safeTitle}"
           >
             Remove
           </button>
@@ -308,7 +325,7 @@ import Button from "@/components/Button.astro";
                 item.quantity <= 1 ? "opacity-50 cursor-not-allowed" : ""
               }"
               data-action="decrease"
-              data-item-key="${itemKey}"
+              data-item-key="${safeItemKey}"
               ${item.quantity <= 1 ? "disabled" : ""}
               aria-label="Decrease quantity"
             >
@@ -326,7 +343,7 @@ import Button from "@/components/Button.astro";
                   : ""
               }"
               data-action="increase"
-              data-item-key="${itemKey}"
+              data-item-key="${safeItemKey}"
               ${item.quantity >= maxQuantity ? "disabled" : ""}
               aria-label="Increase quantity"
             >

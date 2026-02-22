@@ -3,36 +3,16 @@
 import Layout from "@/layouts/Layout.astro";
 import ArticleGrid from "@/components/ArticleGrid.astro";
 import NewsPaginationControls from "@/components/NewsPaginationControls.astro";
-import { getPostsByTag, getAllTags } from "@/lib/wordpress/api";
+import { getPostsByTag } from "@/lib/wordpress/api";
 import type { WordPressPost } from "@/lib/wordpress/types";
 
-export async function getStaticPaths() {
-  const allTags = await getAllTags();
-  
-  return allTags.map((tag) => ({
-    params: { slug: tag.slug },
-    props: { 
-      tagName: tag.name,
-      tagSlug: tag.slug,
-      // Remove postCount from props - we'll calculate it dynamically
-    },
-  }));
-}
-
-interface Props {
-  tagName: string;
-  tagSlug: string;
-}
-
-
-const { slug } = Astro.params;
-const { tagName: propsTagName } = Astro.props;
+const { slug = '' } = Astro.params;
 
 // Fetch posts for this tag
 const posts = await getPostsByTag(slug);
 
-// Get tagName from actual posts if props tagName is undefined
-let displayTagName = propsTagName;
+// Get tagName from actual posts (no build-time props in SSR mode)
+let displayTagName: string | undefined;
 
 if (!displayTagName && posts.length > 0) {
   // Extract tagName from first post's tags

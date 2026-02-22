@@ -22,6 +22,7 @@ export class BlobCache<T> {
 
   // Fallback in-memory cache for when Netlify Blobs fails
   private fallbackCache = new Map<string, CacheEntry<T>>();
+  private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
 
   // Circuit breaker state
   private failureCount = 0;
@@ -68,7 +69,8 @@ export class BlobCache<T> {
     }
 
     // Set up periodic cleanup of fallback cache (every 5 minutes)
-    setInterval(() => {
+    // Store the ID so it can be cleared via destroy() to prevent leaks
+    this.cleanupIntervalId = setInterval(() => {
       this.cleanupFallbackCache();
     }, 300000);
   }
@@ -280,6 +282,18 @@ export class BlobCache<T> {
     // Blobs handles expiration automatically via TTL metadata
     // No-op for compatibility - return 0 to indicate no entries pruned
     return 0;
+  }
+
+  /**
+   * Stop the periodic cleanup interval and release resources.
+   * Call this when the cache instance is no longer needed.
+   */
+  destroy(): void {
+    if (this.cleanupIntervalId !== null) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = null;
+    }
+    this.fallbackCache.clear();
   }
 
   /**

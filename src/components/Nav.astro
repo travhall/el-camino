@@ -26,7 +26,7 @@ try {
       baseDelay: 1000,
       maxDelay: 3000,
       timeoutMs: 5000, // Reduced to 5s - simple category fetch is fast
-    }
+    },
   );
   navigationStatus = "success";
 } catch (error) {
@@ -147,7 +147,7 @@ const isCategoryPage = currentPath.includes("/category/");
 
 <nav
   id="main-nav"
-  class="flex flex-col lg:flex-row origin-top w-full min-h-dvh lg:min-h-auto lg:gap-2 justify-center border-4 border-(--border-secondary) lg:border-0 bg-(--surface-secondary) lg:relative inset-0 top-16 lg:top-auto pt-16 lg:pt-0 fixed -translate-x-full lg:translate-x-0 transition-transform duration-400 ease-in-out z-40 [&.nav-open]:translate-x-0 overflow-y-auto lg:overflow-visible"
+  class="flex flex-col lg:flex-row origin-top w-full min-h-dvh lg:min-h-auto lg:gap-2 justify-center border-4 border-(--border-secondary) lg:border-0 bg-(--surface-secondary) lg:relative inset-0 top-16 lg:top-auto pt-24 lg:pt-0 fixed -translate-x-full lg:translate-x-0 transition-transform duration-400 ease-in-out z-40 [&.nav-open]:translate-x-0 overflow-y-auto lg:overflow-visible"
   role="navigation"
   aria-label="Main navigation"
   data-nav-context={JSON.stringify({
@@ -159,29 +159,8 @@ const isCategoryPage = currentPath.includes("/category/");
   data-nav-items={navItems.length}
 >
   {
-    /* Error recovery notification - development only
-  {
-    (navigationStatus === "timeout" || navigationStatus === "error") &&
-      import.meta.env.DEV && (
-        <div class="nav-status-indicator p-2 text-sm bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border-l-4 border-orange-500 lg:hidden">
-          <p class="font-medium">
-            {navigationStatus === "timeout"
-              ? "Navigation loading slowly"
-              : "Navigation temporarily limited"}
-          </p>
-          <p class="text-xs mt-1">
-            Showing essential links only. Full navigation will load
-            automatically.
-          </p>
-        </div>
-      )
-  }
- */
-  }
-
-  {
     navItems.map((item, index) => (
-      <div class="category-group relative flex flex-col lg:flex-row group transition-all">
+      <div class="category-group relative flex flex-col lg:flex-row group transition-all first-of-type:mt-24 md:first-of-type:mt-0">
         <a
           href={
             item.category.id === "the-shop"
@@ -219,7 +198,10 @@ const isCategoryPage = currentPath.includes("/category/");
         >
           {item.category.name}
           {item.subcategories.length > 0 && (
-            <span class="dropdown-indicator hidden lg:block ml-1" aria-hidden="true">
+            <span
+              class="dropdown-indicator hidden lg:block ml-1"
+              aria-hidden="true"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="12"
@@ -230,7 +212,7 @@ const isCategoryPage = currentPath.includes("/category/");
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                class="h-4 w-4 transform lg:group-hover:rotate-180 lg:group-focus-within:rotate-180"
+                class="h-4 w-4 transition-transform duration-200"
                 aria-hidden="true"
               >
                 <polyline points="6 9 12 15 18 9" />
@@ -270,7 +252,7 @@ const isCategoryPage = currentPath.includes("/category/");
 
         {/* Enhanced dropdown menu with correct nested URLs */}
         {item.subcategories.length > 0 && (
-          <div class="dropdown-menu lg:hidden lg:group-hover:block lg:group-focus-within:block absolute left-0 top-full z-50 min-w-50 origin-top lg:opacity-100 lg:transition-none">
+          <div class="dropdown-menu absolute left-0 top-full z-50 min-w-50 origin-top">
             <div class="bg-(--ui-nav-surface) border border-(--ui-nav-border)/20 shadow-lg rounded-xs p-1 overflow-hidden">
               {item.subcategories.map((subcategory) => (
                 <a
@@ -360,6 +342,25 @@ const isCategoryPage = currentPath.includes("/category/");
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  /* Desktop dropdown — hidden by default, shown on hover/focus-within.
+     Managed in CSS (not Tailwind utilities) to avoid specificity collisions
+     between lg:hidden and lg:group-hover:block. */
+  @media (min-width: 1024px) {
+    .dropdown-menu {
+      display: none;
+    }
+
+    .category-group:hover .dropdown-menu,
+    .category-group:focus-within .dropdown-menu {
+      display: block;
+    }
+
+    .category-group:hover .dropdown-indicator svg,
+    .category-group:focus-within .dropdown-indicator svg {
+      transform: rotate(180deg);
+    }
   }
 
   /* Mobile animations - optimized for performance */
@@ -483,7 +484,7 @@ const isCategoryPage = currentPath.includes("/category/");
           if (categorySlugMatch && categorySlugMatch[1] === activeCategory) {
             link.classList.add(
               "lg:before:scale-x-100",
-              "lg:before:origin-left"
+              "lg:before:origin-left",
             );
           }
         });
@@ -505,7 +506,7 @@ const isCategoryPage = currentPath.includes("/category/");
 
       // Enhance skip link functionality
       const skipLink = document.querySelector(
-        ".skip-link"
+        ".skip-link",
       ) as HTMLAnchorElement;
       if (skipLink) {
         skipLink.addEventListener(
@@ -521,7 +522,7 @@ const isCategoryPage = currentPath.includes("/category/");
               });
             }
           },
-          { signal: this.abortController.signal }
+          { signal: this.abortController.signal },
         );
       }
 
@@ -547,7 +548,9 @@ const isCategoryPage = currentPath.includes("/category/");
 
       categoryGroups.forEach((group: Element, index: number) => {
         const link = group.querySelector(".nav-item") as HTMLElement;
-        const expandBtn = group.querySelector(".mobile-expand-btn") as HTMLElement | null;
+        const expandBtn = group.querySelector(
+          ".mobile-expand-btn",
+        ) as HTMLElement | null;
         const dropdown = group.querySelector(".dropdown-menu") as HTMLElement;
         // Category groups with subcategories have the expand button
         const hasChildren = expandBtn !== null;
@@ -557,7 +560,8 @@ const isCategoryPage = currentPath.includes("/category/");
             link.getAttribute("data-prefetch-strategy") || "hover";
           const categoryName =
             expandBtn?.getAttribute("data-category-name") ||
-            link.getAttribute("data-category-name") || "Unknown";
+            link.getAttribute("data-category-name") ||
+            "Unknown";
 
           this.navElements.set(group, {
             link,
@@ -606,7 +610,9 @@ const isCategoryPage = currentPath.includes("/category/");
 
     private handleClick(event: Event): void {
       const target = event.target as HTMLElement;
-      const clickedBtn = target.closest(".mobile-expand-btn") as HTMLElement | null;
+      const clickedBtn = target.closest(
+        ".mobile-expand-btn",
+      ) as HTMLElement | null;
       if (!clickedBtn) return;
 
       // Always prevent default on the expand button (it's a <button>, not a link,
@@ -629,7 +635,9 @@ const isCategoryPage = currentPath.includes("/category/");
 
     private handleKeydown(event: KeyboardEvent): void {
       const target = event.target as HTMLElement;
-      const expandBtn = target.closest(".mobile-expand-btn") as HTMLElement | null;
+      const expandBtn = target.closest(
+        ".mobile-expand-btn",
+      ) as HTMLElement | null;
 
       if (expandBtn) {
         switch (event.key) {
@@ -678,7 +686,7 @@ const isCategoryPage = currentPath.includes("/category/");
           // Announce state change for screen readers
           const action = wasOpen ? "collapsed" : "expanded";
           this.announceToScreenReader(
-            `${elementData.categoryName} menu ${action}`
+            `${elementData.categoryName} menu ${action}`,
           );
 
           // Use shorter animation timeout for better responsiveness
@@ -700,10 +708,10 @@ const isCategoryPage = currentPath.includes("/category/");
         (elementData: NavElementData, group: Element) => {
           if (group !== excludeGroup && elementData.isOpen) {
             updates.push(() =>
-              this.setDropdownState(group, elementData, false)
+              this.setDropdownState(group, elementData, false),
             );
           }
-        }
+        },
       );
 
       if (updates.length) {
@@ -716,7 +724,7 @@ const isCategoryPage = currentPath.includes("/category/");
     private setDropdownState(
       group: Element,
       elementData: NavElementData,
-      isOpen: boolean
+      isOpen: boolean,
     ): void {
       elementData.isOpen = isOpen;
       const { expandBtn, dropdown } = elementData;
@@ -726,12 +734,18 @@ const isCategoryPage = currentPath.includes("/category/");
         if (isOpen) {
           group.classList.add("open");
           expandBtn?.setAttribute("aria-expanded", "true");
-          expandBtn?.setAttribute("aria-label", `Collapse ${elementData.categoryName} subcategories`);
+          expandBtn?.setAttribute(
+            "aria-label",
+            `Collapse ${elementData.categoryName} subcategories`,
+          );
           (dropdown as HTMLElement).style.contain = "layout style";
         } else {
           group.classList.remove("open");
           expandBtn?.setAttribute("aria-expanded", "false");
-          expandBtn?.setAttribute("aria-label", `Expand ${elementData.categoryName} subcategories`);
+          expandBtn?.setAttribute(
+            "aria-label",
+            `Expand ${elementData.categoryName} subcategories`,
+          );
           (dropdown as HTMLElement).style.contain = "";
         }
       });
@@ -771,7 +785,7 @@ const isCategoryPage = currentPath.includes("/category/");
             if (elementData.isOpen) {
               this.setDropdownState(group, elementData, false);
             }
-          }
+          },
         );
       });
     }

@@ -93,26 +93,6 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
 
-    <!-- Resource Hints for External Domains -->
-    <!-- Square S3 Images -->
-    <link
-      rel="dns-prefetch"
-      href="https://items-images-production.s3.us-west-2.amazonaws.com"
-    />
-    <link
-      rel="preconnect"
-      href="https://items-images-production.s3.us-west-2.amazonaws.com"
-      crossorigin
-    />
-
-    <!-- WordPress Images -->
-    <link rel="dns-prefetch" href="https://elcaminoskateshop.wordpress.com" />
-    <link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" />
-
-    <!-- Square CDN -->
-    <link rel="dns-prefetch" href="https://squarecdn.com" />
-    <link rel="preconnect" href="https://web.squarecdn.com" crossorigin />
-
     <!-- OPTIMIZED: Font preloading for FOUT prevention during View Transitions -->
     <!-- Alumni Sans: Display font - high priority for headings/LCP -->
     <link
@@ -146,14 +126,17 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
         font-optical-sizing: auto;
       }
 
-      /* Ensure proper font loading states */
+      /* Use opacity (not visibility/display) to avoid harming LCP measurement.
+         The browser still considers opacity:0 elements as LCP candidates,
+         whereas visibility:hidden elements are excluded from LCP. */
       .fonts-loading h1 {
-        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.1s ease;
       }
 
       .fonts-loaded h1,
       .fonts-failed h1 {
-        visibility: visible;
+        opacity: 1;
       }
     </style>
 
@@ -209,7 +192,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <!-- Allow pages to inject custom head content -->
     <slot name="head" />
 
-    <script is:inline>
+    <script is:inline define:vars={{ squareEnv: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT }}>
       // Only load Square when needed (cart/product pages)
       if (
         window.location.pathname.includes("/cart") ||
@@ -221,7 +204,9 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           if (!window.squareLoaded && !window.Square) {
             window.squareLoaded = true;
             const script = document.createElement("script");
-            script.src = "https://sandbox.web.squarecdn.com/v1/square.js";
+            script.src = squareEnv === "production"
+              ? "https://web.squarecdn.com/v1/square.js"
+              : "https://sandbox.web.squarecdn.com/v1/square.js";
             script.async = true;
             document.head.appendChild(script);
             return new Promise((resolve) => {
