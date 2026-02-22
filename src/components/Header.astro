@@ -80,11 +80,12 @@ const isMobile = deviceInfo.isMobile;
     <button
       id="mobile-menu-toggle"
       class="p-2 lg:hidden text-(--content-body)"
-      aria-label="Toggle mobile menu"
+      aria-label="Open navigation"
       aria-expanded="false"
+      aria-controls="main-nav"
     >
-      <Icon name="uil:bars" class="w-6 h-6" id="menu-icon" />
-      <Icon name="uil:times" class="w-6 h-6 hidden" id="close-icon" />
+      <Icon name="uil:bars" class="w-6 h-6" id="menu-icon" aria-hidden="true" />
+      <Icon name="uil:times" class="w-6 h-6 hidden" id="close-icon" aria-hidden="true" />
     </button>
   </div>
 </header>
@@ -136,15 +137,42 @@ const isMobile = deviceInfo.isMobile;
     // Early return if elements don't exist
     if (!toggleButton || !menuIcon || !closeIcon || !nav) return;
 
+    function openMenu() {
+      toggleButton.setAttribute("aria-expanded", "true");
+      toggleButton.setAttribute("aria-label", "Close navigation");
+      menuIcon.classList.add("hidden");
+      closeIcon.classList.remove("hidden");
+      nav.classList.add("nav-open");
+      document.body.style.overflow = "hidden";
+
+      // Move focus to first focusable item in nav (#6)
+      const firstNavLink = nav.querySelector<HTMLElement>("a, button");
+      if (firstNavLink) {
+        // Defer to allow transition to start
+        requestAnimationFrame(() => firstNavLink.focus());
+      }
+    }
+
+    function closeMenu() {
+      toggleButton.setAttribute("aria-expanded", "false");
+      toggleButton.setAttribute("aria-label", "Open navigation");
+      menuIcon.classList.remove("hidden");
+      closeIcon.classList.add("hidden");
+      nav.classList.remove("nav-open");
+      document.body.style.overflow = "unset";
+
+      // Return focus to the toggle button (#6)
+      toggleButton.focus();
+    }
+
     function handleToggle(e: MouseEvent) {
       e.stopPropagation();
       const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
-
-      toggleButton.setAttribute("aria-expanded", (!isExpanded).toString());
-      menuIcon.classList.toggle("hidden");
-      closeIcon.classList.toggle("hidden");
-      nav.classList.toggle("nav-open");
-      document.body.style.overflow = isExpanded ? "unset" : "hidden";
+      if (isExpanded) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
     }
 
     // Remove existing event listener if any
@@ -161,7 +189,7 @@ const isMobile = deviceInfo.isMobile;
         !nav.contains(clickTarget) &&
         !toggleButton.contains(clickTarget)
       ) {
-        toggleButton.click();
+        closeMenu();
       }
     });
 
@@ -171,7 +199,39 @@ const isMobile = deviceInfo.isMobile;
         e.key === "Escape" &&
         toggleButton.getAttribute("aria-expanded") === "true"
       ) {
-        toggleButton.click();
+        closeMenu();
+      }
+    });
+
+    // Focus trap: keep Tab/Shift+Tab within the nav while mobile menu is open (#7)
+    document.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      if (toggleButton.getAttribute("aria-expanded") !== "true") return;
+
+      const focusable = Array.from(
+        nav.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.closest(".lg\\:hidden") || window.innerWidth < 1024);
+
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        // Shift+Tab from first focusable → wrap to toggle button
+        if (document.activeElement === first) {
+          e.preventDefault();
+          toggleButton.focus();
+        }
+      } else {
+        // Tab from last focusable → wrap to first
+        if (document.activeElement === last || document.activeElement === toggleButton) {
+          if (document.activeElement === toggleButton) return; // let natural tab into nav
+          e.preventDefault();
+          first.focus();
+        }
       }
     });
   }
