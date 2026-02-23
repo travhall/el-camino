@@ -249,7 +249,7 @@ const freeShippingThreshold =
                 <option value="VA">Virginia</option>
                 <option value="WA">Washington</option>
                 <option value="WV">West Virginia</option>
-                <option value="WI" selected>Wisconsin</option>
+                <option value="WI">Wisconsin</option>
                 <option value="WY">Wyoming</option>
               </select>
             </div>
@@ -355,6 +355,7 @@ const freeShippingThreshold =
                 type="text"
                 id="pickup-name"
                 name="name"
+                required
                 autocomplete="name"
                 class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
               />
@@ -369,6 +370,7 @@ const freeShippingThreshold =
                 type="email"
                 id="pickup-email"
                 name="email"
+                required
                 autocomplete="email"
                 class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
               />
@@ -383,6 +385,7 @@ const freeShippingThreshold =
                 type="tel"
                 id="pickup-phone"
                 name="phone"
+                required
                 autocomplete="tel"
                 class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
               />
@@ -393,7 +396,7 @@ const freeShippingThreshold =
                 for="pickup-instructions"
                 class="block text-sm text-(--content-body) mb-1"
               >
-                Delivery Instructions (Optional)
+                Pickup Notes (Optional)
               </label>
               <textarea
                 id="pickup-instructions"
@@ -542,18 +545,45 @@ const freeShippingThreshold =
           (window as any).updateOrderSummaryOnFulfillmentChange();
         }
       } else {
-        // Already selected: just toggle expand/collapse
-        if (isCurrentlyExpanded) {
-          // Collapse
-          clickedCard?.setAttribute("data-expanded", "false");
-          clickedForm?.classList.add("hidden");
-          clickedChevron?.classList.remove("rotate-180");
-        } else {
-          // Expand
-          clickedCard?.setAttribute("data-expanded", "true");
-          clickedForm?.classList.remove("hidden");
-          clickedChevron?.classList.add("rotate-180");
+        // Already selected: ensure form stays visible (no collapsing)
+        clickedCard?.setAttribute("data-expanded", "true");
+        clickedForm?.classList.remove("hidden");
+        clickedChevron?.classList.add("rotate-180");
+      }
+    }
+
+    // sessionStorage persistence
+    function saveForm() {
+      const method = (selector?.querySelector('input[name="fulfillment"]:checked') as HTMLInputElement)?.value;
+      if (!method) return;
+      const form = method === "shipping" ? shippingForm : pickupForm;
+      if (!form) return;
+      const data: Record<string, string> = { _method: method };
+      form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+        "input, select, textarea"
+      ).forEach((el) => {
+        if (el.id) data[el.id] = el.value;
+      });
+      sessionStorage.setItem("fulfillment-form", JSON.stringify(data));
+    }
+
+    function restoreForm() {
+      const raw = sessionStorage.getItem("fulfillment-form");
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw) as Record<string, string>;
+        const method = data._method as "shipping" | "pickup";
+        if (method === "shipping" || method === "pickup") {
+          handleCardClick(method);
+          const form = method === "shipping" ? shippingForm : pickupForm;
+          form?.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+            "input, select, textarea"
+          ).forEach((el) => {
+            if (el.id && data[el.id] !== undefined) el.value = data[el.id];
+          });
         }
+      } catch {
+        sessionStorage.removeItem("fulfillment-form");
       }
     }
 
@@ -569,6 +599,14 @@ const freeShippingThreshold =
     radios.forEach((radio) => {
       radio.addEventListener("click", (e) => e.stopPropagation());
     });
+
+    // Save form values on any input change
+    [shippingForm, pickupForm].forEach((form) => {
+      form?.addEventListener("input", saveForm);
+      form?.addEventListener("change", saveForm);
+    });
+
+    restoreForm();
   }
 
   function updateFreeShippingTracker(subtotal: number): void {

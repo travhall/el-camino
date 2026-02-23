@@ -6,7 +6,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 ---
 
 <Layout title="Your Shopping Cart | El Camino">
-  <section class="p-1 pb-0">
+  <section class="p-1 pb-20 md:pb-0">
     <h1
       class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading) p-3 pb-0 -mb-4"
     >
@@ -38,8 +38,6 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     <div id="cart-content" class="hidden grid md:grid-cols-3 gap-1 items-start">
       <!-- Cart Items Column -->
       <div class="md:col-span-2 space-y-1 grid pb-4">
-        <!-- Fulfillment Selector -->
-        <FulfillmentSelector subtotal={0} />
         <div class="flex justify-between items-center px-4">
           <h2 class="font-display text-3xl mb-2 text-(--content-heading)">
             Cart Items
@@ -54,6 +52,8 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           </Button>
         </div>
         <div id="cart-items-list" class="grid gap-1"></div>
+        <!-- Fulfillment Selector -->
+        <FulfillmentSelector subtotal={0} />
       </div>
 
       <!-- Order Summary Column (Static) -->
@@ -85,12 +85,16 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             <div
               class="flex justify-between text-(--content-body) text-lg pt-2 border-t border-(--border-secondary)"
             >
-              <span class="font-semibold">Order Total</span>
+              <span class="font-semibold" id="order-total-label">Estimated Total</span>
               <span
                 class="font-display font-bold text-5xl text-(--content-heading)"
                 id="order-total">$0.00</span
               >
             </div>
+          </div>
+          <div id="summary-calculating" class="hidden flex items-center gap-2 text-sm text-(--content-meta) mb-3">
+            <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-(--content-heading)"></div>
+            <span>Recalculating...</span>
           </div>
           <div class="space-y-2">
             <Button
@@ -101,6 +105,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             >
               Continue to Payment
             </Button>
+            <p id="checkout-hint" class="text-xs text-center text-(--content-meta)">Select a shipping method to continue</p>
             <Button
               href="/shop/all"
               variant="outline"
@@ -110,6 +115,22 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             </Button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Mobile Sticky Checkout Bar -->
+    <div id="mobile-checkout-bar" class="hidden fixed bottom-0 left-0 right-0 bg-(--surface-secondary) border-t border-(--border-primary) p-3 md:hidden z-40">
+      <div class="flex items-center gap-3">
+        <div class="shrink-0">
+          <div class="text-xs text-(--content-meta)">Total</div>
+          <div class="font-display font-bold text-2xl text-(--content-heading)" id="mobile-total">$0.00</div>
+        </div>
+        <button
+          id="mobile-checkout-button"
+          class="font-sans font-semibold text-sm text-center py-2 px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all grow"
+        >
+          Continue to Payment
+        </button>
       </div>
     </div>
 
@@ -143,6 +164,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
   let isUpdating = false;
   let inventoryData: Record<string, number> = {};
+  let summaryUpdateTimeout: number;
 
   /** Escape HTML special characters to prevent XSS in innerHTML templates */
   function sanitize(str: string): string {
@@ -271,6 +293,14 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     const isOutOfStock = inventory <= 0;
     const canIncrement = !isOutOfStock && item.quantity < inventory;
 
+    // Only show stock warnings for real low/zero stock; suppress sentinel values (99=error, 999=no data)
+    let stockDisplay = "";
+    if (inventory === 0) {
+      stockDisplay = `<div class="text-xs text-red-600">Out of stock</div>`;
+    } else if (inventory > 0 && inventory < 10) {
+      stockDisplay = `<div class="text-xs text-(--content-meta)">Only ${inventory} left</div>`;
+    }
+
     // Generate slug-based URL to match other components
     const productSlug = createSlug(item.title);
     const productUrl = `/product/${productSlug}`;
@@ -376,9 +406,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                   +
                 </button>
               </div>
-              <div class="text-xs text-(--content-meta)">
-                ${inventory} available
-              </div>
+              ${stockDisplay}
             </div>
 
             <div class="flex items-center gap-4">
@@ -584,12 +612,37 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     }
   }
 
+  function updateMobileBar(total?: number): void {
+    const bar = document.getElementById("mobile-checkout-bar");
+    const mobileTotal = document.getElementById("mobile-total");
+    const items = cart.getItems();
+
+    if (!bar) return;
+
+    if (items.length === 0) {
+      bar.classList.add("hidden");
+      return;
+    }
+
+    bar.classList.remove("hidden");
+
+    if (mobileTotal) {
+      const displayTotal = total ?? cart.getTotal();
+      mobileTotal.textContent = MoneyUtils.format(MoneyUtils.fromFloat(displayTotal));
+    }
+  }
+
   function attachEventListeners(): void {
     const checkoutButton = document.getElementById("checkout-button");
     const clearCartButton = document.getElementById("clear-cart-button");
+    const mobileCheckoutButton = document.getElementById("mobile-checkout-button");
 
     if (checkoutButton) {
       checkoutButton.addEventListener("click", handleCheckout);
+    }
+
+    if (mobileCheckoutButton) {
+      mobileCheckoutButton.addEventListener("click", handleCheckout);
     }
 
     if (clearCartButton) {
@@ -790,12 +843,18 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       subtotalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(total));
     }
 
-    // Update order summary
-    updateOrderSummary(total);
+    // Update order summary with debounce to avoid rapid API calls
+    debouncedUpdateOrderSummary(total);
+  }
+
+  function debouncedUpdateOrderSummary(subtotal: number): void {
+    clearTimeout(summaryUpdateTimeout);
+    summaryUpdateTimeout = window.setTimeout(() => {
+      updateOrderSummary(subtotal);
+    }, 400);
   }
 
   async function updateOrderSummary(subtotal: number): Promise<void> {
-    // Get selected fulfillment method
     const fulfillmentRadio = document.querySelector(
       'input[name="fulfillment"]:checked'
     ) as HTMLInputElement;
@@ -804,35 +863,34 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     const taxEl = document.getElementById("tax-amount");
     const shippingEl = document.getElementById("shipping-cost");
     const totalEl = document.getElementById("order-total");
+    const labelEl = document.getElementById("order-total-label");
+    const calculatingEl = document.getElementById("summary-calculating");
 
     // Always show subtotal
     if (subtotalEl) {
-      subtotalEl.textContent = MoneyUtils.format(
-        MoneyUtils.fromFloat(subtotal)
-      );
+      subtotalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
     }
 
     // If no method selected, show placeholder values
     if (!fulfillmentRadio) {
       if (taxEl) taxEl.textContent = "—";
       if (shippingEl) shippingEl.textContent = "—";
-      if (totalEl) {
-        totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
-      }
+      if (labelEl) labelEl.textContent = "Estimated Total";
+      if (totalEl) totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
       return;
     }
 
     const fulfillmentMethod = fulfillmentRadio.value as "shipping" | "pickup";
 
+    // Show calculating state
+    calculatingEl?.classList.remove("hidden");
+    calculatingEl?.classList.add("flex");
+
     try {
-      // Call Square CalculateOrder API to get real tax
       const response = await fetch("/api/calculate-cart", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: cart.getItems(),
-          fulfillmentMethod,
-        }),
+        body: JSON.stringify({ items: cart.getItems(), fulfillmentMethod }),
       });
 
       const data = await response.json();
@@ -841,49 +899,29 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         throw new Error(data.error || "Calculation failed");
       }
 
-      // Use Square-calculated values
       const shippingCost = data.shipping;
       const taxAmount = data.tax;
       const orderTotal = data.total;
 
-      // Format shipping display
-      const shippingDisplay =
-        shippingCost === 0 ? "FREE" : `$${shippingCost.toFixed(2)}`;
+      const shippingDisplay = shippingCost === 0 ? "FREE" : `$${shippingCost.toFixed(2)}`;
 
-      // Update displays
-      const subtotalEl = document.getElementById("subtotal");
-      const taxEl = document.getElementById("tax-amount");
-      const shippingEl = document.getElementById("shipping-cost");
-      const totalEl = document.getElementById("order-total");
+      if (taxEl) taxEl.textContent = `$${taxAmount.toFixed(2)}`;
+      if (shippingEl) shippingEl.textContent = shippingDisplay;
+      if (labelEl) labelEl.textContent = "Order Total";
+      if (totalEl) totalEl.textContent = `$${orderTotal.toFixed(2)}`;
 
-      if (subtotalEl) {
-        subtotalEl.textContent = MoneyUtils.format(
-          MoneyUtils.fromFloat(subtotal)
-        );
-      }
-      if (taxEl) {
-        taxEl.textContent = `$${taxAmount.toFixed(2)}`;
-      }
-      if (shippingEl) {
-        shippingEl.textContent = shippingDisplay;
-      }
-      if (totalEl) {
-        totalEl.textContent = `$${orderTotal.toFixed(2)}`;
-      }
+      updateMobileBar(orderTotal);
 
-      // Update free shipping tracker
       if (typeof (window as any).updateFreeShippingTracker === "function") {
         (window as any).updateFreeShippingTracker(subtotal);
       }
     } catch (error) {
       console.error("Error calculating order summary:", error);
-      // Fallback to showing subtotal at minimum
-      const subtotalEl = document.getElementById("subtotal");
-      if (subtotalEl) {
-        subtotalEl.textContent = MoneyUtils.format(
-          MoneyUtils.fromFloat(subtotal)
-        );
-      }
+      if (labelEl) labelEl.textContent = "Estimated Total";
+      if (totalEl) totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
+    } finally {
+      calculatingEl?.classList.add("hidden");
+      calculatingEl?.classList.remove("flex");
     }
   }
 
@@ -924,6 +962,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         subtotalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(total));
 
         setupCartItemEventListeners();
+        updateMobileBar();
 
         // Update order summary with tax, shipping, total
         updateOrderSummary(total);
@@ -958,8 +997,13 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           checkoutButton.classList.remove("opacity-50", "cursor-not-allowed");
         }
 
+        // Hide hint text once a method is chosen
+        const hint = document.getElementById("checkout-hint");
+        if (hint) hint.classList.add("hidden");
+
         const total = cart.getTotal();
         updateOrderSummary(total);
+        updateMobileBar();
       });
     });
 
