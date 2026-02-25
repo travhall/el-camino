@@ -1,569 +1,468 @@
 ---
-// src/components/FulfillmentSelector.astro
-import {
-  SHIPPING_RATES,
-  PICKUP_LOCATION,
-  calculateShippingRate,
-} from "@/lib/config/shipping";
-
 interface Props {
   subtotal: number;
 }
 
 const { subtotal } = Astro.props;
 
-// Calculate which shipping rate applies
-const applicableRate = calculateShippingRate(subtotal);
-const freeShippingThreshold =
-  SHIPPING_RATES.find((r) => r.id === "free")?.freeThreshold || 75;
+const FREE_SHIPPING_THRESHOLD = 7500; // $75.00 in cents
+const FLAT_RATE_SHIPPING = 599; // $5.99 in cents
+
+function formatMoney(cents: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(cents / 100);
+}
+
+const subtotalCents = Math.round(subtotal * 100);
+const shippingCost =
+  subtotalCents >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_RATE_SHIPPING;
+const shippingLabel =
+  subtotalCents >= FREE_SHIPPING_THRESHOLD
+    ? "FREE"
+    : formatMoney(FLAT_RATE_SHIPPING);
+const remainingForFree =
+  subtotalCents < FREE_SHIPPING_THRESHOLD
+    ? FREE_SHIPPING_THRESHOLD - subtotalCents
+    : 0;
+const progressPct = Math.min(
+  (subtotalCents / FREE_SHIPPING_THRESHOLD) * 100,
+  100,
+);
 ---
 
-<div
-  class="fulfillment-selector p-4"
-  data-component="fulfillment-selector"
-  role="radiogroup"
-  aria-required="true"
-  aria-label="Shipping method selection"
->
-  <h2 class="font-display text-3xl my-4 text-(--content-heading)">
-    Choose Shipping Method <span class="text-red-600">*</span>
-  </h2>
-  <p class="text-sm text-(--content-meta) mb-3">
-    Please select how you'd like to receive your order
-  </p>
+<div data-component="fulfillment-selector" class="space-y-4">
+  <fieldset>
+    <legend class="text-sm font-semibold text-(--content-heading) mb-3">
+      Choose Fulfillment Method <span class="text-red-500">*</span>
+    </legend>
 
-  <div class="fulfillment-options flex flex-col lg:flex-row gap-2">
-    <!-- Shipping Option -->
-    <label class="fulfillment-option block lg:basis-1/2">
-      <input
-        type="radio"
-        name="fulfillment"
-        value="shipping"
-        data-method="shipping"
-        class="sr-only peer"
-      />
-      <div
-        class="border-2 border-(--border-primary) p-4 transition-all hover:border-(--content-emphasis)/50 cursor-pointer"
-        data-option-card="shipping"
-        data-selected="false"
-        data-expanded="false"
+    <!-- Hidden radio inputs -->
+    <input
+      type="radio"
+      name="fulfillment"
+      id="fulfillment-shipping"
+      value="shipping"
+      class="sr-only"
+    />
+    <input
+      type="radio"
+      name="fulfillment"
+      id="fulfillment-pickup"
+      value="pickup"
+      class="sr-only"
+    />
+
+    <!-- Tab row -->
+    <div class="grid grid-cols-2 gap-2 mb-4">
+      <button
+        type="button"
+        data-tab="shipping"
+        class="tab-btn flex flex-row items-center justify-center gap-2 rounded-lg border-2 border-(--border-primary) bg-(--surface-primary) px-4 py-3 text-sm font-medium text-(--content-body) transition-all hover:border-(--content-emphasis) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+        aria-pressed="false"
       >
-        <div class="flex items-start justify-between">
-          <div class="flex items-start gap-3">
-            <span class="text-2xl">📦</span>
-            <div>
-              <h3 class="font-display text-xl text-(--content-heading)">
-                Ship to Me
-              </h3>
-              <p class="text-sm text-(--content-meta)">
-                {applicableRate.description}
-              </p>
-            </div>
+        <span class="text-lg leading-none">📦</span>
+        <span>Ship to Me</span>
+        <span
+          class="text-xs font-normal text-(--content-meta)"
+          data-shipping-cost-label>{shippingLabel}</span
+        >
+      </button>
+
+      <button
+        type="button"
+        data-tab="pickup"
+        class="tab-btn flex flex-row items-center justify-center gap-2 rounded-lg border-2 border-(--border-primary) bg-(--surface-primary) px-4 py-3 text-sm font-medium text-(--content-body) transition-all hover:border-(--content-emphasis) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+        aria-pressed="false"
+      >
+        <span class="text-lg leading-none">🏪</span>
+        <span>Store Pickup</span>
+        <span class="text-xs font-normal text-(--content-meta)">FREE</span>
+      </button>
+    </div>
+
+    <!-- Free shipping progress tracker -->
+    {
+      remainingForFree > 0 && (
+        <div
+          id="free-shipping-tracker"
+          class="mb-4 rounded-md bg-(--surface-secondary) px-3 py-2 text-xs text-(--content-meta)"
+        >
+          Add{" "}
+          <span id="free-shipping-remaining">
+            {formatMoney(remainingForFree)}
+          </span>{" "}
+          more for free shipping!
+          <div class="mt-1.5 h-1.5 w-full rounded-full bg-(--border-primary)">
+            <div
+              id="free-shipping-progress"
+              class="h-1.5 rounded-full bg-(--content-emphasis) transition-all"
+              style={`width: ${progressPct}%`}
+            />
           </div>
-          <div class="flex items-center gap-3">
-            <div class="text-right">
-              {
-                applicableRate.rate === 0 ? (
-                  <span class="inline-block px-2 py-1 bg-green-600 text-white text-sm font-semibold">
-                    FREE
-                  </span>
-                ) : (
-                  <span class="font-display text-xl text-(--content-emphasis)">
-                    ${applicableRate.rate.toFixed(2)}
-                  </span>
-                )
-              }
-            </div>
-            <!-- Chevron indicator -->
-            <svg
-              class="w-6 h-6 text-(--content-body) transition-transform duration-300"
-              data-chevron="shipping"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        </div>
+      )
+    }
+    {
+      subtotalCents >= FREE_SHIPPING_THRESHOLD && (
+        <div
+          id="free-shipping-earned"
+          class="mb-4 rounded-md bg-(--surface-secondary) px-3 py-2 text-xs text-(--content-emphasis) font-medium"
+        >
+          🎉 You've earned free shipping!
+        </div>
+      )
+    }
+
+    <!-- Form panel (shown below tabs, full width) -->
+    <div
+      id="fulfillment-form-panel"
+      class="hidden space-y-4 rounded-lg border border-(--border-primary) bg-(--surface-secondary) p-4"
+    >
+      <!-- Shipping form -->
+      <div data-shipping-form class="hidden space-y-3">
+        <p class="text-sm font-medium text-(--content-heading)">
+          Shipping Address
+        </p>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="col-span-2 sm:col-span-1">
+            <label
+              for="shipping-first-name"
+              class="block text-xs font-medium text-(--content-meta) mb-1"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 9l-7 7-7-7"></path>
-            </svg>
+              First Name <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="shipping-first-name"
+              name="shipping-first-name"
+              required
+              autocomplete="given-name"
+              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              placeholder="First name"
+            />
+          </div>
+          <div class="col-span-2 sm:col-span-1">
+            <label
+              for="shipping-last-name"
+              class="block text-xs font-medium text-(--content-meta) mb-1"
+            >
+              Last Name <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="shipping-last-name"
+              name="shipping-last-name"
+              required
+              autocomplete="family-name"
+              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              placeholder="Last name"
+            />
           </div>
         </div>
 
-        <!-- Shipping Address Form - Initially Hidden -->
-        <div
-          class="shipping-address-form space-y-3 pt-3 mt-3 border-t border-(--border-secondary) hidden"
-          data-shipping-form
-        >
-          <h4 class="font-semibold text-(--content-body)">Shipping Address</h4>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div class="md:col-span-2">
-              <label
-                for="ship-name"
-                class="block text-sm text-(--content-body) mb-1"
-                >Full Name *</label
-              >
-              <input
-                type="text"
-                id="ship-name"
-                name="name"
-                required
-                autocomplete="name"
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
-              />
-            </div>
-
-            <div class="md:col-span-2">
-              <label
-                for="ship-email"
-                class="block text-sm text-(--content-body) mb-1">Email *</label
-              >
-              <input
-                type="email"
-                id="ship-email"
-                name="email"
-                required
-                autocomplete="email"
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
-              />
-            </div>
-
-            <div class="md:col-span-2">
-              <label
-                for="ship-phone"
-                class="block text-sm text-(--content-body) mb-1">Phone *</label
-              >
-              <input
-                type="tel"
-                id="ship-phone"
-                name="phone"
-                required
-                autocomplete="tel"
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
-              />
-            </div>
-
-            <div class="md:col-span-2">
-              <label
-                for="ship-street1"
-                class="block text-sm text-(--content-body) mb-1"
-                >Street Address *</label
-              >
-              <input
-                type="text"
-                id="ship-street1"
-                name="street1"
-                required
-                autocomplete="address-line1"
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
-              />
-            </div>
-
-            <div class="md:col-span-2">
-              <label
-                for="ship-street2"
-                class="block text-sm text-(--content-body) mb-1"
-                >Apt/Suite (Optional)</label
-              >
-              <input
-                type="text"
-                id="ship-street2"
-                name="street2"
-                autocomplete="address-line2"
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
-              />
-            </div>
-
-            <div>
-              <label
-                for="ship-city"
-                class="block text-sm text-(--content-body) mb-1">City *</label
-              >
-              <input
-                type="text"
-                id="ship-city"
-                name="city"
-                required
-                autocomplete="address-level2"
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
-              />
-            </div>
-
-            <div>
-              <label
-                for="ship-state"
-                class="block text-sm text-(--content-body) mb-1">State *</label
-              >
-              <select
-                id="ship-state"
-                name="state"
-                required
-                autocomplete="address-level1"
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
-              >
-                <option value="">Select State...</option>
-                <option value="AL">Alabama</option>
-                <option value="AZ">Arizona</option>
-                <option value="AR">Arkansas</option>
-                <option value="CA">California</option>
-                <option value="CO">Colorado</option>
-                <option value="CT">Connecticut</option>
-                <option value="DE">Delaware</option>
-                <option value="FL">Florida</option>
-                <option value="GA">Georgia</option>
-                <option value="ID">Idaho</option>
-                <option value="IL">Illinois</option>
-                <option value="IN">Indiana</option>
-                <option value="IA">Iowa</option>
-                <option value="KS">Kansas</option>
-                <option value="KY">Kentucky</option>
-                <option value="LA">Louisiana</option>
-                <option value="ME">Maine</option>
-                <option value="MD">Maryland</option>
-                <option value="MA">Massachusetts</option>
-                <option value="MI">Michigan</option>
-                <option value="MN">Minnesota</option>
-                <option value="MS">Mississippi</option>
-                <option value="MO">Missouri</option>
-                <option value="MT">Montana</option>
-                <option value="NE">Nebraska</option>
-                <option value="NV">Nevada</option>
-                <option value="NH">New Hampshire</option>
-                <option value="NJ">New Jersey</option>
-                <option value="NM">New Mexico</option>
-                <option value="NY">New York</option>
-                <option value="NC">North Carolina</option>
-                <option value="ND">North Dakota</option>
-                <option value="OH">Ohio</option>
-                <option value="OK">Oklahoma</option>
-                <option value="OR">Oregon</option>
-                <option value="PA">Pennsylvania</option>
-                <option value="RI">Rhode Island</option>
-                <option value="SC">South Carolina</option>
-                <option value="SD">South Dakota</option>
-                <option value="TN">Tennessee</option>
-                <option value="TX">Texas</option>
-                <option value="UT">Utah</option>
-                <option value="VT">Vermont</option>
-                <option value="VA">Virginia</option>
-                <option value="WA">Washington</option>
-                <option value="WV">West Virginia</option>
-                <option value="WI">Wisconsin</option>
-                <option value="WY">Wyoming</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                for="ship-zip"
-                class="block text-sm text-(--content-body) mb-1"
-                >ZIP Code *</label
-              >
-              <input
-                type="text"
-                id="ship-zip"
-                name="zip"
-                required
-                pattern="[0-9]{5}"
-                maxlength="5"
-                autocomplete="postal-code"
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
-              />
-            </div>
-          </div>
-
-          <!-- Dynamic Free Shipping Tracker -->
-          <div
-            id="free-shipping-tracker"
-            class="hidden mt-3 p-3 bg-blue-50 border-l-4 border-blue-500"
+        <div>
+          <label
+            for="shipping-address"
+            class="block text-xs font-medium text-(--content-meta) mb-1"
           >
-            <div class="flex items-center gap-2 text-sm text-blue-800">
-              <span>💡</span>
-              <span id="free-shipping-message">
-                <!-- JavaScript will populate this -->
-              </span>
-            </div>
+            Street Address <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="shipping-address"
+            name="shipping-address"
+            required
+            autocomplete="street-address"
+            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+            placeholder="123 Main St"
+          />
+        </div>
+
+        <div>
+          <label
+            for="shipping-address2"
+            class="block text-xs font-medium text-(--content-meta) mb-1"
+          >
+            Apt, Suite, Unit (Optional)
+          </label>
+          <input
+            type="text"
+            id="shipping-address2"
+            name="shipping-address2"
+            autocomplete="address-line2"
+            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+            placeholder="Apt 4B"
+          />
+        </div>
+
+        <div class="grid grid-cols-6 gap-3">
+          <div class="col-span-3">
+            <label
+              for="shipping-city"
+              class="block text-xs font-medium text-(--content-meta) mb-1"
+            >
+              City <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="shipping-city"
+              name="shipping-city"
+              required
+              autocomplete="address-level2"
+              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              placeholder="City"
+            />
           </div>
+          <div class="col-span-1">
+            <label
+              for="shipping-state"
+              class="block text-xs font-medium text-(--content-meta) mb-1"
+            >
+              State <span class="text-red-500">*</span>
+            </label>
+            <select
+              id="shipping-state"
+              name="shipping-state"
+              required
+              autocomplete="address-level1"
+              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-2 py-2 text-sm text-(--content-body) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+            >
+              <option value="">—</option>
+              <option value="AL">AL</option>
+              <option value="AK">AK</option>
+              <option value="AZ">AZ</option>
+              <option value="AR">AR</option>
+              <option value="CA">CA</option>
+              <option value="CO">CO</option>
+              <option value="CT">CT</option>
+              <option value="DE">DE</option>
+              <option value="FL">FL</option>
+              <option value="GA">GA</option>
+              <option value="HI">HI</option>
+              <option value="ID">ID</option>
+              <option value="IL">IL</option>
+              <option value="IN">IN</option>
+              <option value="IA">IA</option>
+              <option value="KS">KS</option>
+              <option value="KY">KY</option>
+              <option value="LA">LA</option>
+              <option value="ME">ME</option>
+              <option value="MD">MD</option>
+              <option value="MA">MA</option>
+              <option value="MI">MI</option>
+              <option value="MN">MN</option>
+              <option value="MS">MS</option>
+              <option value="MO">MO</option>
+              <option value="MT">MT</option>
+              <option value="NE">NE</option>
+              <option value="NV">NV</option>
+              <option value="NH">NH</option>
+              <option value="NJ">NJ</option>
+              <option value="NM">NM</option>
+              <option value="NY">NY</option>
+              <option value="NC">NC</option>
+              <option value="ND">ND</option>
+              <option value="OH">OH</option>
+              <option value="OK">OK</option>
+              <option value="OR">OR</option>
+              <option value="PA">PA</option>
+              <option value="RI">RI</option>
+              <option value="SC">SC</option>
+              <option value="SD">SD</option>
+              <option value="TN">TN</option>
+              <option value="TX">TX</option>
+              <option value="UT">UT</option>
+              <option value="VT">VT</option>
+              <option value="VA">VA</option>
+              <option value="WA">WA</option>
+              <option value="WV">WV</option>
+              <option value="WI">WI</option>
+              <option value="WY">WY</option>
+            </select>
+          </div>
+          <div class="col-span-2">
+            <label
+              for="shipping-zip"
+              class="block text-xs font-medium text-(--content-meta) mb-1"
+            >
+              ZIP <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="shipping-zip"
+              name="shipping-zip"
+              required
+              autocomplete="postal-code"
+              inputmode="numeric"
+              maxlength="10"
+              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              placeholder="54901"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label
+            for="shipping-instructions"
+            class="block text-xs font-medium text-(--content-meta) mb-1"
+          >
+            Delivery Instructions (Optional)
+          </label>
+          <textarea
+            id="shipping-instructions"
+            name="shipping-instructions"
+            rows="2"
+            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis) resize-none"
+            placeholder="Leave at door, ring bell, etc."></textarea>
         </div>
       </div>
-    </label>
 
-    <!-- Pickup Option -->
-    <label class="fulfillment-option block lg:basis-1/2">
-      <input
-        type="radio"
-        name="fulfillment"
-        value="pickup"
-        data-method="pickup"
-        class="sr-only peer"
-      />
-      <div
-        class="border-2 border-(--border-primary) p-4 transition-all hover:border-(--content-emphasis)/50 cursor-pointer"
-        data-option-card="pickup"
-        data-selected="false"
-        data-expanded="false"
-      >
-        <div class="flex items-start justify-between">
-          <div class="flex items-start gap-3">
-            <span class="text-2xl">🏪</span>
-            <div>
-              <h3 class="font-display text-xl text-(--content-heading)">
-                Store Pickup
-              </h3>
-              <p class="text-sm text-(--content-meta)">Ready in 2-4 hours</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <span
-              class="inline-block px-2 py-1 bg-green-600 text-white text-sm font-semibold"
-              >FREE</span
-            >
-            <!-- Chevron indicator -->
-            <svg
-              class="w-6 h-6 text-(--content-body) transition-transform duration-300"
-              data-chevron="pickup"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </div>
+      <!-- Pickup form -->
+      <div data-pickup-form class="hidden space-y-3">
+        <p class="text-sm font-medium text-(--content-heading)">
+          Pickup Information
+        </p>
+        <p class="text-xs text-(--content-meta)">
+          Pick up your order at <strong>El Camino Skate Shop</strong> — we'll email
+          you when it's ready.
+        </p>
+
+        <div>
+          <label
+            for="pickup-name"
+            class="block text-xs font-medium text-(--content-meta) mb-1"
+          >
+            Full Name <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="pickup-name"
+            name="pickup-name"
+            required
+            autocomplete="name"
+            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+            placeholder="Your name"
+          />
         </div>
 
-        <!-- Pickup Contact Form - Initially Hidden -->
-        <div
-          class="pickup-contact-form space-y-3 pt-3 mt-3 border-t border-(--border-secondary) hidden"
-          data-pickup-form
-        >
-          <h4 class="font-semibold text-(--content-body)">
-            Contact Information
-          </h4>
-          <div class="grid grid-cols-1 gap-3">
-            <div>
-              <label
-                for="pickup-name"
-                class="block text-sm text-(--content-body) mb-1"
-                >Full Name *</label
-              >
-              <input
-                type="text"
-                id="pickup-name"
-                name="name"
-                required
-                autocomplete="name"
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
-              />
-            </div>
+        <div>
+          <label
+            for="pickup-email"
+            class="block text-xs font-medium text-(--content-meta) mb-1"
+          >
+            Email <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            id="pickup-email"
+            name="pickup-email"
+            required
+            autocomplete="email"
+            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+            placeholder="you@example.com"
+          />
+        </div>
 
-            <div>
-              <label
-                for="pickup-email"
-                class="block text-sm text-(--content-body) mb-1">Email *</label
-              >
-              <input
-                type="email"
-                id="pickup-email"
-                name="email"
-                required
-                autocomplete="email"
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
-              />
-            </div>
+        <div>
+          <label
+            for="pickup-phone"
+            class="block text-xs font-medium text-(--content-meta) mb-1"
+          >
+            Phone <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="tel"
+            id="pickup-phone"
+            name="pickup-phone"
+            required
+            autocomplete="tel"
+            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+            placeholder="(555) 555-5555"
+          />
+        </div>
 
-            <div>
-              <label
-                for="pickup-phone"
-                class="block text-sm text-(--content-body) mb-1">Phone *</label
-              >
-              <input
-                type="tel"
-                id="pickup-phone"
-                name="phone"
-                required
-                autocomplete="tel"
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis)"
-              />
-            </div>
-
-            <div>
-              <label
-                for="pickup-instructions"
-                class="block text-sm text-(--content-body) mb-1"
-              >
-                Pickup Notes (Optional)
-              </label>
-              <textarea
-                id="pickup-instructions"
-                name="instructions"
-                rows="3"
-                placeholder="e.g., Call when arriving, preferred pickup time, special requests..."
-                class="w-full px-3 py-2 border border-(--border-primary) bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--content-emphasis) resize-none"
-              ></textarea>
-            </div>
-          </div>
-
-          <div class="mt-3 p-3">
-            <h5 class="font-semibold text-sm text-(--content-heading) mb-2">
-              Pickup Location
-            </h5>
-            <address class="not-italic text-sm text-(--content-body) space-y-1">
-              <div class="font-semibold">{PICKUP_LOCATION.name}</div>
-              <div>{PICKUP_LOCATION.address.street1}</div>
-              <div>
-                {PICKUP_LOCATION.address.city}, {PICKUP_LOCATION.address.state}
-                {PICKUP_LOCATION.address.zip}
-              </div>
-              <div>
-                <a href={`tel:${PICKUP_LOCATION.phone}`} class="underline"
-                  >{PICKUP_LOCATION.phone}</a
-                >
-              </div>
-            </address>
-            {
-              PICKUP_LOCATION.instructions && (
-                <p class="mt-2 text-sm text-(--content-meta) italic">
-                  {PICKUP_LOCATION.instructions}
-                </p>
-              )
-            }
-          </div>
+        <div>
+          <label
+            for="pickup-notes"
+            class="block text-xs font-medium text-(--content-meta) mb-1"
+          >
+            Pickup Notes (Optional)
+          </label>
+          <textarea
+            id="pickup-notes"
+            name="pickup-notes"
+            rows="2"
+            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis) resize-none"
+            placeholder="Any special instructions for pickup"></textarea>
         </div>
       </div>
-    </label>
-  </div>
+    </div>
+  </fieldset>
 </div>
 
 <script>
-  const FREE_SHIPPING_THRESHOLD = 75.0;
+  import { cart } from "@/lib/cart";
+
+  const FREE_SHIPPING_THRESHOLD = 75; // $75.00 in dollars (cart stores prices in dollars)
+  const FLAT_RATE_SHIPPING = 5.99; // $5.99 in dollars
+
+  declare global {
+    interface Window {
+      updateOrderSummaryOnFulfillmentChange?: (
+        method: string,
+        formData: Record<string, string>,
+      ) => void;
+    }
+  }
 
   function initFulfillmentSelector() {
     const selector = document.querySelector(
-      '[data-component="fulfillment-selector"]'
+      '[data-component="fulfillment-selector"]',
     );
     if (!selector) return;
 
-    const radios = selector.querySelectorAll('input[name="fulfillment"]');
-    const shippingCard = selector.querySelector(
-      '[data-option-card="shipping"]'
+    const shippingRadio = selector.querySelector<HTMLInputElement>(
+      "#fulfillment-shipping",
     );
-    const pickupCard = selector.querySelector('[data-option-card="pickup"]');
-    const shippingForm = selector.querySelector("[data-shipping-form]");
-    const pickupForm = selector.querySelector("[data-pickup-form]");
-    const shippingChevron = selector.querySelector('[data-chevron="shipping"]');
-    const pickupChevron = selector.querySelector('[data-chevron="pickup"]');
+    const pickupRadio = selector.querySelector<HTMLInputElement>(
+      "#fulfillment-pickup",
+    );
+    const formPanel = selector.querySelector<HTMLElement>(
+      "#fulfillment-form-panel",
+    );
+    const shippingForm = selector.querySelector<HTMLElement>(
+      "[data-shipping-form]",
+    );
+    const pickupForm =
+      selector.querySelector<HTMLElement>("[data-pickup-form]");
+    const tabs = selector.querySelectorAll<HTMLButtonElement>("[data-tab]");
 
-    // Initially hide both forms and remove required from all fields
-    shippingForm?.classList.add("hidden");
-    pickupForm?.classList.add("hidden");
-
-    shippingForm?.querySelectorAll("input, select").forEach((el) => {
-      (el as HTMLInputElement | HTMLSelectElement).required = false;
-    });
-    pickupForm?.querySelectorAll("input").forEach((el) => {
-      (el as HTMLInputElement).required = false;
-    });
-
-    // Handle card click - combines selection and toggle
-    function handleCardClick(method: "shipping" | "pickup") {
-      const clickedCard = method === "shipping" ? shippingCard : pickupCard;
-      const otherCard = method === "shipping" ? pickupCard : shippingCard;
-      const clickedForm = method === "shipping" ? shippingForm : pickupForm;
-      const otherForm = method === "shipping" ? pickupForm : shippingForm;
-      const clickedChevron =
-        method === "shipping" ? shippingChevron : pickupChevron;
-      const otherChevron =
-        method === "shipping" ? pickupChevron : shippingChevron;
-      const clickedRadio = Array.from(radios).find(
-        (r) => (r as HTMLInputElement).value === method
-      ) as HTMLInputElement;
-
-      const isCurrentlySelected =
-        clickedCard?.getAttribute("data-selected") === "true";
-      const isCurrentlyExpanded =
-        clickedCard?.getAttribute("data-expanded") === "true";
-
-      if (!isCurrentlySelected) {
-        // First-time selection: select + expand
-
-        // Check the radio and trigger change event
-        if (clickedRadio) {
-          clickedRadio.checked = true;
-          clickedRadio.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-
-        // Update selection states
-        clickedCard?.setAttribute("data-selected", "true");
-        clickedCard?.classList.add(
-          "bg-(--surface-secondary)",
-          "border-(--content-emphasis)"
-        );
-        otherCard?.setAttribute("data-selected", "false");
-        otherCard?.classList.remove(
-          "bg-(--surface-secondary)",
-          "border-(--content-emphasis)"
-        );
-
-        // Expand clicked, collapse other
-        clickedCard?.setAttribute("data-expanded", "true");
-        clickedForm?.classList.remove("hidden");
-        clickedChevron?.classList.add("rotate-180");
-
-        otherCard?.setAttribute("data-expanded", "false");
-        otherForm?.classList.add("hidden");
-        otherChevron?.classList.remove("rotate-180");
-
-        // Set required fields
-        if (method === "shipping") {
-          shippingForm
-            ?.querySelectorAll("input[required], select[required]")
-            .forEach((el) => {
-              (el as HTMLInputElement | HTMLSelectElement).required = true;
-            });
-          pickupForm?.querySelectorAll("input").forEach((el) => {
-            (el as HTMLInputElement).required = false;
-          });
-        } else {
-          pickupForm?.querySelectorAll("input").forEach((el) => {
-            (el as HTMLInputElement).required = true;
-          });
-          shippingForm?.querySelectorAll("input, select").forEach((el) => {
-            (el as HTMLInputElement | HTMLSelectElement).required = false;
-          });
-        }
-
-        // Trigger order summary update
-        if (
-          typeof window !== "undefined" &&
-          (window as any).updateOrderSummaryOnFulfillmentChange
-        ) {
-          (window as any).updateOrderSummaryOnFulfillmentChange();
-        }
-      } else {
-        // Already selected: ensure form stays visible (no collapsing)
-        clickedCard?.setAttribute("data-expanded", "true");
-        clickedForm?.classList.remove("hidden");
-        clickedChevron?.classList.add("rotate-180");
-      }
+    function getFormData(
+      method: "shipping" | "pickup",
+    ): Record<string, string> {
+      const form = method === "shipping" ? shippingForm : pickupForm;
+      const data: Record<string, string> = { method };
+      form
+        ?.querySelectorAll<
+          HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+        >("input, select, textarea")
+        .forEach((el) => {
+          if (el.id) data[el.id] = el.value;
+        });
+      return data;
     }
 
-    // sessionStorage persistence
     function saveForm() {
-      const method = (selector?.querySelector('input[name="fulfillment"]:checked') as HTMLInputElement)?.value;
-      if (!method) return;
-      const form = method === "shipping" ? shippingForm : pickupForm;
-      if (!form) return;
-      const data: Record<string, string> = { _method: method };
-      form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-        "input, select, textarea"
-      ).forEach((el) => {
-        if (el.id) data[el.id] = el.value;
-      });
+      const checkedRadio = selector?.querySelector<HTMLInputElement>(
+        'input[name="fulfillment"]:checked',
+      );
+      if (!checkedRadio) return;
+      const method = checkedRadio.value as "shipping" | "pickup";
+      const data = getFormData(method);
+      data._method = method;
       sessionStorage.setItem("fulfillment-form", JSON.stringify(data));
     }
 
@@ -574,69 +473,181 @@ const freeShippingThreshold =
         const data = JSON.parse(raw) as Record<string, string>;
         const method = data._method as "shipping" | "pickup";
         if (method === "shipping" || method === "pickup") {
-          handleCardClick(method);
+          handleTabClick(method, false);
           const form = method === "shipping" ? shippingForm : pickupForm;
-          form?.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-            "input, select, textarea"
-          ).forEach((el) => {
-            if (el.id && data[el.id] !== undefined) el.value = data[el.id];
-          });
+          form
+            ?.querySelectorAll<
+              HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+            >("input, select, textarea")
+            .forEach((el) => {
+              if (el.id && data[el.id] !== undefined) el.value = data[el.id];
+            });
         }
       } catch {
         sessionStorage.removeItem("fulfillment-form");
       }
     }
 
-    // Attach click handlers to cards
-    shippingCard?.addEventListener("click", () => handleCardClick("shipping"));
-    pickupCard?.addEventListener("click", () => handleCardClick("pickup"));
+    function setRequiredFields(method: "shipping" | "pickup") {
+      // Remove required from all fields first
+      selector
+        ?.querySelectorAll<
+          HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+        >("[data-shipping-form] input, [data-shipping-form] select, [data-pickup-form] input")
+        .forEach((el) => el.removeAttribute("required"));
 
-    // Prevent form clicks from bubbling to card
-    shippingForm?.addEventListener("click", (e) => e.stopPropagation());
-    pickupForm?.addEventListener("click", (e) => e.stopPropagation());
+      // Add required to the active form's required fields
+      if (method === "shipping") {
+        [
+          "shipping-first-name",
+          "shipping-last-name",
+          "shipping-address",
+          "shipping-city",
+          "shipping-state",
+          "shipping-zip",
+        ].forEach((id) => {
+          selector?.querySelector(`#${id}`)?.setAttribute("required", "");
+        });
+      } else {
+        ["pickup-name", "pickup-email", "pickup-phone"].forEach((id) => {
+          selector?.querySelector(`#${id}`)?.setAttribute("required", "");
+        });
+      }
+    }
 
-    // Prevent radio clicks from bubbling (they're hidden anyway, but safety)
-    radios.forEach((radio) => {
-      radio.addEventListener("click", (e) => e.stopPropagation());
+    function updateFreeShippingTracker(subtotal: number) {
+      const tracker = selector?.querySelector<HTMLElement>(
+        "#free-shipping-tracker",
+      );
+      const remaining = selector?.querySelector<HTMLElement>(
+        "#free-shipping-remaining",
+      );
+      const progress = selector?.querySelector<HTMLElement>(
+        "#free-shipping-progress",
+      );
+      const earned = selector?.querySelector<HTMLElement>(
+        "#free-shipping-earned",
+      );
+      const costLabel = selector?.querySelector<HTMLElement>(
+        "[data-shipping-cost-label]",
+      );
+
+      if (subtotal >= FREE_SHIPPING_THRESHOLD) {
+        tracker?.classList.add("hidden");
+        earned?.classList.remove("hidden");
+        if (costLabel) costLabel.textContent = "FREE";
+      } else {
+        tracker?.classList.remove("hidden");
+        earned?.classList.add("hidden");
+        const remainingAmt = FREE_SHIPPING_THRESHOLD - subtotal;
+        if (remaining) {
+          remaining.textContent = new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+          }).format(remainingAmt);
+        }
+        if (progress) {
+          progress.style.width = `${Math.min((subtotal / FREE_SHIPPING_THRESHOLD) * 100, 100)}%`;
+        }
+        if (costLabel) {
+          costLabel.textContent = new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+          }).format(FLAT_RATE_SHIPPING);
+        }
+      }
+    }
+
+    function handleTabClick(
+      method: "shipping" | "pickup",
+      triggerUpdate = true,
+    ) {
+      // Update radio inputs
+      if (method === "shipping" && shippingRadio) shippingRadio.checked = true;
+      if (method === "pickup" && pickupRadio) pickupRadio.checked = true;
+
+      // Update tab button styles
+      tabs.forEach((tab) => {
+        const isActive = tab.dataset.tab === method;
+        tab.setAttribute("aria-pressed", String(isActive));
+        if (isActive) {
+          tab.classList.remove(
+            "border-(--border-primary)",
+            "bg-(--surface-primary)",
+          );
+          tab.classList.add(
+            "border-(--content-emphasis)",
+            "bg-(--surface-secondary)",
+          );
+        } else {
+          tab.classList.remove(
+            "border-(--content-emphasis)",
+            "bg-(--surface-secondary)",
+          );
+          tab.classList.add(
+            "border-(--border-primary)",
+            "bg-(--surface-primary)",
+          );
+        }
+      });
+
+      // Show form panel
+      formPanel?.classList.remove("hidden");
+
+      // Show correct form
+      if (method === "shipping") {
+        shippingForm?.classList.remove("hidden");
+        pickupForm?.classList.add("hidden");
+      } else {
+        pickupForm?.classList.remove("hidden");
+        shippingForm?.classList.add("hidden");
+      }
+
+      // Manage required fields
+      setRequiredFields(method);
+
+      if (
+        triggerUpdate &&
+        typeof window.updateOrderSummaryOnFulfillmentChange === "function"
+      ) {
+        window.updateOrderSummaryOnFulfillmentChange(
+          method,
+          getFormData(method),
+        );
+      }
+    }
+
+    // Wire up tab clicks
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const method = tab.dataset.tab as "shipping" | "pickup";
+        handleTabClick(method);
+        saveForm();
+      });
     });
 
-    // Save form values on any input change
-    [shippingForm, pickupForm].forEach((form) => {
-      form?.addEventListener("input", saveForm);
-      form?.addEventListener("change", saveForm);
-    });
+    // Save on form field changes
+    selector
+      .querySelectorAll<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >("input, select, textarea")
+      .forEach((el) => {
+        el.addEventListener("change", saveForm);
+        el.addEventListener("input", saveForm);
+      });
 
+    // Sync free shipping tracker with live cart subtotal
+    function syncCart() {
+      const subtotalVal = cart.getTotal();
+      updateFreeShippingTracker(subtotalVal);
+    }
+
+    syncCart();
     restoreForm();
+
+    // Listen for cart updates (event fires on window as "cartUpdated")
+    window.addEventListener("cartUpdated", syncCart);
   }
-
-  function updateFreeShippingTracker(subtotal: number): void {
-    const tracker = document.getElementById("free-shipping-tracker");
-    const message = document.getElementById("free-shipping-message");
-
-    if (!tracker || !message) return;
-
-    // Get selected fulfillment method
-    const shippingRadio = document.querySelector(
-      'input[value="shipping"]:checked'
-    );
-
-    // Only show for shipping, not pickup or when nothing is selected
-    if (!shippingRadio) {
-      tracker.classList.add("hidden");
-      return;
-    }
-
-    if (subtotal >= FREE_SHIPPING_THRESHOLD) {
-      tracker.classList.add("hidden");
-    } else {
-      const amountNeeded = FREE_SHIPPING_THRESHOLD - subtotal;
-      message.innerHTML = `Add <strong>$${amountNeeded.toFixed(2)}</strong> more for free shipping!`;
-      tracker.classList.remove("hidden");
-    }
-  }
-
-  // Make function globally available for cart.astro
-  (window as any).updateFreeShippingTracker = updateFreeShippingTracker;
 
   document.addEventListener("astro:page-load", initFulfillmentSelector);
 </script>
