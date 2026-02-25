@@ -251,8 +251,8 @@ export const POST: APIRoute = async ({ request }) => {
       order: orderResponse.result.order,
       checkoutOptions: {
         redirectUrl: confirmationUrl.toString(),
-        // Only ask for shipping address if we don't already have it
-        askForShippingAddress: fulfillmentMethod === "shipping" ? false : true,
+        // We collect address/contact details ourselves — don't ask again at Square checkout
+        askForShippingAddress: false,
         // Enable coupon support for Square marketing coupons
         enableCoupon: true,
         // Support email for customer inquiries

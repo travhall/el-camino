@@ -455,16 +455,26 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           return;
         }
 
-        // Validate required fields
-        const requiredFields = form.querySelectorAll(
-          "input[required], select[required]",
-        );
+        // Validate required shipping fields explicitly (mirrors FulfillmentSelector.setRequiredFields)
+        const shippingRequiredIds = [
+          "shipping-first-name",
+          "shipping-last-name",
+          "shipping-email",
+          "shipping-phone",
+          "shipping-address",
+          "shipping-city",
+          "shipping-state",
+          "shipping-zip",
+        ];
         let isValid = true;
-        requiredFields.forEach((field) => {
-          const input = field as HTMLInputElement;
-          if (!input.value.trim()) {
+        shippingRequiredIds.forEach((id) => {
+          const input = form.querySelector(`#${id}`) as
+            | HTMLInputElement
+            | HTMLSelectElement
+            | null;
+          if (!input || !input.value.trim()) {
             isValid = false;
-            input.classList.add("border-red-500");
+            input?.classList.add("border-red-500");
           } else {
             input.classList.remove("border-red-500");
           }
@@ -510,14 +520,14 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           return;
         }
 
-        // Validate required fields
-        const requiredFields = form.querySelectorAll("input[required]");
+        // Validate required pickup fields explicitly (mirrors FulfillmentSelector.setRequiredFields)
+        const pickupRequiredIds = ["pickup-name", "pickup-email", "pickup-phone"];
         let isValid = true;
-        requiredFields.forEach((field) => {
-          const input = field as HTMLInputElement;
-          if (!input.value.trim()) {
+        pickupRequiredIds.forEach((id) => {
+          const input = form.querySelector(`#${id}`) as HTMLInputElement | null;
+          if (!input || !input.value.trim()) {
             isValid = false;
-            input.classList.add("border-red-500");
+            input?.classList.add("border-red-500");
           } else {
             input.classList.remove("border-red-500");
           }
@@ -762,7 +772,12 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           return;
         }
 
-        const inventory = inventoryData[itemKey.split(":")[1]] || 999;
+        const inventory = (() => {
+          const cartItem = cart.getItems().find(
+            (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
+          );
+          return cartItem ? (inventoryData[cartItem.variationId] ?? 999) : 999;
+        })();
         if (newQuantity > inventory) {
           target.value = inventory.toString();
           showNotification(`Only ${inventory} available`, "error");
@@ -913,12 +928,18 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       const orderTotal = data.total;
 
       const shippingDisplay =
-        shippingCost === 0 ? "FREE" : `$${shippingCost.toFixed(2)}`;
+        shippingCost === 0
+          ? "FREE"
+          : MoneyUtils.format(MoneyUtils.fromFloat(shippingCost));
 
-      if (taxEl) taxEl.textContent = `$${taxAmount.toFixed(2)}`;
+      if (taxEl)
+        taxEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(taxAmount));
       if (shippingEl) shippingEl.textContent = shippingDisplay;
       if (labelEl) labelEl.textContent = "Order Total";
-      if (totalEl) totalEl.textContent = `$${orderTotal.toFixed(2)}`;
+      if (totalEl)
+        totalEl.textContent = MoneyUtils.format(
+          MoneyUtils.fromFloat(orderTotal),
+        );
 
       updateMobileBar(orderTotal);
 
@@ -960,6 +981,20 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         // Show empty state
         emptyCart.classList.remove("hidden");
         cartContent.classList.add("hidden");
+
+        // Reset checkout button to disabled state
+        const checkoutBtn = document.getElementById(
+          "checkout-button",
+        ) as HTMLButtonElement;
+        if (checkoutBtn) {
+          checkoutBtn.disabled = true;
+          checkoutBtn.classList.add("opacity-50", "cursor-not-allowed");
+        }
+        const hint = document.getElementById("checkout-hint");
+        if (hint) hint.classList.remove("hidden");
+
+        // Hide mobile bar
+        updateMobileBar();
       } else {
         // Show cart with items
         emptyCart.classList.add("hidden");

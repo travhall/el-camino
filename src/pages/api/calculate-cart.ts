@@ -109,7 +109,18 @@ export const POST: APIRoute = async ({ request }) => {
         shipping: shippingCost,
         tax: taxAmount,
         total: totalAmount,
-      })
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          // Cart calc is deterministic for a given items+method snapshot.
+          // 60s CDN cache prevents redundant Square API calls on rapid re-renders;
+          // stale-while-revalidate lets subsequent requests serve immediately.
+          "Cache-Control": "public, max-age=60, stale-while-revalidate=120",
+          "Netlify-CDN-Cache-Control":
+            "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      },
     );
   } catch (error) {
     console.error("Calculate cart error:", error);

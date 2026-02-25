@@ -36,8 +36,15 @@ if (!orderId) {
 
     orderDetails = result.order;
 
-    // Batch fetch all variation IDs at once instead of N+1 sequential calls
-    if (orderDetails.lineItems?.length) {
+    // Guard: only show confirmation for paid (COMPLETED) orders.
+    // OPEN = payment still pending or failed; CANCELED = voided.
+    if (orderDetails.state !== "COMPLETED") {
+      error = `Payment not confirmed (order status: ${orderDetails.state ?? "unknown"}). If you believe this is an error, please contact us.`;
+      orderDetails = null;
+    }
+
+    // Batch fetch catalog details only for confirmed orders
+    if (orderDetails?.lineItems?.length) {
       const catalogIds = orderDetails.lineItems
         .filter((item) => item.catalogObjectId)
         .map((item) => item.catalogObjectId as string);
@@ -135,11 +142,17 @@ const fullTitle = `${pageTitle} | El Camino`;
       ) : !orderDetails ? (
         <div class="text-center">
           <h1 class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading) my-4 lg:my-0">
-            Processing Order...
+            Order Not Found
           </h1>
-          <p class="text-(--content-body) mb-8">
-            Please wait while we confirm your order details.
+          <p class="text-(--content-body) mb-4">
+            We couldn't locate your order details. If you completed payment, please check your email for a confirmation or contact us.
           </p>
+          <a
+            href="/"
+            class="inline-block bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border) hover:bg-(--ui-button-surface)/80 font-sans font-semibold transition-all duration-300 border-2 rounded-sm text-lg py-2 px-4"
+          >
+            Return to Home
+          </a>
         </div>
       ) : (
         <div data-order-id={orderDetails.id}>
