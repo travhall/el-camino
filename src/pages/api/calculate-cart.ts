@@ -10,7 +10,7 @@ const squareClient = new Client({
     import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
       ? Environment.Production
       : Environment.Sandbox,
-  squareVersion: "2024-02-28",
+  squareVersion: "2026-01-22",
 });
 
 interface CalculateRequest {

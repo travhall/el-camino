@@ -12,7 +12,7 @@ const squareClient = new Client({
     import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
       ? Environment.Production
       : Environment.Sandbox,
-  squareVersion: "2024-02-28",
+  squareVersion: "2026-01-22",
 });
 
 interface ShippingAddress {
@@ -30,7 +30,7 @@ interface PickupContact {
   name: string;
   email: string;
   phone: string;
-  instructions?: string;
+  notes?: string;
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -122,11 +122,10 @@ export const POST: APIRoute = async ({ request }) => {
         .join(", ")}. `;
     }
 
-    // Calculate subtotal for shipping calculation
+    // Calculate subtotal for shipping calculation using sale prices when available
     const subtotal = validItems.reduce((sum, item) => {
-      // Price is in cents, convert to dollars for calculation
-      const priceInDollars = (item.price || 0) / 100;
-      return sum + (priceInDollars * item.quantity);
+      const effectivePrice = (item as any).saleInfo?.salePrice ?? item.price;
+      return sum + (effectivePrice * item.quantity);
     }, 0);
 
     // Calculate shipping cost (only for shipping orders)
@@ -204,8 +203,8 @@ export const POST: APIRoute = async ({ request }) => {
 
       // Build pickup note with location details and customer instructions
       let pickupNote = `Pickup at ${PICKUP_LOCATION.name}. ${PICKUP_LOCATION.instructions}`;
-      if (pickupContact.instructions?.trim()) {
-        pickupNote += `\n\nCustomer Instructions: ${pickupContact.instructions.trim()}`;
+      if (pickupContact.notes?.trim()) {
+        pickupNote += `\n\nCustomer Notes: ${pickupContact.notes.trim()}`;
       }
 
       fulfillments.push({
@@ -245,7 +244,8 @@ export const POST: APIRoute = async ({ request }) => {
     confirmationUrl.searchParams.set("orderId", orderId);
     confirmationUrl.searchParams.set("fulfillmentMethod", fulfillmentMethod);
 
-    // Create payment link referencing the existing order (avoids double order creation)
+    // Create payment link referencing the existing order by object (legacy SDK requires full order object;
+    // Square links to the existing order when order.id is present rather than creating a new one)
     const linkResponse = await squareClient.checkoutApi.createPaymentLink({
       idempotencyKey: crypto.randomUUID(),
       order: orderResponse.result.order,

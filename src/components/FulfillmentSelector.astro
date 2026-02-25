@@ -16,8 +16,6 @@ function formatMoney(cents: number): string {
 }
 
 const subtotalCents = Math.round(subtotal * 100);
-const shippingCost =
-  subtotalCents >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_RATE_SHIPPING;
 const shippingLabel =
   subtotalCents >= FREE_SHIPPING_THRESHOLD
     ? "FREE"
@@ -32,7 +30,7 @@ const progressPct = Math.min(
 );
 ---
 
-<div data-component="fulfillment-selector" class="space-y-4">
+<div data-component="fulfillment-selector" class="space-y-4 p-4">
   <fieldset>
     <legend class="text-sm font-semibold text-(--content-heading) mb-3">
       Choose Fulfillment Method <span class="text-red-500">*</span>
@@ -83,37 +81,30 @@ const progressPct = Math.min(
     </div>
 
     <!-- Free shipping progress tracker -->
-    {
-      remainingForFree > 0 && (
+    <div
+      id="free-shipping-tracker"
+      class={`mb-4 rounded-md bg-(--surface-secondary) px-3 py-2 text-xs text-(--content-meta)${remainingForFree <= 0 ? " hidden" : ""}`}
+    >
+      Add{" "}
+      <span id="free-shipping-remaining">{formatMoney(remainingForFree)}</span>{
+        " "
+      }
+      more for free shipping!
+      <div class="mt-1.5 h-1.5 w-full rounded-full bg-(--border-primary)">
         <div
-          id="free-shipping-tracker"
-          class="mb-4 rounded-md bg-(--surface-secondary) px-3 py-2 text-xs text-(--content-meta)"
+          id="free-shipping-progress"
+          class="h-1.5 rounded-full bg-(--content-emphasis) transition-all"
+          style={`width: ${progressPct}%`}
         >
-          Add{" "}
-          <span id="free-shipping-remaining">
-            {formatMoney(remainingForFree)}
-          </span>{" "}
-          more for free shipping!
-          <div class="mt-1.5 h-1.5 w-full rounded-full bg-(--border-primary)">
-            <div
-              id="free-shipping-progress"
-              class="h-1.5 rounded-full bg-(--content-emphasis) transition-all"
-              style={`width: ${progressPct}%`}
-            />
-          </div>
         </div>
-      )
-    }
-    {
-      subtotalCents >= FREE_SHIPPING_THRESHOLD && (
-        <div
-          id="free-shipping-earned"
-          class="mb-4 rounded-md bg-(--surface-secondary) px-3 py-2 text-xs text-(--content-emphasis) font-medium"
-        >
-          🎉 You've earned free shipping!
-        </div>
-      )
-    }
+      </div>
+    </div>
+    <div
+      id="free-shipping-earned"
+      class={`mb-4 rounded-md bg-(--surface-secondary) px-3 py-2 text-xs text-(--content-emphasis) font-medium${subtotalCents < FREE_SHIPPING_THRESHOLD ? " hidden" : ""}`}
+    >
+      🎉 You've earned free shipping!
+    </div>
 
     <!-- Form panel (shown below tabs, full width) -->
     <div
@@ -123,7 +114,7 @@ const progressPct = Math.min(
       <!-- Shipping form -->
       <div data-shipping-form class="hidden space-y-3">
         <p class="text-sm font-medium text-(--content-heading)">
-          Shipping Address
+          Shipping Details
         </p>
 
         <div class="grid grid-cols-2 gap-3">
@@ -159,6 +150,43 @@ const progressPct = Math.min(
               autocomplete="family-name"
               class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
               placeholder="Last name"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="col-span-2 sm:col-span-1">
+            <label
+              for="shipping-email"
+              class="block text-xs font-medium text-(--content-meta) mb-1"
+            >
+              Email <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              id="shipping-email"
+              name="shipping-email"
+              required
+              autocomplete="email"
+              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              placeholder="you@example.com"
+            />
+          </div>
+          <div class="col-span-2 sm:col-span-1">
+            <label
+              for="shipping-phone"
+              class="block text-xs font-medium text-(--content-meta) mb-1"
+            >
+              Phone <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="tel"
+              id="shipping-phone"
+              name="shipping-phone"
+              required
+              autocomplete="tel"
+              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              placeholder="(555) 555-5555"
             />
           </div>
         </div>
@@ -501,6 +529,8 @@ const progressPct = Math.min(
         [
           "shipping-first-name",
           "shipping-last-name",
+          "shipping-email",
+          "shipping-phone",
           "shipping-address",
           "shipping-city",
           "shipping-state",

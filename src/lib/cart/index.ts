@@ -242,8 +242,7 @@ class CartManager implements ICartManager {
       //   `Verification: saved ${parsedData.length} items to localStorage`
       // );
 
-      // Dispatch event after successful save
-      this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+      // Note: callers are responsible for dispatching cartUpdated after saveCart()
     } catch (error) {
       console.error("Error saving cart:", error);
 
@@ -426,43 +425,30 @@ class CartManager implements ICartManager {
     // console.log(`Starting to add item ${item.title} (${item.variationId})`);
 
     try {
-      // Ensure quantity is a valid number
       const requestedQuantity =
         item.quantity && item.quantity > 0 ? item.quantity : 1;
-      // console.log(`Requested quantity: ${requestedQuantity}`);
 
-      // Check if item is in stock using backend API
-      let availableQuantity = 0;
+      // Fetch inventory and sale info in parallel to reduce latency
+      const [inventoryResult, saleInfoResult] = await Promise.allSettled([
+        fetch(`/api/check-inventory?variationId=${item.variationId}`)
+          .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+          .then((data) => data.success ? (data.quantity || 0) : 0),
+        fetch("/api/sale-info", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ variationIds: [item.variationId] }),
+        })
+          .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+          .then((data) => data.success ? data.saleInfo?.[item.variationId] ?? null : null),
+      ]);
 
-      try {
-        // ✅ FIXED: Use backend API endpoint instead of direct Square API
-        const response = await fetch(
-          `/api/check-inventory?variationId=${item.variationId}`
-        );
+      const availableQuantity =
+        inventoryResult.status === "fulfilled" ? inventoryResult.value : 999;
+      const fetchedSaleInfo =
+        saleInfoResult.status === "fulfilled" ? saleInfoResult.value : null;
 
-        if (!response.ok) {
-          throw new Error(`Inventory API returned ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-          availableQuantity = data.quantity || 0;
-        } else {
-          throw new Error(data.error || "Unknown inventory check error");
-        }
-
-        // console.log(
-        //   `Item ${item.variationId} available quantity: ${availableQuantity}`
-        // );
-      } catch (inventoryError) {
-        console.warn(
-          "Inventory check failed, proceeding with add:",
-          inventoryError
-        );
-        // If inventory check fails, we'll still try to add the item
-        // This prevents network errors from blocking all purchases
-        availableQuantity = 999; // Set a high number to allow the purchase to proceed
+      if (inventoryResult.status === "rejected") {
+        console.warn("Inventory check failed, proceeding with add:", inventoryResult.reason);
       }
 
       // Only block completely out of stock items
@@ -505,25 +491,18 @@ class CartManager implements ICartManager {
         const possibleToAdd = availableQuantity - currentCartQty;
 
         if (existingItem) {
-          // Update existing item to maximum
           existingItem.quantity = availableQuantity;
+          if (fetchedSaleInfo) existingItem.saleInfo = fetchedSaleInfo;
           this.items.set(itemKey, existingItem);
-          // console.log(`Updated item quantity to maximum: ${availableQuantity}`);
         } else {
-          // Add new item with maximum quantity
-          const newItem = { 
-            ...item, 
+          const newItem = {
+            ...item,
             quantity: possibleToAdd,
-            saleInfo: item.saleInfo, // Preserve sale info if provided
+            saleInfo: fetchedSaleInfo ?? item.saleInfo,
           };
           this.items.set(itemKey, newItem);
-          // console.log(`Added new item with maximum quantity: ${possibleToAdd}`);
         }
 
-        // Fetch sale info for the added item
-        await this.fetchSaleInfoForItem(item.variationId);
-
-        // Save changes
         this.saveCart();
         this.dispatchCartEvent("itemAdded", { item });
         this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
@@ -536,34 +515,19 @@ class CartManager implements ICartManager {
 
       // Normal flow - add or update with requested quantity
       if (existingItem) {
-        // Update with the NEW TOTAL quantity
         existingItem.quantity = newTotalQty;
+        if (fetchedSaleInfo) existingItem.saleInfo = fetchedSaleInfo;
         this.items.set(itemKey, existingItem);
-        // console.log(`Updated existing item, new quantity: ${newTotalQty}`);
       } else {
-        // Create a deep copy with the requested quantity
         const newItem = {
           ...item,
-          id: item.id,
-          variationId: item.variationId,
           catalogObjectId: item.catalogObjectId || item.id,
-          title: item.title,
-          price: item.price,
-          quantity: requestedQuantity, // Use requested quantity
-          image: item.image,
-          variationName: item.variationName,
-          unit: item.unit,
-          saleInfo: item.saleInfo, // Preserve sale info if provided
+          quantity: requestedQuantity,
+          saleInfo: fetchedSaleInfo ?? item.saleInfo,
         };
-
         this.items.set(itemKey, newItem);
-        // console.log(`Added new item with quantity: ${requestedQuantity}`);
       }
 
-      // Fetch sale info for the added item
-      await this.fetchSaleInfoForItem(item.variationId);
-
-      // Save changes and dispatch events
       this.saveCart();
       this.dispatchCartEvent("itemAdded", { item });
       this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
@@ -589,39 +553,8 @@ class CartManager implements ICartManager {
   /**
    * Fetch sale info for a single item and update it in the cart
    */
-  private async fetchSaleInfoForItem(variationId: string): Promise<void> {
-    try {
-      const response = await fetch("/api/sale-info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ variationIds: [variationId] }),
-      });
-
-      if (!response.ok) {
-        console.warn("Failed to fetch sale info:", response.status);
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data.success && data.saleInfo && data.saleInfo[variationId]) {
-        // Find and update the item with this variation ID
-        for (const [itemKey, item] of this.items.entries()) {
-          if (item.variationId === variationId) {
-            item.saleInfo = data.saleInfo[variationId];
-            this.items.set(itemKey, item);
-            break;
-          }
-        }
-      }
-    } catch (error) {
-      console.warn("Error fetching sale info for item:", error);
-    }
-  }
-
   public removeItem(id: string): void {
-    // Check if this is a compound key (has colon)
-    const item = id.includes(":") ? this.items.get(id) : this.items.get(id); // Legacy support
+    const item = this.items.get(id);
 
     if (item) {
       this.items.delete(id);
@@ -703,6 +636,7 @@ class CartManager implements ICartManager {
 
       if (cartUpdated) {
         this.saveCart();
+        this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
       }
 
       // Generate message

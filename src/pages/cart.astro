@@ -37,11 +37,9 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     <!-- Cart Content Grid -->
     <div id="cart-content" class="hidden grid md:grid-cols-3 gap-1 items-start">
       <!-- Cart Items Column -->
-      <div class="md:col-span-2 space-y-1 grid pb-4">
-        <div class="flex justify-between items-center px-4">
-          <h2 class="font-display text-3xl mb-2 text-(--content-heading)">
-            Cart Items
-          </h2>
+      <div class="md:col-span-2 space-y-1 grid pb-4 mt-4">
+        <div class="flex justify-end px-4">
+          <h2 class="sr-only">Cart Items</h2>
           <Button
             id="clear-cart-button"
             variant="ghost"
@@ -85,15 +83,23 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             <div
               class="flex justify-between text-(--content-body) text-lg pt-2 border-t border-(--border-secondary)"
             >
-              <span class="font-semibold" id="order-total-label">Estimated Total</span>
+              <span class="font-semibold" id="order-total-label"
+                >Estimated Total</span
+              >
               <span
                 class="font-display font-bold text-5xl text-(--content-heading)"
                 id="order-total">$0.00</span
               >
             </div>
           </div>
-          <div id="summary-calculating" class="hidden flex items-center gap-2 text-sm text-(--content-meta) mb-3">
-            <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-(--content-heading)"></div>
+          <div
+            id="summary-calculating"
+            class="hidden flex items-center gap-2 text-sm text-(--content-meta) mb-3"
+          >
+            <div
+              class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-(--content-heading)"
+            >
+            </div>
             <span>Recalculating...</span>
           </div>
           <div class="space-y-2">
@@ -101,11 +107,16 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
               id="checkout-button"
               variant="primary"
               classes="w-full"
-              data-disabled="true"
+              disabled={true}
             >
               Continue to Payment
             </Button>
-            <p id="checkout-hint" class="text-xs text-center text-(--content-meta)">Select a shipping method to continue</p>
+            <p
+              id="checkout-hint"
+              class="text-xs text-center text-(--content-meta)"
+            >
+              Select a shipping method to continue
+            </p>
             <Button
               href="/shop/all"
               variant="outline"
@@ -119,11 +130,19 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     </div>
 
     <!-- Mobile Sticky Checkout Bar -->
-    <div id="mobile-checkout-bar" class="hidden fixed bottom-0 left-0 right-0 bg-(--surface-secondary) border-t border-(--border-primary) p-3 md:hidden z-40">
+    <div
+      id="mobile-checkout-bar"
+      class="hidden fixed bottom-0 left-0 right-0 bg-(--surface-secondary) border-t border-(--border-primary) p-3 md:hidden z-40"
+    >
       <div class="flex items-center gap-3">
         <div class="shrink-0">
           <div class="text-xs text-(--content-meta)">Total</div>
-          <div class="font-display font-bold text-2xl text-(--content-heading)" id="mobile-total">$0.00</div>
+          <div
+            class="font-display font-bold text-2xl text-(--content-heading)"
+            id="mobile-total"
+          >
+            $0.00
+          </div>
         </div>
         <button
           id="mobile-checkout-button"
@@ -176,42 +195,6 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       .replace(/'/g, "&#x27;");
   }
 
-  // Client-side image optimization for cart items
-  function optimizeCartImage(src: string): string {
-    if (!src || !src.includes("squarecdn.com")) {
-      return src;
-    }
-
-    try {
-      // Cart images: lg:w-24 = 96px, use 128px for retina quality
-      const url = new URL(src);
-      url.searchParams.set("w", "128");
-      url.searchParams.set("h", "128");
-      url.searchParams.set("fit", "crop");
-
-      // Format detection matching EnhancedImageOptimizer
-      if (typeof window !== "undefined") {
-        const canvas = document.createElement("canvas");
-        if (canvas.toDataURL("image/avif").indexOf("data:image/avif") === 0) {
-          url.searchParams.set("fm", "avif");
-          url.searchParams.set("q", "65");
-        } else if (
-          canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
-        ) {
-          url.searchParams.set("fm", "webp");
-          url.searchParams.set("q", "85");
-        } else {
-          url.searchParams.set("fm", "jpg");
-          url.searchParams.set("q", "90");
-        }
-      }
-
-      return url.toString();
-    } catch {
-      return src;
-    }
-  }
-
   function setLoading(show: boolean): void {
     const overlay = document.getElementById("loading-overlay");
     if (overlay) {
@@ -222,7 +205,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
   function showNotification(
     message: string,
-    type: "success" | "error" = "success"
+    type: "success" | "error" = "success",
   ): void {
     // Use existing system if available
     if (typeof window !== "undefined" && (window as any).showNotification) {
@@ -234,7 +217,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
   function showConfirmModal(
     title: string,
     message: string,
-    onConfirm: () => void
+    onConfirm: () => void,
   ): void {
     // Use existing modal system if available
     if (typeof window !== "undefined" && (window as any).showModal) {
@@ -306,7 +289,9 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     const productUrl = `/product/${productSlug}`;
 
     const safeTitle = sanitize(item.title);
-    const safeVariationName = item.variationName ? sanitize(item.variationName) : "";
+    const safeVariationName = item.variationName
+      ? sanitize(item.variationName)
+      : "";
     const safeImage = sanitize(item.image || "");
     const safeProductUrl = sanitize(productUrl);
     const safeItemKey = sanitize(itemKey);
@@ -436,13 +421,13 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
       // Check if fulfillment method is selected
       const fulfillmentRadio = document.querySelector(
-        'input[name="fulfillment"]:checked'
+        'input[name="fulfillment"]:checked',
       ) as HTMLInputElement;
 
       if (!fulfillmentRadio) {
         // Scroll to fulfillment selector
         const selector = document.querySelector(
-          '[data-component="fulfillment-selector"]'
+          '[data-component="fulfillment-selector"]',
         );
         selector?.scrollIntoView({ behavior: "smooth", block: "center" });
 
@@ -463,7 +448,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       // Collect fulfillment details based on method
       if (fulfillmentMethod === "shipping") {
         const form = document.querySelector(
-          "[data-shipping-form]"
+          "[data-shipping-form]",
         ) as HTMLElement;
         if (!form) {
           showNotification("Shipping form not found", "error");
@@ -472,7 +457,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
         // Validate required fields
         const requiredFields = form.querySelectorAll(
-          "input[required], select[required]"
+          "input[required], select[required]",
         );
         let isValid = true;
         requiredFields.forEach((field) => {
@@ -488,27 +473,37 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         if (!isValid) {
           showNotification(
             "Please fill in all required shipping fields",
-            "error"
+            "error",
           );
           return;
         }
 
         requestBody.shippingAddress = {
-          name: (form.querySelector("#ship-name") as HTMLInputElement).value,
-          email: (form.querySelector("#ship-email") as HTMLInputElement).value,
-          phone: (form.querySelector("#ship-phone") as HTMLInputElement).value,
-          street1: (form.querySelector("#ship-street1") as HTMLInputElement)
+          name: `${(form.querySelector("#shipping-first-name") as HTMLInputElement).value} ${(form.querySelector("#shipping-last-name") as HTMLInputElement).value}`.trim(),
+          email: (form.querySelector("#shipping-email") as HTMLInputElement)
+            .value,
+          phone: (form.querySelector("#shipping-phone") as HTMLInputElement)
+            .value,
+          street1: (form.querySelector("#shipping-address") as HTMLInputElement)
             .value,
           street2:
-            (form.querySelector("#ship-street2") as HTMLInputElement).value ||
-            undefined,
-          city: (form.querySelector("#ship-city") as HTMLInputElement).value,
-          state: (form.querySelector("#ship-state") as HTMLSelectElement).value,
-          zip: (form.querySelector("#ship-zip") as HTMLInputElement).value,
+            (form.querySelector("#shipping-address2") as HTMLInputElement)
+              .value || undefined,
+          city: (form.querySelector("#shipping-city") as HTMLInputElement)
+            .value,
+          state: (form.querySelector("#shipping-state") as HTMLSelectElement)
+            .value,
+          zip: (form.querySelector("#shipping-zip") as HTMLInputElement).value,
+          instructions:
+            (
+              form.querySelector(
+                "#shipping-instructions",
+              ) as HTMLTextAreaElement
+            ).value || undefined,
         };
       } else if (fulfillmentMethod === "pickup") {
         const form = document.querySelector(
-          "[data-pickup-form]"
+          "[data-pickup-form]",
         ) as HTMLElement;
         if (!form) {
           showNotification("Pickup form not found", "error");
@@ -531,7 +526,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         if (!isValid) {
           showNotification(
             "Please fill in all required pickup contact fields",
-            "error"
+            "error",
           );
           return;
         }
@@ -542,8 +537,8 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             .value,
           phone: (form.querySelector("#pickup-phone") as HTMLInputElement)
             .value,
-          instructions:
-            (form.querySelector("#pickup-instructions") as HTMLTextAreaElement)
+          notes:
+            (form.querySelector("#pickup-notes") as HTMLTextAreaElement)
               ?.value || undefined,
         };
       }
@@ -566,6 +561,13 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         throw new Error("No checkout URL returned");
       }
 
+      // Notify user if cart was adjusted due to stock changes
+      if (data.stockMessage) {
+        showNotification(data.stockMessage, "error");
+        // Give user time to read the message before redirecting
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+
       showNotification("Redirecting to checkout...", "success");
       window.location.href = data.checkoutUrl;
     } catch (error) {
@@ -573,7 +575,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         error instanceof Error
           ? error.message
           : "Checkout failed. Please try again.",
-        "error"
+        "error",
       );
     } finally {
       setLoading(false);
@@ -597,7 +599,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           cart.clear();
           await updateDisplay();
           showNotification("Cart cleared successfully");
-        }
+        },
       );
     } else {
       showConfirmModal(
@@ -607,7 +609,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           cart.clear();
           await updateDisplay();
           showNotification("Cart cleared successfully");
-        }
+        },
       );
     }
   }
@@ -628,14 +630,18 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
     if (mobileTotal) {
       const displayTotal = total ?? cart.getTotal();
-      mobileTotal.textContent = MoneyUtils.format(MoneyUtils.fromFloat(displayTotal));
+      mobileTotal.textContent = MoneyUtils.format(
+        MoneyUtils.fromFloat(displayTotal),
+      );
     }
   }
 
   function attachEventListeners(): void {
     const checkoutButton = document.getElementById("checkout-button");
     const clearCartButton = document.getElementById("clear-cart-button");
-    const mobileCheckoutButton = document.getElementById("mobile-checkout-button");
+    const mobileCheckoutButton = document.getElementById(
+      "mobile-checkout-button",
+    );
 
     if (checkoutButton) {
       checkoutButton.addEventListener("click", handleCheckout);
@@ -680,7 +686,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           case "increase":
             const items = cart.getItems();
             const item = items.find(
-              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
             );
             if (item) {
               const newQty = item.quantity + 1;
@@ -698,7 +704,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           case "decrease":
             const currentItems = cart.getItems();
             const currentItem = currentItems.find(
-              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
             );
             if (currentItem) {
               if (currentItem.quantity === 1) {
@@ -709,7 +715,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                     cart.removeItem(itemKey);
                     await updateDisplay();
                     showNotification("Item removed from cart", "success");
-                  }
+                  },
                 );
               } else {
                 await cart.updateQuantity(itemKey, currentItem.quantity - 1);
@@ -727,7 +733,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                   cart.removeItem(itemKey);
                   await updateDisplay();
                   showNotification("Item removed from cart", "success");
-                }
+                },
               );
             }
             break;
@@ -777,7 +783,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
   async function updateCartItemQuantity(itemKey: string): Promise<void> {
     const items = cart.getItems();
     const item = items.find(
-      (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+      (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
     );
 
     if (!item) {
@@ -795,7 +801,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
     // Update quantity display
     const quantityInput = document.querySelector(
-      `input[data-item-key="${itemKey}"]`
+      `input[data-item-key="${itemKey}"]`,
     ) as HTMLInputElement;
     if (quantityInput) {
       quantityInput.value = item.quantity.toString();
@@ -803,24 +809,24 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
     // Update item subtotal
     const itemContainer = document.querySelector(
-      `[data-item-container="${itemKey}"]`
+      `[data-item-container="${itemKey}"]`,
     );
     if (itemContainer) {
       const subtotalEl = itemContainer.querySelector(
-        ".font-display.font-bold.text-2xl"
+        ".font-display.font-bold.text-2xl",
       );
       if (subtotalEl) {
         subtotalEl.textContent = MoneyUtils.format(
-          MoneyUtils.fromFloat(itemSubtotal)
+          MoneyUtils.fromFloat(itemSubtotal),
         );
       }
 
       // Update button states
       const decreaseBtn = itemContainer.querySelector(
-        '[data-action="decrease"]'
+        '[data-action="decrease"]',
       ) as HTMLButtonElement;
       const increaseBtn = itemContainer.querySelector(
-        '[data-action="increase"]'
+        '[data-action="increase"]',
       ) as HTMLButtonElement;
 
       if (decreaseBtn) {
@@ -856,7 +862,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
   async function updateOrderSummary(subtotal: number): Promise<void> {
     const fulfillmentRadio = document.querySelector(
-      'input[name="fulfillment"]:checked'
+      'input[name="fulfillment"]:checked',
     ) as HTMLInputElement;
 
     const subtotalEl = document.getElementById("subtotal");
@@ -868,7 +874,9 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
     // Always show subtotal
     if (subtotalEl) {
-      subtotalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
+      subtotalEl.textContent = MoneyUtils.format(
+        MoneyUtils.fromFloat(subtotal),
+      );
     }
 
     // If no method selected, show placeholder values
@@ -876,7 +884,8 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       if (taxEl) taxEl.textContent = "—";
       if (shippingEl) shippingEl.textContent = "—";
       if (labelEl) labelEl.textContent = "Estimated Total";
-      if (totalEl) totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
+      if (totalEl)
+        totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
       return;
     }
 
@@ -903,7 +912,8 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       const taxAmount = data.tax;
       const orderTotal = data.total;
 
-      const shippingDisplay = shippingCost === 0 ? "FREE" : `$${shippingCost.toFixed(2)}`;
+      const shippingDisplay =
+        shippingCost === 0 ? "FREE" : `$${shippingCost.toFixed(2)}`;
 
       if (taxEl) taxEl.textContent = `$${taxAmount.toFixed(2)}`;
       if (shippingEl) shippingEl.textContent = shippingDisplay;
@@ -918,7 +928,8 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     } catch (error) {
       console.error("Error calculating order summary:", error);
       if (labelEl) labelEl.textContent = "Estimated Total";
-      if (totalEl) totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
+      if (totalEl)
+        totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
     } finally {
       calculatingEl?.classList.add("hidden");
       calculatingEl?.classList.remove("flex");
@@ -976,18 +987,12 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
   function setupFulfillmentListeners(): void {
     const checkoutButton = document.getElementById(
-      "checkout-button"
+      "checkout-button",
     ) as HTMLButtonElement;
 
-    // Initially disable checkout button
-    if (checkoutButton) {
-      checkoutButton.disabled = true;
-      checkoutButton.classList.add("opacity-50", "cursor-not-allowed");
-    }
-
-    // Listen for radio changes (triggered by card selection)
+    // Listen for radio changes (triggered by tab selection)
     const fulfillmentRadios = document.querySelectorAll(
-      'input[name="fulfillment"]'
+      'input[name="fulfillment"]',
     );
     fulfillmentRadios.forEach((radio) => {
       radio.addEventListener("change", () => {
@@ -1008,7 +1013,9 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     });
 
     // Make update function available globally for FulfillmentSelector
-    (window as any).updateOrderSummaryOnFulfillmentChange = () => {
+    (window as any).updateOrderSummaryOnFulfillmentChange = (
+      _method: string,
+    ) => {
       const total = cart.getTotal();
       updateOrderSummary(total);
     };

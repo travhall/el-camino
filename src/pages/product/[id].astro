@@ -792,55 +792,31 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
 
       // Only initialize PDP controller if we have interactive elements that need it
       if (hasAttributeButtons || hasVariationButtons || hasQuantityControls) {
-        console.log("Initializing PDP controller...");
-        console.log("Has attribute buttons:", hasAttributeButtons);
-        console.log("Has variation buttons:", hasVariationButtons);
-        console.log("Has quantity controls:", hasQuantityControls);
-        console.log("Product data:", productData);
-
         pdpController = new PDPController(productData);
-        console.log("PDP controller created:", pdpController);
         return true;
       } else {
-        console.log("No interactive elements found - not initializing PDP");
-        return true; // This is OK, not an error
+        return true; // No interactive elements, not an error
       }
     } catch (error) {
       const appError = processSquareError(error, "initializePDP");
       logError(appError);
-      console.log(
-        "PDP controller failed to initialize, but page will continue working"
-      );
       return true; // Don't fail the whole page for this
     }
   }
 
-  /**
-   * Setup location modal independently of PDP controller
-   */
   function setupLocationModal(): void {
     const locationLink = document.getElementById("location-hours-link");
     if (locationLink) {
-      // Check if already has a click handler by looking for a data attribute
       if (locationLink.getAttribute("data-modal-initialized") === "true") {
-        console.log("Location modal already initialized, skipping");
         return;
       }
-
-      // Mark as initialized to prevent duplicate handlers
       locationLink.setAttribute("data-modal-initialized", "true");
-
       locationLink.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log("Location link clicked, calling showLocationModal");
-
-        // Check if showLocationModal is available
         if (typeof window.showLocationModal === "function") {
           window.showLocationModal();
         } else {
-          console.error("showLocationModal function not found");
-          // Fallback: try to initialize modal functions if not ready
           setTimeout(() => {
             if (typeof window.showLocationModal === "function") {
               window.showLocationModal();
@@ -851,22 +827,11 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     }
   }
 
-  /**
-   * ✅ ASTRO VIEW TRANSITIONS: Initialize on page load
-   */
-  // Run immediately since view transitions are disabled
   function initializePage() {
-    console.log("Page initialization started");
-
     const variationDataElement = document.getElementById("variation-data");
     const isProductPage = variationDataElement !== null;
 
-    console.log("variation-data element found:", variationDataElement);
-    console.log("isProductPage:", isProductPage);
-
     if (isProductPage) {
-      console.log("Product page detected, calling initializePDP()");
-
       // Track recently viewed product
       try {
         const productButton = document.getElementById("add-to-cart-button");
@@ -874,8 +839,6 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           const productDataStr = productButton.getAttribute("data-product");
           if (productDataStr) {
             const productData = JSON.parse(productDataStr);
-
-            // Build full product object for recently viewed
             const productImage =
               (document.getElementById("product-image") as HTMLImageElement)
                 ?.src || "";
@@ -897,22 +860,17 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
             };
 
             recentlyViewed.add(product);
-            console.log("Added to recently viewed:", product.title);
           }
         }
       } catch (error) {
         console.error("Failed to track recently viewed:", error);
-        // Non-critical, don't fail page load
       }
 
       if (!initializePDP()) {
         console.error("Failed to initialize PDP controller");
       }
 
-      // Always setup location modal, even if PDP controller isn't initialized
       setupLocationModal();
-    } else {
-      console.log("Not a product page, skipping PDP initialization");
     }
   }
 
