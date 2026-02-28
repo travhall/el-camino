@@ -7,6 +7,7 @@ import { processSquareError, logError } from "./errorUtils";
 import { buildAvailableAttributes } from "./variationParser";
 import { createProductUrl } from "./slugUtils";
 import { requestDeduplicator } from "./requestDeduplication";
+import { extractBrandValue, fetchMeasurementUnits } from "./productUtils";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 
 function validateEnvironment() {
@@ -41,30 +42,6 @@ export const jsonStringifyReplacer = (_key: string, value: any) => {
   }
   return value;
 };
-
-/**
- * Extract brand value from custom attributes
- */
-function extractBrandValue(customAttributeValues: any): string {
-  if (!customAttributeValues) return "";
-
-  // Look for any attribute with 'brand' in the key name (case insensitive)
-  const brandAttribute = Object.values(customAttributeValues).find(
-    (attr: any) =>
-      attr?.name?.toLowerCase() === "brand" ||
-      attr?.key?.toLowerCase() === "brand"
-  ) as any;
-
-  if (
-    brandAttribute &&
-    brandAttribute.type === "STRING" &&
-    brandAttribute.stringValue
-  ) {
-    return brandAttribute.stringValue;
-  }
-
-  return "";
-}
 
 /**
  * Extract sale information from variation custom attributes
@@ -218,23 +195,33 @@ export async function fetchProducts(): Promise<Product[]> {
     defaultCircuitBreaker.execute(async () => {
       try {
         console.log("Fetching Square products...");
-        const response = await squareClient.catalogApi.listCatalog(
-          undefined,
-          "ITEM"
-        );
 
-        if (!response.result) {
-          console.error("No result in Square response:", response);
-          return [];
-        }
+        // Paginate through all catalog pages to avoid silent truncation above ~200 items
+        const allObjects: any[] = [];
+        let cursor: string | undefined = undefined;
+        let requestCount = 0;
+        const maxRequests = 20; // Safety limit
 
-        if (!response.result.objects?.length) {
+        do {
+          requestCount++;
+          if (requestCount > maxRequests) {
+            console.warn(`[fetchProducts] Hit max requests limit (${maxRequests})`);
+            break;
+          }
+          const { result } = await squareClient.catalogApi.listCatalog(cursor, "ITEM");
+          if (result.objects?.length) {
+            allObjects.push(...result.objects);
+          }
+          cursor = result.cursor;
+        } while (cursor);
+
+        if (!allObjects.length) {
           console.log("No products found in catalog");
           return [];
         }
 
         // First, extract basic product info including brand from custom attributes
-        const productsWithBasicInfo = response.result.objects
+        const productsWithBasicInfo = allObjects
           .filter((item) => item.type === "ITEM")
           .map((item) => {
             const variation = item.itemData?.variations?.[0];
@@ -279,7 +266,7 @@ export async function fetchProducts(): Promise<Product[]> {
         // Assemble final products with brand data, units, SKUs, and variations
         const products = productsWithBasicInfo.map((p) => {
           // Get the item data for variations
-          const item = response.result.objects?.find((obj) => obj.id === p.id);
+          const item = allObjects.find((obj) => obj.id === p.id);
           const variations = item?.itemData?.variations || [];
           const variation = variations[0];
           const actualSku = variation?.itemVariationData?.sku || "";
@@ -345,50 +332,6 @@ export async function fetchProducts(): Promise<Product[]> {
       }
     })
   );
-}
-
-// Add the fetchMeasurementUnits function (copied from categories.ts)
-async function fetchMeasurementUnits(
-  unitIds: string[]
-): Promise<Record<string, string>> {
-  const results = await Promise.allSettled(
-    unitIds.map(async (unitId) => {
-      try {
-        const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-          unitId
-        );
-
-        if (result.object?.type === "MEASUREMENT_UNIT") {
-          const unitData = result.object.measurementUnitData;
-          let unitName = "";
-
-          if (unitData?.measurementUnit?.customUnit?.name) {
-            unitName = unitData.measurementUnit.customUnit.name;
-          } else if (unitData?.measurementUnit?.customUnit?.abbreviation) {
-            unitName = unitData.measurementUnit.customUnit.abbreviation;
-          } else if (unitData?.measurementUnit?.type) {
-            unitName = unitData.measurementUnit.type
-              .toLowerCase()
-              .replace(/_/g, " ");
-          }
-
-          return { unitId, unitName };
-        }
-        return { unitId, unitName: "" };
-      } catch {
-        return { unitId, unitName: "" };
-      }
-    })
-  );
-
-  const unitMap: Record<string, string> = {};
-  results.forEach((result) => {
-    if (result.status === "fulfilled" && result.value.unitName) {
-      unitMap[result.value.unitId] = result.value.unitName;
-    }
-  });
-
-  return unitMap;
 }
 
 export async function fetchProduct(id: string): Promise<Product | null> {

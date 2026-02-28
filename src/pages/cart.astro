@@ -555,6 +555,9 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
       setLoading(true);
 
+      // Generate a stable key for this checkout attempt so retries don't create duplicate orders
+      requestBody.checkoutKey = crypto.randomUUID();
+
       const response = await fetch("/api/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

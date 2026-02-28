@@ -18,7 +18,8 @@ export async function checkItemInventory(variationId: string): Promise<number> {
       try {
         // Query Square API for current inventory count
         const { result } = await squareClient.inventoryApi.retrieveInventoryCount(
-          variationId
+          variationId,
+          import.meta.env.PUBLIC_SQUARE_LOCATION_ID // locationIds (comma-separated string), not cursor
         );
 
         // Get the counts and find IN_STOCK state
@@ -111,6 +112,7 @@ export async function checkBulkInventory(
           const { result } =
             await squareClient.inventoryApi.batchRetrieveInventoryCounts({
               catalogObjectIds: batchIds,
+              locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
             });
           return result.counts || [];
         })

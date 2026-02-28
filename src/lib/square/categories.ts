@@ -1,5 +1,6 @@
 // src/lib/square/categories.ts - WITH COMPREHENSIVE DEBUGGING
 import { squareClient, extractSaleInfo } from "./client";
+import { extractBrandValue, fetchMeasurementUnits } from "./productUtils";
 import { batchGetImageUrls } from "./imageUtils";
 import type {
   Category,
@@ -19,30 +20,6 @@ function createSlug(name: string): string {
     .replace(/[^\w\s-]/g, "")
     .replace(/[\s_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
-}
-
-/**
- * Extract brand value from custom attributes (same logic as client.ts)
- */
-function extractBrandValue(customAttributeValues: any): string {
-  if (!customAttributeValues) return "";
-
-  // Look for any attribute with 'brand' in the key name (case insensitive)
-  const brandAttribute = Object.values(customAttributeValues).find(
-    (attr: any) =>
-      attr?.name?.toLowerCase() === "brand" ||
-      attr?.key?.toLowerCase() === "brand"
-  ) as any;
-
-  if (
-    brandAttribute &&
-    brandAttribute.type === "STRING" &&
-    brandAttribute.stringValue
-  ) {
-    return brandAttribute.stringValue;
-  }
-
-  return "";
 }
 
 export async function fetchCategories(): Promise<Category[]> {
@@ -438,82 +415,6 @@ export async function fetchProductsByCategory(
       hasMore: false,
     });
   }
-}
-
-// In-memory cache for measurement units (simple, works in dev and prod)
-const measurementUnitCache = new Map<
-  string,
-  { value: Record<string, string>; timestamp: number }
->();
-const MEASUREMENT_UNIT_TTL = 3600000; // 1 hour in ms
-
-// Optimized measurement unit fetching with in-memory caching
-async function fetchMeasurementUnits(
-  unitIds: string[]
-): Promise<Record<string, string>> {
-  if (!unitIds.length) return {};
-
-  // Deduplicate and sort IDs for cache key
-  const uniqueIds = [...new Set(unitIds)];
-  const cacheKey = uniqueIds.sort().join(",");
-
-  // Check in-memory cache
-  const cached = measurementUnitCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < MEASUREMENT_UNIT_TTL) {
-    return cached.value;
-  }
-
-  // console.log(
-  //   `[Cache] Fetching ${uniqueIds.length} measurement units from Square API`
-  // );
-
-  const results = await Promise.allSettled(
-    uniqueIds.map(async (unitId) => {
-      try {
-        const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-          unitId
-        );
-
-        if (result.object?.type === "MEASUREMENT_UNIT") {
-          const unitData = result.object.measurementUnitData;
-          let unitName = "";
-
-          if (unitData?.measurementUnit?.customUnit?.name) {
-            unitName = unitData.measurementUnit.customUnit.name;
-          } else if (unitData?.measurementUnit?.customUnit?.abbreviation) {
-            unitName = unitData.measurementUnit.customUnit.abbreviation;
-          } else if (unitData?.measurementUnit?.type) {
-            unitName = unitData.measurementUnit.type
-              .toLowerCase()
-              .replace(/_/g, " ");
-          }
-
-          return { unitId, unitName };
-        }
-        return { unitId, unitName: "" };
-      } catch {
-        return { unitId, unitName: "" };
-      }
-    })
-  );
-
-  const unitMap: Record<string, string> = {};
-  results.forEach((result) => {
-    if (result.status === "fulfilled" && result.value.unitName) {
-      unitMap[result.value.unitId] = result.value.unitName;
-    }
-  });
-
-  // Store in cache
-  measurementUnitCache.set(cacheKey, {
-    value: unitMap,
-    timestamp: Date.now(),
-  });
-
-  // console.log(
-  //   `[Cache] Cached ${Object.keys(unitMap).length} measurement units`
-  // );
-  return unitMap;
 }
 
 export function clearCategoryCache(): void {

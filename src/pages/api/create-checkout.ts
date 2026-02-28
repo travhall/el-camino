@@ -1,19 +1,10 @@
 // src/pages/api/create-checkout.ts
 import type { APIRoute } from "astro";
-import { Client, Environment } from "square/legacy";
 import type { CartItem } from "@/lib/cart/types";
+import { squareClient } from "@/lib/square/client";
 import { checkBulkInventory } from "@/lib/square/inventory";
 import { calculateShippingRate, PICKUP_LOCATION } from "@/lib/config/shipping";
 import { siteConfig } from "@/lib/site-config";
-
-const squareClient = new Client({
-  accessToken: import.meta.env.SQUARE_ACCESS_TOKEN || "",
-  environment:
-    import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-      ? Environment.Production
-      : Environment.Sandbox,
-  squareVersion: "2026-01-22",
-});
 
 interface ShippingAddress {
   name: string;
@@ -36,17 +27,25 @@ interface PickupContact {
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { 
-      items, 
-      fulfillmentMethod = "shipping", 
+    const {
+      items,
+      fulfillmentMethod = "shipping",
       shippingAddress,
-      pickupContact 
-    } = body as { 
-      items: CartItem[]; 
+      pickupContact,
+      checkoutKey,
+    } = body as {
+      items: CartItem[];
       fulfillmentMethod?: "shipping" | "pickup";
       shippingAddress?: ShippingAddress;
       pickupContact?: PickupContact;
+      checkoutKey?: string;
     };
+
+    // Derive stable idempotency keys from the client-supplied key so Square
+    // deduplicates both calls if the client retries after a network error.
+    const baseKey = checkoutKey ?? crypto.randomUUID();
+    const orderIdempotencyKey = `${baseKey}-order`;
+    const linkIdempotencyKey = `${baseKey}-link`;
 
     if (!items?.length) {
       return new Response(JSON.stringify({ error: "No items provided" }), {
@@ -224,7 +223,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     // Create order with fulfillment and tax auto-application
     const orderResponse = await squareClient.ordersApi.createOrder({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: orderIdempotencyKey,
       order: {
         locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
         lineItems,
@@ -247,7 +246,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Create payment link referencing the existing order by object (legacy SDK requires full order object;
     // Square links to the existing order when order.id is present rather than creating a new one)
     const linkResponse = await squareClient.checkoutApi.createPaymentLink({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: linkIdempotencyKey,
       order: orderResponse.result.order,
       checkoutOptions: {
         redirectUrl: confirmationUrl.toString(),

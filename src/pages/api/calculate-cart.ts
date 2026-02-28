@@ -1,17 +1,8 @@
 // src/pages/api/calculate-cart.ts
 import type { APIRoute } from "astro";
-import { Client, Environment } from "square/legacy";
 import type { CartItem } from "@/lib/cart/types";
+import { squareClient } from "@/lib/square/client";
 import { calculateShippingRate } from "@/lib/config/shipping";
-
-const squareClient = new Client({
-  accessToken: import.meta.env.SQUARE_ACCESS_TOKEN || "",
-  environment:
-    import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-      ? Environment.Production
-      : Environment.Sandbox,
-  squareVersion: "2026-01-22",
-});
 
 interface CalculateRequest {
   items: CartItem[];
@@ -111,15 +102,7 @@ export const POST: APIRoute = async ({ request }) => {
         total: totalAmount,
       }),
       {
-        headers: {
-          "Content-Type": "application/json",
-          // Cart calc is deterministic for a given items+method snapshot.
-          // 60s CDN cache prevents redundant Square API calls on rapid re-renders;
-          // stale-while-revalidate lets subsequent requests serve immediately.
-          "Cache-Control": "public, max-age=60, stale-while-revalidate=120",
-          "Netlify-CDN-Cache-Control":
-            "public, s-maxage=60, stale-while-revalidate=120",
-        },
+        headers: { "Content-Type": "application/json" },
       },
     );
   } catch (error) {

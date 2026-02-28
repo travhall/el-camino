@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly SQUARE_ACCESS_TOKEN: string;
   readonly PUBLIC_SQUARE_APP_ID: string;
   readonly PUBLIC_SQUARE_LOCATION_ID: string;
+  readonly PUBLIC_SQUARE_ENVIRONMENT?: string; // "production" | "sandbox" — defaults to sandbox if unset
 }
 
 interface ImportMeta {
