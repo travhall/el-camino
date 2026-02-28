@@ -30,7 +30,6 @@ interface ICartManager {
   validateCart(): Promise<{ success: boolean; message?: string }>;
   clear(): void;
   forceRefresh(): void;
-  createOrder(): Promise<string>;
 }
 
 class CartManager implements ICartManager {
@@ -672,53 +671,6 @@ class CartManager implements ICartManager {
       this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
       this.saveCart();
     });
-  }
-
-  public async createOrder(): Promise<string> {
-    if (!import.meta.env.PUBLIC_SQUARE_LOCATION_ID) {
-      throw new Error("Square location ID is not configured");
-    }
-
-    // Validate cart before creating order
-    const validation = await this.validateCart();
-    if (!validation.success) {
-      throw new Error("Failed to validate cart");
-    }
-
-    // If validation updated the cart, inform the user
-    if (validation.message) {
-      console.warn("Cart updated during order creation:", validation.message);
-    }
-
-    try {
-      // ✅ Use backend API for order creation
-      const response = await fetch("/api/create-order", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          items: Array.from(this.items.values()),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Order creation failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.success || !data.orderId) {
-        throw new Error(
-          data.error || "Failed to create order: No order ID returned"
-        );
-      }
-
-      return data.orderId;
-    } catch (error) {
-      console.error("Error creating order:", error);
-      throw error;
-    }
   }
 
   public forceRefresh(): void {

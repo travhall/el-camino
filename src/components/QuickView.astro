@@ -237,6 +237,7 @@ import {
   class QuickViewController {
     private static instance: QuickViewController;
     private currentProduct: Product | null = null;
+    private lastProductId: string | null = null;
     private selectedAttributes: Record<string, string> = {};
     private currentVariation: ProductVariation | null = null;
     private productData: any = null;
@@ -268,6 +269,7 @@ import {
     }
 
     async openQuickView(productId: string): Promise<void> {
+      this.lastProductId = productId;
       try {
         this.showLoading();
         this.openModal();
@@ -843,6 +845,7 @@ import {
 
     private resetState(): void {
       this.currentProduct = null;
+      this.lastProductId = null;
       this.currentVariation = null;
       this.selectedAttributes = {};
       this.productData = null;
@@ -945,8 +948,9 @@ import {
       // Retry button
       const retryBtn = document.getElementById("quick-view-retry");
       retryBtn?.addEventListener("click", () => {
-        if (this.currentProduct) {
-          this.openQuickView(this.currentProduct.id);
+        const id = this.currentProduct?.id ?? this.lastProductId;
+        if (id) {
+          this.openQuickView(id);
         }
       });
 
