@@ -102,7 +102,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
   :root {
     --card-transition-duration: 0.5s;
     --card-stagger-delay: 100ms;
-    --row-stagger-delay: 150ms;
   }
 
   /* Responsive optimizations */
@@ -110,7 +109,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     :root {
       --card-transition-duration: 0.2s; /* Faster on mobile */
       --card-stagger-delay: 50ms;
-      --row-stagger-delay: 100ms;
     }
   }
 
@@ -119,7 +117,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     :root {
       --card-transition-duration: 0.1s;
       --card-stagger-delay: 0ms;
-      --row-stagger-delay: 0ms;
     }
   }
 
@@ -143,7 +140,8 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
   .product-card-wrapper.opacity-0 {
     opacity: 0;
     transform: scale(0.95) translate3d(0, 10px, 0);
-    /* Remove delay on exit for immediate response */
+    /* Fast exit (150ms) ensures animation completes before the page swap */
+    transition-duration: 0.15s, 0.15s;
     transition-delay: 0s, 0s;
   }
 
@@ -343,19 +341,14 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
     const staggerStr = style.getPropertyValue("--card-stagger-delay").trim();
     const staggerDelay = parseInt(staggerStr.replace("ms", "")) || 0;
 
-    // Parse row stagger delay
-    const rowStaggerStr = style.getPropertyValue("--row-stagger-delay").trim();
-    const rowStaggerDelay = parseInt(rowStaggerStr.replace("ms", "")) || 0;
-
     return {
       duration: duration || 300,
       staggerDelay: staggerDelay,
-      rowStaggerDelay: rowStaggerDelay,
     };
   }
 
   // Animation configuration
-  const ANIMATION_CONFIG = getAnimationTiming();
+  let ANIMATION_CONFIG = getAnimationTiming();
 
   // Initial page load animations - animate first 16 cards immediately
   function initializePageLoadAnimations() {
@@ -398,8 +391,8 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       const index = parseInt(htmlCard.dataset.initialIndex || "0");
       const cardInRow = index % cardsPerRow;
 
-      // Noticeable stagger within each row for polished entrance
-      const animationOrder = cardInRow * 1.2;
+      // Stagger within each row: each column offset by one stagger unit
+      const animationOrder = cardInRow;
 
       // Set CSS custom property for animation delay
       htmlCard.style.setProperty(
@@ -580,7 +573,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
 
             const cardsPerRow = getCardsPerRow();
             const cardInRow = index % cardsPerRow;
-            const animationOrder = cardInRow * 1.2;
+            const animationOrder = cardInRow;
 
             card.style.setProperty(
               "--animation-order",
@@ -762,7 +755,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       // Recalculate animation config on resize
       const newConfig = getAnimationTiming();
       ANIMATION_CONFIG.staggerDelay = newConfig.staggerDelay;
-      ANIMATION_CONFIG.rowStaggerDelay = newConfig.rowStaggerDelay;
       ANIMATION_CONFIG.duration = newConfig.duration;
     }, 250); // Debounce 250ms
   }

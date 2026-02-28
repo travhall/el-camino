@@ -334,6 +334,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     private showMoreToggle: HTMLButtonElement | null = null;
     private isExpanded: boolean = false;
     private isInitialized: boolean = false;
+    private static viewTransitionsInitialized = false;
 
     constructor() {
       this.initializeElements();
@@ -564,6 +565,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
 
     private setupViewTransitionsCoordination(): void {
+      if (ProductFilters.viewTransitionsInitialized) return;
+      ProductFilters.viewTransitionsInitialized = true;
+
       document.addEventListener("astro:before-preparation", () => {
         // Close mobile drawer before navigation
         if (this.container && this.overlay) {
