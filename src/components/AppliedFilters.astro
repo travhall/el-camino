@@ -42,6 +42,9 @@ const shouldStartHidden = hasActiveFilters && !hadFiltersInReferrer;
   /* Prevent View Transition from animating AppliedFilters during filter changes */
   /* This allows JavaScript to have full control over animation timing */
   @media (prefers-reduced-motion: no-preference) {
+    html::view-transition-group(applied-filters) {
+      animation-duration: 0s; /* Instant bounding-box snap — prevents height animation from clipping pills mid-transition */
+    }
     html::view-transition-old(applied-filters) {
       animation: none;
       opacity: 0; /* Suppress captured old state — prevents double-image overlap during filter changes */

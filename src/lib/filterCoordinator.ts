@@ -28,7 +28,7 @@ export class FilterCoordinator {
     gridExit: 150,               // Grid card exit duration (ms) — matches CSS transition-duration override on .opacity-0
     appliedFiltersExit: 200,     // AppliedFilters fade-out duration (ms)
     appliedFiltersEntrance: 200, // AppliedFilters fade-in duration (ms)
-    appliedFiltersDelay: 300,    // Delay before AppliedFilters fades in after page load (ms)
+    appliedFiltersDelay: 50,     // Delay before AppliedFilters fades in after page load (ms) — reduced to sync with grid card entrance
   };
 
   // Shared state management
