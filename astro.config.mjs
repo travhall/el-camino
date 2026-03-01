@@ -45,8 +45,6 @@ export default defineConfig({
     domains: [
       "elcaminoskateshop.wordpress.com",
       "api.elcaminoskateshop.com",
-      "images.unsplash.com",
-      "via.placeholder.com",
     ],
     remotePatterns: [
       {
