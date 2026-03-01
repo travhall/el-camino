@@ -95,7 +95,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
       fetchSaleInfoForItems(items),
     ]);
 
-    console.log("[RecentlyViewed] Sale info fetched:", saleInfoMap);
+    if (import.meta.env.DEV) console.log("[RecentlyViewed] Sale info fetched:", saleInfoMap);
 
     container.innerHTML = items
       .map((item) => {
@@ -224,7 +224,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
   ): Promise<Record<string, any>> {
     try {
       const variationIds = items.map((item) => item.variationId);
-      console.log("[RecentlyViewed] Fetching sale info for:", variationIds);
+      if (import.meta.env.DEV) console.log("[RecentlyViewed] Fetching sale info for:", variationIds);
 
       const response = await fetch("/api/sale-info", {
         method: "POST",
@@ -234,10 +234,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
         body: JSON.stringify({ variationIds }),
       });
 
-      console.log(
-        "[RecentlyViewed] Sale info response status:",
-        response.status
-      );
+      if (import.meta.env.DEV) console.log("[RecentlyViewed] Sale info response status:", response.status);
 
       if (!response.ok) {
         console.error("Failed to fetch sale info for recently viewed");
@@ -246,7 +243,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
       }
 
       const data = await response.json();
-      console.log("[RecentlyViewed] Sale info data:", data);
+      if (import.meta.env.DEV) console.log("[RecentlyViewed] Sale info data:", data);
 
       if (!data.success || !data.saleInfo) {
         console.error("Invalid sale info response");
