@@ -354,7 +354,12 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
       <link
         rel="preload"
         as="image"
-        href={imageSet.avif || imageSet.webp || imageSet.jpeg}
+        imagesrcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+          product.image,
+          imageSet.avif ? "avif" : imageSet.webp ? "webp" : "jpeg",
+          { width: 800, height: 800, quality: 85 }
+        )}
+        imagesizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
         type={imageSet.avif ? "image/avif" : imageSet.webp ? "image/webp" : "image/jpeg"}
         fetchpriority="high"
         slot="head"
