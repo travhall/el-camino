@@ -6,6 +6,30 @@ import { checkBulkInventory } from "@/lib/square/inventory";
 import { calculateShippingRate, PICKUP_LOCATION } from "@/lib/config/shipping";
 import { siteConfig } from "@/lib/site-config";
 
+/**
+ * Normalize a phone number to E.164 format required by Square API.
+ * Handles US formats: (555) 555-5555, 555-555-5555, 5555555555, +15555555555
+ */
+function normalizePhoneE164(phone: string): string {
+  const cleaned = phone.trim();
+
+  // Already in E.164 — strip any internal non-digit chars after the +
+  if (cleaned.startsWith("+")) {
+    return "+" + cleaned.slice(1).replace(/\D/g, "");
+  }
+
+  const digits = cleaned.replace(/\D/g, "");
+
+  // US 10-digit number
+  if (digits.length === 10) return `+1${digits}`;
+
+  // US 11-digit number starting with country code 1
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+
+  // Fallback: prefix with + and hope for the best
+  return `+${digits}`;
+}
+
 interface ShippingAddress {
   name: string;
   email: string;
@@ -41,11 +65,8 @@ export const POST: APIRoute = async ({ request }) => {
       checkoutKey?: string;
     };
 
-    // Derive stable idempotency keys from the client-supplied key so Square
-    // deduplicates both calls if the client retries after a network error.
-    const baseKey = checkoutKey ?? crypto.randomUUID();
-    const orderIdempotencyKey = `${baseKey}-order`;
-    const linkIdempotencyKey = `${baseKey}-link`;
+    // Stable idempotency key — Square deduplicates retries with the same key.
+    const idempotencyKey = checkoutKey ?? crypto.randomUUID();
 
     if (!items?.length) {
       return new Response(JSON.stringify({ error: "No items provided" }), {
@@ -182,7 +203,7 @@ export const POST: APIRoute = async ({ request }) => {
           recipient: {
             displayName: shippingAddress.name,
             emailAddress: shippingAddress.email,
-            phoneNumber: shippingAddress.phone,
+            phoneNumber: normalizePhoneE164(shippingAddress.phone),
             address: {
               addressLine1: shippingAddress.street1,
               addressLine2: shippingAddress.street2 || undefined,
@@ -213,7 +234,7 @@ export const POST: APIRoute = async ({ request }) => {
           recipient: {
             displayName: pickupContact.name,
             emailAddress: pickupContact.email,
-            phoneNumber: pickupContact.phone,
+            phoneNumber: normalizePhoneE164(pickupContact.phone),
           },
           pickupAt: pickupTime.toISOString(),
           note: pickupNote,
@@ -221,47 +242,46 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // Create order with fulfillment and tax auto-application
-    const orderResponse = await squareClient.ordersApi.createOrder({
-      idempotencyKey: orderIdempotencyKey,
-      order: {
-        locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
-        lineItems,
-        fulfillments: fulfillments.length > 0 ? fulfillments : undefined,
-        pricingOptions: {
-          autoApplyTaxes: true, // Enable automatic tax calculation
-        },
-      },
-    });
-
-    if (!orderResponse.result.order?.id) {
-      throw new Error("Failed to create order");
-    }
-
-    const orderId = orderResponse.result.order.id;
+    // ── Create payment link (Square creates the order internally) ────────────
+    // Square appends ?checkoutId=&orderId=&transactionId= to redirectUrl on
+    // successful payment, so the confirmation page receives the real orderId
+    // without us needing to pre-create a separate order.
     const confirmationUrl = new URL("/order-confirmation", request.url);
-    confirmationUrl.searchParams.set("orderId", orderId);
     confirmationUrl.searchParams.set("fulfillmentMethod", fulfillmentMethod);
 
-    // Create payment link referencing the existing order by object (legacy SDK requires full order object;
-    // Square links to the existing order when order.id is present rather than creating a new one)
-    const linkResponse = await squareClient.checkoutApi.createPaymentLink({
-      idempotencyKey: linkIdempotencyKey,
-      order: orderResponse.result.order,
-      checkoutOptions: {
-        redirectUrl: confirmationUrl.toString(),
-        // We collect address/contact details ourselves — don't ask again at Square checkout
-        askForShippingAddress: false,
-        // Enable coupon support for Square marketing coupons
-        enableCoupon: true,
-        // Support email for customer inquiries
-        merchantSupportEmail: siteConfig.contact.support,
-      },
-    });
+    let linkResponse: Awaited<ReturnType<typeof squareClient.checkoutApi.createPaymentLink>>;
+    try {
+      linkResponse = await squareClient.checkoutApi.createPaymentLink({
+        idempotencyKey,
+        order: {
+          locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
+          lineItems,
+          fulfillments: fulfillments.length > 0 ? fulfillments : undefined,
+          pricingOptions: {
+            autoApplyTaxes: true,
+          },
+        },
+        checkoutOptions: {
+          redirectUrl: confirmationUrl.toString(),
+          askForShippingAddress: false,
+          enableCoupon: true,
+          merchantSupportEmail: siteConfig.contact.support,
+        },
+      });
+    } catch (linkError) {
+      const e = linkError as any;
+      console.error("[create-checkout] checkoutApi.createPaymentLink FAILED");
+      console.error("  statusCode:", e?.statusCode);
+      console.error("  errors:", JSON.stringify(e?.errors ?? e?.message, null, 2));
+      throw linkError;
+    }
 
     if (!linkResponse.result.paymentLink?.url) {
       throw new Error("Failed to create payment link");
     }
+
+    const orderId = linkResponse.result.paymentLink.orderId ?? "";
+    console.log("[create-checkout] Payment link created:", linkResponse.result.paymentLink.url, "orderId:", orderId);
 
     return new Response(
       JSON.stringify({
@@ -276,6 +296,19 @@ export const POST: APIRoute = async ({ request }) => {
     );
   } catch (error) {
     console.error("Checkout error:", error);
+
+    // Log Square's detailed error array when available (ApiError from square/legacy)
+    const apiErr = error as any;
+    if (apiErr?.errors) {
+      console.error(
+        "Square API errors:",
+        JSON.stringify(apiErr.errors, null, 2)
+      );
+    }
+    if (apiErr?.statusCode) {
+      console.error("Square status code:", apiErr.statusCode);
+    }
+
     return new Response(
       JSON.stringify({
         success: false,

@@ -47,7 +47,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
       (function () {
         const storedTheme = localStorage.getItem("theme");
         const systemPrefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)"
+          "(prefers-color-scheme: dark)",
         ).matches;
         const theme = storedTheme ?? (systemPrefersDark ? "dark" : "light");
         document.documentElement.classList.add(theme);
@@ -152,7 +152,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
       crossorigin
     />
     <link rel="preconnect" href="https://connect.squareup.com" crossorigin />
-    
+
     <!-- Medium-priority: DNS prefetch only -->
     <link rel="dns-prefetch" href="https://squarecdn.com" />
 
@@ -191,7 +191,10 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     <!-- Allow pages to inject custom head content -->
     <slot name="head" />
 
-    <script is:inline define:vars={{ squareEnv: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT }}>
+    <script
+      is:inline
+      define:vars={{ squareEnv: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT }}
+    >
       // Only load Square when needed (cart/product pages)
       if (
         window.location.pathname.includes("/cart") ||
@@ -203,9 +206,10 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           if (!window.squareLoaded && !window.Square) {
             window.squareLoaded = true;
             const script = document.createElement("script");
-            script.src = squareEnv === "production"
-              ? "https://web.squarecdn.com/v1/square.js"
-              : "https://sandbox.web.squarecdn.com/v1/square.js";
+            script.src =
+              squareEnv === "production"
+                ? "https://web.squarecdn.com/v1/square.js"
+                : "https://sandbox.web.squarecdn.com/v1/square.js";
             script.async = true;
             document.head.appendChild(script);
             return new Promise((resolve) => {
@@ -215,6 +219,24 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           return Promise.resolve();
         };
       }
+    </script>
+
+    <!-- Font cache warmer: re-load fonts into active memory after each View Transition.
+         font-display:swap ensures they render when ready, but proactively warming
+         the cache prevents a visible swap flash on the *next* navigation. -->
+    <script is:inline>
+      document.addEventListener("astro:page-load", function () {
+        if (document.fonts && document.fonts.load) {
+          Promise.all([
+            document.fonts.load("700 48px Alumni"),
+            document.fonts.load("600 24px Alumni"),
+            document.fonts.load("400 16px Cabin"),
+            document.fonts.load("500 16px Cabin"),
+          ]).catch(function () {
+            // Ignore — fonts will render via font-display:swap fallback
+          });
+        }
+      });
     </script>
 
     <!-- Clean news parameters when outside news section -->
@@ -245,7 +267,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
   >
     <Header activeCategory={activeCategory} />
     <main
-      class="bg-(--surface-primary) text-(--content-body) border-b-4 border-(--border-secondary) z-10 relative overflow-x-hidden"
+      class="bg-(--surface-primary) text-(--content-body) border-b-4 border-(--border-secondary) z-10 relative overflow-x-clip w-full max-w-full"
       id="main-content"
       tabindex="-1"
     >
@@ -330,7 +352,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           // Set reporting endpoint if available
           if (import.meta.env.MONITORING_ENDPOINT) {
             performanceManager.setReportingEndpoint(
-              import.meta.env.MONITORING_ENDPOINT
+              import.meta.env.MONITORING_ENDPOINT,
             );
           }
 
@@ -363,7 +385,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
                   cls: metrics.coreWebVitals.cls,
                   inp: metrics.coreWebVitals.inp,
                   url: window.location.pathname,
-                })
+                }),
               );
             }
           }, 10000);
@@ -371,7 +393,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
         .catch((error) => {
           console.warn(
             "[Layout] Performance monitoring failed to load:",
-            error
+            error,
           );
         });
 
@@ -384,7 +406,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           import("../lib/image/enhanced-optimizer").then(
             ({ EnhancedImageOptimizer }) => {
               EnhancedImageOptimizer.detectFormatSupport();
-            }
+            },
           );
         }
 
@@ -392,7 +414,7 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
           import("../lib/performance/mobileOptimization").then(
             ({ initMobileOptimization }) => {
               initMobileOptimization();
-            }
+            },
           );
         }
 

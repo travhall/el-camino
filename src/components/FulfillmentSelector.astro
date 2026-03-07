@@ -30,11 +30,35 @@ const progressPct = Math.min(
 );
 ---
 
-<div data-component="fulfillment-selector" class="space-y-4 p-4">
+<div data-component="fulfillment-selector" class="space-y-4 pt-4">
   <fieldset>
     <legend class="text-sm font-semibold text-(--content-heading) mb-3">
       Choose Fulfillment Method <span class="text-red-500">*</span>
     </legend>
+
+    <!-- Summary chip: shown after collapse (mobile), hidden on desktop -->
+    <div
+      id="fulfillment-summary-chip"
+      class="hidden mb-3 items-center justify-between border border-(--border-primary) bg-(--surface-primary) px-4 py-3"
+      role="status"
+      aria-live="polite"
+    >
+      <span
+        id="fulfillment-summary-label"
+        class="text-sm font-semibold text-(--content-heading)"
+      >
+        📦 Ship to Me
+      </span>
+      <button
+        id="fulfillment-expand-btn"
+        type="button"
+        class="text-xs text-(--content-emphasis) underline underline-offset-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+        aria-expanded="false"
+        aria-controls="fulfillment-form-panel"
+      >
+        Edit
+      </button>
+    </div>
 
     <!-- Hidden radio inputs -->
     <input
@@ -52,56 +76,65 @@ const progressPct = Math.min(
       class="sr-only"
     />
 
-    <!-- Tab row -->
-    <div class="grid grid-cols-2 gap-2 mb-4">
+    <!-- Tab row — segmented control track -->
+    <div
+      id="fulfillment-tab-row"
+      class="grid grid-cols-2 gap-1 p-1 bg-(--surface-secondary) mb-4"
+    >
       <button
         type="button"
         data-tab="shipping"
-        class="tab-btn flex flex-row items-center justify-center gap-2 rounded-lg border-2 border-(--border-primary) bg-(--surface-primary) px-4 py-3 text-sm font-medium text-(--content-body) transition-all hover:border-(--content-emphasis) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+        class="tab-btn flex flex-row items-center justify-center gap-2 rounded px-4 py-3 text-sm font-semibold text-(--content-meta) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
         aria-pressed="false"
       >
         <span class="text-lg leading-none">📦</span>
         <span>Ship to Me</span>
-        <span
-          class="text-xs font-normal text-(--content-meta)"
-          data-shipping-cost-label>{shippingLabel}</span
+        <span class="text-xs font-normal opacity-75" data-shipping-cost-label
+          >{shippingLabel}</span
         >
       </button>
 
       <button
         type="button"
         data-tab="pickup"
-        class="tab-btn flex flex-row items-center justify-center gap-2 rounded-lg border-2 border-(--border-primary) bg-(--surface-primary) px-4 py-3 text-sm font-medium text-(--content-body) transition-all hover:border-(--content-emphasis) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+        class="tab-btn flex flex-row items-center justify-center gap-2 rounded px-4 py-3 text-sm font-semibold text-(--content-meta) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
         aria-pressed="false"
       >
         <span class="text-lg leading-none">🏪</span>
         <span>Store Pickup</span>
-        <span class="text-xs font-normal text-(--content-meta)">FREE</span>
+        <span class="text-xs font-normal opacity-75">FREE</span>
       </button>
     </div>
 
     <!-- Free shipping progress tracker -->
     <div
       id="free-shipping-tracker"
-      class={`mb-4 rounded-md bg-(--surface-secondary) px-3 py-2 text-xs text-(--content-meta)${remainingForFree <= 0 ? " hidden" : ""}`}
+      class={`mb-4  px-4 py-3 text-sm font-medium text-(--content-body)${remainingForFree <= 0 ? " hidden" : ""}`}
+      style="background-color: var(--free-shipping-bar-bg);"
     >
       Add{" "}
-      <span id="free-shipping-remaining">{formatMoney(remainingForFree)}</span>{
-        " "
-      }
+      <span
+        id="free-shipping-remaining"
+        class="font-bold text-(--content-heading)"
+        >{formatMoney(remainingForFree)}</span
+      >{" "}
       more for free shipping!
-      <div class="mt-1.5 h-1.5 w-full rounded-full bg-(--border-primary)">
+      <div
+        class="mt-2 h-3 w-full rounded-full"
+        style="background-color: var(--free-shipping-bar-track);"
+      >
         <div
           id="free-shipping-progress"
-          class="h-1.5 rounded-full bg-(--content-emphasis) transition-all"
-          style={`width: ${progressPct}%`}
+          class="h-3 rounded-full transition-all"
+          style={`width: ${progressPct}%; background-color: var(--free-shipping-bar);`}
         >
         </div>
       </div>
     </div>
     <div
       id="free-shipping-earned"
-      class={`mb-4 rounded-md bg-(--surface-secondary) px-3 py-2 text-xs text-(--content-emphasis) font-medium${subtotalCents < FREE_SHIPPING_THRESHOLD ? " hidden" : ""}`}
+      class={`mb-4  px-4 py-3 text-sm font-medium text-(--content-heading)${subtotalCents < FREE_SHIPPING_THRESHOLD ? " hidden" : ""}`}
+      style="background-color: var(--free-shipping-bar-bg);"
     >
       🎉 You've earned free shipping!
     </div>
@@ -109,7 +142,7 @@ const progressPct = Math.min(
     <!-- Form panel (shown below tabs, full width) -->
     <div
       id="fulfillment-form-panel"
-      class="hidden space-y-4 rounded-lg border border-(--border-primary) bg-(--surface-secondary) p-4"
+      class="hidden space-y-4 border border-(--border-primary) bg-(--surface-secondary) p-4"
     >
       <!-- Shipping form -->
       <div data-shipping-form class="hidden space-y-3">
@@ -131,7 +164,7 @@ const progressPct = Math.min(
               name="shipping-first-name"
               required
               autocomplete="given-name"
-              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
               placeholder="First name"
             />
           </div>
@@ -148,7 +181,7 @@ const progressPct = Math.min(
               name="shipping-last-name"
               required
               autocomplete="family-name"
-              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
               placeholder="Last name"
             />
           </div>
@@ -168,7 +201,7 @@ const progressPct = Math.min(
               name="shipping-email"
               required
               autocomplete="email"
-              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
               placeholder="you@example.com"
             />
           </div>
@@ -185,7 +218,7 @@ const progressPct = Math.min(
               name="shipping-phone"
               required
               autocomplete="tel"
-              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
               placeholder="(555) 555-5555"
             />
           </div>
@@ -204,7 +237,7 @@ const progressPct = Math.min(
             name="shipping-address"
             required
             autocomplete="street-address"
-            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
             placeholder="123 Main St"
           />
         </div>
@@ -221,7 +254,7 @@ const progressPct = Math.min(
             id="shipping-address2"
             name="shipping-address2"
             autocomplete="address-line2"
-            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
             placeholder="Apt 4B"
           />
         </div>
@@ -240,7 +273,7 @@ const progressPct = Math.min(
               name="shipping-city"
               required
               autocomplete="address-level2"
-              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
               placeholder="City"
             />
           </div>
@@ -256,7 +289,7 @@ const progressPct = Math.min(
               name="shipping-state"
               required
               autocomplete="address-level1"
-              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-2 py-2 text-sm text-(--content-body) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-2 py-2 text-sm text-(--content-body) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
             >
               <option value="">—</option>
               <option value="AL">AL</option>
@@ -326,7 +359,7 @@ const progressPct = Math.min(
               autocomplete="postal-code"
               inputmode="numeric"
               maxlength="10"
-              class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
               placeholder="54901"
             />
           </div>
@@ -343,7 +376,7 @@ const progressPct = Math.min(
             id="shipping-instructions"
             name="shipping-instructions"
             rows="2"
-            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis) resize-none"
+            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis) resize-none"
             placeholder="Leave at door, ring bell, etc."></textarea>
         </div>
       </div>
@@ -371,7 +404,7 @@ const progressPct = Math.min(
             name="pickup-name"
             required
             autocomplete="name"
-            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
             placeholder="Your name"
           />
         </div>
@@ -389,7 +422,7 @@ const progressPct = Math.min(
             name="pickup-email"
             required
             autocomplete="email"
-            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
             placeholder="you@example.com"
           />
         </div>
@@ -407,7 +440,7 @@ const progressPct = Math.min(
             name="pickup-phone"
             required
             autocomplete="tel"
-            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
+            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
             placeholder="(555) 555-5555"
           />
         </div>
@@ -423,10 +456,21 @@ const progressPct = Math.min(
             id="pickup-notes"
             name="pickup-notes"
             rows="2"
-            class="w-full rounded-md border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis) resize-none"
+            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis) resize-none"
             placeholder="Any special instructions for pickup"></textarea>
         </div>
       </div>
+
+      <!-- Save & close button: shown after a method is selected, on all screen sizes -->
+      <!-- Validates required fields before collapsing — prevents false "confirmed" state -->
+      <button
+        id="fulfillment-done-btn"
+        type="button"
+        class="hidden w-full mt-3 py-2 text-sm font-semibold text-(--content-meta) border border-(--border-primary) rounded-sm hover:bg-(--surface-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis) transition-colors"
+        aria-label="Save fulfillment details and collapse form"
+      >
+        Save & Close ↑
+      </button>
     </div>
   </fieldset>
 </div>
@@ -442,6 +486,7 @@ const progressPct = Math.min(
       updateOrderSummaryOnFulfillmentChange?: (
         method: string,
         formData: Record<string, string>,
+        formIsValid: boolean,
       ) => void;
     }
   }
@@ -467,6 +512,110 @@ const progressPct = Math.min(
     const pickupForm =
       selector.querySelector<HTMLElement>("[data-pickup-form]");
     const tabs = selector.querySelectorAll<HTMLButtonElement>("[data-tab]");
+
+    // Collapse / expand elements
+    const summaryChip = selector.querySelector<HTMLElement>(
+      "#fulfillment-summary-chip",
+    );
+    const summaryLabel = selector.querySelector<HTMLElement>(
+      "#fulfillment-summary-label",
+    );
+    const expandBtn = selector.querySelector<HTMLButtonElement>(
+      "#fulfillment-expand-btn",
+    );
+    const doneBtn = selector.querySelector<HTMLButtonElement>(
+      "#fulfillment-done-btn",
+    );
+    const tabRow = selector.querySelector<HTMLElement>("#fulfillment-tab-row");
+
+    function getSummaryLabel(method: "shipping" | "pickup"): string {
+      if (method === "shipping") {
+        const costLabel = selector?.querySelector<HTMLElement>(
+          "[data-shipping-cost-label]",
+        );
+        const cost = costLabel?.textContent?.trim() || "$5.99";
+        return `📦 Ship to Me — ${cost}`;
+      }
+      return "🏪 Store Pickup — FREE";
+    }
+
+    function collapseForm(method: "shipping" | "pickup") {
+      formPanel?.classList.add("hidden");
+      formPanel?.setAttribute("aria-hidden", "true");
+      tabRow?.classList.add("hidden");
+      doneBtn?.classList.add("hidden");
+      if (summaryLabel) summaryLabel.textContent = getSummaryLabel(method);
+      summaryChip?.classList.remove("hidden");
+      summaryChip?.classList.add("flex");
+      expandBtn?.setAttribute("aria-expanded", "false");
+
+      // Notify cart that the form has been saved and is valid — enable the CTA.
+      // collapseForm is only reached after validation passes, so formIsValid is always true here.
+      if (typeof window.updateOrderSummaryOnFulfillmentChange === "function") {
+        window.updateOrderSummaryOnFulfillmentChange(
+          method,
+          getFormData(method),
+          true,
+        );
+      }
+    }
+
+    function expandForm() {
+      formPanel?.classList.remove("hidden");
+      formPanel?.removeAttribute("aria-hidden");
+      tabRow?.classList.remove("hidden");
+      summaryChip?.classList.add("hidden");
+      summaryChip?.classList.remove("flex");
+      expandBtn?.setAttribute("aria-expanded", "true");
+      // Show done button again once form is re-opened
+      const checkedRadio = selector?.querySelector<HTMLInputElement>(
+        'input[name="fulfillment"]:checked',
+      );
+      if (checkedRadio) doneBtn?.classList.remove("hidden");
+    }
+
+    // Wire up Done button — validates all required fields before collapsing.
+    // If any required field is empty/invalid, browser validation UI fires on the
+    // first offending field and the form stays open. Only collapses when valid.
+    doneBtn?.addEventListener("click", () => {
+      const checkedRadio = selector?.querySelector<HTMLInputElement>(
+        'input[name="fulfillment"]:checked',
+      );
+      if (!checkedRadio) return;
+
+      const method = checkedRadio.value as "shipping" | "pickup";
+      const activeForm = method === "shipping" ? shippingForm : pickupForm;
+
+      // Find all required inputs in the active sub-form
+      const requiredFields = activeForm?.querySelectorAll<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >("[required]");
+
+      // Find the first invalid field (if any)
+      let firstInvalid: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null =
+        null;
+      requiredFields?.forEach((field) => {
+        if (!field.validity.valid && !firstInvalid) firstInvalid = field;
+      });
+
+      if (firstInvalid) {
+        // Show native validation tooltip on the first invalid field
+        (firstInvalid as HTMLInputElement).reportValidity();
+        // Scroll it into view so the user can see the error on small screens
+        (firstInvalid as HTMLInputElement).scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        return; // Do NOT collapse
+      }
+
+      // All required fields are valid — save and collapse
+      saveForm();
+      collapseForm(method);
+    });
+
+    // Wire up Edit button in summary chip
+    expandBtn?.addEventListener("click", expandForm);
 
     function getFormData(
       method: "shipping" | "pickup",
@@ -494,6 +643,37 @@ const progressPct = Math.min(
       sessionStorage.setItem("fulfillment-form", JSON.stringify(data));
     }
 
+    // Returns true only if every [required] field in the active form is filled & valid.
+    function checkFormValidity(method: "shipping" | "pickup"): boolean {
+      const form = method === "shipping" ? shippingForm : pickupForm;
+      const requiredFields = form?.querySelectorAll<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >("[required]");
+      if (!requiredFields || requiredFields.length === 0) return false;
+      let allValid = true;
+      requiredFields.forEach((field) => {
+        if (!field.validity.valid) allValid = false;
+      });
+      return allValid;
+    }
+
+    // Calls the cart's global hook with the current validity state so the CTA
+    // can be enabled/disabled without the cart needing to query the form directly.
+    function notifyValidity() {
+      const checkedRadio = selector?.querySelector<HTMLInputElement>(
+        'input[name="fulfillment"]:checked',
+      );
+      if (!checkedRadio) return;
+      const m = checkedRadio.value as "shipping" | "pickup";
+      if (typeof window.updateOrderSummaryOnFulfillmentChange === "function") {
+        window.updateOrderSummaryOnFulfillmentChange(
+          m,
+          getFormData(m),
+          checkFormValidity(m),
+        );
+      }
+    }
+
     function restoreForm() {
       const raw = sessionStorage.getItem("fulfillment-form");
       if (!raw) return;
@@ -510,6 +690,17 @@ const progressPct = Math.min(
             .forEach((el) => {
               if (el.id && data[el.id] !== undefined) el.value = data[el.id];
             });
+
+          // If all required fields are filled, restore the collapsed chip state
+          // so the user doesn't have to re-close the form after every page load.
+          const requiredFields = form?.querySelectorAll<
+            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          >("[required]");
+          let allValid = requiredFields && requiredFields.length > 0;
+          requiredFields?.forEach((field) => {
+            if (!field.validity.valid) allValid = false;
+          });
+          if (allValid) collapseForm(method);
         }
       } catch {
         sessionStorage.removeItem("fulfillment-form");
@@ -601,28 +792,33 @@ const progressPct = Math.min(
         const isActive = tab.dataset.tab === method;
         tab.setAttribute("aria-pressed", String(isActive));
         if (isActive) {
-          tab.classList.remove(
-            "border-(--border-primary)",
-            "bg-(--surface-primary)",
-          );
           tab.classList.add(
-            "border-(--content-emphasis)",
-            "bg-(--surface-secondary)",
+            "bg-(--ui-button-surface)",
+            "text-(--ui-button-text)",
           );
+          tab.classList.remove("text-(--content-meta)");
         } else {
           tab.classList.remove(
-            "border-(--content-emphasis)",
-            "bg-(--surface-secondary)",
+            "bg-(--ui-button-surface)",
+            "text-(--ui-button-text)",
           );
-          tab.classList.add(
-            "border-(--border-primary)",
-            "bg-(--surface-primary)",
-          );
+          tab.classList.add("text-(--content-meta)");
         }
       });
 
-      // Show form panel
+      // Show form panel (ensure chip is fully hidden when form is open)
       formPanel?.classList.remove("hidden");
+      formPanel?.removeAttribute("aria-hidden");
+      summaryChip?.classList.add("hidden");
+      summaryChip?.classList.remove("flex"); // prevent hidden + flex conflict
+
+      // Show the "Done" collapse button on mobile (hidden by default until a tab is clicked)
+      doneBtn?.classList.remove("hidden");
+
+      // If summary chip was visible before, update its label for the newly chosen method
+      if (summaryLabel && summaryChip) {
+        summaryLabel.textContent = getSummaryLabel(method);
+      }
 
       // Show correct form
       if (method === "shipping") {
@@ -640,9 +836,12 @@ const progressPct = Math.min(
         triggerUpdate &&
         typeof window.updateOrderSummaryOnFulfillmentChange === "function"
       ) {
+        // Pass current validity — switching tabs resets the effective valid state
+        // (the new form may be empty), so the cart can disable the CTA immediately.
         window.updateOrderSummaryOnFulfillmentChange(
           method,
           getFormData(method),
+          checkFormValidity(method),
         );
       }
     }
@@ -656,14 +855,15 @@ const progressPct = Math.min(
       });
     });
 
-    // Save on form field changes
+    // Save on form field changes and notify the cart of the current validity state
+    // so the CTA can be enabled as soon as all required fields are filled.
     selector
       .querySelectorAll<
         HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
       >("input, select, textarea")
       .forEach((el) => {
-        el.addEventListener("change", saveForm);
-        el.addEventListener("input", saveForm);
+        el.addEventListener("change", () => { saveForm(); notifyValidity(); });
+        el.addEventListener("input", () => { saveForm(); notifyValidity(); });
       });
 
     // Sync free shipping tracker with live cart subtotal

@@ -6,13 +6,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 ---
 
 <Layout title="Your Shopping Cart | El Camino">
-  <section class="p-1 pb-20 md:pb-0">
-    <h1
-      class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading) p-3 pb-0 -mb-4"
-    >
-      Cart
-    </h1>
-
+  <section class="p-1 md:pb-0">
     <!-- Loading/Content Container -->
     <div
       id="cart-loading"
@@ -35,33 +29,50 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     </div>
 
     <!-- Cart Content Grid -->
-    <div id="cart-content" class="hidden grid md:grid-cols-3 gap-1 items-start">
-      <!-- Cart Items Column -->
-      <div class="md:col-span-2 space-y-1 grid pb-4 mt-4">
-        <div class="flex justify-end px-4">
-          <h2 class="sr-only">Cart Items</h2>
-          <Button
-            id="clear-cart-button"
-            variant="ghost"
-            size="sm"
-            classes="justify-self-end"
+    <div id="cart-content" class="hidden grid md:grid-cols-3 gap-1">
+      <!-- Cart Items + Fulfillment Column -->
+      <div class="md:col-span-2 flex flex-col gap-1 pb-4">
+        <!-- Header: always first (order-1 on both mobile and desktop) -->
+        <div class="order-1 flex items-end justify-between px-3 pt-1 pb-3">
+          <h1
+            class="font-display font-black text-6xl lg:text-7xl leading-[0.8] text-(--content-heading)"
           >
+            Cart
+          </h1>
+          <Button id="clear-cart-button" variant="ghost" size="sm">
             Clear Cart
           </Button>
         </div>
-        <div id="cart-items-list" class="grid gap-1"></div>
-        <!-- Fulfillment Selector -->
-        <FulfillmentSelector subtotal={0} />
+
+        <!-- FulfillmentSelector: always 2nd (below heading), on both mobile and desktop -->
+        <div class="order-2">
+          <FulfillmentSelector subtotal={0} />
+        </div>
+
+        <!-- Items list: always 3rd (below fulfillment), on both mobile and desktop -->
+        <div id="cart-items-list" class="order-3 grid gap-1"></div>
+
+        <!-- Mobile-only: Continue Shopping (right col hidden on mobile) -->
+        <div class="order-4 md:hidden px-3 pt-2 pb-1">
+          <a
+            href="/shop/all"
+            class="text-sm text-(--content-meta) underline underline-offset-2 hover:text-(--content-body) transition-colors"
+          >
+            ← Continue Shopping
+          </a>
+        </div>
       </div>
 
-      <!-- Order Summary Column (Static) -->
-      <div class="md:col-span-1 space-y-1">
-        <!-- Order Summary -->
-        <div class="bg-(--surface-secondary) p-4 sticky top-4">
+      <!-- Order Summary + Checkout Column (desktop only — sticky bar handles mobile) -->
+      <div
+        class="hidden md:block md:col-span-1 md:sticky md:top-18 space-y-1 self-start"
+      >
+        <!-- Order Summary Details -->
+        <div class="bg-(--surface-secondary) p-4">
           <h2 class="font-display text-3xl mb-2 text-(--content-heading)">
             Order Summary
           </h2>
-          <div class="order-summary space-y-2 mb-4">
+          <div class="order-summary space-y-2">
             <div class="flex justify-between text-(--content-body)">
               <span>Subtotal</span>
               <span
@@ -92,9 +103,13 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
               >
             </div>
           </div>
+        </div>
+
+        <!-- Checkout actions -->
+        <div class="bg-(--surface-secondary) p-4 space-y-2">
           <div
             id="summary-calculating"
-            class="hidden flex items-center gap-2 text-sm text-(--content-meta) mb-3"
+            class="hidden flex items-center gap-2 text-sm text-(--content-meta)"
           >
             <div
               class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-(--content-heading)"
@@ -102,29 +117,27 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             </div>
             <span>Recalculating...</span>
           </div>
-          <div class="space-y-2">
-            <Button
-              id="checkout-button"
-              variant="primary"
-              classes="w-full"
-              disabled={true}
-            >
-              Continue to Payment
-            </Button>
-            <p
-              id="checkout-hint"
-              class="text-xs text-center text-(--content-meta)"
-            >
-              Select a shipping method to continue
-            </p>
-            <Button
-              href="/shop/all"
-              variant="outline"
-              classes="w-full text-center"
-            >
-              Continue Shopping
-            </Button>
-          </div>
+          <Button
+            id="checkout-button"
+            variant="primary"
+            classes="w-full"
+            disabled={true}
+          >
+            Continue to Payment
+          </Button>
+          <p
+            id="checkout-hint"
+            class="text-xs text-center text-(--content-meta)"
+          >
+            Select a Fulfillment Method to Checkout
+          </p>
+          <Button
+            href="/shop/all"
+            variant="outline"
+            classes="w-full text-center"
+          >
+            Continue Shopping
+          </Button>
         </div>
       </div>
     </div>
@@ -132,24 +145,56 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     <!-- Mobile Sticky Checkout Bar -->
     <div
       id="mobile-checkout-bar"
-      class="hidden fixed bottom-0 left-0 right-0 bg-(--surface-secondary) border-t border-(--border-primary) p-3 md:hidden z-40"
+      class="hidden fixed bottom-0 left-0 right-0 bg-(--surface-secondary) border-t-4 border-(--border-secondary) md:hidden z-40"
     >
-      <div class="flex items-center gap-3">
-        <div class="shrink-0">
-          <div class="text-xs text-(--content-meta)">Total</div>
-          <div
-            class="font-display font-bold text-2xl text-(--content-heading)"
-            id="mobile-total"
-          >
-            $0.00
+      <div class="px-3 pt-2 pb-1">
+        <!-- Row 1: Subtotal + Shipping indicator -->
+        <div class="flex justify-between items-center text-sm mb-2">
+          <div class="text-(--content-body)">
+            <span class="text-xs text-(--content-meta)">Subtotal</span>
+            <span
+              class="font-semibold ml-1 text-(--content-body)"
+              id="mobile-subtotal">$0.00</span
+            >
+          </div>
+          <div id="mobile-shipping-indicator" class="text-right">
+            <button
+              id="mobile-shipping-tap"
+              type="button"
+              class="text-(--content-emphasis) underline underline-offset-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+            >
+              Choose shipping →
+            </button>
           </div>
         </div>
-        <button
-          id="mobile-checkout-button"
-          class="font-sans font-semibold text-sm text-center py-2 px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all grow"
+
+        <!-- Row 2: Total + CTA -->
+        <div class="flex items-center gap-3">
+          <div class="shrink-0">
+            <div class="text-xs text-(--content-meta)">Total</div>
+            <div
+              class="font-display font-bold text-2xl text-(--content-heading)"
+              id="mobile-total"
+            >
+              $0.00
+            </div>
+          </div>
+          <button
+            id="mobile-checkout-button"
+            disabled
+            class="font-sans font-semibold text-sm text-center py-2 px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all grow opacity-50 cursor-not-allowed"
+          >
+            Continue to Payment
+          </button>
+        </div>
+
+        <!-- Hint text (hidden once fulfillment selected) -->
+        <p
+          id="mobile-checkout-hint"
+          class="text-xs text-center text-(--content-meta) mt-1"
         >
-          Continue to Payment
-        </button>
+          Select a fulfillment method above
+        </p>
       </div>
     </div>
 
@@ -184,6 +229,9 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
   let isUpdating = false;
   let inventoryData: Record<string, number> = {};
   let summaryUpdateTimeout: number;
+  // Tracks whether the fulfillment form is fully valid.
+  // The CTA is only enabled when this is true — selecting a method alone is not enough.
+  let fulfillmentFormIsValid = false;
 
   /** Escape HTML special characters to prevent XSS in innerHTML templates */
   function sanitize(str: string): string {
@@ -201,6 +249,35 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       overlay.classList.toggle("hidden", !show);
       overlay.classList.toggle("flex", show);
     }
+  }
+
+  // Central function that enables/disables both CTAs based on fulfillment form validity.
+  // All code paths that affect the CTA state should go through here.
+  function setFulfillmentValid(isValid: boolean): void {
+    fulfillmentFormIsValid = isValid;
+
+    const checkoutBtn = document.getElementById(
+      "checkout-button",
+    ) as HTMLButtonElement | null;
+    const mobileBtn = document.getElementById(
+      "mobile-checkout-button",
+    ) as HTMLButtonElement | null;
+    const hint = document.getElementById("checkout-hint");
+    const mobileHint = document.getElementById("mobile-checkout-hint");
+
+    if (checkoutBtn) {
+      checkoutBtn.disabled = !isValid;
+      checkoutBtn.classList.toggle("opacity-50", !isValid);
+      checkoutBtn.classList.toggle("cursor-not-allowed", !isValid);
+    }
+    if (hint) hint.classList.toggle("hidden", isValid);
+
+    if (mobileBtn) {
+      mobileBtn.disabled = !isValid;
+      mobileBtn.classList.toggle("opacity-50", !isValid);
+      mobileBtn.classList.toggle("cursor-not-allowed", !isValid);
+    }
+    if (mobileHint) mobileHint.classList.toggle("hidden", isValid);
   }
 
   function showNotification(
@@ -297,7 +374,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     const safeItemKey = sanitize(itemKey);
 
     return `
-      <div class="bg-(--surface-secondary) mx-4 p-4 flex gap-4 self-start" data-item-container="${safeItemKey}">
+      <div class="bg-(--surface-secondary) p-4 flex gap-4 self-start" data-item-container="${safeItemKey}">
         <div class="shrink-0 relative w-16 h-16 lg:w-24 lg:h-24">
           <!-- Loading placeholder -->
           <div
@@ -521,7 +598,11 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         }
 
         // Validate required pickup fields explicitly (mirrors FulfillmentSelector.setRequiredFields)
-        const pickupRequiredIds = ["pickup-name", "pickup-email", "pickup-phone"];
+        const pickupRequiredIds = [
+          "pickup-name",
+          "pickup-email",
+          "pickup-phone",
+        ];
         let isValid = true;
         pickupRequiredIds.forEach((id) => {
           const input = form.querySelector(`#${id}`) as HTMLInputElement | null;
@@ -627,9 +708,13 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     }
   }
 
-  function updateMobileBar(total?: number): void {
+  function updateMobileBar(total?: number, shippingCost?: number): void {
     const bar = document.getElementById("mobile-checkout-bar");
+    const mobileSubtotal = document.getElementById("mobile-subtotal");
     const mobileTotal = document.getElementById("mobile-total");
+    const mobileBtn = document.getElementById(
+      "mobile-checkout-button",
+    ) as HTMLButtonElement;
     const items = cart.getItems();
 
     if (!bar) return;
@@ -641,11 +726,59 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
     bar.classList.remove("hidden");
 
+    // Update subtotal (always the cart sum before tax/shipping)
+    if (mobileSubtotal) {
+      mobileSubtotal.textContent = MoneyUtils.format(
+        MoneyUtils.fromFloat(cart.getTotal()),
+      );
+    }
+
+    // Update total (with tax + shipping when available)
     if (mobileTotal) {
       const displayTotal = total ?? cart.getTotal();
       mobileTotal.textContent = MoneyUtils.format(
         MoneyUtils.fromFloat(displayTotal),
       );
+    }
+
+    // Keep button state in sync with form validity (not just method selection).
+    // fulfillmentFormIsValid is the authoritative source — set by setFulfillmentValid().
+    if (mobileBtn) {
+      mobileBtn.disabled = !fulfillmentFormIsValid;
+      mobileBtn.classList.toggle("opacity-50", !fulfillmentFormIsValid);
+      mobileBtn.classList.toggle("cursor-not-allowed", !fulfillmentFormIsValid);
+    }
+
+    // Update shipping indicator
+    const fulfillmentSelected = !!document.querySelector(
+      'input[name="fulfillment"]:checked',
+    );
+    const shippingIndicator = document.getElementById(
+      "mobile-shipping-indicator",
+    );
+    if (shippingIndicator) {
+      if (fulfillmentSelected && shippingCost !== undefined) {
+        const shippingDisplay =
+          shippingCost === 0
+            ? "FREE"
+            : MoneyUtils.format(MoneyUtils.fromFloat(shippingCost));
+        shippingIndicator.innerHTML = `<span class="text-xs text-(--content-meta)">Shipping: <strong class="text-(--content-body)">${shippingDisplay}</strong></span>`;
+      } else {
+        shippingIndicator.innerHTML = `<button id="mobile-shipping-tap" type="button" class="text-xs text-(--content-emphasis) underline underline-offset-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)">Choose shipping →</button>`;
+        document
+          .getElementById("mobile-shipping-tap")
+          ?.addEventListener("click", () => {
+            document
+              .querySelector('[data-component="fulfillment-selector"]')
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+      }
+    }
+
+    // Show/hide checkout hint based on form validity (not just method selection)
+    const mobileHint = document.getElementById("mobile-checkout-hint");
+    if (mobileHint) {
+      mobileHint.classList.toggle("hidden", fulfillmentFormIsValid);
     }
   }
 
@@ -776,9 +909,9 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         }
 
         const inventory = (() => {
-          const cartItem = cart.getItems().find(
-            (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
-          );
+          const cartItem = cart
+            .getItems()
+            .find((i: CartItem) => `${i.id}:${i.variationId}` === itemKey);
           return cartItem ? (inventoryData[cartItem.variationId] ?? 999) : 999;
         })();
         if (newQuantity > inventory) {
@@ -944,7 +1077,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           MoneyUtils.fromFloat(orderTotal),
         );
 
-      updateMobileBar(orderTotal);
+      updateMobileBar(orderTotal, shippingCost);
 
       if (typeof (window as any).updateFreeShippingTracker === "function") {
         (window as any).updateFreeShippingTracker(subtotal);
@@ -985,16 +1118,8 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         emptyCart.classList.remove("hidden");
         cartContent.classList.add("hidden");
 
-        // Reset checkout button to disabled state
-        const checkoutBtn = document.getElementById(
-          "checkout-button",
-        ) as HTMLButtonElement;
-        if (checkoutBtn) {
-          checkoutBtn.disabled = true;
-          checkoutBtn.classList.add("opacity-50", "cursor-not-allowed");
-        }
-        const hint = document.getElementById("checkout-hint");
-        if (hint) hint.classList.remove("hidden");
+        // Reset CTA to disabled when cart is empty
+        setFulfillmentValid(false);
 
         // Hide mobile bar
         updateMobileBar();
@@ -1034,35 +1159,43 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     );
     fulfillmentRadios.forEach((radio) => {
       radio.addEventListener("change", () => {
-        // Enable checkout button when selection is made
-        if (checkoutButton) {
-          checkoutButton.disabled = false;
-          checkoutButton.classList.remove("opacity-50", "cursor-not-allowed");
-        }
-
-        // Hide hint text once a method is chosen
-        const hint = document.getElementById("checkout-hint");
-        if (hint) hint.classList.add("hidden");
-
+        // Note: radio.checked is set programmatically by FulfillmentSelector tab clicks,
+        // so this "change" event only fires on rare direct user interaction (radios are sr-only).
+        // Do NOT enable the CTA here — validity is managed via updateOrderSummaryOnFulfillmentChange.
         const total = cart.getTotal();
         updateOrderSummary(total);
         updateMobileBar();
       });
     });
 
-    // Make update function available globally for FulfillmentSelector
+    // Global hook called by FulfillmentSelector on every tab switch and field change.
+    // Receives form validity so the CTA can be gated on a complete, valid form —
+    // not just on a method being selected.
     (window as any).updateOrderSummaryOnFulfillmentChange = (
       _method: string,
+      _formData?: Record<string, string>,
+      formIsValid?: boolean,
     ) => {
+      setFulfillmentValid(formIsValid === true);
       const total = cart.getTotal();
       updateOrderSummary(total);
     };
+
+    // If FulfillmentSelector already restored and collapsed a valid form on this page load
+    // (the summary chip is visible), enable the CTA immediately without waiting for user input.
+    const summaryChip = document.querySelector("#fulfillment-summary-chip");
+    if (summaryChip && !summaryChip.classList.contains("hidden")) {
+      setFulfillmentValid(true);
+    }
   }
 
   function handlePageLoad() {
     attachEventListeners();
     updateDisplay();
     setupFulfillmentListeners();
+    requestAnimationFrame(() => {
+      updateMobileBar();
+    });
   }
 
   document.addEventListener("astro:page-load", handlePageLoad);

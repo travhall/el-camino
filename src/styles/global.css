@@ -137,6 +137,11 @@
 
   --ui-accent: var(--color-elco-fig-leaf-500);
 
+  /* Free Shipping Bar */
+  --free-shipping-bar: oklch(55% 0.17 65);
+  --free-shipping-bar-track: oklch(84% 0.05 80);
+  --free-shipping-bar-bg: var(--color-elco-honey-cream-200);
+
   /* Custom Font Families */
   --font-display: "Alumni", serif;
   --font-display-italic: "Alumni Italic", serif;
@@ -206,6 +211,11 @@
 
   --ui-accent: var(--color-elco-sweet-tea-300);
 
+  /* Free Shipping Bar */
+  --free-shipping-bar: oklch(75% 0.18 70);
+  --free-shipping-bar-track: oklch(28% 0.07 75);
+  --free-shipping-bar-bg: oklch(22% 0.05 75);
+
   --color-state-success-surface: oklch(60% 0.165 120);
   --color-state-error-surface: oklch(50% 0.175 25.5);
   --color-state-warning-surface: oklch(82% 0.145 80);
@@ -233,7 +243,8 @@
 /* Font Faces - Optimized for View Transitions */
 @font-face {
   font-family: "Alumni";
-  font-display: optional; /* Paired with preload: font arrives in time, no swap/FOUT */
+  font-display: swap; /* swap: preload gets it fast; opacity trick prevents FOUT on first load;
+                         swap ensures font always renders after View Transitions */
   src: url("/fonts/AlumniSans.woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
@@ -409,6 +420,10 @@ h6 {
   color: var(--ui-button-text);
   border: 2px solid var(--ui-accent);
   box-shadow: 0 0 0 1px var(--ui-accent);
+}
+
+#mobile-checkout-bar {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* LIGHTHOUSE FIX: Removed content-visibility and contain from banner-card img
