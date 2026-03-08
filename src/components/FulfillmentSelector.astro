@@ -30,10 +30,12 @@ const progressPct = Math.min(
 );
 ---
 
-<div data-component="fulfillment-selector" class="space-y-4 pt-4">
+<div data-component="fulfillment-selector" class="pt-4">
   <fieldset>
     <legend class="text-sm font-semibold text-(--content-heading) mb-3">
-      Choose Fulfillment Method <span class="text-red-500">*</span>
+      Choose Fulfillment Method <span class="text-(--content-emphasis) italic">
+        - required</span
+      >
     </legend>
 
     <!-- Summary chip: shown after collapse (mobile), hidden on desktop -->
@@ -79,12 +81,12 @@ const progressPct = Math.min(
     <!-- Tab row — segmented control track -->
     <div
       id="fulfillment-tab-row"
-      class="grid grid-cols-2 gap-1 p-1 bg-(--surface-secondary) mb-4"
+      class="grid grid-cols-2 gap-1 p-1 bg-(--surface-secondary)"
     >
       <button
         type="button"
         data-tab="shipping"
-        class="tab-btn flex flex-row items-center justify-center gap-2 rounded px-4 py-3 text-sm font-semibold text-(--content-meta) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+        class="tab-btn flex flex-row items-center justify-center gap-2 rounded px-4 py-3 text-sm font-semibold text-(--content-meta) hover:bg-(--surface-tertiary) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
         aria-pressed="false"
       >
         <span class="text-lg leading-none">📦</span>
@@ -97,7 +99,7 @@ const progressPct = Math.min(
       <button
         type="button"
         data-tab="pickup"
-        class="tab-btn flex flex-row items-center justify-center gap-2 rounded px-4 py-3 text-sm font-semibold text-(--content-meta) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+        class="tab-btn flex flex-row items-center justify-center gap-2 rounded px-4 py-3 text-sm font-semibold text-(--content-meta) hover:bg-(--surface-tertiary) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
         aria-pressed="false"
       >
         <span class="text-lg leading-none">🏪</span>
@@ -109,7 +111,7 @@ const progressPct = Math.min(
     <!-- Free shipping progress tracker -->
     <div
       id="free-shipping-tracker"
-      class={`mb-4  px-4 py-3 text-sm font-medium text-(--content-body)${remainingForFree <= 0 ? " hidden" : ""}`}
+      class={`px-4 py-3 text-sm font-medium text-(--content-body)${remainingForFree <= 0 ? " hidden" : ""}`}
       style="background-color: var(--free-shipping-bar-bg);"
     >
       Add{" "}
@@ -592,8 +594,11 @@ const progressPct = Math.min(
       >("[required]");
 
       // Find the first invalid field (if any)
-      let firstInvalid: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null =
-        null;
+      let firstInvalid:
+        | HTMLInputElement
+        | HTMLSelectElement
+        | HTMLTextAreaElement
+        | null = null;
       requiredFields?.forEach((field) => {
         if (!field.validity.valid && !firstInvalid) firstInvalid = field;
       });
@@ -862,8 +867,14 @@ const progressPct = Math.min(
         HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
       >("input, select, textarea")
       .forEach((el) => {
-        el.addEventListener("change", () => { saveForm(); notifyValidity(); });
-        el.addEventListener("input", () => { saveForm(); notifyValidity(); });
+        el.addEventListener("change", () => {
+          saveForm();
+          notifyValidity();
+        });
+        el.addEventListener("input", () => {
+          saveForm();
+          notifyValidity();
+        });
       });
 
     // Sync free shipping tracker with live cart subtotal

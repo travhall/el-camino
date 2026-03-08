@@ -20,124 +20,125 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     </div>
 
     <!-- Empty Cart State -->
-    <div
-      id="empty-cart"
-      class="hidden flex flex-col min-h-[90dvh] items-center justify-center"
-    >
-      <p class="text-lg mb-6 text-(--content-body)">Your cart is empty</p>
-      <Button href="/shop/all" variant="outline"> Continue Shopping </Button>
+    <div id="empty-cart" class="hidden">
+      <div class="flex flex-col min-h-[90dvh] items-center justify-center">
+        <p class="text-lg mb-6 text-(--content-body)">Your cart is empty</p>
+        <Button href="/shop/all" variant="outline"> Continue Shopping </Button>
+      </div>
     </div>
 
     <!-- Cart Content Grid -->
-    <div id="cart-content" class="hidden grid md:grid-cols-3 gap-1">
-      <!-- Cart Items + Fulfillment Column -->
-      <div class="md:col-span-2 flex flex-col gap-1 pb-4">
-        <!-- Header: always first (order-1 on both mobile and desktop) -->
-        <div class="order-1 flex items-end justify-between px-3 pt-1 pb-3">
-          <h1
-            class="font-display font-black text-6xl lg:text-7xl leading-[0.8] text-(--content-heading)"
-          >
-            Cart
-          </h1>
-          <Button id="clear-cart-button" variant="ghost" size="sm">
-            Clear Cart
-          </Button>
-        </div>
-
-        <!-- FulfillmentSelector: always 2nd (below heading), on both mobile and desktop -->
-        <div class="order-2">
-          <FulfillmentSelector subtotal={0} />
-        </div>
-
-        <!-- Items list: always 3rd (below fulfillment), on both mobile and desktop -->
-        <div id="cart-items-list" class="order-3 grid gap-1"></div>
-
-        <!-- Mobile-only: Continue Shopping (right col hidden on mobile) -->
-        <div class="order-4 md:hidden px-3 pt-2 pb-1">
-          <a
-            href="/shop/all"
-            class="text-sm text-(--content-meta) underline underline-offset-2 hover:text-(--content-body) transition-colors"
-          >
-            ← Continue Shopping
-          </a>
-        </div>
-      </div>
-
-      <!-- Order Summary + Checkout Column (desktop only — sticky bar handles mobile) -->
-      <div
-        class="hidden md:block md:col-span-1 md:sticky md:top-18 space-y-1 self-start"
-      >
-        <!-- Order Summary Details -->
-        <div class="bg-(--surface-secondary) p-4">
-          <h2 class="font-display text-3xl mb-2 text-(--content-heading)">
-            Order Summary
-          </h2>
-          <div class="order-summary space-y-2">
-            <div class="flex justify-between text-(--content-body)">
-              <span>Subtotal</span>
-              <span
-                class="font-display font-bold text-2xl text-(--content-caption)"
-                id="subtotal">$0.00</span
-              >
-            </div>
-            <div class="flex justify-between text-(--content-body)">
-              <span>Sales Tax</span>
-              <span class="font-semibold" id="tax-amount">$0.00</span>
-            </div>
-            <div
-              class="flex justify-between text-(--content-body)"
-              id="shipping-row"
+    <div id="cart-content" class="hidden">
+      <div class="grid md:grid-cols-3 gap-1">
+        <!-- Cart Items + Fulfillment Column -->
+        <div class="md:col-span-2 flex flex-col gap-1 pb-4">
+          <!-- Header: always first (order-1 on both mobile and desktop) -->
+          <div class="order-1 flex items-end justify-between px-2 pt-1 pb-3">
+            <h1
+              class="font-display font-black text-6xl lg:text-7xl leading-[0.8] text-(--content-heading)"
             >
-              <span>Shipping</span>
-              <span class="font-semibold" id="shipping-cost">$0.00</span>
-            </div>
-            <div
-              class="flex justify-between text-(--content-body) text-lg pt-2 border-t border-(--border-secondary)"
+              Cart
+            </h1>
+            <Button id="clear-cart-button" variant="outline" size="sm">
+              Clear Cart
+            </Button>
+          </div>
+
+          <!-- FulfillmentSelector: always 2nd (below heading), on both mobile and desktop -->
+          <div class="order-2">
+            <FulfillmentSelector subtotal={0} />
+          </div>
+
+          <!-- Items list: always 3rd (below fulfillment), on both mobile and desktop -->
+          <div id="cart-items-list" class="order-3 grid gap-1"></div>
+
+          <!-- Mobile-only: Continue Shopping (right col hidden on mobile) -->
+          <div class="order-4 md:hidden px-3 pt-2 pb-1">
+            <a
+              href="/shop/all"
+              class="text-sm text-(--content-meta) underline underline-offset-2 hover:text-(--content-body) transition-colors"
             >
-              <span class="font-semibold" id="order-total-label"
-                >Estimated Total</span
-              >
-              <span
-                class="font-display font-bold text-5xl text-(--content-heading)"
-                id="order-total">$0.00</span
-              >
-            </div>
+              ← Continue Shopping
+            </a>
           </div>
         </div>
 
-        <!-- Checkout actions -->
-        <div class="bg-(--surface-secondary) p-4 space-y-2">
-          <div
-            id="summary-calculating"
-            class="hidden flex items-center gap-2 text-sm text-(--content-meta)"
-          >
-            <div
-              class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-(--content-heading)"
-            >
+        <!-- Order Summary + Checkout Column (desktop only — sticky bar handles mobile) -->
+        <div
+          class="hidden md:block md:col-span-1 md:sticky md:top-18 space-y-1 self-start"
+        >
+          <!-- Order Summary Details -->
+          <div class="bg-(--surface-secondary) p-4">
+            <h2 class="font-display text-3xl mb-2 text-(--content-heading)">
+              Order Summary
+            </h2>
+            <div class="order-summary space-y-2">
+              <div class="flex justify-between text-(--content-body)">
+                <span>Subtotal</span>
+                <span
+                  class="font-display font-bold text-2xl text-(--content-caption)"
+                  id="subtotal">$0.00</span
+                >
+              </div>
+              <div class="flex justify-between text-(--content-body)">
+                <span>Sales Tax</span>
+                <span class="font-semibold" id="tax-amount">$0.00</span>
+              </div>
+              <div
+                class="flex justify-between text-(--content-body)"
+                id="shipping-row"
+              >
+                <span>Shipping</span>
+                <span class="font-semibold" id="shipping-cost">$0.00</span>
+              </div>
+              <div
+                class="flex justify-between text-(--content-body) text-lg pt-2 border-t border-(--border-secondary)"
+              >
+                <span class="font-semibold" id="order-total-label"
+                  >Estimated Total</span
+                >
+                <span
+                  class="font-display font-bold text-5xl text-(--content-heading)"
+                  id="order-total">$0.00</span
+                >
+              </div>
             </div>
-            <span>Recalculating...</span>
           </div>
-          <Button
-            id="checkout-button"
-            variant="primary"
-            classes="w-full"
-            disabled={true}
-          >
-            Continue to Payment
-          </Button>
-          <p
-            id="checkout-hint"
-            class="text-xs text-center text-(--content-meta)"
-          >
-            Select a Fulfillment Method to Checkout
-          </p>
-          <Button
-            href="/shop/all"
-            variant="outline"
-            classes="w-full text-center"
-          >
-            Continue Shopping
-          </Button>
+
+          <!-- Checkout actions -->
+          <div class="bg-(--surface-secondary) p-4 space-y-2">
+            <div
+              id="summary-calculating"
+              class="hidden items-center gap-2 text-sm text-(--content-meta)"
+            >
+              <div
+                class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-(--content-heading)"
+              >
+              </div>
+              <span>Recalculating...</span>
+            </div>
+            <Button
+              id="checkout-button"
+              variant="primary"
+              classes="w-full"
+              disabled={true}
+            >
+              Continue to Payment
+            </Button>
+            <p
+              id="checkout-hint"
+              class="text-xs text-center text-(--content-meta) p-1"
+            >
+              Select a Fulfillment Method to Checkout
+            </p>
+            <Button
+              href="/shop/all"
+              variant="outline"
+              classes="w-full text-center"
+            >
+              Continue Shopping
+            </Button>
+          </div>
         </div>
       </div>
     </div>
