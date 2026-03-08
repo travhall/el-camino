@@ -227,10 +227,7 @@ import {
     findVariationByAttributes,
   } from "@/lib/square/variationParser";
   import { processSquareError, logError } from "@/lib/square/errorUtils";
-  import type {
-    Product,
-    ProductVariation,
-  } from "@/lib/square/types";
+  import type { Product, ProductVariation } from "@/lib/square/types";
   import { PDPUIManager } from "@/lib/product/pdpUI";
 
   // QuickView Controller - Uses centralized PDPUIManager
@@ -254,17 +251,17 @@ import {
     private initializeUIManager(): void {
       // Initialize UI manager with QuickView element IDs
       this.uiManager = new PDPUIManager({
-        priceDisplay: 'quick-view-price',
-        originalPriceDisplay: 'quick-view-original-price',
-        unitDisplay: 'quick-view-unit',
-        quantityInput: 'quick-view-quantity',
-        addToCartButton: 'quick-view-add-to-cart',
-        decreaseButton: 'quick-view-decrease',
-        increaseButton: 'quick-view-increase',
-        productImage: 'quick-view-image',
-        imageContainer: 'quick-view-image-container',
-        remainingCount: 'quick-view-remaining-count',
-        cartQuantity: 'quick-view-cart-quantity',
+        priceDisplay: "quick-view-price",
+        originalPriceDisplay: "quick-view-original-price",
+        unitDisplay: "quick-view-unit",
+        quantityInput: "quick-view-quantity",
+        addToCartButton: "quick-view-add-to-cart",
+        decreaseButton: "quick-view-decrease",
+        increaseButton: "quick-view-increase",
+        productImage: "quick-view-image",
+        imageContainer: "quick-view-image-container",
+        remainingCount: "quick-view-remaining-count",
+        cartQuantity: "quick-view-cart-quantity",
       });
     }
 
@@ -303,7 +300,7 @@ import {
       // Find first in-stock variation if default is out of stock (PDP pattern)
       if (variations.length > 0) {
         const defaultIsInStock = variations.find(
-          (v) => v.variationId === defaultVariationId
+          (v) => v.variationId === defaultVariationId,
         )?.inStock;
         if (!defaultIsInStock) {
           const firstInStockVariation = variations.find((v) => v.inStock);
@@ -336,10 +333,10 @@ import {
 
       this.renderProduct(product);
       this.renderVariations(product);
-      
+
       // Initialize UI manager after DOM elements are created
       this.initializeUIManager();
-      
+
       this.updateProductUI();
       this.updateAttributeButtonStates();
     }
@@ -347,7 +344,7 @@ import {
     private renderProduct(product: Product): void {
       // Update image with EnhancedImageOptimizer-style optimization
       const image = document.getElementById(
-        "quick-view-image"
+        "quick-view-image",
       ) as HTMLImageElement;
       if (image) {
         // Optimize using EnhancedImageOptimizer patterns
@@ -384,7 +381,7 @@ import {
         // Reset opacity and show placeholder
         image.style.opacity = "0";
         const placeholder = document.getElementById(
-          "quick-view-image-placeholder"
+          "quick-view-image-placeholder",
         );
         if (placeholder) {
           placeholder.style.display = "block";
@@ -425,7 +422,7 @@ import {
         attributeTypes
           .filter(
             (attributeType) =>
-              selectionState.availableAttributes[attributeType].length > 1
+              selectionState.availableAttributes[attributeType].length > 1,
           )
           .forEach((attributeType) => {
             const attributeValues =
@@ -492,7 +489,7 @@ import {
 
     private handleAttributeSelection(
       attributeType: string,
-      value: string
+      value: string,
     ): void {
       this.selectedAttributes[attributeType] = value;
       this.updateCurrentVariation();
@@ -503,7 +500,7 @@ import {
       try {
         const matchingVariation = findVariationByAttributes(
           this.productData.variations,
-          this.selectedAttributes
+          this.selectedAttributes,
         );
 
         if (matchingVariation) {
@@ -512,14 +509,16 @@ import {
         } else {
           // No exact match - find closest variation matching selected color for image
           const selectedColor = this.selectedAttributes.color;
-          const colorMatchVariation = selectedColor 
-            ? this.productData.variations.find((v: any) => v.attributes?.color === selectedColor)
+          const colorMatchVariation = selectedColor
+            ? this.productData.variations.find(
+                (v: any) => v.attributes?.color === selectedColor,
+              )
             : null;
-          
+
           if (colorMatchVariation?.image) {
             this.uiManager.updateProductImage(colorMatchVariation.image);
           }
-          
+
           this.showOutOfStockState();
         }
       } catch (error) {
@@ -532,19 +531,16 @@ import {
       if (!this.currentVariation) return;
 
       // Update price
-      this.uiManager.updatePriceDisplay(
-        this.currentVariation.price,
-        {
-          saleInfo: this.currentVariation.saleInfo,
-          unit: this.currentVariation.unit || this.currentProduct?.unit
-        }
-      );
+      this.uiManager.updatePriceDisplay(this.currentVariation.price, {
+        saleInfo: this.currentVariation.saleInfo,
+        unit: this.currentVariation.unit || this.currentProduct?.unit,
+      });
 
       // Get out of stock availability info
       const outOfStockInfo = cart.getProductAvailability(
         this.productData.productId,
         "out-of-stock",
-        0
+        0,
       );
       this.uiManager.updateQuantityControls(outOfStockInfo);
       this.uiManager.updateAddToCartButton(outOfStockInfo);
@@ -552,7 +548,9 @@ import {
       this.uiManager.updateInventoryDisplay(outOfStockInfo);
 
       // Update button product data
-      this.uiManager.updateButtonProductData(this.buildProductData(this.currentVariation));
+      this.uiManager.updateButtonProductData(
+        this.buildProductData(this.currentVariation),
+      );
     }
 
     private updateProductUI(): void {
@@ -562,20 +560,20 @@ import {
       const availabilityInfo = cart.getProductAvailability(
         this.productData.productId,
         this.currentVariation.variationId,
-        this.currentVariation.quantity || 0
+        this.currentVariation.quantity || 0,
       );
 
       // Use centralized updateAvailabilityDisplay for complete UI update
-      this.uiManager.updateAvailabilityDisplay(availabilityInfo, this.currentVariation.saleInfo);
-      
-      // Update price separately with unit
-      this.uiManager.updatePriceDisplay(
-        this.currentVariation.price,
-        {
-          saleInfo: this.currentVariation.saleInfo,
-          unit: this.currentVariation.unit || this.currentProduct.unit
-        }
+      this.uiManager.updateAvailabilityDisplay(
+        availabilityInfo,
+        this.currentVariation.saleInfo,
       );
+
+      // Update price separately with unit
+      this.uiManager.updatePriceDisplay(this.currentVariation.price, {
+        saleInfo: this.currentVariation.saleInfo,
+        unit: this.currentVariation.unit || this.currentProduct.unit,
+      });
 
       // Update image if variation has one
       if (this.currentVariation.image) {
@@ -583,7 +581,9 @@ import {
       }
 
       // Update button product data
-      this.uiManager.updateButtonProductData(this.buildProductData(this.currentVariation));
+      this.uiManager.updateButtonProductData(
+        this.buildProductData(this.currentVariation),
+      );
     }
 
     private buildProductData(variation: any): any {
@@ -614,7 +614,7 @@ import {
       Object.keys(this.productData.availableAttributes).forEach(
         (attributeType) => {
           const buttons = document.querySelectorAll(
-            `[data-attribute-type="${attributeType}"]`
+            `[data-attribute-type="${attributeType}"]`,
           );
 
           buttons.forEach((btn) => {
@@ -627,7 +627,7 @@ import {
             // Test availability using PDP pattern
             const isAvailable = this.canAddToCartForAttribute(
               attributeType,
-              value
+              value,
             );
 
             // Update selected state styling (PDP pattern)
@@ -646,13 +646,13 @@ import {
               button.classList.remove("opacity-50");
             }
           });
-        }
+        },
       );
     }
 
     private canAddToCartForAttribute(
       attributeType: string,
-      value: string
+      value: string,
     ): boolean {
       // EXACTLY mirror PDP canAddToCartFn pattern
       const testAttributes = {
@@ -662,22 +662,22 @@ import {
 
       const matchingVariation = findVariationByAttributes(
         this.productData.variations,
-        testAttributes
+        testAttributes,
       );
 
       return Boolean(
         matchingVariation?.inStock &&
-          cart.canAddToCart(
-            this.productData.productId,
-            matchingVariation.variationId,
-            matchingVariation.quantity || 0
-          )
+        cart.canAddToCart(
+          this.productData.productId,
+          matchingVariation.variationId,
+          matchingVariation.quantity || 0,
+        ),
       );
     }
 
     private updateViewDetailsButton(product: Product): void {
       const button = document.getElementById(
-        "quick-view-full-details"
+        "quick-view-full-details",
       ) as HTMLButtonElement;
       if (button && product) {
         button.onclick = () => {
@@ -694,11 +694,11 @@ import {
 
       this.isProcessing = true;
       const addToCartBtn = document.getElementById(
-        "quick-view-add-to-cart"
+        "quick-view-add-to-cart",
       ) as HTMLButtonElement;
       const addToCartText = addToCartBtn?.querySelector(".add-to-cart-text");
       const addToCartLoading = addToCartBtn?.querySelector(
-        ".add-to-cart-loading"
+        ".add-to-cart-loading",
       );
 
       try {
@@ -708,7 +708,7 @@ import {
 
         // Get quantity from input (not hardcoded) - use fresh element reference
         const quantityInput = document.getElementById(
-          "quick-view-quantity"
+          "quick-view-quantity",
         ) as HTMLInputElement;
         const quantity = quantityInput ? parseInt(quantityInput.value, 10) : 1;
 
@@ -723,7 +723,7 @@ import {
             this.currentProduct.id,
             this.currentVariation.variationId,
             this.currentVariation.quantity || 0,
-            quantity
+            quantity,
           )
         ) {
           throw new Error("Cannot add that quantity to cart");
@@ -742,7 +742,7 @@ import {
           if (typeof window.showNotification === "function") {
             window.showNotification(
               result.message || "Added to cart",
-              "success"
+              "success",
             );
           }
 
@@ -779,12 +779,15 @@ import {
       const availabilityInfo = cart.getProductAvailability(
         this.productData.productId,
         this.currentVariation.variationId,
-        this.currentVariation.quantity || 0
+        this.currentVariation.quantity || 0,
       );
 
       this.uiManager.updateQuantityControls(availabilityInfo);
       this.uiManager.updateAddToCartButton(availabilityInfo);
-      this.uiManager.updateImageOverlay(availabilityInfo, this.currentVariation.saleInfo);
+      this.uiManager.updateImageOverlay(
+        availabilityInfo,
+        this.currentVariation.saleInfo,
+      );
       this.updateAttributeButtonStates();
     }
 
@@ -808,7 +811,7 @@ import {
       ["quick-view-loading", "quick-view-error", "quick-view-product"].forEach(
         (id) => {
           document.getElementById(id)?.classList.add("hidden");
-        }
+        },
       );
       document.getElementById("quick-view-footer")?.classList.add("hidden");
     }
@@ -835,7 +838,7 @@ import {
       if (overlay && panel) {
         overlay.classList.add("opacity-0");
         panel.classList.add("-translate-x-full");
-        document.body.style.overflow = "";
+        document.body.style.overflow = "unset";
 
         setTimeout(() => overlay.classList.add("hidden"), 300);
       }
@@ -855,13 +858,13 @@ import {
     private setupQuantityControls(): void {
       // EXACTLY mirror PDP quantity control setup
       const quantityInput = document.getElementById(
-        "quick-view-quantity"
+        "quick-view-quantity",
       ) as HTMLInputElement;
       const decreaseBtn = document.getElementById(
-        "quick-view-decrease"
+        "quick-view-decrease",
       ) as HTMLButtonElement;
       const increaseBtn = document.getElementById(
-        "quick-view-increase"
+        "quick-view-increase",
       ) as HTMLButtonElement;
 
       if (!quantityInput || !decreaseBtn || !increaseBtn) return;
@@ -870,7 +873,7 @@ import {
       const newDecreaseBtn = decreaseBtn.cloneNode(true) as HTMLButtonElement;
       const newIncreaseBtn = increaseBtn.cloneNode(true) as HTMLButtonElement;
       const newQuantityInput = quantityInput.cloneNode(
-        true
+        true,
       ) as HTMLInputElement;
 
       decreaseBtn.parentNode?.replaceChild(newDecreaseBtn, decreaseBtn);
@@ -912,13 +915,13 @@ import {
     private updateQuantityButtonStates(): void {
       // EXACTLY mirror PDP quantity button state updates - use fresh element references
       const quantityInput = document.getElementById(
-        "quick-view-quantity"
+        "quick-view-quantity",
       ) as HTMLInputElement;
       const decreaseBtn = document.getElementById(
-        "quick-view-decrease"
+        "quick-view-decrease",
       ) as HTMLButtonElement;
       const increaseBtn = document.getElementById(
-        "quick-view-increase"
+        "quick-view-increase",
       ) as HTMLButtonElement;
 
       if (!quantityInput) return;
@@ -962,7 +965,7 @@ import {
         "click",
         (e) => {
           const trigger = (e.target as Element)?.closest(
-            ".quick-view-trigger"
+            ".quick-view-trigger",
           ) as HTMLElement;
           if (trigger) {
             e.preventDefault();
@@ -975,7 +978,7 @@ import {
             return false;
           }
         },
-        true
+        true,
       );
 
       // Escape key

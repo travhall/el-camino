@@ -54,7 +54,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
         message: string,
         onConfirm: () => void,
         confirmText?: string,
-        cancelText?: string
+        cancelText?: string,
       ): void;
       showLocationModal(): void;
     }
@@ -70,7 +70,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       message: string,
       onConfirm: () => void,
       confirmText: string = "Confirm",
-      cancelText: string = "Cancel"
+      cancelText: string = "Cancel",
     ): void {
       // Remove any existing modal
       this.closeModal();
@@ -135,10 +135,10 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
 
       // Focus management
       const confirmButton = modal.querySelector(
-        "#modal-confirm"
+        "#modal-confirm",
       ) as HTMLButtonElement;
       const cancelButton = modal.querySelector(
-        "#modal-cancel"
+        "#modal-cancel",
       ) as HTMLButtonElement;
 
       confirmButton?.focus();
@@ -214,7 +214,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
         clientSiteConfig ||
         (siteConfigElement
           ? JSON.parse(
-              siteConfigElement.getAttribute("data-site-config") || "{}"
+              siteConfigElement.getAttribute("data-site-config") || "{}",
             )
           : null);
 
@@ -247,7 +247,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
           <span class="text-(--content-body)">${hour.day}</span>
           <span class="text-(--content-${hour.isOpen ? "body" : "meta"})">${hour.hours}</span>
         </div>
-      `
+      `,
         )
         .join("");
 
@@ -311,7 +311,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       setTimeout(() => {
         // Find close button after DOM insertion
         const closeButton = modal.querySelector(
-          "#modal-close"
+          "#modal-close",
         ) as HTMLButtonElement;
 
         // Event listeners
@@ -386,7 +386,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
           this.isAnimating = false;
 
           // Restore page scrolling
-          document.body.style.overflow = "";
+          document.body.style.overflow = "unset";
         }, 300);
       }
     },

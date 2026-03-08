@@ -186,7 +186,7 @@ import Button from "@/components/Button.astro";
 
   function showNotification(
     message: string,
-    type: "success" | "error" = "success"
+    type: "success" | "error" = "success",
   ): void {
     // Use existing system if available
     if (typeof window !== "undefined" && (window as any).showNotification) {
@@ -203,7 +203,7 @@ import Button from "@/components/Button.astro";
 
     document.body.appendChild(notification);
     requestAnimationFrame(() =>
-      notification.classList.remove("translate-x-full")
+      notification.classList.remove("translate-x-full"),
     );
 
     setTimeout(() => {
@@ -220,7 +220,9 @@ import Button from "@/components/Button.astro";
     // Sanitize all user-controlled strings before inserting into innerHTML
     const safeItemKey = sanitize(itemKey);
     const safeTitle = sanitize(item.title);
-    const safeVariationName = item.variationName ? sanitize(item.variationName) : "";
+    const safeVariationName = item.variationName
+      ? sanitize(item.variationName)
+      : "";
 
     // Generate proper slug from product title
     const productSlug = createSlug(item.title);
@@ -382,7 +384,7 @@ import Button from "@/components/Button.astro";
     const cartInstance = await loadCart();
     const items = cartInstance.getItems();
     const item = items.find(
-      (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+      (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
     );
 
     if (!item) {
@@ -413,10 +415,10 @@ import Button from "@/components/Button.astro";
 
       // Update button states
       const decreaseBtn = itemContainer.querySelector(
-        '[data-action="decrease"]'
+        '[data-action="decrease"]',
       ) as HTMLButtonElement;
       const increaseBtn = itemContainer.querySelector(
-        '[data-action="increase"]'
+        '[data-action="increase"]',
       ) as HTMLButtonElement;
 
       if (decreaseBtn) {
@@ -508,7 +510,7 @@ import Button from "@/components/Button.astro";
     newItemsList.addEventListener("click", async (e) => {
       // Handle product links
       const productLink = (e.target as HTMLElement).closest(
-        "a.product-link"
+        "a.product-link",
       ) as HTMLAnchorElement;
       if (productLink) {
         // Don't prevent default - let link work naturally
@@ -519,7 +521,7 @@ import Button from "@/components/Button.astro";
 
       // Handle quantity control buttons (existing logic)
       const button = (e.target as HTMLElement).closest(
-        "button[data-action]"
+        "button[data-action]",
       ) as HTMLButtonElement;
       if (!button || button.disabled) return;
 
@@ -538,7 +540,7 @@ import Button from "@/components/Button.astro";
           case "increase":
             const items = cartInstance.getItems();
             const item = items.find(
-              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
             );
             if (item) {
               const newQty = item.quantity + 1;
@@ -556,7 +558,7 @@ import Button from "@/components/Button.astro";
           case "decrease":
             const currentItems = cartInstance.getItems();
             const currentItem = currentItems.find(
-              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
             );
             if (currentItem) {
               if (currentItem.quantity === 1) {
@@ -574,7 +576,7 @@ import Button from "@/components/Button.astro";
                       showNotification("Item removed from cart", "success");
                     },
                     "Remove",
-                    "Cancel"
+                    "Cancel",
                   );
                 } else if (
                   confirm(`Remove "${currentItem.title}" from your cart?`)
@@ -586,7 +588,7 @@ import Button from "@/components/Button.astro";
               } else {
                 await cartInstance.updateQuantity(
                   itemKey,
-                  currentItem.quantity - 1
+                  currentItem.quantity - 1,
                 );
                 await updateMiniCartItemQuantity(itemKey);
               }
@@ -606,7 +608,7 @@ import Button from "@/components/Button.astro";
                     showNotification("Item removed from cart", "success");
                   },
                   "Remove",
-                  "Cancel"
+                  "Cancel",
                 );
               } else if (confirm(`Remove "${itemTitle}" from your cart?`)) {
                 cartInstance.removeItem(itemKey);
@@ -635,7 +637,7 @@ import Button from "@/components/Button.astro";
         panel.classList.add("translate-x-full");
 
         // Restore page scrolling when MiniCart is closed
-        document.body.style.overflow = "";
+        document.body.style.overflow = "unset";
 
         setTimeout(() => {
           overlay.classList.add("hidden");
@@ -652,7 +654,7 @@ import Button from "@/components/Button.astro";
     const closeButton = document.getElementById("close-mini-cart");
     const continueShoppingButton = document.getElementById("continue-shopping");
     const continueShoppingFooterButton = document.getElementById(
-      "continue-shopping-footer"
+      "continue-shopping-footer",
     );
     const checkoutButton = document.getElementById("mini-cart-checkout");
 
@@ -685,7 +687,7 @@ import Button from "@/components/Button.astro";
         panel.classList.add("translate-x-full");
 
         // Restore page scrolling when MiniCart is closed
-        document.body.style.overflow = "";
+        document.body.style.overflow = "unset";
 
         setTimeout(() => {
           overlay.classList.add("hidden");
