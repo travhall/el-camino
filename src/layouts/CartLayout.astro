@@ -1,0 +1,54 @@
+---
+// src/layouts/CartLayout.astro
+import { getStructuredData } from "@/lib/site-config";
+import Header from "@/components/Header.astro";
+import CartFooter from "@/components/CartFooter.astro";
+import Modal from "@/components/Modal.astro";
+import Notification from "@/components/Notification.astro";
+import BaseHead from "@/components/BaseHead.astro";
+
+interface Props {
+    title: string;
+    structuredData?: object;
+}
+
+const { title, structuredData } = Astro.props;
+
+// Get structured data from site config
+const orgSchema = getStructuredData();
+
+// Get current path for context-aware prefetching
+const currentPath = Astro.url.pathname;
+// Cart is technically high traffic, but prefetching from it is limited
+const isHighTrafficPage = false;
+---
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <BaseHead
+            title={title}
+            structuredData={structuredData}
+            orgSchema={orgSchema}
+            currentPath={currentPath}
+            isHighTrafficPage={isHighTrafficPage}
+        />
+    </head>
+    <body
+        class="bg-(--surface-primary) text-(--content-body) grid grid-rows-[auto_1fr_auto] min-h-screen relative overflow-x-hidden"
+    >
+        <Header showCart={false} />
+        <main
+            class="bg-(--surface-primary) text-(--content-body) border-b-4 border-(--border-secondary) z-10 relative overflow-x-clip w-full max-w-full"
+            id="main-content"
+            tabindex="-1"
+        >
+            <slot />
+        </main>
+        <CartFooter />
+
+        <Notification />
+        <Modal />
+        <div id="portal-root"></div>
+    </body>
+</html>

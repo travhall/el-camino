@@ -91,5 +91,12 @@ const cartCount = cart.getItemCount();
   window.addEventListener("cartUpdated", () => updateCartCount(true));
 
   // On page load, only update if different (prevents flash during filtering)
-  document.addEventListener("astro:page-load", () => updateCartCount(false));
+  document.addEventListener("astro:page-load", () => {
+    // Re-sync lastKnownCount with fresh DOM state after swap
+    const countElement = document.getElementById("cart-count");
+    if (countElement) {
+      lastKnownCount = parseInt(countElement.textContent || "0", 10);
+    }
+    updateCartCount(false);
+  });
 </script>

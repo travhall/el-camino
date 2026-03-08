@@ -1,0 +1,46 @@
+---
+// src/components/CartFooter.astro
+// Minimal footer for the cart/checkout funnel — no address, social, or logo.
+// Keeps the user focused on completing their purchase.
+import ThemeToggle from "./ThemeToggle.astro";
+import { getLegalPages } from "@/lib/wordpress/api";
+import type { WordPressPage } from "@/lib/wordpress/types";
+import { siteConfig } from "@/lib/site-config";
+
+const currentYear = new Date().getFullYear();
+
+let footerPages: WordPressPage[] = [];
+try {
+    footerPages = await getLegalPages();
+} catch {
+    // Silently skip legal links if WordPress is unavailable
+}
+---
+
+<footer
+    class="p-4 w-full bg-(--surface-secondary) border-4 border-(--border-secondary) border-t-0 z-0"
+>
+    <div
+        class="flex flex-col-reverse md:flex-row justify-between items-center gap-4 py-2"
+    >
+        <div
+            class="flex flex-col-reverse md:flex-row gap-4 md:gap-6 items-center"
+        >
+            <small class="block text-sm self-start md:self-auto">
+                &copy;{currentYear}
+                {siteConfig.name}, all rights reserved
+            </small>
+            {
+                footerPages.map((page) => (
+                    <a
+                        href={`/legal/${page.slug}`}
+                        class="text-sm font-semibold self-start md:self-auto relative text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all"
+                    >
+                        {page.title.rendered}
+                    </a>
+                ))
+            }
+        </div>
+        <ThemeToggle />
+    </div>
+</footer>

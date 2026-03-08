@@ -8,9 +8,11 @@ import { detectDeviceFromUA } from "@/utils/device";
 
 interface Props {
   activeCategory?: string;
+  /** Set to false to hide the cart button — used by CartLayout */
+  showCart?: boolean;
 }
 
-const { activeCategory } = Astro.props;
+const { activeCategory, showCart = true } = Astro.props;
 
 // Device detection for conditional rendering
 const userAgent = Astro.request.headers.get("user-agent") || "";
@@ -74,9 +76,8 @@ const isMobile = deviceInfo.isMobile;
 
   <div
     class="utility-menu self-center justify-end lg:order-last flex mr-1 gap-2"
-    transition:persist="utility-menu"
   >
-    {isMobile ? <CartButtonMobile /> : <CartButton />}
+    {showCart && (isMobile ? <CartButtonMobile /> : <CartButton />)}
     <button
       id="mobile-menu-toggle"
       class="p-2 lg:hidden text-(--content-body) rounded-sm focus-visible:ring-2 focus-visible:ring-(--content-body) focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-secondary) outline-none"
@@ -85,7 +86,12 @@ const isMobile = deviceInfo.isMobile;
       aria-controls="main-nav"
     >
       <Icon name="uil:bars" class="w-6 h-6" id="menu-icon" aria-hidden="true" />
-      <Icon name="uil:times" class="w-6 h-6 hidden" id="close-icon" aria-hidden="true" />
+      <Icon
+        name="uil:times"
+        class="w-6 h-6 hidden"
+        id="close-icon"
+        aria-hidden="true"
+      />
     </button>
   </div>
 </header>
@@ -139,7 +145,7 @@ const isMobile = deviceInfo.isMobile;
     const signal = menuAbortController.signal;
 
     const toggleButton = document.getElementById(
-      "mobile-menu-toggle"
+      "mobile-menu-toggle",
     ) as HTMLButtonElement;
     const menuIcon = document.getElementById("menu-icon") as HTMLElement;
     const closeIcon = document.getElementById("close-icon") as HTMLElement;
@@ -183,63 +189,80 @@ const isMobile = deviceInfo.isMobile;
       toggleButton.focus();
     }
 
-    toggleButton.addEventListener("click", (e: MouseEvent) => {
-      e.stopPropagation();
-      const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
-      if (isExpanded) {
-        closeMenu();
-      } else {
-        openMenu();
-      }
-    }, { signal });
+    toggleButton.addEventListener(
+      "click",
+      (e: MouseEvent) => {
+        e.stopPropagation();
+        const isExpanded =
+          toggleButton.getAttribute("aria-expanded") === "true";
+        if (isExpanded) {
+          closeMenu();
+        } else {
+          openMenu();
+        }
+      },
+      { signal },
+    );
 
     // Close menu when clicking outside
-    document.addEventListener("click", (e: MouseEvent) => {
-      const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
-      const clickTarget = e.target as Node;
-      if (
-        isExpanded &&
-        !nav.contains(clickTarget) &&
-        !toggleButton.contains(clickTarget)
-      ) {
-        closeMenu();
-      }
-    }, { signal });
+    document.addEventListener(
+      "click",
+      (e: MouseEvent) => {
+        const isExpanded =
+          toggleButton.getAttribute("aria-expanded") === "true";
+        const clickTarget = e.target as Node;
+        if (
+          isExpanded &&
+          !nav.contains(clickTarget) &&
+          !toggleButton.contains(clickTarget)
+        ) {
+          closeMenu();
+        }
+      },
+      { signal },
+    );
 
     // Close menu on Escape + focus trap
-    document.addEventListener("keydown", (e: KeyboardEvent) => {
-      const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
+    document.addEventListener(
+      "keydown",
+      (e: KeyboardEvent) => {
+        const isExpanded =
+          toggleButton.getAttribute("aria-expanded") === "true";
 
-      if (e.key === "Escape" && isExpanded) {
-        closeMenu();
-        return;
-      }
-
-      if (e.key !== "Tab" || !isExpanded) return;
-
-      const focusable = Array.from(
-        nav.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )
-      ).filter((el) => !el.closest(".lg\\:hidden") || window.innerWidth < 1024);
-
-      if (focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          toggleButton.focus();
+        if (e.key === "Escape" && isExpanded) {
+          closeMenu();
+          return;
         }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
+
+        if (e.key !== "Tab" || !isExpanded) return;
+
+        const focusable = Array.from(
+          nav.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter(
+          (el) => !el.closest(".lg\\:hidden") || window.innerWidth < 1024,
+        );
+
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            toggleButton.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
         }
-      }
-    }, { signal });
+      },
+      { signal },
+    );
   }
 
   // Initialize menu

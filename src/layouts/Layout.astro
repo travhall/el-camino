@@ -1,16 +1,13 @@
 ---
-import { ClientRouter } from "astro:transitions";
-import { SEOMetadata } from "astro-seo-metadata";
-import { siteConfig, getStructuredData } from "@/lib/site-config";
+import { getStructuredData } from "@/lib/site-config";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import QuickView from "@/components/QuickView.astro";
 import MiniCart from "@/components/MiniCart.astro";
 import Modal from "@/components/Modal.astro";
 import Notification from "@/components/Notification.astro";
-import SpeculationRules from "@/components/SpeculationRules.astro";
+import BaseHead from "@/components/BaseHead.astro";
 import { detectDeviceFromUA } from "@/utils/device";
-import "@/styles/global.css";
 // import CartDebug from "@/components/CartDebug.astro";
 
 interface Props {
@@ -26,11 +23,6 @@ const userAgent = Astro.request.headers.get("user-agent") || "";
 const deviceInfo = detectDeviceFromUA(userAgent);
 const isDesktop = deviceInfo.isDesktop;
 
-// Use site config for default SEO values
-const seoData = {
-  ...siteConfig.seo,
-};
-
 // Get structured data from site config
 const orgSchema = getStructuredData();
 
@@ -42,224 +34,13 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <script is:inline>
-      (function () {
-        const storedTheme = localStorage.getItem("theme");
-        const systemPrefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)",
-        ).matches;
-        const theme = storedTheme ?? (systemPrefersDark ? "dark" : "light");
-        document.documentElement.classList.add(theme);
-        document.documentElement.setAttribute("data-theme", theme);
-
-        // ENHANCED: Font loading state management for View Transitions
-        document.documentElement.classList.add("fonts-loading");
-
-        // CRITICAL: Use localStorage instead of sessionStorage for View Transitions persistence
-        const fontsLoaded = localStorage.getItem("fonts-loaded");
-        const fontsCached =
-          document.fonts.check("700 48px Alumni") &&
-          document.fonts.check("400 16px Cabin");
-
-        if (fontsLoaded === "true" || fontsCached) {
-          // Fonts already loaded - prevent FOUT immediately
-          document.documentElement.classList.remove("fonts-loading");
-          document.documentElement.classList.add("fonts-loaded");
-        } else {
-          // Force preloaded fonts to load immediately (critical weights)
-          Promise.all([
-            document.fonts.load("700 48px Alumni"),
-            document.fonts.load("600 24px Alumni"), // Navigation weight
-            document.fonts.load("400 16px Cabin"),
-            document.fonts.load("500 16px Cabin"), // Filter weights
-          ])
-            .then(() => {
-              document.documentElement.classList.remove("fonts-loading");
-              document.documentElement.classList.add("fonts-loaded");
-              localStorage.setItem("fonts-loaded", "true");
-            })
-            .catch(() => {
-              document.documentElement.classList.remove("fonts-loading");
-              document.documentElement.classList.add("fonts-failed");
-              // Still set loaded to prevent retries during View Transitions
-              localStorage.setItem("fonts-loaded", "true");
-            });
-        }
-      })();
-    </script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="generator" content={Astro.generator} />
-
-    <!-- OPTIMIZED: Font preloading for FOUT prevention during View Transitions -->
-    <!-- Alumni Sans: Display font - high priority for headings/LCP -->
-    <link
-      rel="preload"
-      href="/fonts/AlumniSans.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin="anonymous"
-      fetchpriority="high"
-    />
-    <!-- Cabin: Body font - standard priority -->
-    <link
-      rel="preload"
-      href="/fonts/Cabin.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin="anonymous"
-    />
-
-    <!-- Critical font styling to prevent FOUT on h1 elements cSpell:ignore Segoe -->
-    <style>
-      h1 {
-        font-family:
-          "Alumni",
-          -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          system-ui,
-          sans-serif;
-        font-synthesis: none;
-        font-optical-sizing: auto;
-      }
-
-      /* Use opacity (not visibility/display) to avoid harming LCP measurement.
-         The browser still considers opacity:0 elements as LCP candidates,
-         whereas visibility:hidden elements are excluded from LCP. */
-      .fonts-loading h1 {
-        opacity: 0;
-        transition: opacity 0.1s ease;
-      }
-
-      .fonts-loaded h1,
-      .fonts-failed h1 {
-        opacity: 1;
-      }
-    </style>
-
-    <!-- OPTIMIZED: Resource hints for external domains -->
-    <!-- High-priority: Early connection for critical resources -->
-    <link
-      rel="preconnect"
-      href="https://items-images-production.s3.us-west-2.amazonaws.com"
-      crossorigin
-    />
-    <link
-      rel="preconnect"
-      href="https://elcaminoskateshop.wordpress.com"
-      crossorigin
-    />
-    <link rel="preconnect" href="https://connect.squareup.com" crossorigin />
-
-    <!-- Medium-priority: DNS prefetch only -->
-    <link rel="dns-prefetch" href="https://squarecdn.com" />
-
-    <SEOMetadata
-      siteName={siteConfig.name}
+    <BaseHead
       title={title}
-      description={seoData.defaultDescription}
-      image={seoData.defaultImage}
-      favicon="/favicon.svg"
-      author={siteConfig.name}
-      copyright="ISC"
-      astroSitemap={true}
-      canonicalUrl={Astro.url.toString()}
-      type="website"
-      astroGenerator={true}
+      structuredData={structuredData}
+      orgSchema={orgSchema}
+      currentPath={currentPath}
+      isHighTrafficPage={isHighTrafficPage}
     />
-
-    <!-- Speculation Rules for Advanced Prefetching -->
-    <SpeculationRules currentPath={currentPath} eager={isHighTrafficPage} />
-
-    <script
-      is:inline
-      type="application/ld+json"
-      set:html={JSON.stringify(orgSchema)}
-    />
-    {
-      structuredData && (
-        <script
-          is:inline
-          type="application/ld+json"
-          set:html={JSON.stringify(structuredData)}
-        />
-      )
-    }
-
-    <!-- Allow pages to inject custom head content -->
-    <slot name="head" />
-
-    <script
-      is:inline
-      define:vars={{ squareEnv: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT }}
-    >
-      // Only load Square when needed (cart/product pages)
-      if (
-        window.location.pathname.includes("/cart") ||
-        window.location.pathname.includes("/product") ||
-        window.location.pathname.includes("/category") ||
-        window.location.pathname.includes("/shop")
-      ) {
-        window.loadSquareScript = function () {
-          if (!window.squareLoaded && !window.Square) {
-            window.squareLoaded = true;
-            const script = document.createElement("script");
-            script.src =
-              squareEnv === "production"
-                ? "https://web.squarecdn.com/v1/square.js"
-                : "https://sandbox.web.squarecdn.com/v1/square.js";
-            script.async = true;
-            document.head.appendChild(script);
-            return new Promise((resolve) => {
-              script.onload = resolve;
-            });
-          }
-          return Promise.resolve();
-        };
-      }
-    </script>
-
-    <!-- Font cache warmer: re-load fonts into active memory after each View Transition.
-         font-display:swap ensures they render when ready, but proactively warming
-         the cache prevents a visible swap flash on the *next* navigation. -->
-    <script is:inline>
-      document.addEventListener("astro:page-load", function () {
-        if (document.fonts && document.fonts.load) {
-          Promise.all([
-            document.fonts.load("700 48px Alumni"),
-            document.fonts.load("600 24px Alumni"),
-            document.fonts.load("400 16px Cabin"),
-            document.fonts.load("500 16px Cabin"),
-          ]).catch(function () {
-            // Ignore — fonts will render via font-display:swap fallback
-          });
-        }
-      });
-    </script>
-
-    <!-- Clean news parameters when outside news section -->
-    <script is:inline>
-      document.addEventListener("astro:page-load", function () {
-        if (!window.location.pathname.startsWith("/news")) {
-          const url = new URL(window.location);
-          if (url.searchParams.has("view")) {
-            url.searchParams.delete("view");
-            const newUrl =
-              url.pathname +
-              (url.searchParams.toString()
-                ? "?" + url.searchParams.toString()
-                : "");
-            if (newUrl !== window.location.pathname + window.location.search) {
-              window.history.replaceState({}, "", newUrl);
-            }
-          }
-        }
-      });
-    </script>
-
-    <ClientRouter />
   </head>
   <body
     class="bg-(--surface-primary) text-(--content-body) grid grid-rows-[auto_1fr_auto] min-h-screen relative overflow-x-hidden"
