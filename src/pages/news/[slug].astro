@@ -76,9 +76,13 @@ const tags = embeddedData.tags;
 // Reduces quality to 75 and explicitly requests AVIF for -400ms to -700ms LCP improvement
 // CLS FIX: Use actual image dimensions from WordPress to prevent layout shift
 const rawImageUrl = featuredMedia?.source_url;
-const heroImageWidth = featuredMedia?.media_details?.width || 900;
-const heroImageHeight = featuredMedia?.media_details?.height || 900;
-const heroAspectRatio = heroImageWidth / heroImageHeight;
+const rawHeroWidth = featuredMedia?.media_details?.width || 900;
+const rawHeroHeight = featuredMedia?.media_details?.height || 900;
+const heroAspectRatio = rawHeroWidth / rawHeroHeight;
+// Cap at 1200px — WordPress originals can be 4000-6000px which gives the browser
+// a huge intrinsic layout hint and causes overflow before CSS constrains them
+const heroImageWidth = Math.min(rawHeroWidth, 1200);
+const heroImageHeight = Math.round(heroImageWidth / heroAspectRatio);
 
 // Generate optimized image sources using Pattern A (single call)
 const imageSet = rawImageUrl
@@ -246,7 +250,7 @@ const structuredData = {
         {/* Pattern A: Picture element with AVIF/WebP/JPEG */}
         {
           imageSet ? (
-            <picture>
+            <picture class="block w-full">
               {/* AVIF format (best compression) */}
               {imageSet.avif && (
                 <source
@@ -298,7 +302,7 @@ const structuredData = {
                 width={heroImageWidth}
                 height={heroImageHeight}
                 style={`aspect-ratio: ${heroAspectRatio}`}
-                class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
+                class="w-full h-full max-w-full object-cover opacity-0 transition-opacity duration-300"
                 loading="eager"
                 fetchpriority="high"
                 onload="this.style.opacity='0.9'; document.getElementById('article-hero-placeholder')?.remove();"

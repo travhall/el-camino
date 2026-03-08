@@ -149,16 +149,18 @@ const getImageContainerClasses = () => {
       return "hidden md:flex flex-shrink-0 overflow-hidden relative";
 
     case "grid":
-      return "overflow-hidden relative aspect-video";
+      // block ensures <picture> (inline by default) respects w-full/h-full
+      return "block overflow-hidden relative aspect-video";
 
     case "masonry":
     default:
-      return "w-full h-full relative";
+      // block ensures <picture> (inline by default) respects w-full/h-full
+      return "block w-full h-full relative";
   }
 };
 
 const getImageClasses = () => {
-  const baseClasses = "object-cover transition-all duration-300";
+  const baseClasses = "object-cover max-w-full transition-all duration-300";
 
   switch (variant) {
     case "list":
