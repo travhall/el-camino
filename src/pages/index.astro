@@ -26,8 +26,14 @@ try {
 // WordPress content changes less frequently than inventory
 // Cache for 10 min, serve stale for 7 days while revalidating
 // Aggressive caching for homepage (5min server, 30min stale)
-Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
-Astro.response.headers.set('Netlify-CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
+Astro.response.headers.set(
+  "Cache-Control",
+  "public, s-maxage=300, stale-while-revalidate=1800",
+);
+Astro.response.headers.set(
+  "Netlify-CDN-Cache-Control",
+  "public, s-maxage=300, stale-while-revalidate=1800",
+);
 
 // === LCP OPTIMIZATION: Preload first article image ===
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
@@ -35,66 +41,106 @@ import { extractEmbeddedData } from "@/lib/wordpress/types";
 
 const firstPost = posts[0];
 const firstPostData = firstPost ? extractEmbeddedData(firstPost) : null;
-const lcpImage = firstPostData?.featuredMedia?.source_url
-  ? EnhancedImageOptimizer.generateOptimizedSources(firstPostData.featuredMedia.source_url, {
-      width: 800,
-      height: 533,
-      quality: 85,
-      priority: true,
-    })
+const lcpImageSet = firstPostData?.featuredMedia?.source_url
+  ? {
+      avif: EnhancedImageOptimizer.generateResponsiveSrcSet(
+        firstPostData.featuredMedia.source_url,
+        "avif",
+        {
+          width: 800,
+          height: 533,
+          quality: 85,
+        },
+      ),
+      webp: EnhancedImageOptimizer.generateResponsiveSrcSet(
+        firstPostData.featuredMedia.source_url,
+        "webp",
+        {
+          width: 800,
+          height: 533,
+          quality: 85,
+        },
+      ),
+      jpeg: EnhancedImageOptimizer.generateResponsiveSrcSet(
+        firstPostData.featuredMedia.source_url,
+        "jpeg",
+        {
+          width: 800,
+          height: 533,
+          quality: 85,
+        },
+      ),
+      href: EnhancedImageOptimizer.generateOptimizedSources(
+        firstPostData.featuredMedia.source_url,
+        {
+          width: 800,
+          height: 533,
+          quality: 85,
+        },
+      ).avif, // Primary fallback href
+    }
   : null;
+
+const lcpImageSizes =
+  "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 ---
 
-<Layout title="El Camino Skate Shop | Skater Owned & Operated in Eau Claire, WI">
-  {/* LCP PRELOAD: Load first article image with format negotiation */}
-  {lcpImage && (
-    <Fragment slot="head">
-      {/* Meta description for SEO */}
-      <meta 
-        name="description" 
-        content="El Camino Skate Shop is a 100% skater owned and operated skateboard shop in downtown Eau Claire, WI. Shop skateboards, apparel, and accessories." 
-        slot="head"
-      />
-      
-      {/* Preconnect to WordPress CDN for faster image loading */}
-      <link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" crossorigin />
-      <link rel="dns-prefetch" href="https://elcaminoskateshop.wordpress.com" />
-      
-      {/* Preload AVIF (best compression) if available */}
-      {lcpImage.avif && (
-        <link
-          rel="preload"
-          href={lcpImage.avif}
-          as="image"
-          type="image/avif"
-          fetchpriority="high"
+<Layout
+  title="El Camino Skate Shop | Skater Owned & Operated in Eau Claire, WI"
+>
+  {/* LCP PRELOAD: Load first article image with responsive support */}
+  {
+    lcpImageSet && (
+      <Fragment slot="head">
+        {/* Meta description for SEO */}
+        <meta
+          name="description"
+          content="El Camino Skate Shop is a 100% skater owned and operated skateboard shop in downtown Eau Claire, WI. Shop skateboards, apparel, and accessories."
         />
-      )}
-      {/* Fallback to WebP if AVIF not available */}
-      {!lcpImage.avif && lcpImage.webp && (
+
+        {/* Preconnect to WordPress CDN for faster image loading */}
         <link
-          rel="preload"
-          href={lcpImage.webp}
-          as="image"
-          type="image/webp"
-          fetchpriority="high"
+          rel="preconnect"
+          href="https://elcaminoskateshop.wordpress.com"
+          crossorigin
         />
-      )}
-      {/* JPEG fallback */}
-      {!lcpImage.avif && !lcpImage.webp && lcpImage.jpeg && (
         <link
-          rel="preload"
-          href={lcpImage.jpeg}
-          as="image"
-          type="image/jpeg"
-          fetchpriority="high"
+          rel="dns-prefetch"
+          href="https://elcaminoskateshop.wordpress.com"
         />
-      )}
-    </Fragment>
-  )}
+
+        {/* Responsive Preload AVIF (best compression) if available */}
+        {lcpImageSet.avif && (
+          <link
+            rel="preload"
+            as="image"
+            type="image/avif"
+            href={lcpImageSet.href}
+            imagesrcset={lcpImageSet.avif}
+            imagesizes={lcpImageSizes}
+            fetchpriority="high"
+          />
+        )}
+        {/* Fallback code for WebP if AVIF fails or not supported (browser handles selection) */}
+        {!lcpImageSet.avif && lcpImageSet.webp && (
+          <link
+            rel="preload"
+            as="image"
+            type="image/webp"
+            href={lcpImageSet.href}
+            imagesrcset={lcpImageSet.webp}
+            imagesizes={lcpImageSizes}
+            fetchpriority="high"
+          />
+        )}
+      </Fragment>
+    )
+  }
 
   {/* SEO H1 - Visually hidden but present for search engines */}
-  <h1 class="sr-only">El Camino Skate Shop - Eau Claire's Premier Skateboard Shop</h1>
+  <h1 class="sr-only">
+    El Camino Skate Shop - Eau Claire's Premier Skateboard Shop
+  </h1>
 
   <section>
     <ArticleGrid posts={posts} error={error} showSidebar={true} />
