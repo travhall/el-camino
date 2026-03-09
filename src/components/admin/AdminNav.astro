@@ -88,7 +88,7 @@ const currentPath = Astro.url.pathname;
         <a
           href={section.href}
           class:list={[
-            "nav-item text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 lg:p-4 text-(--ui-nav-text) transition-all duration-300 ease-in-out relative hover:text-(--ui-nav-hover) before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-right before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-left nav-link",
+            "nav-item text-4xl sm:text-5xl lg:text-xl xl:text-2xl font-semibold font-display self-start lg:self-center items-center flex flex-row leading-none p-2 pr-16 lg:pr-4 lg:p-4 text-(--ui-nav-text) hover:text-(--ui-nav-hover) transition-all duration-300 ease-in-out relative focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) focus-visible:ring-(--content-body) before:absolute before:top-0 before:left-0 before:w-full before:h-0.5 before:bg-(--ui-nav-hover) before:transform before:scale-x-0 before:origin-center before:transition-transform before:duration-300 before:ease-in-out hover:before:scale-x-100 hover:before:origin-center nav-link wrap-break-word whitespace-normal",
             {
               "lg:before:scale-x-100 lg:before:origin-left":
                 (section.slug === "dashboard" && currentPath === "/admin") ||
@@ -334,7 +334,7 @@ const currentPath = Astro.url.pathname;
 
       // Enhance skip link functionality
       const skipLink = document.querySelector(
-        ".skip-link"
+        ".skip-link",
       ) as HTMLAnchorElement;
       if (skipLink) {
         skipLink.addEventListener(
@@ -350,7 +350,7 @@ const currentPath = Astro.url.pathname;
               });
             }
           },
-          { signal: this.abortController.signal }
+          { signal: this.abortController.signal },
         );
       }
 
@@ -480,7 +480,7 @@ const currentPath = Astro.url.pathname;
 
     private toggleDropdown(
       group: Element,
-      elementData: AdminNavElementData
+      elementData: AdminNavElementData,
     ): void {
       requestAnimationFrame(() => {
         this.isAnimating = true;
@@ -493,7 +493,7 @@ const currentPath = Astro.url.pathname;
         // Announce state change for screen readers
         const action = wasOpen ? "collapsed" : "expanded";
         this.announceToScreenReader(
-          `${elementData.sectionName} menu ${action}`
+          `${elementData.sectionName} menu ${action}`,
         );
 
         setTimeout(() => {
@@ -509,10 +509,10 @@ const currentPath = Astro.url.pathname;
         (elementData: AdminNavElementData, group: Element) => {
           if (group !== excludeGroup && elementData.isOpen) {
             updates.push(() =>
-              this.setDropdownState(group, elementData, false)
+              this.setDropdownState(group, elementData, false),
             );
           }
-        }
+        },
       );
 
       if (updates.length) {
@@ -525,7 +525,7 @@ const currentPath = Astro.url.pathname;
     private setDropdownState(
       group: Element,
       elementData: AdminNavElementData,
-      isOpen: boolean
+      isOpen: boolean,
     ): void {
       elementData.isOpen = isOpen;
       const { link, dropdown } = elementData;
@@ -563,7 +563,7 @@ const currentPath = Astro.url.pathname;
             if (elementData.isOpen) {
               this.setDropdownState(group, elementData, false);
             }
-          }
+          },
         );
       });
     }

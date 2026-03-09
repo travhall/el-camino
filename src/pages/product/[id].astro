@@ -19,6 +19,7 @@ import {
   createSEOTitle,
   createSlugMapping,
 } from "@/lib/square/slugUtils";
+import { slugResolver } from "@/lib/square/slugResolver";
 import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
@@ -31,16 +32,6 @@ import {
 import { generateBreadcrumbs } from "@/lib/product/breadcrumbs";
 import { fetchCategories } from "@/lib/square/categories";
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
-
-// Enable aggressive caching for PDP pages
-Astro.response.headers.set(
-  "Cache-Control",
-  "public, s-maxage=300, stale-while-revalidate=1800"
-);
-Astro.response.headers.set(
-  "Netlify-CDN-Cache-Control",
-  "public, s-maxage=300, stale-while-revalidate=1800"
-);
 
 // Get the slug or ID from URL params
 const { id: slugOrId } = Astro.params;
@@ -62,52 +53,35 @@ if (looksLikeSquareId) {
   product = await fetchProduct(slugOrId);
   id = slugOrId;
 } else {
-  // Slug URL - resolve to ID via API route (cached at edge)
-  // This keeps readable URLs while making resolution faster
+  // Slug URL - resolve to ID directly via slugResolver (blob cache, no HTTP hop)
   try {
-    const apiUrl = new URL("/api/resolve-product", Astro.url.origin);
-    apiUrl.searchParams.set("slug", slugOrId);
+    // Fast path: blob-cached slug → ID map (same data as /api/resolve-product, no round-trip)
+    id = await slugResolver.resolve(slugOrId);
 
-    // console.log(`[PDP] Resolving slug via API: ${slugOrId}`);
-    const response = await fetch(apiUrl.toString());
-
-    if (response.ok) {
-      const data = await response.json();
-      id = data.id;
-      // console.log(`[PDP] API resolved slug "${slugOrId}" to ID: ${id}`);
-
-      // Fetch product with resolved ID
-      product = await fetchProduct(id);
-    } else {
-      // console.log(
-      //   `[PDP] API route failed with status ${response.status}, falling back to direct resolution`
-      // );
-      // API returned error, fallback to direct slug resolution
+    if (!id) {
+      // Fallback: full catalog fetch + mapping (handles slugs not yet in cache)
       allProductsCache = await fetchProducts();
       const slugMapping = createSlugMapping(allProductsCache);
       id = extractIdFromSlug(slugOrId, slugMapping);
-
-      if (id) {
-        // console.log(`[PDP] Fallback resolved slug "${slugOrId}" to ID: ${id}`);
-        product = await fetchProduct(id);
-      } else {
-        console.error(`[PDP] Failed to resolve slug: ${slugOrId}`);
-      }
     }
-  } catch (error) {
-    console.error("[PDP] Error calling resolve-product API:", error);
-    // Fallback to direct slug resolution
-    allProductsCache = await fetchProducts();
-    const slugMapping = createSlugMapping(allProductsCache);
-    id = extractIdFromSlug(slugOrId, slugMapping);
 
     if (id) {
-      // console.log(
-      //   `[PDP] Fallback (after error) resolved slug "${slugOrId}" to ID: ${id}`
-      // );
       product = await fetchProduct(id);
     } else {
-      console.error(`[PDP] Failed to resolve slug after error: ${slugOrId}`);
+      console.error(`[PDP] Failed to resolve slug: ${slugOrId}`);
+    }
+  } catch (error) {
+    console.error("[PDP] Error resolving slug:", error);
+    // Last-resort fallback: full catalog fetch
+    try {
+      allProductsCache = await fetchProducts();
+      const slugMapping = createSlugMapping(allProductsCache);
+      id = extractIdFromSlug(slugOrId, slugMapping);
+      if (id) {
+        product = await fetchProduct(id);
+      }
+    } catch {
+      console.error(`[PDP] All slug resolution attempts failed: ${slugOrId}`);
     }
   }
 }
@@ -146,31 +120,25 @@ if (!product) {
 let defaultVariationId = product.variationId;
 let variations = product.variations || [];
 
-// Fetch inventory only (related products will load client-side)
-const inventoryMap =
-  variations.length > 0
-    ? await checkBulkInventory(variations.map((v) => v.variationId))
-    : ({} as Record<string, number>);
-
-// Process inventory results
+// Fetch and process inventory (API call + data processing in one try block)
 if (variations.length > 0) {
   try {
-    // Update variation data with inventory information
+    const inventoryMap = await checkBulkInventory(
+      variations.map((v) => v.variationId)
+    );
+
     variations = variations.map((v) => ({
       ...v,
       inStock: (inventoryMap[v.variationId] || 0) > 0,
       quantity: inventoryMap[v.variationId] || 0,
     }));
 
-    // Check if default variation is in stock
+    // If default variation is out of stock, promote first in-stock variation
     const defaultIsInStock = (inventoryMap[defaultVariationId] || 0) > 0;
-
-    // If default is out of stock, find first in-stock variation
     if (!defaultIsInStock && variations.length > 0) {
       const firstInStockVariation = variations.find((v) => v.inStock);
       if (firstInStockVariation) {
         defaultVariationId = firstInStockVariation.variationId;
-        // Use variation-specific image if available
         if (firstInStockVariation.image) {
           product.image = firstInStockVariation.image;
         }
@@ -178,29 +146,48 @@ if (variations.length > 0) {
     }
   } catch (err) {
     console.error(
-      `Inventory processing error: ${err instanceof Error ? err.message : String(err)}`
+      `Inventory check failed: ${err instanceof Error ? err.message : String(err)}`
     );
-    // Default to allowing purchases if inventory check fails
+    // Fail safe: mark out-of-stock so we never oversell on API failure.
     variations = variations.map((v) => ({
       ...v,
-      inStock: true,
-      quantity: 999,
+      inStock: false,
+      quantity: 0,
     }));
   }
 } else {
-  // Single variation product - mark as in stock by default
-  const quantity = inventoryMap[product.variationId] || 999;
-  variations = [
-    {
-      id: product.variationId,
-      variationId: product.variationId,
-      name: product.title,
-      price: product.price,
-      inStock: quantity > 0,
-      quantity: quantity,
-      attributes: {}, // Add empty attributes for consistency
-    },
-  ];
+  // Single-variation product — fetch inventory for the lone variation
+  try {
+    const inventoryMap = await checkBulkInventory([product.variationId]);
+    const quantity = inventoryMap[product.variationId] || 0;
+    variations = [
+      {
+        id: product.variationId,
+        variationId: product.variationId,
+        name: product.title,
+        price: product.price,
+        inStock: quantity > 0,
+        quantity,
+        attributes: {},
+      },
+    ];
+  } catch (err) {
+    console.error(
+      `Inventory check failed for single variation: ${err instanceof Error ? err.message : String(err)}`
+    );
+    // Fail safe: mark out-of-stock so we never oversell on API failure.
+    variations = [
+      {
+        id: product.variationId,
+        variationId: product.variationId,
+        name: product.title,
+        price: product.price,
+        inStock: false,
+        quantity: 0,
+        attributes: {},
+      },
+    ];
+  }
 }
 
 // Create initial selection state using the parser

@@ -268,32 +268,27 @@ export class FilterCoordinator {
       }
     });
 
-    // Page visibility handler - reset animation state when page becomes visible after being hidden
-    // Only runs after extended idle periods (5+ minutes)
+    // Page visibility handler - clear stale animation state after extended idle (5+ min).
+    // Listeners are already registered; only state cleanup is needed, not re-initialization.
     let hiddenTime = 0;
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
-        // Track when page was hidden
         hiddenTime = Date.now();
       } else {
-        // Page is visible again - only reset if hidden for more than 5 minutes
         const idleDuration = Date.now() - hiddenTime;
         if (hiddenTime > 0 && idleDuration > 300000) {
           // 5 minutes
           FilterCoordinator.cleanupAnimationState();
-          FilterCoordinator.isInitialized = false;
-          FilterCoordinator.initialize();
         }
       }
     });
 
     // Handle page show event (fired when navigating back via browser history)
+    // Listeners are already registered; only state cleanup is needed. cSpell:ignore bfcache
     window.addEventListener("pageshow", (event) => {
-      // If page is loaded from bfcache (back/forward cache), reset state cSpell:ignore bfcache
       if (event.persisted) {
+        // bfcache restore: clear any stale filtering/animation state
         FilterCoordinator.cleanupAnimationState();
-        FilterCoordinator.isInitialized = false;
-        FilterCoordinator.initialize();
       }
     });
   }

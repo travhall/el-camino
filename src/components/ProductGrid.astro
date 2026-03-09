@@ -671,11 +671,23 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       // Update grid aria-busy state
       if (grid) grid.setAttribute("aria-busy", "false");
 
-      // Hide controls when done
+      // Hide controls when done, or force re-evaluation if more remain
       if (visibleCount >= allCards.length) {
         if (trigger) trigger.style.display = "none";
         if (loadMoreContainer) loadMoreContainer.style.display = "none";
         announceToScreenReader(`All ${allCards.length} products loaded.`);
+      } else if (loadMoreObserver && trigger) {
+        // IntersectionObserver only fires on transitions. If the trigger stays
+        // within the intersection zone after a batch loads (common when the batch
+        // doesn't push the trigger far enough below the fold + rootMargin), the
+        // observer never re-fires and the spinner hangs. Force re-evaluation by
+        // temporarily unobserving and re-observing the trigger.
+        loadMoreObserver.unobserve(trigger);
+        requestAnimationFrame(() => {
+          if (loadMoreObserver && trigger && visibleCount < allCards.length) {
+            loadMoreObserver.observe(trigger);
+          }
+        });
       }
     }
 

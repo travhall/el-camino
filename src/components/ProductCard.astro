@@ -203,7 +203,7 @@ if (hasValidImage) {
               srcset={jpegSrcSet}
               sizes={imageSizes}
               alt={enhancedAltText}
-              class={`object-cover grayscale-50 group-hover:grayscale-0 w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""} image-enhanced will-change-transform`}
+              class={`hover-img object-cover grayscale-50 group-hover:grayscale-0 w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""} image-enhanced will-change-transform`}
               loading={isDynamicPriority ? "eager" : "lazy"}
               fetchpriority={isDynamicPriority ? "high" : "auto"}
               decoding={isDynamicPriority ? "sync" : "async"}
@@ -242,7 +242,7 @@ if (hasValidImage) {
 
       <!-- Quick View Trigger (appears on hover) -->
       <div
-        class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end z-10 pointer-events-none"
+        class="hover-layer absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end z-10 pointer-events-none"
       >
         <button
           type="button"
@@ -316,6 +316,23 @@ if (hasValidImage) {
   @media (prefers-reduced-motion: reduce) {
     .image-enhanced {
       transition: none !important;
+    }
+  }
+
+  /*
+   * Touch devices: disable hover-dependent visual effects.
+   * CSS :hover states can get "stuck" after a tap on iOS/Android, leaving the
+   * overlay visible and the image scaled/desaturated until the user taps elsewhere.
+   * @media (hover: none) targets devices that lack a true hover pointer (touchscreens).
+   * Bonus: showing full-color images (no grayscale) is better UX on mobile.
+   */
+  @media (hover: none) {
+    .hover-img {
+      filter: grayscale(0) !important;
+      transform: none !important;
+    }
+    .hover-layer {
+      opacity: 0 !important;
     }
   }
 </style>

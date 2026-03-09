@@ -271,8 +271,20 @@ import {
         this.showLoading();
         this.openModal();
 
-        // Use existing API endpoint
-        const response = await fetch(`/api/quick-view-product?id=${productId}`);
+        // Abort after 8 s so a hung request shows the error state instead of a
+        // permanent spinner
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(() => abortController.abort(), 8000);
+
+        let response: Response;
+        try {
+          response = await fetch(`/api/quick-view-product?id=${productId}`, {
+            signal: abortController.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
