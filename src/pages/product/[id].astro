@@ -127,7 +127,7 @@ let variations = product.variations || [];
 if (variations.length > 0) {
   try {
     const inventoryMap = await checkBulkInventory(
-      variations.map((v) => v.variationId)
+      variations.map((v) => v.variationId),
     );
 
     variations = variations.map((v) => ({
@@ -149,7 +149,7 @@ if (variations.length > 0) {
     }
   } catch (err) {
     console.error(
-      `Inventory check failed: ${err instanceof Error ? err.message : String(err)}`
+      `Inventory check failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     // Fail safe: mark out-of-stock so we never oversell on API failure.
     variations = variations.map((v) => ({
@@ -176,7 +176,7 @@ if (variations.length > 0) {
     ];
   } catch (err) {
     console.error(
-      `Inventory check failed for single variation: ${err instanceof Error ? err.message : String(err)}`
+      `Inventory check failed for single variation: ${err instanceof Error ? err.message : String(err)}`,
     );
     // Fail safe: mark out-of-stock so we never oversell on API failure.
     variations = [
@@ -212,7 +212,7 @@ const isOnSale = !!saleInfo && selectedVariationInStock;
 const formattedPrice = saleInfo
   ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.salePrice))
   : MoneyUtils.format(
-      MoneyUtils.fromFloat(selectedVariation?.price || product.price)
+      MoneyUtils.fromFloat(selectedVariation?.price || product.price),
     );
 
 const formattedOriginalPrice = saleInfo
@@ -238,7 +238,7 @@ try {
 const productSchema = generateProductSchema(
   product,
   selectedVariation,
-  baseUrl
+  baseUrl,
 );
 const ogData = generateOGData(product, selectedVariation, baseUrl);
 const twitterData = generateTwitterCardData(product, baseUrl);
@@ -248,7 +248,7 @@ const pageTitle = product.title;
 const selectedVariationForSEO =
   variantParam && product.variations
     ? product.variations.find(
-        (v) => v.variationId === product.selectedVariationId
+        (v) => v.variationId === product.selectedVariationId,
       )
     : undefined;
 const fullTitle = createSEOTitle(product, selectedVariationForSEO);
@@ -259,7 +259,7 @@ let activeCategory = "";
 if (breadcrumbPath && breadcrumbPath.items.length > 1) {
   // Find the first category in breadcrumbs (after Home)
   const categoryItem = breadcrumbPath.items.find(
-    (item, index) => index > 0 && item.url.startsWith("/category/")
+    (item, index) => index > 0 && item.url.startsWith("/category/"),
   );
   if (categoryItem) {
     // Extract the category slug from the URL
@@ -284,20 +284,20 @@ const imageSet = product.image
 // Browser: Cache for 1 minute, then revalidate
 Astro.response.headers.set(
   "Cache-Control",
-  "public, max-age=60, must-revalidate"
+  "public, max-age=60, must-revalidate",
 );
 
 // Netlify CDN: Serve fresh for 5 minutes, then serve stale for 1 hour while revalidating
 // durable directive shares cache globally across all edge nodes
 Astro.response.headers.set(
   "Netlify-CDN-Cache-Control",
-  "public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable" //cSpell:ignore maxage
+  "public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable", //cSpell:ignore maxage
 );
 
 // Add cache tag for per-product invalidation via webhooks
 Astro.response.headers.set(
   "Netlify-Cache-Tag",
-  `product-${product.id},products`
+  `product-${product.id},products`,
 );
 
 // Vary header for cookie-based personalization (if needed in future)
@@ -347,10 +347,16 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
         imagesrcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
           product.image,
           imageSet.avif ? "avif" : imageSet.webp ? "webp" : "jpeg",
-          { width: 800, height: 800, quality: 85 }
+          { width: 800, height: 800, quality: 85 },
         )}
         imagesizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
-        type={imageSet.avif ? "image/avif" : imageSet.webp ? "image/webp" : "image/jpeg"}
+        type={
+          imageSet.avif
+            ? "image/avif"
+            : imageSet.webp
+              ? "image/webp"
+              : "image/jpeg"
+        }
         fetchpriority="high"
         slot="head"
       />
@@ -394,7 +400,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                       width: 800,
                       height: 800,
                       quality: 85,
-                    }
+                    },
                   )}
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
                 />
@@ -411,7 +417,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                       width: 800,
                       height: 800,
                       quality: 85,
-                    }
+                    },
                   )}
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
                 />
@@ -428,7 +434,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                     width: 800,
                     height: 800,
                     quality: 85,
-                  }
+                  },
                 )}
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
                 alt={product.title}
@@ -534,7 +540,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
             attributeTypes
               .filter(
                 (attributeType) =>
-                  availableAttributes[attributeType]?.length > 1
+                  availableAttributes[attributeType]?.length > 1,
               )
               .map((attributeType) => {
                 const attributeValues = availableAttributes[attributeType];
@@ -542,9 +548,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
 
                 return (
                   <div class="mt-6">
-                    <label
-                      class="text-sm font-medium block mb-1"
-                    >
+                    <label class="text-sm font-medium block mb-1">
                       {displayName}
                     </label>
                     <div class="flex flex-wrap gap-2">
@@ -753,7 +757,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
 
 <script>
   import { PDPController } from "@/lib/product/pdpController";
-  import { processSquareError, logError } from "@/lib/square/errorUtils";
+  import { processClientError, logError } from "@/lib/square/errorUtils";
   import { recentlyViewed } from "@/lib/product/recentlyViewed";
   import type { Product } from "@/lib/square/types";
 
@@ -764,7 +768,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
    */
   function initializePDP(): boolean {
     const dataInput = document.getElementById(
-      "variation-data"
+      "variation-data",
     ) as HTMLInputElement;
     if (!dataInput?.value) return false;
 
@@ -793,7 +797,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
         return true; // No interactive elements, not an error
       }
     } catch (error) {
-      const appError = processSquareError(error, "initializePDP");
+      const appError = processClientError(error, "initializePDP");
       logError(appError);
       return true; // Don't fail the whole page for this
     }

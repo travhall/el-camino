@@ -10,7 +10,8 @@ import type {
   SaleInfo,
 } from "./types";
 import { categoryCache, productCache } from "./cacheUtils";
-import { processSquareError, handleError } from "./errorUtils";
+import { handleError } from "./errorUtils";
+import { processSquareError } from "./serverErrorUtils";
 import { createProductUrl } from "@/lib/square/slugUtils";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 

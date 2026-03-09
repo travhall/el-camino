@@ -227,7 +227,7 @@ import {
     getAttributeDisplayName,
     findVariationByAttributes,
   } from "@/lib/square/variationParser";
-  import { processSquareError, logError } from "@/lib/square/errorUtils";
+  import { processClientError, logError } from "@/lib/square/errorUtils";
   import type { Product, ProductVariation } from "@/lib/square/types";
   import { PDPUIManager } from "@/lib/product/pdpUI";
 
@@ -308,7 +308,7 @@ import {
         this.showProduct(); // Show DOM first
         this.initializeProduct(product); // Then initialize with UI manager available
       } catch (error) {
-        const appError = processSquareError(error, "openQuickView");
+        const appError = processClientError(error, "openQuickView");
         logError(appError);
         this.showError();
       }
@@ -544,7 +544,7 @@ import {
           this.showOutOfStockState();
         }
       } catch (error) {
-        const appError = processSquareError(error, "updateCurrentVariation");
+        const appError = processClientError(error, "updateCurrentVariation");
         logError(appError);
       }
     }
@@ -782,7 +782,7 @@ import {
           throw new Error(result.message || "Failed to add to cart");
         }
       } catch (error) {
-        const appError = processSquareError(error, "quickViewAddToCart");
+        const appError = processClientError(error, "quickViewAddToCart");
         logError(appError);
 
         if (typeof window.showNotification === "function") {

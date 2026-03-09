@@ -1,7 +1,7 @@
 // src/lib/product/pdpEvents.ts
 import { cart } from "@/lib/cart";
 import { PDPUIManager } from "./pdpUI";
-import { processSquareError, logError } from "@/lib/square/errorUtils";
+import { processClientError, logError } from "@/lib/square/errorUtils";
 
 // Global declarations
 declare global {
@@ -228,7 +228,7 @@ export class PDPEventManager {
         );
       }
     } catch (error) {
-      const appError = processSquareError(error, "addToCart");
+      const appError = processClientError(error, "addToCart");
       logError(appError);
       window.showNotification("Failed to add to cart", "error");
     } finally {

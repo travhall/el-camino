@@ -3,7 +3,8 @@
 import { squareClient } from "./client";
 import { categoryCache, navigationCache } from "./cacheUtils";
 import type { Category, CategoryHierarchy } from "./types";
-import { processSquareError, handleError } from "./errorUtils";
+import { handleError } from "./errorUtils";
+import { processSquareError } from "./serverErrorUtils";
 import { requestDeduplicator } from "./requestDeduplication";
 import { apiRetryClient } from "./apiRetry";
 

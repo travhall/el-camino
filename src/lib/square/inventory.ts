@@ -2,7 +2,8 @@
 import { squareClient } from "./client";
 import type { Product, ProductVariation } from "./types";
 import { inventoryCache } from "./cacheUtils";
-import { processSquareError, logError, handleError } from "./errorUtils";
+import { logError, handleError } from "./errorUtils";
+import { processSquareError } from "./serverErrorUtils";
 import { requestDeduplicator } from './requestDeduplication';
 
 /**

@@ -92,33 +92,13 @@ export default defineConfig({
       },
     },
     build: {
+      sourcemap: true,
       minify: true,
       cssMinify: true,
       rollupOptions: {
         output: {
-          manualChunks(id) {
-            // Desktop-only features
-            if (id.includes('CartButton') || 
-                id.includes('ProductCard') ||
-                id.includes('@astrojs/view-transitions')) {
-              return 'desktop-features';
-            }
-            
-            // Mobile-only features
-            if (id.includes('MobileProductFilters') ||
-                id.includes('MobileProductCard')) {
-              return 'mobile-features';
-            }
-            
-            // ✅ REMOVED: Square SDK client-side bundling (was 230KB)
-            // Square is server-only in Astro SSR - doesn't need client chunk
-            // This was forcing unnecessary 230KB into every page load
-            
-            // Core vendor code
-            if (id.includes('node_modules')) {
-              return 'vendor';
-            }
-          },
+          // REMOVED manualChunks: Let Vite optimally split chunks
+          // to fix massive 369KB ClientRouter script issue.
         },
       },
     },

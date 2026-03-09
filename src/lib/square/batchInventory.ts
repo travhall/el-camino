@@ -1,6 +1,7 @@
 import { squareClient } from "./client";
 import { defaultCircuitBreaker } from "./apiUtils";
-import { processSquareError, logError } from "./errorUtils";
+import { logError } from "./errorUtils";
+import { processSquareError } from "./serverErrorUtils";
 import { requestDeduplicator } from "./requestDeduplication";
 import type { InventoryStatus } from "./types";
 

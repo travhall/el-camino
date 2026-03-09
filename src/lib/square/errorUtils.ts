@@ -1,5 +1,4 @@
 // src/lib/square/errorUtils.ts
-import { ApiError } from "square/legacy";
 
 /**
  * Standard error types for the application
@@ -84,21 +83,9 @@ export function logError(error: AppError): void {
 }
 
 /**
- * Process Square API errors into standardized format
+ * Process client-side errors into standardized format
  */
-export function processSquareError(error: unknown, source: string): AppError {
-  if (error instanceof ApiError) {
-    const type = getErrorTypeFromSquare(error);
-    return createError(type, error.message, {
-      source,
-      originalError: error,
-      data: {
-        statusCode: error.statusCode,
-        errors: error.errors,
-      },
-    });
-  }
-
+export function processClientError(error: unknown, source: string): AppError {
   if (error instanceof Error) {
     if (
       error.message.includes("timeout") ||
@@ -130,31 +117,6 @@ export function processSquareError(error: unknown, source: string): AppError {
     source,
     originalError: error,
   });
-}
-
-/**
- * Map Square error codes to our standardized types
- */
-function getErrorTypeFromSquare(error: ApiError): ErrorType {
-  // Square's status codes
-  switch (error.statusCode) {
-    case 401:
-    case 403:
-      return ErrorType.AUTH_ERROR;
-    case 404:
-      return ErrorType.DATA_NOT_FOUND;
-    case 422:
-      return ErrorType.DATA_VALIDATION;
-    case 429:
-      return ErrorType.API_RATE_LIMIT;
-    case 500:
-    case 502:
-    case 503:
-    case 504:
-      return ErrorType.API_UNAVAILABLE;
-    default:
-      return ErrorType.API_RESPONSE_ERROR;
-  }
 }
 
 /**

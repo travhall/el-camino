@@ -3,7 +3,7 @@ import { cart } from "@/lib/cart";
 import { findVariationByAttributes } from "@/lib/square/variationParser";
 import { createVariantSlug } from "@/lib/square/slugUtils";
 import {
-  processSquareError,
+  processClientError,
   logError,
   createError,
   ErrorType,
@@ -64,7 +64,7 @@ export class PDPController {
         this.showOutOfStockState();
       }
     } catch (error) {
-      const appError = processSquareError(error, "updateCurrentVariation");
+      const appError = processClientError(error, "updateCurrentVariation");
       logError(appError);
     }
   }

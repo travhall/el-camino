@@ -2,7 +2,8 @@
 import type { APIRoute } from "astro";
 import { fetchProduct } from "@/lib/square/client";
 import { checkBulkInventory } from "@/lib/square/inventory";
-import { processSquareError, logError } from "@/lib/square/errorUtils";
+import { logError } from "@/lib/square/errorUtils";
+import { processSquareError } from "@/lib/square/serverErrorUtils";
 
 export const GET: APIRoute = async ({ url }) => {
   try {

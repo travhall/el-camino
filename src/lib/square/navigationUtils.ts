@@ -3,7 +3,8 @@
 import { categoryCache } from "./cacheUtils";
 import { fetchCategoryHierarchy } from "./categories";
 import type { CategoryHierarchy } from "./types";
-import { processSquareError, handleError } from "./errorUtils";
+import { handleError } from "./errorUtils";
+import { processSquareError } from "./serverErrorUtils";
 
 /**
  * Enhanced category hierarchy fetch specifically optimized for navigation
