@@ -71,10 +71,14 @@ let optimizedImageUrl = "";
 let avifSrcSet: string | undefined;
 let webpSrcSet: string | undefined;
 let jpegSrcSet: string | undefined;
+// Featured masonry card: col-span-4 of grid-cols-6 at md (~67vw), col-span-4 of grid-cols-8 at 2xl (50vw)
+// Non-featured masonry: col-span-2 of grid-cols-6 (~33vw at md+)
 let imageSizes =
   variant === "list"
     ? "(max-width: 768px) 0px, 256px"
-    : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
+    : featured
+      ? "(max-width: 640px) 100vw, (max-width: 1535px) 67vw, 50vw"
+      : "(max-width: 640px) 100vw, 33vw";
 
 if (imageUrl) {
   const imageSet = EnhancedImageOptimizer.generateOptimizedSources(imageUrl, {
