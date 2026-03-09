@@ -9,6 +9,7 @@ import { createProductUrl } from "./slugUtils";
 import { requestDeduplicator } from "./requestDeduplication";
 import { extractBrandValue, fetchMeasurementUnits } from "./productUtils";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import { productCache } from "@/lib/cache/blobCache";
 
 function validateEnvironment() {
   const missingVars = [];
@@ -335,6 +336,10 @@ export async function fetchProducts(): Promise<Product[]> {
 }
 
 export async function fetchProduct(id: string): Promise<Product | null> {
+  // Check blob cache first — persists across cold starts (TTL: 1 hour)
+  const cached = await productCache.get(id);
+  if (cached) return cached;
+
   const cacheKey = `product:${id}`;
 
   return requestDeduplicator.dedupe(cacheKey, () =>
@@ -475,6 +480,9 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         //       .filter(Boolean),
         //   }
         // );
+
+        // Populate blob cache for future requests (fire-and-forget, TTL: 1 hour)
+        productCache.set(id, product).catch(() => {});
 
         return product;
       } catch (error) {

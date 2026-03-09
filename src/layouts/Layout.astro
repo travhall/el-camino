@@ -46,6 +46,9 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     class="bg-(--surface-primary) text-(--content-body) grid grid-rows-[auto_1fr_auto] min-h-screen relative overflow-x-hidden"
     data-active-category={activeCategory || ""}
   >
+    <!-- Navigation progress bar: visible feedback during view transitions -->
+    <div id="nav-progress" transition:persist="nav-progress" aria-hidden="true"></div>
+
     <Header activeCategory={activeCategory} />
     <main
       class="bg-(--surface-primary) text-(--content-body) border-b-4 border-(--border-secondary) z-10 relative overflow-x-clip w-full max-w-full min-w-0"
@@ -116,6 +119,62 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
             window.history.replaceState({}, "", cleanUrl);
           }
         }
+      });
+    </script>
+
+    <!-- Navigation progress bar styles & controller -->
+    <style is:global>
+      #nav-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 2px;
+        width: 0%;
+        z-index: 9999;
+        opacity: 0;
+        pointer-events: none;
+        background: var(--content-emphasis);
+        transition: none;
+        will-change: width, opacity;
+      }
+    </style>
+    <script>
+      document.addEventListener("astro:before-preparation", () => {
+        const bar = document.getElementById("nav-progress");
+        if (!bar) return;
+        // Reset and animate to 80% over ~3 s (slow crawl — gives sense of progress)
+        bar.style.transition = "none";
+        bar.style.width = "0%";
+        bar.style.opacity = "1";
+        // Force reflow so the reset takes effect before the animation starts
+        bar.getBoundingClientRect();
+        bar.style.transition =
+          "width 3s cubic-bezier(0.05, 0.5, 0.1, 1), opacity 0.1s ease";
+        bar.style.width = "80%";
+      });
+
+      document.addEventListener("astro:after-preparation", () => {
+        // Page data is ready — bump toward 95% while swap is pending
+        const bar = document.getElementById("nav-progress");
+        if (!bar) return;
+        bar.style.transition = "width 0.2s ease";
+        bar.style.width = "95%";
+      });
+
+      document.addEventListener("astro:page-load", () => {
+        // Page rendered — snap to 100% then fade out
+        const bar = document.getElementById("nav-progress");
+        if (!bar) return;
+        bar.style.transition = "width 0.15s ease";
+        bar.style.width = "100%";
+        setTimeout(() => {
+          bar.style.transition = "opacity 0.3s ease";
+          bar.style.opacity = "0";
+          setTimeout(() => {
+            bar.style.transition = "none";
+            bar.style.width = "0%";
+          }, 300);
+        }, 100);
       });
     </script>
 

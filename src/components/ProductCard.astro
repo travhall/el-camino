@@ -339,15 +339,24 @@ if (hasValidImage) {
 
 <script>
   document.addEventListener("astro:page-load", () => {
-    // Mobile detection function
+    // Mobile detection — evaluated at click time, not setup time
     function isMobileDevice(): boolean {
       return window.innerWidth < 1024; // lg breakpoint
     }
 
-    // Enhanced mobile interaction for product cards
+    // Attach click handlers to product card anchor elements.
+    //
+    // IMPORTANT: We do NOT clone/replace elements here. The previous clone-and-replace
+    // pattern silently detached each <a> from Astro's prefetch IntersectionObserver,
+    // which meant data-astro-prefetch="viewport" never fired and every PDP click
+    // triggered a cold SSR fetch.
+    //
+    // Instead, a data-mobile-handler attribute guards against duplicate listeners
+    // if this function is somehow called more than once for the same elements.
+    // isMobileDevice() is evaluated on every click so no resize re-setup is needed.
     function setupMobileQuickView(): void {
       const productCards = document.querySelectorAll(
-        '[itemtype="http://schema.org/Product"]'
+        '[itemtype="http://schema.org/Product"]:not([data-mobile-handler])'
       );
 
       productCards.forEach((card) => {
@@ -358,12 +367,11 @@ if (hasValidImage) {
 
         if (!productId) return;
 
-        // Clone the link to remove existing listeners
-        const newLink = link.cloneNode(true) as HTMLAnchorElement;
-        link.parentNode?.replaceChild(newLink, link);
+        // Mark element so subsequent calls skip it (prevents listener accumulation)
+        link.dataset.mobileHandler = "true";
 
-        // Add mobile-specific behavior
-        newLink.addEventListener("click", (e) => {
+        // Mobile tap → open Quick View; desktop click → let Astro handle navigation
+        link.addEventListener("click", (e) => {
           if (isMobileDevice()) {
             // On mobile: prevent navigation, open Quick View
             e.preventDefault();
@@ -374,17 +382,17 @@ if (hasValidImage) {
               (window as any).openQuickView(productId);
             } else {
               // Fallback to PDP if Quick View not available
-              window.location.href = newLink.href;
+              window.location.href = link.href;
             }
           }
-          // On desktop: let the link work normally (no preventDefault)
+          // On desktop: let the link and Astro's view transition work normally
         });
 
-        // Ensure Quick View button still works on desktop
-        const quickViewButton = newLink.querySelector(".quick-view-trigger");
+        // Quick View button (desktop hover) — always opens Quick View
+        const quickViewButton = link.querySelector(".quick-view-trigger");
         if (quickViewButton) {
           quickViewButton.addEventListener("click", (e) => {
-            // Always prevent link navigation when Quick View button clicked
+            // Always prevent link navigation when Quick View button is clicked
             e.preventDefault();
             e.stopPropagation();
 
@@ -396,16 +404,6 @@ if (hasValidImage) {
       });
     }
 
-    // Setup mobile behavior
     setupMobileQuickView();
-
-    // Re-setup on window resize (desktop/mobile transitions)
-    let resizeTimeout: number;
-    window.addEventListener("resize", () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = window.setTimeout(() => {
-        setupMobileQuickView();
-      }, 250);
-    });
   });
 </script>

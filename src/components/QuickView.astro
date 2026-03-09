@@ -220,6 +220,7 @@ import {
 </div>
 
 <script>
+  import { navigate } from "astro:transitions/client";
   import { cart } from "@/lib/cart";
   import {
     createInitialSelectionState,
@@ -292,6 +293,15 @@ import {
         const product = await response.json();
         if (!product) {
           throw new Error("Product not found");
+        }
+
+        // Eagerly prefetch the PDP while the user browses Quick View so that
+        // "View Full Details" loads from cache instead of waiting on cold SSR.
+        if (product.url) {
+          const prefetchLink = document.createElement("link");
+          prefetchLink.rel = "prefetch";
+          prefetchLink.href = product.url;
+          document.head.appendChild(prefetchLink);
         }
 
         this.currentProduct = product;
@@ -694,8 +704,10 @@ import {
       if (button && product) {
         button.onclick = () => {
           this.closeModal();
-          // Use product.url to maintain readable slug URLs
-          window.location.href = product.url;
+          // Use Astro's navigate() so the view-transition router handles the
+          // navigation — this uses any prefetched content and plays the page
+          // transition animation instead of a jarring hard reload.
+          navigate(product.url);
         };
       }
     }

@@ -44,6 +44,9 @@ if (!slugOrId) {
 // Check if this looks like a Square ID (uppercase alphanumeric, 24+ chars)
 const looksLikeSquareId = /^[A-Z0-9]{24,}$/.test(slugOrId);
 
+// Start fetching categories immediately — independent of product resolution
+const categoriesPromise = fetchCategories();
+
 let product;
 let id;
 let allProductsCache: Product[] | undefined;
@@ -222,10 +225,10 @@ const hasMultipleVariations = variations.length > 1;
 // Generate structured data and social meta tags
 const baseUrl = Astro.url.origin;
 
-// Generate breadcrumbs
+// Generate breadcrumbs (categories were fetched in parallel, above)
 let breadcrumbPath;
 try {
-  const categories = await fetchCategories();
+  const categories = await categoriesPromise;
   breadcrumbPath = await generateBreadcrumbs(product, categories, baseUrl);
 } catch (err) {
   console.error("Failed to generate breadcrumbs:", err);
