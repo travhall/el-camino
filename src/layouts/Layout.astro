@@ -33,21 +33,22 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
 
 <!doctype html>
 <html lang="en">
-  <head>
-    <BaseHead
-      title={title}
-      structuredData={structuredData}
-      orgSchema={orgSchema}
-      currentPath={currentPath}
-      isHighTrafficPage={isHighTrafficPage}
-    />
-  </head>
+  <BaseHead
+    title={title}
+    structuredData={structuredData}
+    orgSchema={orgSchema}
+    currentPath={currentPath}
+    isHighTrafficPage={isHighTrafficPage}
+  />
+  <slot name="head" />
+
   <body
     class="bg-(--surface-primary) text-(--content-body) grid grid-rows-[auto_1fr_auto] min-h-screen relative overflow-x-hidden"
     data-active-category={activeCategory || ""}
   >
     <!-- Navigation progress bar: visible feedback during view transitions -->
-    <div id="nav-progress" transition:persist="nav-progress" aria-hidden="true"></div>
+    <div id="nav-progress" transition:persist="nav-progress" aria-hidden="true">
+    </div>
 
     <Header activeCategory={activeCategory} />
     <main
