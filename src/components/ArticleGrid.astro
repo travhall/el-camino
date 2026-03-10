@@ -212,10 +212,11 @@ const getSkeletonVariant = () => {
   }
 
   /* Priority card entrance: opacity stays 1 (visible to Chrome for LCP),
-     only the transform is animated in. Same start state as opacity-0 cards. */
+     translate-only so Chrome does NOT re-record LCP when the transition fires.
+     Scale would change visual size → Chrome re-records LCP at animation end (~4s). */
   .article-card-wrapper.card-entrance-ready {
     opacity: 1;
-    transform: scale(0.95) translate3d(0, 10px, 0);
+    transform: translate3d(0, 10px, 0);
   }
 
   /* Temporary will-change during animation only */
