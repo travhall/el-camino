@@ -211,6 +211,13 @@ const getSkeletonVariant = () => {
     /* Delay is inherited from base rule for staggered entrance */
   }
 
+  /* Priority card entrance: opacity stays 1 (visible to Chrome for LCP),
+     only the transform is animated in. Same start state as opacity-0 cards. */
+  .article-card-wrapper.card-entrance-ready {
+    opacity: 1;
+    transform: scale(0.95) translate3d(0, 10px, 0);
+  }
+
   /* Temporary will-change during animation only */
   .article-card-wrapper.animating {
     will-change: opacity, transform;
@@ -309,7 +316,11 @@ const getSkeletonVariant = () => {
   // Initialize entrance animations for article cards and sidebar
   function initializeArticleAnimations() {
     // Find all article cards and sidebar with animation wrapper class
-    const cards = document.querySelectorAll(".article-card-wrapper.opacity-0");
+    // card-entrance-ready = priority cards (transform-only animation, opacity stays 1)
+    // opacity-0 = all other cards (opacity + transform animation)
+    const cards = document.querySelectorAll(
+      ".article-card-wrapper.opacity-0, .article-card-wrapper.card-entrance-ready"
+    );
 
     if (!cards.length) return;
 
@@ -317,7 +328,7 @@ const getSkeletonVariant = () => {
     if (prefersReducedMotion) {
       cards.forEach((card) => {
         const htmlCard = card as HTMLElement;
-        htmlCard.classList.remove("opacity-0");
+        htmlCard.classList.remove("opacity-0", "card-entrance-ready");
         htmlCard.classList.add("opacity-100");
       });
       return;
@@ -355,8 +366,14 @@ const getSkeletonVariant = () => {
         // Set animation properties
         htmlCard.style.setProperty("--animation-order", animationOrder.toString());
         htmlCard.classList.add("animating");
-        htmlCard.classList.remove("opacity-0");
-        htmlCard.classList.add("opacity-100");
+        if (htmlCard.classList.contains("card-entrance-ready")) {
+          // Priority card: remove entrance class → CSS transition fires on transform only
+          // opacity stays at 1 throughout (LCP-visible from first render)
+          htmlCard.classList.remove("card-entrance-ready");
+        } else {
+          htmlCard.classList.remove("opacity-0");
+          htmlCard.classList.add("opacity-100");
+        }
 
         // Remove will-change after animation
         const totalAnimationTime = ANIMATION_CONFIG.duration + animationOrder * ANIMATION_CONFIG.staggerDelay;
