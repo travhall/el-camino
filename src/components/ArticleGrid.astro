@@ -150,6 +150,45 @@ const getSkeletonVariant = () => {
   }
 </div>
 
+<!-- Inline (non-module) script: runs synchronously during HTML parsing, before any
+     module script executes. Triggers the full staggered entrance animation for all
+     masonry cards at parse time (~200-400ms) instead of astro:page-load (~3.6s on
+     throttled mobile). Eliminates the visible gap between card 0 and the rest.
+     The skeleton handles the loading state; this is purely the entrance aesthetic.
+     astro:page-load still handles filterable grid/list cards on the news page. -->
+<script is:inline>
+  (function () {
+    var cards = document.querySelectorAll(
+      '.article-card-wrapper.opacity-0[data-variant="masonry"]'
+    );
+    if (!cards.length) return;
+
+    // Match the masonry grid breakpoints defined in getContainerClasses()
+    var w = window.innerWidth;
+    var cardsPerRow = w >= 1536 ? 8 : w >= 640 ? 6 : 1;
+    var isMobile = w < 1024;
+
+    cards.forEach(function (card) {
+      var index = parseInt(card.dataset.initialIndex || "0", 10);
+      var rowIndex = Math.floor(index / cardsPerRow);
+      var cardInRow = index % cardsPerRow;
+      var animationOrder =
+        index === 0 ? 0 : rowIndex * 3 + cardInRow * 1.2;
+
+      card.style.setProperty("--animation-order", String(animationOrder));
+      card.classList.add("animating", "opacity-100");
+      card.classList.remove("opacity-0");
+
+      // Clean up will-change after the card's animation completes
+      var duration = isMobile ? 200 : 500;
+      var stagger = isMobile ? 50 : 100;
+      setTimeout(function () {
+        card.classList.remove("animating");
+      }, duration + animationOrder * stagger + 50);
+    });
+  })();
+</script>
+
 <style is:global>
   /* Animation Configuration */
   :root {
