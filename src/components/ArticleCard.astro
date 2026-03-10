@@ -246,18 +246,24 @@ const getExcerptClasses = () => {
   {
     optimizedImageUrl ? (
       <picture class={getImageContainerClasses()}>
-        {/* Loading placeholder - only for images that will load */}
-        <div
-          class="loading-skeleton loading-image absolute inset-0 w-full h-full"
-          id={`article-placeholder-${post.id}`}
-          aria-hidden="true"
-          style="position: absolute"
-        >
+        {/* Loading placeholder - skip for priority (LCP) images.
+            The placeholder is position:absolute and stacks on top of the img,
+            requiring a JS onload handler to remove it. On throttled CPUs that
+            handler is delayed 3+ seconds by main-thread work, blocking LCP.
+            Priority cards have a sized grid container so there is no CLS risk. */}
+        {!priority && (
           <div
-            class="absolute inset-0 flex items-center justify-center h-full"
-            style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
-          />
-        </div>
+            class="loading-skeleton loading-image absolute inset-0 w-full h-full"
+            id={`article-placeholder-${post.id}`}
+            aria-hidden="true"
+            style="position: absolute"
+          >
+            <div
+              class="absolute inset-0 flex items-center justify-center h-full"
+              style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
+            />
+          </div>
+        )}
 
         {/* AVIF format (best compression) */}
         {avifSrcSet && (
@@ -280,7 +286,7 @@ const getExcerptClasses = () => {
           class={`${getImageClasses()}${priority ? "" : " opacity-0"}`}
           loading={priority ? "eager" : "lazy"}
           fetchpriority={priority ? "high" : "auto"}
-          decoding="async"
+          decoding={priority ? "auto" : "async"}
           data-placeholder-id={`article-placeholder-${post.id}`}
           onload={
             variant === "masonry" && !featured
