@@ -211,12 +211,32 @@ const getSkeletonVariant = () => {
     /* Delay is inherited from base rule for staggered entrance */
   }
 
-  /* Priority card entrance: opacity stays 1 (visible to Chrome for LCP),
-     translate-only so Chrome does NOT re-record LCP when the transition fires.
-     Scale would change visual size → Chrome re-records LCP at animation end (~4s). */
+  /* Priority card entrance fires immediately via CSS @keyframes —
+     NOT waiting for astro:page-load (~3.6s on throttled CPU).
+     opacity: 0.001 (non-zero) → Chrome tracks element for LCP from initial render.
+     Scale animation completes at ~500ms → LCP recorded early, not at 4s.
+     animation-fill-mode: both → from-state applied before first frame. */
+  @keyframes card-entrance-priority {
+    from {
+      opacity: 0.001;
+      transform: scale(0.95) translate3d(0, 10px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translate3d(0, 0, 0);
+    }
+  }
+
   .article-card-wrapper.card-entrance-ready {
-    opacity: 1;
-    transform: translate3d(0, 10px, 0);
+    animation: card-entrance-priority var(--card-transition-duration, 500ms) ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .article-card-wrapper.card-entrance-ready {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
   }
 
   /* Temporary will-change during animation only */
@@ -316,12 +336,9 @@ const getSkeletonVariant = () => {
 
   // Initialize entrance animations for article cards and sidebar
   function initializeArticleAnimations() {
-    // Find all article cards and sidebar with animation wrapper class
-    // card-entrance-ready = priority cards (transform-only animation, opacity stays 1)
-    // opacity-0 = all other cards (opacity + transform animation)
-    const cards = document.querySelectorAll(
-      ".article-card-wrapper.opacity-0, .article-card-wrapper.card-entrance-ready"
-    );
+    // Find all non-priority cards — priority card uses CSS @keyframes (fires immediately,
+    // not at astro:page-load), so it's excluded from JS-driven animation entirely.
+    const cards = document.querySelectorAll(".article-card-wrapper.opacity-0");
 
     if (!cards.length) return;
 
@@ -329,7 +346,7 @@ const getSkeletonVariant = () => {
     if (prefersReducedMotion) {
       cards.forEach((card) => {
         const htmlCard = card as HTMLElement;
-        htmlCard.classList.remove("opacity-0", "card-entrance-ready");
+        htmlCard.classList.remove("opacity-0");
         htmlCard.classList.add("opacity-100");
       });
       return;
@@ -367,14 +384,8 @@ const getSkeletonVariant = () => {
         // Set animation properties
         htmlCard.style.setProperty("--animation-order", animationOrder.toString());
         htmlCard.classList.add("animating");
-        if (htmlCard.classList.contains("card-entrance-ready")) {
-          // Priority card: remove entrance class → CSS transition fires on transform only
-          // opacity stays at 1 throughout (LCP-visible from first render)
-          htmlCard.classList.remove("card-entrance-ready");
-        } else {
-          htmlCard.classList.remove("opacity-0");
-          htmlCard.classList.add("opacity-100");
-        }
+        htmlCard.classList.remove("opacity-0");
+        htmlCard.classList.add("opacity-100");
 
         // Remove will-change after animation
         const totalAnimationTime = ANIMATION_CONFIG.duration + animationOrder * ANIMATION_CONFIG.staggerDelay;
