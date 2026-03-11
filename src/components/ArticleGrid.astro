@@ -154,6 +154,7 @@ const getSkeletonVariant = () => {
   /* Animation Configuration */
   :root {
     --card-transition-duration: 0.5s;
+    --card-entrance-priority-duration: 0.8s; /* Featured card — slower = more intentional */
     --card-stagger-delay: 100ms;
     --row-stagger-delay: 150ms;
   }
@@ -161,7 +162,8 @@ const getSkeletonVariant = () => {
   /* Responsive optimizations */
   @media (max-width: 1023px) {
     :root {
-      --card-transition-duration: 0.2s; /* Faster on mobile */
+      --card-transition-duration: 0.2s;
+      --card-entrance-priority-duration: 0.4s;
       --card-stagger-delay: 50ms;
       --row-stagger-delay: 100ms;
     }
@@ -171,6 +173,7 @@ const getSkeletonVariant = () => {
   @media (prefers-reduced-motion: reduce) {
     :root {
       --card-transition-duration: 0.1s;
+      --card-entrance-priority-duration: 0.1s;
       --card-stagger-delay: 0ms;
       --row-stagger-delay: 0ms;
     }
@@ -228,7 +231,7 @@ const getSkeletonVariant = () => {
   }
 
   .article-card-wrapper.card-entrance-ready {
-    animation: card-entrance-priority var(--card-transition-duration, 500ms) ease-out both;
+    animation: card-entrance-priority var(--card-entrance-priority-duration, 800ms) ease-out both;
   }
 
   @media (prefers-reduced-motion: reduce) {
