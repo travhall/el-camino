@@ -16,8 +16,8 @@ function safeCompare(a: string, b: string): boolean {
 }
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
-  const secret = import.meta.env.ADMIN_SECRET;
-  const adminPassword = import.meta.env.ADMIN_PASSWORD;
+  const secret = process.env.ADMIN_SECRET;
+  const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!secret || !adminPassword) {
     console.error("[admin-auth] ADMIN_SECRET or ADMIN_PASSWORD env var is not set");

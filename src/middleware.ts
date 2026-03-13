@@ -15,7 +15,7 @@ export const onRequest = defineMiddleware(({ url, cookies, redirect }, next) => 
     return next();
   }
 
-  const secret = import.meta.env.ADMIN_SECRET;
+  const secret = process.env.ADMIN_SECRET;
 
   if (!secret) {
     console.error("[admin-auth] ADMIN_SECRET env var is not set");
