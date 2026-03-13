@@ -1,0 +1,113 @@
+---
+/**
+ * Admin Login Page
+ * Standalone page — not wrapped in AdminLayout to avoid auth loop.
+ */
+
+import { Icon } from "astro-icon/components";
+
+// Already authenticated? Send them to the destination.
+const secret = import.meta.env.ADMIN_SECRET;
+const COOKIE_NAME = "admin_session";
+
+if (secret) {
+  const { createHmac } = await import("node:crypto");
+  const expected = createHmac("sha256", secret).update("admin:authenticated").digest("hex");
+  const token = Astro.cookies.get(COOKIE_NAME)?.value;
+  if (token === expected) {
+    const dest = Astro.url.searchParams.get("from") || "/admin";
+    return Astro.redirect(dest);
+  }
+}
+
+const from = Astro.url.searchParams.get("from") || "/admin";
+const hasError = Astro.url.searchParams.has("error");
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Login — El Camino</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <script is:inline>
+      (function () {
+        const storedTheme = localStorage.getItem("theme");
+        const systemPrefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+        const theme = storedTheme ?? (systemPrefersDark ? "dark" : "light");
+        document.documentElement.classList.add(theme);
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
+  </head>
+
+  <body class="min-h-screen flex flex-col items-center justify-center bg-(--surface-primary) px-4">
+    <div class="w-full max-w-sm">
+      <!-- Logo -->
+      <a href="/" class="flex justify-center mb-8" aria-label="Go to main site">
+        <Icon name="Logo" class="w-48 h-auto" />
+      </a>
+
+      <!-- Card -->
+      <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-8">
+        <h1 class="text-xl font-semibold text-(--content-heading) mb-1">
+          Admin Access
+        </h1>
+        <p class="text-sm text-(--content-meta) mb-6">
+          Enter the admin password to continue.
+        </p>
+
+        {hasError && (
+          <div class="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+            Incorrect password. Please try again.
+          </div>
+        )}
+
+        <form method="POST" action="/api/admin-auth" class="space-y-4">
+          <input type="hidden" name="from" value={from} />
+
+          <div>
+            <label
+              for="password"
+              class="block text-sm font-medium text-(--content-body) mb-1"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              autocomplete="current-password"
+              autofocus
+              class="w-full px-3 py-2 border border-(--border-primary) rounded-sm bg-(--surface-primary) text-(--content-body) placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-(--ui-button-ring) focus:border-transparent text-sm"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="w-full font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4"
+          >
+            Sign in
+          </button>
+        </form>
+      </div>
+
+      <p class="text-center mt-6 text-xs text-(--content-meta)">
+        <a href="/" class="hover:text-(--content-body) transition-colors">
+          ← Back to site
+        </a>
+      </p>
+    </div>
+  </body>
+</html>
+
+<script>
+  import "@/styles/global.css";
+</script>
