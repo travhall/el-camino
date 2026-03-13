@@ -39,7 +39,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             >
               Cart
             </h1>
-            <Button id="clear-cart-button" variant="outline" size="sm">
+            <Button id="clear-cart-button" variant="ghost" size="sm">
               Clear Cart
             </Button>
           </div>
@@ -148,53 +148,52 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       id="mobile-checkout-bar"
       class="hidden fixed bottom-0 left-0 right-0 bg-(--surface-secondary) border-t-4 border-(--border-secondary) md:hidden z-40"
     >
-      <div class="px-3 pt-2 pb-1">
-        <!-- Row 1: Subtotal + Shipping indicator -->
-        <div class="flex justify-between items-center text-sm mb-2">
-          <div class="text-(--content-body)">
-            <span class="text-xs text-(--content-meta)">Subtotal</span>
+      <div class="px-3 pt-2 pb-3">
+        <!-- Row 1: Subtotal (left) + Shipping indicator (right) -->
+        <div class="flex justify-between items-center mb-2">
+          <div>
+            <span class="text-xs text-(--content-meta)">Subtotal </span>
             <span
-              class="font-semibold ml-1 text-(--content-body)"
+              class="text-sm font-semibold text-(--content-body)"
               id="mobile-subtotal">$0.00</span
             >
+            <!-- Est. Total: only revealed by JS once tax + shipping are calculated -->
+            <span id="mobile-total-wrapper" class="hidden">
+              <span class="mx-1.5 text-(--border-secondary)">·</span>
+              <span class="text-xs text-(--content-meta)">Est. Total </span>
+              <span
+                class="font-display font-bold text-lg text-(--content-heading)"
+                id="mobile-total">$0.00</span
+              >
+            </span>
           </div>
-          <div id="mobile-shipping-indicator" class="text-right">
+          <div id="mobile-shipping-indicator" class="text-right shrink-0 ml-2">
             <button
               id="mobile-shipping-tap"
               type="button"
-              class="text-(--content-emphasis) underline underline-offset-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+              class="text-xs text-(--content-emphasis) underline underline-offset-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
             >
               Choose shipping →
             </button>
           </div>
         </div>
 
-        <!-- Row 2: Total + CTA -->
-        <div class="flex items-center gap-3">
-          <div class="shrink-0">
-            <div class="text-xs text-(--content-meta)">Total</div>
-            <div
-              class="font-display font-bold text-2xl text-(--content-heading)"
-              id="mobile-total"
-            >
-              $0.00
-            </div>
-          </div>
-          <button
-            id="mobile-checkout-button"
-            disabled
-            class="font-sans font-semibold text-sm text-center py-2 px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all grow opacity-50 cursor-not-allowed"
-          >
-            Continue to Payment
-          </button>
-        </div>
+        <!-- Row 2: Full-width CTA -->
+        <button
+          id="mobile-checkout-button"
+          disabled
+          class="w-full font-sans font-semibold text-base text-center py-3 px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all opacity-50 cursor-not-allowed"
+        >
+          Continue to Payment
+        </button>
 
-        <!-- Hint text (hidden once fulfillment selected) -->
+        <!-- Hint text (hidden once fulfillment is fully valid) -->
         <p
           id="mobile-checkout-hint"
-          class="text-xs text-center text-(--content-meta) mt-1"
+          class="text-xs text-center text-(--content-meta) mt-1.5"
         >
-          Select a fulfillment method above
+          Select a fulfillment method · taxes &amp; shipping calculated at
+          checkout
         </p>
       </div>
     </div>
@@ -216,6 +215,38 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     </div>
   </section>
 </CartLayout>
+
+<style is:global>
+  /*
+   * Draws attention to the fulfillment selector when the user taps
+   * "Choose shipping →" in the mobile sticky bar.
+   * Uses box-shadow so there's zero layout shift.
+   * Color is --content-emphasis so it respects both light and dark themes.
+   */
+  @keyframes fulfillment-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 color-mix(in oklch, var(--content-emphasis) 0%, transparent);
+    }
+    40% {
+      box-shadow: 0 0 0 5px color-mix(in oklch, var(--content-emphasis) 35%, transparent);
+    }
+  }
+
+  .fulfillment-attention {
+    border-radius: 2px;
+    animation: fulfillment-pulse 600ms ease-out 3;
+  }
+
+  /* Reduced motion: skip pulse, use a brief solid outline instead */
+  @media (prefers-reduced-motion: reduce) {
+    .fulfillment-attention {
+      animation: none;
+      outline: 2px solid var(--content-emphasis);
+      outline-offset: 3px;
+    }
+  }
+</style>
 
 <script>
   import { cart } from "@/lib/cart";
@@ -374,22 +405,20 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     const safeProductUrl = sanitize(productUrl);
     const safeItemKey = sanitize(itemKey);
 
-    return `
-      <div class="bg-(--surface-secondary) p-4 flex gap-4 self-start" data-item-container="${safeItemKey}">
-        <div class="shrink-0 relative w-16 h-16 lg:w-24 lg:h-24">
-          <!-- Loading placeholder -->
-          <div
-            class="loading-skeleton loading-image absolute inset-0 w-full h-full rounded transition-opacity duration-300"
+    // When a product has no image URL, skip the skeleton entirely and render
+    // the fallback logo as a static img — no flash, no stuck placeholder.
+    // When a real URL exists, use the full skeleton + fade-in treatment.
+    const imageSection = safeImage
+      ? `<div
+            class="loading-skeleton absolute inset-0 w-full h-full rounded transition-opacity duration-300"
             id="cart-placeholder-${safeItemKey}"
             aria-hidden="true"
           >
-            <!-- El Camino logo using data URI -->
             <div
               class="absolute inset-0 flex items-center justify-center rounded"
               style="background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;"
             ></div>
           </div>
-
           <img
             src="${safeImage}"
             alt="${safeTitle}"
@@ -397,12 +426,22 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             loading="eager"
             onload="this.style.opacity='1'; document.getElementById('cart-placeholder-${safeItemKey}')?.remove();"
             onerror="this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('cart-placeholder-${safeItemKey}')?.remove();"
-          />
+          />`
+      : `<img
+            src="${EL_CAMINO_LOGO_DATA_URI}"
+            alt="${safeTitle}"
+            class="absolute inset-0 w-full h-full object-contain p-1 rounded border border-(--border-secondary)"
+          />`;
+
+    return `
+      <div class="bg-(--surface-secondary) p-3 flex gap-3 self-start" data-item-container="${safeItemKey}">
+        <div class="shrink-0 relative w-16 h-16 lg:w-24 lg:h-24">
+          ${imageSection}
         </div>
         <div class="grow flex flex-col justify-between min-w-0">
           <div class="flex flex-row justify-between">
             <div class="flex flex-col mb-2 lg:mb-0">
-              <h3 class="font-display text-2xl text-(--content-heading) leading-tight">
+              <h3 class="font-display text-xl md:text-2xl text-(--content-heading) leading-tight">
                 <a href="${safeProductUrl}" data-astro-prefetch="viewport" class="hover:text-(--content-emphasis) underline underline-offset-1 decoration-(--content-emphasis)/0 hover:decoration-(--content-emphasis)/80 hover:underline-offset-4 transition-all ease-in-out duration-300">
                   ${safeTitle}
                 </a>
@@ -410,7 +449,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
               ${
                 safeVariationName
                   ? `
-                <p class="text-(--content-meta) text-sm mt-1 mb-3">${safeVariationName}</p>
+                <p class="text-(--content-meta) text-sm mt-0.5 mb-1">${safeVariationName}</p>
               `
                   : ""
               }
@@ -420,17 +459,17 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                 ${
                   saleInfo
                     ? `
-                  <div class="text-(--content-meta) text-xs line-through">
+                  <div class="hidden md:block text-(--content-meta) text-xs line-through">
                     ${MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))} each
                   </div>
                 `
                     : `
-                  <div class="text-(--content-meta) text-sm">
+                  <div class="hidden md:block text-(--content-meta) text-sm">
                     ${MoneyUtils.format(MoneyUtils.fromFloat(item.price))} each
                   </div>
                 `
                 }
-                <div class="font-display font-bold text-2xl text-(--content-emphasis)">
+                <div class="font-display font-bold text-xl md:text-2xl text-(--content-emphasis)">
                   ${MoneyUtils.format(MoneyUtils.fromFloat(itemSubtotal))}
                 </div>
               </div>
@@ -453,7 +492,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                 <input
                   type="number"
                   id="quantity-${safeItemKey}"
-                  class="quantity-input w-16 text-center py-1 border-0 bg-(--surface-primary) text-(--content-body) focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  class="quantity-input w-10 md:w-16 text-center py-1 border-0 bg-(--surface-primary) text-(--content-body) focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   value="${item.quantity}"
                   min="1"
                   max="${inventory}"
@@ -734,12 +773,19 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       );
     }
 
-    // Update total (with tax + shipping when available)
-    if (mobileTotal) {
-      const displayTotal = total ?? cart.getTotal();
-      mobileTotal.textContent = MoneyUtils.format(
-        MoneyUtils.fromFloat(displayTotal),
-      );
+    // Update total (with tax + shipping when available).
+    // Only reveal the total wrapper once a real calculated total is provided —
+    // otherwise subtotal === total which looks inaccurate before tax/shipping is known.
+    const totalWrapper = document.getElementById("mobile-total-wrapper");
+    if (total !== undefined) {
+      if (mobileTotal) {
+        mobileTotal.textContent = MoneyUtils.format(
+          MoneyUtils.fromFloat(total),
+        );
+      }
+      totalWrapper?.classList.remove("hidden");
+    } else {
+      totalWrapper?.classList.add("hidden");
     }
 
     // Keep button state in sync with form validity (not just method selection).
@@ -769,9 +815,38 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         document
           .getElementById("mobile-shipping-tap")
           ?.addEventListener("click", () => {
-            document
-              .querySelector('[data-component="fulfillment-selector"]')
-              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            const selector = document.querySelector<HTMLElement>(
+              '[data-component="fulfillment-selector"]',
+            );
+            if (!selector) return;
+
+            // Shift focus to the first radio — this is the a11y action and
+            // will scroll the element into view natively if needed.
+            const firstRadio = selector.querySelector<HTMLElement>(
+              'input[type="radio"]',
+            );
+            firstRadio?.focus();
+
+            // Brief pulsing ring to draw the eye (no layout shift via box-shadow).
+            // For standard motion: cleaned up via animationend after 3 pulses (1.8s).
+            // For prefers-reduced-motion: animationend never fires (animation:none),
+            // so we use a plain timeout to remove the outline after the same window.
+            selector.classList.add("fulfillment-attention");
+            const reducedMotion = window.matchMedia(
+              "(prefers-reduced-motion: reduce)",
+            ).matches;
+            if (reducedMotion) {
+              setTimeout(
+                () => selector.classList.remove("fulfillment-attention"),
+                1800,
+              );
+            } else {
+              selector.addEventListener(
+                "animationend",
+                () => selector.classList.remove("fulfillment-attention"),
+                { once: true },
+              );
+            }
           });
       }
     }

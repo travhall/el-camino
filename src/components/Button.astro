@@ -6,7 +6,7 @@ import type { HTMLAttributes } from "astro/types";
 type SharedProps = {
   size?: "sm" | "md" | "lg";
   classes?: string;
-  variant?: "primary" | "secondary" | "outline" | "ghost";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "link";
   loading?: boolean;
   loadingText?: string;
   disabled?: boolean;
@@ -93,6 +93,14 @@ const linkRel = isExternalLink && !rel ? "noopener noreferrer" : rel;
     ],
 
     variant === "ghost" && [
+      "text-(--content-body)",
+      "bg-(--ui-button-surface)/0",
+      "border-(--ui-button-border)/0",
+      "hover:bg-(--ui-button-surface)/10",
+      "focus-visible:ring-(--ui-button-ring)",
+    ],
+
+    variant === "link" && [
       "text-(--content-body)",
       "bg-(--ui-button-surface)/0",
       "border-(--ui-button-border)/0",
