@@ -2,56 +2,25 @@
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import Button from "@/components/Button.astro";
 import { Icon } from "astro-icon/components";
-import { readFileSync } from "fs";
 
-// ── Read global.css once at build time ───────────────────────────────────────
-const css = readFileSync(
-  new URL("../../../styles/global.css", import.meta.url),
-  "utf-8",
-);
+// ── Palette data — CSS variable references rendered in the browser ────────────
+// Using var(--color-*) directly avoids readFileSync + import.meta.url, which
+// breaks in SSR builds because import.meta.url points into the compiled dist/.
+// AdminLayout imports global.css, so the variables are available at runtime.
 
-/** Extract the first value of a CSS custom property from the stylesheet. */
-function cssVar(name: string): string {
-  const match = css.match(new RegExp(`${name}:\\s*([^;]+);`));
-  return match ? match[1].trim() : "";
-}
+const STOPS = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
 
-// ── Palette data — built from global.css ─────────────────────────────────────
-type Stop = { stop: string; value: string; anchor?: boolean };
-
-function buildPalette(prefix: string, anchor = "500"): Stop[] {
-  return [
-    "50",
-    "100",
-    "200",
-    "300",
-    "400",
-    "500",
-    "600",
-    "700",
-    "800",
-    "900",
-  ].map((stop) => ({
-    stop,
-    value: cssVar(`--color-${prefix}-${stop}`),
-    ...(stop === anchor ? { anchor: true } : {}),
-  }));
-}
-
-const palettes: { name: string; stops: Stop[] }[] = [
-  { name: "Beeswax", stops: buildPalette("elco-beeswax") },
-  { name: "Black Pearl", stops: buildPalette("elco-black-pearl") },
-  { name: "Fig Leaf", stops: buildPalette("elco-fig-leaf") },
-  { name: "Honey Cream", stops: buildPalette("elco-honey-cream") },
-  { name: "Sweet Tea", stops: buildPalette("elco-sweet-tea") },
+const palettes = [
+  { name: "Beeswax",     prefix: "elco-beeswax" },
+  { name: "Black Pearl", prefix: "elco-black-pearl" },
+  { name: "Fig Leaf",    prefix: "elco-fig-leaf" },
+  { name: "Honey Cream", prefix: "elco-honey-cream" },
+  { name: "Sweet Tea",   prefix: "elco-sweet-tea" },
 ];
 
-// ── State colors — built from global.css ─────────────────────────────────────
 const stateColors = ["success", "error", "warning", "info"].map((name) => ({
   name: name.charAt(0).toUpperCase() + name.slice(1),
   token: `state-${name}`,
-  surface: cssVar(`--color-state-${name}-surface`),
-  text: cssVar(`--color-state-${name}-text`),
 }));
 
 const iconList = [
@@ -352,22 +321,17 @@ const prototypes = [
               {palette.name}
             </p>
             <div class="grid grid-cols-5 gap-1.5 lg:grid-cols-10">
-              {palette.stops.map((stop) => (
+              {STOPS.map((stop) => (
                 <div class="flex flex-col items-center gap-1.5">
                   <div
                     class="w-full rounded-md shadow-sm"
-                    style={`
-                      aspect-ratio: 1;
-                      background-color: ${stop.value};
-                      ${stop.anchor ? "outline: 2px solid var(--content-body); outline-offset: 2px;" : ""}
-                    `}
+                    style={`aspect-ratio:1; background-color: var(--color-${palette.prefix}-${stop}); ${stop === "500" ? "outline: 2px solid var(--content-body); outline-offset: 2px;" : ""}`}
                   />
                   <div class="flex flex-col items-center gap-0">
                     <span
-                      class={`font-sans text-xs text-(--content-body) ${stop.anchor ? "font-bold" : ""}`}
+                      class={`font-sans text-xs text-(--content-body) ${stop === "500" ? "font-bold" : ""}`}
                     >
-                      {stop.stop}
-                      {stop.anchor ? " ★" : ""}
+                      {stop}{stop === "500" ? " ★" : ""}
                     </span>
                   </div>
                 </div>
@@ -879,7 +843,7 @@ const prototypes = [
           <div class="flex flex-col items-center gap-1.5">
             <div
               class="flex h-16 w-28 items-center justify-center rounded-md shadow-sm font-sans text-sm font-semibold"
-              style={`background-color: ${s.surface}; color: ${s.text}`}
+              style={`background-color: var(--color-${s.token}-surface); color: var(--color-${s.token}-text)`}
             >
               {s.name}
             </div>
@@ -902,7 +866,7 @@ const prototypes = [
         stateColors.map((s) => (
           <div
             class="flex items-center gap-3 rounded-sm px-4 py-3 font-sans text-sm font-semibold"
-            style={`background-color: ${s.surface}; color: ${s.text}`}
+            style={`background-color: var(--color-${s.token}-surface); color: var(--color-${s.token}-text)`}
           >
             <span class="uppercase tracking-wide text-xs opacity-75">
               {s.name}
