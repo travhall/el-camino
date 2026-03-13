@@ -154,9 +154,9 @@ const getSkeletonVariant = () => {
   /* Animation Configuration */
   :root {
     --card-transition-duration: 0.5s;
-    --card-entrance-priority-duration: 0.8s; /* Featured card — slower = more intentional */
-    --card-stagger-delay: 100ms;
-    --row-stagger-delay: 150ms;
+    --card-entrance-priority-duration: 0.65s; /* Featured card — slower = more intentional */
+    --card-stagger-delay: 50ms;
+    --row-stagger-delay: 100ms;
   }
 
   /* Responsive optimizations */
@@ -231,7 +231,8 @@ const getSkeletonVariant = () => {
   }
 
   .article-card-wrapper.card-entrance-ready {
-    animation: card-entrance-priority var(--card-entrance-priority-duration, 800ms) ease-out both;
+    animation: card-entrance-priority
+      var(--card-entrance-priority-duration, 800ms) ease-out both;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -253,7 +254,6 @@ const getSkeletonVariant = () => {
 </style>
 
 <style>
-
   /* List view specific styles */
   .flex.flex-col.gap-1 .group:hover {
     transform: translateX(4px);
@@ -288,7 +288,7 @@ const getSkeletonVariant = () => {
 
   // Check for reduced motion preference
   const prefersReducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
+    "(prefers-reduced-motion: reduce)",
   ).matches;
 
   // Parse animation timing from CSS custom properties
@@ -357,7 +357,7 @@ const getSkeletonVariant = () => {
 
     // Get current view from first card (excluding sidebar)
     const firstCard = Array.from(cards).find(
-      (card) => !(card as HTMLElement).dataset.variant?.includes("sidebar")
+      (card) => !(card as HTMLElement).dataset.variant?.includes("sidebar"),
     ) as HTMLElement;
     const view = firstCard?.dataset.variant || "grid";
     const cardsPerRow = getCardsPerRow(view);
@@ -385,13 +385,18 @@ const getSkeletonVariant = () => {
         }
 
         // Set animation properties
-        htmlCard.style.setProperty("--animation-order", animationOrder.toString());
+        htmlCard.style.setProperty(
+          "--animation-order",
+          animationOrder.toString(),
+        );
         htmlCard.classList.add("animating");
         htmlCard.classList.remove("opacity-0");
         htmlCard.classList.add("opacity-100");
 
         // Remove will-change after animation
-        const totalAnimationTime = ANIMATION_CONFIG.duration + animationOrder * ANIMATION_CONFIG.staggerDelay;
+        const totalAnimationTime =
+          ANIMATION_CONFIG.duration +
+          animationOrder * ANIMATION_CONFIG.staggerDelay;
         setTimeout(() => {
           htmlCard.classList.remove("animating");
         }, totalAnimationTime);
@@ -427,7 +432,7 @@ const getSkeletonVariant = () => {
             // Set CSS custom property for animation delay
             card.style.setProperty(
               "--animation-order",
-              animationOrder.toString()
+              animationOrder.toString(),
             );
 
             // Add animating class for temporary will-change
@@ -454,7 +459,7 @@ const getSkeletonVariant = () => {
       {
         threshold: 0.1,
         rootMargin: "200px",
-      }
+      },
     );
 
     // Observe all cards
@@ -493,7 +498,7 @@ const getSkeletonVariant = () => {
             }
           });
         },
-        { rootMargin: "100px" }
+        { rootMargin: "100px" },
       );
 
       if (lazyImages.length > 6) {
