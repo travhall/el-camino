@@ -1,15 +1,14 @@
 ---
 /**
- * Core Web Vitals Detailed Analysis Page
- * In-depth analysis and optimization recommendations for CWV metrics
- * File: src/pages/admin/performance/core-vitals.astro
+ * Core Web Vitals Detailed Analysis
+ * p75 field data from the Chrome UX Report API.
  */
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
 
 const pageTitle = "Core Web Vitals";
 const pageDescription =
-  "Detailed analysis of Core Web Vitals metrics with historical trends, device breakdown, and specific optimization recommendations.";
+  "Detailed Core Web Vitals metrics from real Chrome users via the Chrome UX Report.";
 ---
 
 <AdminLayout
@@ -17,499 +16,193 @@ const pageDescription =
   description={pageDescription}
   activeSection="core-vitals"
 >
-  <!-- Current Status Overview -->
-  <section class="cwv-status-overview mb-8">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- LCP Analysis -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-semibold text-(--content-heading)">
-            Largest Contentful Paint
-          </h3>
-          <span id="lcp-status" class="cwv-badge cwv-good">Good</span>
-        </div>
+  <!-- Loading -->
+  <div id="cwv-loading" class="py-12 text-center text-(--content-meta) text-sm">
+    Loading field data…
+  </div>
 
-        <div class="mb-6">
-          <div class="flex items-end gap-2 mb-2">
-            <span
-              id="lcp-value"
-              class="text-4xl font-bold text-(--content-heading)">2.1</span
-            >
+  <!-- No API key -->
+  <div id="cwv-no-key" class="hidden">
+    <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-8 text-center">
+      <h2 class="text-lg font-semibold text-(--content-heading) mb-2">CrUX API key required</h2>
+      <p class="text-(--content-meta) text-sm max-w-md mx-auto">
+        Add a <code class="font-mono text-xs bg-(--surface-tertiary) px-1 rounded">CRUX_API_KEY</code> environment variable in your Netlify site settings to enable real field data.
+      </p>
+      <p class="text-xs text-(--content-meta) mt-3">
+        Get a free key at <span class="font-mono">console.cloud.google.com</span> → APIs &amp; Services → Chrome UX Report API.
+      </p>
+    </div>
+  </div>
+
+  <!-- No data -->
+  <div id="cwv-no-data" class="hidden">
+    <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-8 text-center">
+      <svg class="w-12 h-12 mx-auto mb-4 text-(--content-meta)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+      <h2 class="text-lg font-semibold text-(--content-heading) mb-2">No field data yet</h2>
+      <p class="text-(--content-meta) text-sm max-w-md mx-auto">
+        Chrome UX Report data becomes available once the site receives sufficient
+        real-user traffic (~1,000 visits). Check back after launch.
+      </p>
+    </div>
+  </div>
+
+  <!-- Data -->
+  <div id="cwv-data" class="hidden">
+    <!-- Current values -->
+    <section class="mb-8">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-semibold text-(--content-heading)">Current p75 Values</h2>
+        <p class="text-sm text-(--content-meta)">Chrome UX Report · real-user field data</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- LCP -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-xl font-semibold text-(--content-heading)">Largest Contentful Paint</h3>
+              <p class="text-sm text-(--content-meta)">75th percentile · Target: ≤ 2.5s</p>
+            </div>
+            <span id="lcp-badge" class="cwv-badge cwv-unknown">—</span>
+          </div>
+          <div class="flex items-end gap-2 mb-4">
+            <span id="lcp-value" class="text-4xl font-bold text-(--content-heading)">—</span>
             <span class="text-lg text-(--content-body) mb-1">seconds</span>
           </div>
-          <div class="text-sm text-(--content-meta) mb-4">
-            75th percentile • Target: ≤ 2.5s
-          </div>
-
-          <!-- LCP Breakdown cSpell:ignore ttfb -->
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-(--content-body)">TTFB</span>
-              <span class="text-sm font-medium" id="lcp-ttfb">0.8s</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-(--content-body)">Resource Load</span>
-              <span class="text-sm font-medium" id="lcp-resource">0.9s</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-(--content-body)">Element Render</span>
-              <span class="text-sm font-medium" id="lcp-render">0.4s</span>
-            </div>
+          <div class="text-sm text-(--content-meta)">
+            <span id="lcp-good-pct"></span>
           </div>
         </div>
 
-        <!-- LCP Element Info -->
-        <div class="bg-(--surface-tertiary) p-4 rounded">
-          <h4 class="font-medium text-(--content-heading) mb-2">LCP Element</h4>
-          <div class="text-sm text-(--content-body)">
+        <!-- INP -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-4">
             <div>
-              Type: <span class="font-medium" id="lcp-element-type">Image</span>
+              <h3 class="text-xl font-semibold text-(--content-heading)">Interaction to Next Paint</h3>
+              <p class="text-sm text-(--content-meta)">75th percentile · Target: ≤ 200ms</p>
             </div>
-            <div>
-              Size: <span class="font-medium" id="lcp-element-size"
-                >1200×800</span
-              >
-            </div>
-            <div>
-              URL: <span class="font-mono text-xs" id="lcp-element-url"
-                >hero-image.jpg</span
-              >
-            </div>
+            <span id="inp-badge" class="cwv-badge cwv-unknown">—</span>
           </div>
-        </div>
-      </div>
-
-      <!-- INP Analysis -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-semibold text-(--content-heading)">
-            Interaction to Next Paint
-          </h3>
-          <span id="inp-status" class="cwv-badge cwv-good">Good</span>
-        </div>
-
-        <div class="mb-6">
-          <div class="flex items-end gap-2 mb-2">
-            <span
-              id="inp-value"
-              class="text-4xl font-bold text-(--content-heading)">147</span
-            >
+          <div class="flex items-end gap-2 mb-4">
+            <span id="inp-value" class="text-4xl font-bold text-(--content-heading)">—</span>
             <span class="text-lg text-(--content-body) mb-1">milliseconds</span>
           </div>
-          <div class="text-sm text-(--content-meta) mb-4">
-            75th percentile • Target: ≤ 200ms
-          </div>
-
-          <!-- INP Breakdown -->
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-(--content-body)">Input Delay</span>
-              <span class="text-sm font-medium" id="inp-delay">12ms</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-(--content-body)">Processing Time</span>
-              <span class="text-sm font-medium" id="inp-processing">89ms</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-(--content-body)"
-                >Presentation Delay</span
-              >
-              <span class="text-sm font-medium" id="inp-presentation">46ms</span
-              >
-            </div>
+          <div class="text-sm text-(--content-meta)">
+            <span id="inp-good-pct"></span>
           </div>
         </div>
 
-        <!-- Interaction Types -->
-        <div class="bg-(--surface-tertiary) p-4 rounded">
-          <h4 class="font-medium text-(--content-heading) mb-2">
-            Worst Interactions
-          </h4>
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-(--content-body)">Button clicks</span>
-              <span class="font-medium">156ms</span>
+        <!-- CLS -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-xl font-semibold text-(--content-heading)">Cumulative Layout Shift</h3>
+              <p class="text-sm text-(--content-meta)">75th percentile · Target: ≤ 0.1</p>
             </div>
-            <div class="flex justify-between">
-              <span class="text-(--content-body)">Form inputs</span>
-              <span class="font-medium">134ms</span>
-            </div>
+            <span id="cls-badge" class="cwv-badge cwv-unknown">—</span>
           </div>
-        </div>
-      </div>
-
-      <!-- CLS Analysis -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-semibold text-(--content-heading)">
-            Cumulative Layout Shift
-          </h3>
-          <span id="cls-status" class="cwv-badge cwv-good">Good</span>
-        </div>
-
-        <div class="mb-6">
-          <div class="flex items-end gap-2 mb-2">
-            <span
-              id="cls-value"
-              class="text-4xl font-bold text-(--content-heading)">0.08</span
-            >
+          <div class="flex items-end gap-2 mb-4">
+            <span id="cls-value" class="text-4xl font-bold text-(--content-heading)">—</span>
             <span class="text-lg text-(--content-body) mb-1">score</span>
           </div>
-          <div class="text-sm text-(--content-meta) mb-4">
-            75th percentile • Target: ≤ 0.1
-          </div>
-
-          <!-- CLS Sources -->
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-(--content-body)">Images</span>
-              <span class="text-sm font-medium" id="cls-images">0.03</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-(--content-body)">Web Fonts</span>
-              <span class="text-sm font-medium" id="cls-fonts">0.02</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-(--content-body)">Ads/Embeds</span>
-              <span class="text-sm font-medium" id="cls-ads">0.03</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Shift Events -->
-        <div class="bg-(--surface-tertiary) p-4 rounded">
-          <h4 class="font-medium text-(--content-heading) mb-2">
-            Major Shifts
-          </h4>
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-(--content-body)">Hero image load</span>
-              <span class="font-medium">0.04</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-(--content-body)">Font swap</span>
-              <span class="font-medium">0.02</span>
-            </div>
+          <div class="text-sm text-(--content-meta)">
+            <span id="cls-good-pct"></span>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Historical Trends -->
-  <section class="historical-trends mb-8">
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-2xl font-semibold text-(--content-heading)">
-        Historical Trends
+    <!-- Additional signals -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Additional Signals</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="font-semibold text-(--content-heading) mb-1">First Contentful Paint</h3>
+          <p class="text-sm text-(--content-meta) mb-4">p75 · Target: ≤ 1.8s</p>
+          <div class="flex items-end gap-2">
+            <span id="fcp-value" class="text-3xl font-bold text-(--content-heading)">—</span>
+            <span class="text-sm text-(--content-body) mb-1">seconds</span>
+          </div>
+        </div>
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="font-semibold text-(--content-heading) mb-1">Time to First Byte</h3>
+          <p class="text-sm text-(--content-meta) mb-4">p75 · Target: ≤ 800ms</p>
+          <div class="flex items-end gap-2">
+            <span id="ttfb-value" class="text-3xl font-bold text-(--content-heading)">—</span>
+            <span class="text-sm text-(--content-body) mb-1">milliseconds</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- General optimization guidance (static, always accurate) -->
+    <section>
+      <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">
+        Optimization Reference
       </h2>
-      <div class="flex items-center gap-3">
-        <select
-          id="trend-timeframe"
-          class="px-3 py-2 text-sm border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
-        >
-          <option value="7d">Last 7 Days</option>
-          <option value="30d" selected>Last 30 Days</option>
-          <option value="90d">Last 90 Days</option>
-        </select>
-        <select
-          id="trend-device"
-          class="px-3 py-2 text-sm border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
-        >
-          <option value="all" selected>All Devices</option>
-          <option value="mobile">Mobile</option>
-          <option value="desktop">Desktop</option>
-          <option value="tablet">Tablet</option>
-        </select>
-      </div>
-    </div>
-
-    <div
-      class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-    >
-      <canvas
-        id="cwv-trends-chart"
-        width="800"
-        height="400"
-        class="w-full"
-        style="height: 400px;"></canvas>
-    </div>
-  </section>
-
-  <!-- Device & Connection Breakdown -->
-  <section class="device-breakdown mb-8">
-    <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">
-      Device & Connection Analysis
-    </h2>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <!-- Device Performance -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <h3 class="text-lg font-semibold text-(--content-heading) mb-4">
-          Performance by Device
-        </h3>
-
-        <div class="space-y-4">
-          <!-- Mobile -->
-          <div class="p-4 bg-(--surface-tertiary) rounded">
-            <div class="flex items-center justify-between mb-3">
-              <span class="font-medium text-(--content-heading)">Mobile</span>
-              <span class="text-sm text-(--content-meta)">67% of traffic</span>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- LCP guidance -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Improving LCP</h3>
+          <div class="space-y-3 text-sm text-(--content-body)">
+            <div class="p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-medium text-(--content-heading) mb-0.5">Preload hero image</div>
+              <div class="text-(--content-meta)">Use <code class="text-xs font-mono">fetchpriority="high"</code> on the LCP image</div>
             </div>
-            <div class="grid grid-cols-3 gap-4 text-sm">
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">2.8s</div>
-                <div class="text-(--content-meta)">LCP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">165ms</div>
-                <div class="text-(--content-meta)">INP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">0.09</div>
-                <div class="text-(--content-meta)">CLS</div>
-              </div>
+            <div class="p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-medium text-(--content-heading) mb-0.5">Serve next-gen formats</div>
+              <div class="text-(--content-meta)">AVIF/WebP via Netlify Image CDN (already configured)</div>
+            </div>
+            <div class="p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-medium text-(--content-heading) mb-0.5">Reduce TTFB</div>
+              <div class="text-(--content-meta)">Edge caching via Netlify CDN reduces server round-trip</div>
             </div>
           </div>
+        </div>
 
-          <!-- Desktop -->
-          <div class="p-4 bg-(--surface-tertiary) rounded">
-            <div class="flex items-center justify-between mb-3">
-              <span class="font-medium text-(--content-heading)">Desktop</span>
-              <span class="text-sm text-(--content-meta)">28% of traffic</span>
+        <!-- INP guidance -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Improving INP</h3>
+          <div class="space-y-3 text-sm text-(--content-body)">
+            <div class="p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-medium text-(--content-heading) mb-0.5">Minimize main-thread work</div>
+              <div class="text-(--content-meta)">Defer or remove non-critical JavaScript</div>
             </div>
-            <div class="grid grid-cols-3 gap-4 text-sm">
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">1.9s</div>
-                <div class="text-(--content-meta)">LCP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">129ms</div>
-                <div class="text-(--content-meta)">INP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">0.07</div>
-                <div class="text-(--content-meta)">CLS</div>
-              </div>
+            <div class="p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-medium text-(--content-heading) mb-0.5">Break up long tasks</div>
+              <div class="text-(--content-meta)">Keep individual JS tasks under 50ms</div>
+            </div>
+            <div class="p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-medium text-(--content-heading) mb-0.5">Avoid render-blocking scripts</div>
+              <div class="text-(--content-meta)">Use <code class="text-xs font-mono">defer</code> or <code class="text-xs font-mono">async</code> on all non-critical scripts</div>
             </div>
           </div>
+        </div>
 
-          <!-- Tablet -->
-          <div class="p-4 bg-(--surface-tertiary) rounded">
-            <div class="flex items-center justify-between mb-3">
-              <span class="font-medium text-(--content-heading)">Tablet</span>
-              <span class="text-sm text-(--content-meta)">5% of traffic</span>
+        <!-- CLS guidance -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Improving CLS</h3>
+          <div class="space-y-3 text-sm text-(--content-body)">
+            <div class="p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-medium text-(--content-heading) mb-0.5">Set image dimensions</div>
+              <div class="text-(--content-meta)">Always include <code class="text-xs font-mono">width</code> and <code class="text-xs font-mono">height</code> attributes</div>
             </div>
-            <div class="grid grid-cols-3 gap-4 text-sm">
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">2.2s</div>
-                <div class="text-(--content-meta)">LCP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">145ms</div>
-                <div class="text-(--content-meta)">INP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">0.08</div>
-                <div class="text-(--content-meta)">CLS</div>
-              </div>
+            <div class="p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-medium text-(--content-heading) mb-0.5">Preload web fonts</div>
+              <div class="text-(--content-meta)">Font preloading is already configured in netlify.toml</div>
+            </div>
+            <div class="p-3 bg-(--surface-tertiary) rounded">
+              <div class="font-medium text-(--content-heading) mb-0.5">Reserve space for dynamic content</div>
+              <div class="text-(--content-meta)">Use <code class="text-xs font-mono">min-height</code> on containers that load async content</div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Connection Type Analysis -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <h3 class="text-lg font-semibold text-(--content-heading) mb-4">
-          Performance by Connection
-        </h3>
-
-        <div class="space-y-4">
-          <!-- 4G -->
-          <div class="p-4 bg-(--surface-tertiary) rounded">
-            <div class="flex items-center justify-between mb-3">
-              <span class="font-medium text-(--content-heading)">4G</span>
-              <span class="text-sm text-(--content-meta)">52% of sessions</span>
-            </div>
-            <div class="grid grid-cols-3 gap-4 text-sm">
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">2.3s</div>
-                <div class="text-(--content-meta)">LCP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">156ms</div>
-                <div class="text-(--content-meta)">INP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">0.08</div>
-                <div class="text-(--content-meta)">CLS</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- WiFi -->
-          <div class="p-4 bg-(--surface-tertiary) rounded">
-            <div class="flex items-center justify-between mb-3">
-              <span class="font-medium text-(--content-heading)">WiFi</span>
-              <span class="text-sm text-(--content-meta)">41% of sessions</span>
-            </div>
-            <div class="grid grid-cols-3 gap-4 text-sm">
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">1.8s</div>
-                <div class="text-(--content-meta)">LCP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">134ms</div>
-                <div class="text-(--content-meta)">INP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">0.07</div>
-                <div class="text-(--content-meta)">CLS</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 3G -->
-          <div class="p-4 bg-(--surface-tertiary) rounded">
-            <div class="flex items-center justify-between mb-3">
-              <span class="font-medium text-(--content-heading)">3G</span>
-              <span class="text-sm text-(--content-meta)">7% of sessions</span>
-            </div>
-            <div class="grid grid-cols-3 gap-4 text-sm">
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">4.2s</div>
-                <div class="text-(--content-meta)">LCP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">248ms</div>
-                <div class="text-(--content-meta)">INP</div>
-              </div>
-              <div class="text-center">
-                <div class="font-semibold text-(--content-heading)">0.12</div>
-                <div class="text-(--content-meta)">CLS</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Optimization Recommendations -->
-  <section class="optimization-recommendations">
-    <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">
-      Optimization Recommendations
-    </h2>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- LCP Optimizations -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <h3 class="text-lg font-semibold text-(--content-heading) mb-4">
-          Improve LCP
-        </h3>
-        <div class="space-y-4">
-          <div class="p-3 bg-blue-50 border border-blue-200 rounded">
-            <div class="font-medium text-blue-900 mb-1">Preload Hero Image</div>
-            <div class="text-sm text-blue-700">
-              Add &lt;link rel="preload"&gt; for hero image
-            </div>
-            <div class="text-xs text-blue-600 mt-1">Potential: -300ms</div>
-          </div>
-          <div class="p-3 bg-green-50 border border-green-200 rounded">
-            <div class="font-medium text-green-900 mb-1">Optimize Images</div>
-            <div class="text-sm text-green-700">Convert to AVIF format</div>
-            <div class="text-xs text-green-600 mt-1">Potential: -200ms</div>
-          </div>
-          <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
-            <div class="font-medium text-yellow-900 mb-1">
-              Reduce Server Response Time
-            </div>
-            <div class="text-sm text-yellow-700">
-              Optimize server configuration
-            </div>
-            <div class="text-xs text-yellow-600 mt-1">Potential: -150ms</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- INP Optimizations -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <h3 class="text-lg font-semibold text-(--content-heading) mb-4">
-          Improve INP
-        </h3>
-        <div class="space-y-4">
-          <div class="p-3 bg-blue-50 border border-blue-200 rounded">
-            <div class="font-medium text-blue-900 mb-1">
-              Debounce Input Handlers
-            </div>
-            <div class="text-sm text-blue-700">
-              Reduce excessive event handlers
-            </div>
-            <div class="text-xs text-blue-600 mt-1">Potential: -30ms</div>
-          </div>
-          <div class="p-3 bg-green-50 border border-green-200 rounded">
-            <div class="font-medium text-green-900 mb-1">Split Long Tasks</div>
-            <div class="text-sm text-green-700">
-              Break up JavaScript execution
-            </div>
-            <div class="text-xs text-green-600 mt-1">Potential: -45ms</div>
-          </div>
-          <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
-            <div class="font-medium text-yellow-900 mb-1">
-              Optimize Third-party Scripts
-            </div>
-            <div class="text-sm text-yellow-700">
-              Load analytics asynchronously
-            </div>
-            <div class="text-xs text-yellow-600 mt-1">Potential: -25ms</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- CLS Optimizations -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <h3 class="text-lg font-semibold text-(--content-heading) mb-4">
-          Improve CLS
-        </h3>
-        <div class="space-y-4">
-          <div class="p-3 bg-blue-50 border border-blue-200 rounded">
-            <div class="font-medium text-blue-900 mb-1">
-              Set Image Dimensions
-            </div>
-            <div class="text-sm text-blue-700">Add width/height attributes</div>
-            <div class="text-xs text-blue-600 mt-1">Potential: -0.03</div>
-          </div>
-          <div class="p-3 bg-green-50 border border-green-200 rounded">
-            <div class="font-medium text-green-900 mb-1">Preload Web Fonts</div>
-            <div class="text-sm text-green-700">
-              Prevent font swap layout shifts
-            </div>
-            <div class="text-xs text-green-600 mt-1">Potential: -0.02</div>
-          </div>
-          <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
-            <div class="font-medium text-yellow-900 mb-1">Reserve Ad Space</div>
-            <div class="text-sm text-yellow-700">Set container dimensions</div>
-            <div class="text-xs text-yellow-600 mt-1">Potential: -0.02</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+    </section>
+  </div>
 </AdminLayout>
 
 <style>
@@ -536,278 +229,110 @@ const pageDescription =
     background-color: #fee2e2;
     color: #991b1b;
   }
+
+  .cwv-unknown {
+    background-color: var(--surface-tertiary, #f3f4f6);
+    color: var(--content-meta, #6b7280);
+  }
 </style>
 
 <script>
-  import { performanceManager } from "@/lib/performance/PerformanceManager";
+  type CruxOk = {
+    status: "ok";
+    origin: string;
+    lcp: number | null;
+    inp: number | null;
+    cls: number | null;
+    fcp: number | null;
+    ttfb: number | null;
+    lcpGoodPercent: number | null;
+    inpGoodPercent: number | null;
+    clsGoodPercent: number | null;
+  };
 
-  class CoreWebVitalsController {
-    private trendsChart: any = null;
-    private updateInterval: NodeJS.Timeout | null = null;
+  type CruxResponse =
+    | { status: "no_data"; origin: string }
+    | { status: "no_key"; origin: string }
+    | CruxOk;
 
-    constructor() {
-      this.init();
-    }
+  function badgeClass(v: number | null, good: number, poor: number): string {
+    if (v === null) return "cwv-badge cwv-unknown";
+    if (v <= good) return "cwv-badge cwv-good";
+    if (v <= poor) return "cwv-badge cwv-needs-improvement";
+    return "cwv-badge cwv-poor";
+  }
 
-    private init(): void {
-      this.updateMetrics();
-      this.initTrendsChart();
-      this.setupEventListeners();
-      this.startAutoUpdate();
-    }
+  function badgeLabel(v: number | null, good: number, poor: number): string {
+    if (v === null) return "No data";
+    if (v <= good) return "Good";
+    if (v <= poor) return "Needs Improvement";
+    return "Poor";
+  }
 
-    private setupEventListeners(): void {
-      document
-        .getElementById("trend-timeframe")
-        ?.addEventListener("change", () => {
-          this.updateTrendsChart();
-        });
+  function pctLabel(pct: number | null): string {
+    if (pct === null) return "";
+    return `${Math.round(pct * 100)}% of URLs rated "Good"`;
+  }
 
-      document
-        .getElementById("trend-device")
-        ?.addEventListener("change", () => {
-          this.updateTrendsChart();
-        });
+  async function loadCwv() {
+    const loading = document.getElementById("cwv-loading")!;
+    const noKey = document.getElementById("cwv-no-key")!;
+    const noData = document.getElementById("cwv-no-data")!;
+    const dataView = document.getElementById("cwv-data")!;
 
-      document.addEventListener("admin:refresh", () => {
-        this.updateMetrics();
-        this.updateTrendsChart();
-      });
-    }
+    try {
+      const res = await fetch("/api/crux-data");
+      const data: CruxResponse = await res.json();
 
-    private startAutoUpdate(): void {
-      this.updateInterval = setInterval(() => {
-        this.updateMetrics();
-      }, 30000);
-    }
+      loading.classList.add("hidden");
 
-    private updateMetrics(): void {
-      const metrics = performanceManager.getAllMetrics();
-
-      // Update LCP
-      if (metrics.coreWebVitals.lcp !== null) {
-        this.updateMetric("lcp", metrics.coreWebVitals.lcp / 1000, 2.5, 4.0);
+      if (data.status === "no_key") {
+        noKey.classList.remove("hidden");
+        return;
       }
 
-      // Update INP
-      if (metrics.coreWebVitals.inp !== null) {
-        this.updateMetric("inp", metrics.coreWebVitals.inp, 200, 500);
+      if (data.status === "no_data") {
+        noData.classList.remove("hidden");
+        return;
       }
 
-      // Update CLS
-      if (metrics.coreWebVitals.cls !== null) {
-        this.updateMetric("cls", metrics.coreWebVitals.cls, 0.1, 0.25);
-      }
-    }
+      // LCP
+      document.getElementById("lcp-value")!.textContent =
+        data.lcp !== null ? (data.lcp / 1000).toFixed(1) : "—";
+      const lcpBadge = document.getElementById("lcp-badge")!;
+      lcpBadge.textContent = badgeLabel(data.lcp, 2500, 4000);
+      lcpBadge.className = badgeClass(data.lcp, 2500, 4000);
+      document.getElementById("lcp-good-pct")!.textContent = pctLabel(data.lcpGoodPercent);
 
-    private updateMetric(
-      metric: string,
-      value: number,
-      goodThreshold: number,
-      poorThreshold: number
-    ): void {
-      const valueEl = document.getElementById(`${metric}-value`);
-      const statusEl = document.getElementById(`${metric}-status`);
+      // INP
+      document.getElementById("inp-value")!.textContent =
+        data.inp !== null ? Math.round(data.inp).toString() : "—";
+      const inpBadge = document.getElementById("inp-badge")!;
+      inpBadge.textContent = badgeLabel(data.inp, 200, 500);
+      inpBadge.className = badgeClass(data.inp, 200, 500);
+      document.getElementById("inp-good-pct")!.textContent = pctLabel(data.inpGoodPercent);
 
-      if (valueEl) {
-        if (metric === "cls") {
-          valueEl.textContent = value.toFixed(3);
-        } else if (metric === "inp") {
-          valueEl.textContent = Math.round(value).toString();
-        } else {
-          valueEl.textContent = value.toFixed(1);
-        }
-      }
+      // CLS
+      document.getElementById("cls-value")!.textContent =
+        data.cls !== null ? data.cls.toFixed(2) : "—";
+      const clsBadge = document.getElementById("cls-badge")!;
+      clsBadge.textContent = badgeLabel(data.cls, 0.1, 0.25);
+      clsBadge.className = badgeClass(data.cls, 0.1, 0.25);
+      document.getElementById("cls-good-pct")!.textContent = pctLabel(data.clsGoodPercent);
 
-      if (statusEl) {
-        const status = this.getMetricStatus(
-          value,
-          goodThreshold,
-          poorThreshold
-        );
-        statusEl.textContent = status;
-        statusEl.className = `cwv-badge cwv-${status.toLowerCase().replace(" ", "-")}`;
-      }
-    }
+      // FCP
+      document.getElementById("fcp-value")!.textContent =
+        data.fcp !== null ? (data.fcp / 1000).toFixed(1) : "—";
 
-    private getMetricStatus(
-      value: number,
-      goodThreshold: number,
-      poorThreshold: number
-    ): string {
-      if (value <= goodThreshold) return "Good";
-      if (value <= poorThreshold) return "Needs Improvement";
-      return "Poor";
-    }
+      // TTFB
+      document.getElementById("ttfb-value")!.textContent =
+        data.ttfb !== null ? Math.round(data.ttfb).toString() : "—";
 
-    private initTrendsChart(): void {
-      const canvas = document.getElementById(
-        "cwv-trends-chart"
-      ) as HTMLCanvasElement;
-      if (!canvas) return;
-
-      // Initialize chart with sample data
-      this.renderTrendsChart(canvas);
-    }
-
-    private renderTrendsChart(canvas: HTMLCanvasElement): void {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
-
-      // Clear canvas
-      ctx.clearRect(0, 0, rect.width, rect.height);
-
-      // Generate sample trend data
-      const days = 30;
-      const data = [];
-      for (let i = 0; i < days; i++) {
-        data.push({
-          date: new Date(Date.now() - (days - i) * 24 * 60 * 60 * 1000),
-          lcp: 2000 + Math.random() * 800,
-          inp: 120 + Math.random() * 60,
-          cls: 0.06 + Math.random() * 0.06,
-        });
-      }
-
-      this.drawChart(ctx, rect.width, rect.height, data);
-    }
-
-    private drawChart(
-      ctx: CanvasRenderingContext2D,
-      width: number,
-      height: number,
-      data: any[]
-    ): void {
-      const padding = 60;
-      const chartWidth = width - 2 * padding;
-      const chartHeight = height - 2 * padding;
-
-      // Draw axes
-      ctx.strokeStyle = "#e5e7eb";
-      ctx.lineWidth = 1;
-
-      // Y-axis
-      ctx.beginPath();
-      ctx.moveTo(padding, padding);
-      ctx.lineTo(padding, height - padding);
-      ctx.stroke();
-
-      // X-axis
-      ctx.beginPath();
-      ctx.moveTo(padding, height - padding);
-      ctx.lineTo(width - padding, height - padding);
-      ctx.stroke();
-
-      // Draw LCP line (normalized to chart height)
-      this.drawDataLine(
-        ctx,
-        data,
-        "lcp",
-        "#3b82f6",
-        padding,
-        chartWidth,
-        chartHeight,
-        height,
-        4000
-      );
-
-      // Draw INP line (scaled differently)
-      this.drawDataLine(
-        ctx,
-        data,
-        "inp",
-        "#10b981",
-        padding,
-        chartWidth,
-        chartHeight,
-        height,
-        400
-      );
-
-      // Draw CLS line (scaled differently)
-      this.drawDataLine(
-        ctx,
-        data,
-        "cls",
-        "#f59e0b",
-        padding,
-        chartWidth,
-        chartHeight,
-        height,
-        0.2
-      );
-    }
-
-    private drawDataLine(
-      ctx: CanvasRenderingContext2D,
-      data: any[],
-      metric: string,
-      color: string,
-      padding: number,
-      chartWidth: number,
-      chartHeight: number,
-      height: number,
-      maxValue: number
-    ): void {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-
-      data.forEach((point, index) => {
-        const x = padding + (index / (data.length - 1)) * chartWidth;
-        const y = height - padding - (point[metric] / maxValue) * chartHeight;
-
-        if (index === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      });
-
-      ctx.stroke();
-    }
-
-    private updateTrendsChart(): void {
-      const timeframe = (
-        document.getElementById("trend-timeframe") as HTMLSelectElement
-      )?.value;
-      const device = (
-        document.getElementById("trend-device") as HTMLSelectElement
-      )?.value;
-
-      // console.log('Updating trends chart:', { timeframe, device });
-      this.initTrendsChart();
-    }
-
-    public destroy(): void {
-      if (this.updateInterval) {
-        clearInterval(this.updateInterval);
-      }
+      dataView.classList.remove("hidden");
+    } catch {
+      loading.textContent = "Could not load field data.";
     }
   }
 
-  // Initialize controller
-  let cwvController: CoreWebVitalsController;
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      cwvController = new CoreWebVitalsController();
-    });
-  } else {
-    cwvController = new CoreWebVitalsController();
-  }
-
-  // Cleanup
-  window.addEventListener("beforeunload", () => {
-    if (cwvController) {
-      cwvController.destroy();
-    }
-  });
+  loadCwv();
 </script>

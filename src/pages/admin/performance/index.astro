@@ -1,41 +1,14 @@
 ---
 /**
  * Performance Admin Overview
- * Main dashboard for performance monitoring and optimization
- * File: src/pages/admin/performance/index.astro
- * Phase 4: Real-time data integration enabled
+ * Real CWV field data from the Chrome UX Report API.
  */
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
-import MetricsChart from "@/components/admin/performance/MetricsChart.astro";
-import BudgetAlert from "@/components/admin/performance/BudgetAlert.astro";
-import RecommendationCard from "@/components/admin/performance/RecommendationCard.astro";
 
 const pageTitle = "Performance Overview";
 const pageDescription =
-  "Real-time performance monitoring and optimization dashboard";
-
-// PHASE 4: Real-time performance data integration
-let performanceData = {
-  healthScore: 85, // Fallback
-  metrics: {
-    lcp: 2100,
-    inp: 150,
-    cls: 0.08,
-    fcp: 1200,
-    ttfb: 300, // cSpell:ignore ttfb
-  },
-  loadTime: 1.8,
-  cacheHitRate: 95,
-  violations: [],
-  trends: {
-    health: "+3.2%",
-    loadTime: "-12ms",
-  },
-};
-
-// Client-side data will be loaded via JavaScript
-// Server-side integration ready for SSR enhancement
+  "Core Web Vitals field data from real Chrome users via the Chrome UX Report.";
 ---
 
 <AdminLayout
@@ -43,330 +16,157 @@ let performanceData = {
   description={pageDescription}
   activeSection="performance"
 >
-  <!-- Performance Health Overview -->
-  <section class="admin-performance-overview">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <!-- Overall Health Score -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-(--content-heading)">
-            Performance Health
-          </h3>
-          <span id="health-trend" class="text-sm text-(--state-success)"
-            >↗ {performanceData.trends.health}</span
-          >
-        </div>
-        <div class="flex items-end gap-3">
-          <span
-            id="health-score"
-            class="text-4xl font-bold text-(--state-success)"
-            >{performanceData.healthScore}</span
-          >
-          <span class="text-sm text-(--content-body) mb-1">/ 100</span>
-        </div>
-        <div class="mt-3">
-          <div class="w-full bg-(--surface-tertiary) rounded-full h-2">
-            <div
-              id="health-progress"
-              class="bg-(--state-success) h-2 rounded-full transition-all duration-500"
-              style={`width: ${performanceData.healthScore}%`}
-            >
-            </div>
-          </div>
-        </div>
-      </div>
+  <!-- Loading state -->
+  <div id="perf-loading" class="py-12 text-center text-(--content-meta) text-sm">
+    Loading field data…
+  </div>
 
-      <!-- Page Load Performance -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-(--content-heading)">
-            Avg Load Time
-          </h3>
-          <span id="load-trend" class="text-sm text-(--state-success)"
-            >↓ {performanceData.trends.loadTime}</span
-          >
-        </div>
-        <div class="flex items-end gap-3">
-          <span
-            id="avg-load-time"
-            class="text-4xl font-bold text-(--content-heading)"
-            >{performanceData.loadTime}</span
-          >
-          <span class="text-sm text-(--content-body) mb-1">seconds</span>
-        </div>
-        <div class="text-sm text-(--content-meta) mt-2">Target: &lt; 2.5s</div>
-      </div>
-
-      <!-- Active Issues -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-(--content-heading)">
-            Active Issues
-          </h3>
-          <span id="issues-trend" class="text-sm text-(--state-success)"
-            >↓ -2</span
-          >
-        </div>
-        <div class="flex items-end gap-3">
-          <span
-            id="active-issues"
-            class="text-4xl font-bold text-(--content-heading)">3</span
-          >
-          <span class="text-sm text-(--content-body) mb-1">items</span>
-        </div>
-        <div class="text-sm text-(--state-warning) mt-2">
-          2 critical, 1 warning
-        </div>
-      </div>
+  <!-- No API key state -->
+  <div id="perf-no-key" class="hidden">
+    <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-8 text-center">
+      <h2 class="text-lg font-semibold text-(--content-heading) mb-2">CrUX API key required</h2>
+      <p class="text-(--content-meta) text-sm max-w-md mx-auto">
+        Add a <code class="font-mono text-xs bg-(--surface-tertiary) px-1 rounded">CRUX_API_KEY</code> environment variable in your Netlify site settings to enable real field data.
+      </p>
+      <p class="text-xs text-(--content-meta) mt-3">
+        Get a free key at <span class="font-mono">console.cloud.google.com</span> → APIs &amp; Services → Chrome UX Report API.
+      </p>
     </div>
+  </div>
 
-    <!-- Core Web Vitals Section -->
-    <div class="mb-8">
+  <!-- No data state -->
+  <div id="perf-no-data" class="hidden">
+    <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-8 text-center">
+      <svg class="w-12 h-12 mx-auto mb-4 text-(--content-meta)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+      <h2 class="text-lg font-semibold text-(--content-heading) mb-2">No field data yet</h2>
+      <p class="text-(--content-meta) text-sm max-w-md mx-auto">
+        Chrome UX Report data becomes available once the site receives sufficient
+        real-user traffic (approximately 1,000 visits). Check back after launch.
+      </p>
+      <p class="text-xs text-(--content-meta) mt-3">
+        Origin: <span id="no-data-origin" class="font-mono"></span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Data view -->
+  <div id="perf-data" class="hidden">
+    <!-- Core Web Vitals -->
+    <section class="mb-8">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-2xl font-semibold text-(--content-heading)">
           Core Web Vitals
         </h2>
-        <div class="flex items-center gap-3">
-          <select
-            id="vitals-timeframe"
-            class="px-3 py-2 text-sm border border-(--ui-input-border) rounded bg-(--ui-input-surface) text-(--ui-input-text)"
-          >
-            <option value="24h">Last 24 Hours</option>
-            <option value="7d">Last 7 Days</option>
-            <option value="30d">Last 30 Days</option>
-            <option value="90d">Last 90 Days</option>
-          </select>
-          <button
-            id="export-vitals"
-            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-3 flex items-center gap-2"
-          >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              ></path>
-            </svg>
-            Export
-          </button>
-        </div>
+        <p class="text-sm text-(--content-meta)">p75 field data · Chrome UX Report</p>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- LCP Card -->
-        <div
-          class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-        >
+        <!-- LCP -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h3 class="font-semibold text-(--content-heading)">
-                Largest Contentful Paint
-              </h3>
-              <p class="text-sm text-(--content-meta)">
-                LCP measures loading performance
-              </p>
+              <h3 class="font-semibold text-(--content-heading)">Largest Contentful Paint</h3>
+              <p class="text-sm text-(--content-meta)">Loading performance</p>
             </div>
-            <span id="lcp-status" class="cwv-badge cwv-good">Good</span>
+            <span id="lcp-badge" class="cwv-badge">—</span>
           </div>
-
           <div class="mb-4">
-            <div class="flex items-end gap-2 mb-2">
-              <span
-                id="lcp-value"
-                class="text-3xl font-bold text-(--content-heading)">2.1</span
-              >
+            <div class="flex items-end gap-2 mb-1">
+              <span id="lcp-value" class="text-3xl font-bold text-(--content-heading)">—</span>
               <span class="text-sm text-(--content-body) mb-1">seconds</span>
             </div>
-            <div class="text-sm text-(--content-meta)">
-              Target: ≤ 2.5s • 95th percentile
-            </div>
+            <div class="text-sm text-(--content-meta)">Target: ≤ 2.5s</div>
           </div>
-
-          <div class="space-y-2">
-            <div class="flex justify-between text-sm">
-              <span class="text-(--content-body)">Mobile</span>
-              <span id="lcp-mobile" class="font-medium">2.3s</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-(--content-body)">Desktop</span>
-              <span id="lcp-desktop" class="font-medium">1.9s</span>
-            </div>
+          <div class="text-sm text-(--content-meta)">
+            <span id="lcp-good-pct"></span>
           </div>
         </div>
 
-        <!-- INP Card -->
-        <div
-          class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-        >
+        <!-- INP -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h3 class="font-semibold text-(--content-heading)">
-                Interaction to Next Paint
-              </h3>
-              <p class="text-sm text-(--content-meta)">
-                INP measures responsiveness
-              </p>
+              <h3 class="font-semibold text-(--content-heading)">Interaction to Next Paint</h3>
+              <p class="text-sm text-(--content-meta)">Responsiveness</p>
             </div>
-            <span id="inp-status" class="cwv-badge cwv-good">Good</span>
+            <span id="inp-badge" class="cwv-badge">—</span>
           </div>
-
           <div class="mb-4">
-            <div class="flex items-end gap-2 mb-2">
-              <span
-                id="inp-value"
-                class="text-3xl font-bold text-(--content-heading)">147</span
-              >
-              <span class="text-sm text-(--content-body) mb-1"
-                >milliseconds</span
-              >
+            <div class="flex items-end gap-2 mb-1">
+              <span id="inp-value" class="text-3xl font-bold text-(--content-heading)">—</span>
+              <span class="text-sm text-(--content-body) mb-1">milliseconds</span>
             </div>
-            <div class="text-sm text-(--content-meta)">
-              Target: ≤ 200ms • 95th percentile
-            </div>
+            <div class="text-sm text-(--content-meta)">Target: ≤ 200ms</div>
           </div>
-
-          <div class="space-y-2">
-            <div class="flex justify-between text-sm">
-              <span class="text-(--content-body)">Mobile</span>
-              <span id="inp-mobile" class="font-medium">165ms</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-(--content-body)">Desktop</span>
-              <span id="inp-desktop" class="font-medium">129ms</span>
-            </div>
+          <div class="text-sm text-(--content-meta)">
+            <span id="inp-good-pct"></span>
           </div>
         </div>
 
-        <!-- CLS Card -->
-        <div
-          class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-        >
+        <!-- CLS -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h3 class="font-semibold text-(--content-heading)">
-                Cumulative Layout Shift
-              </h3>
-              <p class="text-sm text-(--content-meta)">
-                CLS measures visual stability
-              </p>
+              <h3 class="font-semibold text-(--content-heading)">Cumulative Layout Shift</h3>
+              <p class="text-sm text-(--content-meta)">Visual stability</p>
             </div>
-            <span id="cls-status" class="cwv-badge cwv-good">Good</span>
+            <span id="cls-badge" class="cwv-badge">—</span>
           </div>
-
           <div class="mb-4">
-            <div class="flex items-end gap-2 mb-2">
-              <span
-                id="cls-value"
-                class="text-3xl font-bold text-(--content-heading)">0.08</span
-              >
+            <div class="flex items-end gap-2 mb-1">
+              <span id="cls-value" class="text-3xl font-bold text-(--content-heading)">—</span>
               <span class="text-sm text-(--content-body) mb-1">score</span>
             </div>
-            <div class="text-sm text-(--content-meta)">
-              Target: ≤ 0.1 • 95th percentile
-            </div>
+            <div class="text-sm text-(--content-meta)">Target: ≤ 0.1</div>
           </div>
-
-          <div class="space-y-2">
-            <div class="flex justify-between text-sm">
-              <span class="text-(--content-body)">Mobile</span>
-              <span id="cls-mobile" class="font-medium">0.09</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-(--content-body)">Desktop</span>
-              <span id="cls-desktop" class="font-medium">0.07</span>
-            </div>
+          <div class="text-sm text-(--content-meta)">
+            <span id="cls-good-pct"></span>
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Performance Charts -->
-    <div class="mb-8">
+    <!-- Additional signals -->
+    <section class="mb-8">
       <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">
-        Performance Trends
+        Additional Signals
       </h2>
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-      >
-        <MetricsChart />
-      </div>
-    </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- FCP -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="font-semibold text-(--content-heading) mb-1">First Contentful Paint</h3>
+          <p class="text-sm text-(--content-meta) mb-4">Time until first content is rendered</p>
+          <div class="flex items-end gap-2">
+            <span id="fcp-value" class="text-3xl font-bold text-(--content-heading)">—</span>
+            <span class="text-sm text-(--content-body) mb-1">seconds</span>
+          </div>
+          <div class="text-sm text-(--content-meta) mt-1">Target: ≤ 1.8s</div>
+        </div>
 
-    <!-- Budget Alerts and Recommendations -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <!-- Budget Alerts -->
-      <div>
-        <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">
-          Budget Alerts
-        </h2>
-        <div class="space-y-4">
-          <BudgetAlert
-            metric="Bundle Size"
-            current="245 KB"
-            budget="200 KB"
-            severity="warning"
-            change="+15 KB"
-          />
-          <BudgetAlert
-            metric="LCP"
-            current="2.8s"
-            budget="2.5s"
-            severity="critical"
-            change="+0.3s"
-          />
-          <BudgetAlert
-            metric="CLS"
-            current="0.12"
-            budget="0.1"
-            severity="warning"
-            change="+0.02"
-          />
+        <!-- TTFB -->
+        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+          <h3 class="font-semibold text-(--content-heading) mb-1">Time to First Byte</h3>
+          <p class="text-sm text-(--content-meta) mb-4">Server response time</p>
+          <div class="flex items-end gap-2">
+            <span id="ttfb-value" class="text-3xl font-bold text-(--content-heading)">—</span>
+            <span class="text-sm text-(--content-body) mb-1">milliseconds</span>
+          </div>
+          <div class="text-sm text-(--content-meta) mt-1">Target: ≤ 800ms</div>
         </div>
       </div>
+    </section>
 
-      <!-- Optimization Recommendations -->
-      <div>
-        <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">
-          Recommendations
-        </h2>
-        <div class="space-y-4">
-          <RecommendationCard
-            title="Optimize Images"
-            impact="High"
-            effort="Medium"
-            description="Convert 15 JPEG images to AVIF format for 40% size reduction"
-            action="View Images"
-          />
-          <RecommendationCard
-            title="Reduce Bundle Size"
-            impact="High"
-            effort="Low"
-            description="Remove unused dependencies saving 32 KB"
-            action="Review Code"
-          />
-          <RecommendationCard
-            title="Preload Critical Resources"
-            impact="Medium"
-            effort="Low"
-            description="Preload hero image to improve LCP by 200ms"
-            action="Apply Fix"
-          />
-        </div>
-      </div>
+    <!-- Link to detailed view -->
+    <div class="flex gap-4">
+      <a href="/admin/performance/core-vitals"
+        class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4">
+        Detailed CWV Analysis →
+      </a>
     </div>
-  </section>
+  </div>
 </AdminLayout>
 
 <style>
@@ -394,240 +194,111 @@ let performanceData = {
     color: #991b1b;
   }
 
-  .admin-performance-overview {
-    animation: fadeIn 0.6s ease-out;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  .cwv-unknown {
+    background-color: var(--surface-tertiary, #f3f4f6);
+    color: var(--content-meta, #6b7280);
   }
 </style>
 
 <script>
-  import { performanceManager } from "@/lib/performance/PerformanceManager";
-  import { budgetManager } from "@/lib/performance/BudgetManager";
+  type CruxOk = {
+    status: "ok";
+    origin: string;
+    lcp: number | null;
+    inp: number | null;
+    cls: number | null;
+    fcp: number | null;
+    ttfb: number | null;
+    lcpGoodPercent: number | null;
+    inpGoodPercent: number | null;
+    clsGoodPercent: number | null;
+  };
 
-  class PerformanceOverviewController {
-    private updateInterval: NodeJS.Timeout | null = null;
+  type CruxResponse =
+    | { status: "no_data"; origin: string }
+    | { status: "no_key"; origin: string }
+    | CruxOk;
 
-    constructor() {
-      this.init();
-    }
+  function badgeClass(value: number | null, good: number, poor: number): string {
+    if (value === null) return "cwv-badge cwv-unknown";
+    if (value <= good) return "cwv-badge cwv-good";
+    if (value <= poor) return "cwv-badge cwv-needs-improvement";
+    return "cwv-badge cwv-poor";
+  }
 
-    private init(): void {
-      this.updateDashboard();
-      this.setupEventListeners();
-      this.startAutoUpdate();
-      // console.log('Real-time performance monitoring enabled');
-    }
+  function badgeLabel(value: number | null, good: number, poor: number): string {
+    if (value === null) return "No data";
+    if (value <= good) return "Good";
+    if (value <= poor) return "Needs Improvement";
+    return "Poor";
+  }
 
-    private setupEventListeners(): void {
-      // Timeframe selector
-      const timeframeSelect = document.getElementById("vitals-timeframe");
-      timeframeSelect?.addEventListener("change", () => {
-        this.updateTimeframe();
-      });
+  function pctLabel(pct: number | null): string {
+    if (pct === null) return "";
+    return `${Math.round(pct * 100)}% of URLs in "Good" range`;
+  }
 
-      // Export functionality
-      const exportBtn = document.getElementById("export-vitals");
-      exportBtn?.addEventListener("click", () => {
-        this.exportVitalsData();
-      });
+  async function loadPerf() {
+    const loading = document.getElementById("perf-loading")!;
+    const noKey = document.getElementById("perf-no-key")!;
+    const noData = document.getElementById("perf-no-data")!;
+    const dataView = document.getElementById("perf-data")!;
 
-      // Listen for admin refresh events
-      document.addEventListener("admin:refresh", () => {
-        this.updateDashboard();
-      });
-    }
+    try {
+      const res = await fetch("/api/crux-data");
+      const data: CruxResponse = await res.json();
 
-    private startAutoUpdate(): void {
-      // Update every 30 seconds
-      this.updateInterval = setInterval(() => {
-        this.updateDashboard();
-      }, 30000);
-    }
+      loading.classList.add("hidden");
 
-    private updateDashboard(): void {
-      try {
-        // PHASE 4: Real-time data integration
-        const metrics = performanceManager.getAllMetrics();
-        const healthData = budgetManager.getHealthScore();
-        const violations = budgetManager.getViolations();
-
-        this.updateHealthOverview(healthData);
-        this.updateCoreWebVitals(metrics.coreWebVitals || metrics);
-        this.updatePerformanceMetrics(metrics);
-        this.updateActiveIssues(violations);
-
-        // Update timestamp to show data is fresh
-        this.updateLastRefresh();
-
-        // console.log('Dashboard updated with real-time data');
-      } catch (error) {
-        // console.warn('Dashboard update error:', error);
-        // Graceful degradation - keep showing last known values
-      }
-    }
-
-    private updateHealthOverview(health: any): void {
-      const scoreEl = document.getElementById("health-score");
-      const progressEl = document.getElementById("health-progress");
-      const trendEl = document.getElementById("health-trend");
-
-      if (scoreEl) scoreEl.textContent = health.score?.toString() || "85";
-      if (progressEl) progressEl.style.width = `${health.score || 85}%`;
-      if (trendEl) trendEl.textContent = "↗ +3.2%"; // Static trend for now
-    }
-
-    private updateActiveIssues(violations: any[]): void {
-      const issuesEl = document.getElementById("active-issues");
-      if (issuesEl) {
-        const activeCount = violations?.length || 0;
-        issuesEl.textContent = activeCount.toString();
-
-        // Update color based on issue count
-        issuesEl.className =
-          activeCount === 0
-            ? "text-4xl font-bold text-green-600 mb-2"
-            : activeCount <= 2
-              ? "text-4xl font-bold text-yellow-600 mb-2"
-              : "text-4xl font-bold text-red-600 mb-2";
-      }
-    }
-
-    private updateLastRefresh(): void {
-      // Add visual indicator that data is fresh
-      const refreshIndicator = document.querySelector(
-        ".admin-performance-overview"
-      );
-      refreshIndicator?.classList.add("opacity-100");
-
-      // Flash effect to show update
-      setTimeout(() => {
-        refreshIndicator?.classList.remove("opacity-100");
-      }, 200);
-    }
-
-    private updateCoreWebVitals(vitals: any): void {
-      // Update LCP
-      this.updateVitalMetric("lcp", vitals.lcp, 2500, 4000);
-
-      // Update INP
-      this.updateVitalMetric("inp", vitals.inp, 200, 500);
-
-      // Update CLS
-      this.updateVitalMetric("cls", vitals.cls, 0.1, 0.25);
-    }
-
-    private updateVitalMetric(
-      metric: string,
-      value: number | null,
-      goodThreshold: number,
-      poorThreshold: number
-    ): void {
-      if (value === null) return;
-
-      const valueEl = document.getElementById(`${metric}-value`);
-      const statusEl = document.getElementById(`${metric}-status`);
-
-      if (valueEl) {
-        if (metric === "cls") {
-          valueEl.textContent = value.toFixed(3);
-        } else if (metric === "inp") {
-          valueEl.textContent = Math.round(value).toString();
-        } else {
-          valueEl.textContent = (value / 1000).toFixed(1);
-        }
+      if (data.status === "no_key") {
+        noKey.classList.remove("hidden");
+        return;
       }
 
-      if (statusEl) {
-        const status = this.getVitalStatus(value, goodThreshold, poorThreshold);
-        statusEl.textContent = status;
-        statusEl.className = `cwv-badge cwv-${status.toLowerCase().replace(" ", "-")}`;
-      }
-    }
-
-    private getVitalStatus(
-      value: number,
-      goodThreshold: number,
-      poorThreshold: number
-    ): string {
-      if (value <= goodThreshold) return "Good";
-      if (value <= poorThreshold) return "Needs Improvement";
-      return "Poor";
-    }
-
-    private updateTimeframe(): void {
-      const timeframe = (
-        document.getElementById("vitals-timeframe") as HTMLSelectElement
-      )?.value;
-      // Update charts and data based on timeframe
-      // console.log('Updating timeframe to:', timeframe);
-    }
-
-    private exportVitalsData(): void {
-      const metrics = performanceManager.exportMetrics();
-      const blob = new Blob([metrics], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `core-web-vitals-${new Date().toISOString().split("T")[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-
-    private updatePerformanceMetrics(metrics: any): void {
-      // Update additional performance metrics
-      const loadTimeEl = document.getElementById("avg-load-time");
-      const issuesEl = document.getElementById("active-issues");
-
-      if (loadTimeEl && metrics.coreWebVitals.lcp) {
-        loadTimeEl.textContent = (metrics.coreWebVitals.lcp / 1000).toFixed(1);
+      if (data.status === "no_data") {
+        const originEl = document.getElementById("no-data-origin");
+        if (originEl) originEl.textContent = data.origin;
+        noData.classList.remove("hidden");
+        return;
       }
 
-      if (issuesEl) {
-        // Calculate issues based on thresholds
-        let issues = 0;
-        if (metrics.coreWebVitals.lcp > 2500) issues++;
-        if (metrics.coreWebVitals.inp > 200) issues++;
-        if (metrics.coreWebVitals.cls > 0.1) issues++;
+      // LCP
+      const lcpEl = document.getElementById("lcp-value")!;
+      const lcpBadge = document.getElementById("lcp-badge")!;
+      lcpEl.textContent = data.lcp !== null ? (data.lcp / 1000).toFixed(1) : "—";
+      lcpBadge.textContent = badgeLabel(data.lcp, 2500, 4000);
+      lcpBadge.className = badgeClass(data.lcp, 2500, 4000);
+      document.getElementById("lcp-good-pct")!.textContent = pctLabel(data.lcpGoodPercent);
 
-        issuesEl.textContent = issues.toString();
-      }
-    }
+      // INP
+      const inpEl = document.getElementById("inp-value")!;
+      const inpBadge = document.getElementById("inp-badge")!;
+      inpEl.textContent = data.inp !== null ? Math.round(data.inp).toString() : "—";
+      inpBadge.textContent = badgeLabel(data.inp, 200, 500);
+      inpBadge.className = badgeClass(data.inp, 200, 500);
+      document.getElementById("inp-good-pct")!.textContent = pctLabel(data.inpGoodPercent);
 
-    public destroy(): void {
-      if (this.updateInterval) {
-        clearInterval(this.updateInterval);
-      }
+      // CLS
+      const clsEl = document.getElementById("cls-value")!;
+      const clsBadge = document.getElementById("cls-badge")!;
+      clsEl.textContent = data.cls !== null ? data.cls.toFixed(2) : "—";
+      clsBadge.textContent = badgeLabel(data.cls, 0.1, 0.25);
+      clsBadge.className = badgeClass(data.cls, 0.1, 0.25);
+      document.getElementById("cls-good-pct")!.textContent = pctLabel(data.clsGoodPercent);
+
+      // FCP
+      const fcpEl = document.getElementById("fcp-value")!;
+      fcpEl.textContent = data.fcp !== null ? (data.fcp / 1000).toFixed(1) : "—";
+
+      // TTFB
+      const ttfbEl = document.getElementById("ttfb-value")!;
+      ttfbEl.textContent = data.ttfb !== null ? Math.round(data.ttfb).toString() : "—";
+
+      dataView.classList.remove("hidden");
+    } catch {
+      loading.textContent = "Could not load field data.";
     }
   }
 
-  // Initialize controller
-  let overviewController: PerformanceOverviewController;
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      overviewController = new PerformanceOverviewController();
-    });
-  } else {
-    overviewController = new PerformanceOverviewController();
-  }
-
-  // Cleanup on page unload
-  window.addEventListener("beforeunload", () => {
-    if (overviewController) {
-      overviewController.destroy();
-    }
-  });
+  loadPerf();
 </script>

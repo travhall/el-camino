@@ -1,26 +1,14 @@
 ---
 /**
  * Admin Dashboard Landing Page
- * Main entry point for all admin tools and performance monitoring
- * File: src/pages/admin/index.astro
- * Phase 4: Real-time data integration enabled
+ * Main entry point for all admin tools and performance monitoring.
  */
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
 
 const pageTitle = "Dashboard";
 const pageDescription =
-  "Comprehensive admin tools for performance monitoring, content management, and business analytics.";
-
-// PHASE 4: Real-time performance data integration
-let dashboardData = {
-  healthScore: 85, // Fallback value
-  cwvPassing: 82,
-  activeIssues: 1,
-  uptime: 99.9,
-};
-
-// Server-side integration ready for SSR enhancement
+  "Admin tools for performance monitoring and content management.";
 ---
 
 <AdminLayout
@@ -28,96 +16,77 @@ let dashboardData = {
   description={pageDescription}
   activeSection="overview"
 >
-  <!-- Quick Health Overview -->
-  <section class="admin-health-overview mb-12">
+  <!-- Core Web Vitals summary (loaded client-side from /api/crux-data) -->
+  <section class="mb-12">
     <div
       class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
     >
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-2xl font-semibold text-(--content-heading)">
-          System Health
+          Core Web Vitals
         </h2>
-        <div class="flex items-center gap-3">
-          <span
-            class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
-          >
-            ● All Systems Operational
-          </span>
-          <button
-            id="dashboard-refresh-btn"
-            class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-3 flex items-center gap-2"
-            title="Refresh dashboard data"
-          >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              ></path>
-            </svg>
-            Refresh
-          </button>
+        <a
+          href="/admin/performance"
+          class="text-sm text-(--content-meta) hover:text-(--content-body) transition-colors"
+          >View full report →</a
+        >
+      </div>
+
+      <!-- Loading state -->
+      <div id="cwv-loading" class="py-4 text-center text-(--content-meta) text-sm">
+        Loading field data…
+      </div>
+
+      <!-- No data state (hidden by default) -->
+      <div id="cwv-no-data" class="hidden py-6 text-center">
+        <p class="text-(--content-meta) text-sm">
+          No Chrome UX Report data yet for this origin.
+        </p>
+        <p class="text-xs text-(--content-meta) mt-1">
+          Field data becomes available once the site has sufficient real-user traffic (~1,000 visits).
+        </p>
+      </div>
+
+      <!-- No API key state (hidden by default) -->
+      <div id="cwv-no-key" class="hidden py-6 text-center">
+        <p class="text-(--content-meta) text-sm">
+          Set the <code class="font-mono text-xs bg-(--surface-tertiary) px-1 rounded">CRUX_API_KEY</code> environment variable to enable field data.
+        </p>
+        <p class="text-xs text-(--content-meta) mt-1">
+          Get a free key at <span class="font-mono text-xs">console.cloud.google.com</span> → APIs &amp; Services → Chrome UX Report API.
+        </p>
+      </div>
+
+      <!-- Metrics grid (hidden until data loads) -->
+      <div id="cwv-metrics" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- LCP -->
+        <div class="text-center">
+          <div id="lcp-value" class="text-4xl font-bold mb-1 text-(--content-heading)">—</div>
+          <div class="text-sm text-(--content-meta)">LCP (p75)</div>
+          <div id="lcp-status" class="text-xs mt-1"></div>
+        </div>
+        <!-- INP -->
+        <div class="text-center">
+          <div id="inp-value" class="text-4xl font-bold mb-1 text-(--content-heading)">—</div>
+          <div class="text-sm text-(--content-meta)">INP (p75)</div>
+          <div id="inp-status" class="text-xs mt-1"></div>
+        </div>
+        <!-- CLS -->
+        <div class="text-center">
+          <div id="cls-value" class="text-4xl font-bold mb-1 text-(--content-heading)">—</div>
+          <div class="text-sm text-(--content-meta)">CLS (p75)</div>
+          <div id="cls-status" class="text-xs mt-1"></div>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <!-- Performance Score -->
-        <div class="text-center">
-          <div
-            class="text-4xl font-bold text-green-600 mb-2"
-            id="overall-health"
-          >
-            {dashboardData.healthScore}
-          </div>
-          <div class="text-sm text-(--content-meta)">Performance Score</div>
-          <div class="w-full bg-(--surface-tertiary) rounded-full h-2 mt-2">
-            <div
-              class="bg-green-500 h-2 rounded-full"
-              style={`width: ${dashboardData.healthScore}%`}
-            >
-            </div>
-          </div>
-        </div>
-
-        <!-- Core Web Vitals -->
-        <div class="text-center">
-          <div class="text-4xl font-bold text-blue-600 mb-2" id="cwv-passing">
-            3/3
-          </div>
-          <div class="text-sm text-(--content-meta)">CWV Passing</div>
-          <div class="text-xs text-green-600 mt-1">LCP, INP, CLS Good</div>
-        </div>
-
-        <!-- Active Issues -->
-        <div class="text-center">
-          <div
-            class="text-4xl font-bold text-yellow-600 mb-2"
-            id="active-issues-main"
-          >
-            {dashboardData.activeIssues}
-          </div>
-          <div class="text-sm text-(--content-meta)">Active Alerts</div>
-          <div class="text-xs text-yellow-600 mt-1">1 warning, 1 info</div>
-        </div>
-
-        <!-- Uptime -->
-        <div class="text-center">
-          <div class="text-4xl font-bold text-green-600 mb-2">99.9%</div>
-          <div class="text-sm text-(--content-meta)">Uptime (30d)</div>
-          <div class="text-xs text-green-600 mt-1">Last incident: None</div>
-        </div>
-      </div>
+      <p class="text-xs text-(--content-meta) mt-4">
+        Source: Chrome UX Report (real-user field data, p75)
+      </p>
     </div>
   </section>
 
   <!-- Admin Tools Grid -->
-  <section class="admin-tools-grid">
+  <section>
     <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">
       Admin Tools
     </h2>
@@ -150,23 +119,8 @@ let dashboardData = {
               Performance Monitor
             </h3>
             <p class="text-sm text-(--content-meta)">
-              Real-time Core Web Vitals tracking
+              Core Web Vitals field data
             </p>
-          </div>
-        </div>
-
-        <div class="space-y-2 mb-4">
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">LCP</span>
-            <span class="font-medium text-green-600">2.1s</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">INP</span>
-            <span class="font-medium text-green-600">147ms</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">CLS</span>
-            <span class="font-medium text-green-600">0.08</span>
           </div>
         </div>
 
@@ -210,21 +164,6 @@ let dashboardData = {
           </div>
         </div>
 
-        <div class="space-y-2 mb-4">
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Total Products</span>
-            <span class="font-medium" id="total-products">1,247</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Categories</span>
-            <span class="font-medium">12</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Last Updated</span>
-            <span class="font-medium">2 hours ago</span>
-          </div>
-        </div>
-
         <a
           href="/admin/content/sku-reference"
           class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4 w-full text-center block"
@@ -233,7 +172,7 @@ let dashboardData = {
         </a>
       </div>
 
-      <!-- System Monitoring -->
+      <!-- Style Guide -->
       <div
         class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary) hover:shadow-md transition-shadow"
       >
@@ -251,44 +190,27 @@ let dashboardData = {
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
               ></path>
             </svg>
           </div>
           <div>
-            <h3 class="font-semibold text-(--content-heading)">
-              System Health
-            </h3>
+            <h3 class="font-semibold text-(--content-heading)">Style Guide</h3>
             <p class="text-sm text-(--content-meta)">
-              Server and service monitoring
+              Design tokens and component reference
             </p>
           </div>
         </div>
 
-        <div class="space-y-2 mb-4">
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Server Response</span>
-            <span class="font-medium text-green-600">180ms</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">CDN Cache Hit</span>
-            <span class="font-medium text-green-600">94%</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Error Rate</span>
-            <span class="font-medium text-green-600">0.02%</span>
-          </div>
-        </div>
-
-        <button
-          class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-4 w-full"
-          disabled
+        <a
+          href="/admin/content/styleguide"
+          class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4 w-full text-center block"
         >
-          Coming Soon
-        </button>
+          View Style Guide
+        </a>
       </div>
 
-      <!-- Content Analytics -->
+      <!-- Event Reference -->
       <div
         class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary) hover:shadow-md transition-shadow"
       >
@@ -306,99 +228,29 @@ let dashboardData = {
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
               ></path>
             </svg>
           </div>
           <div>
             <h3 class="font-semibold text-(--content-heading)">
-              Content Analytics
+              Event Reference
             </h3>
             <p class="text-sm text-(--content-meta)">
-              Blog and product performance
+              Analytics events and tracking guide
             </p>
           </div>
         </div>
 
-        <div class="space-y-2 mb-4">
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Page Views</span>
-            <span class="font-medium">12.4K</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Avg Session</span>
-            <span class="font-medium">3:42</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Bounce Rate</span>
-            <span class="font-medium">34%</span>
-          </div>
-        </div>
-
-        <button
-          class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-4 w-full"
-          disabled
+        <a
+          href="/admin/content/event-reference"
+          class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4 w-full text-center block"
         >
-          Coming Soon
-        </button>
+          View Events
+        </a>
       </div>
 
-      <!-- Business Intelligence -->
-      <div
-        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary) hover:shadow-md transition-shadow"
-      >
-        <div class="flex items-center mb-4">
-          <div
-            class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-4"
-          >
-            <svg
-              class="w-6 h-6 text-red-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-          </div>
-          <div>
-            <h3 class="font-semibold text-(--content-heading)">
-              Business Intelligence
-            </h3>
-            <p class="text-sm text-(--content-meta)">
-              Revenue and conversion metrics
-            </p>
-          </div>
-        </div>
-
-        <div class="space-y-2 mb-4">
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Conversion Rate</span>
-            <span class="font-medium text-green-600">3.8%</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Avg Order Value</span>
-            <span class="font-medium">$127</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Revenue (30d)</span>
-            <span class="font-medium">$48.2K</span>
-          </div>
-        </div>
-
-        <button
-          class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-secondary-text) bg-(--ui-button-secondary-surface) border-(--ui-button-secondary-border) hover:bg-(--ui-button-secondary-surface)/75 focus-visible:ring-(--ui-button-secondary-ring) text-sm py-2 px-4 w-full"
-          disabled
-        >
-          Coming Soon
-        </button>
-      </div>
-
-      <!-- WordPress Integration -->
+      <!-- WordPress Demo -->
       <div
         class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary) hover:shadow-md transition-shadow"
       >
@@ -422,145 +274,34 @@ let dashboardData = {
           </div>
           <div>
             <h3 class="font-semibold text-(--content-heading)">
-              WordPress Tools
+              WordPress Demo
             </h3>
             <p class="text-sm text-(--content-meta)">
-              Content and component management
+              Block component reference and examples
             </p>
           </div>
         </div>
 
-        <div class="space-y-2 mb-4">
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Components</span>
-            <span class="font-medium">24</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Active Showcases</span>
-            <span class="font-medium">156</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-(--content-body)">Guide Status</span>
-            <span class="font-medium text-green-600">Updated</span>
-          </div>
-        </div>
-
         <a
-          href="/docs/WORDPRESS_COMPONENTS_GUIDE.md"
-          target="_blank"
+          href="/admin/content/wordpress-demo"
           class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4 w-full text-center block"
         >
-          View Guide
+          View Demo
         </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- Recent Activity -->
-  <section class="recent-activity mt-12">
-    <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">
-      Recent Activity
-    </h2>
-
-    <div
-      class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
-    >
-      <div class="space-y-4" id="activity-feed">
-        <div
-          class="flex items-center gap-4 p-3 bg-(--surface-tertiary) rounded"
-        >
-          <div
-            class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"
-          >
-            <svg
-              class="w-4 h-4 text-green-600"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clip-rule="evenodd"></path>
-            </svg>
-          </div>
-          <div class="flex-1">
-            <div class="text-sm font-medium text-(--content-heading)">
-              Performance budget alert resolved
-            </div>
-            <div class="text-xs text-(--content-meta)">
-              LCP improved to 2.1s - 2 minutes ago
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="flex items-center gap-4 p-3 bg-(--surface-tertiary) rounded"
-        >
-          <div
-            class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center"
-          >
-            <svg
-              class="w-4 h-4 text-blue-600"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                clip-rule="evenodd"></path>
-            </svg>
-          </div>
-          <div class="flex-1">
-            <div class="text-sm font-medium text-(--content-heading)">
-              SKU Reference updated
-            </div>
-            <div class="text-xs text-(--content-meta)">
-              37 new products added - 1 hour ago
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="flex items-center gap-4 p-3 bg-(--surface-tertiary) rounded"
-        >
-          <div
-            class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"
-          >
-            <svg
-              class="w-4 h-4 text-yellow-600"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                clip-rule="evenodd"></path>
-            </svg>
-          </div>
-          <div class="flex-1">
-            <div class="text-sm font-medium text-(--content-heading)">
-              Bundle size warning
-            </div>
-            <div class="text-xs text-(--content-meta)">
-              JavaScript bundle exceeded 200KB threshold - 3 hours ago
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </section>
 </AdminLayout>
 
 <style>
-  .admin-tools-grid,
-  .admin-health-overview {
-    animation: fadeInUp 0.6s ease-out;
+  section {
+    animation: fadeInUp 0.5s ease-out;
   }
 
   @keyframes fadeInUp {
     from {
       opacity: 0;
-      transform: translateY(30px);
+      transform: translateY(20px);
     }
     to {
       opacity: 1;
@@ -570,194 +311,102 @@ let dashboardData = {
 </style>
 
 <script>
-  import { performanceManager } from "@/lib/performance/PerformanceManager";
-  import { budgetManager } from "@/lib/performance/BudgetManager";
+  type CruxStatus =
+    | { status: "no_data"; origin: string }
+    | { status: "no_key"; origin: string }
+    | {
+        status: "ok";
+        origin: string;
+        lcp: number | null;
+        inp: number | null;
+        cls: number | null;
+        fcp: number | null;
+        ttfb: number | null;
+        lcpGoodPercent: number | null;
+        inpGoodPercent: number | null;
+        clsGoodPercent: number | null;
+      };
 
-  class AdminDashboardController {
-    private updateInterval: NodeJS.Timeout | null = null;
+  function vitalClass(good: boolean | null): string {
+    if (good === null) return "text-(--content-meta)";
+    return good ? "text-green-600" : "text-yellow-600";
+  }
 
-    constructor() {
-      this.init();
-    }
+  function lcpStatus(ms: number | null): { label: string; good: boolean | null } {
+    if (ms === null) return { label: "—", good: null };
+    if (ms <= 2500) return { label: "Good", good: true };
+    if (ms <= 4000) return { label: "Needs improvement", good: false };
+    return { label: "Poor", good: false };
+  }
 
-    private init(): void {
-      this.updateDashboard();
-      this.setupEventListeners();
-      this.startPeriodicUpdates();
-    }
+  function inpStatus(ms: number | null): { label: string; good: boolean | null } {
+    if (ms === null) return { label: "—", good: null };
+    if (ms <= 200) return { label: "Good", good: true };
+    if (ms <= 500) return { label: "Needs improvement", good: false };
+    return { label: "Poor", good: false };
+  }
 
-    private setupEventListeners(): void {
-      // Dashboard refresh button
-      const refreshBtn = document.getElementById(
-        "dashboard-refresh-btn"
-      ) as HTMLButtonElement;
-      if (refreshBtn) {
-        refreshBtn.addEventListener("click", () => {
-          this.refreshDashboardData();
-        });
+  function clsStatus(score: number | null): { label: string; good: boolean | null } {
+    if (score === null) return { label: "—", good: null };
+    if (score <= 0.1) return { label: "Good", good: true };
+    if (score <= 0.25) return { label: "Needs improvement", good: false };
+    return { label: "Poor", good: false };
+  }
+
+  async function loadCrux() {
+    const loading = document.getElementById("cwv-loading")!;
+    const noData = document.getElementById("cwv-no-data")!;
+    const noKey = document.getElementById("cwv-no-key")!;
+    const metrics = document.getElementById("cwv-metrics")!;
+
+    try {
+      const res = await fetch("/api/crux-data");
+      const data: CruxStatus = await res.json();
+
+      loading.classList.add("hidden");
+
+      if (data.status === "no_key") {
+        noKey.classList.remove("hidden");
+        return;
       }
 
-      // Listen for admin refresh events
-      document.addEventListener("admin:refresh", () => {
-        this.updateDashboard();
-      });
-
-      // Listen for budget violations
-      budgetManager.onViolation((violation) => {
-        this.showAlert(violation);
-      });
-    }
-
-    private startPeriodicUpdates(): void {
-      // Update dashboard every 2 minutes
-      this.updateInterval = setInterval(
-        () => {
-          this.updateDashboard();
-        },
-        2 * 60 * 1000
-      );
-    }
-
-    private refreshDashboardData(): void {
-      const button = document.getElementById(
-        "dashboard-refresh-btn"
-      ) as HTMLButtonElement;
-      if (!button) return;
-
-      const originalContent = button.innerHTML;
-      button.innerHTML = `
-        <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        Refreshing...
-      `;
-      button.disabled = true;
-
-      // Simulate data refresh
-      setTimeout(() => {
-        this.updateDashboard();
-        button.innerHTML = originalContent;
-        button.disabled = false;
-
-        // Show success notification
-        this.showRefreshNotification();
-      }, 2000);
-    }
-
-    private showRefreshNotification(): void {
-      const toast = document.createElement("div");
-      toast.className =
-        "fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-6 py-3 rounded z-50";
-      toast.innerHTML = `
-        <div class="flex items-center gap-2">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-          </svg>
-          <span><strong>Data Updated!</strong> Latest dashboard metrics synced.</span>
-        </div>
-      `;
-
-      document.body.appendChild(toast);
-
-      setTimeout(() => {
-        toast.remove();
-      }, 4000);
-    }
-
-    private updateDashboard(): void {
-      try {
-        // PHASE 4: Enhanced real-time data integration
-        const health = budgetManager.getHealthScore();
-        const metrics = performanceManager.getAllMetrics();
-        const violations = budgetManager.getViolations();
-
-        // Update health score with real data
-        const healthEl = document.getElementById("overall-health");
-        if (healthEl) {
-          healthEl.textContent = health.score.toString();
-          healthEl.className = `text-4xl font-bold mb-2 ${
-            health.score >= 90
-              ? "text-green-600"
-              : health.score >= 70
-                ? "text-yellow-600"
-                : "text-red-600"
-          }`;
-        }
-
-        // Update health progress bar
-        const progressBar = document.querySelector(".bg-green-500");
-        if (progressBar) {
-          (progressBar as HTMLElement).style.width = `${health.score}%`;
-        }
-
-        // Update active issues with real violation data
-        const issuesEl = document.getElementById("active-issues-main");
-        if (issuesEl) {
-          const issueCount = violations?.length || 0;
-          issuesEl.textContent = issueCount.toString();
-          issuesEl.className = `text-4xl font-bold mb-2 ${
-            issueCount === 0
-              ? "text-green-600"
-              : issueCount <= 2
-                ? "text-yellow-600"
-                : "text-red-600"
-          }`;
-        }
-
-        // Update other metrics
-        this.updateMetrics(metrics);
-
-        // console.log("Main dashboard updated with real-time data");
-      } catch (error) {
-        // console.warn("Dashboard update error:", error);
-        // Graceful degradation - keep showing last known values
+      if (data.status === "no_data") {
+        noData.classList.remove("hidden");
+        return;
       }
-    }
 
-    private updateMetrics(metrics: any): void {
-      // This would integrate with real analytics data
-      // console.log("Updating dashboard metrics:", metrics);
-    }
+      // LCP
+      const lcpMs = data.lcp;
+      const lcpSt = lcpStatus(lcpMs);
+      document.getElementById("lcp-value")!.textContent =
+        lcpMs !== null ? (lcpMs / 1000).toFixed(1) + "s" : "—";
+      const lcpStatusEl = document.getElementById("lcp-status")!;
+      lcpStatusEl.textContent = lcpSt.label;
+      lcpStatusEl.className = `text-xs mt-1 ${vitalClass(lcpSt.good)}`;
 
-    private showAlert(violation: any): void {
-      // Create toast notification for new violations
-      const toast = document.createElement("div");
-      toast.className =
-        "fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50";
-      toast.innerHTML = `
-        <strong class="font-bold">Performance Alert!</strong>
-        <span class="block sm:inline">${violation.description}</span>
-      `;
+      // INP
+      const inpMs = data.inp;
+      const inpSt = inpStatus(inpMs);
+      document.getElementById("inp-value")!.textContent =
+        inpMs !== null ? Math.round(inpMs) + "ms" : "—";
+      const inpStatusEl = document.getElementById("inp-status")!;
+      inpStatusEl.textContent = inpSt.label;
+      inpStatusEl.className = `text-xs mt-1 ${vitalClass(inpSt.good)}`;
 
-      document.body.appendChild(toast);
+      // CLS
+      const clsScore = data.cls;
+      const clsSt = clsStatus(clsScore);
+      document.getElementById("cls-value")!.textContent =
+        clsScore !== null ? clsScore.toFixed(2) : "—";
+      const clsStatusEl = document.getElementById("cls-status")!;
+      clsStatusEl.textContent = clsSt.label;
+      clsStatusEl.className = `text-xs mt-1 ${vitalClass(clsSt.good)}`;
 
-      setTimeout(() => {
-        toast.remove();
-      }, 5000);
-    }
-
-    public destroy(): void {
-      if (this.updateInterval) {
-        clearInterval(this.updateInterval);
-      }
+      metrics.classList.remove("hidden");
+    } catch {
+      loading.textContent = "Could not load field data.";
     }
   }
 
-  // Initialize dashboard
-  let dashboardController: AdminDashboardController;
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      dashboardController = new AdminDashboardController();
-    });
-  } else {
-    dashboardController = new AdminDashboardController();
-  }
-
-  // Cleanup
-  window.addEventListener("beforeunload", () => {
-    if (dashboardController) {
-      dashboardController.destroy();
-    }
-  });
+  loadCrux();
 </script>
