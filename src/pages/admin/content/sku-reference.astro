@@ -474,16 +474,7 @@ const filterOptions = {
     </div>
   </div>
 
-  <!-- Copy Feedback Toast -->
-  <div id="copy-toast" class="fixed bottom-4 right-4 bg-(--bg-primary) text-white px-4 py-2 rounded shadow-lg transform translate-y-full transition-transform z-80">
-    <div class="flex items-center gap-2">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-      </svg>
-      <span id="toast-message">Copied to clipboard!</span>
-    </div>
-  </div>
-</AdminLayout>
+
 
 <script define:vars={{ skus, filterOptions, categorized }}>
   // Enhanced SKU Reference with improved UX and hierarchical categories
@@ -512,8 +503,6 @@ const filterOptions = {
   const tableResults = document.getElementById('table-results');
   const emptyState = document.getElementById('empty-state');
   const selectAllCheckbox = document.getElementById('select-all-checkbox');
-  const copyToast = document.getElementById('copy-toast');
-  const toastMessage = document.getElementById('toast-message');
 
   // Initialize
   document.addEventListener('DOMContentLoaded', () => {
@@ -950,7 +939,7 @@ const filterOptions = {
     const skuList = Array.from(selectedProducts).map(p => p.sku).join(',');
 
     if (selectedProducts.size === 0) {
-      showToast('Please select at least one product');
+      showToast('Please select at least one product', 'error');
       return;
     }
 
@@ -1039,13 +1028,9 @@ const filterOptions = {
     }
   }
 
-  function showToast(message) {
-    if (toastMessage) toastMessage.textContent = message;
-    if (copyToast) {
-      copyToast.classList.remove('translate-y-full');
-      setTimeout(() => {
-        copyToast.classList.add('translate-y-full');
-      }, 3000);
+  function showToast(message, type = 'success') {
+    if (typeof window !== 'undefined' && window.showNotification) {
+      window.showNotification(message, type);
     }
   }
 </script>

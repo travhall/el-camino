@@ -312,17 +312,6 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     if (mobileHint) mobileHint.classList.toggle("hidden", isValid);
   }
 
-  function showNotification(
-    message: string,
-    type: "success" | "error" = "success",
-  ): void {
-    // Use existing system if available
-    if (typeof window !== "undefined" && (window as any).showNotification) {
-      (window as any).showNotification(message, type);
-      return;
-    }
-  }
-
   function showConfirmModal(
     title: string,
     message: string,
@@ -532,7 +521,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     try {
       const items = cart.getItems();
       if (items.length === 0) {
-        showNotification("Your cart is empty", "error");
+        window.showNotification("Your cart is empty", "error");
         return;
       }
 
@@ -554,7 +543,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           selector?.classList.remove("border-4", "border-red-500", "rounded");
         }, 3000);
 
-        showNotification("Please choose a shipping method", "error");
+        window.showNotification("Please choose a shipping method", "error");
         return;
       }
 
@@ -568,7 +557,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           "[data-shipping-form]",
         ) as HTMLElement;
         if (!form) {
-          showNotification("Shipping form not found", "error");
+          window.showNotification("Shipping form not found", "error");
           return;
         }
 
@@ -598,7 +587,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         });
 
         if (!isValid) {
-          showNotification(
+          window.showNotification(
             "Please fill in all required shipping fields",
             "error",
           );
@@ -633,7 +622,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           "[data-pickup-form]",
         ) as HTMLElement;
         if (!form) {
-          showNotification("Pickup form not found", "error");
+          window.showNotification("Pickup form not found", "error");
           return;
         }
 
@@ -655,7 +644,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         });
 
         if (!isValid) {
-          showNotification(
+          window.showNotification(
             "Please fill in all required pickup contact fields",
             "error",
           );
@@ -697,15 +686,15 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
       // Notify user if cart was adjusted due to stock changes
       if (data.stockMessage) {
-        showNotification(data.stockMessage, "error");
+        window.showNotification(data.stockMessage, "error");
         // Give user time to read the message before redirecting
         await new Promise((resolve) => setTimeout(resolve, 3000));
       }
 
-      showNotification("Redirecting to checkout...", "success");
+      window.showNotification("Redirecting to checkout...", "success");
       window.location.href = data.checkoutUrl;
     } catch (error) {
-      showNotification(
+      window.showNotification(
         error instanceof Error
           ? error.message
           : "Checkout failed. Please try again.",
@@ -719,7 +708,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
   function handleClearCart(): void {
     const itemCount = cart.getItemCount();
     if (itemCount === 0) {
-      showNotification("Cart is already empty", "error");
+      window.showNotification("Cart is already empty", "error");
       return;
     }
 
@@ -732,7 +721,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         async () => {
           cart.clear();
           await updateDisplay();
-          showNotification("Cart cleared successfully");
+          window.showNotification("Cart cleared successfully");
         },
       );
     } else {
@@ -742,7 +731,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         async () => {
           cart.clear();
           await updateDisplay();
-          showNotification("Cart cleared successfully");
+          window.showNotification("Cart cleared successfully");
         },
       );
     }
@@ -918,7 +907,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                 await cart.updateQuantity(itemKey, newQty);
                 await updateCartItemQuantity(itemKey);
               } else {
-                showNotification(`Only ${inventory} available`, "error");
+                window.showNotification(`Only ${inventory} available`, "error");
               }
             }
             break;
@@ -936,7 +925,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                   async () => {
                     cart.removeItem(itemKey);
                     await updateDisplay();
-                    showNotification("Item removed from cart", "success");
+                    window.showNotification("Item removed from cart", "success");
                   },
                 );
               } else {
@@ -954,7 +943,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                 async () => {
                   cart.removeItem(itemKey);
                   await updateDisplay();
-                  showNotification("Item removed from cart", "success");
+                  window.showNotification("Item removed from cart", "success");
                 },
               );
             }
@@ -962,7 +951,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         }
       } catch (error) {
         console.error("Error handling cart action:", error);
-        showNotification("Error updating cart", "error");
+        window.showNotification("Error updating cart", "error");
       }
     });
 
@@ -992,7 +981,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         })();
         if (newQuantity > inventory) {
           target.value = inventory.toString();
-          showNotification(`Only ${inventory} available`, "error");
+          window.showNotification(`Only ${inventory} available`, "error");
           return;
         }
 
@@ -1001,7 +990,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           await updateCartItemQuantity(itemKey);
         } catch (error) {
           console.error("Error updating quantity:", error);
-          showNotification("Error updating quantity", "error");
+          window.showNotification("Error updating quantity", "error");
         }
       }, 500);
     });

@@ -139,7 +139,7 @@ export class PDPUIManager {
       const overlay = document.createElement("div");
       overlay.setAttribute('data-overlay', 'stock');
       overlay.className =
-        "absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-md font-bold rounded-br-sm";
+        "absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-base font-bold rounded-br-sm";
       overlay.textContent = getButtonText(info.state);
       imageContainer.appendChild(overlay);
 
@@ -149,7 +149,7 @@ export class PDPUIManager {
       const overlay = document.createElement("div");
       overlay.setAttribute('data-overlay', 'sale');
       overlay.className =
-        "absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-md font-bold rounded-br-sm";
+        "absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-base font-bold rounded-br-sm";
       overlay.textContent = `${discountPercent}% Off`;
       imageContainer.appendChild(overlay);
 

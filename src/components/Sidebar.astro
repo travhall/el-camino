@@ -126,7 +126,7 @@ const prodCats = categoriesWithImages.map((item) => ({
         return (
           <a
             href={e.url}
-            class="category-link block relative border-t-4 border-t-(--ui-button-surface) border-b-4 border-b-(--surface-primary) overflow-hidden loading-container aspect-video"
+            class="category-link group block relative border-t-4 border-t-(--ui-button-surface) border-b-4 border-b-(--surface-primary) overflow-hidden loading-container aspect-video"
             style={`--loading-stagger-delay: ${staggerDelay}s`}
           >
             {/* <!-- Unified Loading Placeholder --> */}
@@ -195,17 +195,17 @@ const prodCats = categoriesWithImages.map((item) => ({
                 alt={e.category}
                 width="600"
                 height="338"
-                class="category-img loading-to-content object-cover w-full h-full will-change-transform opacity-0 transition-opacity duration-300"
+                class="category-img object-cover w-full h-full will-change-transform opacity-0 translate-y-1 transition-all duration-300 ease-in-out [&.loaded]:opacity-30 [&.loaded]:sepia-50 [&.loaded]:translate-y-0 group-hover:scale-105 group-hover:[&.loaded]:opacity-80 group-hover:[&.loaded]:sepia-10"
                 loading={index < 2 ? "eager" : "lazy"}
                 decoding={index < 2 ? "sync" : "async"}
                 fetchpriority={index < 2 ? "high" : "auto"}
                 data-placeholder-id={placeholderId}
-                onload={`this.classList.add('loaded', 'opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
-                onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('loaded', 'opacity-100'); document.getElementById('${placeholderId}')?.remove()`}
+                onload={`this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
+                onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
               />
             </picture>
 
-            <h4 class="category-title font-display text-2xl lg:text-3xl absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-(--border-secondary) border-b-0 bg-(--surface-secondary) text-(--content-heading) transition-all">
+            <h4 class="category-title font-display text-xl md:text-2xl lg:text-3xl font-medium absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-(--border-secondary) border-b-0 bg-(--surface-secondary) text-(--content-heading) transition-all group-hover:font-bold group-hover:tracking-wide">
               {e.category}
             </h4>
           </a>
@@ -216,35 +216,16 @@ const prodCats = categoriesWithImages.map((item) => ({
   <div class="bg-(--surface-secondary) p-8">
     <a
       href="/shop-all"
-      class="font-display font-bold text-3xl text-balance inline-block text-(--content-meta) leading-[.95] hover:opacity-50 transition-opacity"
+      class="group font-display text-2xl md:text-3xl lg:text-4xl font-medium text-(--content-meta) leading-[.95] hover:font-extrabold hover:tracking-wide hover:opacity-60 transition-all"
     >
       Shop all categories
       <Icon
         name="uil:arrow-right"
-        class="inline-block text-(--content-meta) -ml-1"
+        class="inline-block text-(--content-meta) -ml-2 group-hover:ml-1 transition-all"
       />
     </a>
   </div>
 </aside>
-
-<style>
-  /* Component-specific styles only */
-
-  .category-img.loaded {
-    transition: transform 0.3s ease;
-    opacity: 0.3;
-    filter: sepia(0.5);
-  }
-  .category-link:hover .category-img.loaded {
-    transform: scale(1.05);
-    opacity: 0.8;
-    filter: sepia(0.1);
-  }
-
-  .category-link:hover .category-title {
-    font-weight: bold;
-  }
-</style>
 
 <script>
   // Enhanced image loading for category images using unified system

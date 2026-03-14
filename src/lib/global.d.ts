@@ -15,8 +15,9 @@ declare global {
     gtag: (...args: any[]) => void; // Required for Analytics
     showNotification: (
       message: string,
-      type?: "success" | "error" | "info",
-      duration?: number
+      type?: "success" | "error" | "info" | "warning",
+      duration?: number,
+      action?: { label: string; href: string }
     ) => void;
     newsData?: {
       allPosts: any[];

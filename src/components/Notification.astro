@@ -2,7 +2,7 @@
 // src/components/Notification.astro
 ---
 
-<div id="notification-container" class="fixed bottom-4 left-4 z-9999 space-y-2">
+<div id="notification-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 items-end pointer-events-none">
 </div>
 
 <script>
@@ -11,21 +11,26 @@
     interface Window {
       showNotification(
         message: string,
-        type?: "success" | "error" | "info",
-        duration?: number
+        type?: "success" | "error" | "info" | "warning",
+        duration?: number,
+        action?: { label: string; href: string }
       ): void;
     }
   }
 
-  // Notification type definition
-  type NotificationType = "success" | "error" | "info";
+  type NotificationType = "success" | "error" | "info" | "warning";
 
-  // Create notification manager
+  interface NotificationAction {
+    label: string;
+    href: string;
+  }
+
   const notificationManager = {
     showNotification(
       message: string,
       type: NotificationType = "success",
-      duration: number = 3000
+      duration: number = 3000,
+      action?: NotificationAction
     ): void {
       const container = document.getElementById("notification-container");
       if (!container) {
@@ -33,29 +38,45 @@
         return;
       }
 
-      // Create notification element
-      const notification = document.createElement("div");
       const bgClass =
         type === "success"
           ? "bg-state-success-surface text-state-success-text"
           : type === "error"
             ? "bg-state-error-surface text-state-error-text"
-            : "bg-blue-100 text-blue-800";
+            : type === "warning"
+              ? "bg-amber-100 text-amber-900"
+              : "bg-blue-100 text-blue-800";
 
-      notification.className = `px-5 py-3 text-lg font-light rounded transition-all duration-300 ${bgClass}`;
-      notification.textContent = message;
+      const notification = document.createElement("div");
+      notification.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 text-base font-light rounded shadow-md opacity-0 translate-x-4 transition-all duration-300 ${bgClass}`;
+
+      const textNode = document.createElement("span");
+      textNode.textContent = message;
+      notification.appendChild(textNode);
+
+      if (action) {
+        const btn = document.createElement("a");
+        btn.href = action.href;
+        btn.textContent = action.label;
+        btn.className = "ml-2 font-semibold underline underline-offset-2 shrink-0 hover:opacity-75 transition-opacity";
+        notification.appendChild(btn);
+      }
 
       container.appendChild(notification);
 
-      // Set up removal
+      // Entrance animation
+      requestAnimationFrame(() => {
+        notification.classList.remove("opacity-0", "translate-x-4");
+      });
+
+      // Exit animation
       setTimeout(() => {
-        notification.style.opacity = "0";
+        notification.classList.add("opacity-0", "translate-x-4");
         setTimeout(() => notification.remove(), 300);
       }, duration);
     },
   };
 
-  // Assign to window object
   window.showNotification =
     notificationManager.showNotification.bind(notificationManager);
 </script>

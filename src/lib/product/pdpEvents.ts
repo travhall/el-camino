@@ -214,7 +214,9 @@ export class PDPEventManager {
       if (result.success) {
         window.showNotification(
           result.message || `Added ${quantity} to cart`,
-          "success"
+          "success",
+          3000,
+          { label: "View Cart", href: "/cart" }
         );
         this.uiManager.resetQuantityToOne();
         this.callbacks.onCartUpdate();

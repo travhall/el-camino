@@ -184,34 +184,6 @@ import Button from "@/components/Button.astro";
     }).format(price);
   }
 
-  function showNotification(
-    message: string,
-    type: "success" | "error" = "success",
-  ): void {
-    // Use existing system if available
-    if (typeof window !== "undefined" && (window as any).showNotification) {
-      (window as any).showNotification(message, type);
-      return;
-    }
-
-    // Fallback (should not be needed but kept for safety)
-    const notification = document.createElement("div");
-    notification.className = `fixed top-4 right-4 z-70 px-4 py-2 rounded-sm text-white transform translate-x-full transition-transform duration-300 ${
-      type === "success" ? "bg-green-600" : "bg-red-600"
-    }`;
-    notification.textContent = message;
-
-    document.body.appendChild(notification);
-    requestAnimationFrame(() =>
-      notification.classList.remove("translate-x-full"),
-    );
-
-    setTimeout(() => {
-      notification.classList.add("translate-x-full");
-      setTimeout(() => notification.remove(), 300);
-    }, 3000);
-  }
-
   function renderCartItem(item: CartItem): string {
     const itemKey = `${item.id}:${item.variationId}`;
     const inventory = inventoryData[item.variationId] || 999;
@@ -550,7 +522,7 @@ import Button from "@/components/Button.astro";
                 await cartInstance.updateQuantity(itemKey, newQty);
                 await updateMiniCartItemQuantity(itemKey);
               } else {
-                showNotification(`Only ${inventory} available`, "error");
+                window.showNotification(`Only ${inventory} available`, "error");
               }
             }
             break;
@@ -573,7 +545,7 @@ import Button from "@/components/Button.astro";
                     async () => {
                       cartInstance.removeItem(itemKey);
                       await updateMiniCartDisplay();
-                      showNotification("Item removed from cart", "success");
+                      window.showNotification("Item removed from cart", "success");
                     },
                     "Remove",
                     "Cancel",
@@ -583,7 +555,7 @@ import Button from "@/components/Button.astro";
                 ) {
                   cartInstance.removeItem(itemKey);
                   await updateMiniCartDisplay();
-                  showNotification("Item removed from cart", "success");
+                  window.showNotification("Item removed from cart", "success");
                 }
               } else {
                 await cartInstance.updateQuantity(
@@ -605,7 +577,7 @@ import Button from "@/components/Button.astro";
                   async () => {
                     cartInstance.removeItem(itemKey);
                     await updateMiniCartDisplay();
-                    showNotification("Item removed from cart", "success");
+                    window.showNotification("Item removed from cart", "success");
                   },
                   "Remove",
                   "Cancel",
@@ -613,14 +585,14 @@ import Button from "@/components/Button.astro";
               } else if (confirm(`Remove "${itemTitle}" from your cart?`)) {
                 cartInstance.removeItem(itemKey);
                 await updateMiniCartDisplay();
-                showNotification("Item removed from cart", "success");
+                window.showNotification("Item removed from cart", "success");
               }
             }
             break;
         }
       } catch (error) {
         console.error("Error handling quantity action:", error);
-        showNotification("Error updating cart", "error");
+        window.showNotification("Error updating cart", "error");
       }
     });
 
@@ -714,7 +686,7 @@ import Button from "@/components/Button.astro";
         const items = cartInstance.getItems();
 
         if (items.length === 0) {
-          showNotification("Your cart is empty", "error");
+          window.showNotification("Your cart is empty", "error");
           return;
         }
 

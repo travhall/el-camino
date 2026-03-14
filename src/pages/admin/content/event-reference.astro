@@ -339,16 +339,7 @@ const allProducts = skus.map(sku => ({
     </div>
   </div>
 
-  <!-- Copy Feedback Toast -->
-  <div id="copy-toast" class="fixed bottom-4 right-4 bg-(--ui-accent) text-white px-4 py-2 rounded shadow-lg transform translate-y-full transition-transform z-50">
-    <div class="flex items-center gap-2">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-      </svg>
-      <span>WordPress code copied!</span>
-    </div>
-  </div>
-</AdminLayout>
+
 
 <script define:vars={{ allProducts, eventTemplates }}>
   let selectedProducts = new Set();
@@ -479,7 +470,7 @@ const allProducts = skus.map(sku => ({
 
     // Validation
     if (!title || !date || !description) {
-      showToast('Please fill in required fields (Title, Date, Description)');
+      showToast('Please fill in required fields (Title, Date, Description)', 'error');
       return;
     }
 
@@ -520,20 +511,14 @@ const allProducts = skus.map(sku => ({
       showToast('WordPress code copied!');
     } catch (err) {
       // console.error('Failed to copy:', err);
-      showToast('Copy failed - please select and copy manually');
+      showToast('Copy failed - please select and copy manually', 'error');
     }
   }
 
-  function showToast(message) {
-    const toast = document.getElementById('copy-toast');
-    const span = toast.querySelector('span');
-    
-    span.textContent = message;
-    toast.classList.remove('translate-y-full');
-    
-    setTimeout(() => {
-      toast.classList.add('translate-y-full');
-    }, 3000);
+  function showToast(message, type = 'success') {
+    if (typeof window !== 'undefined' && window.showNotification) {
+      window.showNotification(message, type);
+    }
   }
 
   function escapeHtml(text) {
