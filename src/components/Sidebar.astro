@@ -7,6 +7,7 @@ import {
   EL_CAMINO_LOADER_DATA_URI,
 } from "@/lib/constants/assets";
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
+import { Icon } from "astro-icon/components";
 
 interface Props {
   class?: string;
@@ -54,14 +55,14 @@ for (const item of categoriesWithImages) {
       // Retrieve the category object with related objects
       const { result } = await squareClient.catalogApi.retrieveCatalogObject(
         item.id,
-        true
+        true,
       );
 
       // Find image objects in related objects
       if (result.relatedObjects && result.relatedObjects.length > 0) {
         // Look for IMAGE type objects
         const imageObjects = result.relatedObjects.filter(
-          (obj) => obj.type === "IMAGE"
+          (obj) => obj.type === "IMAGE",
         );
 
         // If we found any images, use the first one
@@ -99,7 +100,9 @@ const prodCats = categoriesWithImages.map((item) => ({
   data-initial-index={6}
   data-variant="sidebar"
 >
-  <h3 class="font-display text-3xl font-bold p-4 text-(--content-heading)">
+  <h3
+    class="font-display text-2xl md:text-3xl lg:text-4xl font-bold p-4 mt-8 text-(--content-heading)"
+  >
     Shop by Category
   </h3>
   <div class="grid">
@@ -117,7 +120,7 @@ const prodCats = categoriesWithImages.map((item) => ({
             height: 338,
             quality: 85,
             priority: index < 2,
-          }
+          },
         );
 
         return (
@@ -152,7 +155,7 @@ const prodCats = categoriesWithImages.map((item) => ({
                       width: 600,
                       height: 338,
                       quality: 85,
-                    }
+                    },
                   )}
                   sizes="(max-width: 768px) 50vw, 600px"
                 />
@@ -169,7 +172,7 @@ const prodCats = categoriesWithImages.map((item) => ({
                       width: 600,
                       height: 338,
                       quality: 85,
-                    }
+                    },
                   )}
                   sizes="(max-width: 768px) 50vw, 600px"
                 />
@@ -186,7 +189,7 @@ const prodCats = categoriesWithImages.map((item) => ({
                     width: 600,
                     height: 338,
                     quality: 85,
-                  }
+                  },
                 )}
                 sizes="(max-width: 768px) 50vw, 600px"
                 alt={e.category}
@@ -209,6 +212,18 @@ const prodCats = categoriesWithImages.map((item) => ({
         );
       })
     }
+  </div>
+  <div class="bg-(--surface-secondary) p-8">
+    <a
+      href="/shop-all"
+      class="font-display font-bold text-3xl text-balance inline-block text-(--content-meta) leading-[.95] hover:opacity-50 transition-opacity"
+    >
+      Shop all categories
+      <Icon
+        name="uil:arrow-right"
+        class="inline-block text-(--content-meta) -ml-1"
+      />
+    </a>
   </div>
 </aside>
 
