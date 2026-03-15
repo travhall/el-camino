@@ -42,7 +42,6 @@ import Button from "@/components/Button.astro";
 
     <!-- Content Area -->
     <div id="mini-cart-content" class="flex-1 overflow-y-auto">
-
       <!-- Inline undo bar — shown after item removal, dismissed after 6s -->
       <div
         id="mini-cart-undo-bar"
@@ -52,26 +51,29 @@ import Button from "@/components/Button.astro";
         <span
           id="mini-cart-undo-message"
           class="flex-1 text-(--content-body) font-light truncate min-w-0"
-        >Item removed</span>
+          >Item removed</span
+        >
         <div class="flex items-center gap-3 shrink-0">
           <button
             id="mini-cart-undo-btn"
             type="button"
             class="font-semibold underline underline-offset-2 text-(--content-emphasis) hover:opacity-75 transition-opacity cursor-pointer"
-          >Undo</button>
+            >Undo</button
+          >
           <button
             id="mini-cart-undo-dismiss"
             type="button"
             class="text-(--content-meta) hover:text-(--content-body) transition-colors leading-none"
-            aria-label="Dismiss"
-          >✕</button>
+            aria-label="Dismiss">✕</button
+          >
         </div>
         <!-- Timer progress bar -->
         <div
           id="mini-cart-undo-progress"
           class="absolute bottom-0 left-0 h-0.5 bg-(--content-emphasis) opacity-40"
           style="width: 100%"
-        ></div>
+        >
+        </div>
       </div>
 
       <div
@@ -118,9 +120,38 @@ import Button from "@/components/Button.astro";
           class="font-display text-3xl text-(--content-heading)">$0.00</span
         >
       </div>
-      <small class="italic mb-4 block text-(--content-meta)"
-        >Shipping &amp; taxes are calculated at checkout</small
+      <!-- Free shipping tracker -->
+      <div
+        id="mini-cart-shipping-tracker"
+        class="mb-3 px-3 py-2.5 text-sm font-medium text-(--content-body)"
+        style="background-color: var(--free-shipping-bar-bg);"
       >
+        Add <span
+          id="mini-cart-shipping-remaining"
+          class="font-bold text-(--content-heading)">$75.00</span
+        > more for free shipping!
+        <div
+          class="mt-2 h-2 w-full rounded-full"
+          style="background-color: var(--free-shipping-bar-track);"
+        >
+          <div
+            id="mini-cart-shipping-progress"
+            class="h-2 rounded-full transition-all duration-500"
+            style="width: 0%; background-color: var(--free-shipping-bar);"
+          >
+          </div>
+        </div>
+      </div>
+      <div
+        id="mini-cart-shipping-earned"
+        class="hidden mb-4 px-3 py-2.5 text-sm font-medium text-(--content-heading)"
+        style="background-color: var(--free-shipping-bar-bg);"
+      >
+        🎉 You've earned free shipping!
+      </div>
+      <small class="italic mb-3 block text-(--content-meta)">
+        Shipping &amp; taxes are calculated at checkout
+      </small>
 
       <div class="space-y-2">
         <Button id="mini-cart-checkout" variant="primary" classes="w-full">
@@ -305,6 +336,32 @@ import Button from "@/components/Button.astro";
       style: "currency",
       currency: "USD",
     }).format(price);
+  }
+
+  const FREE_SHIPPING_THRESHOLD = 75; // $75.00
+
+  function updateShippingTracker(total: number): void {
+    const tracker = document.getElementById("mini-cart-shipping-tracker");
+    const earned = document.getElementById("mini-cart-shipping-earned");
+    const remaining = document.getElementById("mini-cart-shipping-remaining");
+    const progress = document.getElementById(
+      "mini-cart-shipping-progress",
+    ) as HTMLElement | null;
+
+    if (!tracker || !earned) return;
+
+    if (total >= FREE_SHIPPING_THRESHOLD) {
+      tracker.classList.add("hidden");
+      earned.classList.remove("hidden");
+    } else {
+      tracker.classList.remove("hidden");
+      earned.classList.add("hidden");
+      if (remaining)
+        remaining.textContent = formatPrice(FREE_SHIPPING_THRESHOLD - total);
+      if (progress) {
+        progress.style.width = `${Math.min((total / FREE_SHIPPING_THRESHOLD) * 100, 100)}%`;
+      }
+    }
   }
 
   function renderCartItem(item: CartItem): string {
@@ -534,6 +591,7 @@ import Button from "@/components/Button.astro";
     if (totalEl) {
       totalEl.textContent = formatPrice(total);
     }
+    updateShippingTracker(total);
   }
 
   async function updateMiniCartDisplay(): Promise<void> {
@@ -580,6 +638,7 @@ import Button from "@/components/Button.astro";
 
         itemsListEl.innerHTML = items.map(renderCartItem).join("");
         totalEl.textContent = formatPrice(total);
+        updateShippingTracker(total);
 
         setupQuantityControls();
       }
@@ -763,7 +822,8 @@ import Button from "@/components/Button.astro";
     }
 
     if (undoBtn) undoBtn.addEventListener("click", handleUndoRemove);
-    if (undoDismissBtn) undoDismissBtn.addEventListener("click", dismissUndoBar);
+    if (undoDismissBtn)
+      undoDismissBtn.addEventListener("click", dismissUndoBar);
 
     closeButton.addEventListener("click", closeMiniCart);
     overlay.addEventListener("click", closeMiniCart);

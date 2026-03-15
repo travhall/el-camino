@@ -489,20 +489,21 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           <div class="flex justify-between items-end gap-4">
             <div class="flex items-center gap-2">
               <label for="quantity-${safeItemKey}" class="text-sm text-(--content-body) hidden lg:block">Qty:</label>
-              <div class="flex items-center border border-(--border-primary) rounded">
+              <div class="flex items-center border-2 border-(--border-primary) rounded-sm divide-x-2 divide-(--border-primary)">
                 <button
                   type="button"
-                  class="quantity-increase px-2 py-1 border-2 rounded-sm transition-all ease-in-out duration-300 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) text-(--content-body) bg-(--surface-secondary) border-(--border-primary) hover:bg-(--surface-primary) ${item.quantity <= 1 ? "opacity-50 cursor-not-allowed" : ""}"
+                  class="px-3 py-2 transition-all ease-in-out duration-300 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) text-(--content-body) hover:bg-(--surface-primary) flex items-center justify-center ${item.quantity <= 1 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}"
                   data-item-key="${safeItemKey}"
                   data-action="decrease"
                   ${item.quantity <= 1 ? "disabled" : ""}
+                  aria-label="Decrease quantity"
                 >
-                  −
+                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg>
                 </button>
                 <input
                   type="number"
                   id="quantity-${safeItemKey}"
-                  class="quantity-input w-10 md:w-16 text-center py-1 border-0 bg-(--surface-primary) text-(--content-body) focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  class="quantity-input w-10 md:w-16 text-center py-2 border-0 bg-(--surface-primary) text-(--content-body) focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   value="${item.quantity}"
                   min="1"
                   max="${inventory}"
@@ -510,12 +511,13 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                 />
                 <button
                   type="button"
-                  class="quantity-increase px-2 py-1 border-2 rounded-sm transition-all ease-in-out duration-300 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) text-(--content-body) bg-(--surface-secondary) border-(--border-primary) hover:bg-(--surface-primary) ${!canIncrement ? "opacity-50 cursor-not-allowed" : ""}"
+                  class="px-3 py-2 transition-all ease-in-out duration-300 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) text-(--content-body) hover:bg-(--surface-primary) flex items-center justify-center ${!canIncrement ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}"
                   data-item-key="${safeItemKey}"
                   data-action="increase"
                   ${!canIncrement ? "disabled" : ""}
+                  aria-label="Increase quantity"
                 >
-                  +
+                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
                 </button>
               </div>
               ${stockDisplay}
