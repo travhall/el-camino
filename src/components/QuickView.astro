@@ -18,8 +18,9 @@ import {
 <!-- Slide Panel -->
 <div
   id="quick-view-panel"
-  class="fixed top-0 left-0 h-screen w-96 max-w-full bg-(--surface-secondary) border-4 border-(--border-secondary) z-50 transform -translate-x-full transition-transform duration-300 shadow-lg overflow-y-scroll"
+  class="fixed top-0 left-0 h-screen w-96 max-w-full bg-(--surface-secondary) border-4 border-(--border-secondary) z-50 transform -translate-x-full transition-transform duration-300 panel-shadow overflow-y-scroll"
   role="dialog"
+  aria-modal="true"
   aria-labelledby="quick-view-title"
 >
   <div class="container grid grid-rows-[auto_1fr_auto] h-full">
@@ -850,6 +851,7 @@ import {
       if (overlay && panel) {
         overlay.classList.remove("hidden");
         document.body.style.overflow = "hidden";
+        panel.removeAttribute("inert");
 
         requestAnimationFrame(() => {
           overlay.classList.remove("opacity-0");
@@ -863,6 +865,7 @@ import {
       const panel = document.getElementById("quick-view-panel");
 
       if (overlay && panel) {
+        panel.setAttribute("inert", "");
         overlay.classList.add("opacity-0");
         panel.classList.add("-translate-x-full");
         document.body.style.overflow = "unset";

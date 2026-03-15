@@ -61,13 +61,18 @@ export async function extractFilterOptions(products: Product[]): Promise<FilterO
           .filter((s) => s.count > 0)
           .sort((a, b) => b.count - a.count);
 
-        const directCount = products.filter((p) =>
-          p.categories?.includes(h.category.id)
-        ).length;
-
-        const totalCount = directCount + products.filter((p) =>
-          p.categories?.some((id) => subcategoryIds.has(id))
-        ).length;
+        // Use a Set to deduplicate — products in Square are typically tagged to
+        // both the parent category AND a subcategory, so a naive sum double-counts.
+        const matchingIds = new Set<string>();
+        products.forEach((p) => {
+          if (
+            p.categories?.includes(h.category.id) ||
+            p.categories?.some((id) => subcategoryIds.has(id))
+          ) {
+            matchingIds.add(p.id);
+          }
+        });
+        const totalCount = matchingIds.size;
 
         return {
           id: h.category.id,

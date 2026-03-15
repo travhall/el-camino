@@ -14,8 +14,9 @@ import Button from "@/components/Button.astro";
 <!-- Slide Panel -->
 <div
   id="mini-cart-panel"
-  class="fixed top-0 right-0 h-screen w-96 max-w-full bg-(--surface-primary) border-4 border-(--surface-primary) z-50 transform translate-x-full transition-transform duration-300 shadow-lg overflow-y-scroll"
+  class="fixed top-0 right-0 h-screen w-96 max-w-full bg-(--surface-primary) border-4 border-(--border-secondary) z-50 transform translate-x-full transition-transform duration-300 panel-shadow overflow-y-scroll"
   role="dialog"
+  aria-modal="true"
   aria-labelledby="mini-cart-title"
 >
   <div class="container grid grid-rows-[auto_1fr_auto] h-full">
@@ -602,18 +603,13 @@ import Button from "@/components/Button.astro";
       const panel = document.getElementById("mini-cart-panel");
 
       if (overlay && panel) {
-        // Use inert to immediately disable interaction (modern approach)
         panel.setAttribute("inert", "");
-
         overlay.classList.add("opacity-0");
         panel.classList.add("translate-x-full");
-
-        // Restore page scrolling when MiniCart is closed
         document.body.style.overflow = "unset";
 
         setTimeout(() => {
           overlay.classList.add("hidden");
-          // Clean up inert attribute after modal is fully closed
           panel.removeAttribute("inert");
         }, 300);
       }
@@ -639,6 +635,7 @@ import Button from "@/components/Button.astro";
     function openMiniCart() {
       if (overlay && panel && closeButton) {
         overlay.classList.remove("hidden");
+        panel.removeAttribute("inert");
 
         // Prevent page scrolling when MiniCart is open
         document.body.style.overflow = "hidden";
@@ -655,6 +652,7 @@ import Button from "@/components/Button.astro";
 
     function closeMiniCart() {
       if (overlay && panel) {
+        panel.setAttribute("inert", "");
         overlay.classList.add("opacity-0");
         panel.classList.add("translate-x-full");
 
@@ -663,6 +661,7 @@ import Button from "@/components/Button.astro";
 
         setTimeout(() => {
           overlay.classList.add("hidden");
+          panel.removeAttribute("inert");
         }, 300);
       }
     }

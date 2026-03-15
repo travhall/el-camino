@@ -10,6 +10,7 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
   // Import types for use in script
   interface SiteConfig {
     name: string;
+    tagline?: string;
     contact: {
       address: {
         street: string;
@@ -27,6 +28,11 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       day: string;
       hours: string;
       isOpen: boolean;
+    }>;
+    social?: Array<{
+      platform: string;
+      url: string;
+      icon: string;
     }>;
   }
 
@@ -95,20 +101,24 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       // Create modal content with initial animation state
       const modal = document.createElement("div");
       modal.className =
-        "bg-(--ui-modal-surface) text-(--ui-modal-text) border border-(--ui-modal-border) rounded shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out";
+        "bg-(--ui-modal-surface) text-(--ui-modal-text) border-2 border-(--ui-modal-border) rounded panel-shadow max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out";
 
       modal.innerHTML = `
-      <div class="p-6">
-        <h2 id="modal-title" class="font-display text-xl mb-4 text-(--content-heading)">
-          ${title}
-        </h2>
-        <p class="text-(--content-body) mb-6">
-          ${message}
-        </p>
-        <div class="flex gap-3 justify-end">
+      <div>
+        <div class="p-5 border-b-2 border-(--border-secondary)">
+          <h2 id="modal-title" class="font-display text-2xl text-(--content-heading)">
+            ${title}
+          </h2>
+        </div>
+        <div class="p-5">
+          <p class="text-base text-(--content-body)">
+            ${message}
+          </p>
+        </div>
+        <div class="flex gap-3 justify-end p-5 pt-0">
           <button
             id="modal-cancel"
-            class="font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-sm text-(--ui-button-surface) bg-(--ui-button-surface) border-(--ui-button-border) bg-(--ui-button-surface)/0 hover:bg-(--ui-button-surface)/2 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+            class="font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-sm text-(--ui-button-outline-text) bg-transparent border-(--ui-button-outline-border) hover:bg-(--ui-button-outline-surface)/10 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
           >
             ${cancelText}
           </button>
@@ -237,68 +247,107 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       // Create modal content with initial animation state
       const modal = document.createElement("div");
       modal.className =
-        "bg-(--ui-modal-surface) text-(--ui-modal-text) border border-(--ui-modal-border) rounded shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out";
+        "bg-(--ui-modal-surface) text-(--ui-modal-text) border-2 border-(--ui-modal-border) rounded panel-shadow max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out";
 
-      // Generate hours HTML dynamically from config
-      const hoursHTML = config.hours
-        .map(
-          (hour: any) => `
-        <div class="flex justify-between">
-          <span class="text-(--content-body)">${hour.day}</span>
-          <span class="text-(--content-${hour.isOpen ? "body" : "meta"})">${hour.hours}</span>
-        </div>
-      `,
-        )
+      // Detect today's day name for highlighting
+      const todayName = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date());
+
+      const hoursHTMLEnhanced = config.hours
+        .map((hour: any) => {
+          const isToday = hour.day === todayName;
+          const dayColor = isToday
+            ? "text-(--content-emphasis) font-semibold"
+            : hour.isOpen
+              ? "text-(--content-body)"
+              : "text-(--content-meta)";
+          const hoursColor = isToday
+            ? "text-(--content-emphasis) font-semibold"
+            : hour.isOpen
+              ? "text-(--content-body)"
+              : "text-(--content-meta)";
+          const todayIndicator = isToday
+            ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-(--ui-accent) mr-2 mb-0.5 align-middle" aria-hidden="true"></span>`
+            : `<span class="inline-block w-1.5 h-1.5 mr-2" aria-hidden="true"></span>`;
+          return `
+          <div class="flex justify-between items-center py-0.5${isToday ? ' bg-(--surface-tertiary)/30 -mx-2 px-2 rounded-sm' : ''}">
+            <span class="${dayColor} text-sm flex items-center">${todayIndicator}${hour.day}${isToday ? ' <span class="ml-1.5 text-xs font-normal text-(--content-meta)">(today)</span>' : ''}</span>
+            <span class="${hoursColor} text-sm">${hour.hours}</span>
+          </div>`;
+        })
         .join("");
 
+      // Social links HTML
+      const socialHTML = config.social && config.social.length
+        ? `<div class="flex gap-3 mt-1">
+            ${config.social.map((s: any) => {
+              const label = s.platform.charAt(0).toUpperCase() + s.platform.slice(1);
+              // Inline SVG icons for facebook and instagram (no icon lib dependency in JS context)
+              const iconSVG = s.platform === "instagram"
+                ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`
+                : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>`;
+              return `<a href="${s.url}" target="_blank" rel="noopener noreferrer" aria-label="${label}" class="p-2 border-2 border-(--border-primary) rounded-sm text-(--content-meta) hover:text-(--content-emphasis) hover:border-(--ui-nav-border) transition-all">${iconSVG}</a>`;
+            }).join("")}
+          </div>`
+        : "";
+
       modal.innerHTML = `
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 id="location-modal-title" class="font-display text-xl text-(--content-heading)">
-            ${config.name}
-          </h2>
+      <div>
+        <!-- Header -->
+        <div class="flex items-start justify-between p-5 border-b-2 border-(--border-secondary)">
+          <div>
+            <h2 id="location-modal-title" class="font-display text-3xl text-(--content-heading) leading-tight">
+              ${config.name}
+            </h2>
+            ${config.tagline ? `<p class="text-xs uppercase tracking-widest text-(--content-meta) mt-1">${config.tagline}</p>` : ""}
+          </div>
           <button
             id="modal-close"
-            class="text-(--content-meta) hover:text-(--content-heading) transition-colors"
+            class="p-2 border-2 border-(--border-primary) rounded-sm text-(--content-meta) hover:text-(--content-heading) hover:border-(--ui-nav-border) transition-all ml-4 shrink-0"
             aria-label="Close modal"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
         </div>
 
-        <div class="space-y-4">
-          <!-- Address -->
-          <div>
-            <p class="text-(--content-body)">
-              ${config.contact.address.street}<br>
-              ${config.contact.address.city}, ${config.contact.address.state} ${config.contact.address.zip}
-            </p>
-          </div>
-
-          <!-- Contact -->
-          <div class="space-y-1">
-            <p class="text-(--content-body)">
-              <a href="tel:${config.contact.phone.number}" class="relative font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all">
+        <!-- Body -->
+        <div class="p-5 space-y-5">
+          <!-- Address & Contact -->
+          <div class="space-y-3">
+            <div>
+              <p class="text-xs uppercase tracking-widest text-(--content-meta) mb-1">Location</p>
+              <a
+                href="https://maps.google.com/?q=${encodeURIComponent(config.contact.address.street + ', ' + config.contact.address.city + ', ' + config.contact.address.state + ' ' + config.contact.address.zip)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-sm text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-2 transition-all block"
+              >${config.contact.address.street}<br>${config.contact.address.city}, ${config.contact.address.state} ${config.contact.address.zip}</a>
+            </div>
+            <div class="flex flex-col gap-1">
+              <p class="text-xs uppercase tracking-widest text-(--content-meta) mb-0">Contact</p>
+              <a href="tel:${config.contact.phone.number}" class="text-sm font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-2 transition-all">
                 ${config.contact.phone.display}
               </a>
-            </p>
-            <p class="text-(--content-body)">
-              <a href="mailto:${config.contact.email}" class="relative font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all">
+              <a href="mailto:${config.contact.email}" class="text-sm font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-2 transition-all">
                 ${config.contact.email}
               </a>
-            </p>
+            </div>
           </div>
+
+          <!-- Divider -->
+          <div class="border-t-2 border-(--border-secondary)"></div>
 
           <!-- Hours -->
           <div>
-            <h3 class="font-display text-lg text-(--content-heading) mb-2">Hours of operation</h3>
-            <div class="space-y-1">
-              ${hoursHTML}
+            <p class="text-xs uppercase tracking-widest text-(--content-meta) mb-3">Hours of operation</p>
+            <div class="space-y-0.5">
+              ${hoursHTMLEnhanced}
             </div>
           </div>
+
+          ${socialHTML ? `<!-- Divider --><div class="border-t-2 border-(--border-secondary)"></div><!-- Social --><div><p class="text-xs uppercase tracking-widest text-(--content-meta) mb-3">Follow us</p>${socialHTML}</div>` : ""}
         </div>
       </div>
     `;
