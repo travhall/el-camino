@@ -107,16 +107,6 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
           <!-- Checkout actions -->
           <div class="bg-(--surface-secondary) p-4 space-y-2">
-            <div
-              id="summary-calculating"
-              class="hidden items-center gap-2 text-sm text-(--content-meta)"
-            >
-              <div
-                class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-(--content-heading)"
-              >
-              </div>
-              <span>Recalculating...</span>
-            </div>
             <Button
               id="checkout-button"
               variant="primary"
@@ -1194,7 +1184,6 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     const shippingEl = document.getElementById("shipping-cost");
     const totalEl = document.getElementById("order-total");
     const labelEl = document.getElementById("order-total-label");
-    const calculatingEl = document.getElementById("summary-calculating");
 
     // Always show subtotal
     if (subtotalEl) {
@@ -1215,9 +1204,8 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
     const fulfillmentMethod = fulfillmentRadio.value as "shipping" | "pickup";
 
-    // Show calculating state
-    calculatingEl?.classList.remove("hidden");
-    calculatingEl?.classList.add("flex");
+    // Show calculating state inline in the shipping row — no layout shift
+    if (shippingEl) shippingEl.textContent = "Calculating…";
 
     try {
       const response = await fetch("/api/calculate-cart", {
@@ -1257,12 +1245,10 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       }
     } catch (error) {
       console.error("Error calculating order summary:", error);
+      if (shippingEl) shippingEl.textContent = "—";
       if (labelEl) labelEl.textContent = "Estimated Total";
       if (totalEl)
         totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
-    } finally {
-      calculatingEl?.classList.add("hidden");
-      calculatingEl?.classList.remove("flex");
     }
   }
 

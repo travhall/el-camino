@@ -45,16 +45,22 @@ const progressPct = Math.min(
       role="status"
       aria-live="polite"
     >
-      <span
-        id="fulfillment-summary-label"
-        class="text-sm font-semibold text-(--content-heading)"
-      >
-        📦 Ship to Me
-      </span>
+      <div class="flex flex-col gap-0.5 min-w-0 pr-3">
+        <span
+          id="fulfillment-summary-label"
+          class="text-sm font-semibold text-(--content-heading)"
+        >
+          📦 Ship to Me
+        </span>
+        <span
+          id="fulfillment-summary-detail"
+          class="text-xs text-(--content-meta) truncate"
+        ></span>
+      </div>
       <button
         id="fulfillment-expand-btn"
         type="button"
-        class="text-xs font-semibold px-2.5 py-1 rounded border-2 border-(--surface-tertiary) text-(--content-body) hover:bg-(--surface-secondary) transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+        class="shrink-0 text-xs font-semibold px-2.5 py-1 rounded border-2 border-(--surface-tertiary) text-(--content-body) hover:bg-(--surface-secondary) transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
         aria-expanded="false"
         aria-controls="fulfillment-form-panel"
       >
@@ -523,6 +529,9 @@ const progressPct = Math.min(
     const summaryLabel = selector.querySelector<HTMLElement>(
       "#fulfillment-summary-label",
     );
+    const summaryDetail = selector.querySelector<HTMLElement>(
+      "#fulfillment-summary-detail",
+    );
     const expandBtn = selector.querySelector<HTMLButtonElement>(
       "#fulfillment-expand-btn",
     );
@@ -548,6 +557,28 @@ const progressPct = Math.min(
       tabRow?.classList.add("hidden");
       doneBtn?.classList.add("hidden");
       if (summaryLabel) summaryLabel.textContent = getSummaryLabel(method);
+
+      // Populate the detail line with a preview of the confirmed info
+      if (summaryDetail) {
+        if (method === "shipping") {
+          const firstName = (document.getElementById("shipping-first-name") as HTMLInputElement)?.value ?? "";
+          const lastName  = (document.getElementById("shipping-last-name")  as HTMLInputElement)?.value ?? "";
+          const address   = (document.getElementById("shipping-address")    as HTMLInputElement)?.value ?? "";
+          const address2  = (document.getElementById("shipping-address2")   as HTMLInputElement)?.value ?? "";
+          const city      = (document.getElementById("shipping-city")       as HTMLInputElement)?.value ?? "";
+          const state     = (document.getElementById("shipping-state")      as HTMLSelectElement)?.value ?? "";
+          const zip       = (document.getElementById("shipping-zip")        as HTMLInputElement)?.value ?? "";
+          const name      = [firstName, lastName].filter(Boolean).join(" ");
+          const street    = [address, address2].filter(Boolean).join(", ");
+          const cityLine  = [city, state, zip].filter(Boolean).join(" ");
+          summaryDetail.textContent = [name, [street, cityLine].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
+        } else {
+          const name  = (document.getElementById("pickup-name")  as HTMLInputElement)?.value ?? "";
+          const email = (document.getElementById("pickup-email") as HTMLInputElement)?.value ?? "";
+          summaryDetail.textContent = [name, email].filter(Boolean).join(" · ");
+        }
+      }
+
       summaryChip?.classList.remove("hidden");
       summaryChip?.classList.add("flex");
       expandBtn?.setAttribute("aria-expanded", "false");
