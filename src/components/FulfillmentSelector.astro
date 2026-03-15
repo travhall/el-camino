@@ -792,35 +792,10 @@ const progressPct = Math.min(
       if (method === "shipping" && shippingRadio) shippingRadio.checked = true;
       if (method === "pickup" && pickupRadio) pickupRadio.checked = true;
 
-      // Update tab button styles
+      // Active state is driven entirely by CSS via [aria-pressed="true"] —
+      // no classList manipulation needed here.
       tabs.forEach((tab) => {
-        const isActive = tab.dataset.tab === method;
-        tab.setAttribute("aria-pressed", String(isActive));
-        if (isActive) {
-          tab.classList.add(
-            "bg-(--surface-primary)",
-            "shadow-sm",
-            "text-(--content-heading)",
-            "border-t-(--content-emphasis)",
-          );
-          tab.classList.remove(
-            "text-(--content-meta)",
-            "hover:bg-(--surface-primary)",
-            "hover:text-(--content-body)",
-          );
-        } else {
-          tab.classList.remove(
-            "bg-(--surface-primary)",
-            "shadow-sm",
-            "text-(--content-heading)",
-            "border-t-(--content-emphasis)",
-          );
-          tab.classList.add(
-            "text-(--content-meta)",
-            "hover:bg-(--surface-primary)",
-            "hover:text-(--content-body)",
-          );
-        }
+        tab.setAttribute("aria-pressed", String(tab.dataset.tab === method));
       });
 
       // Show form panel (ensure chip is fully hidden when form is open)
@@ -904,3 +879,19 @@ const progressPct = Math.min(
 
   document.addEventListener("astro:page-load", initFulfillmentSelector);
 </script>
+
+<style>
+  /* Active tab state — driven by aria-pressed so JS only needs to set the attribute */
+  .tab-btn[aria-pressed="true"] {
+    background-color: var(--surface-primary);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    color: var(--content-heading);
+    border-top-color: var(--content-emphasis);
+  }
+
+  /* Suppress hover changes on the already-selected tab so it feels stable */
+  .tab-btn[aria-pressed="true"]:hover {
+    background-color: var(--surface-primary);
+    color: var(--content-heading);
+  }
+</style>

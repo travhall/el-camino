@@ -148,37 +148,47 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       id="mobile-checkout-bar"
       class="hidden fixed bottom-0 left-0 right-0 bg-(--surface-secondary) border-t-4 border-(--border-secondary) md:hidden z-40"
     >
-      <div class="px-3 pt-2 pb-3">
-        <!-- Row 1: Subtotal (left) + Shipping indicator (right) -->
-        <div class="flex justify-between items-center mb-2">
-          <div>
-            <span class="text-xs text-(--content-meta)">Subtotal </span>
+      <div class="px-3 pt-3 pb-4 space-y-2">
+        <!-- Subtotal row -->
+        <div class="flex justify-between items-baseline">
+          <span class="text-sm text-(--content-meta)">Subtotal</span>
+          <span
+            class="font-display font-bold text-2xl text-(--content-heading)"
+            id="mobile-subtotal">$0.00</span
+          >
+        </div>
+
+        <!-- Shipping row -->
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-(--content-meta)">Shipping</span>
+          <div id="mobile-shipping-indicator" class="shrink-0"></div>
+        </div>
+
+        <!-- Est. Total: only revealed by JS once tax + shipping are calculated -->
+        <div
+          id="mobile-total-wrapper"
+          class="hidden border-t-2 border-(--surface-tertiary) pt-2"
+        >
+          <div class="flex justify-between items-baseline">
+            <span class="text-sm font-semibold text-(--content-heading)"
+              >Est. Total</span
+            >
             <span
-              class="text-sm font-semibold text-(--content-body)"
-              id="mobile-subtotal">$0.00</span
+              class="font-display font-bold text-2xl text-(--content-heading)"
+              id="mobile-total">$0.00</span
             >
-            <!-- Est. Total: only revealed by JS once tax + shipping are calculated -->
-            <span id="mobile-total-wrapper" class="hidden">
-              <span class="mx-1.5 text-(--border-secondary)">·</span>
-              <span class="text-xs text-(--content-meta)">Est. Total </span>
-              <span
-                class="font-display font-bold text-lg text-(--content-heading)"
-                id="mobile-total">$0.00</span
-              >
-            </span>
-          </div>
-          <div id="mobile-shipping-indicator" class="text-right shrink-0 ml-2">
-            <button
-              id="mobile-shipping-tap"
-              type="button"
-              class="text-xs text-(--content-emphasis) underline underline-offset-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
-            >
-              Choose shipping →
-            </button>
           </div>
         </div>
 
-        <!-- Row 2: Full-width CTA -->
+        <!-- Hint text (above CTA, hidden once fulfillment is fully valid) -->
+        <p
+          id="mobile-checkout-hint"
+          class="text-xs text-center text-(--content-meta)"
+        >
+          Select a fulfillment method to calculate taxes and shipping.
+        </p>
+
+        <!-- CTA -->
         <button
           id="mobile-checkout-button"
           disabled
@@ -186,15 +196,6 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         >
           Continue to Payment
         </button>
-
-        <!-- Hint text (hidden once fulfillment is fully valid) -->
-        <p
-          id="mobile-checkout-hint"
-          class="text-xs text-center text-(--content-meta) mt-1.5"
-        >
-          Select a fulfillment method · taxes &amp; shipping calculated at
-          checkout
-        </p>
       </div>
     </div>
 
@@ -226,10 +227,12 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
   @keyframes fulfillment-pulse {
     0%,
     100% {
-      box-shadow: 0 0 0 0 color-mix(in oklch, var(--content-emphasis) 0%, transparent);
+      box-shadow: 0 0 0 0
+        color-mix(in oklch, var(--content-emphasis) 0%, transparent);
     }
     40% {
-      box-shadow: 0 0 0 5px color-mix(in oklch, var(--content-emphasis) 35%, transparent);
+      box-shadow: 0 0 0 5px
+        color-mix(in oklch, var(--content-emphasis) 35%, transparent);
     }
   }
 
@@ -766,7 +769,10 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                   "success",
                 );
               } catch {
-                window.showNotification("Could not restore cart items", "error");
+                window.showNotification(
+                  "Could not restore cart items",
+                  "error",
+                );
               }
             },
           },
@@ -774,6 +780,10 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       },
     );
   }
+
+  // Cache the last rendered state of the shipping indicator so we skip DOM
+  // writes (and repeated listener attachment) when nothing has changed.
+  let lastShippingIndicatorState: string | null = null;
 
   function updateMobileBar(total?: number, shippingCost?: number): void {
     const bar = document.getElementById("mobile-checkout-bar");
@@ -830,15 +840,22 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     const shippingIndicator = document.getElementById(
       "mobile-shipping-indicator",
     );
-    if (shippingIndicator) {
+    const newIndicatorState =
+      fulfillmentSelected && shippingCost !== undefined
+        ? `val:${shippingCost}`
+        : "unselected";
+
+    if (shippingIndicator && newIndicatorState !== lastShippingIndicatorState) {
+      lastShippingIndicatorState = newIndicatorState;
+
       if (fulfillmentSelected && shippingCost !== undefined) {
         const shippingDisplay =
           shippingCost === 0
             ? "FREE"
             : MoneyUtils.format(MoneyUtils.fromFloat(shippingCost));
-        shippingIndicator.innerHTML = `<span class="text-xs text-(--content-meta)">Shipping: <strong class="text-(--content-body)">${shippingDisplay}</strong></span>`;
+        shippingIndicator.innerHTML = `<strong class="text-sm font-semibold text-(--content-body)">${shippingDisplay}</strong>`;
       } else {
-        shippingIndicator.innerHTML = `<button id="mobile-shipping-tap" type="button" class="text-xs text-(--content-emphasis) underline underline-offset-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)">Choose shipping →</button>`;
+        shippingIndicator.innerHTML = `<button id="mobile-shipping-tap" type="button" class="text-xs font-semibold px-2.5 py-1 rounded border-2 border-(--surface-tertiary) text-(--content-body) hover:bg-(--surface-primary) transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)">Choose Shipping</button>`;
         document
           .getElementById("mobile-shipping-tap")
           ?.addEventListener("click", () => {
@@ -981,7 +998,10 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                           );
                         }
                       } catch {
-                        window.showNotification("Could not restore item", "error");
+                        window.showNotification(
+                          "Could not restore item",
+                          "error",
+                        );
                       }
                     },
                   },
@@ -1025,7 +1045,10 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                         );
                       }
                     } catch {
-                      window.showNotification("Could not restore item", "error");
+                      window.showNotification(
+                        "Could not restore item",
+                        "error",
+                      );
                     }
                   },
                 },
@@ -1343,9 +1366,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     attachEventListeners();
     updateDisplay();
     setupFulfillmentListeners();
-    requestAnimationFrame(() => {
-      updateMobileBar();
-    });
+    updateMobileBar();
   }
 
   document.addEventListener("astro:page-load", handlePageLoad);
