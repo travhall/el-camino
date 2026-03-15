@@ -713,28 +713,43 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     }
 
     const items = cart.getItems();
-    if (items.length === 1) {
-      const item = items[0];
-      showConfirmModal(
-        "Remove Item",
-        `Are you sure you want to remove "${item.title}" from your cart?`,
-        async () => {
-          cart.clear();
-          await updateDisplay();
-          window.showNotification("Cart cleared successfully");
-        },
-      );
-    } else {
-      showConfirmModal(
-        "Clear Cart",
-        `Are you sure you want to remove all ${itemCount} item${itemCount > 1 ? "s" : ""} from your cart?`,
-        async () => {
-          cart.clear();
-          await updateDisplay();
-          window.showNotification("Cart cleared successfully");
-        },
-      );
-    }
+    const snapshot = items.map((item: CartItem) => ({ ...item }));
+    const isSingle = items.length === 1;
+
+    showConfirmModal(
+      isSingle ? "Remove Item" : "Clear Cart",
+      isSingle
+        ? `Are you sure you want to remove "${items[0].title}" from your cart?`
+        : `Are you sure you want to remove all ${itemCount} item${itemCount > 1 ? "s" : ""} from your cart?`,
+      async () => {
+        cart.clear();
+        await updateDisplay();
+        window.showNotification(
+          isSingle ? `"${snapshot[0].title}" removed` : "Cart cleared",
+          "success",
+          10000,
+          {
+            label: "Undo",
+            onClick: async () => {
+              try {
+                for (const item of snapshot) {
+                  await cart.addItem(item);
+                }
+                await updateDisplay();
+                window.showNotification(
+                  snapshot.length === 1
+                    ? `"${snapshot[0].title}" restored`
+                    : `${snapshot.length} items restored`,
+                  "success",
+                );
+              } catch {
+                window.showNotification("Could not restore cart items", "error");
+              }
+            },
+          },
+        );
+      },
+    );
   }
 
   function updateMobileBar(total?: number, shippingCost?: number): void {
@@ -912,20 +927,41 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             }
             break;
 
-          case "decrease":
+          case "decrease": {
             const currentItems = cart.getItems();
             const currentItem = currentItems.find(
               (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
             );
             if (currentItem) {
               if (currentItem.quantity === 1) {
-                showConfirmModal(
-                  "Remove Item",
-                  `Remove "${currentItem.title}" from your cart?`,
-                  async () => {
-                    cart.removeItem(itemKey);
-                    await updateDisplay();
-                    window.showNotification("Item removed from cart", "success");
+                const snapshot = { ...currentItem };
+                cart.removeItem(itemKey);
+                await updateDisplay();
+                window.showNotification(
+                  `"${snapshot.title}" removed`,
+                  "success",
+                  6000,
+                  {
+                    label: "Undo",
+                    onClick: async () => {
+                      try {
+                        const result = await cart.addItem(snapshot);
+                        if (result.success) {
+                          await updateDisplay();
+                          window.showNotification(
+                            `"${snapshot.title}" restored`,
+                            "success",
+                          );
+                        } else {
+                          window.showNotification(
+                            result.message || "Could not restore item",
+                            "error",
+                          );
+                        }
+                      } catch {
+                        window.showNotification("Could not restore item", "error");
+                      }
+                    },
                   },
                 );
               } else {
@@ -934,20 +970,47 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
               }
             }
             break;
+          }
 
-          case "remove":
-            if (itemTitle) {
-              showConfirmModal(
-                "Remove Item",
-                `Remove "${itemTitle}" from your cart?`,
-                async () => {
-                  cart.removeItem(itemKey);
-                  await updateDisplay();
-                  window.showNotification("Item removed from cart", "success");
+          case "remove": {
+            const allItems = cart.getItems();
+            const itemToRemove = allItems.find(
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
+            );
+            if (itemToRemove) {
+              const snapshot = { ...itemToRemove };
+              cart.removeItem(itemKey);
+              await updateDisplay();
+              window.showNotification(
+                `"${snapshot.title}" removed`,
+                "success",
+                6000,
+                {
+                  label: "Undo",
+                  onClick: async () => {
+                    try {
+                      const result = await cart.addItem(snapshot);
+                      if (result.success) {
+                        await updateDisplay();
+                        window.showNotification(
+                          `"${snapshot.title}" restored`,
+                          "success",
+                        );
+                      } else {
+                        window.showNotification(
+                          result.message || "Could not restore item",
+                          "error",
+                        );
+                      }
+                    } catch {
+                      window.showNotification("Could not restore item", "error");
+                    }
+                  },
                 },
               );
             }
             break;
+          }
         }
       } catch (error) {
         console.error("Error handling cart action:", error);

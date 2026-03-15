@@ -13,17 +13,18 @@
         message: string,
         type?: "success" | "error" | "info" | "warning",
         duration?: number,
-        action?: { label: string; href: string }
+        action?:
+          | { label: string; href: string }
+          | { label: string; onClick: () => void }
       ): void;
     }
   }
 
   type NotificationType = "success" | "error" | "info" | "warning";
 
-  interface NotificationAction {
-    label: string;
-    href: string;
-  }
+  type NotificationAction =
+    | { label: string; href: string }
+    | { label: string; onClick: () => void };
 
   const notificationManager = {
     showNotification(
@@ -55,11 +56,26 @@
       notification.appendChild(textNode);
 
       if (action) {
-        const btn = document.createElement("a");
-        btn.href = action.href;
-        btn.textContent = action.label;
-        btn.className = "ml-2 font-semibold underline underline-offset-2 shrink-0 hover:opacity-75 transition-opacity";
-        notification.appendChild(btn);
+        if ("onClick" in action) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = action.label;
+          btn.className =
+            "ml-2 font-semibold underline underline-offset-2 shrink-0 hover:opacity-75 transition-opacity cursor-pointer";
+          btn.addEventListener("click", () => {
+            notification.classList.add("opacity-0", "translate-x-4");
+            setTimeout(() => notification.remove(), 300);
+            action.onClick();
+          });
+          notification.appendChild(btn);
+        } else {
+          const link = document.createElement("a");
+          link.href = action.href;
+          link.textContent = action.label;
+          link.className =
+            "ml-2 font-semibold underline underline-offset-2 shrink-0 hover:opacity-75 transition-opacity";
+          notification.appendChild(link);
+        }
       }
 
       container.appendChild(notification);

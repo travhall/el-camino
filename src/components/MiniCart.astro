@@ -42,6 +42,37 @@ import Button from "@/components/Button.astro";
 
     <!-- Content Area -->
     <div id="mini-cart-content" class="flex-1 overflow-y-auto">
+
+      <!-- Inline undo bar — shown after item removal, dismissed after 6s -->
+      <div
+        id="mini-cart-undo-bar"
+        class="hidden opacity-0 sticky top-0 z-10 bg-(--surface-secondary) border-b-2 border-(--border-secondary) px-4 py-2.5 flex items-center gap-3 text-sm overflow-hidden transition-opacity duration-200"
+      >
+        <span
+          id="mini-cart-undo-message"
+          class="flex-1 text-(--content-body) font-light truncate min-w-0"
+        >Item removed</span>
+        <div class="flex items-center gap-3 shrink-0">
+          <button
+            id="mini-cart-undo-btn"
+            type="button"
+            class="font-semibold underline underline-offset-2 text-(--content-emphasis) hover:opacity-75 transition-opacity cursor-pointer"
+          >Undo</button>
+          <button
+            id="mini-cart-undo-dismiss"
+            type="button"
+            class="text-(--content-meta) hover:text-(--content-body) transition-colors leading-none"
+            aria-label="Dismiss"
+          >✕</button>
+        </div>
+        <!-- Timer progress bar -->
+        <div
+          id="mini-cart-undo-progress"
+          class="absolute bottom-0 left-0 h-0.5 bg-(--content-emphasis) opacity-40"
+          style="width: 100%"
+        ></div>
+      </div>
+
       <div
         id="mini-cart-loading"
         class="text-center py-8 h-full place-content-center"
@@ -116,6 +147,84 @@ import Button from "@/components/Button.astro";
 
   let cart: any = null;
   let inventoryData: Record<string, number> = {};
+
+  // Undo bar state
+  let undoBarTimeout: ReturnType<typeof setTimeout> | null = null;
+  let pendingUndoItem: CartItem | null = null;
+
+  function showUndoBar(item: CartItem): void {
+    const bar = document.getElementById("mini-cart-undo-bar");
+    const messageEl = document.getElementById("mini-cart-undo-message");
+    const progressEl = document.getElementById(
+      "mini-cart-undo-progress",
+    ) as HTMLElement | null;
+
+    if (!bar || !messageEl) return;
+
+    // Cancel any running undo timer
+    if (undoBarTimeout) {
+      clearTimeout(undoBarTimeout);
+      undoBarTimeout = null;
+    }
+
+    pendingUndoItem = item;
+    messageEl.textContent = `"${item.title}" removed`;
+
+    // Show with fade-in
+    bar.classList.remove("hidden");
+    requestAnimationFrame(() => {
+      bar.classList.remove("opacity-0");
+    });
+
+    // Animate the timer progress bar over 6s
+    if (progressEl) {
+      progressEl.style.transition = "none";
+      progressEl.style.width = "100%";
+      progressEl.offsetWidth; // force reflow so the reset paints before transition starts
+      progressEl.style.transition = "width 6000ms linear";
+      progressEl.style.width = "0%";
+    }
+
+    undoBarTimeout = setTimeout(dismissUndoBar, 6000);
+  }
+
+  function dismissUndoBar(): void {
+    const bar = document.getElementById("mini-cart-undo-bar");
+    if (!bar) return;
+
+    bar.classList.add("opacity-0");
+    setTimeout(() => bar.classList.add("hidden"), 200);
+
+    pendingUndoItem = null;
+    if (undoBarTimeout) {
+      clearTimeout(undoBarTimeout);
+      undoBarTimeout = null;
+    }
+  }
+
+  async function handleUndoRemove(): Promise<void> {
+    if (!pendingUndoItem) return;
+
+    const itemToRestore = { ...pendingUndoItem };
+    dismissUndoBar();
+
+    try {
+      const cartInstance = await loadCart();
+      const result = await cartInstance.addItem(itemToRestore);
+
+      if (result.success) {
+        await updateMiniCartDisplay();
+        window.showNotification(`"${itemToRestore.title}" restored`, "success");
+      } else {
+        window.showNotification(
+          result.message || "Could not restore item",
+          "error",
+        );
+      }
+    } catch {
+      window.showNotification("Could not restore item", "error");
+    }
+  }
 
   /** Escape HTML special characters to prevent XSS in innerHTML templates */
   function sanitize(str: string): string {
@@ -528,36 +637,16 @@ import Button from "@/components/Button.astro";
             }
             break;
 
-          case "decrease":
+          case "decrease": {
             const currentItems = cartInstance.getItems();
             const currentItem = currentItems.find(
               (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
             );
             if (currentItem) {
               if (currentItem.quantity === 1) {
-                // Use existing modal system if available, fallback to confirm
-                if (
-                  typeof window !== "undefined" &&
-                  (window as any).showModal
-                ) {
-                  (window as any).showModal(
-                    "Remove Item",
-                    `Remove "${currentItem.title}" from your cart?`,
-                    async () => {
-                      cartInstance.removeItem(itemKey);
-                      await updateMiniCartDisplay();
-                      window.showNotification("Item removed from cart", "success");
-                    },
-                    "Remove",
-                    "Cancel",
-                  );
-                } else if (
-                  confirm(`Remove "${currentItem.title}" from your cart?`)
-                ) {
-                  cartInstance.removeItem(itemKey);
-                  await updateMiniCartDisplay();
-                  window.showNotification("Item removed from cart", "success");
-                }
+                cartInstance.removeItem(itemKey);
+                await updateMiniCartDisplay();
+                showUndoBar(currentItem);
               } else {
                 await cartInstance.updateQuantity(
                   itemKey,
@@ -567,29 +656,20 @@ import Button from "@/components/Button.astro";
               }
             }
             break;
+          }
 
-          case "remove":
-            if (itemTitle) {
-              // Use existing modal system if available, fallback to confirm
-              if (typeof window !== "undefined" && (window as any).showModal) {
-                (window as any).showModal(
-                  "Remove Item",
-                  `Remove "${itemTitle}" from your cart?`,
-                  async () => {
-                    cartInstance.removeItem(itemKey);
-                    await updateMiniCartDisplay();
-                    window.showNotification("Item removed from cart", "success");
-                  },
-                  "Remove",
-                  "Cancel",
-                );
-              } else if (confirm(`Remove "${itemTitle}" from your cart?`)) {
-                cartInstance.removeItem(itemKey);
-                await updateMiniCartDisplay();
-                window.showNotification("Item removed from cart", "success");
-              }
+          case "remove": {
+            const allItems = cartInstance.getItems();
+            const itemToRemove = allItems.find(
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
+            );
+            if (itemToRemove) {
+              cartInstance.removeItem(itemKey);
+              await updateMiniCartDisplay();
+              showUndoBar(itemToRemove);
             }
             break;
+          }
         }
       } catch (error) {
         console.error("Error handling quantity action:", error);
@@ -607,6 +687,7 @@ import Button from "@/components/Button.astro";
         overlay.classList.add("opacity-0");
         panel.classList.add("translate-x-full");
         document.body.style.overflow = "unset";
+        dismissUndoBar();
 
         setTimeout(() => {
           overlay.classList.add("hidden");
@@ -625,6 +706,8 @@ import Button from "@/components/Button.astro";
       "continue-shopping-footer",
     );
     const checkoutButton = document.getElementById("mini-cart-checkout");
+    const undoBtn = document.getElementById("mini-cart-undo-btn");
+    const undoDismissBtn = document.getElementById("mini-cart-undo-dismiss");
 
     // Early return if essential elements missing
     if (!overlay || !panel || !closeButton) {
@@ -658,6 +741,7 @@ import Button from "@/components/Button.astro";
 
         // Restore page scrolling when MiniCart is closed
         document.body.style.overflow = "unset";
+        dismissUndoBar();
 
         setTimeout(() => {
           overlay.classList.add("hidden");
@@ -665,6 +749,9 @@ import Button from "@/components/Button.astro";
         }, 300);
       }
     }
+
+    if (undoBtn) undoBtn.addEventListener("click", handleUndoRemove);
+    if (undoDismissBtn) undoDismissBtn.addEventListener("click", dismissUndoBar);
 
     closeButton.addEventListener("click", closeMiniCart);
     overlay.addEventListener("click", closeMiniCart);
