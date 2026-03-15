@@ -329,6 +329,27 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     }
   }
 
+  /**
+   * Restores a cart item to its exact snapshot quantity.
+   * If the item was re-added during the undo window, updateQuantity is used
+   * to set the precise snapshot quantity rather than addItem which would
+   * accumulate on top of the existing quantity.
+   */
+  async function restoreCartItem(
+    item: CartItem,
+  ): Promise<{ success: boolean; message?: string }> {
+    const key = `${item.id}:${item.variationId}`;
+    const alreadyInCart = cart
+      .getItems()
+      .some((i: CartItem) => `${i.id}:${i.variationId}` === key);
+
+    if (alreadyInCart) {
+      cart.updateQuantity(key, item.quantity);
+      return { success: true };
+    }
+    return await cart.addItem(item);
+  }
+
   async function loadInventoryData(items: CartItem[]): Promise<void> {
     if (items.length === 0) {
       inventoryData = {};
@@ -733,7 +754,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             onClick: async () => {
               try {
                 for (const item of snapshot) {
-                  await cart.addItem(item);
+                  await restoreCartItem(item);
                 }
                 await updateDisplay();
                 window.showNotification(
@@ -903,7 +924,6 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
       const action = button.dataset.action;
       const itemKey = button.dataset.itemKey;
-      const itemTitle = button.dataset.itemTitle;
 
       if (!itemKey) return;
 
@@ -945,7 +965,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                     label: "Undo",
                     onClick: async () => {
                       try {
-                        const result = await cart.addItem(snapshot);
+                        const result = await restoreCartItem(snapshot);
                         if (result.success) {
                           await updateDisplay();
                           window.showNotification(
@@ -989,7 +1009,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                   label: "Undo",
                   onClick: async () => {
                     try {
-                      const result = await cart.addItem(snapshot);
+                      const result = await restoreCartItem(snapshot);
                       if (result.success) {
                         await updateDisplay();
                         window.showNotification(

@@ -46,6 +46,7 @@ import Button from "@/components/Button.astro";
       <!-- Inline undo bar — shown after item removal, dismissed after 6s -->
       <div
         id="mini-cart-undo-bar"
+        role="status"
         class="hidden opacity-0 sticky top-0 z-10 bg-(--surface-secondary) border-b-2 border-(--border-secondary) px-4 py-2.5 flex items-center gap-3 text-sm overflow-hidden transition-opacity duration-200"
       >
         <span
@@ -210,7 +211,19 @@ import Button from "@/components/Button.astro";
 
     try {
       const cartInstance = await loadCart();
-      const result = await cartInstance.addItem(itemToRestore);
+      const key = `${itemToRestore.id}:${itemToRestore.variationId}`;
+      const alreadyInCart = cartInstance
+        .getItems()
+        .some((i: CartItem) => `${i.id}:${i.variationId}` === key);
+
+      let result: { success: boolean; message?: string };
+      if (alreadyInCart) {
+        // Item was re-added during the undo window — restore the snapshot quantity exactly
+        cartInstance.updateQuantity(key, itemToRestore.quantity);
+        result = { success: true };
+      } else {
+        result = await cartInstance.addItem(itemToRestore);
+      }
 
       if (result.success) {
         await updateMiniCartDisplay();
@@ -611,7 +624,6 @@ import Button from "@/components/Button.astro";
 
       const action = button.dataset.action;
       const itemKey = button.dataset.itemKey;
-      const itemTitle = button.dataset.itemTitle;
 
       if (!itemKey) return;
 
