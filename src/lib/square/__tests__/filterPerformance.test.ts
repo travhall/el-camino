@@ -56,7 +56,7 @@ describe('Filter Basic Functionality', () => {
 
   describe('Brand Filtering', () => {
     it('should filter products by single brand', async () => {
-      const filters: ProductFilters = { brands: ['Spitfire'] };
+      const filters: ProductFilters = { brands: ['Spitfire'], categories: [] };
       
       const result = await filterProducts(mockProducts, filters);
       
@@ -65,7 +65,7 @@ describe('Filter Basic Functionality', () => {
     });
 
     it('should filter products by multiple brands', async () => {
-      const filters: ProductFilters = { brands: ['Spitfire', 'Independent'] };
+      const filters: ProductFilters = { brands: ['Spitfire', 'Independent'], categories: [] };
       
       const result = await filterProducts(mockProducts, filters);
       
@@ -74,7 +74,7 @@ describe('Filter Basic Functionality', () => {
     });
 
     it('should return empty array when no products match brand filter', async () => {
-      const filters: ProductFilters = { brands: ['NonExistentBrand'] };
+      const filters: ProductFilters = { brands: ['NonExistentBrand'], categories: [] };
       
       const result = await filterProducts(mockProducts, filters);
       
@@ -82,7 +82,7 @@ describe('Filter Basic Functionality', () => {
     });
 
     it('should return all products when no brand filters applied', async () => {
-      const filters: ProductFilters = { brands: [] };
+      const filters: ProductFilters = { brands: [], categories: [] };
       
       const result = await filterProducts(mockProducts, filters);
       

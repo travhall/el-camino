@@ -22,9 +22,9 @@ import type {
 const filters = parseFiltersFromURL(Astro.url.searchParams);
 
 // Smart cache headers based on filters
-const hasFilters = Object.values(filters).some((f) =>
-  Array.isArray(f) ? f.length > 0 : f === true
-);
+const hasFilters = filters.brands.length > 0 ||
+                   filters.categories.length > 0 ||
+                   filters.availability === true;
 
 const cacheControl = hasFilters
   ? "public, max-age=120, s-max-age=180, stale-while-revalidate=900" // 2min browser, 3min server, 15min stale for filtered
@@ -49,7 +49,7 @@ Astro.response.headers.set(
 let allProducts: Product[] = [];
 let saleProducts: Product[] = [];
 let filteredProducts: Product[] = [];
-let filterOptions: FilterOptions = { brands: [] };
+let filterOptions: FilterOptions = { brands: [], categories: [] };
 
 try {
   // Fetch all products initially
@@ -78,7 +78,7 @@ try {
   }
 
   // Extract filter options from SALE products only (for filter UI)
-  filterOptions = extractFilterOptions(saleProducts);
+  filterOptions = await extractFilterOptions(saleProducts);
 
   if (hasFilters) {
     // Apply additional filters (brand, availability) to sale products
@@ -87,6 +87,7 @@ try {
     // No additional filters - show all sale products
     filteredProducts = [...saleProducts];
   }
+
 } catch (error) {
   console.error("Error fetching sale products:", error);
   allProducts = [];
@@ -108,7 +109,9 @@ const categoryPath = "/shop/sale";
 
 // Check for active filters (for display purposes)
 const hasActiveFilters =
-  filters.brands.length > 0 || filters.availability === true;
+  filters.brands.length > 0 ||
+  filters.categories.length > 0 ||
+  filters.availability === true;
 
 // Structured data for sale items (ItemList schema)
 const structuredData = {
@@ -189,13 +192,19 @@ const structuredData = {
           totalProducts={allProducts.length}
           filteredCount={filteredProducts.length}
           categoryPath={categoryPath}
+          appliedFilters={filters}
         />
       </aside>
 
       <!-- Main Content -->
       <div class="lg:col-span-3 xl:col-span-4">
         <!-- Applied Filters Above Product Grid -->
-        <AppliedFilters classes="hidden lg:block" />
+        <AppliedFilters
+          classes="hidden lg:block"
+          filterOptions={filterOptions}
+          appliedFilters={filters}
+          categoryPath={categoryPath}
+        />
 
         <!-- Products -->
         {

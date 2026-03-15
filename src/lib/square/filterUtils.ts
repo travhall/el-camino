@@ -4,17 +4,20 @@ import type {
   ProductFilters,
   FilterOptions,
   BrandOption,
+  CategoryFilterOption,
+  CategoryFilterSubOption,
 } from "./types";
 import { createFilterSlug } from "./types";
 import { getProductStockStatus } from "./inventory"; // Import individual inventory checking (fallback)
 import { batchInventoryService } from "./batchInventory"; // Import batch inventory service
 import { filterCache } from "./cacheUtils"; // Import filter cache
+import { fetchCategoryHierarchy } from "./categories";
 
 /**
  * Extract filter options from product array
  * Follows existing patterns from categories.ts
  */
-export function extractFilterOptions(products: Product[]): FilterOptions {
+export async function extractFilterOptions(products: Product[]): Promise<FilterOptions> {
   const brandCounts = new Map<string, number>();
 
   // Count brands, following existing data processing patterns
@@ -33,7 +36,54 @@ export function extractFilterOptions(products: Product[]): FilterOptions {
     }))
     .sort((a, b) => b.count - a.count); // Sort by popularity
 
-  return { brands };
+  // Fetch category hierarchy and build filter options
+  let categories: CategoryFilterOption[] = [];
+  try {
+    const hierarchy = await fetchCategoryHierarchy();
+
+    // Build a set of all category IDs present in current product set
+    const productCategoryIds = new Set<string>();
+    products.forEach((p) => {
+      p.categories?.forEach((id) => productCategoryIds.add(id));
+    });
+
+    categories = hierarchy
+      .map((h) => {
+        const subcategoryIds = new Set(h.subcategories.map((s) => s.id));
+
+        const subcategoryOptions: CategoryFilterSubOption[] = h.subcategories
+          .map((sub) => {
+            const count = products.filter((p) =>
+              p.categories?.includes(sub.id)
+            ).length;
+            return { id: sub.id, name: sub.name, slug: sub.slug, count };
+          })
+          .filter((s) => s.count > 0)
+          .sort((a, b) => b.count - a.count);
+
+        const directCount = products.filter((p) =>
+          p.categories?.includes(h.category.id)
+        ).length;
+
+        const totalCount = directCount + products.filter((p) =>
+          p.categories?.some((id) => subcategoryIds.has(id))
+        ).length;
+
+        return {
+          id: h.category.id,
+          name: h.category.name,
+          slug: h.category.slug,
+          count: totalCount,
+          subcategories: subcategoryOptions,
+        };
+      })
+      .filter((c) => c.count > 0 || c.subcategories.length > 0);
+  } catch (error) {
+    console.warn("[filterUtils] Could not fetch category hierarchy:", error);
+    // Graceful degradation — return brands only
+  }
+
+  return { brands, categories };
 }
 
 /**
@@ -51,6 +101,15 @@ export async function filterProducts(
     filteredProducts = filteredProducts.filter((product) => {
       if (!product.brand) return false;
       return filters.brands.includes(product.brand);
+    });
+  }
+
+  // Category filtering
+  if (filters.categories.length > 0) {
+    filteredProducts = filteredProducts.filter((product) => {
+      if (!product.categories?.length) return false;
+      // Product matches if it belongs to ANY of the selected category IDs
+      return filters.categories.some((catId) => product.categories!.includes(catId));
     });
   }
 
@@ -142,29 +201,16 @@ export async function filterProductsWithCache(
   categoryId?: string
 ): Promise<Product[]> {
   // Create deterministic cache key based on products, filters, and category
-  const productIds = products
-    .map((p) => p.id)
-    .sort()
-    .join(",");
-  const filterKey = `${categoryId || "all"}-${JSON.stringify(
-    filters
-  )}-${productIds.slice(0, 50)}`;
+  const productFingerprint = `${products.length}-${products[0]?.id || ""}-${products[products.length - 1]?.id || ""}`;
+  const filterKey = `${categoryId || "all"}-${JSON.stringify(filters)}-${productFingerprint}`;
 
   return filterCache.getOrCompute(filterKey, async () => {
-    // console.log(
-    //   `[FilterCache] Computing filter result for: ${filterKey.slice(0, 100)}...`
-    // );
     const startTime = performance.now();
 
     // Use the optimized filterProducts function (now with batch inventory)
     const result = await filterProducts(products, filters);
 
     const duration = performance.now() - startTime;
-    // console.log(
-    //   `[FilterCache] Filtered ${products.length} → ${
-    //     result.length
-    //   } products in ${duration.toFixed(2)}ms`
-    // );
 
     return result;
   });
@@ -172,7 +218,6 @@ export async function filterProductsWithCache(
 
 /**
  * Parse filters from URL search params
- * ENHANCED: Now handles availability parameter
  */
 export function parseFiltersFromURL(
   searchParams: URLSearchParams
@@ -180,18 +225,21 @@ export function parseFiltersFromURL(
   // Use getAll() to handle multiple brand parameters: ?brands=A&brands=B
   const brands = searchParams.getAll("brands").filter(Boolean);
 
+  // Category IDs
+  const categories = searchParams.getAll("categories").filter(Boolean);
+
   // Parse availability parameter
   const availability = searchParams.get("availability") === "true";
 
   return {
     brands,
-    availability: availability, // Always boolean (true/false)
+    categories,
+    availability,
   };
 }
 
 /**
  * Convert filters to URL search params
- * ENHANCED: Now includes availability parameter
  */
 export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
   const params = new URLSearchParams();
@@ -201,6 +249,10 @@ export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
     filters.brands.forEach((brand) => {
       params.append("brands", brand);
     });
+  }
+
+  if (filters.categories.length > 0) {
+    filters.categories.forEach((id) => params.append("categories", id));
   }
 
   // Add availability parameter
@@ -221,25 +273,33 @@ export function updateURLWithFilters(filters: ProductFilters): void {
 
 /**
  * Get active filters count for UI badges
- * ENHANCED: Now includes availability filter
+ * ENHANCED: Now includes categories and availability filter
  */
 export function getActiveFiltersCount(filters: ProductFilters): number {
-  return filters.brands.length + (filters.availability ? 1 : 0);
+  return (
+    filters.brands.length +
+    filters.categories.length +
+    (filters.availability ? 1 : 0)
+  );
 }
 
 /**
  * Check if any filters are active
- * ENHANCED: Now includes availability filter
+ * ENHANCED: Now includes categories and availability filter
  */
 export function hasActiveFilters(filters: ProductFilters): boolean {
-  return filters.brands.length > 0 || filters.availability === true;
+  return (
+    filters.brands.length > 0 ||
+    filters.categories.length > 0 ||
+    filters.availability === true
+  );
 }
 
 /**
  * Clear all filters
  */
 export function clearAllFilters(): ProductFilters {
-  return { brands: [], availability: false };
+  return { brands: [], categories: [], availability: false };
 }
 
 /**

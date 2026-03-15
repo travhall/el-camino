@@ -317,8 +317,9 @@ export class FilterCoordinator {
     // Check if we have active filters NOW
     const urlParams = new URLSearchParams(window.location.search);
     const currentBrands = urlParams.getAll("brands") || [];
+    const currentCategories = urlParams.getAll("categories") || [];
     const currentAvailability = urlParams.get("availability") === "true";
-    const hasFilters = currentBrands.length > 0 || currentAvailability;
+    const hasFilters = currentBrands.length > 0 || currentCategories.length > 0 || currentAvailability;
 
     // Check what the filter state was BEFORE this navigation
     const previousFilterState = sessionStorage.getItem(
@@ -408,7 +409,7 @@ export class FilterCoordinator {
   private static urlHasFilters(url: string): boolean {
     try {
       const u = new URL(url, location.href);
-      return u.searchParams.has("brands") || u.searchParams.get("availability") === "true";
+      return u.searchParams.has("brands") || u.searchParams.has("categories") || u.searchParams.get("availability") === "true";
     } catch {
       return url.includes("?");
     }

@@ -46,9 +46,9 @@ const filters = parseFiltersFromURL(Astro.url.searchParams);
 // });
 
 // Check for active filters
-const hasFilters = Object.values(filters).some((f) =>
-  Array.isArray(f) ? f.length > 0 : f === true
-);
+const hasFilters = filters.brands.length > 0 ||
+                   filters.categories.length > 0 ||
+                   filters.availability === true;
 
 // console.log(`[Category] 📊 Filter Analysis:`, {
 //   hasFilters,
@@ -71,13 +71,11 @@ Astro.response.headers.set(
   "public, s-maxage=300, stale-while-revalidate=1800"
 );
 
-import type { Product } from "@/lib/square/types";
+import type { Product, FilterOptions } from "@/lib/square/types";
 
 let allProducts: Product[] = [];
 let filteredProducts: Product[] = [];
-let filterOptions = {
-  brands: [] as Array<{ name: string; count: number; slug: string }>,
-};
+let filterOptions: FilterOptions = { brands: [], categories: [] };
 
 try {
   // Fetch ALL products for infinite scroll and client-side filtering
@@ -95,7 +93,7 @@ try {
   // );
 
   // Extract filter options from all products using the same logic as shop/all
-  filterOptions = extractFilterOptions(allProducts);
+  filterOptions = await extractFilterOptions(allProducts);
 
   // console.log(`[Category] Loaded ${allProducts.length} products for filtering`);
 

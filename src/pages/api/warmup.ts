@@ -42,7 +42,7 @@ export const GET: APIRoute = async () => {
       // PHASE 2: Pre-warm common filter combinations
       // This pre-computes and caches the most frequently used filters
       const filterStart = performance.now();
-      const filterOptions = extractFilterOptions(allProducts);
+      const filterOptions = await extractFilterOptions(allProducts);
 
       // Top 5 most popular brands (by product count)
       const topBrands = filterOptions.brands.slice(0, 5);
@@ -50,18 +50,18 @@ export const GET: APIRoute = async () => {
       // Pre-warm filter cache for common scenarios:
 
       // 1. No filters (baseline - all products)
-      await filterProductsWithCache(allProducts, { brands: [], availability: false });
+      await filterProductsWithCache(allProducts, { brands: [], categories: [], availability: false });
       warmedCaches.push('filter: none');
 
       // 2. Availability only (very common filter)
-      await filterProductsWithCache(allProducts, { brands: [], availability: true });
+      await filterProductsWithCache(allProducts, { brands: [], categories: [], availability: true });
       warmedCaches.push('filter: availability');
 
       // 3. Top 5 individual brands (most likely first selections)
       for (const brand of topBrands) {
         await filterProductsWithCache(
           allProducts,
-          { brands: [brand.name], availability: false }
+          { brands: [brand.name], categories: [], availability: false }
         );
         warmedCaches.push(`filter: ${brand.name}`);
       }
@@ -70,7 +70,7 @@ export const GET: APIRoute = async () => {
       for (const brand of topBrands.slice(0, 3)) {
         await filterProductsWithCache(
           allProducts,
-          { brands: [brand.name], availability: true }
+          { brands: [brand.name], categories: [], availability: true }
         );
         warmedCaches.push(`filter: ${brand.name} + availability`);
       }

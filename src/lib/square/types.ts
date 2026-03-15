@@ -24,6 +24,9 @@ export interface Product {
   humanReadableSku?: string; // Content-creator friendly identifier
   // New: Available attributes for this product
   availableAttributes?: Record<string, string[]>;
+  // Category membership
+  categories?: string[]; // Array of Square category IDs
+  reportingCategoryId?: string; // Square reporting category ID
 }
 
 export interface ProductData {
@@ -413,13 +416,30 @@ export interface NavigationError extends AppError {
 /**
  * Product filtering interfaces
  */
+export interface CategoryFilterSubOption {
+  id: string;
+  name: string;
+  slug: string;
+  count: number;
+}
+
+export interface CategoryFilterOption {
+  id: string;
+  name: string;
+  slug: string;
+  count: number;
+  subcategories: CategoryFilterSubOption[];
+}
+
 export interface ProductFilters {
   brands: string[];
+  categories: string[];
   availability?: boolean;
 }
 
 export interface FilterOptions {
   brands: BrandOption[];
+  categories: CategoryFilterOption[];
 }
 
 export interface BrandOption {

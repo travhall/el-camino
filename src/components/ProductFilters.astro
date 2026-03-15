@@ -1,6 +1,6 @@
 ---
 // src/components/ProductFilters.astro
-import type { FilterOptions } from "@/lib/square/types";
+import type { FilterOptions, ProductFilters } from "@/lib/square/types";
 import { FilterCoordinator } from "@/lib/filterCoordinator";
 
 interface Props {
@@ -8,6 +8,7 @@ interface Props {
   totalProducts: number;
   filteredCount: number;
   categoryPath: string;
+  appliedFilters?: ProductFilters;
 }
 
 const {
@@ -15,12 +16,19 @@ const {
   totalProducts,
   filteredCount,
   categoryPath: _categoryPath,
+  appliedFilters,
 } = Astro.props;
 
 // Parse current filters from URL for server-side rendering
 const currentParams = new URLSearchParams(Astro.url.search);
-const currentBrands = currentParams.getAll("brands") || [];
-const currentAvailability = currentParams.get("availability") === "true";
+
+// Prefer appliedFilters prop (already parsed server-side), fallback to URL
+const currentBrands = appliedFilters?.brands || currentParams.getAll("brands") || [];
+const currentCategories = appliedFilters?.categories || currentParams.getAll("categories") || [];
+const currentAvailability = appliedFilters?.availability ?? (currentParams.get("availability") === "true");
+
+// Mobile badge count includes all filter types
+const totalActiveFilters = currentBrands.length + currentCategories.length + (currentAvailability ? 1 : 0);
 
 // Configuration for show more/less functionality
 const DEFAULT_VISIBLE_BRANDS = 6;
@@ -116,9 +124,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
       ></path>
     </svg>
     {
-      currentBrands.length > 0 && (
+      totalActiveFilters > 0 && (
         <span class="absolute -top-1 -right-1 bg-(--ui-button-surface) text-(--ui-button-text) font-bold text-sm rounded-full min-w-5 h-5 flex items-center justify-center px-1">
-          {currentBrands.length}
+          {totalActiveFilters}
         </span>
       )
     }
@@ -185,6 +193,17 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
           </p>
         </div>
 
+        <!-- Desktop "Clear all filters" shortcut -->
+        {(currentBrands.length > 0 || currentCategories.length > 0 || currentAvailability) && (
+          <button
+            type="button"
+            data-clear-filters
+            class="hidden lg:block text-sm text-(--ui-accent) hover:text-(--ui-accent-hover) transition-colors font-medium mb-2"
+          >
+            Clear all filters
+          </button>
+        )}
+
         <!-- Screen Reader Live Region for Filter Updates -->
         <div
           id="filter-results-live-region"
@@ -212,7 +231,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
                 <button
                   type="button"
                   id="clear-brands-button"
-                  data-clear-filters
+                  data-clear-brands
                   class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors lg:mr-2"
                 >
                   Clear ({currentBrands.length})
@@ -272,6 +291,77 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         )
       }
 
+      <!-- Category Filter Section -->
+      {filterOptions.categories.length > 0 && (
+        <div class="mb-6 lg:mb-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-2xl font-medium font-display text-(--content-heading)">
+              Category
+            </h3>
+            {currentCategories.length > 0 && (
+              <button
+                type="button"
+                id="clear-categories-button"
+                data-clear-categories
+                class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors lg:mr-2"
+              >
+                Clear ({currentCategories.length})
+              </button>
+            )}
+          </div>
+
+          <div class="space-y-1">
+            {filterOptions.categories.map((category) => {
+              const isTopSelected = currentCategories.includes(category.id);
+
+              return (
+                <div class="category-filter-group">
+                  <!-- Top-level category -->
+                  <label class="flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors">
+                    <div class="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="categories"
+                        value={category.id}
+                        checked={isTopSelected}
+                        class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                      />
+                      <span class="text-(--content-body) group-hover:text-(--content-emphasis) font-medium">
+                        {category.name}
+                      </span>
+                    </div>
+                    <span class="text-sm text-(--content-meta) lg:mr-2">({category.count})</span>
+                  </label>
+
+                  <!-- Subcategories (always visible) -->
+                  {category.subcategories.length > 0 && (
+                    <div class="pl-4 lg:pl-3 space-y-1">
+                      {category.subcategories.map((sub) => (
+                        <label class="flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors">
+                          <div class="flex items-center">
+                            <input
+                              type="checkbox"
+                              name="categories"
+                              value={sub.id}
+                              checked={currentCategories.includes(sub.id)}
+                              class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                            />
+                            <span class="text-(--content-body) group-hover:text-(--content-emphasis) text-sm">
+                              {sub.name}
+                            </span>
+                          </div>
+                          <span class="text-sm text-(--content-meta) lg:mr-2">({sub.count})</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <!-- Availability Filter Section -->
       <div class="mb-6 lg:mb-4">
         <h3
@@ -303,7 +393,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         class="flex gap-3 p-6 -mx-4 bg-(--surface-secondary) border-t-4 border-(--border-tertiary) sticky bottom-0 lg:hidden"
       >
         {
-          (currentBrands.length > 0 || currentAvailability) && (
+          totalActiveFilters > 0 && (
             <button
               type="button"
               data-clear-filters-mobile
@@ -443,6 +533,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
           }
         });
       });
+
     }
 
     private submitForm(): void {
@@ -451,9 +542,11 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
         const params = new URLSearchParams();
 
         const brands = formData.getAll("brands") as string[];
+        const categories = formData.getAll("categories") as string[];
         const availability = formData.get("availability") === "true";
 
         brands.forEach((brand) => params.append("brands", brand));
+        categories.forEach((id) => params.append("categories", id));
         if (availability) params.set("availability", "true");
 
         const queryString = params.toString();
@@ -548,19 +641,41 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
     }
 
     private setupClearButtons(): void {
-      const clearBtn = document.querySelector("[data-clear-filters]");
+      // Bug 1 fix: use querySelectorAll to handle multiple [data-clear-filters] elements
+      const clearBtns = document.querySelectorAll("[data-clear-filters]");
+      clearBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          this.clearAllFilters();
+        });
+      });
+
       const clearBtnMobile = document.querySelector(
         "[data-clear-filters-mobile]"
       );
-
-      clearBtn?.addEventListener("click", () => {
-        this.clearAllFilters();
-      });
-
       clearBtnMobile?.addEventListener("click", () => {
         // Close mobile drawer first, then clear
         this.closeMobileDrawer();
         setTimeout(() => this.clearAllFilters(), 100);
+      });
+
+      // Clear only brand filters
+      const clearBrandsBtn = document.querySelector("[data-clear-brands]");
+      clearBrandsBtn?.addEventListener("click", () => {
+        const brandCheckboxes = this.form?.querySelectorAll('input[name="brands"]') as NodeListOf<HTMLInputElement>;
+        brandCheckboxes?.forEach((cb) => { cb.checked = false; });
+        if (window.matchMedia("(min-width: 1024px)").matches) {
+          this.submitForm();
+        }
+      });
+
+      // Clear only category filters
+      const clearCategoriesBtn = document.querySelector("[data-clear-categories]");
+      clearCategoriesBtn?.addEventListener("click", () => {
+        const categoryCheckboxes = this.form?.querySelectorAll('input[name="categories"]') as NodeListOf<HTMLInputElement>;
+        categoryCheckboxes?.forEach((cb) => { cb.checked = false; });
+        if (window.matchMedia("(min-width: 1024px)").matches) {
+          this.submitForm();
+        }
       });
     }
 

@@ -55,7 +55,7 @@ describe('Cached Filter Functionality', () => {
 
   describe('Cache Performance', () => {
     it('should use cache on repeated calls with same parameters', async () => {
-      const filters: ProductFilters = { brands: ['Spitfire'] };
+      const filters: ProductFilters = { brands: ['Spitfire'], categories: [] };
       
       // First call - should compute and cache
       const result1 = await filterProductsWithCache(mockProducts, filters, 'test-category');
@@ -73,8 +73,8 @@ describe('Cached Filter Functionality', () => {
     });
 
     it('should create different cache keys for different filters', async () => {
-      const spitfireFilter: ProductFilters = { brands: ['Spitfire'] };
-      const independentFilter: ProductFilters = { brands: ['Independent'] };
+      const spitfireFilter: ProductFilters = { brands: ['Spitfire'], categories: [] };
+      const independentFilter: ProductFilters = { brands: ['Independent'], categories: [] };
       
       const result1 = await filterProductsWithCache(mockProducts, spitfireFilter, 'wheels');
       const result2 = await filterProductsWithCache(mockProducts, independentFilter, 'wheels');
@@ -84,7 +84,7 @@ describe('Cached Filter Functionality', () => {
     });
 
     it('should create different cache keys for different categories', async () => {
-      const filters: ProductFilters = { brands: ['Spitfire'] };
+      const filters: ProductFilters = { brands: ['Spitfire'], categories: [] };
       
       const result1 = await filterProductsWithCache(mockProducts, filters, 'wheels');
       const result2 = await filterProductsWithCache(mockProducts, filters, 'bearings');
@@ -97,7 +97,7 @@ describe('Cached Filter Functionality', () => {
 
   describe('Functional Equivalence', () => {
     it('should produce identical results to basic filterProducts', async () => {
-      const filters: ProductFilters = { brands: ['Spitfire'] };
+      const filters: ProductFilters = { brands: ['Spitfire'], categories: [] };
       
       const basicResult = await filterProducts(mockProducts, filters);
       const cachedResult = await filterProductsWithCache(mockProducts, filters);
@@ -106,7 +106,7 @@ describe('Cached Filter Functionality', () => {
     });
 
     it('should handle empty filters correctly', async () => {
-      const filters: ProductFilters = { brands: [] };
+      const filters: ProductFilters = { brands: [], categories: [] };
       
       const basicResult = await filterProducts(mockProducts, filters);
       const cachedResult = await filterProductsWithCache(mockProducts, filters);

@@ -240,9 +240,11 @@ export async function fetchProducts(): Promise<Product[]> {
               description: item.itemData?.description || "",
               imageId: item.itemData?.imageIds?.[0] || null,
               measurementUnitId:
-                variation?.itemVariationData?.measurementUnitId || null, // NEW: Extract measurement unit ID
+                variation?.itemVariationData?.measurementUnitId || null,
               price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
-              brand: brandValue, // Add brand extraction
+              brand: brandValue,
+              categoryIds: (item.itemData?.categories || []).map((c: any) => c.id).filter(Boolean),
+              reportingCategoryId: item.itemData?.reportingCategory?.id || null,
             };
           });
 
@@ -316,6 +318,8 @@ export async function fetchProducts(): Promise<Product[]> {
             sku: actualSku || undefined, // Square's actual SKU if present
             humanReadableSku: humanReadableSku, // Always generate for content creators
             variations: productVariations.length > 0 ? productVariations : undefined,
+            categories: p.categoryIds?.length > 0 ? p.categoryIds : undefined,
+            reportingCategoryId: p.reportingCategoryId || undefined,
           };
         });
 
