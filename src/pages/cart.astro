@@ -1320,24 +1320,25 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       radio.addEventListener("change", () => {
         // Note: radio.checked is set programmatically by FulfillmentSelector tab clicks,
         // so this "change" event only fires on rare direct user interaction (radios are sr-only).
-        // Do NOT enable the CTA here — validity is managed via updateOrderSummaryOnFulfillmentChange.
-        const total = cart.getTotal();
-        updateOrderSummary(total);
+        // Recalculation and CTA state are fully managed via updateOrderSummaryOnFulfillmentChange.
         updateMobileBar();
       });
     });
 
-    // Global hook called by FulfillmentSelector on every tab switch and field change.
-    // Receives form validity so the CTA can be gated on a complete, valid form —
-    // not just on a method being selected.
+    // Global hook called by FulfillmentSelector on tab switches, field changes, and confirmation.
+    // shouldRecalculate is only true on tab switch and form confirmation — not on every keystroke —
+    // so the API is not hit while the user is still typing.
     (window as any).updateOrderSummaryOnFulfillmentChange = (
       _method: string,
       _formData?: Record<string, string>,
       formIsValid?: boolean,
+      shouldRecalculate?: boolean,
     ) => {
       setFulfillmentValid(formIsValid === true);
-      const total = cart.getTotal();
-      updateOrderSummary(total);
+      if (shouldRecalculate) {
+        const total = cart.getTotal();
+        updateOrderSummary(total);
+      }
     };
 
     // If FulfillmentSelector already restored and collapsed a valid form on this page load

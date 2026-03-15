@@ -583,12 +583,13 @@ const progressPct = Math.min(
       summaryChip?.classList.add("flex");
       expandBtn?.setAttribute("aria-expanded", "false");
 
-      // Notify cart that the form has been saved and is valid — enable the CTA.
-      // collapseForm is only reached after validation passes, so formIsValid is always true here.
+      // Notify cart that the form has been confirmed and is valid — enable the CTA and
+      // trigger a fresh price calculation now that we have a complete address/method.
       if (typeof window.updateOrderSummaryOnFulfillmentChange === "function") {
         window.updateOrderSummaryOnFulfillmentChange(
           method,
           getFormData(method),
+          true,
           true,
         );
       }
@@ -703,10 +704,12 @@ const progressPct = Math.min(
       if (!checkedRadio) return;
       const m = checkedRadio.value as "shipping" | "pickup";
       if (typeof window.updateOrderSummaryOnFulfillmentChange === "function") {
+        // shouldRecalculate = false: only update CTA state, no API call on every keystroke
         window.updateOrderSummaryOnFulfillmentChange(
           m,
           getFormData(m),
           checkFormValidity(m),
+          false,
         );
       }
     }
@@ -872,12 +875,14 @@ const progressPct = Math.min(
         triggerUpdate &&
         typeof window.updateOrderSummaryOnFulfillmentChange === "function"
       ) {
-        // Pass current validity — switching tabs resets the effective valid state
-        // (the new form may be empty), so the cart can disable the CTA immediately.
+        // Tab switch is an intentional user action — recalculate so the sidebar
+        // reflects the newly selected method. Also resets CTA validity since the
+        // new form may be empty.
         window.updateOrderSummaryOnFulfillmentChange(
           method,
           getFormData(method),
           checkFormValidity(method),
+          true,
         );
       }
     }
