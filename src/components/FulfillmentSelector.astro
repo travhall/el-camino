@@ -54,7 +54,7 @@ const progressPct = Math.min(
       <button
         id="fulfillment-expand-btn"
         type="button"
-        class="text-xs text-(--content-emphasis) underline underline-offset-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+        class="text-xs font-semibold px-2.5 py-1 rounded border-2 border-(--surface-tertiary) text-(--content-body) hover:bg-(--surface-secondary) transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
         aria-expanded="false"
         aria-controls="fulfillment-form-panel"
       >
@@ -463,15 +463,16 @@ const progressPct = Math.min(
         </div>
       </div>
 
-      <!-- Save & close button: shown after a method is selected, on all screen sizes -->
+      <!-- Confirm button: shown after a method is selected, on all screen sizes -->
       <!-- Validates required fields before collapsing — prevents false "confirmed" state -->
+      <!-- Label is updated dynamically by JS to reflect the active method -->
       <button
         id="fulfillment-done-btn"
         type="button"
-        class="hidden w-full mt-3 py-2 text-sm font-semibold text-(--content-meta) border border-(--border-primary) rounded-sm hover:bg-(--surface-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis) transition-colors"
-        aria-label="Save fulfillment details and collapse form"
+        class="hidden w-full mt-4 py-3 px-4 text-sm font-semibold rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-2 border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
+        aria-label="Confirm fulfillment method and save details"
       >
-        Save & Close ↑
+        Confirm
       </button>
     </div>
   </fieldset>
@@ -804,8 +805,20 @@ const progressPct = Math.min(
       summaryChip?.classList.add("hidden");
       summaryChip?.classList.remove("flex"); // prevent hidden + flex conflict
 
-      // Show the "Done" collapse button on mobile (hidden by default until a tab is clicked)
-      doneBtn?.classList.remove("hidden");
+      // Show confirm button and update its label to reflect the active method
+      if (doneBtn) {
+        doneBtn.classList.remove("hidden");
+        doneBtn.textContent =
+          method === "shipping"
+            ? "Confirm — Ship to Me"
+            : "Confirm — Store Pickup";
+        doneBtn.setAttribute(
+          "aria-label",
+          method === "shipping"
+            ? "Confirm Ship to Me and save details"
+            : "Confirm Store Pickup and save details",
+        );
+      }
 
       // If summary chip was visible before, update its label for the newly chosen method
       if (summaryLabel && summaryChip) {
