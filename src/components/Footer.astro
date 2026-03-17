@@ -114,58 +114,56 @@ try {
         </a>
       </address>
 
-      <!-- Social links -->
-      <nav aria-label="Social media links" class="lg:self-end">
-        <ul class="inline-flex flex-row gap-2">
-          {
-            social.map((item) => (
-              <li>
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Visit our ${item.platform} page (opens in new tab)`}
-                  class="text-(--content-heading) hover:text-(--content-emphasis) transition-colors"
-                >
-                  <Icon
-                    name={item.icon}
-                    class="w-6 h-auto"
-                    aria-hidden="true"
-                  />
-                </a>
-              </li>
-            ))
-          }
-        </ul>
-      </nav>
+      <!-- Social links + theme toggle -->
+      <div class="flex flex-row items-center gap-3 lg:self-end">
+        <nav aria-label="Social media links">
+          <ul class="inline-flex flex-row gap-2">
+            {
+              social.map((item) => (
+                <li>
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Visit our ${item.platform} page (opens in new tab)`}
+                    class="text-(--content-heading) hover:text-(--content-emphasis) transition-colors"
+                  >
+                    <Icon
+                      name={item.icon}
+                      class="w-6 h-auto"
+                      aria-hidden="true"
+                    />
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+        <ThemeToggle />
+      </div>
     </div>
   </div>
 
-  <div
-    class="copyright flex flex-col-reverse lg:flex-row justify-between lg:py-4"
-  >
-    <div
-      class="flex flex-col-reverse md:flex-row gap-4 lg:gap-6 items-center mb-8 md:mb-0"
-    >
-      <small
-        class="block text-base text-(--content-heading) md:text-sm pt-4 md:pt-0 self-start"
-      >
-        &copy;{currentYear}
-        {siteConfig.name}, all rights reserved
+  <!-- Divider -->
+  <div class="border-t border-(--surface-tertiary) mt-2">
+    <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center py-4 gap-3">
+      <small class="block text-base text-(--content-heading) md:text-sm">
+        &copy;{currentYear} {siteConfig.name}, all rights reserved
       </small>
-      {
-        footerPages.map((page) => (
-          <button
-            type="button"
-            data-policy-slug={page.slug}
-            class="policy-modal-trigger text-base md:text-sm font-semibold self-start relative text-(--content-heading) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
-          >
-            {page.title.rendered}
-          </button>
-        ))
-      }
+      <div class="flex flex-wrap gap-4 lg:gap-6">
+        {
+          footerPages.map((page) => (
+            <button
+              type="button"
+              data-policy-slug={page.slug}
+              class="policy-modal-trigger text-base md:text-sm font-semibold relative text-(--content-heading) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
+            >
+              {page.title.rendered}
+            </button>
+          ))
+        }
+      </div>
     </div>
-    <ThemeToggle classes="mb-6 lg:mb-0" />
   </div>
 </footer>
 
