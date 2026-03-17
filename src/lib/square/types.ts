@@ -13,6 +13,7 @@ export interface Product {
   title: string;
   description?: string;
   image: string;
+  images?: string[]; // All product images (index 0 === image above)
   price: number; // For backward compatibility
   url: string;
   variations?: ProductVariation[];
@@ -81,7 +82,8 @@ export interface ProductVariation {
   price: number;
   inStock?: boolean; // Add this
   quantity?: number; // Add this
-  image?: string; // Add this
+  image?: string; // Primary (first) image URL for this variation
+  images?: string[]; // All image URLs for this variation (index 0 === image above)
   unit?: string; // Add this
   sku?: string; // SKU for this specific variation
   attributes?: Record<string, string>; // Add this

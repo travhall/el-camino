@@ -1,0 +1,156 @@
+---
+// src/components/SizeGuide.astro
+// Renders a "Size Guide" trigger button + self-contained modal for apparel PDPs.
+// Usage: <SizeGuide category="tops" /> or <SizeGuide category="bottoms" />
+
+interface Props {
+  category?: "tops" | "bottoms";
+}
+const { category = "tops" } = Astro.props;
+---
+
+<button
+  type="button"
+  id="size-guide-trigger"
+  class="text-sm font-semibold text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer ml-auto"
+  aria-label="Open size guide"
+>
+  Size Guide
+</button>
+
+<script define:vars={{ category }}>
+  function openSizeGuide() {
+    const portalRoot = document.getElementById("portal-root");
+    if (!portalRoot) return;
+
+    document.body.style.overflow = "hidden";
+
+    const topsRows = [
+      ["XS", '31–33"', '23–25"', '33–35"'],
+      ["S", '34–36"', '26–28"', '36–38"'],
+      ["M", '37–39"', '29–31"', '39–41"'],
+      ["L", '40–42"', '32–34"', '42–44"'],
+      ["XL", '43–45"', '35–37"', '45–47"'],
+      ["2XL", '46–48"', '38–40"', '48–50"'],
+    ];
+
+    const bottomsRows = [
+      ["28", '28"', '28"', '30"'],
+      ["30", '30"', '30"', '31"'],
+      ["32", '32"', '32"', '32"'],
+      ["34", '34"', '34"', '33"'],
+      ["36", '36"', '36"', '34"'],
+      ["38", '38"', '38"', '35"'],
+    ];
+
+    const isTops = category === "tops";
+    const rows = isTops ? topsRows : bottomsRows;
+    const headers = isTops
+      ? ["Size", "Chest", "Waist", "Hips"]
+      : ["Waist", "Waist (actual)", "Hip", "Inseam"];
+
+    const tableRows = rows
+      .map(
+        (r) =>
+          `<tr class="border-b border-(--border-secondary) last:border-0">
+            ${r.map((cell, i) => `<td class="py-2 px-3 text-sm ${i === 0 ? "font-semibold text-(--content-heading)" : "text-(--content-body)"}">${cell}</td>`).join("")}
+          </tr>`,
+      )
+      .join("");
+
+    const backdrop = document.createElement("div");
+    backdrop.className =
+      "fixed inset-0 bg-(--ui-modal-overlay)/90 z-[9998] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 ease-out";
+    backdrop.setAttribute("role", "dialog");
+    backdrop.setAttribute("aria-modal", "true");
+    backdrop.setAttribute("aria-labelledby", "size-guide-title");
+
+    const modal = document.createElement("div");
+    modal.className =
+      "bg-(--ui-modal-surface) text-(--ui-modal-text) border-2 border-(--ui-modal-border) rounded panel-shadow max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out";
+
+    modal.innerHTML = `
+      <div>
+        <div class="flex items-center justify-between p-5 border-b-2 border-(--border-secondary)">
+          <h2 id="size-guide-title" class="font-display text-2xl text-(--content-heading)">
+            Size Guide
+          </h2>
+          <button
+            id="size-guide-close"
+            class="p-2 border-2 border-(--border-primary) rounded-sm text-(--content-meta) hover:text-(--content-heading) hover:border-(--ui-nav-border) transition-all"
+            aria-label="Close size guide"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="p-5">
+          <p class="text-xs text-(--content-meta) mb-4 uppercase tracking-widest">
+            ${isTops ? "Tops &amp; Outerwear" : "Bottoms &amp; Pants"} — measurements in inches
+          </p>
+          <div class="overflow-x-auto -mx-1">
+            <table class="w-full min-w-[280px]">
+              <thead>
+                <tr class="border-b-2 border-(--border-primary)">
+                  ${headers.map((h) => `<th class="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider text-(--content-meta)">${h}</th>`).join("")}
+                </tr>
+              </thead>
+              <tbody>${tableRows}</tbody>
+            </table>
+          </div>
+          <p class="mt-4 text-xs text-(--content-meta) italic">
+            Measurements are approximate. When between sizes, we recommend sizing up.
+          </p>
+        </div>
+      </div>
+    `;
+
+    backdrop.appendChild(modal);
+    portalRoot.appendChild(backdrop);
+
+    requestAnimationFrame(() => {
+      backdrop.classList.remove("opacity-0");
+      modal.classList.remove("scale-95", "opacity-0");
+      modal.classList.add("scale-100", "opacity-100");
+    });
+
+    const closeBtn = modal.querySelector("#size-guide-close");
+
+    const close = () => {
+      backdrop.classList.add("opacity-0");
+      modal.classList.remove("scale-100", "opacity-100");
+      modal.classList.add("scale-95", "opacity-0");
+      document.removeEventListener("keydown", onKey);
+      setTimeout(() => {
+        backdrop.remove();
+        document.body.style.overflow = "unset";
+      }, 300);
+    };
+
+    const onKey = (e) => {
+      if (e.key === "Escape") close();
+    };
+
+    closeBtn?.addEventListener("click", close);
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) close();
+    });
+    document.addEventListener("keydown", onKey);
+    closeBtn?.focus();
+  }
+
+  function init() {
+    const trigger = document.getElementById("size-guide-trigger");
+    if (!trigger || trigger.dataset.initialized) return;
+    trigger.dataset.initialized = "true";
+    trigger.addEventListener("click", openSizeGuide);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+  document.addEventListener("astro:page-load", init);
+</script>

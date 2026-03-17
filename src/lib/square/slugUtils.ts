@@ -98,8 +98,12 @@ export function createSEOTitle(
 ): string {
   let title = product.title;
 
+  // Only prepend brand if the title doesn't already start with it
   if (product.brand) {
-    title = `${product.brand} ${title}`;
+    const brandPrefix = product.brand.toLowerCase() + " ";
+    if (!title.toLowerCase().startsWith(brandPrefix)) {
+      title = `${product.brand} ${title}`;
+    }
   }
 
   if (variation && variation.name && variation.name !== product.title) {

@@ -92,11 +92,12 @@ describe('Filter Basic Functionality', () => {
 
   describe('Availability Filtering', () => {
     it('should handle availability filtering', async () => {
-      const filters: ProductFilters = { 
+      const filters: ProductFilters = {
         brands: ['Spitfire'],
-        availability: true 
+        categories: [],
+        availability: true
       };
-      
+
       // The function should work even if individual inventory checks are made
       const result = await filterProducts(mockProducts, filters);
       
@@ -105,8 +106,9 @@ describe('Filter Basic Functionality', () => {
     });
 
     it('should work without availability filtering', async () => {
-      const filters: ProductFilters = { 
-        brands: ['Spitfire'] 
+      const filters: ProductFilters = {
+        brands: ['Spitfire'],
+        categories: []
       };
       
       const result = await filterProducts(mockProducts, filters);
@@ -117,11 +119,12 @@ describe('Filter Basic Functionality', () => {
 
   describe('Combined Filtering', () => {
     it('should handle multiple filter types together', async () => {
-      const filters: ProductFilters = { 
+      const filters: ProductFilters = {
         brands: ['Spitfire'],
-        availability: true 
+        categories: [],
+        availability: true
       };
-      
+
       const result = await filterProducts(mockProducts, filters);
       
       // Should filter by brand first at minimum

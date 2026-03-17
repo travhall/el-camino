@@ -315,29 +315,26 @@ export class PDPEventManager {
   }
 
   private setupLocationModal(): void {
-    const locationLink = document.getElementById("location-hours-link");
-    if (locationLink) {
-      // Check if already has a click handler by looking for a data attribute
-      if (locationLink.getAttribute("data-modal-initialized") === "true") {
-        // console.log('Location modal already initialized by PDP, skipping PDPEventManager setup');
-        return;
-      }
+    // Wire up any element with data-modal-initialized not yet set that triggers location modal
+    const triggers = [
+      document.getElementById("location-hours-link"),
+      document.getElementById("local-pickup-trigger"),
+    ].filter(Boolean) as HTMLElement[];
 
-      // Remove any existing listeners to prevent duplicates
-      const newLocationLink = locationLink.cloneNode(true) as HTMLElement;
-      locationLink.parentNode?.replaceChild(newLocationLink, locationLink);
+    triggers.forEach((trigger) => {
+      if (trigger.getAttribute("data-modal-initialized") === "true") return;
 
-      // Mark as initialized
-      newLocationLink.setAttribute("data-modal-initialized", "true");
+      // Clone to remove any stale listeners
+      const newTrigger = trigger.cloneNode(true) as HTMLElement;
+      trigger.parentNode?.replaceChild(newTrigger, trigger);
+      newTrigger.setAttribute("data-modal-initialized", "true");
 
-      // Add event listener to the cloned element
-      newLocationLink.addEventListener("click", (e) => {
+      newTrigger.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        // console.log('Location link clicked, calling showLocationModal');
         window.showLocationModal();
       });
-    }
+    });
   }
 
   cleanup(): void {

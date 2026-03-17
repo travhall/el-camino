@@ -118,10 +118,12 @@ export function generateOGData(
     ? product.image
     : `${baseUrl}${product.image}`;
 
-  // Build title with brand
-  const title = product.brand
-    ? `${product.brand} ${product.title}`
-    : product.title;
+  // Build title with brand (guard against brand already being in the title)
+  const brandPrefix = product.brand ? product.brand.toLowerCase() + " " : "";
+  const title =
+    product.brand && !product.title.toLowerCase().startsWith(brandPrefix)
+      ? `${product.brand} ${product.title}`
+      : product.title;
 
   // Build description
   const description =
@@ -162,9 +164,11 @@ export function generateTwitterCardData(
     ? product.image
     : `${baseUrl}${product.image}`;
 
-  const title = product.brand
-    ? `${product.brand} ${product.title}`
-    : product.title;
+  const brandPrefix2 = product.brand ? product.brand.toLowerCase() + " " : "";
+  const title =
+    product.brand && !product.title.toLowerCase().startsWith(brandPrefix2)
+      ? `${product.brand} ${product.title}`
+      : product.title;
 
   const description =
     product.description || `${title} - Available at El Camino Skate Shop`;

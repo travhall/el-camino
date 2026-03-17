@@ -3,6 +3,9 @@ import Layout from "@/layouts/Layout.astro";
 import Button from "@/components/Button.astro";
 import Modal from "@/components/Modal.astro";
 import RecentlyViewed from "@/components/RecentlyViewed.astro";
+import RelatedProducts from "@/components/RelatedProducts.astro";
+import SizeGuide from "@/components/SizeGuide.astro";
+import BackInStock from "@/components/BackInStock.astro";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import { fetchProduct, fetchProducts } from "@/lib/square/client";
 import { MoneyUtils } from "@/lib/square/money";
@@ -243,8 +246,37 @@ const productSchema = generateProductSchema(
 const ogData = generateOGData(product, selectedVariation, baseUrl);
 const twitterData = generateTwitterCardData(product, baseUrl);
 
+// Fetch related products (same brand first, then same category — capped at 8)
+let relatedProducts: Product[] = [];
+try {
+  const allProducts = allProductsCache ?? (await fetchProducts());
+  const sameBrand = product.brand
+    ? allProducts.filter(
+        (p) => p.id !== product.id && p.brand === product.brand,
+      )
+    : [];
+  const sameCategory = product.categories?.length
+    ? allProducts.filter(
+        (p) =>
+          p.id !== product.id &&
+          (!product.brand || p.brand !== product.brand) &&
+          p.categories?.some((c) => product.categories?.includes(c)),
+      )
+    : [];
+  relatedProducts = [...sameBrand, ...sameCategory].slice(0, 8);
+} catch {
+  // Non-critical — page renders fine without related products
+}
+
 // Set product metadata
 const pageTitle = product.title;
+
+// Strip brand prefix from the display title so the H1 doesn't read "Brand Brand Product"
+const displayTitle =
+  product.brand &&
+  product.title.toLowerCase().startsWith(product.brand.toLowerCase() + " ")
+    ? product.title.slice(product.brand.length + 1)
+    : product.title;
 const selectedVariationForSEO =
   variantParam && product.variations
     ? product.variations.find(
@@ -267,6 +299,28 @@ if (breadcrumbPath && breadcrumbPath.items.length > 1) {
     if (match) {
       activeCategory = match[1];
     }
+  }
+}
+
+// Determine if a size guide should be shown (apparel only)
+type SizeGuideCategory = "tops" | "bottoms" | null;
+let sizeGuideCategory: SizeGuideCategory = null;
+if (breadcrumbPath) {
+  const slugs = breadcrumbPath.items.map((i) => i.url);
+  if (slugs.some((s) => s.includes("bottoms") || s.includes("pants"))) {
+    sizeGuideCategory = "bottoms";
+  } else if (
+    slugs.some(
+      (s) =>
+        s.includes("tees") ||
+        s.includes("tops") ||
+        s.includes("apparel") ||
+        s.includes("hoodies") ||
+        s.includes("sweatshirts") ||
+        s.includes("jackets"),
+    )
+  ) {
+    sizeGuideCategory = "tops";
   }
 }
 
@@ -367,35 +421,70 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     <div
       class="lg:grid lg:grid-cols-2 lg:gap-x-8 xl:gap-x-12 2xl:gap-x-16 items-start"
     >
-      <!-- Product Image -->
-      <div
-        id="product-image-container"
-        class="aspect-square md:aspect-video lg:aspect-square border-4 border-(--border-primary) overflow-hidden bg-(--surface-secondary) relative"
-      >
-        <!-- Loading placeholder with logo -->
+      <!-- Product Image (+ thumbnail gallery when multiple images exist) -->
+      <div class="flex flex-col gap-3">
         <div
-          class="loading-skeleton loading-image absolute inset-0 w-full h-full"
-          id="pdp-image-placeholder"
-          aria-hidden="true"
+          id="product-image-container"
+          class="aspect-square md:aspect-video lg:aspect-square border-4 border-(--border-primary) overflow-hidden bg-(--surface-secondary) relative"
         >
-          <!-- El Camino logo using data URI -->
+          <!-- Loading placeholder with logo -->
           <div
-            class="absolute inset-0 flex items-center justify-center"
-            style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
+            class="loading-skeleton loading-image absolute inset-0 w-full h-full"
+            id="pdp-image-placeholder"
+            aria-hidden="true"
           >
+            <!-- El Camino logo using data URI -->
+            <div
+              class="absolute inset-0 flex items-center justify-center"
+              style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
+            >
+            </div>
           </div>
-        </div>
 
-        {
-          imageSet ? (
-            <picture>
-              {/* AVIF format (best compression) */}
-              {imageSet.avif && (
-                <source
-                  type="image/avif"
+          {
+            imageSet ? (
+              <picture>
+                {/* AVIF format (best compression) */}
+                {imageSet.avif && (
+                  <source
+                    type="image/avif"
+                    srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+                      product.image,
+                      "avif",
+                      {
+                        width: 800,
+                        height: 800,
+                        quality: 85,
+                      },
+                    )}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
+                  />
+                )}
+
+                {/* WebP format (good compression) */}
+                {imageSet.webp && (
+                  <source
+                    type="image/webp"
+                    srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+                      product.image,
+                      "webp",
+                      {
+                        width: 800,
+                        height: 800,
+                        quality: 85,
+                      },
+                    )}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
+                  />
+                )}
+
+                {/* JPEG fallback */}
+                <img
+                  id="product-image"
+                  src={imageSet.jpeg}
                   srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
                     product.image,
-                    "avif",
+                    "jpeg",
                     {
                       width: 800,
                       height: 800,
@@ -403,92 +492,100 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                     },
                   )}
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
+                  alt={product.title}
+                  class={`w-full h-full object-cover opacity-0 transition-opacity duration-300 ${!selectedVariationInStock ? "opacity-75" : ""}`}
+                  width="800"
+                  height="800"
+                  loading="eager"
+                  fetchpriority="high"
+                  decoding="sync"
+                  data-placeholder-id="pdp-image-placeholder"
+                  onload="this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()"
+                  onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()`}
+                  role="img"
+                  aria-label={product.title || "Product image"}
                 />
-              )}
-
-              {/* WebP format (good compression) */}
-              {imageSet.webp && (
-                <source
-                  type="image/webp"
-                  srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
-                    product.image,
-                    "webp",
-                    {
-                      width: 800,
-                      height: 800,
-                      quality: 85,
-                    },
-                  )}
-                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
-                />
-              )}
-
-              {/* JPEG fallback */}
+              </picture>
+            ) : (
               <img
                 id="product-image"
-                src={imageSet.jpeg}
-                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
-                  product.image,
-                  "jpeg",
-                  {
-                    width: 800,
-                    height: 800,
-                    quality: 85,
-                  },
-                )}
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
+                src={EL_CAMINO_LOGO_DATA_URI}
                 alt={product.title}
-                class={`w-full h-full object-cover opacity-0 transition-opacity duration-300 ${!selectedVariationInStock ? "opacity-75" : ""}`}
+                class={`w-full h-full object-contain opacity-100 ${!selectedVariationInStock ? "opacity-75" : ""}`}
                 width="800"
                 height="800"
                 loading="eager"
-                fetchpriority="high"
-                decoding="sync"
-                data-placeholder-id="pdp-image-placeholder"
-                onload="this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()"
-                onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove()`}
                 role="img"
                 aria-label={product.title || "Product image"}
               />
-            </picture>
-          ) : (
-            <img
-              id="product-image"
-              src={EL_CAMINO_LOGO_DATA_URI}
-              alt={product.title}
-              class={`w-full h-full object-contain opacity-100 ${!selectedVariationInStock ? "opacity-75" : ""}`}
-              width="800"
-              height="800"
-              loading="eager"
-              role="img"
-              aria-label={product.title || "Product image"}
-            />
-          )
-        }
+            )
+          }
 
-        <!-- Initial overlay (updated by JavaScript on variation change) -->
-        {
-          !selectedVariationInStock ? (
-            <div
-              data-overlay="stock"
-              class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-base font-bold rounded-br-sm"
-            >
-              Sold Out
-            </div>
-          ) : isOnSale && saleInfo ? (
-            <div
-              data-overlay="sale"
-              class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-base font-bold rounded-br-sm"
-            >
-              {saleInfo.discountPercent}% Off
-            </div>
-          ) : null
-        }
-      </div>
+          <!-- Initial overlay (updated by JavaScript on variation change) -->
+          {
+            !selectedVariationInStock ? (
+              <div
+                data-overlay="stock"
+                class="absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-base font-bold rounded-br-sm"
+              >
+                Sold Out
+              </div>
+            ) : isOnSale && saleInfo ? (
+              <div
+                data-overlay="sale"
+                class="absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-base font-bold rounded-br-sm"
+              >
+                {saleInfo.discountPercent}% Off
+              </div>
+            ) : null
+          }
+        </div>
+
+        <!-- Thumbnail strip — always rendered; JS updates it on variant change -->
+        <div
+          id="gallery-thumbnails"
+          class:list={[
+            "flex gap-2 overflow-x-auto pb-1",
+            !selectedVariation?.images || selectedVariation.images.length <= 1
+              ? "hidden"
+              : "",
+          ]}
+          role="list"
+          aria-label="Product images"
+        >
+          {
+            selectedVariation?.images &&
+              selectedVariation.images.length > 1 &&
+              selectedVariation.images.map((imgUrl, i) => (
+                <button
+                  type="button"
+                  role="listitem"
+                  class:list={[
+                    "gallery-thumb shrink-0 w-16 h-16 border-2 overflow-hidden bg-(--surface-secondary) transition-all",
+                    i === 0
+                      ? "border-(--ui-button-border) opacity-100"
+                      : "border-(--border-secondary) opacity-60 hover:opacity-100 hover:border-(--border-primary)",
+                  ]}
+                  data-gallery-src={imgUrl}
+                  aria-label={`View image ${i + 1}`}
+                  aria-pressed={i === 0 ? "true" : "false"}
+                >
+                  <img
+                    src={imgUrl}
+                    alt={`${product.title} — image ${i + 1}`}
+                    class="w-full h-full object-cover"
+                    loading={i < 3 ? "eager" : "lazy"}
+                    width="64"
+                    height="64"
+                  />
+                </button>
+              ))
+          }
+        </div>
+      </div><!-- end gallery wrapper -->
 
       <!-- Product Info -->
       <div class="product-info mt-4 xl:mt-0 max-w-xl">
-        <!-- Breadcrumbs -->
         {breadcrumbPath && <Breadcrumbs breadcrumbPath={breadcrumbPath} />}
         <h1
           class="flex flex-col font-display font-bold text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl leading-[0.8] text-(--content-heading) text-balance mt-4 lg:mt-8"
@@ -499,7 +596,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
               <span class="text-xl font-bold uppercase">{product.brand}</span>
             )
           }
-          {product.title}
+          {displayTitle}
         </h1>
 
         <!-- Price Display -->
@@ -548,9 +645,12 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
 
                 return (
                   <div class="mt-6">
-                    <label class="text-sm font-medium block mb-1">
-                      {displayName}
-                    </label>
+                    <div class="flex items-center mb-1">
+                      <label class="text-sm font-medium">{displayName}</label>
+                      {sizeGuideCategory && attributeType === "size" && (
+                        <SizeGuide category={sizeGuideCategory} />
+                      )}
+                    </div>
                     <div class="flex flex-wrap gap-2">
                       {attributeValues.map((value) => {
                         const isAvailable = variations.some((variation) => {
@@ -558,6 +658,9 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                             return false;
                           return variation.attributes[attributeType] === value;
                         });
+                        const isSelected =
+                          selectedVariation?.attributes?.[attributeType] ===
+                          value;
 
                         return (
                           <button
@@ -565,11 +668,18 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                             data-attribute-type={attributeType}
                             data-attribute-value={value}
                             class:list={[
-                              "px-2.5 py-1.5 border rounded-sm attribute-button cursor-pointer",
-                              "bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50",
-                              !isAvailable && "opacity-50",
+                              "px-2.5 py-1.5 rounded-sm attribute-button cursor-pointer relative",
+                              isSelected
+                                ? "border border-(--ui-variant-selected-border) bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text)"
+                                : "border border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text)",
+                              !isAvailable &&
+                                "opacity-40 line-through cursor-not-allowed",
                             ]}
                             disabled={!isAvailable}
+                            title={!isAvailable ? "Out of stock" : undefined}
+                            aria-label={
+                              !isAvailable ? `${value} — out of stock` : value
+                            }
                           >
                             {value}
                           </button>
@@ -581,7 +691,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
               })
         }
 
-        <!-- Single attribute display (when not varying) -->
+        <!-- Single attribute display (rendered as a selected, non-interactive button for visual consistency) -->
         {
           !hasMultipleVariations &&
             attributeTypes.length > 0 &&
@@ -590,13 +700,23 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
               const displayName = getAttributeDisplayName(attributeType);
 
               return (
-                <div class="mt-2 flex flex-wrap gap-2">
-                  <span class="text-lg font-medium text-(--content-heading)">
-                    {displayName}:
-                  </span>
-                  <span class="text-lg font-bold text-(--content-emphasis)">
-                    {attributeValues[0]}
-                  </span>
+                <div class="mt-6">
+                  <div class="flex items-center mb-1">
+                    <label class="text-sm font-medium">{displayName}</label>
+                    {sizeGuideCategory && attributeType === "size" && (
+                      <SizeGuide category={sizeGuideCategory} />
+                    )}
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    {attributeValues.map((value) => (
+                      <span
+                        class="px-2.5 py-1.5 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default"
+                        aria-label={`${displayName}: ${value}`}
+                      >
+                        {value}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               );
             })
@@ -623,7 +743,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                     class:list={[
                       "px-4 py-2 border rounded-sm cursor-pointer",
                       variation.variationId === defaultVariationId
-                        ? "bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border)/50"
+                        ? "bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)"
                         : "bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50",
                       !variation.inStock && "opacity-75",
                     ]}
@@ -637,39 +757,47 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           )
         }
 
-        <!-- Quantity Input -->
+        <!-- Quantity Input — only shown when more than 1 unit is available -->
         {
           selectedVariationInStock && (
             <div class="mt-6">
               <div class="flex flex-col space-y-2 items-start">
-                <label for="quantity-input" class="text-sm font-medium">
-                  Quantity
-                </label>
-                <div class="flex border border-(--ui-input-border)/50 rounded-sm overflow-hidden">
-                  <button
-                    type="button"
-                    id="decrease-quantity"
-                    class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
-                    disabled={true}
+                <div
+                  id="quantity-stepper"
+                  class:list={[selectedVariationQuantity <= 1 ? "hidden" : ""]}
+                >
+                  <label
+                    for="quantity-input"
+                    class="text-sm font-medium mb-2 block"
                   >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    id="quantity-input"
-                    min="1"
-                    max={selectedVariationQuantity}
-                    value="1"
-                    class="w-14 h-10 text-center bg-(--surface-primary) text-(--ui-input-text) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                  <button
-                    type="button"
-                    id="increase-quantity"
-                    class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
-                    disabled={selectedVariationQuantity <= 1}
-                  >
-                    +
-                  </button>
+                    Quantity
+                  </label>
+                  <div class="flex border border-(--ui-input-border)/50 rounded-sm overflow-hidden">
+                    <button
+                      type="button"
+                      id="decrease-quantity"
+                      class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
+                      disabled={true}
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      id="quantity-input"
+                      min="1"
+                      max={selectedVariationQuantity}
+                      value="1"
+                      class="w-14 h-10 text-center bg-(--surface-primary) text-(--ui-input-text) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="button"
+                      id="increase-quantity"
+                      class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
+                      disabled={selectedVariationQuantity <= 1}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
                 <div id="availability-indicator" class="text-sm">
                   <span class="text-(--content-meta)" id="remaining-count">
@@ -723,17 +851,14 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           </Button>
         </div>
 
-        <!-- Store Information -->
-        <div class="text-sm flex flex-col mt-4 space-y-1 py-2">
-          <span class="italic">Available for pick up at El Camino</span>
-          <button
-            id="location-hours-link"
-            class="relative inline-flex self-start font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all"
-            type="button"
-          >
-            Store Location &amp; Hours
-          </button>
-        </div>
+        <!-- Back-in-Stock capture — always in DOM so JS can show/hide on variant switch -->
+        <BackInStock
+          productId={product.id}
+          variationId={defaultVariationId}
+          productTitle={displayTitle}
+          variationName={selectedVariation?.name}
+          hidden={selectedVariationInStock}
+        />
 
         <!-- Product Description -->
         {
@@ -745,12 +870,137 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
             </div>
           )
         }
+
+        <!-- Trust Signals -->
+        <div class="mt-6 border-t border-(--border-secondary)">
+          <p
+            class="text-xs uppercase tracking-widest text-(--content-meta) mb-2.5"
+          >
+            Why shop with El Camino?
+          </p>
+          <div
+            class="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-(--content-meta)"
+          >
+            <button
+              type="button"
+              id="easy-returns-trigger"
+              class="flex items-center gap-1.5 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
+              aria-label="View return policy"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                ><polyline points="23 4 23 10 17 10"></polyline><polyline
+                  points="1 20 1 14 7 14"></polyline><path
+                  d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                ></path></svg
+              >
+              Easy returns
+            </button>
+            <button
+              id="local-pickup-trigger"
+              type="button"
+              class="flex items-center gap-1.5 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
+              aria-label="View store location and hours"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                ><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"
+                ></path><circle cx="12" cy="10" r="3"></circle></svg
+              >
+              Local pickup available
+            </button>
+            <button
+              type="button"
+              id="secure-checkout-trigger"
+              class="flex items-center gap-1.5 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
+              aria-label="Learn about our secure checkout"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                ><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                ></path></svg
+              >
+              Secure checkout
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
+  <!-- Related Products Section -->
+  {
+    relatedProducts.length > 0 && (
+      <section class="px-4 sm:px-6 lg:px-8 pb-4">
+        <RelatedProducts
+          products={relatedProducts}
+          title={
+            product.brand ? `More from ${product.brand}` : "You Might Also Like"
+          }
+        />
+      </section>
+    )
+  }
+
   <!-- Recently Viewed Section -->
   <RecentlyViewed currentProductId={product.id} />
+
+  <!-- Sticky mobile ATC bar — hidden on lg+ screens -->
+  <div
+    id="sticky-atc-bar"
+    class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-(--surface-primary) border-t-2 border-(--border-primary) p-3 flex items-center gap-3 translate-y-full transition-transform duration-300 shadow-lg"
+    aria-hidden="true"
+  >
+    <div class="flex-1 min-w-0">
+      <p class="text-sm text-(--content-meta) truncate">
+        {product.brand ?? ""}
+      </p>
+      <p class="text-base font-semibold text-(--content-heading) truncate">
+        {displayTitle}
+      </p>
+      <p
+        id="sticky-price"
+        class="text-xl font-display font-bold text-(--content-emphasis)"
+      >
+        {formattedPrice}
+      </p>
+    </div>
+    <button
+      type="button"
+      id="sticky-atc-button"
+      class="shrink-0 px-5 h-11 font-sans font-semibold text-sm rounded-sm bg-(--ui-button-surface) text-(--ui-button-text) border-2 border-(--ui-button-border) disabled:opacity-50 disabled:cursor-not-allowed enabled:cursor-pointer transition-opacity"
+      disabled={!selectedVariationInStock}
+    >
+      {selectedVariationInStock ? "Add to Cart" : "Sold Out"}
+    </button>
+  </div>
 
   <Modal />
 </Layout>
@@ -803,14 +1053,150 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     }
   }
 
-  function setupLocationModal(): void {
-    const locationLink = document.getElementById("location-hours-link");
-    if (locationLink) {
-      if (locationLink.getAttribute("data-modal-initialized") === "true") {
-        return;
+  function setupGallery(): void {
+    const container = document.getElementById("gallery-thumbnails");
+    if (!container) return;
+
+    // Use event delegation so this handler works even after JS rebuilds the thumbs
+    if (container.dataset.galleryReady) return; // only attach once per page load
+    container.dataset.galleryReady = "true";
+
+    container.addEventListener("click", (e) => {
+      const thumb = (e.target as Element).closest<HTMLButtonElement>(
+        ".gallery-thumb",
+      );
+      if (!thumb) return;
+
+      const src = thumb.dataset.gallerySrc;
+      const mainImage = document.getElementById(
+        "product-image",
+      ) as HTMLImageElement | null;
+      if (!src || !mainImage) return;
+
+      // Update active thumb styles
+      container
+        .querySelectorAll<HTMLButtonElement>(".gallery-thumb")
+        .forEach((t) => {
+          t.classList.remove("border-(--ui-button-border)", "opacity-100");
+          t.classList.add("border-(--border-secondary)", "opacity-60");
+          t.setAttribute("aria-pressed", "false");
+        });
+      thumb.classList.add("border-(--ui-button-border)", "opacity-100");
+      thumb.classList.remove("border-(--border-secondary)", "opacity-60");
+      thumb.setAttribute("aria-pressed", "true");
+
+      // Crossfade the main image
+      mainImage.classList.remove("opacity-100");
+      mainImage.classList.add("opacity-0");
+      // Clear srcset so <picture> source tags don't override the new src
+      mainImage.removeAttribute("srcset");
+      mainImage.src = src;
+      // Handle cached images where onload won't fire
+      if (mainImage.complete && mainImage.naturalWidth > 0) {
+        mainImage.classList.remove("opacity-0");
+        mainImage.classList.add("opacity-100");
+      } else {
+        mainImage.onload = () => {
+          mainImage.classList.remove("opacity-0");
+          mainImage.classList.add("opacity-100");
+        };
+        mainImage.onerror = () => {
+          mainImage.classList.remove("opacity-0");
+          mainImage.classList.add("opacity-100");
+        };
       }
-      locationLink.setAttribute("data-modal-initialized", "true");
-      locationLink.addEventListener("click", (e) => {
+    });
+  }
+
+  function setupStickyATC(): void {
+    const stickyBar = document.getElementById("sticky-atc-bar");
+    const stickyBtn = document.getElementById(
+      "sticky-atc-button",
+    ) as HTMLButtonElement | null;
+    const mainBtn = document.getElementById(
+      "add-to-cart-button",
+    ) as HTMLButtonElement | null;
+
+    if (!stickyBar || !mainBtn) return;
+
+    // Show sticky bar when the main ATC button scrolls out of view
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const visible = entry.isIntersecting;
+        stickyBar.classList.toggle("translate-y-full", visible);
+        stickyBar.setAttribute("aria-hidden", visible ? "true" : "false");
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(mainBtn);
+
+    // Proxy clicks from sticky button to main ATC button
+    stickyBtn?.addEventListener("click", () => {
+      mainBtn.click();
+    });
+
+    // Keep sticky button state in sync with main button
+    const syncStickyState = () => {
+      if (!stickyBtn || !mainBtn) return;
+      stickyBtn.disabled = mainBtn.disabled;
+      stickyBtn.textContent = mainBtn.textContent;
+      const priceEl = document.getElementById("sticky-price");
+      const mainPrice = document.getElementById("price-display");
+      if (priceEl && mainPrice) priceEl.textContent = mainPrice.textContent;
+    };
+
+    // Observe main button mutations for text/disabled changes
+    const mutationObs = new MutationObserver(syncStickyState);
+    mutationObs.observe(mainBtn, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }
+
+  function setupPolicyTriggers(): void {
+    // Easy returns → return policy modal
+    const returnsTrigger = document.getElementById("easy-returns-trigger");
+    if (
+      returnsTrigger &&
+      returnsTrigger.getAttribute("data-modal-initialized") !== "true"
+    ) {
+      returnsTrigger.setAttribute("data-modal-initialized", "true");
+      returnsTrigger.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const open = () => window.showPolicyModal?.("return-policy");
+        if (typeof window.showPolicyModal === "function") open();
+        else setTimeout(open, 100);
+      });
+    }
+
+    // Secure checkout → security assurance modal
+    const secureTrigger = document.getElementById("secure-checkout-trigger");
+    if (
+      secureTrigger &&
+      secureTrigger.getAttribute("data-modal-initialized") !== "true"
+    ) {
+      secureTrigger.setAttribute("data-modal-initialized", "true");
+      secureTrigger.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const open = () => window.showSecureCheckoutModal?.();
+        if (typeof window.showSecureCheckoutModal === "function") open();
+        else setTimeout(open, 100);
+      });
+    }
+  }
+
+  function setupLocationModal(): void {
+    const triggerIds = ["location-hours-link", "local-pickup-trigger"];
+    triggerIds.forEach((triggerId) => {
+      const trigger = document.getElementById(triggerId);
+      if (!trigger) return;
+      if (trigger.getAttribute("data-modal-initialized") === "true") return;
+      trigger.setAttribute("data-modal-initialized", "true");
+      trigger.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (typeof window.showLocationModal === "function") {
@@ -823,7 +1209,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           }, 100);
         }
       });
-    }
+    });
   }
 
   function initializePage() {
@@ -870,6 +1256,9 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
       }
 
       setupLocationModal();
+      setupPolicyTriggers();
+      setupStickyATC();
+      setupGallery();
     }
   }
 

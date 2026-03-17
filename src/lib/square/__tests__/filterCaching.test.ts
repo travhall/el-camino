@@ -116,9 +116,10 @@ describe('Cached Filter Functionality', () => {
     });
 
     it('should handle availability filtering', async () => {
-      const filters: ProductFilters = { 
+      const filters: ProductFilters = {
         brands: ['Spitfire'],
-        availability: true 
+        categories: [],
+        availability: true
       };
       
       const basicResult = await filterProducts(mockProducts, filters);

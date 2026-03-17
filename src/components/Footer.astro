@@ -25,6 +25,19 @@ try {
 }
 ---
 
+<!-- Pre-fetched legal pages for the policy modal — read by showPolicyModal() -->
+<script
+  id="legal-pages-data"
+  type="application/json"
+  set:html={JSON.stringify(
+    footerPages.map((p) => ({
+      slug: p.slug,
+      title: p.title,
+      content: p.content,
+    }))
+  )}
+></script>
+
 <footer
   class="p-4 w-full bg-(--surface-secondary) border-4 border-(--border-secondary) border-t-0 z-0"
 >
@@ -140,15 +153,39 @@ try {
       </small>
       {
         footerPages.map((page) => (
-          <a
-            href={`/legal/${page.slug}`}
-            class="text-base md:text-sm font-semibold self-start relative text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all"
+          <button
+            type="button"
+            data-policy-slug={page.slug}
+            class="policy-modal-trigger text-base md:text-sm font-semibold self-start relative text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
           >
             {page.title.rendered}
-          </a>
+          </button>
         ))
       }
     </div>
     <ThemeToggle classes="mb-6 lg:mb-0" />
   </div>
 </footer>
+
+<script>
+  function setupPolicyTriggers() {
+    document.querySelectorAll<HTMLButtonElement>(".policy-modal-trigger").forEach((btn) => {
+      if (btn.getAttribute("data-policy-initialized") === "true") return;
+      btn.setAttribute("data-policy-initialized", "true");
+      btn.addEventListener("click", () => {
+        const slug = btn.dataset.policySlug;
+        if (slug && typeof window.showPolicyModal === "function") {
+          window.showPolicyModal(slug);
+        }
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupPolicyTriggers);
+  } else {
+    setupPolicyTriggers();
+  }
+
+  document.addEventListener("astro:page-load", setupPolicyTriggers);
+</script>

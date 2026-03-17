@@ -111,6 +111,16 @@ export class PDPUIManager {
     if (increaseButton) {
       increaseButton.disabled = isDisabled || defaultQty >= maxQty;
     }
+
+    // Show stepper only when there's more than 1 unit to choose from
+    const stepper = document.getElementById("quantity-stepper");
+    if (stepper) {
+      if (info.state === ProductAvailabilityState.AVAILABLE && maxQty > 1) {
+        stepper.classList.remove("hidden");
+      } else {
+        stepper.classList.add("hidden");
+      }
+    }
   }
 
   updateAddToCartButton(info: ProductAvailabilityInfo): void {
@@ -279,12 +289,18 @@ export class PDPUIManager {
 
         // Update availability styling
         if (!isAvailable) {
-          btn.classList.add("opacity-50");
+          btn.classList.add("opacity-40", "line-through", "cursor-not-allowed");
+          btn.classList.remove("opacity-100");
+          btn.title = "Out of stock";
+          btn.setAttribute("aria-label", `${value} — out of stock`);
         } else {
-          btn.classList.remove("opacity-50");
+          btn.classList.remove("opacity-40", "line-through", "cursor-not-allowed");
+          btn.title = "";
+          btn.setAttribute("aria-label", value);
         }
 
-        // Update selected state
+        // Update selected state — use dedicated variant-selected token
+        // (visually distinct from the primary CTA button)
         if (isSelected) {
           btn.classList.remove(
             "bg-(--ui-input-surface)",
@@ -292,20 +308,20 @@ export class PDPUIManager {
             "border-(--ui-input-border)/50"
           );
           btn.classList.add(
-            "bg-(--ui-button-surface)",
-            "text-(--ui-button-text)",
-            "border-(--ui-button-border)/50"
+            "bg-(--ui-variant-selected-surface)",
+            "text-(--ui-variant-selected-text)",
+            "border-(--ui-variant-selected-border)"
           );
         } else {
+          btn.classList.remove(
+            "bg-(--ui-variant-selected-surface)",
+            "text-(--ui-variant-selected-text)",
+            "border-(--ui-variant-selected-border)"
+          );
           btn.classList.add(
             "bg-(--ui-input-surface)",
             "text-(--ui-input-text)",
             "border-(--ui-input-border)/50"
-          );
-          btn.classList.remove(
-            "bg-(--ui-button-surface)",
-            "text-(--ui-button-text)",
-            "border-(--ui-button-border)/50"
           );
         }
       });
@@ -322,9 +338,9 @@ export class PDPUIManager {
 
       if (variationId === selectedVariationId) {
         btn.classList.add(
-          "bg-(--ui-button-surface)",
-          "text-(--ui-button-text)",
-          "border-(--ui-button-border)/50"
+          "bg-(--ui-variant-selected-surface)",
+          "text-(--ui-variant-selected-text)",
+          "border-(--ui-variant-selected-border)"
         );
         btn.classList.remove(
           "bg-(--ui-input-surface)",
@@ -333,9 +349,9 @@ export class PDPUIManager {
         );
       } else {
         btn.classList.remove(
-          "bg-(--ui-button-surface)",
-          "text-(--ui-button-text)",
-          "border-(--ui-button-border)/50"
+          "bg-(--ui-variant-selected-surface)",
+          "text-(--ui-variant-selected-text)",
+          "border-(--ui-variant-selected-border)"
         );
         btn.classList.add(
           "bg-(--ui-input-surface)",
@@ -344,6 +360,59 @@ export class PDPUIManager {
         );
       }
     });
+  }
+
+  /**
+   * Rebuild the gallery thumbnail strip for the currently selected variation.
+   * Uses event delegation so no per-thumb click listeners need to be attached here.
+   * @param images - Array of image URLs for the variation (undefined = hide gallery)
+   */
+  updateGalleryThumbnails(images?: string[]): void {
+    const container = document.getElementById("gallery-thumbnails");
+
+    if (!images || images.length <= 1) {
+      if (container) container.classList.add("hidden");
+      return;
+    }
+
+    if (!container) return;
+
+    container.classList.remove("hidden");
+
+    container.innerHTML = images
+      .map(
+        (imgUrl, i) => `
+      <button
+        type="button"
+        role="listitem"
+        class="gallery-thumb shrink-0 w-16 h-16 border-2 overflow-hidden bg-(--surface-secondary) transition-all ${
+          i === 0
+            ? "border-(--ui-button-border) opacity-100"
+            : "border-(--border-secondary) opacity-60 hover:opacity-100 hover:border-(--border-primary)"
+        }"
+        data-gallery-src="${imgUrl.replace(/"/g, "&quot;")}"
+        aria-label="View image ${i + 1}"
+        aria-pressed="${i === 0 ? "true" : "false"}"
+      >
+        <img
+          src="${imgUrl.replace(/"/g, "&quot;")}"
+          alt="Product image ${i + 1}"
+          class="w-full h-full object-cover"
+          loading="${i < 3 ? "eager" : "lazy"}"
+          width="64"
+          height="64"
+        />
+      </button>`
+      )
+      .join("");
+
+    // Update the main image to the first variation image
+    const mainImage = document.getElementById(
+      "product-image"
+    ) as HTMLImageElement | null;
+    if (mainImage && images[0]) {
+      mainImage.src = images[0];
+    }
   }
 
   resetQuantityToOne(): void {

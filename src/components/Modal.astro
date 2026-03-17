@@ -63,6 +63,8 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
         cancelText?: string,
       ): void;
       showLocationModal(): void;
+      showPolicyModal(slug: string): void;
+      showSecureCheckoutModal(): void;
     }
   }
 
@@ -410,6 +412,209 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
       }, 10); // Small delay to ensure DOM insertion
     },
 
+    showPolicyModal: function (slug: string) {
+      const self = this;
+
+      if (self.activeModal || self.isAnimating) return;
+      self.closeModal();
+
+      const portalRoot = document.getElementById("portal-root");
+      if (!portalRoot) return;
+
+      // Read pre-fetched legal pages embedded by Footer
+      const dataEl = document.getElementById("legal-pages-data");
+      const pages: Array<{ slug: string; title: { rendered: string }; content: { rendered: string } }> =
+        dataEl ? JSON.parse(dataEl.textContent || "[]") : [];
+      const page = pages.find((p) => p.slug === slug);
+
+      if (!page) {
+        // Fall back to navigation if content not available
+        window.location.href = `/legal/${slug}`;
+        return;
+      }
+
+      document.body.style.overflow = "hidden";
+
+      const backdrop = document.createElement("div");
+      backdrop.className =
+        "fixed inset-0 bg-(--ui-modal-overlay)/90 z-[9998] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 ease-out";
+      backdrop.setAttribute("role", "dialog");
+      backdrop.setAttribute("aria-modal", "true");
+      backdrop.setAttribute("aria-labelledby", "policy-modal-title");
+
+      const modal = document.createElement("div");
+      modal.className =
+        "bg-(--ui-modal-surface) text-(--ui-modal-text) border-2 border-(--ui-modal-border) rounded panel-shadow max-w-2xl w-full max-h-[85vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 ease-out";
+
+      modal.innerHTML = `
+        <div class="flex items-start justify-between p-5 border-b-2 border-(--border-secondary) shrink-0">
+          <h2 id="policy-modal-title" class="font-display text-3xl text-(--content-heading) leading-tight">
+            ${page.title.rendered}
+          </h2>
+          <button
+            id="policy-modal-close"
+            class="p-2 border-2 border-(--border-primary) rounded-sm text-(--content-meta) hover:text-(--content-heading) hover:border-(--ui-nav-border) transition-all ml-4 shrink-0"
+            aria-label="Close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="overflow-y-auto p-5 wp-content-block text-sm">
+          ${page.content.rendered}
+        </div>
+      `;
+
+      backdrop.appendChild(modal);
+      portalRoot.appendChild(backdrop);
+      self.activeModal = backdrop;
+
+      setTimeout(() => {
+        const closeButton = modal.querySelector("#policy-modal-close") as HTMLButtonElement;
+
+        const handleClose = (e: Event) => { e.preventDefault(); e.stopPropagation(); self.closeModal(); };
+        const handleKeydown = (e: KeyboardEvent) => { if (e.key === "Escape") self.closeModal(); };
+        const handleBackdropClick = (e: MouseEvent) => { if (e.target === backdrop) self.closeModal(); };
+
+        if (closeButton) { closeButton.addEventListener("click", handleClose); closeButton.focus(); }
+        document.addEventListener("keydown", handleKeydown);
+        backdrop.addEventListener("click", handleBackdropClick);
+
+        (backdrop as any)._cleanup = () => {
+          if (closeButton) closeButton.removeEventListener("click", handleClose);
+          document.removeEventListener("keydown", handleKeydown);
+          backdrop.removeEventListener("click", handleBackdropClick);
+        };
+
+        requestAnimationFrame(() => {
+          backdrop.classList.remove("opacity-0");
+          modal.classList.remove("scale-95", "opacity-0");
+          modal.classList.add("scale-100", "opacity-100");
+        });
+      }, 10);
+    },
+
+    showSecureCheckoutModal: function () {
+      const self = this;
+
+      if (self.activeModal || self.isAnimating) return;
+      self.closeModal();
+
+      const portalRoot = document.getElementById("portal-root");
+      if (!portalRoot) return;
+
+      // Read contact info from site config for support links
+      const siteConfigElement = document.querySelector("[data-site-config]");
+      const config = siteConfigElement
+        ? JSON.parse(siteConfigElement.getAttribute("data-site-config") || "{}")
+        : null;
+      const email = config?.contact?.email || "";
+      const phone = config?.contact?.phone?.display || "";
+
+      document.body.style.overflow = "hidden";
+
+      const backdrop = document.createElement("div");
+      backdrop.className =
+        "fixed inset-0 bg-(--ui-modal-overlay)/90 z-[9998] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 ease-out";
+      backdrop.setAttribute("role", "dialog");
+      backdrop.setAttribute("aria-modal", "true");
+      backdrop.setAttribute("aria-labelledby", "secure-checkout-modal-title");
+
+      const modal = document.createElement("div");
+      modal.className =
+        "bg-(--ui-modal-surface) text-(--ui-modal-text) border-2 border-(--ui-modal-border) rounded panel-shadow max-w-md w-full max-h-[85vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out";
+
+      modal.innerHTML = `
+        <div class="flex items-start justify-between p-5 border-b-2 border-(--border-secondary)">
+          <div>
+            <h2 id="secure-checkout-modal-title" class="font-display text-3xl text-(--content-heading) leading-tight">
+              Secure Checkout
+            </h2>
+            <p class="text-xs uppercase tracking-widest text-(--content-meta) mt-1">Your information is always protected</p>
+          </div>
+          <button
+            id="secure-checkout-modal-close"
+            class="p-2 border-2 border-(--border-primary) rounded-sm text-(--content-meta) hover:text-(--content-heading) hover:border-(--ui-nav-border) transition-all ml-4 shrink-0"
+            aria-label="Close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="p-5 space-y-5">
+          <div class="space-y-4">
+            <div class="flex gap-3">
+              <div class="shrink-0 mt-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-(--ui-accent)" aria-hidden="true"><rect x="1" y="11" width="22" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-(--content-heading)">SSL Encrypted</p>
+                <p class="text-sm text-(--content-body) mt-0.5">Every page on this site uses 256-bit SSL encryption. Your personal and payment data is protected in transit.</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="shrink-0 mt-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-(--ui-accent)" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-(--content-heading)">Powered by Square</p>
+                <p class="text-sm text-(--content-body) mt-0.5">Payments are processed by Square — a PCI-DSS compliant payment provider. We never store your card details.</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="shrink-0 mt-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-(--ui-accent)" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-(--content-heading)">100% Skater Owned</p>
+                <p class="text-sm text-(--content-body) mt-0.5">We're a small local skate shop. If anything goes wrong with your order, we'll make it right — no runaround.</p>
+              </div>
+            </div>
+          </div>
+          ${email || phone ? `
+          <div class="border-t-2 border-(--border-secondary) pt-4">
+            <p class="text-xs uppercase tracking-widest text-(--content-meta) mb-2">Need help?</p>
+            <div class="flex flex-col gap-1">
+              ${phone ? `<a href="tel:${phone.replace(/\D/g, '')}" class="text-sm font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-2 transition-all">${phone}</a>` : ""}
+              ${email ? `<a href="mailto:${email}" class="text-sm font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-2 transition-all">${email}</a>` : ""}
+            </div>
+          </div>` : ""}
+        </div>
+      `;
+
+      backdrop.appendChild(modal);
+      portalRoot.appendChild(backdrop);
+      self.activeModal = backdrop;
+
+      setTimeout(() => {
+        const closeButton = modal.querySelector("#secure-checkout-modal-close") as HTMLButtonElement;
+
+        const handleClose = (e: Event) => { e.preventDefault(); e.stopPropagation(); self.closeModal(); };
+        const handleKeydown = (e: KeyboardEvent) => { if (e.key === "Escape") self.closeModal(); };
+        const handleBackdropClick = (e: MouseEvent) => { if (e.target === backdrop) self.closeModal(); };
+
+        if (closeButton) { closeButton.addEventListener("click", handleClose); closeButton.focus(); }
+        document.addEventListener("keydown", handleKeydown);
+        backdrop.addEventListener("click", handleBackdropClick);
+
+        (backdrop as any)._cleanup = () => {
+          if (closeButton) closeButton.removeEventListener("click", handleClose);
+          document.removeEventListener("keydown", handleKeydown);
+          backdrop.removeEventListener("click", handleBackdropClick);
+        };
+
+        requestAnimationFrame(() => {
+          backdrop.classList.remove("opacity-0");
+          modal.classList.remove("scale-95", "opacity-0");
+          modal.classList.add("scale-100", "opacity-100");
+        });
+      }, 10);
+    },
+
     closeModal(): void {
       if (this.activeModal && !this.isAnimating) {
         this.isAnimating = true;
@@ -447,8 +652,9 @@ const serializedSiteConfig = JSON.stringify(siteConfig);
 
     // Assign to window object
     window.showModal = modalManager.showModal.bind(modalManager);
-    window.showLocationModal =
-      modalManager.showLocationModal.bind(modalManager);
+    window.showLocationModal = modalManager.showLocationModal.bind(modalManager);
+    window.showPolicyModal = modalManager.showPolicyModal.bind(modalManager);
+    window.showSecureCheckoutModal = modalManager.showSecureCheckoutModal.bind(modalManager);
   }
 
   // Initialize when DOM is ready

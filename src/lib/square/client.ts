@@ -371,18 +371,23 @@ export async function fetchProduct(id: string): Promise<Product | null> {
 
         if (!defaultVariation || !defaultPriceMoney) return null;
 
-        // Get image - we'll do this in parallel with variation processing
+        // Get all product-level images (not just the first one)
         let imageUrl = EL_CAMINO_LOGO_DATA_URI;
-        let imagePromise: Promise<string | null> | null = null;
+        const allItemImageIds: string[] = item.itemData?.imageIds ?? [];
+        const allItemImagesPromise =
+          allItemImageIds.length > 0
+            ? batchGetImageUrls(allItemImageIds)
+            : Promise.resolve({} as Record<string, string>);
+        // Keep single-image promise for the parallel await below
+        const imagePromise: Promise<string | null> =
+          allItemImageIds.length > 0
+            ? getImageUrl(allItemImageIds[0])
+            : Promise.resolve(null);
 
-        if (item.itemData?.imageIds?.[0]) {
-          imagePromise = getImageUrl(item.itemData.imageIds[0]);
-        }
-
-        // Get all variation IDs with images for batch fetching
-        const variationImageIds = variations
-          .filter((v) => v.itemVariationData?.imageIds?.[0])
-          .map((v) => v.itemVariationData!.imageIds![0]);
+        // Get ALL variation image IDs for batch fetching (not just the first per variation)
+        const variationImageIds = variations.flatMap(
+          (v) => v.itemVariationData?.imageIds ?? []
+        );
 
         // Get all measurement unit IDs for batch fetching
         const measurementUnitIds = variations
@@ -400,29 +405,38 @@ export async function fetchProduct(id: string): Promise<Product | null> {
             ? fetchMeasurementUnits(measurementUnitIds)
             : Promise.resolve({} as Record<string, string>);
 
-        // Wait for all promises to resolve
-        const [mainImage, variationImages, unitsMap] = await Promise.all([
-          imagePromise,
-          variationImagePromise,
-          measurementUnitsPromise,
-        ]);
+        // Wait for all promises to resolve (including all product-level images)
+        const [mainImage, variationImages, unitsMap, allItemImages] =
+          await Promise.all([
+            imagePromise,
+            variationImagePromise,
+            measurementUnitsPromise,
+            allItemImagesPromise,
+          ]);
 
         if (mainImage) {
           imageUrl = mainImage;
         }
+
+        // Build ordered array of all product-level image URLs (deduped, no placeholders)
+        const allImageUrls: string[] = allItemImageIds
+          .map((id) => allItemImages[id])
+          .filter(
+            (url): url is string =>
+              !!url && url !== EL_CAMINO_LOGO_DATA_URI,
+          );
 
         // Process all variations with their data including measurement units
         const productVariations = variations.map((v) => {
           const priceMoney = v.itemVariationData?.priceMoney;
           const regularPrice = priceMoney ? Number(priceMoney.amount) / 100 : 0;
 
-          // Check for variation-specific images
-          let variationImageUrl: string | undefined = undefined;
-          if (v.itemVariationData?.imageIds?.[0]) {
-            const imageId = v.itemVariationData.imageIds[0];
-            variationImageUrl =
-              variationImages[imageId as keyof typeof variationImages];
-          }
+          // Resolve all variation-level image URLs (variation can have multiple images)
+          const rawVariationImageIds: string[] = v.itemVariationData?.imageIds ?? [];
+          const variationImageUrls: string[] = rawVariationImageIds
+            .map((imgId: string) => variationImages[imgId as keyof typeof variationImages])
+            .filter((url): url is string => !!url && url !== EL_CAMINO_LOGO_DATA_URI);
+          const variationImageUrl = variationImageUrls[0];
 
           // Get measurement unit from batched results
           const unit = v.itemVariationData?.measurementUnitId
@@ -441,6 +455,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
             name: v.itemVariationData?.name || "",
             price: regularPrice,
             image: variationImageUrl,
+            images: variationImageUrls.length > 1 ? variationImageUrls : undefined,
             unit: unit || undefined, // Only include unit if it exists
             // Don't set attributes here - let createInitialSelectionState handle it
             // to properly skip single variations
@@ -464,6 +479,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
           title: item.itemData?.name || "",
           description: item.itemData?.description || "",
           image: imageUrl,
+          images: allImageUrls.length > 0 ? allImageUrls : undefined,
           price: Number(defaultPriceMoney.amount) / 100,
           url: createProductUrl({ title: item.itemData?.name || "" }),
           variations: productVariations,

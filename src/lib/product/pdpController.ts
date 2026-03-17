@@ -114,6 +114,13 @@ export class PDPController {
       this.uiManager.updateProductImage(variation.image);
     }
 
+    // Refresh gallery thumbnails with this variation's images
+    this.uiManager.updateGalleryThumbnails(variation.images);
+
+    // Show/hide back-in-stock form based on this variation's stock status
+    const inStock = variation.inStock ?? (variation.quantity || 0) > 0;
+    this.updateBisSection(variation, inStock);
+
     this.updateButtonProductData(variation);
   }
 
@@ -170,6 +177,42 @@ export class PDPController {
       0
     );
     this.uiManager.updateAvailabilityDisplay(outOfStockInfo, this.currentVariation.saleInfo);
+    this.updateBisSection(this.currentVariation, false);
+  }
+
+  private updateBisSection(variation: any, inStock: boolean): void {
+    const bisSection = document.getElementById("back-in-stock-section");
+    if (!bisSection) return;
+
+    if (!inStock) {
+      // Read the base title stored on the element so we don't need it in productData
+      const productTitle = bisSection.dataset.productTitle ?? "";
+      const label = variation.name
+        ? `${productTitle} — ${variation.name}`
+        : productTitle;
+
+      // Update hidden fields for the newly selected OOS variant
+      const variationIdInput = document.getElementById("bis-variation-id") as HTMLInputElement | null;
+      const productTitleInput = document.getElementById("bis-product-title") as HTMLInputElement | null;
+      if (variationIdInput) variationIdInput.value = variation.variationId;
+      if (productTitleInput) productTitleInput.value = label;
+
+      // Update the inline product name span in the description
+      const labelEl = document.getElementById("bis-label-product");
+      if (labelEl) labelEl.textContent = label;
+
+      // Reset form state (in case user previously submitted for a different variant)
+      const form = document.getElementById("back-in-stock-form") as HTMLFormElement | null;
+      const emailInput = document.getElementById("bis-email") as HTMLInputElement | null;
+      if (form) form.classList.remove("hidden");
+      if (emailInput) emailInput.value = "";
+      document.getElementById("bis-success")?.classList.add("hidden");
+      document.getElementById("bis-error")?.classList.add("hidden");
+
+      bisSection.classList.remove("hidden");
+    } else {
+      bisSection.classList.add("hidden");
+    }
   }
 
   private handleAttributeSelection(attributeType: string, value: string): void {
