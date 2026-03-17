@@ -105,7 +105,7 @@ function optimizeImageUrl(src: string, width = 600): string {
                 "group relative flex-none w-52 sm:w-60 lg:w-72 overflow-hidden rounded-sm bg-(--surface-secondary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)",
                 isOutOfStock && "opacity-80",
               ]}
-              aria-label={`${product.brand ? product.brand + " " : ""}${product.title}${isOutOfStock ? " — Sold Out" : ""}${isOnSale ? " — On Sale" : ""}`}
+              aria-label={`${product.brand ? product.brand + " " : ""}${product.title} — ${formattedPrice}${isOutOfStock ? " — Sold Out" : ""}${isOnSale ? " — On Sale" : ""}`}
             >
               {/* Image */}
               <div class="aspect-[3/4] overflow-hidden">
@@ -136,11 +136,11 @@ function optimizeImageUrl(src: string, width = 600): string {
                 <p class="text-base lg:text-lg font-bold text-white leading-snug line-clamp-2 mb-2.5">
                   {product.title}
                 </p>
-                <div class="flex items-baseline gap-2">
+                <div class="flex items-baseline gap-2" aria-hidden="true">
                   {formattedOriginal && (
-                    <span class="text-sm text-white/50 line-through">
+                    <del class="text-sm text-white/50">
                       {formattedOriginal}
-                    </span>
+                    </del>
                   )}
                   <span
                     class:list={[
@@ -155,14 +155,14 @@ function optimizeImageUrl(src: string, width = 600): string {
                 </div>
               </div>
 
-              {/* Status badges */}
+              {/* Status badges — aria-hidden since aria-label on the link carries this info */}
               {isOutOfStock && (
-                <div class="absolute top-3 left-3 bg-black/70 text-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-sm backdrop-blur-sm">
+                <div aria-hidden="true" class="absolute top-3 left-3 bg-black/70 text-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-sm backdrop-blur-sm">
                   Sold Out
                 </div>
               )}
               {!isOutOfStock && isOnSale && saleInfo && (
-                <div class="absolute top-3 left-3 bg-(--color-elco-sweet-tea-300) text-(--color-elco-sweet-tea-900) px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-sm">
+                <div aria-hidden="true" class="absolute top-3 left-3 bg-(--color-elco-sweet-tea-300) text-(--color-elco-sweet-tea-900) px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-sm">
                   {saleInfo.discountPercent}% Off
                 </div>
               )}
@@ -175,7 +175,6 @@ function optimizeImageUrl(src: string, width = 600): string {
       <a
         href={seeAllUrl}
         class="group relative flex-none w-32 sm:w-36 overflow-hidden rounded-sm bg-(--surface-secondary) border-2 border-(--border-primary) hover:border-(--color-elco-sweet-tea-300) transition-colors duration-200 flex flex-col items-center justify-center gap-3 p-4 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)"
-        aria-label={`See all products${brand ? ` from ${brand}` : ""}`}
       >
         <svg
           class="w-8 h-8 text-(--content-meta) group-hover:text-(--color-elco-sweet-tea-400) transition-colors"

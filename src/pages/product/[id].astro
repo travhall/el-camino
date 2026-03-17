@@ -197,7 +197,43 @@ if (variations.length > 0) {
 }
 
 // Create initial selection state using the parser
+// NOTE: this mutates variation.attributes in-place via parseVariationName — must
+// run BEFORE any code that reads variation.attributes (e.g. the image assignment below).
 const selectionState = createInitialSelectionState(variations);
+
+// Fallback image assignment — covers the common Square pattern where color variant
+// images are stored at the Item level (itemData.imageIds) rather than on each
+// ItemVariation. After createInitialSelectionState, every variation has attributes
+// parsed, so we can reliably find the color key and map product-level images onto
+// the variations that lack a variation-level image.
+// Mutates in place so all downstream references (selectionState, selectedVariation,
+// the serialized hidden input) all see the updated image values.
+if (product.images && product.images.length > 1) {
+  const colorKey = Object.keys(variations[0]?.attributes ?? {}).find(
+    (k) => k.toLowerCase() === "color" || k.toLowerCase() === "colour"
+  );
+
+  if (colorKey) {
+    // Collect unique color values in catalog order (first-seen order)
+    const colorOrder: string[] = [];
+    for (const v of variations) {
+      const c = v.attributes?.[colorKey];
+      if (c && !colorOrder.includes(c)) colorOrder.push(c);
+    }
+
+    // Only map when there are at least as many product images as colors
+    if (product.images.length >= colorOrder.length) {
+      for (const v of variations) {
+        if (v.image) continue; // Variation-level image always wins
+        const colorValue = v.attributes?.[colorKey];
+        const idx = colorOrder.indexOf(colorValue ?? "");
+        if (idx >= 0 && product.images[idx]) {
+          v.image = product.images[idx];
+        }
+      }
+    }
+  }
+}
 const availableAttributes = selectionState.availableAttributes;
 const attributeTypes = Object.keys(availableAttributes);
 

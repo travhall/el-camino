@@ -114,8 +114,13 @@ export class PDPController {
       this.uiManager.updateProductImage(variation.image);
     }
 
-    // Refresh gallery thumbnails with this variation's images
-    this.uiManager.updateGalleryThumbnails(variation.images);
+    // Only rebuild the thumbnail gallery when this variation owns a multi-image set.
+    // For products where images live at the Item level (shared across all variants),
+    // variation.images is undefined — in that case leave the SSR-rendered gallery
+    // alone so the existing thumbnails stay visible and clickable.
+    if (variation.images && variation.images.length > 1) {
+      this.uiManager.updateGalleryThumbnails(variation.images);
+    }
 
     // Show/hide back-in-stock form based on this variation's stock status
     const inStock = variation.inStock ?? (variation.quantity || 0) > 0;
