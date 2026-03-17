@@ -1,103 +1,82 @@
 ---
 // src/components/ThemeToggle.astro
-import { Icon } from "astro-icon/components";
 const { classes, ...rest } = Astro.props;
 ---
 
 <button
   class:list={[
-    "theme-toggle-button inline-flex rounded-full items-center cursor-pointer select-none outline-none",
+    "theme-toggle-button inline-flex w-fit rounded-full cursor-pointer select-none outline-none border border-(--content-heading) p-0.5",
     classes,
   ]}
   {...rest}
   data-theme-toggle
   role="switch"
   aria-checked="false"
-  aria-label="Toggle theme"
+  aria-label="Switch to dark mode"
 >
-  <!-- Toggle switch track and thumb -->
-  <div
-    class="theme-toggle-track relative inline-flex items-center h-7 w-12 rounded-full transition-all duration-300 ease-out border border-(--content-heading)"
-  >
-    <!-- Toggle thumb -->
-    <div
-      class="theme-toggle-thumb absolute left-0.5 top-0.5 h-5.5 w-5.5 rounded-full transition-all duration-300 ease-out transform translate-x-0 flex items-center justify-center bg-(--content-heading)"
-    >
-      <!-- Theme icons -->
-      <Icon
-        name="uil:moon"
-        class="theme-icon-moon h-4 w-4 text-(--ui-button-text) transition-all duration-200"
-        aria-hidden="true"
-      />
-      <Icon
-        name="uil:sun"
-        class="theme-icon-sun absolute h-4 w-4 text-(--ui-button-text) transition-all duration-200"
-        aria-hidden="true"
-      />
-    </div>
-  </div>
-
-  <!-- Toggle label text -->
-  <span class="theme-toggle-text">
-    <span class="hidden dark:block sr-only">Switch to Light Mode</span>
-    <span class="block dark:hidden sr-only">Switch to Dark Mode</span>
-  </span>
+  <span class="theme-label theme-label-day" aria-hidden="true">DAY</span>
+  <span class="theme-label theme-label-night" aria-hidden="true">NIGHT</span>
 </button>
 
 <style>
   @reference "../styles/global.css";
 
-  .theme-toggle-button[aria-checked="true"] .theme-toggle-thumb {
-    @apply transform translate-x-5;
+  .theme-toggle-button {
+    font-family: var(--font-display);
   }
 
-  /* Focus states for keyboard navigation */
-  .theme-toggle-button:focus-visible .theme-toggle-track {
+  .theme-label {
+    padding: 0.2rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    transition: background 0.25s ease-out, color 0.25s ease-out, opacity 0.25s ease-out;
+  }
+
+  /* Light mode: DAY is active */
+  .theme-label-day {
+    background: var(--content-heading);
+    color: var(--surface-primary);
+    opacity: 1;
+  }
+  .theme-label-night {
+    background: transparent;
+    color: var(--content-heading);
+    opacity: 0.55;
+  }
+
+  /* Dark mode: NIGHT is active */
+  :root.dark .theme-label-day {
+    background: transparent;
+    color: var(--content-heading);
+    opacity: 0.55;
+  }
+  :root.dark .theme-label-night {
+    background: var(--content-heading);
+    color: var(--surface-primary);
+    opacity: 1;
+  }
+
+  /* Focus state */
+  .theme-toggle-button:focus-visible {
     @apply ring-2 ring-(--content-heading) ring-offset-2;
   }
 
-  :root.dark .theme-toggle-thumb {
-    @apply transform translate-x-5;
-  }
-
-  /* Icon visibility — driven by .dark class, not OS media query */
-  .theme-icon-moon {
-    opacity: 1;
-  }
-  .theme-icon-sun {
-    opacity: 0;
-  }
-  :root.dark .theme-icon-moon {
-    opacity: 0;
-  }
-  :root.dark .theme-icon-sun {
-    opacity: 1;
-  }
-
-  /* Reduced motion support */
+  /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
-    .theme-toggle-track,
-    .theme-toggle-thumb,
-    .theme-icon-moon,
-    .theme-icon-sun,
-    .theme-toggle-text {
+    .theme-label {
       transition: none !important;
     }
   }
 
-  /* High contrast mode support */
+  /* High contrast */
   @media (prefers-contrast: high) {
-    .theme-toggle-track {
-      @apply border-4;
+    .theme-toggle-button {
+      @apply border-2;
     }
   }
-
-  /* Touch target sizing for mobile */
-  /* @media (pointer: coarse) {
-    .theme-toggle-button {
-      @apply p-2 -m-2;
-    }
-  } */
 </style>
 
 <script>
@@ -114,19 +93,17 @@ const { classes, ...rest } = Astro.props;
       document.documentElement.classList.add(theme);
       document.documentElement.setAttribute("data-theme", theme);
 
-      // Update button aria-checked state
       updateButtonState(theme === "dark");
     }
 
-    // Update button state
     function updateButtonState(isDark: boolean) {
       const toggleButtons = document.querySelectorAll("[data-theme-toggle]");
       toggleButtons.forEach((button) => {
         button.setAttribute("aria-checked", isDark.toString());
+        button.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
       });
     }
 
-    // Handle theme toggle clicks
     function handleToggle() {
       const isDark = document.documentElement.classList.contains("dark");
       const newTheme = isDark ? "light" : "dark";
@@ -136,41 +113,35 @@ const { classes, ...rest } = Astro.props;
       document.documentElement.setAttribute("data-theme", newTheme);
       localStorage.setItem("theme", newTheme);
 
-      // Update button state
       updateButtonState(newTheme === "dark");
     }
 
-    // Setup toggle button(s)
+    // Setup toggle button(s), deduplicating listeners via cloneNode
     const toggleButtons = document.querySelectorAll("[data-theme-toggle]");
     toggleButtons.forEach((button) => {
-      // Remove any existing listeners
       const newButton = button.cloneNode(true);
       button.parentNode?.replaceChild(newButton, button);
-
-      // Add fresh click listener
       newButton.addEventListener("click", handleToggle);
     });
 
-    // Initialize on load
     initializeTheme();
   }
 
-  // Setup on initial load
   setupThemeToggle();
 
-  // Re-setup after view transitions
   document.addEventListener("astro:after-swap", setupThemeToggle);
 
-  // Handle system theme changes if no preference is stored — registered once at module level
+  // System preference listener — registered once at module level
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
     if (!localStorage.getItem("theme")) {
       const newTheme = e.matches ? "dark" : "light";
       document.documentElement.classList.remove("light", "dark");
       document.documentElement.classList.add(newTheme);
       document.documentElement.setAttribute("data-theme", newTheme);
-      // Update all toggle buttons
+      const isDark = newTheme === "dark";
       document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-        button.setAttribute("aria-checked", (newTheme === "dark").toString());
+        button.setAttribute("aria-checked", isDark.toString());
+        button.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
       });
     }
   });
