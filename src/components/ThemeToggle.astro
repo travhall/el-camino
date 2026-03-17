@@ -17,21 +17,21 @@ const { classes, ...rest } = Astro.props;
 >
   <!-- Toggle switch track and thumb -->
   <div
-    class="theme-toggle-track relative inline-flex items-center h-7 w-12 rounded-full transition-all duration-300 ease-out border border-(--content-body)"
+    class="theme-toggle-track relative inline-flex items-center h-7 w-12 rounded-full transition-all duration-300 ease-out border border-(--content-heading)"
   >
     <!-- Toggle thumb -->
     <div
-      class="theme-toggle-thumb absolute left-0.5 top-0.5 h-5.5 w-5.5 rounded-full transition-all duration-300 ease-out transform translate-x-0 flex items-center justify-center bg-(--content-body)"
+      class="theme-toggle-thumb absolute left-0.5 top-0.5 h-5.5 w-5.5 rounded-full transition-all duration-300 ease-out transform translate-x-0 flex items-center justify-center bg-(--content-heading)"
     >
       <!-- Theme icons -->
       <Icon
         name="uil:moon"
-        class="theme-icon-moon h-4 w-4 text-(--ui-button-text) transition-all duration-200 opacity-100 dark:opacity-0"
+        class="theme-icon-moon h-4 w-4 text-(--ui-button-text) transition-all duration-200"
         aria-hidden="true"
       />
       <Icon
         name="uil:sun"
-        class="theme-icon-sun absolute h-4 w-4 text-(--ui-button-text) transition-all duration-200 opacity-0 dark:opacity-100"
+        class="theme-icon-sun absolute h-4 w-4 text-(--ui-button-text) transition-all duration-200"
         aria-hidden="true"
       />
     </div>
@@ -53,15 +53,25 @@ const { classes, ...rest } = Astro.props;
 
   /* Focus states for keyboard navigation */
   .theme-toggle-button:focus-visible .theme-toggle-track {
-    @apply ring-2 ring-(--content-body) ring-offset-2;
+    @apply ring-2 ring-(--content-heading) ring-offset-2;
   }
 
   :root.dark .theme-toggle-thumb {
     @apply transform translate-x-5;
   }
 
-  :root.dark .theme-toggle-button {
-    --aria-checked: "true";
+  /* Icon visibility — driven by .dark class, not OS media query */
+  .theme-icon-moon {
+    opacity: 1;
+  }
+  .theme-icon-sun {
+    opacity: 0;
+  }
+  :root.dark .theme-icon-moon {
+    opacity: 0;
+  }
+  :root.dark .theme-icon-sun {
+    opacity: 1;
   }
 
   /* Reduced motion support */
@@ -96,7 +106,7 @@ const { classes, ...rest } = Astro.props;
     function initializeTheme() {
       const storedTheme = localStorage.getItem("theme");
       const systemPrefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
+        "(prefers-color-scheme: dark)",
       ).matches;
       const theme = storedTheme ?? (systemPrefersDark ? "dark" : "light");
 
@@ -141,18 +151,6 @@ const { classes, ...rest } = Astro.props;
       newButton.addEventListener("click", handleToggle);
     });
 
-    // Handle system theme changes if no preference is stored
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    mediaQuery.addEventListener("change", (e) => {
-      if (!localStorage.getItem("theme")) {
-        const newTheme = e.matches ? "dark" : "light";
-        document.documentElement.classList.remove("light", "dark");
-        document.documentElement.classList.add(newTheme);
-        document.documentElement.setAttribute("data-theme", newTheme);
-        updateButtonState(newTheme === "dark");
-      }
-    });
-
     // Initialize on load
     initializeTheme();
   }
@@ -162,4 +160,18 @@ const { classes, ...rest } = Astro.props;
 
   // Re-setup after view transitions
   document.addEventListener("astro:after-swap", setupThemeToggle);
+
+  // Handle system theme changes if no preference is stored — registered once at module level
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+    if (!localStorage.getItem("theme")) {
+      const newTheme = e.matches ? "dark" : "light";
+      document.documentElement.classList.remove("light", "dark");
+      document.documentElement.classList.add(newTheme);
+      document.documentElement.setAttribute("data-theme", newTheme);
+      // Update all toggle buttons
+      document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+        button.setAttribute("aria-checked", (newTheme === "dark").toString());
+      });
+    }
+  });
 </script>
