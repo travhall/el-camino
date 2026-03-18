@@ -8,6 +8,20 @@ import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
 } from "@/lib/constants/assets";
+import CategoryStrip from "@/components/CategoryStrip.astro";
+import ArticleCard from "@/components/ArticleCard.astro";
+import { getPosts, getPostsByCategory } from "@/lib/wordpress/api";
+import {
+  extractEmbeddedData,
+  generateFallbackContent,
+} from "@/lib/wordpress/types";
+
+// Fetch "Shop News" category posts, fall back to most recent posts if empty
+const shopNewsPosts = await getPostsByCategory("shop-news");
+const fallbackPosts = shopNewsPosts.length === 0 ? await getPosts() : [];
+const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
+  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  .slice(0, 3);
 ---
 
 <Layout title="The Shop | El Camino">
@@ -18,20 +32,24 @@ import {
       <div class="basis-1/2 p-4 md:p-12 my-8 w-full">
         <div class="max-w-lg mx-auto">
           <h1
-            class="flex flex-col-reverse font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-none text-(--content-heading) text-balance mb-2"
+            class="flex flex-row font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-none text-(--content-heading) text-balance mb-2"
           >
             <span>The Shop</span>
-            <small
-              class="font-sans font-semibold text-sm lg:text-base max-w-[18ch] lg:max-w-full tracking-wide uppercase mb-2 text-(--content-meta)"
-            >
-              {siteConfig.tagline}
-            </small>
+            <span
+              id="hero-open-status-badge"
+              class="hidden text-sm font-semibold px-1.5 py-.5 rounded-full border-2 self-start"
+              aria-live="polite"></span>
           </h1>
+          <p
+            class="font-semibold text-sm uppercase tracking-wide text-(--content-meta) mb-3"
+          >
+            Eau Claire's skater-owned skate shop — downtown since 2023
+          </p>
           <p class="text-pretty mb-4">
             More than a skate shop. We're here to build and uplift our
             community, friends, and fellow skaters in the Chippewa Valley.
           </p>
-          <div class="flex flex-row gap-2 mt-8">
+          <div class="flex flex-row flex-wrap items-center gap-3 mt-8">
             <Button variant="primary" href="#our-story">Read Our Story</Button>
             <Button variant="outline" href="/shop/all">Shop Now</Button>
           </div>
@@ -157,6 +175,57 @@ import {
         </div>
       </div>
     </div>
+
+    <!-- CATEGORY STRIP -->
+    <CategoryStrip title="Shop by Category" limit={6} />
+
+    <!-- FROM THE SHOP (News Teasers) -->
+    {
+      newsToShow.length > 0 && (
+        <div class="bg-(--surface-secondary) px-4 sm:px-6 lg:px-8 py-8">
+          <div class="flex items-end justify-between mb-6 lg:mb-8">
+            <div>
+              <p class="text-xs uppercase tracking-widest text-(--content-meta) mb-1.5">
+                Latest
+              </p>
+              <h2 class="text-2xl lg:text-3xl font-display font-bold text-(--content-heading) leading-none">
+                From the Shop
+              </h2>
+            </div>
+            <a
+              href="/news"
+              class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-secondary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 hidden sm:inline-block shrink-0 mb-0.5"
+            >
+              All News →
+            </a>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {newsToShow.map((post) => {
+              const embeddedData = extractEmbeddedData(post);
+              const fallbackContent = generateFallbackContent(post);
+              return (
+                <ArticleCard
+                  post={post}
+                  variant="teaser"
+                  embeddedData={embeddedData}
+                  fallbackContent={fallbackContent}
+                />
+              );
+            })}
+          </div>
+
+          <div class="sm:hidden">
+            <a
+              href="/news"
+              class="inline-flex items-center gap-1.5 text-sm font-semibold text-(--content-link) hover:underline"
+            >
+              See all news →
+            </a>
+          </div>
+        </div>
+      )
+    }
 
     <!-- SHOP TEAM -->
     <!-- <div
@@ -312,7 +381,7 @@ import {
                   href={`https://maps.google.com/?q=${encodeURIComponent(siteConfig.contact.address.display)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-2 transition-all block mb-3"
+                  class="text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all block mb-3"
                 >
                   {siteConfig.contact.address.street}<br />
                   {siteConfig.contact.address.city}, {
@@ -354,7 +423,7 @@ import {
                         href={social.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-(--content-body) hover:text-(--content-emphasis) transition-colors"
+                        class="text-(--content-heading) hover:text-(--content-emphasis) transition-colors"
                         aria-label={`Visit us on ${social.platform}`}
                       >
                         <Icon
@@ -447,54 +516,63 @@ import {
                     ?.classList.remove("hidden");
                 });
 
-                // Open now / Closed badge
-                const badge = document.getElementById("open-status-badge");
-                if (badge) {
-                  const todayRow = document.querySelector<HTMLElement>(
-                    `#store-hours-list [data-day="${todayName}"]`,
+                // Determine open/closed state once, then apply to all badges
+                const todayRow = document.querySelector<HTMLElement>(
+                  `#store-hours-list [data-day="${todayName}"]`,
+                );
+                const isOpenToday = todayRow?.dataset.isOpen === "true";
+                let isOpenNow = false;
+
+                if (isOpenToday && todayRow) {
+                  const hoursText =
+                    (
+                      todayRow.children[1] as HTMLElement
+                    )?.textContent?.trim() || "";
+                  const match = hoursText.match(
+                    /(\d+)(am|pm)\s*-\s*(\d+)(am|pm)/i,
                   );
-                  const isOpenToday = todayRow?.dataset.isOpen === "true";
-                  let isOpenNow = false;
-
-                  if (isOpenToday && todayRow) {
-                    // Parse hours from the hours span text (e.g. "11am - 7pm")
-                    const hoursText =
-                      (
-                        todayRow.children[1] as HTMLElement
-                      )?.textContent?.trim() || "";
-                    const match = hoursText.match(
-                      /(\d+)(am|pm)\s*-\s*(\d+)(am|pm)/i,
-                    );
-                    if (match) {
-                      const toMinutes = (h: number, period: string) => {
-                        let hrs = h % 12;
-                        if (period.toLowerCase() === "pm") hrs += 12;
-                        return hrs * 60;
-                      };
-                      const openMins = toMinutes(parseInt(match[1]), match[2]);
-                      const closeMins = toMinutes(parseInt(match[3]), match[4]);
-                      const nowMins = now.getHours() * 60 + now.getMinutes();
-                      isOpenNow = nowMins >= openMins && nowMins < closeMins;
-                    }
+                  if (match) {
+                    const toMinutes = (h: number, period: string) => {
+                      let hrs = h % 12;
+                      if (period.toLowerCase() === "pm") hrs += 12;
+                      return hrs * 60;
+                    };
+                    const openMins = toMinutes(parseInt(match[1]), match[2]);
+                    const closeMins = toMinutes(parseInt(match[3]), match[4]);
+                    const nowMins = now.getHours() * 60 + now.getMinutes();
+                    isOpenNow = nowMins >= openMins && nowMins < closeMins;
                   }
+                }
 
+                // Helper to style a badge element using design-token-aware classes
+                function applyBadgeState(badge: HTMLElement, open: boolean) {
                   badge.classList.remove("hidden");
-                  if (isOpenNow) {
+                  if (open) {
                     badge.textContent = "Open Now";
                     badge.classList.add(
-                      "text-green-700",
-                      "border-green-600/40",
-                      "bg-green-500/10",
+                      "bg-state-success-surface",
+                      "text-state-success-text",
+                      "border-state-success-surface",
                     );
                   } else {
                     badge.textContent = "Closed";
                     badge.classList.add(
-                      "text-(--content-meta)",
-                      "border-(--border-primary)",
-                      "bg-(--surface-secondary)",
+                      "bg-state-error-surface",
+                      "text-state-error-text",
+                      "border-state-error-surface",
                     );
                   }
                 }
+
+                // Hours section badge
+                const badge = document.getElementById("open-status-badge");
+                if (badge) applyBadgeState(badge, isOpenNow);
+
+                // Hero badge
+                const heroBadge = document.getElementById(
+                  "hero-open-status-badge",
+                );
+                if (heroBadge) applyBadgeState(heroBadge, isOpenNow);
               }
             </script>
           </div>

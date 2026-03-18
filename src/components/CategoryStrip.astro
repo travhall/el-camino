@@ -1,0 +1,177 @@
+---
+// src/components/CategoryStrip.astro
+// Horizontal filmstrip of top categories — card style mirrors RelatedProducts.astro.
+// Image fetching mirrors Sidebar.astro (Square CDN with Netlify optimization fallback).
+import { getCategoriesForSidebar } from "@/lib/square/categoryUtils";
+import { squareClient } from "@/lib/square/client";
+import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  limit?: number;
+  title?: string;
+}
+
+const { limit = 6, title = "Shop by Category" } = Astro.props;
+
+// Fetch categories (same utility as Sidebar.astro)
+const allCategories = await getCategoriesForSidebar();
+const categories = allCategories.slice(0, limit);
+
+// Resolve Square CDN image URLs for each category (same logic as Sidebar.astro)
+const categoryImageUrls: Record<string, string> = {};
+
+for (const item of categories) {
+  if (!item.id) continue;
+  try {
+    const { result } = await squareClient.catalogApi.retrieveCatalogObject(
+      item.id,
+      true,
+    );
+    const imageObjects = (result.relatedObjects ?? []).filter(
+      (obj) => obj.type === "IMAGE",
+    );
+    if (imageObjects.length > 0 && imageObjects[0].imageData?.url) {
+      categoryImageUrls[item.id] = imageObjects[0].imageData.url;
+    }
+  } catch {
+    // fail silently — card will fall back to logo placeholder
+  }
+}
+
+function getOptimizedImageUrl(
+  rawUrl: string,
+  width = 600,
+  height = 600,
+): string {
+  if (!rawUrl) return "";
+  try {
+    if (rawUrl.includes("squarecdn.com") || rawUrl.includes("square-cdn")) {
+      const url = new URL(rawUrl);
+      url.searchParams.set("w", String(width));
+      url.searchParams.set("h", String(height));
+      url.searchParams.set("fit", "crop");
+      url.searchParams.set("fm", "webp");
+      url.searchParams.set("q", "80");
+      return url.toString();
+    }
+    if (rawUrl.startsWith("http")) {
+      return `/.netlify/images?url=${encodeURIComponent(rawUrl)}&w=${width}&h=${height}&fit=cover&fm=webp&q=80`;
+    }
+  } catch {
+    // ignore
+  }
+  return rawUrl;
+}
+---
+
+<section class="py-8 bg-(--surface-primary)">
+  <!-- Header -->
+  <div class="flex items-end justify-between mb-6 lg:mb-8 px-4 sm:px-6 lg:px-8">
+    <div>
+      <p class="text-xs uppercase tracking-widest text-(--content-meta) mb-1.5">
+        What We Carry
+      </p>
+      <h2
+        class="text-2xl lg:text-3xl font-display font-bold text-(--content-heading) leading-none"
+      >
+        {title}
+      </h2>
+    </div>
+    <!-- <a
+      href="/shop/all"
+      class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 hidden lg:inline-block shrink-0 mb-0.5"
+    >
+      See all categories
+    </a> -->
+  </div>
+
+  <!-- Horizontal filmstrip -->
+  <div
+    class="overflow-x-auto pb-4 scrollbar-hide"
+    role="region"
+    aria-label="Shop categories"
+  >
+    <div class="flex gap-3 lg:gap-4 px-4 sm:px-6 lg:px-8">
+      {
+        categories.map((cat, index) => {
+          const rawImageUrl = categoryImageUrls[cat.id] ?? "";
+          const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl) : "";
+          const placeholderId = `cat-strip-placeholder-${cat.id}`;
+          const imgId = `cat-strip-img-${cat.id}`;
+
+          return (
+            <a
+              href={cat.url}
+              data-astro-prefetch="viewport"
+              class="group relative flex-none w-44 sm:w-52 lg:w-60 overflow-hidden rounded-sm bg-(--surface-primary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)"
+              aria-label={`Shop ${cat.category}`}
+            >
+              {/* Image */}
+              <div class="aspect-square overflow-hidden">
+                {imageUrl ? (
+                  <>
+                    <div
+                      id={placeholderId}
+                      class="absolute inset-0 animate-pulse bg-linear-to-r from-gray-200 via-gray-100 to-gray-200"
+                      aria-hidden="true"
+                    />
+                    <img
+                      id={imgId}
+                      src={imageUrl}
+                      alt=""
+                      aria-hidden="true"
+                      class="w-full h-full object-cover opacity-0 transition-all duration-500 group-hover:scale-105"
+                      loading={index < 3 ? "eager" : "lazy"}
+                      width="600"
+                      height="600"
+                      onload={`this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove()`}
+                      onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='0.4'; this.classList.add('p-8','object-contain'); document.getElementById('${placeholderId}')?.remove()`}
+                    />
+                  </>
+                ) : (
+                  <div class="w-full h-full flex items-center justify-center bg-(--surface-secondary) p-8">
+                    <img
+                      src={EL_CAMINO_LOGO_DATA_URI}
+                      alt=""
+                      aria-hidden="true"
+                      class="w-full h-full object-contain opacity-30"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Gradient overlay */}
+              <div class="absolute inset-0 bg-linear-to-t from-black/85 via-black/20 to-transparent" />
+
+              {/* Category name */}
+              <div class="absolute inset-x-0 bottom-0 p-4">
+                <p class="text-base lg:text-lg font-display font-bold text-white leading-tight group-hover:text-(--color-elco-sweet-tea-300) transition-colors duration-200">
+                  {cat.category}
+                </p>
+              </div>
+            </a>
+          );
+        })
+      }
+
+      <!-- "See all" terminal card -->
+      <a
+        href="/shop/all"
+        class="group relative flex-none w-32 sm:w-36 overflow-hidden rounded-sm bg-(--surface-primary) border-2 border-(--border-primary) hover:border-(--color-elco-sweet-tea-300) transition-colors duration-200 flex flex-col items-center justify-center gap-3 p-4 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)"
+        aria-label="See all categories"
+      >
+        <Icon
+          name="uil:arrow-right"
+          class="w-8 h-8 text-(--content-meta) group-hover:text-(--color-elco-sweet-tea-400) transition-colors"
+          aria-hidden="true"
+        />
+        <p
+          class="text-xs font-bold uppercase tracking-widest text-(--content-meta) group-hover:text-(--content-heading) transition-colors leading-snug"
+        >
+          All Categories
+        </p>
+      </a>
+    </div>
+  </div>
+</section>
