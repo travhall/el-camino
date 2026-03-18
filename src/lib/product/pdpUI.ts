@@ -128,13 +128,8 @@ export class PDPUIManager {
     if (!addToCartButton) return;
 
     addToCartButton.textContent = getButtonText(info.state);
+    // CSS pseudo-classes in Button.astro handle opacity/cursor from the disabled attribute alone
     addToCartButton.disabled = isButtonDisabled(info.state);
-
-    if (isButtonDisabled(info.state)) {
-      addToCartButton.classList.add("opacity-50", "cursor-not-allowed");
-    } else {
-      addToCartButton.classList.remove("opacity-50", "cursor-not-allowed");
-    }
   }
 
   updateImageOverlay(info: ProductAvailabilityInfo, saleInfo?: any): void {

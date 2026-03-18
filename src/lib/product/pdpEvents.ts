@@ -291,10 +291,10 @@ export class PDPEventManager {
         </span>
       `;
 
-      // Add loading styles to match Button component
-      button.classList.add("opacity-75", "cursor-not-allowed");
+      // data-loading attribute drives opacity-75 via CSS in Button.astro —
+      // no manual class additions needed
     } else {
-      // Disable loading state
+      // Remove loading state — data-loading removal drops back to disabled:opacity-50 or enabled
       button.removeAttribute("data-loading");
 
       // Restore original content
@@ -304,12 +304,7 @@ export class PDPEventManager {
         button.removeAttribute("data-original-content");
       }
 
-      // Remove loading styles
-      button.classList.remove("opacity-75", "cursor-not-allowed");
-
-      // Re-enable button if not otherwise disabled
-      const isOutOfStock = button.textContent?.includes("Sold Out") || false;
-      button.disabled = isOutOfStock;
+      // Don't set disabled here — onCartUpdate() called in finally re-applies correct state
     }
   }
 

@@ -1033,7 +1033,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     <button
       type="button"
       id="sticky-atc-button"
-      class="shrink-0 px-5 h-11 font-sans font-semibold text-sm rounded-sm bg-(--ui-button-surface) text-(--ui-button-text) border-2 border-(--ui-button-border) disabled:opacity-50 disabled:cursor-not-allowed enabled:cursor-pointer transition-opacity"
+      class="shrink-0 px-5 h-11 font-sans font-semibold text-sm rounded-sm bg-(--ui-button-surface) text-(--ui-button-text) border-2 border-(--ui-button-border) enabled:cursor-pointer enabled:hover:bg-(--ui-button-surface)/70 disabled:opacity-50 disabled:cursor-not-allowed disabled:data-[loading=true]:opacity-75 transition-opacity"
       disabled={!selectedVariationInStock}
     >
       {selectedVariationInStock ? "Add to Cart" : "Sold Out"}
@@ -1201,17 +1201,19 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
       mainBtn.click();
     });
 
-    // Keep sticky button state in sync with main button
+    // Keep sticky button state in sync with main button.
+    // CSS pseudo-classes in the sticky button's class list handle opacity/cursor
+    // automatically from the disabled attribute and data-loading attribute alone —
+    // no manual class mirroring needed.
     const syncStickyState = () => {
       if (!stickyBtn || !mainBtn) return;
       stickyBtn.disabled = mainBtn.disabled;
       // Sync innerHTML so the loading spinner is visible during cart add
       stickyBtn.innerHTML = mainBtn.innerHTML;
-      // Mirror state classes:
-      //   setButtonLoading uses opacity-75, updateAddToCartButton uses opacity-50
-      ["opacity-50", "opacity-75", "cursor-not-allowed"].forEach((cls) => {
-        stickyBtn.classList.toggle(cls, mainBtn.classList.contains(cls));
-      });
+      // Sync data-loading so CSS drives the correct opacity (75% loading, 50% disabled)
+      const loading = mainBtn.getAttribute("data-loading");
+      if (loading) stickyBtn.setAttribute("data-loading", loading);
+      else stickyBtn.removeAttribute("data-loading");
       // Sync price (handles variant switches and sale price changes)
       const priceEl = document.getElementById("sticky-price");
       const mainPrice = document.getElementById("price-display");
