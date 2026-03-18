@@ -64,13 +64,17 @@ function optimizeImageUrl(src: string, width = 600): string {
         {title}
       </h2>
     </div>
-    <a
-      href={seeAllUrl}
-      class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 hidden lg:inline-block"
-      aria-label={`See all products${brand ? ` from ${brand}` : ""}`}
-    >
-      See all from {brand}
-    </a>
+    {
+      products.length > 4 && (
+        <a
+          href={seeAllUrl}
+          class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 hidden lg:inline-block"
+          aria-label={`See all products${brand ? ` from ${brand}` : ""}`}
+        >
+          See all from {brand}
+        </a>
+      )
+    }
   </div>
 
   <!-- Horizontal scroll — bleeds to parent edges -->
@@ -129,7 +133,7 @@ function optimizeImageUrl(src: string, width = 600): string {
               {/* Text overlay */}
               <div class="absolute inset-x-0 bottom-0 p-4 lg:p-5">
                 {product.brand && (
-                  <p class="text-[11px] uppercase tracking-widest font-bold text-(--color-elco-sweet-tea-300) mb-1.5 leading-none">
+                  <p class="text-xs uppercase tracking-widest font-bold text-(--color-elco-sweet-tea-300) mb-1.5 leading-none">
                     {product.brand}
                   </p>
                 )}
@@ -157,7 +161,7 @@ function optimizeImageUrl(src: string, width = 600): string {
               {isOutOfStock && (
                 <div
                   aria-hidden="true"
-                  class="absolute top-3 left-3 bg-black/70 text-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded-sm backdrop-blur-sm"
+                  class="absolute top-3 left-3 bg-state-error-surface text-state-error-text px-2.5 py-1 text-sm font-black uppercase tracking-widest rounded-xs"
                 >
                   Sold Out
                 </div>
@@ -165,7 +169,7 @@ function optimizeImageUrl(src: string, width = 600): string {
               {!isOutOfStock && isOnSale && saleInfo && (
                 <div
                   aria-hidden="true"
-                  class="absolute top-3 left-3 bg-(--color-elco-sweet-tea-300) text-(--color-elco-sweet-tea-900) px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-sm"
+                  class="absolute top-3 left-3 bg-state-success-surface text-state-success-text px-2.5 py-1 text-sm font-black uppercase tracking-widest rounded-xs"
                 >
                   {saleInfo.discountPercent}% Off
                 </div>
