@@ -235,8 +235,13 @@ export class PDPEventManager {
       window.showNotification("Failed to add to cart", "error");
     } finally {
       this.isProcessing = false;
-      // Disable Button component's loading state
+      // Clear loading state first, then re-apply availability state.
+      // onCartUpdate() runs before this finally block (from the success path and
+      // the cartUpdated event), but setButtonLoading(false) overwrites it by
+      // restoring originalContent and unconditionally setting disabled=false.
+      // Calling onCartUpdate() again here ensures the correct state always wins.
       this.setButtonLoading(button, false);
+      this.callbacks.onCartUpdate();
     }
   }
 

@@ -98,29 +98,34 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
         const isOutOfStock = !inventoryMap[item.variationId];
         const optimizedImage = optimizeProductImage(item.image);
         const brand = item.brand ?? "El Camino";
-        const priceClass = isOnSale && !isOutOfStock
-          ? "text-[var(--color-elco-sweet-tea-500)] font-black text-base"
-          : "text-[var(--product-price)] font-black text-base";
+        const priceClass =
+          isOnSale && !isOutOfStock
+            ? "text-[var(--color-elco-sweet-tea-500)] font-black text-base"
+            : "text-[var(--product-price)] font-black text-base";
 
         return `
           <a
             href="${item.url}"
-            class="group flex-none w-44 sm:w-52 rounded-sm overflow-hidden border border-[var(--border-primary)] hover:border-[var(--color-elco-sweet-tea-300)] transition-colors duration-200 shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--content-link)]"
+            class="group flex-none content-stretch w-44 sm:w-52 rounded-sm overflow-hidden border border-[var(--border-primary)] hover:border-[var(--color-elco-sweet-tea-300)] transition-colors duration-200 shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--content-link)]"
             aria-label="${item.title} — ${formattedPrice}${isOutOfStock ? " — Sold Out" : ""}${isOnSale ? " — On Sale" : ""}"
           >
             <!-- Colored brand header strip -->
-            <div class="bg-[var(--color-elco-sweet-tea-300)] px-3 py-2 flex items-center justify-between gap-2 min-h-[2rem]" aria-hidden="true">
-              <span class="text-[10px] font-black uppercase tracking-widest text-[var(--color-elco-sweet-tea-900)] truncate leading-none">
+            <div class="bg-(--color-elco-sweet-tea-300) px-3 py-2 flex items-center justify-between gap-2 min-h-[2rem]" aria-hidden="true">
+              <span class="text-[10px] font-black uppercase tracking-widest text-(--color-elco-sweet-tea-900) truncate leading-none">
                 ${brand}
               </span>
-              ${isOnSale ? `
+              ${
+                isOnSale
+                  ? `
               <span class="text-[9px] font-black uppercase tracking-wide bg-state-success-surface text-state-success-text px-1.5 py-0.5 rounded-sm leading-none shrink-0">
                 Sale
-              </span>` : ""}
+              </span>`
+                  : ""
+              }
             </div>
 
             <!-- Product image — square -->
-            <div class="relative aspect-square overflow-hidden bg-[var(--surface-secondary)]${isOutOfStock ? " opacity-70" : ""}" aria-hidden="true">
+            <div class="relative aspect-square overflow-hidden bg-(--surface-secondary)${isOutOfStock ? " opacity-70" : ""}" aria-hidden="true">
               <img
                 src="${optimizedImage}"
                 alt=""
@@ -129,24 +134,32 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
                 width="200"
                 height="200"
               />
-              ${isOutOfStock ? `
+              ${
+                isOutOfStock
+                  ? `
               <div class="absolute inset-0 flex items-end justify-start p-2">
                 <span class="text-[9px] font-black uppercase tracking-widest bg-state-error-surface text-state-error-text px-2 py-1 rounded-sm leading-none">
                   Sold Out
                 </span>
-              </div>` : ""}
+              </div>`
+                  : ""
+              }
             </div>
 
             <!-- Info panel — structured, not overlay -->
-            <div class="bg-[var(--surface-secondary)] border-t-2 border-[var(--color-elco-sweet-tea-300)] p-3">
-              <p class="text-sm font-semibold text-[var(--content-heading)] line-clamp-2 leading-snug min-h-[2.5rem]">
+            <div class="h-full bg-(--surface-secondary) border-t-2 border-(--color-elco-sweet-tea-300) p-3">
+              <p class="text-sm font-semibold text-(--content-heading) line-clamp-2 leading-snug min-h-[2.5rem]">
                 ${item.title}
               </p>
               <div class="flex items-baseline gap-2 mt-2" aria-hidden="true">
-                ${formattedOriginal ? `
+                ${
+                  formattedOriginal
+                    ? `
                 <del class="text-xs text-[var(--content-meta)]">
                   ${formattedOriginal}
-                </del>` : ""}
+                </del>`
+                    : ""
+                }
                 <span class="${priceClass}">
                   ${formattedPrice}
                 </span>

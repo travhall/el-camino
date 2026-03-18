@@ -1148,28 +1148,56 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
 
   function setupStickyATC(): void {
     const stickyBar = document.getElementById("sticky-atc-bar");
-    const stickyBtn = document.getElementById(
+    const rawStickyBtn = document.getElementById(
       "sticky-atc-button",
     ) as HTMLButtonElement | null;
     const mainBtn = document.getElementById(
       "add-to-cart-button",
     ) as HTMLButtonElement | null;
 
-    if (!stickyBar || !mainBtn) return;
+    if (!stickyBar || !mainBtn || !rawStickyBtn) return;
 
-    // Show sticky bar when the main ATC button scrolls out of view
-    const observer = new IntersectionObserver(
+    // Clone to remove any listeners from a prior initialization.
+    // initializePage() runs twice on first load (DOMContentLoaded + astro:page-load),
+    // so without this clone each call would stack another click listener on the same
+    // element, causing two cart.addItem() calls per tap and "max quantity" errors.
+    const stickyBtn = rawStickyBtn.cloneNode(true) as HTMLButtonElement;
+    rawStickyBtn.parentNode!.replaceChild(stickyBtn, rawStickyBtn);
+
+    // Track both visibility states so the sticky hides when either is true
+    let mainBtnVisible = false;
+    let footerVisible = false;
+    const updateStickyVisibility = () => {
+      const hide = mainBtnVisible || footerVisible;
+      stickyBar.classList.toggle("translate-y-full", hide);
+      stickyBar.setAttribute("aria-hidden", hide ? "true" : "false");
+    };
+
+    // Hide when the main ATC button is in view
+    const mainBtnObserver = new IntersectionObserver(
       ([entry]) => {
-        const visible = entry.isIntersecting;
-        stickyBar.classList.toggle("translate-y-full", visible);
-        stickyBar.setAttribute("aria-hidden", visible ? "true" : "false");
+        mainBtnVisible = entry.isIntersecting;
+        updateStickyVisibility();
       },
       { threshold: 0.5 },
     );
-    observer.observe(mainBtn);
+    mainBtnObserver.observe(mainBtn);
+
+    // Also hide when the footer enters view so it never covers footer links
+    const footer = document.querySelector("footer");
+    if (footer) {
+      const footerObserver = new IntersectionObserver(
+        ([entry]) => {
+          footerVisible = entry.isIntersecting;
+          updateStickyVisibility();
+        },
+        { threshold: 0 },
+      );
+      footerObserver.observe(footer);
+    }
 
     // Proxy clicks from sticky button to main ATC button
-    stickyBtn?.addEventListener("click", () => {
+    stickyBtn.addEventListener("click", () => {
       mainBtn.click();
     });
 
@@ -1177,13 +1205,24 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     const syncStickyState = () => {
       if (!stickyBtn || !mainBtn) return;
       stickyBtn.disabled = mainBtn.disabled;
-      stickyBtn.textContent = mainBtn.textContent;
+      // Sync innerHTML so the loading spinner is visible during cart add
+      stickyBtn.innerHTML = mainBtn.innerHTML;
+      // Mirror state classes:
+      //   setButtonLoading uses opacity-75, updateAddToCartButton uses opacity-50
+      ["opacity-50", "opacity-75", "cursor-not-allowed"].forEach((cls) => {
+        stickyBtn.classList.toggle(cls, mainBtn.classList.contains(cls));
+      });
+      // Sync price (handles variant switches and sale price changes)
       const priceEl = document.getElementById("sticky-price");
       const mainPrice = document.getElementById("price-display");
       if (priceEl && mainPrice) priceEl.textContent = mainPrice.textContent;
     };
 
-    // Observe main button mutations for text/disabled changes
+    // Run immediately so sticky reflects any state PDPController already applied
+    // (e.g. "All in Cart" if items are already in cart on page load)
+    syncStickyState();
+
+    // Observe main button for text/disabled/class/children changes
     const mutationObs = new MutationObserver(syncStickyState);
     mutationObs.observe(mainBtn, {
       attributes: true,
@@ -1191,6 +1230,17 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
       subtree: true,
       characterData: true,
     });
+
+    // Also observe price-display so sticky price stays in sync on variant switches
+    // even when the button text itself doesn't change (e.g. "Add to Cart" → "Add to Cart")
+    const priceDisplay = document.getElementById("price-display");
+    if (priceDisplay) {
+      mutationObs.observe(priceDisplay, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    }
   }
 
   function setupPolicyTriggers(): void {
