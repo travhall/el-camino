@@ -1,41 +1,73 @@
 ---
 // src/components/CategoryStrip.astro
-// Horizontal filmstrip of top categories — card style mirrors RelatedProducts.astro.
-// Image fetching mirrors Sidebar.astro (Square CDN with Netlify optimization fallback).
-import { getCategoriesForSidebar } from "@/lib/square/categoryUtils";
+// Horizontal filmstrip — top-tier categories followed by their subcategories.
+// Flattens the full hierarchy so the strip has enough cards to earn horizontal scroll.
+// Image fetching covers both tiers (same Square CDN pattern as Sidebar.astro).
+import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
 import { squareClient } from "@/lib/square/client";
-import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import {
+  EL_CAMINO_LOGO_DATA_URI,
+  EL_CAMINO_LOADER_DATA_URI,
+} from "@/lib/constants/assets";
 import { Icon } from "astro-icon/components";
 
 interface Props {
-  limit?: number;
   title?: string;
 }
 
-const { limit = 6, title = "Shop by Category" } = Astro.props;
+const { title = "Shop by Category" } = Astro.props;
 
-// Fetch categories (same utility as Sidebar.astro)
-const allCategories = await getCategoriesForSidebar();
-const categories = allCategories.slice(0, limit);
+// Full hierarchy, already filtered to categories that have products
+const hierarchy = await fetchCategoryHierarchyWithProducts();
 
-// Resolve Square CDN image URLs for each category (same logic as Sidebar.astro)
+// Flatten: each top-tier category followed immediately by its subcategories.
+// parentName is set on subcategory entries so the card can show the family label.
+interface FlatCategory {
+  id: string;
+  name: string;
+  url: string;
+  parentName?: string;
+}
+
+const flatCategories: FlatCategory[] = [];
+
+for (const item of hierarchy) {
+  flatCategories.push({
+    id: item.category.id,
+    name: item.category.name,
+    url: `/category/${item.category.slug}`,
+    parentName: undefined,
+  });
+  for (const sub of item.subcategories) {
+    flatCategories.push({
+      id: sub.id,
+      name: sub.name,
+      url: `/category/${sub.slug}`,
+      parentName: item.category.name,
+    });
+  }
+}
+
+// Fetch Square CDN image URLs for every entry — top-tier and sub alike.
+// Sequential loop matches Sidebar.astro; the cache absorbs repeat calls
+// if Sidebar has already resolved the same IDs in this request.
 const categoryImageUrls: Record<string, string> = {};
 
-for (const item of categories) {
-  if (!item.id) continue;
+for (const cat of flatCategories) {
+  if (!cat.id) continue;
   try {
     const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-      item.id,
+      cat.id,
       true,
     );
     const imageObjects = (result.relatedObjects ?? []).filter(
       (obj) => obj.type === "IMAGE",
     );
     if (imageObjects.length > 0 && imageObjects[0].imageData?.url) {
-      categoryImageUrls[item.id] = imageObjects[0].imageData.url;
+      categoryImageUrls[cat.id] = imageObjects[0].imageData.url;
     }
   } catch {
-    // fail silently — card will fall back to logo placeholder
+    // fail silently — card falls back to logo placeholder
   }
 }
 
@@ -69,7 +101,7 @@ function getOptimizedImageUrl(
   <!-- Header -->
   <div class="flex items-end justify-between mb-6 lg:mb-8 px-4 sm:px-6 lg:px-8">
     <div>
-      <p class="text-xs uppercase tracking-widest text-(--content-meta) mb-1.5">
+      <p class="text-xs uppercase tracking-widest text-(--content-meta)">
         What We Carry
       </p>
       <h2
@@ -78,12 +110,6 @@ function getOptimizedImageUrl(
         {title}
       </h2>
     </div>
-    <!-- <a
-      href="/shop/all"
-      class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 hidden lg:inline-block shrink-0 mb-0.5"
-    >
-      See all categories
-    </a> -->
   </div>
 
   <!-- Horizontal filmstrip -->
@@ -94,60 +120,76 @@ function getOptimizedImageUrl(
   >
     <div class="flex gap-3 lg:gap-4 px-4 sm:px-6 lg:px-8">
       {
-        categories.map((cat, index) => {
+        flatCategories.map((cat, index) => {
           const rawImageUrl = categoryImageUrls[cat.id] ?? "";
           const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl) : "";
           const placeholderId = `cat-strip-placeholder-${cat.id}`;
-          const imgId = `cat-strip-img-${cat.id}`;
+          const isSubcategory = !!cat.parentName;
 
           return (
             <a
               href={cat.url}
               data-astro-prefetch="viewport"
-              class="group relative flex-none w-44 sm:w-52 lg:w-60 overflow-hidden rounded-sm bg-(--surface-primary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)"
-              aria-label={`Shop ${cat.category}`}
+              class:list={[
+                "group relative flex-none overflow-hidden rounded-sm bg-(--surface-primary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)",
+                // Subcategory cards are narrower — creates a natural visual rhythm
+                // and echoes the brand/product hierarchy in RelatedProducts
+                isSubcategory ? "w-36 sm:w-44 lg:w-52" : "w-44 sm:w-52 lg:w-60",
+              ]}
+              aria-label={`Shop ${cat.name}${cat.parentName ? ` — ${cat.parentName}` : ""}`}
             >
-              {/* Image */}
-              <div class="aspect-square overflow-hidden">
-                {imageUrl ? (
-                  <>
+              {/* Image — relative container keeps skeleton within bounds */}
+              <div class="relative aspect-square overflow-hidden">
+                {imageUrl && (
+                  <div
+                    class="loading-skeleton loading-image absolute inset-0 w-full h-full"
+                    id={placeholderId}
+                    aria-hidden="true"
+                  >
                     <div
-                      id={placeholderId}
-                      class="absolute inset-0 animate-pulse bg-linear-to-r from-gray-200 via-gray-100 to-gray-200"
-                      aria-hidden="true"
-                    />
-                    <img
-                      id={imgId}
-                      src={imageUrl}
-                      alt=""
-                      aria-hidden="true"
-                      class="w-full h-full object-cover opacity-0 transition-all duration-500 group-hover:scale-105"
-                      loading={index < 3 ? "eager" : "lazy"}
-                      width="600"
-                      height="600"
-                      onload={`this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove()`}
-                      onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='0.4'; this.classList.add('p-8','object-contain'); document.getElementById('${placeholderId}')?.remove()`}
-                    />
-                  </>
-                ) : (
-                  <div class="w-full h-full flex items-center justify-center bg-(--surface-secondary) p-8">
-                    <img
-                      src={EL_CAMINO_LOGO_DATA_URI}
-                      alt=""
-                      aria-hidden="true"
-                      class="w-full h-full object-contain opacity-30"
+                      class="absolute inset-0 flex items-center justify-center"
+                      style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
                     />
                   </div>
+                )}
+
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    aria-hidden="true"
+                    class="w-full h-full object-cover opacity-0 transition-all duration-500 group-hover:scale-105"
+                    loading={index < 4 ? "eager" : "lazy"}
+                    width="600"
+                    height="600"
+                    onload={`this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove()`}
+                    onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='0.3'; this.classList.remove('object-cover'); this.classList.add('object-contain','p-8'); document.getElementById('${placeholderId}')?.remove()`}
+                  />
+                ) : (
+                  <img
+                    src={EL_CAMINO_LOGO_DATA_URI}
+                    alt=""
+                    aria-hidden="true"
+                    class="w-full h-full object-contain opacity-20"
+                    loading={index < 4 ? "eager" : "lazy"}
+                    width="600"
+                    height="600"
+                  />
                 )}
               </div>
 
               {/* Gradient overlay */}
               <div class="absolute inset-0 bg-linear-to-t from-black/85 via-black/20 to-transparent" />
 
-              {/* Category name */}
-              <div class="absolute inset-x-0 bottom-0 p-4">
-                <p class="text-base lg:text-lg font-display font-bold text-white leading-tight group-hover:text-(--color-elco-sweet-tea-300) transition-colors duration-200">
-                  {cat.category}
+              {/* Text — parent label above name mirrors RelatedProducts brand/title pattern */}
+              <div class="absolute inset-x-0 bottom-0 p-3 lg:p-4">
+                {cat.parentName && (
+                  <p class="text-xs uppercase tracking-widest font-bold text-(--content-meta)/80 mb-1 leading-none truncate">
+                    {cat.parentName}
+                  </p>
+                )}
+                <p class="text-xl lg:text-2xl font-display font-bold text-white leading-tight group-hover:text-(--content-emphasis) transition-colors duration-200 line-clamp-2">
+                  {cat.name}
                 </p>
               </div>
             </a>

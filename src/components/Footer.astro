@@ -44,7 +44,7 @@ try {
   <div class="flex flex-col items-start lg:flex-row lg:justify-between py-4">
     <div>
       <div
-        class="footer-logo flex flex-row items-center justify-center border border-(--content-heading) mb-8 lg:mb-0"
+        class="footer-logo flex flex-row items-center justify-center border border-(--content-heading)"
       >
         <Icon
           name="Icon"
@@ -58,36 +58,33 @@ try {
         </p>
       </div>
 
-      <!-- Business Hours -->
-      <!-- <div class="mt-6">
-        <h3 class="text-sm font-medium text-(--content-heading) mb-2 uppercase">
-          Hours
-        </h3>
-        <div class="space-y-1">
-          {
-            businessHours.map((day) => (
-              <div
-                class={`flex justify-between ${
-                  day === today
-                    ? "text-(--content-emphasis) font-medium"
-                    : "text-(--content-body)"
-                }`}
-              >
-                <span>{day.day}</span>
-                <span
-                  class={
-                    day.isOpen
-                      ? "text-(--content-body)"
-                      : "text-(--content-meta)"
-                  }
-                >
-                  {day.hours}
-                </span>
-              </div>
-            ))
-          }
-        </div>
-      </div> -->
+      <!-- Social links + theme toggle -->
+      <div class="flex flex-row items-center gap-3 lg:self-end my-8 lg:mb-0">
+        <nav aria-label="Social media links" class="flex items-center">
+          <ul class="inline-flex flex-row gap-2">
+            {
+              social.map((item) => (
+                <li>
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Visit our ${item.platform} page (opens in new tab)`}
+                    class="text-(--content-heading) hover:text-(--content-emphasis) transition-colors"
+                  >
+                    <Icon
+                      name={item.icon}
+                      class="w-6 h-auto"
+                      aria-hidden="true"
+                    />
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+        <ThemeToggle />
+      </div>
     </div>
 
     <div class="flex flex-col justify-end gap-4">
@@ -115,43 +112,15 @@ try {
           {contact.email}
         </a>
       </address>
-
-      <!-- Social links + theme toggle -->
-      <div class="flex flex-row items-center gap-3 lg:self-end">
-        <nav aria-label="Social media links" class="flex items-center">
-          <ul class="inline-flex flex-row gap-2">
-            {
-              social.map((item) => (
-                <li>
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Visit our ${item.platform} page (opens in new tab)`}
-                    class="text-(--content-heading) hover:text-(--content-emphasis) transition-colors"
-                  >
-                    <Icon
-                      name={item.icon}
-                      class="w-6 h-auto"
-                      aria-hidden="true"
-                    />
-                  </a>
-                </li>
-              ))
-            }
-          </ul>
-        </nav>
-        <ThemeToggle />
-      </div>
     </div>
   </div>
 
   <!-- Divider -->
   <div class="border-t border-(--surface-tertiary) mt-2 pt-4">
     <div
-      class="flex flex-col lg:flex-row lg:justify-between lg:items-center py-4 gap-3"
+      class="flex flex-col-reverse lg:flex-row lg:justify-between lg:items-center py-4 gap-3"
     >
-      <small class="block text-base text-(--content-heading) md:text-sm">
+      <small class="block text-sm text-(--content-heading)">
         &copy;{currentYear}
         {siteConfig.name}, all rights reserved
       </small>
@@ -161,7 +130,7 @@ try {
             <button
               type="button"
               data-policy-slug={page.slug}
-              class="policy-modal-trigger text-base md:text-sm font-semibold relative text-(--content-heading) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
+              class="policy-modal-trigger text-base md:text-sm font-semibold relative p-1 text-(--content-heading) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
             >
               {page.title.rendered}
             </button>
