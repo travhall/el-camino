@@ -209,7 +209,10 @@ export class FilterCoordinator {
    */
   static reset(): void {
     this.cleanupAnimationState();
-    this.isInitialized = false;
+    // DO NOT reset isInitialized — FilterCoordinator's event listeners are registered
+    // once for the module lifetime and must not accumulate on each navigation.
+    // Resetting here caused a new setupEventListeners() call on every astro:page-load,
+    // leading to n+1 duplicate listeners after n filter navigations.
     this.currentInstance = null;
     // appliedFiltersShown is intentionally NOT cleared here
     // It's managed by coordinateAppliedFiltersEntrance based on URL state

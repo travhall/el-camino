@@ -1,6 +1,7 @@
 import { defineConfig } from "astro/config";
 import tailwindcss from "@tailwindcss/vite";
 import icon from "astro-icon";
+import sitemap from "@astrojs/sitemap";
 import netlify from "@astrojs/netlify";
 import node from "@astrojs/node";
 import path from "path";
@@ -9,8 +10,10 @@ import path from "path";
 const isPreview = process.env.PREVIEW === "true";
 
 export default defineConfig({
+  site: "https://elcaminoskateshop.com",
   integrations: [
     icon({ iconDir: "src/assets/icons" }),
+    sitemap(),
   ],
   output: "server",
   adapter: isPreview

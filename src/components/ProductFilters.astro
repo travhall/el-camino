@@ -180,9 +180,9 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
             {filteredCount} of {totalProducts} products
           </p>
         </div>
-        <div class="hidden lg:block">
+        <div class="hidden lg:flex justify-between items-baseline h-8">
           <p
-            class="text-sm lg:text-base text-(--content-meta) font-medium"
+            class="text-sm lg:text-base text-(--content-meta)"
             data-result-count
           >
             {
@@ -191,18 +191,18 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
                 : `${filteredCount} of ${totalProducts} products`
             }
           </p>
-        </div>
 
-        <!-- Desktop "Clear all filters" shortcut -->
-        {(currentBrands.length > 0 || currentCategories.length > 0 || currentAvailability) && (
-          <button
-            type="button"
-            data-clear-filters
-            class="hidden lg:block text-sm text-(--ui-accent) hover:text-(--ui-accent-hover) transition-colors font-medium mb-2"
-          >
-            Clear all filters
-          </button>
-        )}
+          <!-- Desktop "Clear all filters" shortcut -->
+          {(currentBrands.length > 0 || currentCategories.length > 0 || currentAvailability) && (
+            <button
+              type="button"
+              data-clear-filters
+              class="text-sm text-(--content-meta) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer lg:mr-2"
+            >
+              Clear all filters
+            </button>
+          )}
+        </div>
 
         <!-- Screen Reader Live Region for Filter Updates -->
         <div
@@ -232,7 +232,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
                   type="button"
                   id="clear-brands-button"
                   data-clear-brands
-                  class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors lg:mr-2"
+                  class="text-sm text-(--content-meta) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer lg:mr-2"
                 >
                   Clear ({currentBrands.length})
                 </button>
@@ -303,7 +303,7 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
                 type="button"
                 id="clear-categories-button"
                 data-clear-categories
-                class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors lg:mr-2"
+                class="text-sm text-(--content-meta) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer lg:mr-2"
               >
                 Clear ({currentCategories.length})
               </button>
@@ -810,11 +810,13 @@ const shouldStartExpanded = hasSelectedBrandsBelow;
   FilterCoordinator.initialize();
 
   // Handle Astro navigation
+  // astro:page-load fires on every navigation including the first page load,
+  // so no additional manual initializeFilters() call is needed here.
+  // A second call before astro:page-load fires would double-register all
+  // checkbox/form event listeners (destroy() doesn't remove them), causing
+  // every filter click to call submitForm() twice. The second call hits
+  // isAnimating:true and invokes navigate() immediately, bypassing the
+  // 150ms exit animation timer.
   document.addEventListener("astro:page-load", initializeFilters);
   document.addEventListener("astro:before-preparation", cleanupFilters);
-
-  // Initialize if DOM is ready
-  if (document.readyState !== "loading") {
-    initializeFilters();
-  }
 </script>

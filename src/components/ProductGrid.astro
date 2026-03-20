@@ -21,60 +21,32 @@ const {
   skipInventoryCheck = false,
 } = Astro.props;
 
-// FIXED: Separate rendering products from inventory checking products
-// - products: What to render (server-filtered for mobile, all for desktop)
-// - allProducts: What to use for client-side filtering data
+// Only check inventory for the products we're actually rendering server-side.
+// Checking all products (including those hidden behind infinite scroll) added
+// unnecessary latency to TTFB with no benefit — the extra products are not
+// visible on initial load and their inventory can be assumed in-stock until needed.
+const initialProducts = products;
 
-// For rendering: always use the products prop (server-filtered)
-const initialProducts = products; // Products to show immediately
-
-// For inventory checking: check inventory for all products that might be needed
-const inventoryCheckProducts =
-  allProducts && allProducts.length > 0 ? allProducts : products; // Products for inventory batch check
-
-// Batch inventory check for all products that will be displayed
 let productsWithInventory: ProductWithInventory[] = initialProducts;
-let allProductsWithInventory: ProductWithInventory[] = allProducts || [];
 
-if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
+if (!skipInventoryCheck && initialProducts.length > 0) {
   try {
-    // Check inventory for all products (for efficiency)
-    const variationIds = inventoryCheckProducts
+    const variationIds = initialProducts
       .map((p) => p.variationId)
       .filter(Boolean);
     const inventoryMap =
       await batchInventoryService.getBatchInventoryStatus(variationIds);
 
-    // Apply inventory to products we're rendering (server-filtered)
     productsWithInventory = initialProducts.map((product) => {
       const inventoryStatus = inventoryMap.get(product.variationId) || {
         isOutOfStock: false,
         hasLimitedOptions: false,
         totalQuantity: 0,
       };
-
-      return {
-        ...product,
-        inventoryStatus,
-      };
-    });
-
-    // FIXED: Also apply inventory to ALL products for client-side filtering
-    allProductsWithInventory = inventoryCheckProducts.map((product) => {
-      const inventoryStatus = inventoryMap.get(product.variationId) || {
-        isOutOfStock: false,
-        hasLimitedOptions: false,
-        totalQuantity: 0,
-      };
-
-      return {
-        ...product,
-        inventoryStatus,
-      };
+      return { ...product, inventoryStatus };
     });
   } catch (error) {
     console.error("Batch inventory check failed:", error);
-    // Fallback: all products assumed in stock
     productsWithInventory = initialProducts.map((product) => ({
       ...product,
       inventoryStatus: {
@@ -83,17 +55,7 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
         totalQuantity: 0,
       },
     }));
-
-    allProductsWithInventory = (allProducts || []).map((product) => ({
-      ...product,
-      inventoryStatus: {
-        isOutOfStock: false,
-        hasLimitedOptions: false,
-        totalQuantity: 0,
-      },
-    }));
   }
-} else {
 }
 ---
 
@@ -188,8 +150,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
   aria-label="Product listings"
   aria-busy="false"
   class="product-grid grid xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-1 transition-all duration-300"
-  data-all-products={JSON.stringify(allProductsWithInventory)}
-  data-initial-products={JSON.stringify(productsWithInventory)}
   data-category-path={categoryPath}
   data-product-count={productsWithInventory.length}
 >
@@ -384,8 +344,15 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
 
     const cardsPerRow = getCardsPerRow();
 
-    // Animate first 16 cards immediately with minimal stagger
-    // Fast completion so user doesn't scroll past before animation finishes
+    // Force a synchronous style recalculation before changing classes.
+    // astro:page-load fires inside the view transition callback, meaning the DOM
+    // swap and this class change could happen in the same rendering frame.
+    // Without a forced reflow, the browser batches opacity-0 and opacity-100
+    // together and skips the CSS transition. Reading offsetHeight forces the
+    // browser to commit the current opacity:0 as the "before-change" value,
+    // so the 0→1 transition fires correctly.
+    void document.getElementById("filterable-product-grid")?.offsetHeight;
+
     initialCards.forEach((card) => {
       const htmlCard = card as HTMLElement;
       const index = parseInt(htmlCard.dataset.initialIndex || "0");
@@ -429,7 +396,6 @@ if (!skipInventoryCheck && inventoryCheckProducts.length > 0) {
       grid.style.opacity = "1";
     }
 
-    // Initialize animations and infinite scroll
     initializePageLoadAnimations();
     initializeInfiniteScroll();
   });

@@ -65,14 +65,16 @@ const linkRel = isExternalLink && !rel ? "noopener noreferrer" : rel;
   onclick={href && isDisabled ? "event.preventDefault();" : undefined}
   class:list={[
     "font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) inline-flex items-center justify-center",
-    // Cursor: CSS pseudo-classes respond to both render-time props and JS-set attributes
-    "enabled:cursor-pointer",
+    // Cursor: enabled only applies to <button>; cursor-pointer handles <a> variants too
+    "enabled:cursor-pointer cursor-pointer",
+    // Suppress hover/pointer on disabled links (<a aria-disabled="true">)
+    "aria-disabled:pointer-events-none",
 
     variant === "primary" && [
       "text-(--ui-button-text)",
       "bg-(--ui-button-surface)",
       "border-(--ui-button-border)",
-      "enabled:hover:bg-(--ui-button-surface)/70",
+      "hover:bg-(--ui-button-surface)/70",
       "focus-visible:ring-(--ui-button-ring)",
     ],
 
@@ -80,16 +82,16 @@ const linkRel = isExternalLink && !rel ? "noopener noreferrer" : rel;
       "text-(--ui-button-secondary-text)",
       "bg-(--ui-button-secondary-surface)",
       "border-(--ui-button-secondary-border)",
-      "enabled:hover:bg-(--ui-button-secondary-surface)/70",
+      "hover:bg-(--ui-button-secondary-surface)/70",
       "focus-visible:ring-(--ui-button-secondary-ring)",
     ],
 
     variant === "outline" && [
       "text-(--ui-button-outline-text)",
-      "enabled:hover:text-(--surface-primary)",
+      "hover:text-(--surface-primary)",
       "bg-(--ui-button-outline-surface)/0",
       "border-(--ui-button-outline-border)",
-      "enabled:hover:bg-(--ui-button-outline-surface)/70",
+      "hover:bg-(--ui-button-outline-surface)/70",
       "focus-visible:ring-(--ui-button-outline-ring)",
     ],
 
@@ -97,7 +99,7 @@ const linkRel = isExternalLink && !rel ? "noopener noreferrer" : rel;
       "text-(--content-body)",
       "bg-(--ui-button-surface)/0",
       "border-(--ui-button-border)/0",
-      "enabled:hover:bg-(--ui-button-surface)/10",
+      "hover:bg-(--ui-button-surface)/10",
       "focus-visible:ring-(--ui-button-ring)",
     ],
 
@@ -107,7 +109,7 @@ const linkRel = isExternalLink && !rel ? "noopener noreferrer" : rel;
       "border-(--ui-button-border)/0",
       "focus-visible:ring-(--ui-button-ring)",
       "underline underline-offset-1 decoration-2 decoration-(--content-body)/0",
-      "enabled:hover:decoration-(--content-body)/80 enabled:hover:underline-offset-4",
+      "hover:decoration-(--content-body)/80 hover:underline-offset-4",
     ],
 
     size === "sm" && "text-xs lg:text-sm py-1 px-2",
