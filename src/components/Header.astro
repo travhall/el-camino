@@ -20,17 +20,30 @@ const deviceInfo = detectDeviceFromUA(userAgent);
 const isMobile = deviceInfo.isMobile;
 ---
 
-<style>
-  /* One-time header fade-in animation */
-  #site-header {
-    opacity: 0; /* Hidden by default until script runs */
-  }
+{/*
+  Runs synchronously *before* the <header> element is streamed to the browser.
+  is:inline scripts are not deferred — they block the parser at their position,
+  so by the time <header id="site-header"> arrives, <html> already has the correct
+  class and CSS immediately applies the right opacity.
 
-  #site-header.header-visible {
-    opacity: 1; /* Visible without animation (subsequent page loads) */
-  }
+  On first session load (no sessionStorage flag): adds header-first-load → CSS
+  hides the header and plays a one-time fade-in animation.
+  On every subsequent load (flag present, including hard refresh): does nothing →
+  header is visible as soon as it streams in, no waiting for deferred scripts.
+  sessionStorage persists across refreshes but not across tab closes.
+*/}
+<script is:inline>
+  (function () {
+    if (!sessionStorage.getItem("header-animated")) {
+      document.documentElement.classList.add("header-first-load");
+      sessionStorage.setItem("header-animated", "true");
+    }
+  })();
+</script>
 
-  #site-header.header-initial-load {
+<style is:global>
+  /* One-time entrance animation — only active on first session load */
+  .header-first-load #site-header {
     opacity: 0;
     animation: fadeInHeader 0.6s ease-out 0.2s forwards;
   }
@@ -48,7 +61,7 @@ const isMobile = deviceInfo.isMobile;
 
   /* Respect reduced motion preferences */
   @media (prefers-reduced-motion: reduce) {
-    #site-header.header-initial-load {
+    .header-first-load #site-header {
       animation: none;
       opacity: 1;
       transform: none;
@@ -97,40 +110,6 @@ const isMobile = deviceInfo.isMobile;
 </header>
 
 <script>
-  // One-time header fade-in animation on initial page load
-  function initializeHeaderAnimation() {
-    const STORAGE_KEY = "header-animated";
-    const header = document.getElementById("site-header");
-
-    if (!header) return;
-
-    // Check if this is the first page load of the session
-    const hasAnimated = sessionStorage.getItem(STORAGE_KEY);
-
-    if (!hasAnimated) {
-      // First load - apply animation class
-      header.classList.add("header-initial-load");
-      // Store flag so it doesn't animate again this session
-      sessionStorage.setItem(STORAGE_KEY, "true");
-    } else {
-      // Already animated this session - show immediately without animation
-      header.classList.add("header-visible");
-    }
-  }
-
-  // Run on initial page load
-  initializeHeaderAnimation();
-
-  // Handle view transitions - restore header visibility on page swap
-  document.addEventListener("astro:after-swap", () => {
-    const header = document.getElementById("site-header");
-    if (header) {
-      // Always show header immediately on subsequent navigation
-      header.classList.remove("header-initial-load");
-      header.classList.add("header-visible");
-    }
-  });
-
   // Handle menu toggle functionality
   // AbortController lets us cleanly remove ALL listeners on each page swap
   // instead of trying to removeEventListener on locally-scoped functions.
