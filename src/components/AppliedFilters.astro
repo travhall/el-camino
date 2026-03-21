@@ -1,6 +1,6 @@
 ---
 // src/components/AppliedFilters.astro
-import { FilterCoordinator } from "@/lib/filterCoordinator";
+import { fetchCategoryHierarchy } from "@/lib/square/categories";
 import type { FilterOptions, ProductFilters, CategoryFilterOption } from "@/lib/square/types";
 
 export interface Props {
@@ -21,19 +21,53 @@ const currentAvailability = appliedFilters?.availability ?? (currentParams.get("
 // Only show content if there are active filters
 const hasActiveFilters = currentBrands.length > 0 || currentCategories.length > 0 || currentAvailability;
 
-// Determine if we should start hidden (for animation) based on referrer
-const referrer = Astro.request.headers.get('referer') || '';
-const referrerUrl = referrer ? new URL(referrer) : null;
-const hadFiltersInReferrer = referrerUrl?.search ? referrerUrl.searchParams.toString().length > 0 : false;
-const shouldStartHidden = hasActiveFilters && !hadFiltersInReferrer;
+// Build comprehensive slug→name and id→name maps for category pill display.
+// We always populate from filterOptions (fast, already in memory) so that
+// data-category-names is never empty — even when no filters are active on
+// initial load. Without this, client-side filter changes would fall back to
+// raw slugs ("bearings-bolts-more") instead of proper names.
+let categorySlugNameMap: Map<string, string> = new Map();
+let categoryIdNameMap: Map<string, string> = new Map();
 
-function getCategoryName(id: string, categories: CategoryFilterOption[] = []): string {
+// Always seed from filterOptions first (no extra fetch needed)
+if (filterOptions?.categories) {
+  for (const cat of filterOptions.categories) {
+    if (cat.slug) categorySlugNameMap.set(cat.slug, cat.name);
+    if (cat.id) categoryIdNameMap.set(cat.id, cat.name);
+    for (const sub of cat.subcategories || []) {
+      if (sub.slug) categorySlugNameMap.set(sub.slug, sub.name);
+      if (sub.id) categoryIdNameMap.set(sub.id, sub.name);
+    }
+  }
+}
+
+// Also fetch the full hierarchy when categories are active, to cover any
+// slugs that aren't present in filterOptions (e.g. on /shop/sale subset pages).
+if (currentCategories.length > 0) {
+  try {
+    const hierarchy = await fetchCategoryHierarchy();
+    for (const { category, subcategories } of hierarchy) {
+      categorySlugNameMap.set(category.slug, category.name);
+      categoryIdNameMap.set(category.id, category.name);
+      for (const sub of subcategories) {
+        categorySlugNameMap.set(sub.slug, sub.name);
+        categoryIdNameMap.set(sub.id, sub.name);
+      }
+    }
+  } catch {
+    // getCategoryName will fall back to filterOptions
+  }
+}
+
+function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = []): string {
+  // Check filterOptions first (fastest, already in memory)
   for (const cat of categories) {
-    if (cat.id === id) return cat.name;
-    const sub = cat.subcategories.find((s) => s.id === id);
+    if (cat.slug === slugOrId || cat.id === slugOrId) return cat.name;
+    const sub = cat.subcategories.find((s) => s.slug === slugOrId || s.id === slugOrId);
     if (sub) return sub.name;
   }
-  return id; // Fallback: show raw ID
+  // Fallback to hierarchy maps (handles slugs not present in filtered filterOptions)
+  return categorySlugNameMap.get(slugOrId) ?? categoryIdNameMap.get(slugOrId) ?? slugOrId;
 }
 ---
 
@@ -73,7 +107,9 @@ function getCategoryName(id: string, categories: CategoryFilterOption[] = []): s
     classes,
     !hasActiveFilters ? "no-filters" : "",
   ]}
-  style={`view-transition-name: applied-filters; ${shouldStartHidden ? 'visibility: hidden; opacity: 0;' : ''}`}
+  style="view-transition-name: applied-filters;"
+  data-category-names={JSON.stringify(Object.fromEntries(categorySlugNameMap))}
+  data-category-path={categoryPath}
 >
   <div class="flex flex-wrap items-center gap-3 my-2">
     {
@@ -171,81 +207,175 @@ function getCategoryName(id: string, categories: CategoryFilterOption[] = []): s
 <script>
   import { FilterCoordinator } from "@/lib/filterCoordinator";
 
-  // Initialize the unified filter system
   FilterCoordinator.initialize();
 
-  document.addEventListener("astro:page-load", () => {
+  // ── Pill rendering ──────────────────────────────────────────────────────────
+
+  const PILL_CLASS =
+    "inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 group";
+
+  const X_ICON = `<svg class="w-3 h-3 ml-1 text-(--content-meta) group-hover:text-(--content-body)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
+  const X_ICON_GREEN = `<svg class="w-3 h-3 ml-1 text-(--state-success-text)/70 group-hover:text-(--state-success-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
+
+  function buildPills(
+    brands: string[],
+    categories: string[],
+    availability: boolean,
+    categoryNames: Record<string, string>
+  ): HTMLElement {
+    const pillsDiv = document.createElement("div");
+    pillsDiv.className = "flex flex-wrap gap-2";
+
+    brands.forEach((brand) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.dataset.removeBrand = brand;
+      btn.className = PILL_CLASS;
+      btn.title = `Remove ${brand} filter`;
+      btn.innerHTML = `<span>${brand}</span>${X_ICON}`;
+      pillsDiv.appendChild(btn);
+    });
+
+    categories.forEach((slug) => {
+      const name = categoryNames[slug] || slug;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.dataset.filterType = "categories";
+      btn.dataset.filterValue = slug;
+      btn.className = PILL_CLASS;
+      btn.title = `Remove ${name} filter`;
+      btn.setAttribute("aria-label", `Remove ${name} filter`);
+      btn.innerHTML = `<span>${name}</span>${X_ICON}`;
+      pillsDiv.appendChild(btn);
+    });
+
+    if (availability) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.dataset.removeAvailability = "";
+      btn.className = PILL_CLASS;
+      btn.title = "Remove availability filter";
+      btn.innerHTML = `<span>In stock only</span>${X_ICON_GREEN}`;
+      pillsDiv.appendChild(btn);
+    }
+
+    return pillsDiv;
+  }
+
+  function updateAppliedFilters(
+    brands: string[],
+    categories: string[],
+    availability: boolean
+  ) {
+    const container = document.getElementById("applied-filters-container");
+    if (!container) return;
+
+    const hasActive = brands.length > 0 || categories.length > 0 || availability;
+
+    if (!hasActive) {
+      container.classList.add("no-filters");
+      // Also clear the DOM so stale pills can't reappear
+      const flexRow = container.querySelector(".flex.flex-wrap.items-center.gap-3.my-2");
+      if (flexRow) flexRow.innerHTML = "";
+      return;
+    }
+
+    container.classList.remove("no-filters");
+
+    const categoryNames = JSON.parse(
+      container.dataset.categoryNames || "{}"
+    ) as Record<string, string>;
+
+    const flexRow = container.querySelector(
+      ".flex.flex-wrap.items-center.gap-3.my-2"
+    );
+    if (!flexRow) return;
+
+    flexRow.innerHTML = "";
+    flexRow.appendChild(buildPills(brands, categories, availability, categoryNames));
+
+    const clearAllBtn = document.createElement("button");
+    clearAllBtn.type = "button";
+    clearAllBtn.dataset.clearAllFilters = "";
+    clearAllBtn.className =
+      "text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-nowrap";
+    clearAllBtn.textContent = "Clear All";
+    flexRow.appendChild(clearAllBtn);
+
     setupFilterHandlers();
-  });
+  }
+
+  // ── Filter state manipulation ────────────────────────────────────────────────
+
+  function dispatchFilterChange(
+    brands: string[],
+    categories: string[],
+    availability: boolean
+  ) {
+    const params = new URLSearchParams();
+    brands.forEach((b) => params.append("brands", b));
+    categories.forEach((c) => params.append("categories", c));
+    if (availability) params.set("availability", "true");
+    const qs = params.toString();
+    history.pushState({}, "", `${window.location.pathname}${qs ? "?" + qs : ""}`);
+    window.dispatchEvent(
+      new CustomEvent("filterchange", { detail: { brands, categories, availability } })
+    );
+  }
+
+  function removeFilter(type: string, value: string | null = null) {
+    const p = new URLSearchParams(window.location.search);
+    const brands = p.getAll("brands");
+    const cats = p.getAll("categories");
+    const avail = p.get("availability") === "true";
+
+    if (type === "brand" && value) {
+      dispatchFilterChange(brands.filter((b) => b !== value), cats, avail);
+    } else if (type === "categories" && value) {
+      dispatchFilterChange(brands, cats.filter((c) => c !== value), avail);
+    } else if (type === "availability") {
+      dispatchFilterChange(brands, cats, false);
+    }
+  }
+
+  // ── Event handler setup ──────────────────────────────────────────────────────
 
   function setupFilterHandlers() {
-    // Individual brand removal
     document.querySelectorAll("[data-remove-brand]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
-        const target = e.currentTarget as HTMLElement;
-        const brand = target?.dataset.removeBrand;
+        const brand = (e.currentTarget as HTMLElement).dataset.removeBrand;
         if (brand) removeFilter("brand", brand);
       });
     });
 
-    // Individual category removal
     document.querySelectorAll("[data-filter-type='categories']").forEach((btn) => {
       btn.addEventListener("click", (e) => {
-        const target = e.currentTarget as HTMLElement;
-        const categoryId = target?.dataset.filterValue;
-        if (categoryId) removeFilter("categories", categoryId);
+        const slug = (e.currentTarget as HTMLElement).dataset.filterValue;
+        if (slug) removeFilter("categories", slug);
       });
     });
 
-    // Availability removal
-    document
-      .querySelector("[data-remove-availability]")
-      ?.addEventListener("click", () => {
-        removeFilter("availability");
-      });
+    document.querySelector("[data-remove-availability]")?.addEventListener("click", () => {
+      removeFilter("availability");
+    });
 
-    // Clear All - use Astro navigation
-    document
-      .querySelector("[data-clear-all-filters]")
-      ?.addEventListener("click", () => {
-        const targetUrl = window.location.pathname;
-        FilterCoordinator.coordinateExit(async () => {
-          const { navigate } = await import('astro:transitions/client');
-          navigate(targetUrl);
-        }, targetUrl);
-      });
+    document.querySelector("[data-clear-all-filters]")?.addEventListener("click", () => {
+      dispatchFilterChange([], [], false);
+    });
   }
 
-  async function removeFilter(type: string, value: string | null = null) {
-    const currentParams = new URLSearchParams(window.location.search);
-    const currentBrands = currentParams.getAll("brands") || [];
-    const currentCategories = currentParams.getAll("categories") || [];
-    const currentAvailability = currentParams.get("availability") === "true";
+  // ── Module-level listeners ───────────────────────────────────────────────────
 
-    const params = new URLSearchParams();
+  window.addEventListener("filterchange", (e: Event) => {
+    const evt = e as CustomEvent<{
+      brands: string[];
+      categories: string[];
+      availability: boolean;
+    }>;
+    updateAppliedFilters(evt.detail.brands, evt.detail.categories, evt.detail.availability);
+  });
 
-    if (type === "brand" && value) {
-      const otherBrands = currentBrands.filter((b) => b !== value);
-      otherBrands.forEach((brand) => params.append("brands", brand));
-      currentCategories.forEach((id) => params.append("categories", id));
-      if (currentAvailability) params.set("availability", "true");
-    } else if (type === "categories" && value) {
-      currentBrands.forEach((brand) => params.append("brands", brand));
-      const otherCats = currentCategories.filter((c) => c !== value);
-      otherCats.forEach((id) => params.append("categories", id));
-      if (currentAvailability) params.set("availability", "true");
-    } else if (type === "availability") {
-      currentBrands.forEach((brand) => params.append("brands", brand));
-      currentCategories.forEach((id) => params.append("categories", id));
-    }
-
-    const queryString = params.toString();
-    const url = `${window.location.pathname}${queryString ? "?" + queryString : ""}`;
-
-    // Use Astro navigation to preserve transition:persist elements
-    FilterCoordinator.coordinateExit(async () => {
-      const { navigate } = await import('astro:transitions/client');
-      navigate(url);
-    }, url);
-  }
+  document.addEventListener("astro:page-load", () => {
+    setupFilterHandlers();
+  });
 </script>

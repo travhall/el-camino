@@ -4,28 +4,30 @@ import ProductCard from "./ProductCard.astro";
 import ProductCardSkeleton from "./ProductCardSkeleton.astro";
 import type { Product, ProductWithInventory } from "@/lib/square/types";
 import { batchInventoryService } from "@/lib/square/batchInventory";
-import { FilterCoordinator } from "@/lib/filterCoordinator";
 // import { logger } from "@/lib/utils/logger";
 
 interface Props {
   products: Product[];
-  allProducts?: Product[]; // All products for client-side filtering
+  allProducts?: Product[]; // Deprecated: kept for backward compat, ignored now
   categoryPath?: string;
   skipInventoryCheck?: boolean;
+  filteredIds?: string[]; // IDs of server-filtered products (when URL has active filters)
+  slugToIdMap?: Record<string, string>; // Slug→ID map for client-side category filtering
 }
 
 const {
   products,
-  allProducts,
   categoryPath = "",
   skipInventoryCheck = false,
+  filteredIds,
+  slugToIdMap = {},
 } = Astro.props;
 
-// Only check inventory for the products we're actually rendering server-side.
-// Checking all products (including those hidden behind infinite scroll) added
-// unnecessary latency to TTFB with no benefit — the extra products are not
-// visible on initial load and their inventory can be assumed in-stock until needed.
 const initialProducts = products;
+
+// Server-side: which cards should be filter-hidden vs scroll-hidden
+const filteredIdSet = filteredIds ? new Set(filteredIds) : null;
+const initialCardsToShow = 16;
 
 let productsWithInventory: ProductWithInventory[] = initialProducts;
 
@@ -152,14 +154,16 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
   class="product-grid grid xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-1 transition-all duration-300"
   data-category-path={categoryPath}
   data-product-count={productsWithInventory.length}
+  data-slug-to-id={JSON.stringify(slugToIdMap)}
 >
   {
     productsWithInventory.map((product, index) => {
-      // Server-side safe responsive calculation
-      // Use a conservative estimate that works across all screen sizes
-      const serverSideCardsPerRow = 4; // Safe default for SSR
-      const initialRowsToShow = 4;
-      const initialCardsToShow = serverSideCardsPerRow * initialRowsToShow; // 16 cards initially
+      // Cards are either filter-hidden (doesn't match URL filters) or scroll-hidden (beyond initial batch).
+      // When filteredIdSet is null (no active filters), use scroll-hiding.
+      // When filteredIdSet is set (active filters), filter-hide non-matching cards; show all matching.
+      const isFilterHidden = filteredIdSet !== null && !filteredIdSet.has(product.id);
+      const isScrollHidden = filteredIdSet === null && index >= initialCardsToShow;
+      const shouldHide = isFilterHidden || isScrollHidden;
 
       return (
         <article
@@ -173,11 +177,10 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
           data-product-id={product.id}
           data-brand={product.brand || ""}
           data-initial-index={index}
-          style={
-            allProducts && allProducts.length > 0 && index >= initialCardsToShow
-              ? "display: none;"
-              : ""
-          }
+          data-categories={JSON.stringify(product.categories || [])}
+          data-out-of-stock={product.inventoryStatus?.isOutOfStock ? "true" : "false"}
+          data-filter-hidden={isFilterHidden ? "true" : undefined}
+          style={shouldHide ? "display: none;" : ""}
         >
           <ProductCard
             product={product}
@@ -282,6 +285,15 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
     "(prefers-reduced-motion: reduce)"
   ).matches;
 
+  // Module-level responsive columns calculation (used by both scroll and filter systems)
+  function getCardsPerRowCurrent(): number {
+    const w = window.innerWidth;
+    if (w >= 1536) return 6; // 2xl:grid-cols-6
+    if (w >= 1280) return 4; // xl:grid-cols-4
+    if (w >= 1024) return 3; // lg:grid-cols-3
+    return 2;
+  }
+
   // PHASE 5: Properly parse animation timing from CSS custom properties
   function getAnimationTiming() {
     const style = getComputedStyle(document.documentElement);
@@ -332,17 +344,7 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
       return;
     }
 
-    // Calculate cards per row for row-based animation order
-    function getCardsPerRow() {
-      const width = window.innerWidth;
-      if (width >= 1536) return 6; // 2xl:grid-cols-6
-      if (width >= 1280) return 4; // xl:grid-cols-4
-      if (width >= 1024) return 3; // lg:grid-cols-3
-      if (width >= 768) return 2; // md:grid-cols-2
-      return 2; // fallback
-    }
-
-    const cardsPerRow = getCardsPerRow();
+    const cardsPerRow = getCardsPerRowCurrent();
 
     // Force a synchronous style recalculation before changing classes.
     // astro:page-load fires inside the view transition callback, meaning the DOM
@@ -447,6 +449,10 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
     }
 
     const allCards = Array.from(grid.querySelectorAll(".product-card-wrapper"));
+    // Only scroll-manage cards that aren't filter-hidden (those are handled by applyClientFilters)
+    const scrollPool = allCards.filter(
+      (c) => (c as HTMLElement).dataset.filterHidden !== "true"
+    );
 
     // Progressive enhancement check
     const supportsIntersectionObserver = "IntersectionObserver" in window;
@@ -463,22 +469,12 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
       // Button mode for testing
     }
 
-    // Simple grid calculation - match server-side
-    function getCardsPerRow() {
-      const width = window.innerWidth;
-      if (width >= 1536) return 6; // 2xl
-      if (width >= 1280) return 4; // xl
-      if (width >= 1024) return 3; // lg
-      if (width >= 768) return 2; // md
-      return 2; // base
-    }
-
     // Adaptive batch size calculation based on viewport
     function calculateAdaptiveBatchSize() {
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
       const minCardHeight = 280; // From CSS min-height
-      const cardsPerRow = getCardsPerRow();
+      const cardsPerRow = getCardsPerRowCurrent();
 
       // Calculate how many rows fit in viewport
       const visibleRows = Math.ceil(viewportHeight / minCardHeight);
@@ -506,12 +502,12 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
       return batchSize;
     }
 
-    const cardsPerRow = getCardsPerRow();
+    const cardsPerRow = getCardsPerRowCurrent();
     const initialBatchSize = calculateAdaptiveBatchSize();
     let visibleCount = initialBatchSize;
 
-    // Show initial cards, hide the rest
-    allCards.forEach((card, index) => {
+    // Show initial scroll-pool cards, hide the rest
+    scrollPool.forEach((card, index) => {
       const htmlCard = card as HTMLElement;
       if (index < visibleCount) {
         htmlCard.style.display = "";
@@ -537,7 +533,7 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
               return;
             }
 
-            const cardsPerRow = getCardsPerRow();
+            const cardsPerRow = getCardsPerRowCurrent();
             const cardInRow = index % cardsPerRow;
             const animationOrder = cardInRow;
 
@@ -565,8 +561,8 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
       { threshold: 0.1, rootMargin: "200px" }
     );
 
-    // Add cards 16+ to observer
-    allCards.forEach((card, index) => {
+    // Add scroll-pool cards 16+ to observer
+    scrollPool.forEach((card, index) => {
       if (index >= 16) {
         const htmlCard = card as HTMLElement;
         if (htmlCard.style.display !== "none" && cardAnimationObserver) {
@@ -592,7 +588,7 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
     animationTimeouts.push(fallbackTimeout);
 
     // Check if infinite scroll is needed
-    if (allCards.length <= visibleCount) {
+    if (scrollPool.length <= visibleCount) {
       trigger.style.display = "none";
       if (loadMoreContainer) loadMoreContainer.style.display = "none";
       return;
@@ -605,13 +601,13 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
       const cardsToAdd = cardsPerRow * 2;
       const newVisibleCount = Math.min(
         visibleCount + cardsToAdd,
-        allCards.length
+        scrollPool.length
       );
 
       // Show the new cards
       for (let i = visibleCount; i < newVisibleCount; i++) {
-        if (allCards[i]) {
-          const card = allCards[i] as HTMLElement;
+        if (scrollPool[i]) {
+          const card = scrollPool[i] as HTMLElement;
           card.style.display = "";
           card.classList.remove("opacity-100");
           card.classList.add("opacity-0");
@@ -631,17 +627,17 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
 
       // Announce to screen readers
       announceToScreenReader(
-        `Loaded ${cardsToAdd} more products. ${visibleCount} of ${allCards.length} total products shown.`
+        `Loaded ${cardsToAdd} more products. ${visibleCount} of ${scrollPool.length} total products shown.`
       );
 
       // Update grid aria-busy state
       if (grid) grid.setAttribute("aria-busy", "false");
 
       // Hide controls when done, or force re-evaluation if more remain
-      if (visibleCount >= allCards.length) {
+      if (visibleCount >= scrollPool.length) {
         if (trigger) trigger.style.display = "none";
         if (loadMoreContainer) loadMoreContainer.style.display = "none";
-        announceToScreenReader(`All ${allCards.length} products loaded.`);
+        announceToScreenReader(`All ${scrollPool.length} products loaded.`);
       } else if (loadMoreObserver && trigger) {
         // IntersectionObserver only fires on transitions. If the trigger stays
         // within the intersection zone after a batch loads (common when the batch
@@ -694,7 +690,7 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
         entries.forEach((entry) => {
           if (
             entry.isIntersecting &&
-            visibleCount < allCards.length &&
+            visibleCount < scrollPool.length &&
             !isLoading
           ) {
             // Debounce to prevent rapid loading
@@ -746,7 +742,201 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
   let animationTimeouts: ReturnType<typeof setTimeout>[] = [];
   let isInitialized = false;
 
-  // Helper function to clean up all observers and timeouts
+  // ── Client-side filtering ───────────────────────────────────────────────────
+
+  async function applyClientFilters(
+    brands: string[],
+    categorySlugs: string[],
+    availability: boolean
+  ) {
+    const grid = document.getElementById("filterable-product-grid");
+    if (!grid) return;
+
+    const allCards = Array.from(
+      grid.querySelectorAll<HTMLElement>(".product-card-wrapper")
+    );
+    const slugToId = JSON.parse(
+      grid.dataset.slugToId || "{}"
+    ) as Record<string, string>;
+    const categoryIds = categorySlugs.map((s) => slugToId[s] ?? s);
+    const hasFilters = brands.length > 0 || categorySlugs.length > 0 || availability;
+
+    const trigger = document.getElementById("infinite-scroll-trigger");
+    const loadMoreContainer = document.getElementById("load-more-container");
+
+    // Disconnect load-more observer — filters bypass infinite scroll
+    if (loadMoreObserver) {
+      loadMoreObserver.disconnect();
+      loadMoreObserver = null;
+    }
+
+    if (!hasFilters) {
+      // Reset: clear filter-hidden markers, re-animate, re-init infinite scroll
+      allCards.forEach((card) => {
+        card.removeAttribute("data-filter-hidden");
+        card.classList.remove("opacity-100");
+        card.classList.add("opacity-0");
+        card.style.display = "";
+      });
+
+      cleanupObserversAndTimeouts();
+      isInitialized = false;
+
+      if (trigger) trigger.style.display = "";
+      if (loadMoreContainer) loadMoreContainer.style.display = "none";
+
+      const noResults = document.getElementById("no-results");
+      if (noResults) noResults.style.display = "none";
+
+      initializeInfiniteScroll();
+      initializePageLoadAnimations();
+
+      window.dispatchEvent(
+        new CustomEvent("filterresult", {
+          detail: { count: allCards.length, total: allCards.length },
+        })
+      );
+      return;
+    }
+
+    // Classify cards
+    const matchingCards: HTMLElement[] = [];
+    const nonMatchingCards: HTMLElement[] = [];
+
+    allCards.forEach((card) => {
+      const cardBrand = card.dataset.brand || "";
+      const cardCategories = JSON.parse(
+        card.dataset.categories || "[]"
+      ) as string[];
+      const isOutOfStock = card.dataset.outOfStock === "true";
+
+      let matches = true;
+      if (brands.length > 0 && !brands.includes(cardBrand)) matches = false;
+      if (
+        categoryIds.length > 0 &&
+        !categoryIds.some((id) => cardCategories.includes(id))
+      )
+        matches = false;
+      if (availability && isOutOfStock) matches = false;
+
+      if (matches) matchingCards.push(card);
+      else nonMatchingCards.push(card);
+    });
+
+    // Mark filter-hidden state
+    nonMatchingCards.forEach((c) => c.setAttribute("data-filter-hidden", "true"));
+    matchingCards.forEach((c) => c.removeAttribute("data-filter-hidden"));
+
+    // Filters bypass infinite scroll — hide trigger
+    if (trigger) trigger.style.display = "none";
+    if (loadMoreContainer) loadMoreContainer.style.display = "none";
+
+    // Exit phase: fade out ALL currently visible cards simultaneously.
+    // This includes matching cards that were already visible — they will
+    // re-enter with the full stagger after the exit completes.
+    const currentlyVisible = allCards.filter((c) => c.style.display !== "none");
+    currentlyVisible.forEach((card) => {
+      card.classList.add("animating");
+      card.classList.remove("opacity-100");
+      card.classList.add("opacity-0");
+    });
+
+    const exitDuration = prefersReducedMotion ? 0 : 150;
+    await new Promise<void>((resolve) => setTimeout(resolve, exitDuration));
+
+    // After exit: hide non-matching, reset animating class on all
+    nonMatchingCards.forEach((card) => {
+      card.style.display = "none";
+    });
+    currentlyVisible.forEach((card) => card.classList.remove("animating"));
+
+    // Re-create animation observer for matching cards below the fold
+    if (cardAnimationObserver) {
+      cardAnimationObserver.disconnect();
+      cardAnimationObserver = null;
+    }
+    cardAnimationObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const card = entry.target as HTMLElement;
+            card.classList.remove("opacity-0");
+            card.classList.add("opacity-100");
+            card.classList.remove("animating");
+            if (cardAnimationObserver) cardAnimationObserver.unobserve(card);
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: "200px" }
+    );
+
+    // Enter phase: ALL matching cards animate in with column-based stagger.
+    // Every card is at opacity-0 at this point (either from the exit above,
+    // or from being scroll/filter-hidden before this filter was applied).
+    const cardsPerRow = getCardsPerRowCurrent();
+
+    matchingCards.forEach((card, visibleIndex) => {
+      card.style.display = "";
+      const col = visibleIndex % cardsPerRow;
+      card.style.setProperty("--animation-order", col.toString());
+      card.classList.add("animating");
+
+      const rect = card.getBoundingClientRect();
+      const isNearFold = rect.top < window.innerHeight + 300;
+
+      if (prefersReducedMotion || isNearFold) {
+        card.classList.remove("opacity-0");
+        card.classList.add("opacity-100");
+        const totalTime =
+          ANIMATION_CONFIG.duration + col * ANIMATION_CONFIG.staggerDelay;
+        const t = setTimeout(() => card.classList.remove("animating"), totalTime);
+        animationTimeouts.push(t);
+      } else {
+        if (cardAnimationObserver) cardAnimationObserver.observe(card);
+      }
+    });
+
+    // No results state
+    const noResults = document.getElementById("no-results");
+    if (noResults) {
+      noResults.style.display = matchingCards.length === 0 ? "flex" : "none";
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("filterresult", {
+        detail: { count: matchingCards.length, total: allCards.length },
+      })
+    );
+  }
+
+  // ── Filter + history event listeners (registered once per script load) ──────
+
+  window.addEventListener("filterchange", (e: Event) => {
+    const evt = e as CustomEvent<{
+      brands: string[];
+      categories: string[];
+      availability: boolean;
+    }>;
+    applyClientFilters(
+      evt.detail.brands,
+      evt.detail.categories,
+      evt.detail.availability
+    );
+  });
+
+  window.addEventListener("popstate", () => {
+    const params = new URLSearchParams(window.location.search);
+    const brands = params.getAll("brands");
+    const categories = params.getAll("categories");
+    const availability = params.get("availability") === "true";
+    // Dispatch filterchange so all components (ProductFilters, AppliedFilters) also update
+    window.dispatchEvent(
+      new CustomEvent("filterchange", {
+        detail: { brands, categories, availability },
+      })
+    );
+  });
+
   function cleanupObserversAndTimeouts() {
     // Clean up observers to prevent memory leaks
     if (cardAnimationObserver) {

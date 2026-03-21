@@ -241,6 +241,16 @@ export class FilterCoordinator {
     document.addEventListener("astro:page-load", () => {
       FilterCoordinator.coordinateEntrance();
       FilterCoordinator.setFilteringState(false);
+
+      // Measure the sticky header and expose its height as a CSS variable so the
+      // filter sidebar can use `top: var(--header-height)` for precise sticky positioning.
+      const header = document.querySelector<HTMLElement>("header");
+      if (header) {
+        document.documentElement.style.setProperty(
+          "--header-height",
+          `${header.getBoundingClientRect().height}px`
+        );
+      }
     });
 
     // Unified cleanup handler - runs before page swap

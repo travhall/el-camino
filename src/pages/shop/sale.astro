@@ -50,6 +50,7 @@ let allProducts: Product[] = [];
 let saleProducts: Product[] = [];
 let filteredProducts: Product[] = [];
 let filterOptions: FilterOptions = { brands: [], categories: [] };
+let slugToIdMap: Record<string, string> = {};
 
 try {
   // Fetch all products initially
@@ -80,9 +81,19 @@ try {
   // Extract filter options from SALE products only (for filter UI)
   filterOptions = await extractFilterOptions(saleProducts);
 
+  // Build slug→ID map for client-side filtering (passed to ProductGrid)
+  filterOptions.categories.forEach((c) => {
+    if (c.slug) slugToIdMap[c.slug] = c.id;
+    c.subcategories.forEach((s) => { if (s.slug) slugToIdMap[s.slug] = s.id; });
+  });
+  const resolvedFilters: ProductFiltersType = {
+    ...filters,
+    categories: filters.categories.map((v) => slugToIdMap[v] ?? v),
+  };
+
   if (hasFilters) {
     // Apply additional filters (brand, availability) to sale products
-    filteredProducts = await filterProductsWithCache(saleProducts, filters);
+    filteredProducts = await filterProductsWithCache(saleProducts, resolvedFilters);
   } else {
     // No additional filters - show all sale products
     filteredProducts = [...saleProducts];
@@ -186,7 +197,7 @@ const structuredData = {
     <!-- Page Body -->
     <div class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-1 pb-0">
       <!-- Filter Sidebar -->
-      <aside class="lg:col-span-1">
+      <aside class="lg:col-span-1 lg:sticky lg:self-start" style="top: var(--header-height);">
         <ProductFilters
           filterOptions={filterOptions}
           totalProducts={allProducts.length}
@@ -211,8 +222,9 @@ const structuredData = {
           filteredProducts.length > 0 ? (
             <>
               <ProductGrid
-                products={filteredProducts}
-                allProducts={allProducts}
+                products={allProducts}
+                filteredIds={hasFilters ? filteredProducts.map((p) => p.id) : undefined}
+                slugToIdMap={slugToIdMap}
                 categoryPath={categoryPath}
               />
             </>

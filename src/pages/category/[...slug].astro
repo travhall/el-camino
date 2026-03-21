@@ -76,6 +76,7 @@ import type { Product, FilterOptions } from "@/lib/square/types";
 let allProducts: Product[] = [];
 let filteredProducts: Product[] = [];
 let filterOptions: FilterOptions = { brands: [], categories: [] };
+let slugToIdMap: Record<string, string> = {};
 
 try {
   // Fetch ALL products for infinite scroll and client-side filtering
@@ -95,11 +96,19 @@ try {
   // Extract filter options from all products using the same logic as shop/all
   filterOptions = await extractFilterOptions(allProducts);
 
-  // console.log(`[Category] Loaded ${allProducts.length} products for filtering`);
+  // Build slug→ID map for client-side filtering (passed to ProductGrid)
+  filterOptions.categories.forEach((c) => {
+    if (c.slug) slugToIdMap[c.slug] = c.id;
+    c.subcategories.forEach((s) => { if (s.slug) slugToIdMap[s.slug] = s.id; });
+  });
+  const resolvedFilters = {
+    ...filters,
+    categories: filters.categories.map((v) => slugToIdMap[v] ?? v),
+  };
 
   if (hasFilters) {
     // Apply server-side filtering using the same logic as shop/all
-    filteredProducts = await filterProductsWithCache(allProducts, filters);
+    filteredProducts = await filterProductsWithCache(allProducts, resolvedFilters);
   } else {
     // console.log(
     //   `[Category] ⚪ No filters applied - showing all ${allProducts.length} products`
@@ -245,7 +254,7 @@ const hasActiveFilters =
     <!-- Page Body -->
     <div class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-1 pb-0">
       <!-- Filter Sidebar -->
-      <aside class="lg:col-span-1">
+      <aside class="lg:col-span-1 lg:sticky lg:self-start" style="top: var(--header-height);">
         <ProductFilters
           filterOptions={filterOptions}
           totalProducts={allProducts.length}
@@ -264,8 +273,9 @@ const hasActiveFilters =
           filteredProducts.length > 0 ? (
             <>
               <ProductGrid
-                products={filteredProducts}
-                allProducts={allProducts}
+                products={allProducts}
+                filteredIds={hasFilters ? filteredProducts.map((p) => p.id) : undefined}
+                slugToIdMap={slugToIdMap}
                 categoryPath={categoryPath}
               />
             </>
