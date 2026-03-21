@@ -1,5 +1,5 @@
 ---
-// src/components/NewsFilters.astro - UPDATED TO USE TAG COMPONENT
+// src/components/NewsFilters.astro
 import type { NewsFilterOptions } from "@/lib/wordpress/types";
 import Tag from "./Tag.astro";
 
@@ -23,40 +23,64 @@ const currentCategories = currentParams.getAll("categories") || [];
 const currentTags = currentParams.getAll("tags") || [];
 const currentDateRange = currentParams.get("dateRange") || "";
 
-// Calculate active filter count for mobile badge (no search/sort)
+// Calculate active filter count for mobile badge
 const activeFilterCount =
   currentCategories.length +
   currentTags.length +
   (currentDateRange ? 1 : 0);
 
-// Configuration for show more/less functionality
-const DEFAULT_VISIBLE_CATEGORIES = 6;
-const DEFAULT_VISIBLE_TAGS = 8;
-
-const shouldShowCategoryToggle =
-  filterOptions.categories.length > DEFAULT_VISIBLE_CATEGORIES;
-
-// Check if there are selected items beyond visible count
-const hasSelectedCategoriesBelow = currentCategories.some((category) => {
-  const categoryIndex = filterOptions.categories.findIndex(
-    (c) => c.slug === category
-  );
-  return categoryIndex >= DEFAULT_VISIBLE_CATEGORIES;
-});
-
-const hasSelectedTagsBelow = currentTags.some((tag) => {
-  const tagIndex = filterOptions.tags.findIndex((t) => t.slug === tag);
-  return tagIndex >= DEFAULT_VISIBLE_TAGS;
-});
-
-const shouldStartCategoriesExpanded = hasSelectedCategoriesBelow;
-const shouldStartTagsExpanded = hasSelectedTagsBelow;
+const hasActiveFilters = activeFilterCount > 0;
 ---
 
-<!-- Minimal critical CSS -->
 <style is:inline>
-  .news-filter-list {
-    transition: none;
+  /* Accordion animation using CSS grid-template-rows */
+  .filter-section-content {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.25s ease;
+  }
+
+  .filter-section-content.is-closed {
+    grid-template-rows: 0fr;
+  }
+
+  /* Inner wrapper must have overflow:hidden and min-height:0 for grid trick to work */
+  .filter-section-inner {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Chevron: animated via .is-collapsed class set by JS */
+  .filter-chevron {
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+  }
+
+  .filter-chevron.is-collapsed {
+    transform: rotate(-90deg);
+  }
+
+  /* Thin scrollbar for tag/category lists on desktop */
+  .news-scroll-list::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .news-scroll-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .news-scroll-list::-webkit-scrollbar-thumb {
+    background-color: var(--border-tertiary);
+    border-radius: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .filter-section-content {
+      transition: none;
+    }
+    .filter-chevron {
+      transition: none;
+    }
   }
 </style>
 
@@ -65,7 +89,7 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
   <!-- Mobile Filter Button -->
   <button
     id="mobile-news-filter-toggle"
-    class="lg:hidden fixed bottom-4 right-4 bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) rounded-md flex flex-row gap-2 p-4 shadow-lg z-40"
+    class="lg:hidden fixed bottom-4 right-4 bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) rounded-md flex flex-row gap-2 p-4 shadow-lg z-250"
     aria-label="Open Filters"
   >
     Filter
@@ -77,26 +101,25 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"
       ></path>
     </svg>
-    {
-      activeFilterCount > 0 && (
-        <span class="absolute -top-1 -right-1 bg-(--ui-button-surface) text-(--ui-button-text) font-bold text-sm rounded-full min-w-5 h-5 flex items-center justify-center px-1">
-          {activeFilterCount}
-        </span>
-      )
-    }
+    <span
+      data-mobile-news-badge
+      class="absolute -top-1 -right-1 bg-(--ui-button-surface) text-(--ui-button-text) font-bold text-sm rounded-full min-w-5 h-5 flex items-center justify-center px-1"
+      style={activeFilterCount === 0 ? "display: none;" : ""}
+    >
+      {activeFilterCount || ""}
+    </span>
   </button>
 
   <!-- Mobile Overlay -->
   <div
     id="mobile-news-filter-overlay"
     class="lg:hidden fixed inset-0 bg-(--ui-modal-overlay)/90 z-40 opacity-0 pointer-events-none transition-opacity duration-300"
-  >
-  </div>
+  />
 
   <!-- Single Form - Desktop Static, Mobile Drawer -->
   <div
     id="news-filter-container"
-    class="lg:static lg:transform-none max-h-[85dvh] lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-md lg:w-auto z-50 overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+    class="lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-md lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-secondary)/0 border-4 border-(--border-tertiary) z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
   >
     <form
       method="GET"
@@ -106,210 +129,207 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     >
       <!-- Mobile Header -->
       <div
-        class="flex items-center justify-between mb-4 p-6 -mx-4 bg-(--surface-secondary) border border-b-(--border-tertiary) sticky top-0 z-50 lg:hidden"
+        class="flex items-center justify-between mb-4 p-6 -mx-4 bg-(--surface-secondary) border-b-4 border-(--border-tertiary) sticky top-0 z-50 lg:hidden"
       >
-        <h2 class="text-lg font-semibold text-(--content-heading)">
-          Filter Articles
-        </h2>
+        <h2 class="text-lg font-semibold text-(--content-heading)">Filter Articles</h2>
         <button
           type="button"
           id="mobile-news-filter-close"
           class="p-1 text-(--content-meta) hover:text-(--content-emphasis)"
           aria-label="Close Filters"
         >
-          <svg
-            class="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"></path>
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-        <div class="min-w-fit mt-2 mb-4">
-            <p class="text-sm lg:text-base text-(--content-meta) font-medium">
-                {
-                filteredCount === totalPosts
-                    ? `${totalPosts} articles`
-                    : `${filteredCount} of ${totalPosts} articles`
-                }
-            </p>
+      <!-- Results Count -->
+      <div class="min-w-fit mt-2 mb-3">
+        <div class="lg:hidden p-3 bg-(--surface-tertiary) rounded-sm">
+          <p class="text-sm text-(--content-meta)">
+            {filteredCount === totalPosts
+              ? `${totalPosts} articles`
+              : `${filteredCount} of ${totalPosts} articles`}
+          </p>
         </div>
+        <div class="hidden lg:flex justify-between items-baseline h-8">
+          <p class="text-sm lg:text-base text-(--content-meta)">
+            {filteredCount === totalPosts
+              ? `${totalPosts} articles`
+              : `${filteredCount} of ${totalPosts} articles`}
+          </p>
+        </div>
+      </div>
 
       <!-- Categories Filter Section -->
       {
         filterOptions.categories.length > 0 && (
-          <div class="mb-6 lg:mb-4">
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-xl font-medium font-display text-(--content-heading)">
-                Categories
-              </h3>
+          <div class="filter-section border-t-2 border-(--border-primary)">
+            <!-- Full-row accordion trigger -->
+            <div class="relative">
+              <button
+                type="button"
+                class="w-full flex items-center gap-2 text-left py-2.5 pr-16 group"
+                data-section-toggle="news-categories"
+                aria-expanded="true"
+                aria-controls="filter-section-news-categories"
+              >
+                <span class="text-xl font-medium font-display text-(--content-heading) group-hover:text-(--content-emphasis) transition-colors">
+                  Categories
+                </span>
+                {currentCategories.length > 0 && (
+                  <span class="text-xs bg-(--ui-button-surface) text-(--ui-button-text) rounded-full px-1.5 py-0.5 font-medium leading-none tabular-nums">
+                    {currentCategories.length}
+                  </span>
+                )}
+              </button>
+              <!-- Chevron: pointer-events-none so clicks fall through to button -->
+              <svg
+                class="filter-chevron absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 text-(--content-meta) pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+              <!-- Clear: absolutely positioned, sibling to toggle -->
               {currentCategories.length > 0 && (
                 <button
                   type="button"
                   data-clear-categories
-                  class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors lg:mr-2"
+                  class="absolute right-6 top-1/2 -translate-y-1/2 text-sm text-(--content-meta) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all z-10"
                 >
-                  Clear ({currentCategories.length})
+                  Clear
                 </button>
               )}
             </div>
 
             <div
-              class="space-y-3 lg:space-y-1 lg:max-h-none overflow-visible news-filter-list"
-              data-category-list
+              id="filter-section-news-categories"
+              class="filter-section-content"
+              role="region"
+              aria-label="Category filters"
             >
-              {filterOptions.categories.map((category, index) => {
-                const isHidden = index >= DEFAULT_VISIBLE_CATEGORIES;
-                const serverHiddenClass =
-                  isHidden && !shouldStartCategoriesExpanded ? "lg:hidden" : "";
-
-                return (
-                  <label
-                    class={`flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors ${isHidden ? `category-extra-item ${serverHiddenClass}` : ""}`}
-                  >
-                    <div class="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="categories"
-                        value={category.slug}
-                        checked={currentCategories.includes(category.slug)}
-                        class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
-                      />
-                      <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
-                        {category.name}
-                      </span>
-                    </div>
-                    <span class="text-sm text-(--content-meta) lg:mr-2">
-                      ({category.count})
-                    </span>
-                  </label>
-                );
-              })}
-
-              {shouldShowCategoryToggle && (
-                <button
-                  type="button"
-                  id="show-more-categories-toggle"
-                  class="hidden lg:block w-full text-left text-sm text-ui-accent hover:text-ui-accent-hover transition-colors p-1 font-medium"
-                  data-collapsed-text={`+ Show ${filterOptions.categories.length - DEFAULT_VISIBLE_CATEGORIES} more`}
-                  data-expanded-text="- Show less"
-                  data-initial-expanded={shouldStartCategoriesExpanded.toString()}
-                >
-                  {shouldStartCategoriesExpanded
-                    ? "- Show less"
-                    : `+ Show ${filterOptions.categories.length - DEFAULT_VISIBLE_CATEGORIES} more`}
-                </button>
-              )}
+              <div class="filter-section-inner">
+                <div class="news-scroll-list lg:max-h-48 lg:overflow-y-auto space-y-3 lg:space-y-0 pb-4 lg:pr-0.5">
+                  {filterOptions.categories.map((category) => (
+                    <label class="flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors">
+                      <div class="flex items-center">
+                        <input
+                          type="checkbox"
+                          name="categories"
+                          value={category.slug}
+                          checked={currentCategories.includes(category.slug)}
+                          class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                        />
+                        <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
+                          {category.name}
+                        </span>
+                      </div>
+                      <span class="text-sm text-(--content-meta) lg:mr-2">({category.count})</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )
       }
 
-      <!-- ENHANCED TAGS SECTION - NOW USING TAG COMPONENT -->
+      <!-- Tags Filter Section -->
       {
         filterOptions.tags.length > 0 && (
-          <div class="mb-6 lg:mb-4">
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-xl font-medium font-display text-(--content-heading)">Tags</h3>
+          <div class="filter-section border-t-2 border-(--border-primary)">
+            <!-- Full-row accordion trigger -->
+            <div class="relative">
+              <button
+                type="button"
+                class="w-full flex items-center gap-2 text-left py-2.5 pr-16 group"
+                data-section-toggle="news-tags"
+                aria-expanded="true"
+                aria-controls="filter-section-news-tags"
+              >
+                <span class="text-xl font-medium font-display text-(--content-heading) group-hover:text-(--content-emphasis) transition-colors">
+                  Tags
+                </span>
+                {currentTags.length > 0 && (
+                  <span class="text-xs bg-(--ui-button-surface) text-(--ui-button-text) rounded-full px-1.5 py-0.5 font-medium leading-none tabular-nums">
+                    {currentTags.length}
+                  </span>
+                )}
+              </button>
+              <!-- Chevron: pointer-events-none so clicks fall through to button -->
+              <svg
+                class="filter-chevron absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 text-(--content-meta) pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+              <!-- Clear: absolutely positioned, sibling to toggle -->
               {currentTags.length > 0 && (
                 <button
                   type="button"
                   data-clear-tags
-                  class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors"
+                  class="absolute right-6 top-1/2 -translate-y-1/2 text-sm text-(--content-meta) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all z-10"
                 >
-                  Clear ({currentTags.length})
+                  Clear
                 </button>
               )}
             </div>
 
-            <div class="space-y-3">
-              <div class="flex flex-wrap gap-2">
-                {filterOptions.tags.slice(0, 8).map(tag => {
-                  const isApplied = currentTags.includes(tag.slug);
-                  return (
-                    <button
-                      type="button"
-                      class="tag-filter-button"
-                      data-tag-chip={tag.slug}
-                      data-applied={isApplied}
-                      data-pending="false"
-                    >
-                      <Tag
-                        tag={tag}
-                        variant={isApplied ? 'applied' : 'filter'}
-                        size="sm"
-                        showCount={!isApplied}
-                      >
-                        {isApplied && (
-                          <svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-                          </svg>
-                        )}
-                      </Tag>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <!-- More tags (expandable) -->
-              {filterOptions.tags.length > 8 && (
-                <div data-expandable-tags>
-                  <button
-                    type="button"
-                    id="show-more-tags-toggle"
-                    class="text-sm text-ui-accent hover:text-ui-accent-hover transition-colors font-medium"
-                    data-collapsed-text={`+ Show ${filterOptions.tags.length - 8} more tags`}
-                    data-expanded-text="- Show less"
-                    data-initial-expanded={shouldStartTagsExpanded.toString()}
-                  >
-                    {shouldStartTagsExpanded
-                      ? "- Show less"
-                      : `+ Show ${filterOptions.tags.length - 8} more tags`}
-                  </button>
-                  
-                  <div class={`mt-2 ${shouldStartTagsExpanded ? '' : 'hidden'}`} data-extra-tags>
-                    <div class="flex flex-wrap gap-2">
-                      {filterOptions.tags.slice(8).map(tag => {
-                        const isApplied = currentTags.includes(tag.slug);
-                        return (
-                          <button
-                            type="button"
-                            class="tag-filter-button"
-                            data-tag-chip={tag.slug}
-                            data-applied={isApplied}
-                            data-pending="false"
+            <div
+              id="filter-section-news-tags"
+              class="filter-section-content"
+              role="region"
+              aria-label="Tag filters"
+            >
+              <div class="filter-section-inner">
+                <div class="news-scroll-list lg:max-h-48 lg:overflow-y-auto pb-4 lg:pr-0.5">
+                  <div class="flex flex-wrap gap-2">
+                    {filterOptions.tags.map((tag) => {
+                      const isApplied = currentTags.includes(tag.slug);
+                      return (
+                        <button
+                          type="button"
+                          class="tag-filter-button"
+                          data-tag-chip={tag.slug}
+                          data-applied={isApplied}
+                          data-pending="false"
+                        >
+                          <Tag
+                            tag={tag}
+                            variant={isApplied ? "applied" : "filter"}
+                            size="sm"
+                            showCount={!isApplied}
                           >
-                            <Tag
-                              tag={tag}
-                              variant={isApplied ? 'applied' : 'filter'}
-                              size="sm"
-                              showCount={!isApplied}
-                            >
-                              {isApplied && (
-                                <svg class="w-3 h-3 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                              )}
-                            </Tag>
-                          </button>
-                        );
-                      })}
-                    </div>
+                            {isApplied && (
+                              <svg
+                                class="w-3 h-3 font-bold"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                stroke-width="3"
+                              >
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            )}
+                          </Tag>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
-            <!-- Hidden inputs for form submission -->
+            <!-- Hidden inputs for applied tags (form submission) -->
             <div class="hidden">
-              {currentTags.map(tagSlug => (
+              {currentTags.map((tagSlug) => (
                 <input type="hidden" name="tags" value={tagSlug} data-tag-input={tagSlug} />
               ))}
             </div>
@@ -317,14 +337,12 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         )
       }
 
-      <!-- Date Range Section -->
-      <div class="mb-6 lg:mb-4">
-        <h3
-          class="text-xl font-medium font-display text-(--content-heading) mb-3"
-        >
-          Published
-        </h3>
-        <div class="space-y-3 lg:space-y-1">
+      <!-- Published / Date Range Section — no accordion (fixed 4-item set) -->
+      <div class="filter-section border-t-2 border-(--border-primary)">
+        <div class="py-2.5">
+          <h3 class="text-xl font-medium font-display text-(--content-heading)">Published</h3>
+        </div>
+        <div class="space-y-3 lg:space-y-0 pb-4">
           {
             [
               { value: "", label: "Any time" },
@@ -349,23 +367,18 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
         </div>
       </div>
 
-      <!-- Enhanced Mobile Actions -->
+      <!-- Mobile Actions -->
       <div
-        class="flex gap-3 p-6 -mx-4 bg-(--surface-secondary) border-t-(--border-tertiary) sticky bottom-0 lg:hidden"
+        class="flex gap-3 p-6 -mx-4 bg-(--surface-secondary) border-t-4 border-(--border-tertiary) sticky bottom-0 lg:hidden"
       >
-        {
-          (currentCategories.length > 0 ||
-            currentTags.length > 0 ||
-            currentDateRange) && (
-            <button
-              type="button"
-              data-clear-all-news-filters
-              class="flex-1 py-3 px-4 border border-(--ui-button-border) text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
-            >
-              Clear Filters
-            </button>
-          )
-        }
+        <button
+          type="button"
+          data-clear-all-news-filters
+          class="flex-1 py-3 px-4 border border-(--ui-button-border) text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
+          style={!hasActiveFilters ? "display: none;" : ""}
+        >
+          Clear Filters
+        </button>
         <button
           type="submit"
           id="mobile-apply-filters"
@@ -388,16 +401,18 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
   import { FilterCoordinator, GRID_CONFIGS } from "@/lib/filterCoordinator";
   import { navigate } from "astro:transitions/client";
 
+  // Section state keys in sessionStorage
+  const SECTION_KEYS: Record<string, string> = {
+    "news-categories": "news-filter-section-categories",
+    "news-tags": "news-filter-section-tags",
+  };
+
   class NewsFiltersManager {
     private form!: HTMLFormElement | null;
     private container!: HTMLElement | null;
     private overlay!: HTMLElement | null;
-    private categoryToggle!: HTMLButtonElement | null;
-    private tagToggle!: HTMLButtonElement | null;
 
-    // Core state
-    private isCategoriesExpanded: boolean = false;
-    private _isTagsExpanded: boolean = false;
+    // Simple state
     private pendingTags: Set<string> = new Set();
     private isMobile: boolean = false;
     private tagCounts: Map<string, number> = new Map();
@@ -406,21 +421,23 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     private submitTimeout: number | null = null;
 
     constructor() {
-      this.form = document.getElementById('news-filter-form') as HTMLFormElement;
-      this.container = document.getElementById('news-filter-container');
-      this.overlay = document.getElementById('mobile-news-filter-overlay');
-      this.categoryToggle = document.getElementById('show-more-categories-toggle') as HTMLButtonElement;
-      this.tagToggle = document.getElementById('show-more-tags-toggle') as HTMLButtonElement;
-      
+      this.form = document.getElementById("news-filter-form") as HTMLFormElement;
+      this.container = document.getElementById("news-filter-container");
+      this.overlay = document.getElementById("mobile-news-filter-overlay");
+
       this.checkMobileState();
       this.storeTagCountsFromServerData();
-      this.setupEventListeners();
-      this.initializeMenuState();
+      this.setupMobileDrawer();
+      this.setupAccordions();
+      this.setupDesktopFiltering();
+      this.setupClearButtons();
+      this.setupTagChips();
+      this.setupMobileApply();
     }
 
     private checkMobileState(): void {
       this.isMobile = window.innerWidth < 1024;
-      window.addEventListener('resize', () => {
+      window.addEventListener("resize", () => {
         this.isMobile = window.innerWidth < 1024;
         if (!this.isMobile) {
           this.pendingTags.clear();
@@ -436,14 +453,6 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
           this.tagCounts.set(tag.slug, tag.count);
         });
       }
-    }
-
-    private setupEventListeners(): void {
-      this.setupMobileDrawer();
-      this.setupDesktopFiltering();
-      this.setupShowMoreToggles();
-      this.setupClearButtons();
-      this.setupTagChips();
     }
 
     private setupMobileDrawer(): void {
@@ -464,323 +473,255 @@ const shouldStartTagsExpanded = hasSelectedTagsBelow;
     private closeMobileDrawer(): void {
       this.overlay?.classList.add("opacity-0");
       this.container?.classList.add("translate-y-full", "opacity-0");
-      setTimeout(() => {
+
+      let hasCompleted = false;
+      const handleTransitionEnd = () => {
+        if (hasCompleted) return;
+        hasCompleted = true;
         this.overlay?.classList.add("pointer-events-none");
         this.container?.classList.add("pointer-events-none");
-      }, 300);
+      };
+
+      this.container?.addEventListener("transitionend", handleTransitionEnd, { once: true });
+      setTimeout(handleTransitionEnd, 350);
       document.body.style.overflow = "";
     }
 
-    private setupDesktopFiltering(): void {
-      if (!this.form) return;
+    private setupAccordions(): void {
+      document.querySelectorAll<HTMLButtonElement>("[data-section-toggle]").forEach((btn) => {
+        const section = btn.dataset.sectionToggle!;
+        const contentId = btn.getAttribute("aria-controls")!;
+        const contentEl = document.getElementById(contentId);
+        if (!contentEl) return;
 
-      const inputs = this.form.querySelectorAll("input:not(.tag-filter-button), select");
-      inputs.forEach((input) => {
-        input.addEventListener("change", () => {
-          if (!this.isMobile) {
-            this.debouncedSubmit();
+        const chevron = btn.closest(".filter-section")?.querySelector<SVGElement>(".filter-chevron");
+        const storageKey = SECTION_KEYS[section];
+        const savedState = storageKey ? sessionStorage.getItem(storageKey) : null;
+
+        if (savedState === "closed") {
+          contentEl.classList.add("is-closed");
+          btn.setAttribute("aria-expanded", "false");
+          chevron?.classList.add("is-collapsed");
+        }
+
+        btn.addEventListener("click", () => {
+          const isClosed = contentEl.classList.contains("is-closed");
+          if (isClosed) {
+            contentEl.classList.remove("is-closed");
+            btn.setAttribute("aria-expanded", "true");
+            chevron?.classList.remove("is-collapsed");
+            if (storageKey) sessionStorage.setItem(storageKey, "open");
+          } else {
+            contentEl.classList.add("is-closed");
+            btn.setAttribute("aria-expanded", "false");
+            chevron?.classList.add("is-collapsed");
+            if (storageKey) sessionStorage.setItem(storageKey, "closed");
           }
         });
       });
     }
 
+    private setupDesktopFiltering(): void {
+      if (!this.form) return;
+
+      const inputs = this.form.querySelectorAll('input[type="checkbox"], input[type="radio"]');
+      inputs.forEach((input) => {
+        input.addEventListener("change", () => {
+          if (!this.isMobile) this.debouncedSubmit();
+        });
+      });
+    }
+
     private debouncedSubmit(): void {
-      if (this.submitTimeout) {
-        clearTimeout(this.submitTimeout);
-      }
-      this.submitTimeout = window.setTimeout(() => {
-        this.submitForm();
-      }, 150);
+      if (this.submitTimeout) clearTimeout(this.submitTimeout);
+      this.submitTimeout = window.setTimeout(() => this.submitForm(), 150);
     }
 
     private submitForm(): void {
       if (!this.form) return;
 
-      // Build the target URL from form data
       const formData = new FormData(this.form);
       const params = new URLSearchParams();
-
-      formData.forEach((value, key) => {
-        params.append(key, value.toString());
-      });
+      formData.forEach((value, key) => params.append(key, value.toString()));
 
       const targetUrl = params.toString()
         ? `${this.form.action}?${params.toString()}`
         : this.form.action;
 
-      // Coordinate exit animation before navigation
       FilterCoordinator.coordinateExit(
-        () => {
-          navigate(targetUrl);
-        },
+        () => { navigate(targetUrl); },
         targetUrl,
         GRID_CONFIGS.article
       );
     }
 
     private setupTagChips(): void {
-      const tagButtons = document.querySelectorAll('.tag-filter-button');
-      const tagToggle = document.getElementById('show-more-tags-toggle');
-      const extraTags = document.querySelector('[data-extra-tags]');
-      
-      tagButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-          const tagButton = e.currentTarget as HTMLButtonElement;
-          const tagSlug = tagButton.dataset.tagChip!;
-          
+      document.querySelectorAll<HTMLButtonElement>(".tag-filter-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          const tagSlug = button.dataset.tagChip!;
           if (this.isMobile) {
-            this.handleMobileTagClick(tagSlug, tagButton);
+            this.handleMobileTagClick(tagSlug, button);
           } else {
-            this.handleDesktopTagClick(tagSlug, tagButton);
+            this.handleDesktopTagClick(tagSlug, button);
           }
         });
-      });
-
-      tagToggle?.addEventListener('click', () => {
-        if (extraTags) {
-          const isHidden = extraTags.classList.contains('hidden');
-          const collapsedText = tagToggle.dataset.collapsedText || '+ Show more tags';
-          const expandedText = tagToggle.dataset.expandedText || '- Show less';
-          
-          if (isHidden) {
-            extraTags.classList.remove('hidden');
-            tagToggle.textContent = expandedText;
-            this._isTagsExpanded = true;
-          } else {
-            extraTags.classList.add('hidden');
-            tagToggle.textContent = collapsedText;
-            this._isTagsExpanded = false;
-          }
-        }
       });
     }
 
     private handleMobileTagClick(tagSlug: string, button: HTMLButtonElement): void {
-      const isApplied = button.dataset.applied === 'true';
-      const isPending = button.dataset.pending === 'true';
-      
+      const isApplied = button.dataset.applied === "true";
+      const isPending = button.dataset.pending === "true";
+
       if (isApplied) {
         if (isPending) {
           this.pendingTags.delete(`remove-${tagSlug}`);
-          this.updateTagButton(button, 'applied', tagSlug);
+          this.updateTagButton(button, "applied", tagSlug);
         } else {
           this.pendingTags.add(`remove-${tagSlug}`);
-          this.updateTagButton(button, 'pending-remove', tagSlug);
+          this.updateTagButton(button, "pending-remove", tagSlug);
         }
       } else {
         if (isPending) {
           this.pendingTags.delete(`add-${tagSlug}`);
-          this.updateTagButton(button, 'unselected', tagSlug);
+          this.updateTagButton(button, "unselected", tagSlug);
         } else {
           this.pendingTags.add(`add-${tagSlug}`);
-          this.updateTagButton(button, 'pending-add', tagSlug);
+          this.updateTagButton(button, "pending-add", tagSlug);
         }
       }
-      
+
       this.updateApplyButton();
     }
 
     private handleDesktopTagClick(tagSlug: string, button: HTMLButtonElement): void {
-      const isApplied = button.dataset.applied === 'true';
-      
+      const isApplied = button.dataset.applied === "true";
+
       if (isApplied) {
         this.removeTag(tagSlug);
-        this.updateTagButton(button, 'unselected', tagSlug);
+        this.updateTagButton(button, "unselected", tagSlug);
       } else {
         this.addTag(tagSlug);
-        this.updateTagButton(button, 'applied', tagSlug);
+        this.updateTagButton(button, "applied", tagSlug);
       }
-      
-      if (!this.isMobile) {
-        this.debouncedSubmit();
-      }
+
+      this.debouncedSubmit();
     }
 
     private updateTagButton(button: HTMLButtonElement, state: string, _tagSlug: string): void {
-      // Update button data attributes
       switch (state) {
-        case 'unselected':
-          button.dataset.pending = 'false';
-          button.dataset.applied = 'false';
+        case "unselected":
+          button.dataset.pending = "false";
+          button.dataset.applied = "false";
           break;
-        case 'pending-add':
-        case 'pending-remove':
-          button.dataset.pending = 'true';
+        case "pending-add":
+        case "pending-remove":
+          button.dataset.pending = "true";
           break;
-        case 'applied':
-          button.dataset.pending = 'false';
-          button.dataset.applied = 'true';
+        case "applied":
+          button.dataset.pending = "false";
+          button.dataset.applied = "true";
           break;
       }
 
-      // The Tag component handles visual styling through its variant prop
-      // We'll update the DOM to reflect the new state
-      const tagComponent = button.querySelector('[class*="inline-flex"]');
-      if (tagComponent) {
-        // Update classes based on state
-        tagComponent.className = tagComponent.className.replace(/tag-(unselected|pending|applied)/g, '').trim();
-        
-        switch (state) {
-          case 'unselected':
-            tagComponent.classList.add('bg-(--surface-tertiary)', 'text-(--content-body)', 'hover:bg-(--ui-button-surface)', 'hover:text-(--ui-button-text)');
-            tagComponent.classList.remove('bg-(--ui-button-surface)', 'bg-(--ui-accent)', 'text-white');
-            break;
-          case 'pending-add':
-          case 'pending-remove':
-            tagComponent.classList.add('bg-(--ui-accent)', 'text-white');
-            tagComponent.classList.remove('bg-(--surface-tertiary)', 'bg-(--ui-button-surface)');
-            break;
-          case 'applied':
-            tagComponent.classList.add('bg-(--ui-button-surface)', 'text-(--ui-button-text)');
-            tagComponent.classList.remove('bg-(--surface-tertiary)', 'bg-(--ui-accent)', 'text-white');
-            break;
-        }
+      const tagComponent = button.querySelector<HTMLElement>('[class*="inline-flex"]');
+      if (!tagComponent) return;
+
+      tagComponent.className = tagComponent.className.replace(/tag-(unselected|pending|applied)/g, "").trim();
+
+      switch (state) {
+        case "unselected":
+          tagComponent.classList.add("bg-(--surface-tertiary)", "text-(--content-body)", "hover:bg-(--ui-button-surface)", "hover:text-(--ui-button-text)");
+          tagComponent.classList.remove("bg-(--ui-button-surface)", "bg-(--ui-accent)", "text-white");
+          break;
+        case "pending-add":
+        case "pending-remove":
+          tagComponent.classList.add("bg-(--ui-accent)", "text-white");
+          tagComponent.classList.remove("bg-(--surface-tertiary)", "bg-(--ui-button-surface)");
+          break;
+        case "applied":
+          tagComponent.classList.add("bg-(--ui-button-surface)", "text-(--ui-button-text)");
+          tagComponent.classList.remove("bg-(--surface-tertiary)", "bg-(--ui-accent)", "text-white");
+          break;
       }
     }
 
     private updateApplyButton(): void {
-      const applyButton = document.getElementById('mobile-apply-filters') as HTMLButtonElement;
+      const applyButton = document.getElementById("mobile-apply-filters") as HTMLButtonElement | null;
       if (!applyButton) return;
 
       const pendingCount = this.pendingTags.size;
-      const defaultText = applyButton.dataset.defaultText || 'Apply Filters';
-      
+      const defaultText = applyButton.dataset.defaultText || "Apply Filters";
+
       if (pendingCount > 0) {
         applyButton.textContent = `Apply Filters (${pendingCount})`;
-        applyButton.classList.add('bg-(--ui-accent)', 'text-white');
-        applyButton.classList.remove('bg-(--ui-button-surface)');
+        applyButton.classList.add("bg-(--ui-accent)", "text-white");
+        applyButton.classList.remove("bg-(--ui-button-surface)");
       } else {
         applyButton.textContent = defaultText;
-        applyButton.classList.remove('bg-(--ui-accent)', 'text-white');
-        applyButton.classList.add('bg-(--ui-button-surface)');
+        applyButton.classList.remove("bg-(--ui-accent)", "text-white");
+        applyButton.classList.add("bg-(--ui-button-surface)");
       }
     }
 
     private addTag(tagSlug: string): void {
-      const hiddenInput = document.createElement('input');
-      hiddenInput.type = 'hidden';
-      hiddenInput.name = 'tags';
+      const hiddenInput = document.createElement("input");
+      hiddenInput.type = "hidden";
+      hiddenInput.name = "tags";
       hiddenInput.value = tagSlug;
-      hiddenInput.setAttribute('data-tag-input', tagSlug);
-      
-      const hiddenContainer = this.form?.querySelector('.hidden');
-      hiddenContainer?.appendChild(hiddenInput);
+      hiddenInput.setAttribute("data-tag-input", tagSlug);
+      this.form?.querySelector(".hidden")?.appendChild(hiddenInput);
     }
 
     private removeTag(tagSlug: string): void {
-      const hiddenInput = document.querySelector(`[data-tag-input="${tagSlug}"]`);
-      hiddenInput?.remove();
+      document.querySelector(`[data-tag-input="${tagSlug}"]`)?.remove();
     }
 
     private applyPendingChanges(): void {
-      this.pendingTags.forEach(change => {
-        if (change.startsWith('add-')) {
-          const tagSlug = change.replace('add-', '');
-          this.addTag(tagSlug);
-        } else if (change.startsWith('remove-')) {
-          const tagSlug = change.replace('remove-', '');
-          this.removeTag(tagSlug);
+      this.pendingTags.forEach((change) => {
+        if (change.startsWith("add-")) {
+          this.addTag(change.replace("add-", ""));
+        } else if (change.startsWith("remove-")) {
+          this.removeTag(change.replace("remove-", ""));
         }
       });
-
       this.pendingTags.clear();
       this.submitForm();
     }
 
-    private setupShowMoreToggles(): void {
-      this.categoryToggle?.addEventListener("click", (e) => {
-        e.preventDefault();
-        this.isCategoriesExpanded ? this.collapseCategories() : this.expandCategories();
+    private setupClearButtons(): void {
+      document.querySelector("[data-clear-categories]")?.addEventListener("click", () => {
+        this.form?.querySelectorAll<HTMLInputElement>('input[name="categories"]:checked')
+          .forEach((cb) => { cb.checked = false; });
+        if (!this.isMobile) this.debouncedSubmit();
+      });
+
+      document.querySelector("[data-clear-tags]")?.addEventListener("click", () => {
+        this.form?.querySelectorAll("[data-tag-input]").forEach((el) => el.remove());
+        this.pendingTags.clear();
+        this.updateApplyButton();
+        document.querySelectorAll<HTMLButtonElement>(".tag-filter-button").forEach((btn) => {
+          this.updateTagButton(btn, "unselected", btn.dataset.tagChip!);
+        });
+        if (!this.isMobile) this.debouncedSubmit();
+      });
+
+      document.querySelector("[data-clear-all-news-filters]")?.addEventListener("click", () => {
+        FilterCoordinator.coordinateExit(
+          () => { navigate("/news"); },
+          "/news",
+          GRID_CONFIGS.article
+        );
       });
     }
 
-    private initializeMenuState(): void {
-      const initialCategoriesExpanded = this.categoryToggle?.dataset.initialExpanded === "true";
-      this.isCategoriesExpanded = initialCategoriesExpanded;
-
-      const initialTagsExpanded = this.tagToggle?.dataset.initialExpanded === "true";
-      this._isTagsExpanded = initialTagsExpanded;
-
-      const applyButton = document.getElementById('mobile-apply-filters');
-      applyButton?.addEventListener('click', (e) => {
+    private setupMobileApply(): void {
+      const applyButton = document.getElementById("mobile-apply-filters");
+      applyButton?.addEventListener("click", (e) => {
         if (this.isMobile && this.pendingTags.size > 0) {
           e.preventDefault();
           this.applyPendingChanges();
         }
       });
-    }
-
-    private collapseCategories(): void {
-      const extraItems = document.querySelectorAll(".category-extra-item");
-      const collapsedText = this.categoryToggle?.dataset.collapsedText || "+ Show more";
-
-      extraItems.forEach((item) => {
-        (item as HTMLElement).classList.add("lg:hidden");
-      });
-
-      if (this.categoryToggle) this.categoryToggle.textContent = collapsedText;
-      this.isCategoriesExpanded = false;
-    }
-
-    private expandCategories(): void {
-      const extraItems = document.querySelectorAll(".category-extra-item");
-      const expandedText = this.categoryToggle?.dataset.expandedText || "- Show less";
-
-      extraItems.forEach((item) => {
-        (item as HTMLElement).classList.remove("lg:hidden");
-      });
-
-      if (this.categoryToggle) this.categoryToggle.textContent = expandedText;
-      this.isCategoriesExpanded = true;
-    }
-
-    private setupClearButtons(): void {
-      const clearCategories = document.querySelector("[data-clear-categories]");
-      const clearTags = document.querySelector("[data-clear-tags]");
-      const clearAllMobile = document.querySelector("[data-clear-all-news-filters]");
-
-      clearCategories?.addEventListener("click", () => this.clearCategoryFilters());
-      clearTags?.addEventListener("click", () => this.clearTagFilters());
-      clearAllMobile?.addEventListener("click", () => this.clearAllFilters());
-    }
-
-    private clearCategoryFilters(): void {
-      const checkboxes = this.form?.querySelectorAll('input[name="categories"]:checked');
-      checkboxes?.forEach((cb) => ((cb as HTMLInputElement).checked = false));
-      
-      if (!this.isMobile) {
-        this.debouncedSubmit();
-      }
-    }
-
-    private clearTagFilters(): void {
-      const hiddenInputs = this.form?.querySelectorAll('[data-tag-input]');
-      hiddenInputs?.forEach(input => input.remove());
-      
-      this.pendingTags.clear();
-      this.updateApplyButton();
-      
-      const tagButtons = document.querySelectorAll('.tag-filter-button');
-      tagButtons.forEach(button => {
-        const buttonElement = button as HTMLButtonElement;
-        const tagSlug = buttonElement.dataset.tagChip!;
-        this.updateTagButton(buttonElement, 'unselected', tagSlug);
-      });
-      
-      if (!this.isMobile) {
-        this.debouncedSubmit();
-      }
-    }
-
-    private clearAllFilters(): void {
-      // Use clean news URL without any parameters
-      FilterCoordinator.coordinateExit(
-        () => {
-          navigate('/news');
-        },
-        '/news',
-        GRID_CONFIGS.article
-      );
     }
   }
 
