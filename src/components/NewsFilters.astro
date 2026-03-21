@@ -499,9 +499,15 @@ const hasActiveFilters = activeFilterCount > 0;
         const savedState = storageKey ? sessionStorage.getItem(storageKey) : null;
 
         if (savedState === "closed") {
+          // Suppress transition so state restoration doesn't animate on page load
+          contentEl.style.transition = "none";
           contentEl.classList.add("is-closed");
           btn.setAttribute("aria-expanded", "false");
           chevron?.classList.add("is-collapsed");
+          // Re-enable after two frames (browser has committed the layout)
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            contentEl.style.transition = "";
+          }));
         }
 
         btn.addEventListener("click", () => {
