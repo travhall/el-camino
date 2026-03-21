@@ -1,0 +1,103 @@
+---
+// src/components/OpenStatusBadge.astro
+// Displays a live open/closed badge driven by siteConfig.hours.
+// Uses a data attribute so multiple instances can coexist on the same page.
+import { siteConfig } from "@/lib/site-config";
+
+interface Props {
+  class?: string;
+}
+
+const { class: className = "" } = Astro.props;
+---
+
+<span
+  data-open-status-badge
+  class:list={[
+    "hidden text-xs font-semibold px-2 py-0.5 rounded-full border-2",
+    className,
+  ]}
+  aria-live="polite"
+></span>
+
+<script>
+  // Runs once per page; finds every [data-open-status-badge] and updates each.
+  function updateOpenStatusBadges() {
+    const badges = document.querySelectorAll<HTMLElement>(
+      "[data-open-status-badge]",
+    );
+    if (!badges.length) return;
+
+    const now = new Date();
+    const todayName = new Intl.DateTimeFormat("en-US", {
+      weekday: "long",
+    }).format(now);
+
+    // Read hours from the JSON data island written by the Layout / site-config.
+    // Fall back to the hours list rendered in the shop hours table if present,
+    // otherwise fall back to the global siteConfig hours data attribute.
+    // We embed the hours directly at build time via a hidden data element.
+    const hoursEl = document.getElementById("site-hours-data");
+    let hours: { day: string; isOpen: boolean; hours: string }[] = [];
+    if (hoursEl) {
+      try {
+        hours = JSON.parse(hoursEl.textContent || "[]");
+      } catch {}
+    }
+
+    const todayEntry = hours.find((h) => h.day === todayName);
+    let isOpenNow = false;
+
+    if (todayEntry?.isOpen) {
+      const match = todayEntry.hours.match(/(\d+)(am|pm)\s*-\s*(\d+)(am|pm)/i);
+      if (match) {
+        const toMinutes = (h: number, period: string) => {
+          let hrs = h % 12;
+          if (period.toLowerCase() === "pm") hrs += 12;
+          return hrs * 60;
+        };
+        const openMins = toMinutes(parseInt(match[1]), match[2]);
+        const closeMins = toMinutes(parseInt(match[3]), match[4]);
+        const nowMins = now.getHours() * 60 + now.getMinutes();
+        isOpenNow = nowMins >= openMins && nowMins < closeMins;
+      }
+    }
+
+    badges.forEach((badge) => {
+      badge.classList.remove("hidden");
+      if (isOpenNow) {
+        badge.textContent = "Open Now";
+        badge.classList.add(
+          "bg-state-success-surface",
+          "text-state-success-text",
+          "border-state-success-surface",
+        );
+        badge.classList.remove(
+          "bg-state-error-surface",
+          "text-state-error-text",
+          "border-state-error-surface",
+        );
+      } else {
+        badge.textContent = "Closed";
+        badge.classList.add(
+          "bg-state-error-surface",
+          "text-state-error-text",
+          "border-state-error-surface",
+        );
+        badge.classList.remove(
+          "bg-state-success-surface",
+          "text-state-success-text",
+          "border-state-success-surface",
+        );
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", updateOpenStatusBadges);
+  } else {
+    updateOpenStatusBadges();
+  }
+
+  document.addEventListener("astro:page-load", updateOpenStatusBadges);
+</script>

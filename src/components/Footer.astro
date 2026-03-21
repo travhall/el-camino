@@ -5,9 +5,10 @@ import ThemeToggle from "./ThemeToggle.astro";
 import { getLegalPages } from "@/lib/wordpress/api";
 import type { WordPressPage } from "@/lib/wordpress/types";
 import { siteConfig } from "@/lib/site-config";
+import OpenStatusBadge from "./OpenStatusBadge.astro";
 
 const currentYear = new Date().getFullYear();
-const { contact, social, tagline } = siteConfig;
+const { contact, social, tagline, hours } = siteConfig;
 
 // Fetch footer pages from WordPress
 let footerPages: WordPressPage[] = [];
@@ -36,6 +37,13 @@ try {
       content: p.content,
     })),
   )}
+/>
+
+<!-- Store hours data island — read by OpenStatusBadge on every page -->
+<script
+  id="site-hours-data"
+  type="application/json"
+  set:html={JSON.stringify(hours)}
 />
 
 <footer
@@ -93,9 +101,12 @@ try {
         class="flex flex-col gap-2 mb-4 not-italic place-items-start lg:place-items-end text-(--content-heading)"
       >
         <strong class="sr-only">Contact Information</strong>
-        <span aria-label="Business name" class="uppercase"
-          >{siteConfig.name}</span
-        >
+        <span class="flex items-center gap-2">
+          <span aria-label="Business name" class="uppercase"
+            >{siteConfig.name}</span
+          >
+          <OpenStatusBadge />
+        </span>
         <span aria-label="Address" class="mb-4">{contact.address.display}</span>
         <a
           href={`tel:${contact.phone.number}`}

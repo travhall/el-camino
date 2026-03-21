@@ -10,6 +10,7 @@ import {
 } from "@/lib/constants/assets";
 import CategoryStrip from "@/components/CategoryStrip.astro";
 import ArticleCard from "@/components/ArticleCard.astro";
+import OpenStatusBadge from "@/components/OpenStatusBadge.astro";
 import { getPosts, getPostsByCategory } from "@/lib/wordpress/api";
 import {
   extractEmbeddedData,
@@ -31,15 +32,14 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
     >
       <div class="basis-1/2 p-4 md:p-12 my-8 w-full">
         <div class="max-w-lg mx-auto">
-          <h1
-            class="flex flex-row font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-none text-(--content-heading) text-balance mb-2"
-          >
-            <span>The Shop</span>
-            <span
-              id="hero-open-status-badge"
-              class="hidden text-xs font-sans font-semibold px-2 py-0.5 rounded-full border-2 self-start"
-              aria-live="polite"></span>
-          </h1>
+          <div class="flex flex-row items-center">
+            <h1
+              class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-none text-(--content-heading) text-balance mb-2"
+            >
+              The Shop
+            </h1>
+            <OpenStatusBadge class="self-start" />
+          </div>
           <p
             class="font-semibold text-sm uppercase tracking-wide text-(--content-meta) mb-3"
           >
@@ -365,11 +365,11 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
     >
       <div id="contact" class="absolute h-16 -top-16" aria-hidden="true"></div>
       <div class="relative w-full lg:basis-1/2 px-4 py-8 lg:p-8 xl:p-12 my-8">
-        <div class="w-full max-w-lg mx-auto lg:mx-0">
+        <div class="w-full max-w-xl mx-auto">
           <h2
             class="flex flex-col-reverse font-display font-black text-4xl leading-none md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl text-(--content-heading) text-balance mb-2"
           >
-            Come Visit El Camino
+            Visit El Camino
           </h2>
 
           <div class="grid gap-6 mt-6 w-full">
@@ -378,7 +378,11 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
               <div
                 class="sm:basis-1/2 sm:border-r-2 border-(--border-primary) sm:pr-6"
               >
-                <h3 class="font-semibold text-lg mb-1">Address</h3>
+                <h3
+                  class="font-semibold font-display text-xl text-(--content-emphasis) mb-1"
+                >
+                  Address
+                </h3>
                 <a
                   href={`https://maps.google.com/?q=${encodeURIComponent(siteConfig.contact.address.display)}`}
                   target="_blank"
@@ -404,7 +408,11 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
 
               <!-- CONTACT -->
               <div class="sm:basis-1/2">
-                <h3 class="font-semibold text-lg mb-1">Get in Touch</h3>
+                <h3
+                  class="font-semibold font-display text-xl text-(--content-emphasis) mb-1"
+                >
+                  Get in Touch
+                </h3>
                 <a
                   href={`tel:${siteConfig.contact.phone.number}`}
                   class="relative font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all block"
@@ -442,11 +450,12 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
 
             <div>
               <div class="flex items-center justify-between mb-2">
-                <h3 class="font-semibold text-lg">Store Hours</h3>
-                <span
-                  id="open-status-badge"
-                  class="hidden text-xs font-semibold px-2 py-0.5 rounded-full border-2"
-                ></span>
+                <h3
+                  class="font-semibold font-display text-xl text-(--content-emphasis)"
+                >
+                  Store Hours
+                </h3>
+                <OpenStatusBadge />
               </div>
               <div class="space-y-1" id="store-hours-list">
                 {
@@ -517,64 +526,6 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
                     .querySelector<HTMLElement>(".today-label")
                     ?.classList.remove("hidden");
                 });
-
-                // Determine open/closed state once, then apply to all badges
-                const todayRow = document.querySelector<HTMLElement>(
-                  `#store-hours-list [data-day="${todayName}"]`,
-                );
-                const isOpenToday = todayRow?.dataset.isOpen === "true";
-                let isOpenNow = false;
-
-                if (isOpenToday && todayRow) {
-                  const hoursText =
-                    (
-                      todayRow.children[1] as HTMLElement
-                    )?.textContent?.trim() || "";
-                  const match = hoursText.match(
-                    /(\d+)(am|pm)\s*-\s*(\d+)(am|pm)/i,
-                  );
-                  if (match) {
-                    const toMinutes = (h: number, period: string) => {
-                      let hrs = h % 12;
-                      if (period.toLowerCase() === "pm") hrs += 12;
-                      return hrs * 60;
-                    };
-                    const openMins = toMinutes(parseInt(match[1]), match[2]);
-                    const closeMins = toMinutes(parseInt(match[3]), match[4]);
-                    const nowMins = now.getHours() * 60 + now.getMinutes();
-                    isOpenNow = nowMins >= openMins && nowMins < closeMins;
-                  }
-                }
-
-                // Helper to style a badge element using design-token-aware classes
-                function applyBadgeState(badge: HTMLElement, open: boolean) {
-                  badge.classList.remove("hidden");
-                  if (open) {
-                    badge.textContent = "Open Now";
-                    badge.classList.add(
-                      "bg-state-success-surface",
-                      "text-state-success-text",
-                      "border-state-success-surface",
-                    );
-                  } else {
-                    badge.textContent = "Closed";
-                    badge.classList.add(
-                      "bg-state-error-surface",
-                      "text-state-error-text",
-                      "border-state-error-surface",
-                    );
-                  }
-                }
-
-                // Hours section badge
-                const badge = document.getElementById("open-status-badge");
-                if (badge) applyBadgeState(badge, isOpenNow);
-
-                // Hero badge
-                const heroBadge = document.getElementById(
-                  "hero-open-status-badge",
-                );
-                if (heroBadge) applyBadgeState(heroBadge, isOpenNow);
               }
             </script>
           </div>
