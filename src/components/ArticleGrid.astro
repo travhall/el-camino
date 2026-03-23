@@ -224,33 +224,29 @@ const getSkeletonVariant = () => {
     /* Delay is inherited from base rule for staggered entrance */
   }
 
-  /* Priority card entrance uses CSS transition + @starting-style —
-     fires immediately when element first becomes visible to the user,
-     NOT waiting for astro:page-load (~3.6s on throttled CPU).
-     opacity: 0.001 (non-zero) → Chrome tracks element for LCP from initial render.
-     @starting-style re-applies from-state on every entry: initial load, BFCache
-     restore, and ViewTransitions navigation — eliminating the "instant appear"
-     inconsistency caused by BFCache restoring a post-animation state. */
+  /* Priority card — starts near-invisible so the LCP image is tracked from
+     first render (opacity > 0), but practically hidden until JS triggers
+     the entrance alongside the other cards. Uses a longer duration and
+     scale+translate for a more intentional feel than the secondary cards. */
   .article-card-wrapper.card-entrance-ready {
-    opacity: 1;
-    transform: scale(1) translate3d(0, 0, 0);
+    opacity: 0.001;
+    transform: scale(0.95) translate3d(0, 10px, 0);
     transition:
       opacity var(--card-entrance-priority-duration, 800ms) ease-out,
       transform var(--card-entrance-priority-duration, 800ms) ease-out;
   }
 
-  @starting-style {
-    .article-card-wrapper.card-entrance-ready {
-      opacity: 0.001;
-      transform: scale(0.95) translate3d(0, 10px, 0);
-    }
+  /* JS adds opacity-100 to trigger the transition */
+  .article-card-wrapper.card-entrance-ready.opacity-100 {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
   }
 
   @media (prefers-reduced-motion: reduce) {
     .article-card-wrapper.card-entrance-ready {
-      transition: none;
       opacity: 1;
       transform: none;
+      transition: none;
     }
   }
 
@@ -322,7 +318,17 @@ const getSkeletonVariant = () => {
     const rowStaggerStr = style.getPropertyValue("--row-stagger-delay").trim();
     const rowStaggerDelay = parseInt(rowStaggerStr.replace("ms", "")) || 0;
 
-    return { duration, staggerDelay, rowStaggerDelay };
+    const priorityDurStr = style
+      .getPropertyValue("--card-entrance-priority-duration")
+      .trim();
+    let priorityDuration = 800;
+    if (priorityDurStr.includes("ms")) {
+      priorityDuration = parseInt(priorityDurStr.replace("ms", ""));
+    } else if (priorityDurStr.includes("s")) {
+      priorityDuration = parseFloat(priorityDurStr.replace("s", "")) * 1000;
+    }
+
+    return { duration, staggerDelay, rowStaggerDelay, priorityDuration };
   }
 
   const ANIMATION_CONFIG = getAnimationTiming();
@@ -350,9 +356,11 @@ const getSkeletonVariant = () => {
 
   // Initialize entrance animations for article cards and sidebar
   function initializeArticleAnimations() {
-    // Find all non-priority cards — priority card uses CSS @keyframes (fires immediately,
-    // not at astro:page-load), so it's excluded from JS-driven animation entirely.
-    const cards = document.querySelectorAll(".article-card-wrapper.opacity-0");
+    // Include the featured card (card-entrance-ready) alongside non-featured cards (opacity-0)
+    // so all cards share the same astro:page-load trigger and animate in sync.
+    const cards = document.querySelectorAll(
+      ".article-card-wrapper.opacity-0, .article-card-wrapper.card-entrance-ready:not(.opacity-100)",
+    );
 
     if (!cards.length) return;
 
@@ -400,13 +408,29 @@ const getSkeletonVariant = () => {
           "--animation-order",
           animationOrder.toString(),
         );
+
+        // Featured card has opacity:0.001 + transition:none inline to prevent a
+        // FOUC-triggered flash on dev cold-load (CSS hasn't loaded yet when the
+        // HTML is first painted, so without inline opacity the card flashes at
+        // the browser default opacity:1). Clear both here, force a reflow so
+        // the browser commits the starting state from the CSS rule before the
+        // transition fires.
+        if (htmlCard.classList.contains("card-entrance-ready")) {
+          htmlCard.style.opacity = "";
+          htmlCard.style.transition = "";
+          void htmlCard.offsetHeight;
+        }
+
         htmlCard.classList.add("animating");
         htmlCard.classList.remove("opacity-0");
         htmlCard.classList.add("opacity-100");
 
-        // Remove will-change after animation
+        // Remove will-change after animation — featured card uses longer duration
+        const cardDuration = htmlCard.classList.contains("card-entrance-ready")
+          ? ANIMATION_CONFIG.priorityDuration
+          : ANIMATION_CONFIG.duration;
         const totalAnimationTime =
-          ANIMATION_CONFIG.duration +
+          cardDuration +
           animationOrder * ANIMATION_CONFIG.staggerDelay;
         setTimeout(() => {
           htmlCard.classList.remove("animating");
@@ -529,5 +553,23 @@ const getSkeletonVariant = () => {
   // Listen for articleGridReady event from FilterCoordinator
   window.addEventListener("articleGridReady", () => {
     initializeArticleAnimations();
+  });
+
+  // BFCache restore: DOM is preserved as-is. If the featured card was
+  // mid-animation when cached, it won't have opacity-100 yet. Show it
+  // immediately without a transition so the user doesn't see a half-visible card.
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) {
+      const card = document.querySelector<HTMLElement>(
+        ".article-card-wrapper.card-entrance-ready:not(.opacity-100)",
+      );
+      if (card) {
+        card.style.transition = "none";
+        card.classList.add("opacity-100");
+        requestAnimationFrame(() => {
+          card.style.transition = "";
+        });
+      }
+    }
   });
 </script>

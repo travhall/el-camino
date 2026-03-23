@@ -147,14 +147,25 @@ export class BlobCache<T> {
    * @returns The cached value or undefined if not in cache or expired
    */
   async get(key: string): Promise<T | undefined> {
+    const cacheKey = this.getCacheKey(key);
+
+    // Check in-memory fallback first — fastest path, consistent with getOrCompute
+    const fallbackEntry = this.fallbackCache.get(cacheKey);
+    if (fallbackEntry) {
+      const now = Date.now();
+      if (now - fallbackEntry.timestamp <= fallbackEntry.ttl) {
+        return fallbackEntry.value;
+      }
+      this.fallbackCache.delete(cacheKey);
+    }
+
     const store = this.getStore();
     if (!store) return undefined;
 
     try {
-      const cacheKey = this.getCacheKey(key);
       const cached = await store.get(cacheKey, {
-        consistency: "strong", // Edge-cached globally
-        type: "text", // Get as text, not ArrayBuffer
+        consistency: "strong",
+        type: "text",
       });
 
       if (!cached) {
@@ -166,11 +177,12 @@ export class BlobCache<T> {
 
       // Check if expired
       if (now - entry.timestamp > entry.ttl) {
-        // Expired - delete asynchronously
         store.delete(cacheKey).catch(() => {});
         return undefined;
       }
 
+      // Populate fallbackCache so subsequent calls skip Blobs
+      this.fallbackCache.set(cacheKey, entry);
       return entry.value;
     } catch (error) {
       console.warn(
@@ -187,17 +199,21 @@ export class BlobCache<T> {
    * @param value Value to store
    */
   async set(key: string, value: T): Promise<void> {
+    const entry: CacheEntry<T> = {
+      value,
+      timestamp: Date.now(),
+      ttl: this.ttl,
+    };
+    const cacheKey = this.getCacheKey(key);
+
+    // Always write to fallbackCache — matches getOrCompute behavior and
+    // ensures get() / checkBulkInventory-style callers see the cached value
+    this.fallbackCache.set(cacheKey, entry);
+
     const store = this.getStore();
     if (!store) return;
 
     try {
-      const entry: CacheEntry<T> = {
-        value,
-        timestamp: Date.now(),
-        ttl: this.ttl,
-      };
-
-      const cacheKey = this.getCacheKey(key);
       await store.set(cacheKey, JSON.stringify(entry), {
         metadata: {
           cacheName: this.name,
@@ -226,11 +242,12 @@ export class BlobCache<T> {
    * @param key Cache key
    */
   async delete(key: string): Promise<void> {
+    const cacheKey = this.getCacheKey(key);
+    this.fallbackCache.delete(cacheKey);
     const store = this.getStore();
     if (!store) return;
 
     try {
-      const cacheKey = this.getCacheKey(key);
       await store.delete(cacheKey);
     } catch (error) {
       console.warn(
@@ -241,12 +258,24 @@ export class BlobCache<T> {
   }
 
   /**
-   * Clear all entries (not implemented for Blobs - too expensive)
+   * Clear all entries for this cache namespace from both fallbackCache and Blobs.
+   * Iterates paginated list results so large caches are fully cleared.
    */
   async clear(): Promise<void> {
-    console.warn(
-      `[BlobCache:${this.name}] Clear operation not supported for blob-backed cache`
-    );
+    this.fallbackCache.clear();
+    const store = this.getStore();
+    if (!store) return;
+
+    try {
+      const prefix = `${this.name}:`;
+      for await (const result of store.list({ prefix, paginate: true })) {
+        if (result.blobs.length > 0) {
+          await Promise.all(result.blobs.map((blob) => store.delete(blob.key)));
+        }
+      }
+    } catch (error) {
+      console.warn(`[BlobCache:${this.name}] Clear failed:`, error);
+    }
   }
 
   /**
@@ -414,14 +443,14 @@ export class BlobCache<T> {
  * These replace the in-memory caches to fix function-per-route isolation
  */
 // UPDATED: Longer TTLs since catalog data changes infrequently
-export const inventoryCache = new BlobCache<number>("inventory", 900); // 15 minutes
-export const categoryCache = new BlobCache<any>("category", 3600); // 1 hour (was 10 min)
-export const productCache = new BlobCache<any>("product", 3600); // 1 hour (was 15 min)
-export const imageCache = new BlobCache<string>("image", 3600); // 1 hour
-export const wordpressCache = new BlobCache<any>("wordpress", 300); // 5 minutes
-export const filterCache = new BlobCache<any>("filter", 900); // 15 minutes
-export const navigationCache = new BlobCache<any>("navigation", 3600); // 1 hour
-export const slugCache = new BlobCache<Record<string, string>>(
+export const inventoryCache = new BlobCache<number>("inventory", 900);   // 15 min
+export const categoryCache = new BlobCache<any>("category", 1800);       // 30 min (was 1 hr)
+export const productCache = new BlobCache<any>("product", 900);          // 15 min (was 1 hr) — matches inventory TTL so deleted/changed products surface quickly
+export const imageCache = new BlobCache<string>("image", 3600);          // 1 hr (image URLs are stable)
+export const wordpressCache = new BlobCache<any>("wordpress", 300);      // 5 min
+export const filterCache = new BlobCache<any>("filter", 900);            // 15 min
+export const navigationCache = new BlobCache<any>("navigation", 1800);   // 30 min (was 1 hr)
+export const slugCache = new BlobCache<Record<string, string>>(          // 30 min (was 1 hr)
   "slug-map",
-  3600
-); // 1 hour
+  1800
+);

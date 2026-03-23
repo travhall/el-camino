@@ -62,13 +62,16 @@ const hasFilters = filters.brands.length > 0 ||
 // Subsequent requests: ~50-100ms (edge cache hit)
 // After 5 min: ~50-100ms (serves stale, revalidates in background)
 // Aggressive caching for category pages (5min server, 30min stale)
+// No browser cache (no-cache) — inventory state must always be fresh.
+// CDN caches for 5 min; stale-while-revalidate kept short so sold-out
+// items don't linger on the CDN edge longer than 2 minutes after expiry.
 Astro.response.headers.set(
   "Cache-Control",
-  "public, s-maxage=300, stale-while-revalidate=1800"
+  "public, no-cache, s-maxage=300, stale-while-revalidate=120"
 );
 Astro.response.headers.set(
   "Netlify-CDN-Cache-Control",
-  "public, s-maxage=300, stale-while-revalidate=1800"
+  "public, s-maxage=300, stale-while-revalidate=120"
 );
 
 import type { Product, FilterOptions } from "@/lib/square/types";

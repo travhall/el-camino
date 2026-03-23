@@ -5,6 +5,8 @@ import { squareClient } from "@/lib/square/client";
 import { checkBulkInventory } from "@/lib/square/inventory";
 import { calculateShippingRate, PICKUP_LOCATION } from "@/lib/config/shipping";
 import { siteConfig } from "@/lib/site-config";
+import { inventoryCache, productCache } from "@/lib/cache/blobCache";
+import { batchInventoryService } from "@/lib/square/batchInventory";
 
 /**
  * Normalize a phone number to E.164 format required by Square API.
@@ -242,10 +244,13 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // ── Create payment link (Square creates the order internally) ────────────
-    // Square appends ?checkoutId=&orderId=&transactionId= to redirectUrl on
-    // successful payment, so the confirmation page receives the real orderId
-    // without us needing to pre-create a separate order.
+    // ── Create payment link ───────────────────────────────────────────────────
+    // Square creates the order internally and returns its orderId in the
+    // payment link response. We pass that orderId back to the client so it
+    // can be stored in sessionStorage before the browser is handed off to
+    // Square's hosted checkout page — this is our source of truth for the
+    // orderId on the confirmation page, since Square's legacy checkout API
+    // does not reliably append orderId to the redirect URL.
     const confirmationUrl = new URL("/order-confirmation", request.url);
     confirmationUrl.searchParams.set("fulfillmentMethod", fulfillmentMethod);
 
@@ -283,6 +288,29 @@ export const POST: APIRoute = async ({ request }) => {
     const orderId = linkResponse.result.paymentLink.orderId ?? "";
     console.log("[create-checkout] Payment link created:", linkResponse.result.paymentLink.url, "orderId:", orderId);
 
+    // Bust all inventory caches for every variation in this order so that the
+    // product grid, PDP, and Quick View show accurate stock immediately after
+    // purchase rather than serving stale cached values.
+    //
+    // Three caches must be cleared:
+    // 1. inventoryCache (BlobCache) — used by checkItemInventory / PDP / QuickView
+    // 2. batchInventoryService.cache — used by ProductGrid (separate in-memory Map)
+    // 3. productCache "all-catalog-items-v2" — used by fetchProductsByCategory / category pages
+    await Promise.allSettled(
+      validItems.map((item) => inventoryCache.delete(item.variationId))
+    );
+    batchInventoryService.clearCache();
+    await productCache.delete("all-catalog-items-v2");
+
+    // Set a server-readable cookie with the orderId so the confirmation page can
+    // retrieve it without relying on Square appending it to the redirect URL
+    // (Square's legacy checkout API does not reliably do so).
+    // SameSite=Lax allows the cookie to be sent on the top-level cross-site
+    // navigation from Square back to our domain.
+    const cookie = orderId
+      ? `square-pending-orderId=${orderId}; Path=/; Max-Age=3600; SameSite=Lax; HttpOnly`
+      : "";
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -292,7 +320,8 @@ export const POST: APIRoute = async ({ request }) => {
         shippingCost: fulfillmentMethod === "shipping" ? shippingRate : 0,
         stockMessage: stockMessage || undefined,
         cartUpdated: removedItems.length > 0 || adjustedItems.length > 0,
-      })
+      }),
+      cookie ? { headers: { "Set-Cookie": cookie } } : undefined
     );
   } catch (error) {
     console.error("Checkout error:", error);

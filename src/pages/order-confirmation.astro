@@ -15,8 +15,39 @@ type LineItemInfo = {
 };
 type LineItemDetails = Record<string, LineItemInfo>;
 
-const orderId = Astro.url.searchParams.get("orderId");
-// console.log("Processing order confirmation:", orderId);
+let orderId = Astro.url.searchParams.get("orderId");
+const transactionId = Astro.url.searchParams.get("transactionId");
+
+// Primary fallback: read the orderId from the cookie we set in create-checkout.
+// This is the most reliable mechanism because cookies travel automatically with
+// every browser request — no JavaScript needed, no race conditions.
+// Square's sandbox (and legacy production API) does not append orderId to the
+// redirect URL, so the URL param alone cannot be trusted.
+if (!orderId) {
+  const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+  const match = cookieHeader.match(/(?:^|;\s*)square-pending-orderId=([^;]+)/);
+  if (match?.[1]) {
+    orderId = match[1];
+    // Clear the cookie now that we've consumed it so a later visit to this page
+    // (e.g. a browser back-navigation) doesn't pull up a stale order.
+    Astro.response.headers.set(
+      "Set-Cookie",
+      "square-pending-orderId=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly",
+    );
+  }
+}
+
+// Secondary fallback: Square sometimes appends transactionId (payment ID) to
+// the redirect URL even when orderId is absent. Resolve it via the Payments API.
+if (!orderId && transactionId) {
+  try {
+    const { result: paymentResult } =
+      await squareClient.paymentsApi.getPayment(transactionId);
+    orderId = paymentResult.payment?.orderId ?? null;
+  } catch {
+    // fall through to the client-side sessionStorage head script
+  }
+}
 
 let orderDetails: Order | null = null;
 let lineItemDetails: LineItemDetails = {};
@@ -24,7 +55,6 @@ let error: string | null = null;
 
 if (!orderId) {
   error = "Order ID not provided";
-  // console.error("Missing orderId in URL");
 } else {
   try {
     // Retrieve the basic order
@@ -36,10 +66,35 @@ if (!orderId) {
 
     orderDetails = result.order;
 
-    // Guard: only show confirmation for paid (COMPLETED) orders.
-    // OPEN = payment still pending or failed; CANCELED = voided.
-    if (orderDetails.state !== "COMPLETED") {
-      error = `Payment not confirmed (order status: ${orderDetails.state ?? "unknown"}). If you believe this is an error, please contact us.`;
+    // Guard: only show confirmation for paid orders.
+    //
+    // Square payment-link orders stay in OPEN state permanently — OPEN means
+    // "payment received, awaiting merchant fulfillment." Orders only reach
+    // COMPLETED when the merchant marks them fulfilled. Checking for COMPLETED
+    // would always block confirmation pages for pickup/shipping orders.
+    //
+    // The correct signal that payment was received is the presence of tenders
+    // (Square's term for payment records attached to an order). If tenders
+    // exist the customer has paid; if not, no payment has been captured yet.
+    //
+    // One retry handles the rare case where Square redirects before the tender
+    // has been written to the order.
+    const hasTenders = (orderDetails.tenders?.length ?? 0) > 0;
+    if (!hasTenders) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const { result: retryResult } =
+        await squareClient.ordersApi.retrieveOrder(orderId);
+      if (retryResult.order) orderDetails = retryResult.order;
+    }
+
+    if ((orderDetails.tenders?.length ?? 0) === 0) {
+      if (orderDetails.state === "CANCELED") {
+        error =
+          "This order was canceled. If you believe this is an error, please contact us.";
+      } else {
+        error =
+          "Payment not confirmed. If you believe this is an error, please contact us.";
+      }
       orderDetails = null;
     }
 
@@ -79,9 +134,11 @@ if (!orderId) {
             }
 
             // Check variation image first
-            const variationImageId =
-              variation.itemVariationData?.imageIds?.[0];
-            if (variationImageId && objectMap[variationImageId]?.imageData?.url) {
+            const variationImageId = variation.itemVariationData?.imageIds?.[0];
+            if (
+              variationImageId &&
+              objectMap[variationImageId]?.imageData?.url
+            ) {
               lineItemDetails[itemKey].image =
                 objectMap[variationImageId].imageData.url;
               continue;
@@ -124,6 +181,23 @@ const fullTitle = `${pageTitle} | El Camino`;
 ---
 
 <Layout title={fullTitle}>
+  <script is:inline slot="head">
+    // If orderId is missing from the URL (Square's legacy API doesn't always
+    // append it), check sessionStorage for the one stored before the Square
+    // hand-off. Runs in <head> to redirect before the page is painted.
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      if (!params.get("orderId")) {
+        var stored = sessionStorage.getItem("square-pending-orderId");
+        if (stored) {
+          params.set("orderId", stored);
+          window.location.replace(
+            window.location.pathname + "?" + params.toString(),
+          );
+        }
+      }
+    })();
+  </script>
   <section class="max-w-2xl mx-auto px-4 py-16">
     {
       error ? (
@@ -145,7 +219,8 @@ const fullTitle = `${pageTitle} | El Camino`;
             Order Not Found
           </h1>
           <p class="text-(--content-body) mb-4">
-            We couldn't locate your order details. If you completed payment, please check your email for a confirmation or contact us.
+            We couldn't locate your order details. If you completed payment,
+            please check your email for a confirmation or contact us.
           </p>
           <a
             href="/"
@@ -220,7 +295,7 @@ const fullTitle = `${pageTitle} | El Camino`;
               Order ID: {orderDetails.id}
             </p>
             <a
-              href="/"
+              href="/shop/all"
               class="inline-block bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border) hover:bg-(--ui-button-surface)/80 font-sans font-semibold transition-all duration-300 border-2 rounded-sm text-lg py-2 px-4"
             >
               Continue Shopping
@@ -244,6 +319,7 @@ const fullTitle = `${pageTitle} | El Camino`;
       const storageKey = `cart-cleared-${orderId}`;
       if (orderId && !sessionStorage.getItem(storageKey)) {
         sessionStorage.setItem(storageKey, "1");
+        sessionStorage.removeItem("square-pending-orderId");
         cart.clear();
       }
     }

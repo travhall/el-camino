@@ -68,11 +68,14 @@ export const GET: APIRoute = async ({ url }) => {
     return new Response(JSON.stringify(product), {
       headers: {
         "Content-Type": "application/json",
-        // Browser: Cache for 1 minute
-        "Cache-Control": "public, max-age=60, must-revalidate",
-        // Netlify CDN: Fresh for 5 minutes, stale for 1 hour
+        // No browser cache — inventory data must always be fresh.
+        // The server-side BlobCache handles performance; we don't want
+        // the browser serving a 60-second-old sold-out state.
+        "Cache-Control": "public, no-cache",
+        // Netlify CDN: Fresh for 5 minutes, stale for 2 minutes only.
+        // Short stale window so sold-out items don't linger on the edge.
         "Netlify-CDN-Cache-Control":
-          "public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable",
+          "public, s-maxage=300, stale-while-revalidate=120",
         // Cache tag for invalidation
         "Netlify-Cache-Tag": `product-${productId},products,quick-view`,
       },

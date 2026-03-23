@@ -57,7 +57,7 @@ export const GET: APIRoute = async ({ request }) => {
     // durable directive shares cache globally across all edge nodes
     response.headers.set(
       "Netlify-CDN-Cache-Control",
-      "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400, durable"
+      "public, max-age=0, s-maxage=3600, stale-while-revalidate=300, durable"
     );
 
     // Add cache tag for invalidation via webhooks

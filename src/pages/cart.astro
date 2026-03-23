@@ -707,6 +707,13 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         await new Promise((resolve) => setTimeout(resolve, 3000));
       }
 
+      // Store the orderId before handing off to Square. Square's legacy
+      // checkout API does not reliably append orderId to the redirect URL,
+      // so the confirmation page reads this as a fallback.
+      if (data.orderId) {
+        sessionStorage.setItem("square-pending-orderId", data.orderId);
+      }
+
       window.showNotification("Redirecting to checkout...", "success");
       window.location.href = data.checkoutUrl;
     } catch (error) {

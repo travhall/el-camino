@@ -32,9 +32,11 @@ const hasFilters = filters.brands.length > 0 ||
                    filters.categories.length > 0 ||
                    filters.availability === true;
 
+// No max-age: inventory-sensitive pages must not be browser-cached.
+// Browsers will always revalidate; CDN benefits from s-max-age.
 const cacheControl = hasFilters
-  ? "public, max-age=120, s-max-age=180, stale-while-revalidate=900" // 2min browser, 3min server, 15min stale for filtered
-  : "public, max-age=300, s-max-age=300, stale-while-revalidate=1800"; // 5min browser/server, 30min stale for unfiltered
+  ? "public, no-cache, s-max-age=180, stale-while-revalidate=900"
+  : "public, no-cache, s-max-age=300, stale-while-revalidate=1800";
 
 // Set cache headers for this response
 Astro.response.headers.set("Cache-Control", cacheControl);
