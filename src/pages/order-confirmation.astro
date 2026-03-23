@@ -247,20 +247,25 @@ const fullTitle = `${pageTitle} | El Camino`;
                 <div class="flex items-center py-4 border-b border-(--surface-tertiary)">
                   {/* Item image with Astro Image */}
                   <div class="w-16 h-16 mr-4 bg-(--surface-tertiary) rounded overflow-hidden">
-                    <Image
-                      src={
-                        item.uid && lineItemDetails[item.uid]?.image
-                          ? lineItemDetails[item.uid].image!
-                          : EL_CAMINO_LOGO_DATA_URI
-                      }
-                      alt={item.name || "Product"}
-                      width={64}
-                      height={64}
-                      format="avif"
-                      quality={85}
-                      class="w-full h-full object-cover"
-                      loading="lazy"
-                    />
+                    {item.uid && lineItemDetails[item.uid]?.image ? (
+                      <Image
+                        src={lineItemDetails[item.uid].image!}
+                        alt={item.name || "Product"}
+                        width={64}
+                        height={64}
+                        format="avif"
+                        quality={85}
+                        class="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <img
+                        src={EL_CAMINO_LOGO_DATA_URI}
+                        alt={item.name || "Product"}
+                        class="w-full h-full object-contain p-2"
+                        loading="lazy"
+                      />
+                    )}
                   </div>
                   <div class="flex-1 flex justify-between text-(--content-body)">
                     <div>
