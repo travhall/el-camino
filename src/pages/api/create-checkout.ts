@@ -9,6 +9,76 @@ import { inventoryCache, productCache } from "@/lib/cache/blobCache";
 import { batchInventoryService } from "@/lib/square/batchInventory";
 import { storePendingOrder } from "@/lib/email/pendingOrders";
 
+// Store timezone for business hours calculations
+const STORE_TIMEZONE = "America/Chicago";
+
+/**
+ * Parse an hour string like "11am" or "7pm" into a 24-hour number.
+ */
+function parseHour(s: string): number {
+  const m = s.trim().match(/^(\d+)(am|pm)$/i);
+  if (!m) return 0;
+  let h = parseInt(m[1], 10);
+  if (m[2].toLowerCase() === "pm" && h !== 12) h += 12;
+  if (m[2].toLowerCase() === "am" && h === 12) h = 0;
+  return h;
+}
+
+/**
+ * Return open/close hours for a JS day-of-week (0=Sun … 6=Sat), or null if closed.
+ * siteConfig.hours is ordered Mon(0)…Sun(6), so we convert with (jsDay + 6) % 7.
+ */
+function storeHoursForDay(jsDay: number): { open: number; close: number } | null {
+  const idx = (jsDay + 6) % 7;
+  const entry = siteConfig.hours[idx];
+  if (!entry?.isOpen) return null;
+  const parts = entry.hours.split(" - ");
+  if (parts.length !== 2) return null;
+  return { open: parseHour(parts[0]), close: parseHour(parts[1]) };
+}
+
+/**
+ * Return the day-of-week and hour-of-day for a UTC Date in the store timezone.
+ */
+function storeTimeOf(date: Date): { jsDay: number; hour: number } {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: STORE_TIMEZONE,
+    weekday: "short",
+    hour: "numeric",
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(date);
+  const wd = parts.find((p) => p.type === "weekday")?.value ?? "Sun";
+  const hr = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+  const dayMap: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  return { jsDay: dayMap[wd] ?? 0, hour: hr };
+}
+
+/**
+ * Return the earliest time that is:
+ *   (a) at least 4 hours from `from`, AND
+ *   (b) during store business hours.
+ *
+ * Advances hour-by-hour until a valid slot is found (up to 7 days).
+ */
+function nextPickupTime(from: Date): Date {
+  let candidate = new Date(from.getTime() + 4 * 60 * 60 * 1000);
+
+  for (let i = 0; i < 7 * 24; i++) {
+    const { jsDay, hour } = storeTimeOf(candidate);
+    const hours = storeHoursForDay(jsDay);
+    if (hours && hour >= hours.open && hour < hours.close) {
+      return candidate;
+    }
+    // Advance one hour and try again
+    candidate = new Date(candidate.getTime() + 60 * 60 * 1000);
+  }
+
+  return candidate; // fallback — should never reach here
+}
+
 /**
  * Normalize a phone number to E.164 format required by Square API.
  * Handles US formats: (555) 555-5555, 555-555-5555, 5555555555, +15555555555
@@ -220,9 +290,8 @@ export const POST: APIRoute = async ({ request }) => {
         },
       });
     } else if (fulfillmentMethod === "pickup" && pickupContact) {
-      // Calculate pickup ready time (2-4 hours from now)
-      const pickupTime = new Date();
-      pickupTime.setHours(pickupTime.getHours() + 4);
+      // Calculate pickup ready time: at least 4 hours from now, within store hours
+      const pickupTime = nextPickupTime(new Date());
 
       // Build pickup note with location details and customer instructions
       let pickupNote = `Pickup at ${PICKUP_LOCATION.name}. ${PICKUP_LOCATION.instructions}`;

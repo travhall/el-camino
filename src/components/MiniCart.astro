@@ -385,9 +385,16 @@ import Button from "@/components/Button.astro";
     const optimizedImageSrc = item.image ? optimizeCartImage(item.image) : null;
     const safeImageSrc = optimizedImageSrc ? sanitize(optimizedImageSrc) : null;
 
+    // Hoist saleInfo so both the image badge and pricing block can reference it
+    const saleInfo = (item as any).saleInfo as { salePrice: number; originalPrice: number; discountPercent?: number } | undefined;
+    const saleLabel = saleInfo
+      ? `${saleInfo.discountPercent ?? Math.round((1 - saleInfo.salePrice / saleInfo.originalPrice) * 100)}% Off`
+      : null;
+
     return `
     <div class="flex gap-3 p-3 bg-(--surface-secondary)" data-item-key="${safeItemKey}">
       <div class="relative w-16 h-16">
+        ${saleLabel ? `<div class="absolute top-0 left-0 z-10 bg-state-success-surface text-state-success-text px-1 py-px text-[9px] font-bold leading-tight rounded-br-sm">${saleLabel}</div>` : ""}
         ${
           safeImageSrc
             ? `
@@ -444,7 +451,6 @@ import Button from "@/components/Button.astro";
         }
 
         ${(() => {
-          const saleInfo = (item as any).saleInfo;
           const displayPrice = saleInfo?.salePrice || item.price;
           const itemTotal = displayPrice * item.quantity;
 

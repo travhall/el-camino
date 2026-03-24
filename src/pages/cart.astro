@@ -436,10 +436,15 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
             class="absolute inset-0 w-full h-full object-contain p-1 rounded border border-(--border-secondary)"
           />`;
 
+    const saleLabel = saleInfo
+      ? `${(saleInfo as any).discountPercent ?? Math.round((1 - saleInfo.salePrice / saleInfo.originalPrice) * 100)}% Off`
+      : null;
+
     return `
       <div class="bg-(--surface-secondary) p-3 flex gap-3 self-start" data-item-container="${safeItemKey}">
         <div class="shrink-0 relative w-16 h-16 lg:w-24 lg:h-24">
           ${imageSection}
+          ${saleLabel ? `<div class="absolute top-0 left-0 z-10 bg-state-success-surface text-state-success-text px-1.5 py-0.5 text-[10px] lg:text-xs font-bold leading-tight rounded-br-sm">${saleLabel}</div>` : ""}
         </div>
         <div class="grow flex flex-col justify-between min-w-0">
           <div class="flex flex-row justify-between">

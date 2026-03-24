@@ -7,11 +7,13 @@ import type { Order } from "square/legacy";
 import type { SquareMoneyObject } from "@/lib/square/types";
 import { Image } from "astro:assets";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import { siteConfig } from "@/lib/site-config";
 
 // Track line item additional info
 type LineItemInfo = {
   image?: string;
   variationName?: string;
+  catalogPriceMoney?: SquareMoneyObject; // Regular catalog price (to detect sale items)
 };
 type LineItemDetails = Record<string, LineItemInfo>;
 
@@ -133,6 +135,12 @@ if (!orderId) {
                 variation.itemVariationData.name;
             }
 
+            // Store catalog price for sale detection
+            if (variation.itemVariationData?.priceMoney) {
+              lineItemDetails[itemKey].catalogPriceMoney =
+                variation.itemVariationData.priceMoney;
+            }
+
             // Check variation image first
             const variationImageId = variation.itemVariationData?.imageIds?.[0];
             if (
@@ -173,10 +181,92 @@ function formatMoney(money: SquareMoneyObject | undefined | null): string {
   return MoneyUtils.format(money);
 }
 
+// Format the pre-tax total for a line item (totalMoney minus its tax portion).
+function formatLineItemPreTax(
+  item: NonNullable<Order["lineItems"]>[number],
+): string {
+  const total = Number(item.totalMoney?.amount ?? 0);
+  const tax = Number(item.totalTaxMoney?.amount ?? 0);
+  return MoneyUtils.format({ amount: total - tax, currency: "USD" });
+}
+
+// Returns true if the line item was purchased at a sale price (base price
+// was overridden below the catalog's regular price at checkout time).
+function isSaleItem(
+  item: NonNullable<Order["lineItems"]>[number],
+  details: LineItemInfo,
+): boolean {
+  const catalogAmount = Number(details.catalogPriceMoney?.amount ?? 0);
+  const baseAmount = Number(item.basePriceMoney?.amount ?? 0);
+  return catalogAmount > 0 && baseAmount > 0 && baseAmount < catalogAmount;
+}
+
+// ── Fulfillment data ────────────────────────────────────────────────────────
+const fulfillment = orderDetails?.fulfillments?.[0] ?? null;
+const isPickup = fulfillment?.type === "PICKUP";
+const isShipment = fulfillment?.type === "SHIPMENT";
+
+// Pickup specifics
+const pickupDetails = fulfillment?.pickupDetails ?? null;
+const pickupRecipient = pickupDetails?.recipient ?? null;
+const pickupNoteRaw = pickupDetails?.note ?? "";
+const customerNotesMatch = pickupNoteRaw.match(/Customer Notes:\s*(.+)$/s);
+const customerNotes = customerNotesMatch?.[1]?.trim() ?? null;
+const pickupAt = pickupDetails?.pickupAt
+  ? new Date(pickupDetails.pickupAt)
+  : null;
+const pickupReadyText = pickupAt
+  ? pickupAt.toLocaleString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    })
+  : null;
+
+// Shipment specifics
+const shipmentDetails = fulfillment?.shipmentDetails ?? null;
+const shipRecipient = shipmentDetails?.recipient ?? null;
+const shipAddress = shipRecipient?.address ?? null;
+const shipAddressLines = shipAddress
+  ? [
+      shipAddress.addressLine1,
+      shipAddress.addressLine2,
+      `${shipAddress.locality}, ${shipAddress.administrativeDistrictLevel1} ${shipAddress.postalCode}`,
+    ]
+      .filter(Boolean)
+      .join("\n")
+  : null;
+
+// Contact email shown as "confirmation sent to"
+const contactEmail = isPickup
+  ? (pickupRecipient?.emailAddress ?? null)
+  : (shipRecipient?.emailAddress ?? null);
+
+// Separate the "Shipping" custom line item from product items
+const shippingLineItem =
+  orderDetails?.lineItems?.find(
+    (item) => item.name === "Shipping" && !item.catalogObjectId,
+  ) ?? null;
+const productLineItems =
+  orderDetails?.lineItems?.filter(
+    (item) => !(item.name === "Shipping" && !item.catalogObjectId),
+  ) ?? [];
+
+// Order-level totals
+const hasDiscount = Number(orderDetails?.totalDiscountMoney?.amount ?? 0) > 0;
+const hasTax = Number(orderDetails?.totalTaxMoney?.amount ?? 0) > 0;
+const hasFreeShipping = shippingLineItem === null && isShipment;
+
+// Short human-friendly order reference (last 8 chars, matches email template)
+const shortId = orderDetails?.id
+  ? `#${orderDetails.id.slice(-8).toUpperCase()}`
+  : "";
+
 // Get the title and content from the page
-const pageTitle = orderDetails?.id
-  ? `Order #${orderDetails.id.slice(-6)}`
-  : "Order Confirmation";
+const pageTitle = orderDetails?.id ? `Order ${shortId}` : "Order Confirmation";
 const fullTitle = `${pageTitle} | El Camino`;
 ---
 
@@ -231,74 +321,223 @@ const fullTitle = `${pageTitle} | El Camino`;
         </div>
       ) : (
         <div data-order-id={orderDetails.id}>
+          {/* ── Header ─────────────────────────────────────────────────── */}
           <div class="text-center mb-8">
             <h1 class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading) my-4 lg:my-0">
-              Thank You for Your Order!
+              Thank You!
             </h1>
-            <p class="text-(--content-body)">Your order has been confirmed.</p>
+            <p class="text-(--content-body) mt-3">
+              Your order has been confirmed.
+            </p>
+            <p class="font-mono text-sm font-semibold text-(--content-emphasis) mt-1">
+              Order {shortId}
+            </p>
+            {contactEmail && (
+              <p class="text-xs text-(--content-meta) mt-1">
+                Confirmation sent to {contactEmail}
+              </p>
+            )}
           </div>
 
-          <div class="order-summary bg-(--surface-secondary) rounded-lg p-6">
+          {/* ── Order Summary ───────────────────────────────────────────── */}
+          <div class="order-summary bg-(--surface-secondary) rounded-lg p-6 mb-6">
             <h2 class="font-display text-2xl mb-4 text-(--content-heading)">
               Order Summary
             </h2>
-            <div>
-              {orderDetails.lineItems?.map((item) => (
-                <div class="flex items-center py-4 border-b border-(--surface-tertiary)">
-                  {/* Item image with Astro Image */}
-                  <div class="w-16 h-16 mr-4 bg-(--surface-tertiary) rounded overflow-hidden">
-                    {item.uid && lineItemDetails[item.uid]?.image ? (
-                      <Image
-                        src={lineItemDetails[item.uid].image!}
-                        alt={item.name || "Product"}
-                        width={64}
-                        height={64}
-                        format="avif"
-                        quality={85}
-                        class="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <img
-                        src={EL_CAMINO_LOGO_DATA_URI}
-                        alt={item.name || "Product"}
-                        class="w-full h-full object-contain p-2"
-                        loading="lazy"
-                      />
-                    )}
-                  </div>
-                  <div class="flex-1 flex justify-between text-(--content-body)">
-                    <div>
-                      <div>{item.name}</div>
-                      {item.uid && lineItemDetails[item.uid]?.variationName && (
-                        <div class="text-sm text-(--content-meta)">
-                          {lineItemDetails[item.uid].variationName}
-                        </div>
-                      )}
-                      <div class="text-xs">Qty: {item.quantity}</div>
-                    </div>
-                    <span class="font-display font-bold text-2xl self-center">
-                      {formatMoney(item.totalMoney)}
-                    </span>
-                  </div>
-                </div>
-              ))}
 
-              <div class="pt-4">
-                <div class="flex justify-between font-bold text-(--content-emphasis)">
-                  <span>Total</span>
-                  <span class="font-display font-bold text-3xl">
-                    {formatMoney(orderDetails.totalMoney)}
+            {/* Product line items */}
+            <div>
+              {productLineItems.map((item) => {
+                const details = (item.uid && lineItemDetails[item.uid]) || {};
+                const onSale = item.uid ? isSaleItem(item, details) : false;
+                return (
+                  <div class="flex items-center py-4 border-b border-(--surface-tertiary)">
+                    {/* Item image */}
+                    <div class="w-16 h-16 mr-4 bg-(--surface-tertiary) rounded overflow-hidden shrink-0">
+                      {item.uid && lineItemDetails[item.uid]?.image ? (
+                        <Image
+                          src={lineItemDetails[item.uid].image!}
+                          alt={item.name || "Product"}
+                          width={64}
+                          height={64}
+                          format="avif"
+                          quality={85}
+                          class="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <img
+                          src={EL_CAMINO_LOGO_DATA_URI}
+                          alt={item.name || "Product"}
+                          class="w-full h-full object-contain p-2"
+                          loading="lazy"
+                        />
+                      )}
+                    </div>
+
+                    {/* Item details */}
+                    <div class="flex-1 flex justify-between gap-4 text-(--content-body)">
+                      <div>
+                        <div class="font-medium">{item.name}</div>
+                        {item.uid &&
+                          lineItemDetails[item.uid]?.variationName && (
+                            <div class="text-sm text-(--content-meta)">
+                              {lineItemDetails[item.uid].variationName}
+                            </div>
+                          )}
+                        <div class="text-xs text-(--content-meta) mt-0.5">
+                          Qty: {item.quantity}
+                        </div>
+                      </div>
+                      <div class="text-right shrink-0">
+                        <span class="font-display font-bold text-2xl self-center block">
+                          {formatLineItemPreTax(item)}
+                        </span>
+                        {onSale && (
+                          <span class="text-xs text-(--content-meta) line-through block">
+                            {formatMoney({
+                              amount:
+                                Number(details.catalogPriceMoney?.amount ?? 0) *
+                                Number(item.quantity ?? 1),
+                              currency: "USD",
+                            })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Totals breakdown */}
+            <div class="pt-4 space-y-2 text-(--content-body)">
+              {/* Shipping line item */}
+              {shippingLineItem && (
+                <div class="flex justify-between text-sm">
+                  <span class="text-(--content-meta)">Shipping</span>
+                  <span>{formatMoney(shippingLineItem.totalMoney)}</span>
+                </div>
+              )}
+              {hasFreeShipping && (
+                <div class="flex justify-between text-sm">
+                  <span class="text-(--content-meta)">Shipping</span>
+                  <span class="text-green-700 dark:text-green-400">Free</span>
+                </div>
+              )}
+
+              {/* Discounts */}
+              {hasDiscount && (
+                <div class="flex justify-between text-sm">
+                  <span class="text-(--content-meta)">Discounts</span>
+                  <span class="text-green-700 dark:text-green-400">
+                    &minus;{formatMoney(orderDetails.totalDiscountMoney)}
                   </span>
                 </div>
+              )}
+
+              {/* Tax */}
+              {hasTax && (
+                <div class="flex justify-between text-sm">
+                  <span class="text-(--content-meta)">Tax</span>
+                  <span>{formatMoney(orderDetails.totalTaxMoney)}</span>
+                </div>
+              )}
+
+              {/* Total */}
+              <div class="flex justify-between font-bold text-(--content-emphasis) border-t border-(--surface-tertiary) pt-3 mt-1">
+                <span>Total</span>
+                <span class="font-display font-bold text-3xl">
+                  {formatMoney(orderDetails.totalMoney)}
+                </span>
               </div>
             </div>
           </div>
 
-          <div class="mt-8 text-center">
-            <p class="text-sm text-(--content-meta) mb-4">
-              Order ID: {orderDetails.id}
-            </p>
+          {/* ── Fulfillment Details ─────────────────────────────────────── */}
+          {(isPickup || isShipment) && (
+            <div class="bg-(--surface-secondary) rounded-lg p-6 mb-6">
+              {isPickup ? (
+                <>
+                  <h2 class="font-display text-2xl mb-4 text-(--content-heading)">
+                    In-Store Pickup
+                  </h2>
+                  <div class="space-y-3 text-(--content-body)">
+                    <div>
+                      <p class="text-xs uppercase tracking-wider text-(--content-meta) mb-1">
+                        Location
+                      </p>
+                      <p class="font-medium">{siteConfig.name}</p>
+                      <p class="text-sm text-(--content-meta)">
+                        {siteConfig.contact.address.display}
+                      </p>
+                      <p class="text-sm text-(--content-meta)">
+                        {siteConfig.contact.phone.display}
+                      </p>
+                    </div>
+
+                    {pickupReadyText && (
+                      <div>
+                        <p class="text-xs uppercase tracking-wider text-(--content-meta) mb-1">
+                          Ready By
+                        </p>
+                        <p class="font-medium">{pickupReadyText}</p>
+                        <p class="text-sm text-(--content-meta)">
+                          We'll reach out if anything changes.
+                        </p>
+                      </div>
+                    )}
+
+                    {!pickupReadyText && (
+                      <p class="text-sm text-(--content-meta)">
+                        We'll reach out when your order is ready for pickup.
+                      </p>
+                    )}
+
+                    {customerNotes && (
+                      <div class="bg-(--surface-tertiary) rounded p-3">
+                        <p class="text-xs uppercase tracking-wider text-(--content-meta) mb-1">
+                          Your Note
+                        </p>
+                        <p class="text-sm italic">{customerNotes}</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 class="font-display text-2xl mb-4 text-(--content-heading)">
+                    Shipping To
+                  </h2>
+                  <div class="space-y-3 text-(--content-body)">
+                    <div>
+                      {shipRecipient?.displayName && (
+                        <p class="font-medium">{shipRecipient.displayName}</p>
+                      )}
+                      {shipAddressLines ? (
+                        shipAddressLines
+                          .split("\n")
+                          .map((line) => (
+                            <p class="text-sm text-(--content-meta)">{line}</p>
+                          ))
+                      ) : (
+                        <p class="text-sm text-(--content-meta)">
+                          Address on file
+                        </p>
+                      )}
+                    </div>
+                    <p class="text-sm text-(--content-meta)">
+                      Estimated delivery: 5&ndash;7 business days. We'll email
+                      you with tracking when your order ships.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── Footer ─────────────────────────────────────────────────── */}
+          <div class="mt-2 text-center">
             <a
               href="/shop/all"
               class="inline-block bg-(--ui-button-surface) text-(--ui-button-text) border-(--ui-button-border) hover:bg-(--ui-button-surface)/80 font-sans font-semibold transition-all duration-300 border-2 rounded-sm text-lg py-2 px-4"
