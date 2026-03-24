@@ -314,7 +314,7 @@ import {
       });
     }
 
-    async openQuickView(productId: string): Promise<void> {
+    async openQuickView(productId: string, preferredVariationId?: string): Promise<void> {
       this.lastProductId = productId;
       try {
         this.showLoading();
@@ -354,7 +354,7 @@ import {
 
         this.currentProduct = product;
         this.showProduct(); // Show DOM first
-        this.initializeProduct(product); // Then initialize with UI manager available
+        this.initializeProduct(product, preferredVariationId); // Then initialize with UI manager available
       } catch (error) {
         const appError = processClientError(error, "openQuickView");
         logError(appError);
@@ -362,10 +362,19 @@ import {
       }
     }
 
-    private initializeProduct(product: Product): void {
+    private initializeProduct(product: Product, preferredVariationId?: string): void {
       // EXACTLY mirror PDP initialization
       let defaultVariationId = product.variationId;
       let variations = product.variations || [];
+
+      // If a preferred variation was requested (e.g. from the Sale page), honour it
+      // as long as it exists and is in stock; otherwise fall through to normal logic.
+      if (preferredVariationId) {
+        const preferred = variations.find((v) => v.variationId === preferredVariationId);
+        if (preferred?.inStock) {
+          defaultVariationId = preferredVariationId;
+        }
+      }
 
       // Find first in-stock variation if default is out of stock (PDP pattern)
       if (variations.length > 0) {
@@ -1153,8 +1162,9 @@ import {
             e.stopPropagation();
             e.stopImmediatePropagation();
             const productId = trigger.dataset.productId;
+            const variationId = trigger.dataset.variationId || undefined;
             if (productId) {
-              this.openQuickView(productId);
+              this.openQuickView(productId, variationId);
             }
             return false;
           }
@@ -1187,8 +1197,8 @@ import {
     controller.setupEventHandlers();
 
     // Global function for product cards
-    (window as any).openQuickView = (productId: string) => {
-      controller.openQuickView(productId);
+    (window as any).openQuickView = (productId: string, preferredVariationId?: string) => {
+      controller.openQuickView(productId, preferredVariationId);
     };
   }
 

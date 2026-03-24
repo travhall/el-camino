@@ -249,6 +249,7 @@ if (hasValidImage) {
           type="button"
           class="quick-view-trigger hidden lg:block text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) focus-visible:ring-(--ui-button-secondary-ring) px-4 py-2 font-semibold text-sm rounded-tl-sm transition-colors duration-200 transform translate-y-4 group-hover:translate-y-0 pointer-events-auto"
           data-product-id={product.id}
+          data-variation-id={product.variationId}
           aria-label={`Quick view ${product.title}`}
         >
           <Icon name="uil:eye" class="w-4 h-4 inline mr-2" />
@@ -362,9 +363,9 @@ if (hasValidImage) {
 
       productCards.forEach((card) => {
         const link = card as HTMLAnchorElement;
-        const productId = card
-          .querySelector(".quick-view-trigger")
-          ?.getAttribute("data-product-id");
+        const trigger = card.querySelector(".quick-view-trigger");
+        const productId = trigger?.getAttribute("data-product-id");
+        const variationId = trigger?.getAttribute("data-variation-id") || undefined;
 
         if (!productId) return;
 
@@ -380,7 +381,7 @@ if (hasValidImage) {
 
             // Trigger Quick View if function exists
             if (typeof (window as any).openQuickView === "function") {
-              (window as any).openQuickView(productId);
+              (window as any).openQuickView(productId, variationId);
             } else {
               // Fallback to PDP if Quick View not available
               window.location.href = link.href;
@@ -398,7 +399,7 @@ if (hasValidImage) {
             e.stopPropagation();
 
             if (typeof (window as any).openQuickView === "function") {
-              (window as any).openQuickView(productId);
+              (window as any).openQuickView(productId, variationId);
             }
           });
         }
