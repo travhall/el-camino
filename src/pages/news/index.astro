@@ -176,6 +176,24 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
 
 <Layout title="The Latest News | El Camino">
   <Fragment slot="head">
+    {/* Restore session view preference before first paint to avoid flash */}
+    <script is:inline>
+      (function () {
+        try {
+          if (!new URLSearchParams(window.location.search).has("view")) {
+            var pref = sessionStorage.getItem("newsViewPreference");
+            if (pref && pref !== "grid") {
+              var params = new URLSearchParams(window.location.search);
+              params.set("view", pref);
+              window.location.replace(
+                window.location.pathname + "?" + params.toString()
+              );
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
+
     {/* Preconnect to WordPress CDN for faster image loading */}
     <link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" crossorigin />
     <link rel="dns-prefetch" href="https://elcaminoskateshop.wordpress.com" />
@@ -361,7 +379,7 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
           
           // Save preference
           try {
-            localStorage.setItem('newsViewPreference', view || 'grid');
+            sessionStorage.setItem('newsViewPreference', view || 'grid');
           } catch (e) {
             // console.log('localStorage failed:', e);
           }
@@ -393,16 +411,32 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
   }, 2000);
 
   document.addEventListener("astro:page-load", () => {
-    // CRITICAL: Only run on news pages  
-    if (!window.location.pathname.startsWith('/news')) {
+    // CRITICAL: Only run on the news index page, not article or tag pages
+    if (window.location.pathname !== '/news') {
       return;
     }
 
     const urlParams = new URLSearchParams(window.location.search);
+
+    // If no view param, check stored preference before overwriting it.
+    // This handles View Transitions navigations where the is:inline head
+    // script does not re-run.
+    if (!urlParams.has("view")) {
+      const stored = sessionStorage.getItem("newsViewPreference");
+      if (stored && stored !== "grid") {
+        const params = new URLSearchParams(window.location.search);
+        params.set("view", stored);
+        window.location.replace(
+          window.location.pathname + "?" + params.toString()
+        );
+        return;
+      }
+    }
+
     const currentView = urlParams.get("view") || "grid";
 
     // Store current view preference (simplified)
-    localStorage.setItem("newsViewPreference", currentView);
+    sessionStorage.setItem("newsViewPreference", currentView);
 
     // Clean form parameter handling - only add view to news-specific forms
     const preserveViewInForms = () => {
