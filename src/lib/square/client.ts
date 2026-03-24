@@ -249,9 +249,19 @@ export async function fetchProducts(): Promise<Product[]> {
           });
 
         // Extract unique IDs for batch fetching
-        const imageIds = productsWithBasicInfo
+        const productImageIds = productsWithBasicInfo
           .map((p) => p.imageId)
           .filter(Boolean) as string[];
+
+        // Also collect per-variation image IDs so variation images are available
+        // in the catalog fetch (same data already in allObjects, no extra API call)
+        const variationImageIds = allObjects
+          .filter((obj) => obj.type === "ITEM")
+          .flatMap((item) => item.itemData?.variations ?? [])
+          .flatMap((v: any) => v.itemVariationData?.imageIds ?? []) as string[];
+
+        // Merge and deduplicate so everything is resolved in one batch
+        const imageIds = [...new Set([...productImageIds, ...variationImageIds])];
 
         const measurementUnitIds = productsWithBasicInfo
           .map((p) => p.measurementUnitId)
@@ -282,19 +292,27 @@ export async function fetchProducts(): Promise<Product[]> {
             variation?.itemVariationData?.name || undefined
           );
 
-          // Build variations array with sale info (same pattern as categories.ts)
+          // Build variations array with sale info and images
           const productVariations = variations.map((v: any) => {
             const variationPrice = v.itemVariationData?.priceMoney;
             const regularPrice = variationPrice ? Number(variationPrice.amount) / 100 : 0;
-            
+
             // Extract sale info from variation custom attributes
             const saleInfo = extractSaleInfo(v.customAttributeValues, regularPrice);
+
+            // Resolve variation-level images from the shared image URL map
+            const rawVariationImageIds: string[] = v.itemVariationData?.imageIds ?? [];
+            const variationImageUrls = rawVariationImageIds
+              .map((id: string) => imageUrlMap[id])
+              .filter((url): url is string => !!url && url !== EL_CAMINO_LOGO_DATA_URI);
 
             return {
               id: v.id,
               variationId: v.id,
               name: v.itemVariationData?.name || "",
               price: regularPrice,
+              image: variationImageUrls[0],
+              images: variationImageUrls.length > 1 ? variationImageUrls : undefined,
               saleInfo: saleInfo || undefined,
             };
           });

@@ -18,6 +18,31 @@ import type {
   FilterOptions,
 } from "@/lib/square/types";
 
+// Reorder a product's variations so the first sale variation comes first.
+// Only used on the sale page so the card naturally displays the on-sale variant.
+function withSaleVariationFirst(product: Product): Product {
+  const variations = product.variations;
+  if (!variations || variations.length <= 1) return product;
+
+  const saleIdx = variations.findIndex((v) => v.saleInfo);
+  if (saleIdx <= 0) return product; // Already first or none found
+
+  const reordered = [
+    variations[saleIdx],
+    ...variations.slice(0, saleIdx),
+    ...variations.slice(saleIdx + 1),
+  ];
+
+  return {
+    ...product,
+    variationId: reordered[0].variationId,
+    price: reordered[0].price,
+    image: reordered[0].image || product.image,
+    images: reordered[0].images || product.images,
+    variations: reordered,
+  };
+}
+
 // === PARSE URL PARAMETERS FOR FILTERING ===
 const filters = parseFiltersFromURL(Astro.url.searchParams);
 
@@ -56,8 +81,8 @@ try {
   // Fetch all products initially
   const allProductsFull = await fetchProducts();
   
-  // Filter to only products with sale pricing
-  saleProducts = filterSaleProducts(allProductsFull);
+  // Filter to only products with sale pricing, and surface the sale variant first
+  saleProducts = filterSaleProducts(allProductsFull).map(withSaleVariationFirst);
   
   const totalProductCount = saleProducts.length;
   const needsPagination = totalProductCount > INFINITE_SCROLL_THRESHOLD;
@@ -226,6 +251,7 @@ const structuredData = {
                 filteredIds={hasFilters ? filteredProducts.map((p) => p.id) : undefined}
                 slugToIdMap={slugToIdMap}
                 categoryPath={categoryPath}
+                hideSoldOut={true}
               />
             </>
           ) : (
