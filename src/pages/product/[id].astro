@@ -670,25 +670,31 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
         <!-- Dynamic Attribute Selectors -->
         {
           hasMultipleVariations &&
-            attributeTypes
-              .filter(
-                (attributeType) =>
-                  availableAttributes[attributeType]?.length > 1,
-              )
-              .map((attributeType) => {
-                const attributeValues = availableAttributes[attributeType];
-                const displayName = getAttributeDisplayName(attributeType);
+            attributeTypes.map((attributeType) => {
+              const attributeValues = availableAttributes[attributeType];
+              const displayName = getAttributeDisplayName(attributeType);
+              const isSingleValue = attributeValues?.length === 1;
 
-                return (
-                  <div class="mt-6">
-                    <div class="flex items-center mb-1">
-                      <label class="text-sm font-medium">{displayName}</label>
-                      {sizeGuideCategory && attributeType === "size" && (
-                        <SizeGuide category={sizeGuideCategory} />
-                      )}
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                      {attributeValues.map((value) => {
+              return (
+                <div class="mt-6">
+                  <div class="flex items-center mb-1">
+                    <label class="text-sm font-medium">{displayName}</label>
+                    {sizeGuideCategory && attributeType === "size" && (
+                      <SizeGuide category={sizeGuideCategory} />
+                    )}
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    {isSingleValue ? (
+                      attributeValues.map((value) => (
+                        <span
+                          class="px-2.5 py-1.5 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default"
+                          aria-label={`${displayName}: ${value}`}
+                        >
+                          {value}
+                        </span>
+                      ))
+                    ) : (
+                      attributeValues.map((value) => {
                         const isAvailable = variations.some((variation) => {
                           if (!variation.attributes || !variation.inStock)
                             return false;
@@ -720,11 +726,12 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                             {value}
                           </button>
                         );
-                      })}
-                    </div>
+                      })
+                    )}
                   </div>
-                );
-              })
+                </div>
+              );
+            })
         }
 
         <!-- Single attribute display (rendered as a selected, non-interactive button for visual consistency) -->

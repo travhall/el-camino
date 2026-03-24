@@ -487,29 +487,34 @@ import {
 
       const attributeTypes = Object.keys(selectionState.availableAttributes);
 
-      // EXACTLY mirror PDP: Multi-value attributes as buttons (when multiple variations)
+      // EXACTLY mirror PDP: Multi-variation products show all attribute types;
+      // single-value attributes render as non-interactive spans, multi-value as buttons.
       if (product.variations.length > 1) {
-        attributeTypes
-          .filter(
-            (attributeType) =>
-              selectionState.availableAttributes[attributeType].length > 1,
-          )
-          .forEach((attributeType) => {
-            const attributeValues =
-              selectionState.availableAttributes[attributeType];
-            const displayName = getAttributeDisplayName(attributeType);
+        attributeTypes.forEach((attributeType) => {
+          const attributeValues =
+            selectionState.availableAttributes[attributeType];
+          const displayName = getAttributeDisplayName(attributeType);
+          const isSingleValue = attributeValues.length === 1;
 
-            const section = document.createElement("div");
-            section.className = "mt-4";
+          const section = document.createElement("div");
+          section.className = "mt-4";
 
-            const heading = document.createElement("h4");
-            heading.className =
-              "text-sm font-medium text-(--content-heading) mb-2";
-            heading.textContent = displayName;
+          const heading = document.createElement("h4");
+          heading.className =
+            "text-sm font-medium text-(--content-heading) mb-2";
+          heading.textContent = displayName;
 
-            const buttonContainer = document.createElement("div");
-            buttonContainer.className = "flex flex-wrap gap-2";
+          const buttonContainer = document.createElement("div");
+          buttonContainer.className = "flex flex-wrap gap-2";
 
+          if (isSingleValue) {
+            const span = document.createElement("span");
+            span.className =
+              "px-2.5 py-1.5 border rounded-sm text-sm cursor-default bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)";
+            span.setAttribute("aria-label", `${displayName}: ${attributeValues[0]}`);
+            span.textContent = attributeValues[0];
+            buttonContainer.appendChild(span);
+          } else {
             attributeValues.forEach((value) => {
               const button = document.createElement("button");
               button.type = "button";
@@ -525,11 +530,12 @@ import {
 
               buttonContainer.appendChild(button);
             });
+          }
 
-            section.appendChild(heading);
-            section.appendChild(buttonContainer);
-            container.appendChild(section);
-          });
+          section.appendChild(heading);
+          section.appendChild(buttonContainer);
+          container.appendChild(section);
+        });
       }
 
       // EXACTLY mirror PDP: Single-variation attributes as non-interactive styled spans

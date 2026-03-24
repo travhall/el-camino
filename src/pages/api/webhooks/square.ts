@@ -27,6 +27,12 @@ import {
   filterCache,
 } from "@/lib/cache/blobCache";
 import { batchInventoryService } from "@/lib/square/batchInventory";
+import { squareClient } from "@/lib/square/client";
+import { getPendingOrder, deletePendingOrder } from "@/lib/email/pendingOrders";
+import {
+  sendOrderConfirmation,
+  sendPickupNotification,
+} from "@/lib/email/sender";
 
 export const POST: APIRoute = async ({ request }) => {
   // Read raw body as text — must not be pre-parsed; signature verification
@@ -133,6 +139,45 @@ export const POST: APIRoute = async ({ request }) => {
           `[Webhook/Square] Catalog caches busted for ${objectIds.length} object(s):`,
           objectIds
         );
+        break;
+      }
+
+      case "payment.completed": {
+        const payment = event.data?.object?.payment;
+        const orderId = payment?.order_id as string | undefined;
+
+        if (!orderId) {
+          console.error("[Webhook/Square] No orderId in payment.completed payload");
+          break;
+        }
+
+        const contact = await getPendingOrder(orderId);
+        if (!contact) {
+          console.warn(
+            `[Webhook/Square] No pending order found for orderId: ${orderId}. ` +
+              `Blob may have expired or order predates email capture.`
+          );
+          break;
+        }
+
+        const { result } = await squareClient.ordersApi.retrieveOrder(orderId);
+        const order = result.order;
+
+        if (!order) {
+          console.error(`[Webhook/Square] Order not found in Square: ${orderId}`);
+          break;
+        }
+
+        await sendOrderConfirmation({ order, contact });
+
+        if (contact.fulfillmentMethod === "pickup") {
+          await sendPickupNotification({ order, contact });
+        }
+
+        // Delete blob — if Square retries, second delivery finds no contact and skips (idempotency)
+        await deletePendingOrder(orderId);
+
+        console.log(`[Webhook/Square] Confirmation sent for order: ${orderId}`);
         break;
       }
 

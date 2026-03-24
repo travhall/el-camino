@@ -7,6 +7,7 @@ import { calculateShippingRate, PICKUP_LOCATION } from "@/lib/config/shipping";
 import { siteConfig } from "@/lib/site-config";
 import { inventoryCache, productCache } from "@/lib/cache/blobCache";
 import { batchInventoryService } from "@/lib/square/batchInventory";
+import { storePendingOrder } from "@/lib/email/pendingOrders";
 
 /**
  * Normalize a phone number to E.164 format required by Square API.
@@ -287,6 +288,29 @@ export const POST: APIRoute = async ({ request }) => {
 
     const orderId = linkResponse.result.paymentLink.orderId ?? "";
     console.log("[create-checkout] Payment link created:", linkResponse.result.paymentLink.url, "orderId:", orderId);
+
+    // Store contact info keyed by orderId so the webhook can send a confirmation email.
+    // Wrapped in .catch so a blob storage failure never blocks the checkout redirect.
+    if (orderId) {
+      const contactEmail =
+        fulfillmentMethod === "shipping"
+          ? shippingAddress?.email
+          : pickupContact?.email;
+      const contactName =
+        fulfillmentMethod === "shipping"
+          ? shippingAddress?.name
+          : pickupContact?.name;
+
+      if (contactEmail) {
+        storePendingOrder(orderId, {
+          email: contactEmail,
+          name: contactName ?? "Customer",
+          fulfillmentMethod,
+        }).catch((err) =>
+          console.error("[create-checkout] Failed to store pending order:", err)
+        );
+      }
+    }
 
     // Bust all inventory caches for every variation in this order so that the
     // product grid, PDP, and Quick View show accurate stock immediately after
