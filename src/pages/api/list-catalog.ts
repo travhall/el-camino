@@ -62,7 +62,6 @@ export const GET: APIRoute = async () => {
           error:
             error instanceof Error ? error.message : "Failed to fetch catalog",
           meta: {
-            hasAccessToken: !!import.meta.env.SQUARE_ACCESS_TOKEN,
             locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
           },
         },
