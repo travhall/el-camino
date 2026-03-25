@@ -14,7 +14,7 @@ import { productCache } from "@/lib/cache/blobCache";
 
 function validateEnvironment() {
   const missingVars = [];
-  if (!import.meta.env.SQUARE_ACCESS_TOKEN) {
+  if (!process.env.SQUARE_ACCESS_TOKEN) {
     missingVars.push("SQUARE_ACCESS_TOKEN");
   }
   if (!import.meta.env.PUBLIC_SQUARE_LOCATION_ID) {
@@ -30,7 +30,7 @@ function validateEnvironment() {
 validateEnvironment();
 
 export const squareClient = new Client({
-  accessToken: import.meta.env.SQUARE_ACCESS_TOKEN!,
+  accessToken: process.env.SQUARE_ACCESS_TOKEN!,
   environment:
     import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
       ? Environment.Production

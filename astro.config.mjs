@@ -75,7 +75,7 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()], // NEW: Add Tailwind v4 plugin here
-    envPrefix: ["PUBLIC_", "SQUARE_", "NEXT_PUBLIC_"],
+    envPrefix: ["PUBLIC_"],
     define: {
       global: "globalThis",
     },
