@@ -37,7 +37,6 @@ export const GET: APIRoute = async () => {
           items,
           meta: {
             totalItems: items.length,
-            hasAccessToken: !!import.meta.env.SQUARE_ACCESS_TOKEN,
             squareVersion: "2024-02-28",
           },
         },
