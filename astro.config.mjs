@@ -78,15 +78,6 @@ export default defineConfig({
     envPrefix: ["PUBLIC_", "SQUARE_", "NEXT_PUBLIC_"],
     define: {
       global: "globalThis",
-      "import.meta.env.SQUARE_ACCESS_TOKEN": JSON.stringify(
-        process.env.SQUARE_ACCESS_TOKEN
-      ),
-      "import.meta.env.PUBLIC_SQUARE_APP_ID": JSON.stringify(
-        process.env.PUBLIC_SQUARE_APP_ID
-      ),
-      "import.meta.env.PUBLIC_SQUARE_LOCATION_ID": JSON.stringify(
-        process.env.PUBLIC_SQUARE_LOCATION_ID
-      ),
     },
     resolve: {
       alias: {
