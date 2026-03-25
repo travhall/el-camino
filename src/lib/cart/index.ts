@@ -11,7 +11,7 @@ const DOM_READY_DELAY = 50;
 
 // ❌ REMOVED: Frontend Square client - this was causing CORS errors
 // const squareClient = new Client({
-//   accessToken: import.meta.env.SQUARE_ACCESS_TOKEN || "",
+//   accessToken: "[removed - server-side only]",
 //   environment: Environment.Sandbox,
 //   squareVersion: "2024-02-28",
 // });
