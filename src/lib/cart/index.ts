@@ -1,8 +1,22 @@
 // src/lib/cart/index.ts - COMPLETE FIXED VERSION
 import type { CartItem, CartEvent, CartState } from "./types";
 import type { ProductAvailabilityInfo } from "../square/types";
-import { checkBulkInventory } from "../square/inventory";
 import { ProductAvailabilityState, getAvailabilityInfo } from "../square/types";
+
+// Fetch bulk inventory via API endpoint — keeps Square credentials server-side only
+async function fetchBulkInventory(variationIds: string[]): Promise<Record<string, number>> {
+  if (variationIds.length === 0) return {};
+  try {
+    const params = new URLSearchParams({ variationIds: variationIds.join(",") });
+    const res = await fetch(`/api/batch-inventory?${params}`);
+    if (!res.ok) throw new Error(`Inventory API error: ${res.status}`);
+    const data = await res.json();
+    return data.success ? (data.stockLevels as Record<string, number>) : {};
+  } catch (err) {
+    console.error("[Cart] Failed to fetch bulk inventory:", err);
+    return {};
+  }
+}
 
 const CART_STORAGE_KEY = "cart";
 const VIEW_TRANSITION_EVENT = "astro:after-swap";
@@ -598,8 +612,8 @@ class CartManager implements ICartManager {
       // Get all variation IDs
       const variationIds = items.map((item) => item.variationId);
 
-      // Check inventory - use backend inventory system
-      const stockLevels = await checkBulkInventory(variationIds);
+      // Check inventory via API — server-side only, no direct Square SDK in client
+      const stockLevels = await fetchBulkInventory(variationIds);
 
       let cartUpdated = false;
       let removedItems: string[] = [];
