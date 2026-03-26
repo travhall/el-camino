@@ -27,7 +27,6 @@ import {
   filterCache,
 } from "@/lib/cache/blobCache";
 import { batchInventoryService } from "@/lib/square/batchInventory";
-import { squareClient } from "@/lib/square/client";
 import { getPendingOrder, deletePendingOrder } from "@/lib/email/pendingOrders";
 import {
   sendOrderConfirmation,
@@ -160,7 +159,17 @@ export const POST: APIRoute = async ({ request }) => {
           break;
         }
 
-        const { result } = await squareClient.ordersApi.retrieveOrder(orderId);
+        // Create a minimal client inline — avoids importing client.ts which runs
+        // validateEnvironment() at module load time and would break cache events.
+        const { Client, Environment } = await import("square/legacy");
+        const client = new Client({
+          accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+          environment:
+            import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
+              ? Environment.Production
+              : Environment.Sandbox,
+        });
+        const { result } = await client.ordersApi.retrieveOrder(orderId);
         const order = result.order;
 
         if (!order) {
