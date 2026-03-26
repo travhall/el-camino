@@ -18,6 +18,7 @@
 
 import type { APIRoute } from "astro";
 import { WebhooksHelper } from "square";
+import { Client, Environment } from "square/legacy";
 import {
   inventoryCache,
   productCache,
@@ -161,7 +162,6 @@ export const POST: APIRoute = async ({ request }) => {
 
         // Create a minimal client inline — avoids importing client.ts which runs
         // validateEnvironment() at module load time and would break cache events.
-        const { Client, Environment } = await import("square/legacy");
         const client = new Client({
           accessToken: process.env.SQUARE_ACCESS_TOKEN!,
           environment:
