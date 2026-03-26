@@ -17,7 +17,10 @@
 // "Send test event" feature in the Developer Dashboard against production.
 
 import type { APIRoute } from "astro";
-import { WebhooksHelper } from "square";
+// "square" root is CJS-only. Use a default import so Node's CJS-ESM interop
+// works reliably at runtime — named imports from CJS are not guaranteed.
+import squarePkg from "square";
+const { WebhooksHelper } = squarePkg as any;
 import { Client, Environment } from "square/legacy";
 import {
   inventoryCache,
