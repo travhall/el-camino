@@ -96,8 +96,8 @@ export default defineConfig({
         },
       },
     },
-    ssr: {
-      noExternal: ["square"],
-    },
+    // "square" intentionally omitted from noExternal — it's a CJS package and
+    // must be kept external so Node loads it natively. Bundling it as ESM
+    // (via noExternal) causes "exports is not defined" at runtime.
   },
 });
