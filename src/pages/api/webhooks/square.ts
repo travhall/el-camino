@@ -171,21 +171,36 @@ export const POST: APIRoute = async ({ request }) => {
           break;
         }
 
-        // Create a minimal client inline — avoids importing client.ts which runs
-        // validateEnvironment() at module load time and would break cache events.
-        const client = new Client({
-          accessToken: process.env.SQUARE_ACCESS_TOKEN!,
-          environment:
-            import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-              ? Environment.Production
-              : Environment.Sandbox,
-        });
-        const { result } = await client.ordersApi.retrieveOrder(orderId);
-        const order = result.order;
-
-        if (!order) {
-          console.error(`[Webhook/Square] Order not found in Square: ${orderId}`);
-          break;
+        // Fetch the full order for rich line-item details in the email.
+        // If the fetch fails for any reason (bad credentials, network, etc.)
+        // fall back to a minimal order built from the payment payload so the
+        // confirmation email is never blocked by a Square API failure.
+        let order: import("square/legacy").Order;
+        try {
+          const client = new Client({
+            accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+            environment:
+              import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
+                ? Environment.Production
+                : Environment.Sandbox,
+          });
+          const { result } = await client.ordersApi.retrieveOrder(orderId);
+          if (!result.order) throw new Error("Order not returned by API");
+          order = result.order;
+        } catch (fetchErr) {
+          console.warn(
+            `[Webhook/Square] Could not fetch order ${orderId}, falling back to payment data:`,
+            fetchErr
+          );
+          // Build a minimal order from the payment webhook payload.
+          // formatMoney() in templates.ts handles plain numbers as well as bigint.
+          order = {
+            id: orderId,
+            totalMoney: payment?.total_money
+              ? { amount: payment.total_money.amount, currency: payment.total_money.currency }
+              : undefined,
+            lineItems: [],
+          } as unknown as import("square/legacy").Order;
         }
 
         await sendOrderConfirmation({ order, contact });
