@@ -5,11 +5,12 @@
 // Supported events:
 //   inventory.count.updated — fires when stock changes (purchase, restock, adjustment)
 //   catalog.version.updated — fires when catalog items are created, edited, or deleted
+//   payment.updated         — fires on all payment status changes; we act only on COMPLETED
 //
 // Setup (one-time, in Square Developer Dashboard):
 //   1. Go to Applications → your app → Webhooks → Add subscription
 //   2. Notification URL: https://your-domain.com/api/webhooks/square
-//   3. Events: inventory.count.updated, catalog.version.updated
+//   3. Events: inventory.count.updated, catalog.version.updated, payment.updated
 //   4. Copy the "Signature key" into the SQUARE_WEBHOOK_SIGNATURE_KEY env var
 //
 // Local dev note: Square cannot reach localhost directly. Use a tunnel
@@ -145,8 +146,15 @@ export const POST: APIRoute = async ({ request }) => {
         break;
       }
 
-      case "payment.completed": {
+      case "payment.updated": {
         const payment = event.data?.object?.payment;
+
+        // Only act on the final COMPLETED status — ignore PENDING, APPROVED, etc.
+        if (payment?.status !== "COMPLETED") {
+          console.log(`[Webhook/Square] payment.updated status=${payment?.status} — skipping`);
+          break;
+        }
+
         const orderId = payment?.order_id as string | undefined;
 
         if (!orderId) {
