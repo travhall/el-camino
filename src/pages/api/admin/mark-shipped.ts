@@ -70,7 +70,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     order = result.order;
   } catch (err) {
     console.error(`[mark-shipped] Failed to retrieve order ${orderId}:`, err);
-    return redirect("/admin/orders?error=fetch");
+    return redirect("/admin/orders/shipping?error=fetch");
   }
 
   // Extract customer contact from the shipment recipient (set during checkout)
@@ -81,7 +81,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   if (!customerEmail || !customerName) {
     console.error(`[mark-shipped] No customer email on order ${orderId}`);
-    return redirect("/admin/orders?error=no-email");
+    return redirect("/admin/orders/shipping?error=no-email");
   }
 
   const contact: PendingOrderContact = {
@@ -121,8 +121,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     console.log(`[mark-shipped] Shipping confirmation sent for order ${orderId}`);
   } catch (err) {
     console.error(`[mark-shipped] Failed to send shipping confirmation:`, err);
-    return redirect("/admin/orders?error=email");
+    return redirect("/admin/orders/shipping?error=email");
   }
 
-  return redirect("/admin/orders?shipped=1");
+  return redirect("/admin/orders/shipping?shipped=1");
 };

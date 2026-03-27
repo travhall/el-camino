@@ -1,0 +1,129 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { Client, Environment } from "square/legacy";
+
+function formatMoney(amount: bigint | number | undefined | null): string {
+  if (amount == null) return "$0.00";
+  const cents = typeof amount === "bigint" ? Number(amount) : amount;
+  return `$${(cents / 100).toFixed(2)}`;
+}
+function shortId(id: string) { return id.slice(-8).toUpperCase(); }
+function formatDate(iso: string | undefined) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+interface ArchivedOrder {
+  orderId: string; shortId: string; createdAt: string;
+  customerName: string; type: "SHIPMENT" | "PICKUP";
+  items: string; total: string;
+}
+
+let orders: ArchivedOrder[] = [];
+let fetchError = false;
+
+try {
+  const client = new Client({
+    accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+    environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
+      ? Environment.Production : Environment.Sandbox,
+  });
+  const { result } = await client.ordersApi.searchOrders({
+    locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
+    query: {
+      filter: {
+        fulfillmentFilter: {
+          fulfillmentTypes: ["SHIPMENT", "PICKUP"],
+          fulfillmentStates: ["COMPLETED"],
+        },
+      },
+      sort: { sortField: "CREATED_AT", sortOrder: "DESC" },
+    },
+    limit: 50,
+  });
+
+  for (const order of result.orders ?? []) {
+    const f = order.fulfillments?.find(
+      (f) => f.type === "SHIPMENT" || f.type === "PICKUP"
+    );
+    if (!f) continue;
+
+    const recipientName =
+      f.type === "SHIPMENT"
+        ? f.shipmentDetails?.recipient?.displayName
+        : f.pickupDetails?.recipient?.displayName;
+
+    const items = (order.lineItems ?? []).map((li) =>
+      `${Number(li.quantity ?? 1) > 1 ? li.quantity + "× " : ""}${li.name ?? "Item"}`
+    ).join(" · ");
+
+    orders.push({
+      orderId: order.id ?? "", shortId: shortId(order.id ?? ""),
+      createdAt: formatDate(order.createdAt),
+      customerName: recipientName ?? "Unknown",
+      type: f.type as "SHIPMENT" | "PICKUP",
+      items, total: formatMoney(order.totalMoney?.amount),
+    });
+  }
+} catch (err) {
+  console.error("[admin/orders/archive] Failed to fetch:", err);
+  fetchError = true;
+}
+---
+
+<AdminLayout title="Orders" description="">
+  <!-- Sub-nav tabs -->
+  <div class="flex gap-1 border-b border-(--border-primary) mb-6 -mt-4">
+    <a href="/admin/orders/shipping"
+       class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-(--content-meta) hover:text-(--content-body) transition-colors">
+      Shipping
+    </a>
+    <a href="/admin/orders/pickups"
+       class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-(--content-meta) hover:text-(--content-body) transition-colors">
+      Pick Ups
+    </a>
+    <a href="/admin/orders/archive"
+       class="px-4 py-2 text-sm font-semibold border-b-2 border-(--content-heading) text-(--content-heading)">
+      Archive
+    </a>
+  </div>
+
+  {fetchError && (
+    <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700">
+      Could not load orders from Square. Check credentials and refresh.
+    </div>
+  )}
+
+  {!fetchError && orders.length === 0 && (
+    <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-10 text-center">
+      <p class="text-(--content-heading) font-semibold mb-1">No completed orders yet</p>
+      <p class="text-(--content-meta) text-sm">Fulfilled shipping and pickup orders will appear here.</p>
+    </div>
+  )}
+
+  {orders.length > 0 && (
+    <div class="space-y-2">
+      {orders.map((order) => (
+        <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm overflow-hidden opacity-80">
+          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-2.5 border-b border-(--border-primary)">
+            <span class="font-mono text-xs font-bold text-(--content-heading) shrink-0">#{order.shortId}</span>
+            <span class="text-xs text-(--content-meta) shrink-0">{order.createdAt}</span>
+            <span class="text-sm font-semibold text-(--content-heading)">{order.customerName}</span>
+            <span class={`text-xs font-semibold px-1.5 py-0.5 rounded-sm shrink-0 ${
+              order.type === "SHIPMENT"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-green-100 text-green-700"
+            }`}>
+              {order.type === "SHIPMENT" ? "Shipped" : "Picked Up"}
+            </span>
+            <span class="ml-auto text-sm font-bold text-(--content-heading) shrink-0">{order.total}</span>
+          </div>
+          <div class="px-4 py-1.5 text-xs text-(--content-meta) bg-(--surface-primary,#fff)">
+            {order.items}
+          </div>
+        </div>
+      ))}
+      <p class="text-xs text-(--content-meta) text-center pt-2">Showing up to 50 most recent completed orders.</p>
+    </div>
+  )}
+</AdminLayout>

@@ -1,0 +1,171 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { Client, Environment } from "square/legacy";
+
+function formatMoney(amount: bigint | number | undefined | null): string {
+  if (amount == null) return "$0.00";
+  const cents = typeof amount === "bigint" ? Number(amount) : amount;
+  return `$${(cents / 100).toFixed(2)}`;
+}
+function shortId(id: string) { return id.slice(-8).toUpperCase(); }
+function formatDate(iso: string | undefined) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+interface ShippingOrder {
+  orderId: string; shortId: string; createdAt: string;
+  customerName: string; customerEmail: string; address: string;
+  items: string; total: string;
+  fulfillmentUid: string; orderVersion: number;
+}
+
+const params = Astro.url.searchParams;
+const successId = params.get("shipped");
+const errorType = params.get("error");
+
+let orders: ShippingOrder[] = [];
+let fetchError = false;
+
+try {
+  const client = new Client({
+    accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+    environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
+      ? Environment.Production : Environment.Sandbox,
+  });
+  const { result } = await client.ordersApi.searchOrders({
+    locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
+    query: {
+      filter: {
+        fulfillmentFilter: { fulfillmentTypes: ["SHIPMENT"], fulfillmentStates: ["PROPOSED"] },
+        stateFilter: { states: ["OPEN"] },
+      },
+      sort: { sortField: "CREATED_AT", sortOrder: "DESC" },
+    },
+  });
+
+  for (const order of result.orders ?? []) {
+    const f = order.fulfillments?.find((f) => f.type === "SHIPMENT");
+    if (!f) continue;
+    const r = f.shipmentDetails?.recipient;
+    const a = r?.address;
+    const addrParts = [a?.addressLine1, a?.addressLine2,
+      a ? `${a.locality}, ${a.administrativeDistrictLevel1} ${a.postalCode}` : null,
+    ].filter(Boolean).join(", ");
+    const items = (order.lineItems ?? []).map((li) =>
+      `${Number(li.quantity ?? 1) > 1 ? li.quantity + "× " : ""}${li.name ?? "Item"}`
+    ).join(" · ");
+
+    orders.push({
+      orderId: order.id ?? "", shortId: shortId(order.id ?? ""),
+      createdAt: formatDate(order.createdAt),
+      customerName: r?.displayName ?? "Unknown",
+      customerEmail: r?.emailAddress ?? "",
+      address: addrParts || "No address",
+      items, total: formatMoney(order.totalMoney?.amount),
+      fulfillmentUid: f.uid ?? "", orderVersion: order.version ?? 1,
+    });
+  }
+} catch (err) {
+  console.error("[admin/orders/shipping] Failed to fetch:", err);
+  fetchError = true;
+}
+---
+
+<AdminLayout title="Orders" description="">
+  <!-- Sub-nav tabs -->
+  <div class="flex gap-1 border-b border-(--border-primary) mb-6 -mt-4">
+    <a href="/admin/orders/shipping"
+       class="px-4 py-2 text-sm font-semibold border-b-2 border-(--content-heading) text-(--content-heading)">
+      Shipping
+    </a>
+    <a href="/admin/orders/pickups"
+       class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-(--content-meta) hover:text-(--content-body) transition-colors">
+      Pick Ups
+    </a>
+    <a href="/admin/orders/archive"
+       class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-(--content-meta) hover:text-(--content-body) transition-colors">
+      Archive
+    </a>
+  </div>
+
+  {successId && (
+    <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-800 font-medium">
+      Order marked as shipped — shipping confirmation sent to customer.
+    </div>
+  )}
+  {errorType === "email" && (
+    <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700">
+      Square was updated but the confirmation email failed. Check Resend logs.
+    </div>
+  )}
+  {errorType === "fetch" && (
+    <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700">
+      Could not retrieve that order from Square. Try again.
+    </div>
+  )}
+  {errorType === "no-email" && (
+    <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700">
+      No customer email on this order. Check Square for contact details.
+    </div>
+  )}
+  {fetchError && (
+    <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700">
+      Could not load orders from Square. Check credentials and refresh.
+    </div>
+  )}
+
+  {!fetchError && orders.length === 0 && (
+    <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-10 text-center">
+      <p class="text-(--content-heading) font-semibold mb-1">No pending shipments</p>
+      <p class="text-(--content-meta) text-sm">All shipping orders have been fulfilled.</p>
+    </div>
+  )}
+
+  {orders.length > 0 && (
+    <div class="space-y-2">
+      {orders.map((order) => (
+        <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm overflow-hidden">
+          <!-- Row 1: ID / date / customer / total -->
+          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-2.5 border-b border-(--border-primary)">
+            <span class="font-mono text-xs font-bold text-(--content-heading) shrink-0">#{order.shortId}</span>
+            <span class="text-xs text-(--content-meta) shrink-0">{order.createdAt}</span>
+            <span class="text-sm font-semibold text-(--content-heading)">{order.customerName}</span>
+            {order.customerEmail && (
+              <a href={`mailto:${order.customerEmail}`}
+                 class="text-xs text-(--content-meta) hover:text-(--content-body) transition-colors">{order.customerEmail}</a>
+            )}
+            <span class="text-xs text-(--content-meta) hidden sm:inline">→</span>
+            <span class="text-xs text-(--content-body)">{order.address}</span>
+            <span class="ml-auto text-sm font-bold text-(--content-heading) shrink-0">{order.total}</span>
+          </div>
+          <!-- Row 2: items -->
+          <div class="px-4 py-1.5 text-xs text-(--content-meta) border-b border-(--border-primary) bg-(--surface-primary,#fff)">
+            {order.items}
+          </div>
+          <!-- Row 3: mark-shipped form -->
+          <form method="POST" action="/api/admin/mark-shipped"
+                class="flex flex-wrap items-center gap-2 px-4 py-2.5">
+            <input type="hidden" name="orderId" value={order.orderId} />
+            <input type="hidden" name="fulfillmentUid" value={order.fulfillmentUid} />
+            <input type="hidden" name="orderVersion" value={order.orderVersion} />
+            <input name="trackingNumber" type="text" placeholder="Tracking number (optional)"
+                   class="flex-1 min-w-40 border border-(--border-primary) rounded-sm px-3 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)" />
+            <select name="carrier"
+                    class="border border-(--border-primary) rounded-sm px-2 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)">
+              <option value="">Carrier</option>
+              <option value="USPS">USPS</option>
+              <option value="UPS">UPS</option>
+              <option value="FedEx">FedEx</option>
+              <option value="Other">Other</option>
+            </select>
+            <button type="submit"
+                    class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap shrink-0">
+              Mark as Shipped
+            </button>
+          </form>
+        </div>
+      ))}
+    </div>
+  )}
+</AdminLayout>
