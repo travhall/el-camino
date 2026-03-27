@@ -16,7 +16,7 @@ function formatDate(iso: string | undefined) {
 interface PickupOrder {
   orderId: string; shortId: string; createdAt: string;
   customerName: string; customerEmail: string; customerPhone: string;
-  items: string; total: string; note: string;
+  items: { name: string; qty: string }[]; total: string; note: string;
   fulfillmentUid: string; orderVersion: number;
 }
 
@@ -52,9 +52,9 @@ try {
     const rawNote = pd?.note ?? "";
     const customerNotesMatch = rawNote.match(/Customer Notes:\s*(.+)$/s);
     const note = customerNotesMatch?.[1]?.trim() ?? "";
-    const items = (order.lineItems ?? []).map((li) =>
-      `${Number(li.quantity ?? 1) > 1 ? li.quantity + "× " : ""}${li.name ?? "Item"}`
-    ).join(" · ");
+    const items = (order.lineItems ?? [])
+      .filter((li) => li.catalogObjectId)
+      .map((li) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
 
     orders.push({
       orderId: order.id ?? "", shortId: shortId(order.id ?? ""),
@@ -132,11 +132,16 @@ try {
             )}
             <span class="ml-auto text-sm font-bold text-(--content-heading) shrink-0">{order.total}</span>
           </div>
-          <!-- Row 2: items + optional note -->
-          <div class="px-4 py-1.5 text-xs text-(--content-meta) border-b border-(--border-primary) bg-(--surface-primary,#fff)">
-            {order.items}
+          <!-- Row 2: items as pills + optional note -->
+          <div class="px-4 py-2 flex flex-wrap gap-1.5 items-center border-b border-(--border-primary) bg-(--surface-primary,#fff)">
+            {order.items.map((item) => (
+              <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-(--border-primary) bg-(--surface-secondary) text-(--content-body)">
+                {Number(item.qty) > 1 && <span class="text-(--content-meta) font-medium">{item.qty}×</span>}
+                {item.name}
+              </span>
+            ))}
             {order.note && (
-              <span class="ml-2 text-(--content-body)">· Note: <em>{order.note}</em></span>
+              <span class="text-xs text-(--content-meta) ml-1">· <em>{order.note}</em></span>
             )}
           </div>
           <!-- Row 3: mark picked up -->

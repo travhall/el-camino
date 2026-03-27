@@ -16,7 +16,7 @@ function formatDate(iso: string | undefined) {
 interface ShippingOrder {
   orderId: string; shortId: string; createdAt: string;
   customerName: string; customerEmail: string; address: string;
-  items: string; total: string;
+  items: { name: string; qty: string }[]; total: string;
   fulfillmentUid: string; orderVersion: number;
 }
 
@@ -52,9 +52,10 @@ try {
     const addrParts = [a?.addressLine1, a?.addressLine2,
       a ? `${a.locality}, ${a.administrativeDistrictLevel1} ${a.postalCode}` : null,
     ].filter(Boolean).join(", ");
-    const items = (order.lineItems ?? []).map((li) =>
-      `${Number(li.quantity ?? 1) > 1 ? li.quantity + "× " : ""}${li.name ?? "Item"}`
-    ).join(" · ");
+    // Filter out custom line items like the "Shipping" fee (no catalogObjectId = not a catalog product)
+    const items = (order.lineItems ?? [])
+      .filter((li) => li.catalogObjectId)
+      .map((li) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
 
     orders.push({
       orderId: order.id ?? "", shortId: shortId(order.id ?? ""),
@@ -139,9 +140,14 @@ try {
             <span class="text-xs text-(--content-body)">{order.address}</span>
             <span class="ml-auto text-sm font-bold text-(--content-heading) shrink-0">{order.total}</span>
           </div>
-          <!-- Row 2: items -->
-          <div class="px-4 py-1.5 text-xs text-(--content-meta) border-b border-(--border-primary) bg-(--surface-primary,#fff)">
-            {order.items}
+          <!-- Row 2: items as pills -->
+          <div class="px-4 py-2 flex flex-wrap gap-1.5 border-b border-(--border-primary) bg-(--surface-primary,#fff)">
+            {order.items.map((item) => (
+              <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-(--border-primary) bg-(--surface-secondary) text-(--content-body)">
+                {Number(item.qty) > 1 && <span class="text-(--content-meta) font-medium">{item.qty}×</span>}
+                {item.name}
+              </span>
+            ))}
           </div>
           <!-- Row 3: mark-shipped form -->
           <form method="POST" action="/api/admin/mark-shipped"

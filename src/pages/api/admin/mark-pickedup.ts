@@ -54,7 +54,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
         fulfillments: [{
           uid: fulfillmentUid,
           state: "COMPLETED",
-          pickupDetails: { pickedUpAt: new Date().toISOString() },
         }],
       },
     });
