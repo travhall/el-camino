@@ -359,7 +359,9 @@ export const POST: APIRoute = async ({ request }) => {
     console.log("[create-checkout] Payment link created:", linkResponse.result.paymentLink.url, "orderId:", orderId);
 
     // Store contact info keyed by orderId so the webhook can send a confirmation email.
-    // Wrapped in .catch so a blob storage failure never blocks the checkout redirect.
+    // Must be awaited — Netlify functions stop executing once the response is sent,
+    // so a fire-and-forget blob write gets abandoned before it can persist.
+    // Wrapped in try/catch so a blob failure never blocks the checkout redirect.
     if (orderId) {
       const contactEmail =
         fulfillmentMethod === "shipping"
@@ -371,13 +373,15 @@ export const POST: APIRoute = async ({ request }) => {
           : pickupContact?.name;
 
       if (contactEmail) {
-        storePendingOrder(orderId, {
-          email: contactEmail,
-          name: contactName ?? "Customer",
-          fulfillmentMethod,
-        }).catch((err) =>
-          console.error("[create-checkout] Failed to store pending order:", err)
-        );
+        try {
+          await storePendingOrder(orderId, {
+            email: contactEmail,
+            name: contactName ?? "Customer",
+            fulfillmentMethod,
+          });
+        } catch (err) {
+          console.error("[create-checkout] Failed to store pending order:", err);
+        }
       }
     }
 
