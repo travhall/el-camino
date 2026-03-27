@@ -7,6 +7,10 @@ function formatMoney(amount: bigint | number | undefined | null): string {
   const cents = typeof amount === "bigint" ? Number(amount) : amount;
   return `$${(cents / 100).toFixed(2)}`;
 }
+function toTotalCents(amount: bigint | number | undefined | null): number {
+  if (amount == null) return 0;
+  return typeof amount === "bigint" ? Number(amount) : amount;
+}
 function shortId(id: string) { return id.slice(-8).toUpperCase(); }
 function formatDate(iso: string | undefined) {
   if (!iso) return "—";
@@ -14,9 +18,10 @@ function formatDate(iso: string | undefined) {
 }
 
 interface ArchivedOrder {
-  orderId: string; shortId: string; createdAt: string;
+  orderId: string; shortId: string;
+  createdAt: string; createdAtIso: string;
   customerName: string; type: "SHIPMENT" | "PICKUP";
-  items: string; total: string;
+  items: string; total: string; totalCents: number;
 }
 
 let orders: ArchivedOrder[] = [];
@@ -53,22 +58,26 @@ try {
         ? f.shipmentDetails?.recipient?.displayName
         : f.pickupDetails?.recipient?.displayName;
 
-    const items = (order.lineItems ?? []).map((li) =>
-      `${Number(li.quantity ?? 1) > 1 ? li.quantity + "× " : ""}${li.name ?? "Item"}`
-    ).join(" · ");
+    const items = (order.lineItems ?? [])
+      .filter((li) => li.catalogObjectId)
+      .map((li) => `${Number(li.quantity ?? 1) > 1 ? li.quantity + "× " : ""}${li.name ?? "Item"}`)
+      .join(" · ");
 
     orders.push({
       orderId: order.id ?? "", shortId: shortId(order.id ?? ""),
-      createdAt: formatDate(order.createdAt),
+      createdAt: formatDate(order.createdAt), createdAtIso: order.createdAt ?? "",
       customerName: recipientName ?? "Unknown",
       type: f.type as "SHIPMENT" | "PICKUP",
       items, total: formatMoney(order.totalMoney?.amount),
+      totalCents: toTotalCents(order.totalMoney?.amount),
     });
   }
 } catch (err) {
   console.error("[admin/orders/archive] Failed to fetch:", err);
   fetchError = true;
 }
+
+const count = orders.length;
 ---
 
 <AdminLayout title="Orders" description="">
@@ -94,36 +103,120 @@ try {
     </div>
   )}
 
-  {!fetchError && orders.length === 0 && (
+  {!fetchError && count === 0 && (
     <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-10 text-center">
       <p class="text-(--content-heading) font-semibold mb-1">No completed orders yet</p>
       <p class="text-(--content-meta) text-sm">Fulfilled shipping and pickup orders will appear here.</p>
     </div>
   )}
 
-  {orders.length > 0 && (
-    <div class="space-y-2">
-      {orders.map((order) => (
-        <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm overflow-hidden opacity-80">
-          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-2.5 border-b border-(--border-primary)">
-            <span class="font-mono text-xs font-bold text-(--content-heading) shrink-0">#{order.shortId}</span>
-            <span class="text-xs text-(--content-meta) shrink-0">{order.createdAt}</span>
-            <span class="text-sm font-semibold text-(--content-heading)">{order.customerName}</span>
-            <span class={`text-xs font-semibold px-1.5 py-0.5 rounded-sm shrink-0 ${
-              order.type === "SHIPMENT"
-                ? "bg-blue-100 text-blue-700"
-                : "bg-green-100 text-green-700"
-            }`}>
-              {order.type === "SHIPMENT" ? "Shipped" : "Picked Up"}
-            </span>
-            <span class="ml-auto text-sm font-bold text-(--content-heading) shrink-0">{order.total}</span>
+  {count > 0 && (
+    <>
+      <!-- Toolbar -->
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <p class="text-sm text-(--content-meta) mr-auto">
+          Showing <span id="order-count">{count}</span> of {count} orders
+        </p>
+        <input id="order-search" type="search" placeholder="Search customer or order…"
+               class="border border-(--border-primary) rounded-sm px-3 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) w-56 focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)" />
+        <select id="order-type"
+                class="border border-(--border-primary) rounded-sm px-2 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)">
+          <option value="all">All types</option>
+          <option value="SHIPMENT">Shipped</option>
+          <option value="PICKUP">Picked Up</option>
+        </select>
+        <select id="order-sort"
+                class="border border-(--border-primary) rounded-sm px-2 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="total-high">Total: high → low</option>
+          <option value="total-low">Total: low → high</option>
+        </select>
+      </div>
+
+      <!-- Orders list -->
+      <div id="orders-list" class="space-y-2">
+        {orders.map((order) => (
+          <div class="order-row bg-(--surface-secondary) border border-(--border-primary) rounded-sm overflow-hidden opacity-75"
+               data-customer={order.customerName.toLowerCase()}
+               data-order-id={order.shortId.toLowerCase()}
+               data-items={order.items.toLowerCase()}
+               data-date={order.createdAtIso}
+               data-total={order.totalCents}
+               data-type={order.type}>
+            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-2.5 border-b border-(--border-primary)">
+              <span class="font-mono text-xs font-bold text-(--content-heading) shrink-0">#{order.shortId}</span>
+              <span class="text-xs text-(--content-meta) shrink-0">{order.createdAt}</span>
+              <span class="text-sm font-semibold text-(--content-heading)">{order.customerName}</span>
+              <span class={`text-xs font-semibold px-1.5 py-0.5 rounded-sm shrink-0 ${
+                order.type === "SHIPMENT"
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-green-100 text-green-700"
+              }`}>
+                {order.type === "SHIPMENT" ? "Shipped" : "Picked Up"}
+              </span>
+              <span class="ml-auto text-sm font-bold text-(--content-heading) shrink-0">{order.total}</span>
+            </div>
+            <div class="px-4 py-1.5 text-xs text-(--content-meta) bg-(--surface-primary,#fff)">
+              {order.items || <span class="italic">No items</span>}
+            </div>
           </div>
-          <div class="px-4 py-1.5 text-xs text-(--content-meta) bg-(--surface-primary,#fff)">
-            {order.items}
-          </div>
-        </div>
-      ))}
-      <p class="text-xs text-(--content-meta) text-center pt-2">Showing up to 50 most recent completed orders.</p>
-    </div>
+        ))}
+      </div>
+
+      <p id="no-results" class="hidden text-sm text-(--content-meta) text-center py-8">
+        No orders match your search.
+      </p>
+      <p class="text-xs text-(--content-meta) text-center pt-3">Showing up to 50 most recent completed orders.</p>
+    </>
   )}
 </AdminLayout>
+
+<script>
+  const searchEl = document.getElementById("order-search") as HTMLInputElement;
+  const typeEl = document.getElementById("order-type") as HTMLSelectElement;
+  const sortEl = document.getElementById("order-sort") as HTMLSelectElement;
+  const list = document.getElementById("orders-list");
+  const countEl = document.getElementById("order-count");
+  const noResults = document.getElementById("no-results");
+
+  if (searchEl && typeEl && sortEl && list) {
+    function rows() {
+      return [...list!.querySelectorAll<HTMLElement>(".order-row")];
+    }
+
+    function applySort() {
+      const val = sortEl.value;
+      const sorted = rows().sort((a, b) => {
+        if (val === "oldest") return (a.dataset.date ?? "").localeCompare(b.dataset.date ?? "");
+        if (val === "newest") return (b.dataset.date ?? "").localeCompare(a.dataset.date ?? "");
+        if (val === "total-high") return Number(b.dataset.total ?? 0) - Number(a.dataset.total ?? 0);
+        if (val === "total-low") return Number(a.dataset.total ?? 0) - Number(b.dataset.total ?? 0);
+        return 0;
+      });
+      sorted.forEach((r) => list!.appendChild(r));
+    }
+
+    function applyFilters() {
+      const q = searchEl.value.toLowerCase().trim();
+      const typeFilter = typeEl.value;
+      let visible = 0;
+      rows().forEach((row) => {
+        const matchSearch = !q ||
+          (row.dataset.customer ?? "").includes(q) ||
+          (row.dataset.orderId ?? "").includes(q) ||
+          (row.dataset.items ?? "").includes(q);
+        const matchType = typeFilter === "all" || row.dataset.type === typeFilter;
+        const show = matchSearch && matchType;
+        row.style.display = show ? "" : "none";
+        if (show) visible++;
+      });
+      if (countEl) countEl.textContent = String(visible);
+      if (noResults) noResults.classList.toggle("hidden", visible > 0);
+    }
+
+    searchEl.addEventListener("input", applyFilters);
+    typeEl.addEventListener("change", applyFilters);
+    sortEl.addEventListener("change", () => { applySort(); applyFilters(); });
+  }
+</script>

@@ -1,7 +1,8 @@
 // src/pages/api/admin/mark-pickedup.ts
 //
 // Marks a Square pickup order fulfillment as COMPLETED (customer collected).
-// No email is sent — the customer already received their confirmation.
+// Fetches the live order to get the current version — avoids version-mismatch
+// errors when the order was updated between page load and form submission.
 
 import type { APIRoute } from "astro";
 import { createHmac } from "node:crypto";
@@ -23,21 +24,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   }
 
   let orderId: string;
-  let fulfillmentUid: string;
-  let orderVersion: number;
-
   try {
     const body = await request.formData();
     orderId = (body.get("orderId") as string)?.trim();
-    fulfillmentUid = (body.get("fulfillmentUid") as string)?.trim();
-    orderVersion = parseInt((body.get("orderVersion") as string) ?? "1", 10);
   } catch {
     return new Response("Invalid form data", { status: 400 });
   }
 
-  if (!orderId || !fulfillmentUid) {
-    return new Response("Missing orderId or fulfillmentUid", { status: 400 });
-  }
+  if (!orderId) return new Response("Missing orderId", { status: 400 });
 
   const client = new Client({
     accessToken: process.env.SQUARE_ACCESS_TOKEN!,
@@ -45,21 +39,42 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       ? Environment.Production : Environment.Sandbox,
   });
 
+  // Fetch the live order to get the current version and fulfillment UID.
+  // Using stale values from the form causes version-conflict errors.
+  let currentVersion: number;
+  let fulfillmentUid: string;
+  let locationId: string;
+
+  try {
+    const { result } = await client.ordersApi.retrieveOrder(orderId);
+    const order = result.order;
+    if (!order) throw new Error("Order not returned");
+
+    currentVersion = order.version ?? 1;
+    locationId = order.locationId ?? import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
+
+    const fulfillment = order.fulfillments?.find(
+      (f) => f.type === "PICKUP" && f.state !== "COMPLETED"
+    );
+    if (!fulfillment?.uid) throw new Error("No active PICKUP fulfillment found");
+    fulfillmentUid = fulfillment.uid;
+  } catch (err) {
+    console.error(`[mark-pickedup] Failed to retrieve order ${orderId}:`, err);
+    return redirect("/admin/orders/pickups?error=fetch");
+  }
+
   try {
     await client.ordersApi.updateOrder(orderId, {
       idempotencyKey: `pickedup-${orderId}-${Date.now()}`,
       order: {
-        locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
-        version: orderVersion,
-        fulfillments: [{
-          uid: fulfillmentUid,
-          state: "COMPLETED",
-        }],
+        locationId,
+        version: currentVersion,
+        fulfillments: [{ uid: fulfillmentUid, state: "COMPLETED" }],
       },
     });
   } catch (err) {
     console.error(`[mark-pickedup] Square update failed for order ${orderId}:`, err);
-    return redirect("/admin/orders/pickups?error=1");
+    return redirect("/admin/orders/pickups?error=update");
   }
 
   return redirect("/admin/orders/pickups?completed=1");
