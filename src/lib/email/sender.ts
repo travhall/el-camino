@@ -7,12 +7,15 @@ import {
   buildPickupNotificationHtml,
 } from "./templates";
 
-// Astro SSR: use import.meta.env, not process.env
-const resend = new Resend(import.meta.env.RESEND_API_KEY);
-
 interface EmailPayload {
   order: Order;
   contact: PendingOrderContact;
+}
+
+// Lazy getter — Resend constructor throws if the key is missing, so we
+// instantiate inside each send function rather than at module load time.
+function getResend() {
+  return new Resend(import.meta.env.RESEND_API_KEY);
 }
 
 export async function sendOrderConfirmation({
@@ -26,7 +29,7 @@ export async function sendOrderConfirmation({
 
   const html = buildOrderConfirmationHtml({ order, contact });
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: import.meta.env.EMAIL_FROM,
     to: contact.email,
     subject,
@@ -44,7 +47,7 @@ export async function sendPickupNotification({
 }: EmailPayload): Promise<void> {
   const html = buildPickupNotificationHtml({ order, contact });
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: import.meta.env.EMAIL_FROM,
     to: import.meta.env.TYLER_EMAIL,
     subject: `New pickup order from ${contact.name}`,
