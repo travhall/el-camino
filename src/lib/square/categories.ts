@@ -388,6 +388,12 @@ export async function fetchProductsByCategory(
         variations: productVariations.length > 0 ? productVariations : undefined,
       };
     });
+    // Sort products alphabetically by brand (case-insensitive), unbranded fall to end
+    products.sort((a, b) => {
+      const brandA = a.brand?.toLowerCase() ?? "\uffff";
+      const brandB = b.brand?.toLowerCase() ?? "\uffff";
+      return brandA.localeCompare(brandB);
+    });
     // console.log(`[Perf] Transform: ${Date.now() - transformStart}ms`);
 
     const totalTime = Date.now() - startTime;

@@ -66,6 +66,13 @@ try {
   const totalProductCount = allProductsFull.length;
   const needsPagination = totalProductCount > INFINITE_SCROLL_THRESHOLD;
   
+  // Sort alphabetically by brand (case-insensitive), unbranded fall to end
+  allProductsFull.sort((a, b) => {
+    const brandA = a.brand?.toLowerCase() ?? "\uFFFF";
+    const brandB = b.brand?.toLowerCase() ?? "\uFFFF";
+    return brandA.localeCompare(brandB);
+  });
+
   // Always pass ALL products to ProductGrid
   // ProductGrid handles progressive display via infinite scroll
   allProducts = allProductsFull;

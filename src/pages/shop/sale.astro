@@ -83,10 +83,17 @@ try {
   
   // Filter to only products with sale pricing, and surface the sale variant first
   saleProducts = filterSaleProducts(allProductsFull).map(withSaleVariationFirst);
-  
+
+  // Sort alphabetically by brand (case-insensitive), unbranded fall to end
+  saleProducts.sort((a, b) => {
+    const brandA = a.brand?.toLowerCase() ?? "\uFFFF";
+    const brandB = b.brand?.toLowerCase() ?? "\uFFFF";
+    return brandA.localeCompare(brandB);
+  });
+
   const totalProductCount = saleProducts.length;
   const needsPagination = totalProductCount > INFINITE_SCROLL_THRESHOLD;
-  
+
   // Always pass sale products to ProductGrid
   // ProductGrid handles progressive display via infinite scroll
   allProducts = saleProducts;
