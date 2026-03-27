@@ -765,6 +765,30 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
             })
         }
 
+        <!-- Single-variation name display: shown when the parser suppressed attribute parsing
+             (no commas in name) but the name is still meaningful — i.e. it differs from
+             the product title so we're not showing "Option: Thrasher Thorns T Shirt". -->
+        {
+          !hasMultipleVariations &&
+            attributeTypes.length === 0 &&
+            variations.length > 0 &&
+            variations[0].name !== product.title && (
+              <div class="mt-6">
+                <div class="flex items-center mb-1">
+                  <label class="text-sm font-medium">Option</label>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    class="px-2.5 py-1.5 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default"
+                    aria-label={`Option: ${variations[0].name}`}
+                  >
+                    {variations[0].name}
+                  </span>
+                </div>
+              </div>
+            )
+        }
+
         <!-- Fallback: Standard Variation Selection (for variations that don't have structured attributes) -->
         {
           hasMultipleVariations && attributeTypes.length === 0 && (
