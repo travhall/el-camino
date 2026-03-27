@@ -269,6 +269,298 @@ function pickupDetailsSection(order: Order): string {
   </tr>`;
 }
 
+// ─── Back In Stock Notification ───────────────────────────────────────────────
+
+export interface BackInStockPayload {
+  customerName: string;
+  productName: string;
+  productUrl: string;
+  variationName?: string; // e.g. "Size 10" or "Navy / Large"
+  price?: number;         // cents
+}
+
+export function buildBackInStockHtml({
+  customerName,
+  productName,
+  productUrl,
+  variationName,
+  price,
+}: BackInStockPayload): string {
+  const firstName = customerName.split(" ")[0];
+  const displayName = variationName ? `${productName} — ${variationName}` : productName;
+  const priceStr = price != null ? formatMoney(price) : null;
+
+  const content = `
+  ${emailHeader()}
+
+  <!-- Body card -->
+  <tr>
+    <td style="background-color:#ffffff;padding:32px 32px 0;">
+      <h1 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#2b2215;">
+        Back in Stock
+      </h1>
+      <p style="margin:0 0 24px;font-size:15px;color:#4f3d22;">
+        Hey ${firstName}, good news — something on your wishlist just came back.
+      </p>
+    </td>
+  </tr>
+
+  ${divider()}
+
+  <!-- Product card -->
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px;">
+      <p style="margin:0 0 16px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
+        Now Available
+      </p>
+      <table role="presentation" cellpadding="0" cellspacing="0"
+             style="background-color:#f5edda;border-radius:6px;width:100%;">
+        <tr>
+          <td style="padding:20px 24px;">
+            <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#2b2215;">
+              ${displayName}
+            </p>
+            ${priceStr
+              ? `<p style="margin:0 0 16px;font-size:15px;color:#4d7a2e;font-weight:600;">${priceStr}</p>`
+              : `<p style="margin:0 0 16px;"></p>`
+            }
+            <a href="${productUrl}"
+               style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:10px 24px;border-radius:6px;border:2px solid #3a5e22;">
+              Shop Now
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:13px;color:#6b6256;">
+        Popular items sell out fast — grab it before it's gone again.
+      </p>
+    </td>
+  </tr>
+
+  ${emailFooter()}`;
+
+  return emailWrapper(content);
+}
+
+// ─── Tyler Shipping Order Notification ───────────────────────────────────────
+
+export function buildShippingOrderNotificationHtml({
+  order,
+  contact,
+}: TemplatePayload): string {
+  const orderId = order.id ?? "";
+  const fulfillment = order.fulfillments?.find((f) => f.type === "SHIPMENT");
+  const recipient = fulfillment?.shipmentDetails?.recipient;
+  const address = recipient?.address;
+  const total = formatMoney(order.totalMoney?.amount);
+
+  const addressLines = [
+    address?.addressLine1,
+    address?.addressLine2,
+    address
+      ? `${address.locality}, ${address.administrativeDistrictLevel1} ${address.postalCode}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("<br>");
+
+  const content = `
+  ${emailHeader()}
+
+  <!-- Body card -->
+  <tr>
+    <td style="background-color:#ffffff;padding:32px 32px 0;">
+      <h1 style="margin:0 0 6px;font-size:20px;font-weight:700;color:#2b2215;">
+        New Shipping Order
+      </h1>
+      <p style="margin:0 0 20px;font-size:15px;color:#4f3d22;">
+        A customer placed an order for shipping. Pack it up and drop it off.
+      </p>
+    </td>
+  </tr>
+
+  ${divider()}
+
+  <!-- Customer info -->
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
+        Customer
+      </p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="font-size:14px;color:#4f3d22;padding-bottom:4px;width:100px;">Name</td>
+          <td style="font-size:14px;color:#2b2215;font-weight:600;padding-bottom:4px;">${contact.name}</td>
+        </tr>
+        <tr>
+          <td style="font-size:14px;color:#4f3d22;padding-bottom:4px;">Email</td>
+          <td style="font-size:14px;color:#2b2215;padding-bottom:4px;">
+            <a href="mailto:${contact.email}" style="color:#4d7a2e;text-decoration:none;">${contact.email}</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:14px;color:#4f3d22;">Order Ref</td>
+          <td style="font-size:14px;color:#2b2215;font-family:monospace;">#${shortOrderId(orderId)}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  ${divider()}
+
+  <!-- Ship to address -->
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
+        Ship To
+      </p>
+      <p style="margin:0;font-size:14px;color:#2b2215;line-height:1.7;">
+        <strong>${contact.name}</strong><br>
+        ${addressLines || "Address not captured"}
+      </p>
+    </td>
+  </tr>
+
+  ${divider()}
+
+  <!-- Order items -->
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px 24px;">
+      <p style="margin:0 0 16px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
+        Items &mdash; ${total}
+      </p>
+      ${lineItemsTable(order)}
+    </td>
+  </tr>
+
+  ${divider()}
+
+  <!-- Mark shipped CTA -->
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px 32px;text-align:center;">
+      <a href="${siteConfig.url}/admin/orders"
+         style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:12px 28px;border-radius:6px;border:2px solid #3a5e22;">
+        Mark as Shipped
+      </a>
+      <p style="margin:12px 0 0;font-size:12px;color:#6b6256;">
+        Once shipped, enter the tracking number in the admin panel to notify the customer.
+      </p>
+    </td>
+  </tr>
+
+  ${emailFooter()}`;
+
+  return emailWrapper(content);
+}
+
+// ─── Customer Shipping Confirmation ───────────────────────────────────────────
+
+export interface ShippingConfirmationPayload {
+  order: import("square/legacy").Order;
+  contact: PendingOrderContact;
+  trackingNumber?: string;
+  carrier?: string; // "USPS" | "UPS" | "FedEx" | "Other"
+}
+
+function trackingUrl(carrier: string, tracking: string): string | null {
+  switch (carrier.toUpperCase()) {
+    case "USPS":
+      return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${tracking}`;
+    case "UPS":
+      return `https://www.ups.com/track?tracknum=${tracking}`;
+    case "FEDEX":
+      return `https://www.fedex.com/fedextrack/?trknbr=${tracking}`;
+    default:
+      return null;
+  }
+}
+
+export function buildShippingConfirmationHtml({
+  order,
+  contact,
+  trackingNumber,
+  carrier,
+}: ShippingConfirmationPayload): string {
+  const orderId = order.id ?? "";
+  const firstName = contact.name.split(" ")[0];
+  const hasTracking = !!trackingNumber;
+  const trackLink =
+    hasTracking && carrier ? trackingUrl(carrier, trackingNumber!) : null;
+
+  const trackingSection = hasTracking
+    ? `
+  ${divider()}
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
+        Tracking
+      </p>
+      <div style="background-color:#f5edda;border-radius:6px;padding:16px 20px;">
+        ${carrier ? `<p style="margin:0 0 4px;font-size:13px;color:#4f3d22;">${carrier}</p>` : ""}
+        <p style="margin:0 0 ${trackLink ? "16px" : "0"};font-size:15px;font-weight:700;color:#2b2215;font-family:monospace;letter-spacing:0.04em;">
+          ${trackingNumber}
+        </p>
+        ${trackLink
+          ? `<a href="${trackLink}"
+               style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;padding:8px 20px;border-radius:6px;border:2px solid #3a5e22;">
+               Track Package
+             </a>`
+          : ""}
+      </div>
+    </td>
+  </tr>`
+    : "";
+
+  const content = `
+  ${emailHeader()}
+
+  <!-- Body card -->
+  <tr>
+    <td style="background-color:#ffffff;padding:32px 32px 0;">
+      <h1 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#2b2215;">
+        Your order is on its way
+      </h1>
+      <p style="margin:0 0 20px;font-size:15px;color:#4f3d22;">
+        Hey ${firstName}, your El Camino order has shipped!
+      </p>
+      <p style="margin:0 0 24px;font-size:13px;color:#6b6256;">
+        Order reference: <strong style="color:#2b2215;">#${shortOrderId(orderId)}</strong>
+      </p>
+    </td>
+  </tr>
+
+  ${divider()}
+
+  <!-- Order items -->
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px;">
+      <p style="margin:0 0 16px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
+        What's in the box
+      </p>
+      ${lineItemsTable(order)}
+    </td>
+  </tr>
+
+  ${trackingSection}
+
+  <!-- CTA -->
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px 32px;text-align:center;">
+      <a href="${siteConfig.url}/shop"
+         style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:12px 28px;border-radius:6px;border:2px solid #3a5e22;">
+        Shop Again
+      </a>
+      <p style="margin:12px 0 0;font-size:12px;color:#6b6256;">
+        Questions? Reply to this email or give us a call.
+      </p>
+    </td>
+  </tr>
+
+  ${emailFooter()}`;
+
+  return emailWrapper(content);
+}
+
 // ─── Tyler Pickup Notification ────────────────────────────────────────────────
 
 export function buildPickupNotificationHtml({

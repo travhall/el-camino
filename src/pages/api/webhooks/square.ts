@@ -36,6 +36,7 @@ import { getPendingOrder, deletePendingOrder } from "@/lib/email/pendingOrders";
 import {
   sendOrderConfirmation,
   sendPickupNotification,
+  sendShippingOrderNotification,
 } from "@/lib/email/sender";
 
 export const POST: APIRoute = async ({ request }) => {
@@ -207,6 +208,8 @@ export const POST: APIRoute = async ({ request }) => {
 
         if (contact.fulfillmentMethod === "pickup") {
           await sendPickupNotification({ order, contact });
+        } else if (contact.fulfillmentMethod === "shipping") {
+          await sendShippingOrderNotification({ order, contact });
         }
 
         // Delete blob — if Square retries, second delivery finds no contact and skips (idempotency)

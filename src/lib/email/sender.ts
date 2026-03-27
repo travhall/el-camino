@@ -5,6 +5,9 @@ import type { PendingOrderContact } from "./pendingOrders";
 import {
   buildOrderConfirmationHtml,
   buildPickupNotificationHtml,
+  buildShippingOrderNotificationHtml,
+  buildShippingConfirmationHtml,
+  type ShippingConfirmationPayload,
 } from "./templates";
 
 interface EmailPayload {
@@ -33,6 +36,45 @@ export async function sendOrderConfirmation({
     from: import.meta.env.EMAIL_FROM,
     to: contact.email,
     subject,
+    html,
+  });
+
+  if (error) {
+    throw new Error(`Resend failed: ${JSON.stringify(error)}`);
+  }
+}
+
+export async function sendShippingOrderNotification({
+  order,
+  contact,
+}: EmailPayload): Promise<void> {
+  const html = buildShippingOrderNotificationHtml({ order, contact });
+
+  const { error } = await getResend().emails.send({
+    from: import.meta.env.EMAIL_FROM,
+    to: import.meta.env.TYLER_EMAIL,
+    subject: `New shipping order from ${contact.name} — #${order.id?.slice(-8).toUpperCase()}`,
+    html,
+  });
+
+  if (error) {
+    // Don't throw — Tyler not receiving a notification shouldn't block the customer confirmation
+    console.error("[sender] Failed to send shipping order notification:", error);
+  }
+}
+
+export async function sendShippingConfirmation({
+  order,
+  contact,
+  trackingNumber,
+  carrier,
+}: ShippingConfirmationPayload): Promise<void> {
+  const html = buildShippingConfirmationHtml({ order, contact, trackingNumber, carrier });
+
+  const { error } = await getResend().emails.send({
+    from: import.meta.env.EMAIL_FROM,
+    to: contact.email,
+    subject: `Your El Camino order has shipped`,
     html,
   });
 
