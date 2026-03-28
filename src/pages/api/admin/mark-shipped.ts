@@ -96,7 +96,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       idempotencyKey: `shipped-${orderId}-${Date.now()}`,
       order: {
         locationId: order.locationId ?? import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
-        version: orderVersion,
+        version: order.version,
         fulfillments: [
           {
             uid: fulfillmentUid,
@@ -111,8 +111,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       },
     });
   } catch (err) {
-    // Log but don't block — still send the customer email
     console.error(`[mark-shipped] Square update failed for order ${orderId}:`, err);
+    return redirect("/admin/orders/shipping?error=update");
   }
 
   // ── Send shipping confirmation to customer ────────────────────────────────
