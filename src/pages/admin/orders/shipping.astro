@@ -1,6 +1,7 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { Client, Environment } from "square/legacy";
+import { filterDismissed } from "@/lib/admin/dismissedOrders";
 
 function formatMoney(amount: bigint | number | undefined | null): string {
   if (amount == null) return "$0.00";
@@ -28,6 +29,7 @@ interface ShippingOrder {
 
 const params = Astro.url.searchParams;
 const successId = params.get("shipped");
+const dismissedOne = params.get("dismissed");
 const errorType = params.get("error");
 
 let orders: ShippingOrder[] = [];
@@ -78,6 +80,7 @@ try {
   fetchError = true;
 }
 
+orders = await filterDismissed(orders);
 const count = orders.length;
 ---
 
@@ -101,6 +104,11 @@ const count = orders.length;
   {successId && (
     <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-800 font-medium">
       Order marked as shipped — shipping confirmation sent to customer.
+    </div>
+  )}
+  {dismissedOne && (
+    <div class="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-sm text-sm text-amber-800">
+      Order dismissed and hidden from this list.
     </div>
   )}
   {errorType === "email" && (
@@ -180,27 +188,37 @@ const count = orders.length;
                 </span>
               ))}
             </div>
-            <!-- Row 3: mark-shipped form -->
-            <form method="POST" action="/api/admin/mark-shipped"
-                  class="flex flex-wrap items-center gap-2 px-4 py-2.5">
-              <input type="hidden" name="orderId" value={order.orderId} />
-              <input type="hidden" name="fulfillmentUid" value={order.fulfillmentUid} />
-              <input type="hidden" name="orderVersion" value={order.orderVersion} />
-              <input name="trackingNumber" type="text" placeholder="Tracking number (optional)"
-                     class="flex-1 min-w-40 border border-(--border-primary) rounded-sm px-3 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)" />
-              <select name="carrier"
-                      class="border border-(--border-primary) rounded-sm px-2 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)">
-                <option value="">Carrier</option>
-                <option value="USPS">USPS</option>
-                <option value="UPS">UPS</option>
-                <option value="FedEx">FedEx</option>
-                <option value="Other">Other</option>
-              </select>
-              <button type="submit"
-                      class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap shrink-0">
-                Mark as Shipped
-              </button>
-            </form>
+            <!-- Row 3: mark-shipped form + dismiss -->
+            <div class="flex flex-wrap items-center gap-3 px-4 py-2.5">
+              <form method="POST" action="/api/admin/mark-shipped"
+                    class="flex flex-wrap items-center gap-2 flex-1">
+                <input type="hidden" name="orderId" value={order.orderId} />
+                <input type="hidden" name="fulfillmentUid" value={order.fulfillmentUid} />
+                <input type="hidden" name="orderVersion" value={order.orderVersion} />
+                <input name="trackingNumber" type="text" placeholder="Tracking number (optional)"
+                       class="flex-1 min-w-40 border border-(--border-primary) rounded-sm px-3 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)" />
+                <select name="carrier"
+                        class="border border-(--border-primary) rounded-sm px-2 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)">
+                  <option value="">Carrier</option>
+                  <option value="USPS">USPS</option>
+                  <option value="UPS">UPS</option>
+                  <option value="FedEx">FedEx</option>
+                  <option value="Other">Other</option>
+                </select>
+                <button type="submit"
+                        class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap shrink-0">
+                  Mark as Shipped
+                </button>
+              </form>
+              <form method="POST" action="/api/admin/dismiss-order">
+                <input type="hidden" name="orderId" value={order.orderId} />
+                <input type="hidden" name="from" value="/admin/orders/shipping" />
+                <button type="submit"
+                        class="text-xs text-(--content-meta) hover:text-(--content-body) underline underline-offset-2 transition-colors py-1.5 px-1">
+                  Dismiss
+                </button>
+              </form>
+            </div>
           </div>
         ))}
       </div>

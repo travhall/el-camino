@@ -1,6 +1,7 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { Client, Environment } from "square/legacy";
+import { filterDismissed } from "@/lib/admin/dismissedOrders";
 
 function formatMoney(amount: bigint | number | undefined | null): string {
   if (amount == null) return "$0.00";
@@ -27,6 +28,7 @@ interface PickupOrder {
 
 const params = Astro.url.searchParams;
 const successId = params.get("completed");
+const dismissedOne = params.get("dismissed");
 const errorType = params.get("error");
 
 let orders: PickupOrder[] = [];
@@ -77,6 +79,7 @@ try {
   fetchError = true;
 }
 
+orders = await filterDismissed(orders);
 const count = orders.length;
 ---
 
@@ -100,6 +103,11 @@ const count = orders.length;
   {successId && (
     <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-800 font-medium">
       Order marked as picked up.
+    </div>
+  )}
+  {dismissedOne && (
+    <div class="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-sm text-sm text-amber-800">
+      Order dismissed and hidden from this list.
     </div>
   )}
   {errorType === "fetch" && (
@@ -179,15 +187,24 @@ const count = orders.length;
                 <span class="text-xs text-(--content-meta) ml-1">· <em>{order.note}</em></span>
               )}
             </div>
-            <!-- Row 3: mark picked up — only passes orderId; endpoint fetches live version -->
-            <form method="POST" action="/api/admin/mark-pickedup"
-                  class="flex items-center gap-2 px-4 py-2.5">
-              <input type="hidden" name="orderId" value={order.orderId} />
-              <button type="submit"
-                      class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap">
-                Mark as Picked Up
-              </button>
-            </form>
+            <!-- Row 3: actions -->
+            <div class="flex items-center gap-3 px-4 py-2.5">
+              <form method="POST" action="/api/admin/mark-pickedup">
+                <input type="hidden" name="orderId" value={order.orderId} />
+                <button type="submit"
+                        class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap">
+                  Mark as Picked Up
+                </button>
+              </form>
+              <form method="POST" action="/api/admin/dismiss-order">
+                <input type="hidden" name="orderId" value={order.orderId} />
+                <input type="hidden" name="from" value="/admin/orders/pickups" />
+                <button type="submit"
+                        class="text-xs text-(--content-meta) hover:text-(--content-body) underline underline-offset-2 transition-colors py-1.5 px-1">
+                  Dismiss
+                </button>
+              </form>
+            </div>
           </div>
         ))}
       </div>
