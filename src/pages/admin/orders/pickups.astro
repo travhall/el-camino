@@ -53,6 +53,12 @@ try {
   });
 
   for (const order of result.orders ?? []) {
+    // Skip orders with no captured payment — Square will reject any fulfillment
+    // update with "cannot be COMPLETED before the order is paid for".
+    // In production all checkout orders have tenders; this only filters sandbox
+    // orders created without going through the payment flow.
+    if (!order.tenders?.length) continue;
+
     const f = order.fulfillments?.find((f) => f.type === "PICKUP");
     if (!f) continue;
     const pd = f.pickupDetails;
