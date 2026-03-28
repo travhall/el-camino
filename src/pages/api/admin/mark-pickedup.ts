@@ -1,14 +1,19 @@
 // src/pages/api/admin/mark-pickedup.ts
 //
 // Marks a Square pickup order fulfillment as COMPLETED (customer collected).
-// Fetches the live order to get the current version — avoids version-mismatch
-// errors when the order was updated between page load and form submission.
+//
+// Square enforces a strict state machine for PICKUP fulfillments:
+//   PROPOSED → RESERVED → PREPARED → COMPLETED
+// Jumping directly to COMPLETED is rejected, so we walk through each
+// intermediate state. The version is re-fetched before every step because
+// Square increments it on each successful update.
 
 import type { APIRoute } from "astro";
 import { createHmac } from "node:crypto";
 import { Client, Environment } from "square/legacy";
 
 const COOKIE_NAME = "admin_session";
+const PICKUP_STATES = ["PROPOSED", "RESERVED", "PREPARED", "COMPLETED"] as const;
 
 function expectedToken(secret: string): string {
   return createHmac("sha256", secret).update("admin:authenticated").digest("hex");
@@ -39,10 +44,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       ? Environment.Production : Environment.Sandbox,
   });
 
-  // Fetch the live order to get the current version and fulfillment UID.
-  // Using stale values from the form causes version-conflict errors.
-  let currentVersion: number;
+  // Fetch the live order to get current fulfillment state and UID.
   let fulfillmentUid: string;
+  let currentState: string;
   let locationId: string;
 
   try {
@@ -50,30 +54,47 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const order = result.order;
     if (!order) throw new Error("Order not returned");
 
-    currentVersion = order.version ?? 1;
     locationId = order.locationId ?? import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
 
     const fulfillment = order.fulfillments?.find(
-      (f) => f.type === "PICKUP" && f.state !== "COMPLETED"
+      (f) => f.type === "PICKUP" && f.state !== "COMPLETED" && f.state !== "CANCELED"
     );
     if (!fulfillment?.uid) throw new Error("No active PICKUP fulfillment found");
+
     fulfillmentUid = fulfillment.uid;
+    currentState = fulfillment.state ?? "PROPOSED";
   } catch (err) {
     console.error(`[mark-pickedup] Failed to retrieve order ${orderId}:`, err);
     return redirect("/admin/orders/pickups?error=fetch");
   }
 
+  // Walk through each required intermediate state to reach COMPLETED.
+  // Square requires sequential transitions — skipping states is rejected.
+  const currentIdx = PICKUP_STATES.indexOf(currentState as typeof PICKUP_STATES[number]);
+  const targetIdx = PICKUP_STATES.indexOf("COMPLETED");
+  const steps = PICKUP_STATES.slice(
+    Math.max(currentIdx + 1, 0),
+    targetIdx + 1
+  );
+
   try {
-    await client.ordersApi.updateOrder(orderId, {
-      idempotencyKey: `pickedup-${orderId}-${Date.now()}`,
-      order: {
-        locationId,
-        version: currentVersion,
-        fulfillments: [{ uid: fulfillmentUid, state: "COMPLETED" }],
-      },
-    });
+    for (const targetState of steps) {
+      // Re-fetch the version before each step — it increments on every update.
+      const { result: refreshed } = await client.ordersApi.retrieveOrder(orderId);
+      if (!refreshed.order) throw new Error("Order not found on refresh");
+
+      await client.ordersApi.updateOrder(orderId, {
+        // Stable idempotency key per state — safe to retry if a step fails.
+        idempotencyKey: `pickedup-${orderId}-${targetState}`,
+        order: {
+          locationId,
+          version: refreshed.order.version ?? 1,
+          fulfillments: [{ uid: fulfillmentUid, state: targetState }],
+        },
+      });
+    }
   } catch (err) {
-    console.error(`[mark-pickedup] Square update failed for order ${orderId}:`, err);
+    console.error(`[mark-pickedup] Square state update failed for order ${orderId}:`, err);
     return redirect("/admin/orders/pickups?error=update");
   }
 
