@@ -1,6 +1,7 @@
 // src/pages/api/load-more-products.ts - FINAL OPTIMIZED VERSION
 import type { APIRoute } from "astro";
 import { fetchProductsByCategory } from "@/lib/square/categories";
+import { batchInventoryService } from "@/lib/square/batchInventory";
 
 export const prerender = false;
 
@@ -23,10 +24,26 @@ export const POST: APIRoute = async ({ request }) => {
       cursor,
     });
 
+    // Attach inventory status so callers can show sold-out state correctly.
+    const variationIds = result.products
+      .map((p) => p.variationId)
+      .filter(Boolean);
+    const inventoryMap = variationIds.length > 0
+      ? await batchInventoryService.getBatchInventoryStatus(variationIds)
+      : new Map();
+    const products = result.products.map((p) => ({
+      ...p,
+      inventoryStatus: inventoryMap.get(p.variationId) ?? {
+        isOutOfStock: false,
+        hasLimitedOptions: false,
+        totalQuantity: 0,
+      },
+    }));
+
     return new Response(
       JSON.stringify({
         success: true,
-        products: result.products,
+        products,
         nextCursor: result.nextCursor,
         hasMore: result.hasMore,
       }),

@@ -72,10 +72,11 @@ export const GET: APIRoute = async ({ url }) => {
         // The server-side BlobCache handles performance; we don't want
         // the browser serving a 60-second-old sold-out state.
         "Cache-Control": "public, no-cache",
-        // Netlify CDN: Fresh for 5 minutes, stale for 2 minutes only.
-        // Short stale window so sold-out items don't linger on the edge.
+        // Netlify CDN: Fresh for 5 minutes, no stale serving.
+        // stale-while-revalidate=0 ensures sold-out items are never served
+        // from an expired edge cache entry with outdated inventory data.
         "Netlify-CDN-Cache-Control":
-          "public, s-maxage=300, stale-while-revalidate=120",
+          "public, s-maxage=300, stale-while-revalidate=0",
         // Cache tag for invalidation
         "Netlify-Cache-Tag": `product-${productId},products,quick-view`,
       },
