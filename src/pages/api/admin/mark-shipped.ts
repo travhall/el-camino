@@ -157,5 +157,5 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect("/admin/orders/shipping?error=email");
   }
 
-  return redirect("/admin/orders/shipping?shipped=1");
+  return redirect(`/admin/orders/shipping?shipped=1&shippedId=${orderId}`);
 };

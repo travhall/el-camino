@@ -103,5 +103,5 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(`/admin/orders/pickups?error=update&detail=${encodeURIComponent(detail)}`);
   }
 
-  return redirect("/admin/orders/pickups?completed=1");
+  return redirect(`/admin/orders/pickups?completed=1&completedId=${orderId}`);
 };

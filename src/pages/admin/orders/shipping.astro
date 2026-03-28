@@ -29,6 +29,7 @@ interface ShippingOrder {
 
 const params = Astro.url.searchParams;
 const successId = params.get("shipped");
+const shippedId = params.get("shippedId");
 const dismissedOne = params.get("dismissed");
 const errorType = params.get("error");
 const errorDetail = params.get("detail");
@@ -88,6 +89,7 @@ try {
 }
 
 orders = await filterDismissed(orders);
+if (shippedId) orders = orders.filter((o) => o.orderId !== shippedId);
 const count = orders.length;
 ---
 
@@ -173,27 +175,32 @@ const count = orders.length;
       <!-- Orders list -->
       <div id="orders-list" class="space-y-2">
         {orders.map((order) => (
-          <div class="order-row bg-(--surface-secondary) border border-(--border-primary) rounded-sm overflow-hidden"
+          <div class="order-row border border-(--border-primary) border-l-4 border-l-sky-700 rounded-sm overflow-hidden"
                data-customer={order.customerName.toLowerCase()}
                data-order-id={order.shortId.toLowerCase()}
                data-items={order.items.map(i => i.name).join(" ").toLowerCase()}
                data-date={order.createdAtIso}
                data-total={order.totalCents}>
-            <!-- Row 1: ID / date / customer / address / total -->
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-2.5 border-b border-(--border-primary)">
-              <span class="font-mono text-xs font-bold text-(--content-heading) shrink-0">#{order.shortId}</span>
-              <span class="text-xs text-(--content-meta) shrink-0">{order.createdAt}</span>
-              <span class="text-sm font-semibold text-(--content-heading)">{order.customerName}</span>
-              {order.customerEmail && (
-                <a href={`mailto:${order.customerEmail}`}
-                   class="text-xs text-(--content-meta) hover:text-(--content-body) transition-colors">{order.customerEmail}</a>
-              )}
-              <span class="text-xs text-(--content-meta) hidden sm:inline">→</span>
-              <span class="text-xs text-(--content-body)">{order.address}</span>
-              <span class="ml-auto text-sm font-bold text-(--content-heading) shrink-0">{order.total}</span>
+            <!-- Row 1: customer / email / address / meta / total -->
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-0.5 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)">
+              <div class="flex flex-col min-w-0">
+                <span class="text-base font-semibold text-(--content-heading) leading-tight">{order.customerName}</span>
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                  {order.customerEmail && (
+                    <a href={`mailto:${order.customerEmail}`}
+                       class="text-xs text-(--content-meta) hover:text-(--content-body) transition-colors">{order.customerEmail}</a>
+                  )}
+                  <span class="text-xs text-(--content-body)">{order.address}</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 ml-auto shrink-0">
+                <span class="text-xs text-(--content-meta)">{order.createdAt}</span>
+                <span class="font-mono text-xs font-semibold text-(--content-meta) bg-(--surface-primary) border border-(--border-primary) rounded px-1.5 py-0.5">#{order.shortId}</span>
+                <span class="text-base font-bold text-(--content-heading)">{order.total}</span>
+              </div>
             </div>
             <!-- Row 2: item pills -->
-            <div class="px-4 py-2 flex flex-wrap gap-1.5 border-b border-(--border-primary) bg-(--surface-primary,#fff)">
+            <div class="px-4 py-2.5 flex flex-wrap gap-1.5 bg-(--surface-primary) border-b border-(--border-primary)">
               {order.items.map((item) => (
                 <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-(--border-primary) bg-(--surface-secondary) text-(--content-body)">
                   {Number(item.qty) > 1 && <span class="text-(--content-meta) font-medium">{item.qty}×</span>}
@@ -201,10 +208,10 @@ const count = orders.length;
                 </span>
               ))}
             </div>
-            <!-- Row 3: mark-shipped form + dismiss -->
-            <div class="flex flex-wrap items-center gap-3 px-4 py-2.5">
+            <!-- Row 3: mark-shipped form -->
+            <div class="px-4 py-2.5 bg-(--surface-secondary)">
               <form method="POST" action="/api/admin/mark-shipped"
-                    class="flex flex-wrap items-center gap-2 flex-1">
+                    class="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="orderId" value={order.orderId} />
                 <input name="trackingNumber" type="text" placeholder="Tracking number (optional)"
                        class="flex-1 min-w-40 border border-(--border-primary) rounded-sm px-3 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)" />
@@ -219,14 +226,6 @@ const count = orders.length;
                 <button type="submit"
                         class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap shrink-0">
                   Mark as Shipped
-                </button>
-              </form>
-              <form method="POST" action="/api/admin/dismiss-order">
-                <input type="hidden" name="orderId" value={order.orderId} />
-                <input type="hidden" name="from" value="/admin/orders/shipping" />
-                <button type="submit"
-                        class="text-xs text-(--content-meta) hover:text-(--content-body) underline underline-offset-2 transition-colors py-1.5 px-1">
-                  Dismiss
                 </button>
               </form>
             </div>
