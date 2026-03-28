@@ -24,7 +24,7 @@ interface ShippingOrder {
   customerName: string; customerEmail: string; address: string;
   items: { name: string; qty: string }[];
   total: string; totalCents: number;
-  fulfillmentUid: string; orderVersion: number;
+  fulfillmentUid: string;
 }
 
 const params = Astro.url.searchParams;
@@ -72,7 +72,7 @@ try {
       address: addrParts || "No address",
       items, total: formatMoney(order.totalMoney?.amount),
       totalCents: toTotalCents(order.totalMoney?.amount),
-      fulfillmentUid: f.uid ?? "", orderVersion: order.version ?? 1,
+      fulfillmentUid: f.uid ?? "",
     });
   }
 } catch (err) {
@@ -198,8 +198,6 @@ const count = orders.length;
               <form method="POST" action="/api/admin/mark-shipped"
                     class="flex flex-wrap items-center gap-2 flex-1">
                 <input type="hidden" name="orderId" value={order.orderId} />
-                <input type="hidden" name="fulfillmentUid" value={order.fulfillmentUid} />
-                <input type="hidden" name="orderVersion" value={order.orderVersion} />
                 <input name="trackingNumber" type="text" placeholder="Tracking number (optional)"
                        class="flex-1 min-w-40 border border-(--border-primary) rounded-sm px-3 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)" />
                 <select name="carrier"

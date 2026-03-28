@@ -3,8 +3,11 @@
 // Marks a Square shipping order as fulfilled, then sends the customer a
 // shipping confirmation email (with optional tracking number).
 //
-// Auth: validates the admin_session cookie directly (same logic as middleware)
-// since this endpoint lives under /api/, not /admin/.
+// Square enforces a strict state machine for SHIPMENT fulfillments:
+//   PROPOSED → RESERVED → COMPLETED
+// Jumping directly to COMPLETED is rejected, so we walk through each
+// intermediate state. The version is re-fetched before every step because
+// Square increments it on each successful update.
 
 import type { APIRoute } from "astro";
 import { createHmac } from "node:crypto";
@@ -13,18 +16,16 @@ import { sendShippingConfirmation } from "@/lib/email/sender";
 import type { PendingOrderContact } from "@/lib/email/pendingOrders";
 
 const COOKIE_NAME = "admin_session";
+const SHIPMENT_STATES = ["PROPOSED", "RESERVED", "COMPLETED"] as const;
 
 function expectedToken(secret: string): string {
   return createHmac("sha256", secret).update("admin:authenticated").digest("hex");
 }
 
-
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   // ── Auth check ────────────────────────────────────────────────────────────
   const secret = process.env.ADMIN_SECRET;
-  if (!secret) {
-    return new Response("Admin not configured", { status: 503 });
-  }
+  if (!secret) return new Response("Admin not configured", { status: 503 });
 
   const sessionToken = cookies.get(COOKIE_NAME)?.value ?? "";
   if (sessionToken !== expectedToken(secret)) {
@@ -33,25 +34,19 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   // ── Parse form body ───────────────────────────────────────────────────────
   let orderId: string;
-  let fulfillmentUid: string;
-  let orderVersion: number;
   let trackingNumber: string | undefined;
   let carrier: string | undefined;
 
   try {
     const body = await request.formData();
     orderId = (body.get("orderId") as string)?.trim();
-    fulfillmentUid = (body.get("fulfillmentUid") as string)?.trim();
-    orderVersion = parseInt((body.get("orderVersion") as string) ?? "1", 10);
     trackingNumber = (body.get("trackingNumber") as string)?.trim() || undefined;
     carrier = (body.get("carrier") as string)?.trim() || undefined;
   } catch {
     return new Response("Invalid form data", { status: 400 });
   }
 
-  if (!orderId || !fulfillmentUid) {
-    return new Response("Missing orderId or fulfillmentUid", { status: 400 });
-  }
+  if (!orderId) return new Response("Missing orderId", { status: 400 });
 
   // ── Square client ─────────────────────────────────────────────────────────
   const client = new Client({
@@ -62,26 +57,42 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
         : Environment.Sandbox,
   });
 
-  // ── Fetch the full order (need customer email + line items for email) ──────
+  // ── Fetch the live order — get fulfillmentUid, current state, customer info ─
+  let fulfillmentUid: string;
+  let currentState: string;
+  let locationId: string;
+  let customerEmail: string;
+  let customerName: string;
   let order: import("square/legacy").Order;
+
   try {
     const { result } = await client.ordersApi.retrieveOrder(orderId);
     if (!result.order) throw new Error("Order not returned");
     order = result.order;
+
+    locationId = order.locationId ?? import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
+
+    const fulfillment = order.fulfillments?.find(
+      (f) => f.type === "SHIPMENT" && f.state !== "COMPLETED" && f.state !== "CANCELED"
+    );
+    if (!fulfillment?.uid) throw new Error("No active SHIPMENT fulfillment found");
+
+    fulfillmentUid = fulfillment.uid;
+    currentState = fulfillment.state ?? "PROPOSED";
+
+    const recipient = fulfillment.shipmentDetails?.recipient;
+    if (!recipient?.emailAddress || !recipient?.displayName) {
+      throw new Error("No customer email on shipment recipient");
+    }
+    customerEmail = recipient.emailAddress;
+    customerName = recipient.displayName;
   } catch (err) {
     console.error(`[mark-shipped] Failed to retrieve order ${orderId}:`, err);
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("No customer email")) {
+      return redirect("/admin/orders/shipping?error=no-email");
+    }
     return redirect("/admin/orders/shipping?error=fetch");
-  }
-
-  // Extract customer contact from the shipment recipient (set during checkout)
-  const fulfillment = order.fulfillments?.find((f) => f.uid === fulfillmentUid);
-  const recipient = fulfillment?.shipmentDetails?.recipient;
-  const customerEmail = recipient?.emailAddress;
-  const customerName = recipient?.displayName;
-
-  if (!customerEmail || !customerName) {
-    console.error(`[mark-shipped] No customer email on order ${orderId}`);
-    return redirect("/admin/orders/shipping?error=no-email");
   }
 
   const contact: PendingOrderContact = {
@@ -90,32 +101,45 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     fulfillmentMethod: "shipping",
   };
 
-  // ── Update fulfillment state to COMPLETED in Square ───────────────────────
-  try {
-    const shipmentDetails =
-      trackingNumber || carrier
-        ? {
-            ...(trackingNumber ? { trackingNumber } : {}),
-            ...(carrier ? { carrier } : {}),
-          }
-        : undefined;
+  // ── Walk the state machine to COMPLETED ───────────────────────────────────
+  // Square requires sequential transitions — skipping states is rejected.
+  const currentIdx = SHIPMENT_STATES.indexOf(currentState as typeof SHIPMENT_STATES[number]);
+  const targetIdx = SHIPMENT_STATES.indexOf("COMPLETED");
+  const steps = SHIPMENT_STATES.slice(Math.max(currentIdx + 1, 0), targetIdx + 1);
 
-    await client.ordersApi.updateOrder(orderId, {
-      idempotencyKey: `shipped-${orderId}`,
-      order: {
-        locationId: order.locationId ?? import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
-        version: order.version,
-        fulfillments: [
-          {
-            uid: fulfillmentUid,
-            state: "COMPLETED",
-            ...(shipmentDetails ? { shipmentDetails } : {}),
-          },
-        ],
-      },
-    });
+  try {
+    for (const targetState of steps) {
+      // Re-fetch the version before each step — it increments on every update.
+      const { result: refreshed } = await client.ordersApi.retrieveOrder(orderId);
+      if (!refreshed.order) throw new Error("Order not found on refresh");
+
+      // Only attach tracking/carrier on the final COMPLETED transition.
+      const shipmentDetails =
+        targetState === "COMPLETED" && (trackingNumber || carrier)
+          ? {
+              ...(trackingNumber ? { trackingNumber } : {}),
+              ...(carrier ? { carrier } : {}),
+            }
+          : undefined;
+
+      await client.ordersApi.updateOrder(orderId, {
+        // Stable idempotency key per state — safe to retry if a step fails.
+        idempotencyKey: `shipped-${orderId}-${targetState}`,
+        order: {
+          locationId,
+          version: refreshed.order.version ?? 1,
+          fulfillments: [
+            {
+              uid: fulfillmentUid,
+              state: targetState,
+              ...(shipmentDetails ? { shipmentDetails } : {}),
+            },
+          ],
+        },
+      });
+    }
   } catch (err) {
-    console.error(`[mark-shipped] Square update failed for order ${orderId}:`, err);
+    console.error(`[mark-shipped] Square state update failed for order ${orderId}:`, err);
     return redirect("/admin/orders/shipping?error=update");
   }
 
