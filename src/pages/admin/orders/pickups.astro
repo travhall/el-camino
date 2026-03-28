@@ -30,6 +30,7 @@ const params = Astro.url.searchParams;
 const successId = params.get("completed");
 const dismissedOne = params.get("dismissed");
 const errorType = params.get("error");
+const errorDetail = params.get("detail");
 
 let orders: PickupOrder[] = [];
 let fetchError = false;
@@ -117,7 +118,8 @@ const count = orders.length;
   )}
   {errorType === "update" && (
     <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700">
-      Square rejected the update. The order may have already been completed or cancelled.
+      <strong>Square rejected the update.</strong>
+      {errorDetail && <span class="block mt-1 font-mono text-xs">{errorDetail}</span>}
     </div>
   )}
   {fetchError && (

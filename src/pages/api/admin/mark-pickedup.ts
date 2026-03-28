@@ -94,8 +94,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       });
     }
   } catch (err) {
-    console.error(`[mark-pickedup] Square state update failed for order ${orderId}:`, err);
-    return redirect("/admin/orders/pickups?error=update");
+    const squareErrors = (err as any)?.errors;
+    const detail = squareErrors?.[0]?.detail
+      ?? squareErrors?.[0]?.code
+      ?? (err as Error)?.message
+      ?? "unknown";
+    console.error(`[mark-pickedup] Square update failed for ${orderId}:`, JSON.stringify(err, null, 2));
+    return redirect(`/admin/orders/pickups?error=update&detail=${encodeURIComponent(detail)}`);
   }
 
   return redirect("/admin/orders/pickups?completed=1");

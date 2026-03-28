@@ -31,6 +31,7 @@ const params = Astro.url.searchParams;
 const successId = params.get("shipped");
 const dismissedOne = params.get("dismissed");
 const errorType = params.get("error");
+const errorDetail = params.get("detail");
 
 let orders: ShippingOrder[] = [];
 let fetchError = false;
@@ -113,7 +114,8 @@ const count = orders.length;
   )}
   {errorType === "update" && (
     <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700">
-      Square rejected the update for this order. Use Dismiss to hide it if it can't be processed.
+      <strong>Square rejected the update.</strong>
+      {errorDetail && <span class="block mt-1 font-mono text-xs">{errorDetail}</span>}
     </div>
   )}
   {errorType === "email" && (

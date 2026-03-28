@@ -139,8 +139,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       });
     }
   } catch (err) {
-    console.error(`[mark-shipped] Square state update failed for order ${orderId}:`, err);
-    return redirect("/admin/orders/shipping?error=update");
+    const squareErrors = (err as any)?.errors;
+    const detail = squareErrors?.[0]?.detail
+      ?? squareErrors?.[0]?.code
+      ?? (err as Error)?.message
+      ?? "unknown";
+    console.error(`[mark-shipped] Square update failed for ${orderId}:`, JSON.stringify(err, null, 2));
+    return redirect(`/admin/orders/shipping?error=update&detail=${encodeURIComponent(detail)}`);
   }
 
   // ── Send shipping confirmation to customer ────────────────────────────────
