@@ -92,8 +92,16 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   // ── Update fulfillment state to COMPLETED in Square ───────────────────────
   try {
+    const shipmentDetails =
+      trackingNumber || carrier
+        ? {
+            ...(trackingNumber ? { trackingNumber } : {}),
+            ...(carrier ? { carrier } : {}),
+          }
+        : undefined;
+
     await client.ordersApi.updateOrder(orderId, {
-      idempotencyKey: `shipped-${orderId}-${Date.now()}`,
+      idempotencyKey: `shipped-${orderId}`,
       order: {
         locationId: order.locationId ?? import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
         version: order.version,
@@ -101,11 +109,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
           {
             uid: fulfillmentUid,
             state: "COMPLETED",
-            shipmentDetails: {
-              shippedAt: new Date().toISOString(),
-              ...(trackingNumber ? { trackingNumber } : {}),
-              ...(carrier ? { carrier } : {}),
-            },
+            ...(shipmentDetails ? { shipmentDetails } : {}),
           },
         ],
       },
