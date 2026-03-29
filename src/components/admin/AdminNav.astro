@@ -16,9 +16,16 @@ const adminSections = [
     subcategories: [
       { name: "Shipping", href: "/admin/orders/shipping", slug: "shipping" },
       { name: "Pick Ups", href: "/admin/orders/pickups", slug: "pickups" },
+    ],
+  },
+  {
+    name: "Notifications",
+    href: "/admin/notifications/back-in-stock",
+    slug: "notifications",
+    subcategories: [
       {
         name: "Back in Stock",
-        href: "/admin/back-in-stock",
+        href: "/admin/notifications/back-in-stock",
         slug: "back-in-stock",
       },
     ],
@@ -109,8 +116,9 @@ const currentPath = Astro.url.pathname;
                 (section.slug === "performance" &&
                   currentPath.startsWith("/admin/performance")) ||
                 (section.slug === "orders" &&
-                  (currentPath.startsWith("/admin/orders") ||
-                    currentPath.startsWith("/admin/back-in-stock"))) ||
+                  currentPath.startsWith("/admin/orders")) ||
+                (section.slug === "notifications" &&
+                  currentPath.startsWith("/admin/notifications")) ||
                 (section.slug === "content" &&
                   currentPath.startsWith("/admin/content")),
             },

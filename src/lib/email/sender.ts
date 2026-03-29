@@ -101,7 +101,7 @@ export async function sendBisAdminNotification({
     subscriberEmail,
     productName,
     totalSubscribers,
-    adminUrl: `${origin}/admin/back-in-stock`,
+    adminUrl: `${origin}/admin/notifications/back-in-stock`,
   });
 
   const { error } = await getResend().emails.send({

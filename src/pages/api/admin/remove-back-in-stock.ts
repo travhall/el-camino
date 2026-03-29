@@ -24,7 +24,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (sessionToken !== expectedToken(secret)) {
     const isJson = request.headers.get("accept")?.includes("application/json");
     if (isJson) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
-    return redirect("/admin/login?from=/admin/back-in-stock");
+    return redirect("/admin/login?from=/admin/notifications/back-in-stock");
   }
 
   const isJson = request.headers.get("accept")?.includes("application/json");
@@ -48,5 +48,5 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     });
   }
 
-  return redirect(`/admin/back-in-stock?removed=${removed.length}`);
+  return redirect(`/admin/notifications/back-in-stock?removed=${removed.length}`);
 };

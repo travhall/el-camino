@@ -29,7 +29,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   const sessionToken = cookies.get(COOKIE_NAME)?.value ?? "";
   if (sessionToken !== expectedToken(secret)) {
-    return redirect("/admin/login?from=/admin/back-in-stock");
+    return redirect("/admin/login?from=/admin/notifications/back-in-stock");
   }
 
   let productId: string;
@@ -44,7 +44,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   const subscribers = await getSubscriptionsForProduct(productId);
   if (subscribers.length === 0) {
-    return redirect("/admin/back-in-stock?error=none");
+    return redirect("/admin/notifications/back-in-stock?error=none");
   }
 
   const siteOrigin = new URL(request.url).origin;
@@ -72,5 +72,5 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   const params = new URLSearchParams({ sent: String(sent) });
   if (failed > 0) params.set("failed", String(failed));
-  return redirect(`/admin/back-in-stock?${params}`);
+  return redirect(`/admin/notifications/back-in-stock?${params}`);
 };
