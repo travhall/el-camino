@@ -735,17 +735,23 @@ import {
           && ((document.getElementById("qv-bis-variation-id") as HTMLInputElement).value = this.currentVariation.variationId);
         (document.getElementById("qv-bis-product-title") as HTMLInputElement | null)
           && ((document.getElementById("qv-bis-product-title") as HTMLInputElement).value = label);
+        // Ensure product_url is always a fully-qualified URL so email links work
+        const absProductUrl = this.currentProduct.url
+          ? new URL(this.currentProduct.url, window.location.origin).href
+          : window.location.href;
         (document.getElementById("qv-bis-product-url") as HTMLInputElement | null)
-          && ((document.getElementById("qv-bis-product-url") as HTMLInputElement).value = this.currentProduct.url ?? "");
+          && ((document.getElementById("qv-bis-product-url") as HTMLInputElement).value = absProductUrl);
 
         const labelEl = document.getElementById("qv-bis-label");
         if (labelEl) labelEl.textContent = `Enter your email and we'll reach out when ${label} is back in stock.`;
 
-        // Reset form state when switching to a different sold-out variant
+        // Reset form state when switching to a different sold-out variant (or reopening QuickView)
         const form = document.getElementById("qv-bis-form") as HTMLFormElement | null;
         const emailInput = document.getElementById("qv-bis-email") as HTMLInputElement | null;
+        const submitBtn = document.getElementById("qv-bis-submit") as HTMLButtonElement | null;
         if (form) form.classList.remove("hidden");
         if (emailInput) emailInput.value = "";
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Notify Me"; }
         document.getElementById("qv-bis-success")?.classList.add("hidden");
         document.getElementById("qv-bis-error")?.classList.add("hidden");
 
