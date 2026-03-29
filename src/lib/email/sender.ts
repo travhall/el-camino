@@ -120,12 +120,10 @@ export async function sendBackInStockNotification({
   email,
   productName,
   productUrl,
-  variationId,
 }: {
   email: string;
   productName: string;
   productUrl: string;
-  variationId?: string;
 }): Promise<void> {
   // Derive a friendly first name from the email local part
   // e.g. "travis.hall@gmail.com" → "Travis"
@@ -137,7 +135,8 @@ export async function sendBackInStockNotification({
     customerName,
     productName,
     productUrl,
-    variationName: variationId || undefined,
+    // variationName intentionally omitted — productName already contains
+    // the full human-readable label including any variant descriptor
   });
 
   const { error } = await getResend().emails.send({

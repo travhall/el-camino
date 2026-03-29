@@ -13,6 +13,16 @@ function expectedToken(secret: string): string {
   return createHmac("sha256", secret).update("admin:authenticated").digest("hex");
 }
 
+function toAbsoluteUrl(url: string, origin: string): string {
+  if (!url) return origin;
+  try {
+    // If already absolute this is a no-op; if relative it resolves against origin
+    return new URL(url, origin).href;
+  } catch {
+    return origin;
+  }
+}
+
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const secret = process.env.ADMIN_SECRET;
   if (!secret) return new Response("Admin not configured", { status: 503 });
@@ -37,6 +47,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect("/admin/back-in-stock?error=none");
   }
 
+  const siteOrigin = new URL(request.url).origin;
   let sent = 0;
   let failed = 0;
 
@@ -44,9 +55,12 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     try {
       await sendBackInStockNotification({
         email: sub.email,
+        // productTitle already includes the human-readable variation name
+        // (e.g. "Baker 8.38 Tyson Deck") — don't pass variationId separately
+        // or it gets appended again as raw Square ID
         productName: sub.productTitle,
-        productUrl: sub.productUrl,
-        variationId: sub.variationId,
+        // Resolve against current origin so old relative URLs still work
+        productUrl: toAbsoluteUrl(sub.productUrl, siteOrigin),
       });
       await removeSubscription(sub.productId, sub.email);
       sent++;
