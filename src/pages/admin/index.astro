@@ -113,120 +113,126 @@ function relativeDate(iso: string | null): string {
 
       <!-- Shipping -->
       <a href="/admin/orders/shipping"
-         class="group relative flex flex-col gap-3 border border-(--border-primary) border-l-4 border-l-sky-600 rounded-sm bg-(--surface-secondary) px-5 py-4 hover:shadow-md transition-shadow no-underline">
+         class="group flex flex-col border border-(--border-primary) border-l-4 border-l-sky-600 rounded-sm bg-(--surface-secondary) hover:shadow-md transition-shadow no-underline overflow-hidden">
+        <!-- Label bar -->
+        <div class="flex items-center gap-2 px-5 pt-4 pb-2">
+          <svg class="w-4 h-4 text-sky-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V11"/>
+          </svg>
+          <span class="text-xs font-semibold uppercase tracking-wider text-sky-600">Shipping</span>
+        </div>
+        <!-- Content -->
         {shippingError ? (
-          <p class="text-xs text-red-500">Could not load shipping data</p>
+          <p class="px-5 pb-4 text-xs text-red-500">Could not load data</p>
         ) : shipping.count > 0 ? (
           <>
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <p class="text-3xl font-bold text-sky-700 leading-none">{shipping.count}</p>
-                <p class="text-sm text-(--content-body) mt-1">
-                  {shipping.count === 1 ? "order" : "orders"} to ship
-                </p>
+            <div class="px-5 pb-3">
+              <p class="text-5xl font-bold text-sky-700 leading-none tabular-nums">{shipping.count}</p>
+              <p class="text-base text-(--content-body) mt-1.5">
+                {shipping.count === 1 ? "order" : "orders"} waiting to ship
+              </p>
+              <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
+                {shipping.oldestDate && (
+                  <span>Oldest: <strong class="text-(--content-body) font-medium">{relativeDate(shipping.oldestDate)}</strong></span>
+                )}
+                {shipping.totalCents > 0 && (
+                  <span>Value: <strong class="text-(--content-body) font-medium">{formatMoney(shipping.totalCents)}</strong></span>
+                )}
               </div>
-              <svg class="w-5 h-5 text-sky-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V11"/>
-              </svg>
             </div>
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-(--content-meta)">
-              {shipping.oldestDate && (
-                <span>Oldest: <span class="font-medium text-(--content-body)">{relativeDate(shipping.oldestDate)}</span></span>
-              )}
-              {shipping.totalCents > 0 && (
-                <span>Value: <span class="font-medium text-(--content-body)">{formatMoney(shipping.totalCents)}</span></span>
-              )}
+            <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
+              <span class="text-xs font-semibold text-sky-600 group-hover:text-sky-500 transition-colors">View orders →</span>
             </div>
           </>
         ) : (
-          <div class="flex items-center gap-3">
-            <svg class="w-5 h-5 text-sky-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          <div class="px-5 pb-5 flex items-center gap-2.5">
+            <svg class="w-4 h-4 text-sky-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
             </svg>
-            <div>
-              <p class="text-sm font-medium text-(--content-body)">Shipping</p>
-              <p class="text-xs text-(--content-meta)">No pending shipments</p>
-            </div>
+            <p class="text-sm text-(--content-meta)">No pending shipments</p>
           </div>
         )}
-        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-(--content-meta) opacity-0 group-hover:opacity-100 transition-opacity text-sm">→</span>
       </a>
 
       <!-- Pick Ups -->
       <a href="/admin/orders/pickups"
-         class="group relative flex flex-col gap-3 border border-(--border-primary) border-l-4 border-l-emerald-600 rounded-sm bg-(--surface-secondary) px-5 py-4 hover:shadow-md transition-shadow no-underline">
+         class="group flex flex-col border border-(--border-primary) border-l-4 border-l-emerald-600 rounded-sm bg-(--surface-secondary) hover:shadow-md transition-shadow no-underline overflow-hidden">
+        <!-- Label bar -->
+        <div class="flex items-center gap-2 px-5 pt-4 pb-2">
+          <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+          </svg>
+          <span class="text-xs font-semibold uppercase tracking-wider text-emerald-700">Pick Ups</span>
+        </div>
+        <!-- Content -->
         {pickupError ? (
-          <p class="text-xs text-red-500">Could not load pickup data</p>
+          <p class="px-5 pb-4 text-xs text-red-500">Could not load data</p>
         ) : pickup.count > 0 ? (
           <>
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <p class="text-3xl font-bold text-emerald-700 leading-none">{pickup.count}</p>
-                <p class="text-sm text-(--content-body) mt-1">
-                  {pickup.count === 1 ? "pickup" : "pickups"} ready
-                </p>
+            <div class="px-5 pb-3">
+              <p class="text-5xl font-bold text-emerald-700 leading-none tabular-nums">{pickup.count}</p>
+              <p class="text-base text-(--content-body) mt-1.5">
+                {pickup.count === 1 ? "customer" : "customers"} ready to pick up
+              </p>
+              <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
+                {pickup.oldestDate && (
+                  <span>Oldest: <strong class="text-(--content-body) font-medium">{relativeDate(pickup.oldestDate)}</strong></span>
+                )}
               </div>
-              <svg class="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.4 7h12.8M7 13H5.4M10 21a1 1 0 100-2 1 1 0 000 2zm7 0a1 1 0 100-2 1 1 0 000 2z"/>
-              </svg>
             </div>
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-(--content-meta)">
-              {pickup.oldestDate && (
-                <span>Oldest: <span class="font-medium text-(--content-body)">{relativeDate(pickup.oldestDate)}</span></span>
-              )}
+            <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
+              <span class="text-xs font-semibold text-emerald-700 group-hover:text-emerald-600 transition-colors">View pickups →</span>
             </div>
           </>
         ) : (
-          <div class="flex items-center gap-3">
-            <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          <div class="px-5 pb-5 flex items-center gap-2.5">
+            <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
             </svg>
-            <div>
-              <p class="text-sm font-medium text-(--content-body)">Pick Ups</p>
-              <p class="text-xs text-(--content-meta)">No pending pickups</p>
-            </div>
+            <p class="text-sm text-(--content-meta)">No pending pickups</p>
           </div>
         )}
-        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-(--content-meta) opacity-0 group-hover:opacity-100 transition-opacity text-sm">→</span>
       </a>
 
       <!-- Back in Stock -->
       <a href="/admin/back-in-stock"
-         class="group relative flex flex-col gap-3 border border-(--border-primary) border-l-4 border-l-amber-500 rounded-sm bg-(--surface-secondary) px-5 py-4 hover:shadow-md transition-shadow no-underline">
+         class="group flex flex-col border border-(--border-primary) border-l-4 border-l-amber-500 rounded-sm bg-(--surface-secondary) hover:shadow-md transition-shadow no-underline overflow-hidden">
+        <!-- Label bar -->
+        <div class="flex items-center gap-2 px-5 pt-4 pb-2">
+          <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+          <span class="text-xs font-semibold uppercase tracking-wider text-amber-700">Back in Stock</span>
+        </div>
+        <!-- Content -->
         {bisError ? (
-          <p class="text-xs text-red-500">Could not load subscriber data</p>
+          <p class="px-5 pb-4 text-xs text-red-500">Could not load data</p>
         ) : bis.products > 0 ? (
           <>
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <p class="text-3xl font-bold text-amber-700 leading-none">{bis.subscribers}</p>
-                <p class="text-sm text-(--content-body) mt-1">
-                  {bis.subscribers === 1 ? "subscriber" : "subscribers"} waiting
-                </p>
+            <div class="px-5 pb-3">
+              <p class="text-5xl font-bold text-amber-700 leading-none tabular-nums">{bis.subscribers}</p>
+              <p class="text-base text-(--content-body) mt-1.5">
+                {bis.subscribers === 1 ? "subscriber" : "subscribers"} waiting
+              </p>
+              <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
+                <span>Across <strong class="text-(--content-body) font-medium">{bis.products} {bis.products === 1 ? "product" : "products"}</strong></span>
               </div>
-              <svg class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-              </svg>
             </div>
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-(--content-meta)">
-              <span>Across <span class="font-medium text-(--content-body)">{bis.products} {bis.products === 1 ? "product" : "products"}</span></span>
+            <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
+              <span class="text-xs font-semibold text-amber-700 group-hover:text-amber-600 transition-colors">View subscribers →</span>
             </div>
           </>
         ) : (
-          <div class="flex items-center gap-3">
-            <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          <div class="px-5 pb-5 flex items-center gap-2.5">
+            <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
             </svg>
-            <div>
-              <p class="text-sm font-medium text-(--content-body)">Back in Stock</p>
-              <p class="text-xs text-(--content-meta)">No pending subscribers</p>
-            </div>
+            <p class="text-sm text-(--content-meta)">No pending subscribers</p>
           </div>
         )}
-        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-(--content-meta) opacity-0 group-hover:opacity-100 transition-opacity text-sm">→</span>
       </a>
 
     </div>
