@@ -56,10 +56,15 @@ export async function removeSubscription(
 
 export async function removeAllSubscriptionsForProduct(
   productId: string
-): Promise<number> {
+): Promise<BisSubscription[]> {
   const { blobs } = await store().list({ prefix: `${productId}/` });
+  const subs = (
+    await Promise.all(
+      blobs.map((b) => store().get(b.key, { type: "json" }) as Promise<BisSubscription | null>)
+    )
+  ).filter((s): s is BisSubscription => s !== null);
   await Promise.all(blobs.map((b) => store().delete(b.key)));
-  return blobs.length;
+  return subs;
 }
 
 export interface ProductSummary {

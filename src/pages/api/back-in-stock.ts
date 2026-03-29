@@ -52,7 +52,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Notify Tyler of new subscription (non-blocking)
     if (!alreadyOn) {
       const allSubs = await getSubscriptionsForProduct(productId);
-      const origin = request.headers.get("origin") ?? "";
+      const origin = new URL(request.url).origin;
       sendBisAdminNotification({
         subscriberEmail: email,
         productName: productTitle,
