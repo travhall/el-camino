@@ -23,9 +23,19 @@ function makeSquareClient() {
   });
 }
 
-interface ShippingSummary { count: number; oldestDate: string | null; totalCents: number; }
-interface PickupSummary   { count: number; oldestDate: string | null; }
-interface BisSummary      { products: number; subscribers: number; }
+interface ShippingSummary {
+  count: number;
+  oldestDate: string | null;
+  totalCents: number;
+}
+interface PickupSummary {
+  count: number;
+  oldestDate: string | null;
+}
+interface BisSummary {
+  products: number;
+  subscribers: number;
+}
 
 const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
   // Pending shipments
@@ -35,7 +45,10 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
       locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
       query: {
         filter: {
-          fulfillmentFilter: { fulfillmentTypes: ["SHIPMENT"], fulfillmentStates: ["PROPOSED"] },
+          fulfillmentFilter: {
+            fulfillmentTypes: ["SHIPMENT"],
+            fulfillmentStates: ["PROPOSED"],
+          },
           stateFilter: { states: ["OPEN"] },
         },
         sort: { sortField: "CREATED_AT", sortOrder: "ASC" },
@@ -50,14 +63,17 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
     return { count: paid.length, oldestDate: oldest, totalCents };
   })(),
 
-  // Pending pickups
+  // Pending pick ups
   (async (): Promise<PickupSummary> => {
     const client = makeSquareClient();
     const { result } = await client.ordersApi.searchOrders({
       locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
       query: {
         filter: {
-          fulfillmentFilter: { fulfillmentTypes: ["PICKUP"], fulfillmentStates: ["PROPOSED", "RESERVED", "PREPARED"] },
+          fulfillmentFilter: {
+            fulfillmentTypes: ["PICKUP"],
+            fulfillmentStates: ["PROPOSED", "RESERVED", "PREPARED"],
+          },
           stateFilter: { states: ["OPEN"] },
         },
         sort: { sortField: "CREATED_AT", sortOrder: "ASC" },
@@ -76,13 +92,22 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
   })(),
 ]);
 
-const shipping: ShippingSummary = shippingResult.status === "fulfilled" ? shippingResult.value : { count: 0, oldestDate: null, totalCents: 0 };
-const pickup:   PickupSummary   = pickupResult.status   === "fulfilled" ? pickupResult.value   : { count: 0, oldestDate: null };
-const bis:      BisSummary      = bisResult.status       === "fulfilled" ? bisResult.value       : { products: 0, subscribers: 0 };
+const shipping: ShippingSummary =
+  shippingResult.status === "fulfilled"
+    ? shippingResult.value
+    : { count: 0, oldestDate: null, totalCents: 0 };
+const pickup: PickupSummary =
+  pickupResult.status === "fulfilled"
+    ? pickupResult.value
+    : { count: 0, oldestDate: null };
+const bis: BisSummary =
+  bisResult.status === "fulfilled"
+    ? bisResult.value
+    : { products: 0, subscribers: 0 };
 
 const shippingError = shippingResult.status === "rejected";
-const pickupError   = pickupResult.status   === "rejected";
-const bisError      = bisResult.status      === "rejected";
+const pickupError = pickupResult.status === "rejected";
+const bisError = bisResult.status === "rejected";
 
 function formatMoney(cents: number) {
   return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -106,135 +131,247 @@ function relativeDate(iso: string | null): string {
 >
   <!-- ── Needs Attention ────────────────────────────────────────────────── -->
   <section class="mb-10">
-    <h2 class="text-xs font-semibold uppercase tracking-widest text-(--content-meta) mb-3">
+    <h2
+      class="text-sm font-semibold uppercase tracking-widest text-(--content-meta) mb-3"
+    >
       Needs Attention
     </h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
       <!-- Shipping -->
-      <a href="/admin/orders/shipping"
-         class="group flex flex-col border border-(--border-primary) border-l-4 border-l-sky-600 rounded-sm bg-(--surface-secondary) hover:shadow-md transition-shadow no-underline overflow-hidden">
+      <a
+        href="/admin/orders/shipping"
+        class="group flex flex-col border border-(--border-primary) border-l-4 border-l-sky-600 rounded-sm bg-(--surface-secondary) hover:shadow-md transition-shadow no-underline overflow-hidden"
+      >
         <!-- Label bar -->
         <div class="flex items-center gap-2 px-5 pt-4 pb-2">
-          <svg class="w-4 h-4 text-sky-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V11"/>
+          <svg
+            class="w-6 h-6 text-sky-500 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V11"></path>
           </svg>
-          <span class="text-xs font-semibold uppercase tracking-wider text-sky-600">Shipping</span>
+          <span
+            class="text-sm font-semibold uppercase tracking-wider text-sky-600"
+            >Shipping</span
+          >
         </div>
         <!-- Content -->
-        {shippingError ? (
-          <p class="px-5 pb-4 text-xs text-red-500">Could not load data</p>
-        ) : shipping.count > 0 ? (
-          <>
-            <div class="px-5 pb-3">
-              <p class="text-5xl font-bold text-sky-700 leading-none tabular-nums">{shipping.count}</p>
-              <p class="text-base text-(--content-body) mt-1.5">
-                {shipping.count === 1 ? "order" : "orders"} waiting to ship
-              </p>
-              <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
-                {shipping.oldestDate && (
-                  <span>Oldest: <strong class="text-(--content-body) font-medium">{relativeDate(shipping.oldestDate)}</strong></span>
-                )}
-                {shipping.totalCents > 0 && (
-                  <span>Value: <strong class="text-(--content-body) font-medium">{formatMoney(shipping.totalCents)}</strong></span>
-                )}
+        {
+          shippingError ? (
+            <p class="px-5 pb-4 text-xs text-red-500">Could not load data</p>
+          ) : shipping.count > 0 ? (
+            <>
+              <div class="px-5 pb-3">
+                <p class="text-5xl font-bold text-sky-700 leading-none tabular-nums">
+                  {shipping.count}
+                </p>
+                <p class="text-base text-(--content-body) mt-1.5">
+                  {shipping.count === 1 ? "order" : "orders"} waiting to ship
+                </p>
+                <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
+                  {shipping.oldestDate && (
+                    <span>
+                      Oldest:{" "}
+                      <strong class="text-(--content-body) font-medium">
+                        {relativeDate(shipping.oldestDate)}
+                      </strong>
+                    </span>
+                  )}
+                  {shipping.totalCents > 0 && (
+                    <span>
+                      Value:{" "}
+                      <strong class="text-(--content-body) font-medium">
+                        {formatMoney(shipping.totalCents)}
+                      </strong>
+                    </span>
+                  )}
+                </div>
               </div>
+              <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
+                <span class="text-sm font-semibold text-sky-600 group-hover:text-sky-500 transition-colors">
+                  View orders →
+                </span>
+              </div>
+            </>
+          ) : (
+            <div class="px-5 pb-5 flex items-center gap-2.5">
+              <svg
+                class="w-6 h-6 text-sky-400 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              <p class="text-sm text-(--content-meta)">No pending shipments</p>
             </div>
-            <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
-              <span class="text-xs font-semibold text-sky-600 group-hover:text-sky-500 transition-colors">View orders →</span>
-            </div>
-          </>
-        ) : (
-          <div class="px-5 pb-5 flex items-center gap-2.5">
-            <svg class="w-4 h-4 text-sky-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-            </svg>
-            <p class="text-sm text-(--content-meta)">No pending shipments</p>
-          </div>
-        )}
+          )
+        }
       </a>
 
       <!-- Pick Ups -->
-      <a href="/admin/orders/pickups"
-         class="group flex flex-col border border-(--border-primary) border-l-4 border-l-emerald-600 rounded-sm bg-(--surface-secondary) hover:shadow-md transition-shadow no-underline overflow-hidden">
+      <a
+        href="/admin/orders/pickups"
+        class="group flex flex-col border border-(--border-primary) border-l-4 border-l-emerald-600 rounded-sm bg-(--surface-secondary) hover:shadow-md transition-shadow no-underline overflow-hidden"
+      >
         <!-- Label bar -->
         <div class="flex items-center gap-2 px-5 pt-4 pb-2">
-          <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+          <svg
+            class="w-6 h-6 text-emerald-500 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
           </svg>
-          <span class="text-xs font-semibold uppercase tracking-wider text-emerald-700">Pick Ups</span>
+          <span
+            class="text-sm font-semibold uppercase tracking-wider text-emerald-700"
+            >Pick Ups</span
+          >
         </div>
         <!-- Content -->
-        {pickupError ? (
-          <p class="px-5 pb-4 text-xs text-red-500">Could not load data</p>
-        ) : pickup.count > 0 ? (
-          <>
-            <div class="px-5 pb-3">
-              <p class="text-5xl font-bold text-emerald-700 leading-none tabular-nums">{pickup.count}</p>
-              <p class="text-base text-(--content-body) mt-1.5">
-                {pickup.count === 1 ? "customer" : "customers"} ready to pick up
-              </p>
-              <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
-                {pickup.oldestDate && (
-                  <span>Oldest: <strong class="text-(--content-body) font-medium">{relativeDate(pickup.oldestDate)}</strong></span>
-                )}
+        {
+          pickupError ? (
+            <p class="px-5 pb-4 text-xs text-red-500">Could not load data</p>
+          ) : pickup.count > 0 ? (
+            <>
+              <div class="px-5 pb-3">
+                <p class="text-5xl font-bold text-emerald-700 leading-none tabular-nums">
+                  {pickup.count}
+                </p>
+                <p class="text-base text-(--content-body) mt-1.5">
+                  {pickup.count === 1 ? "customer" : "customers"} ready to pick
+                  up
+                </p>
+                <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
+                  {pickup.oldestDate && (
+                    <span>
+                      Oldest:{" "}
+                      <strong class="text-(--content-body) font-medium">
+                        {relativeDate(pickup.oldestDate)}
+                      </strong>
+                    </span>
+                  )}
+                </div>
               </div>
+              <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
+                <span class="text-sm font-semibold text-emerald-700 group-hover:text-emerald-600 transition-colors">
+                  View pick ups →
+                </span>
+              </div>
+            </>
+          ) : (
+            <div class="px-5 pb-5 flex items-center gap-2.5">
+              <svg
+                class="w-6 h-6 text-emerald-400 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              <p class="text-sm text-(--content-meta)">No pending pick ups</p>
             </div>
-            <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
-              <span class="text-xs font-semibold text-emerald-700 group-hover:text-emerald-600 transition-colors">View pickups →</span>
-            </div>
-          </>
-        ) : (
-          <div class="px-5 pb-5 flex items-center gap-2.5">
-            <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-            </svg>
-            <p class="text-sm text-(--content-meta)">No pending pickups</p>
-          </div>
-        )}
+          )
+        }
       </a>
 
       <!-- Back in Stock -->
-      <a href="/admin/back-in-stock"
-         class="group flex flex-col border border-(--border-primary) border-l-4 border-l-amber-500 rounded-sm bg-(--surface-secondary) hover:shadow-md transition-shadow no-underline overflow-hidden">
+      <a
+        href="/admin/back-in-stock"
+        class="group flex flex-col border border-(--border-primary) border-l-4 border-l-amber-500 rounded-sm bg-(--surface-secondary) hover:shadow-md transition-shadow no-underline overflow-hidden"
+      >
         <!-- Label bar -->
         <div class="flex items-center gap-2 px-5 pt-4 pb-2">
-          <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          <svg
+            class="w-6 h-6 text-amber-500 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+            ></path>
           </svg>
-          <span class="text-xs font-semibold uppercase tracking-wider text-amber-700">Back in Stock</span>
+          <span
+            class="text-sm font-semibold uppercase tracking-wider text-amber-700"
+            >Back in Stock</span
+          >
         </div>
         <!-- Content -->
-        {bisError ? (
-          <p class="px-5 pb-4 text-xs text-red-500">Could not load data</p>
-        ) : bis.products > 0 ? (
-          <>
-            <div class="px-5 pb-3">
-              <p class="text-5xl font-bold text-amber-700 leading-none tabular-nums">{bis.subscribers}</p>
-              <p class="text-base text-(--content-body) mt-1.5">
-                {bis.subscribers === 1 ? "subscriber" : "subscribers"} waiting
-              </p>
-              <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
-                <span>Across <strong class="text-(--content-body) font-medium">{bis.products} {bis.products === 1 ? "product" : "products"}</strong></span>
+        {
+          bisError ? (
+            <p class="px-5 pb-4 text-xs text-red-500">Could not load data</p>
+          ) : bis.products > 0 ? (
+            <>
+              <div class="px-5 pb-3">
+                <p class="text-5xl font-bold text-amber-700 leading-none tabular-nums">
+                  {bis.subscribers}
+                </p>
+                <p class="text-base text-(--content-body) mt-1.5">
+                  {bis.subscribers === 1 ? "subscriber" : "subscribers"} waiting
+                </p>
+                <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
+                  <span>
+                    Across{" "}
+                    <strong class="text-(--content-body) font-medium">
+                      {bis.products}{" "}
+                      {bis.products === 1 ? "product" : "products"}
+                    </strong>
+                  </span>
+                </div>
               </div>
+              <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
+                <span class="text-sm font-semibold text-amber-700 group-hover:text-amber-600 transition-colors">
+                  View subscribers →
+                </span>
+              </div>
+            </>
+          ) : (
+            <div class="px-5 pb-5 flex items-center gap-2.5">
+              <svg
+                class="w-6 h-6 text-amber-400 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              <p class="text-sm text-(--content-meta)">
+                No pending subscribers
+              </p>
             </div>
-            <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
-              <span class="text-xs font-semibold text-amber-700 group-hover:text-amber-600 transition-colors">View subscribers →</span>
-            </div>
-          </>
-        ) : (
-          <div class="px-5 pb-5 flex items-center gap-2.5">
-            <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-            </svg>
-            <p class="text-sm text-(--content-meta)">No pending subscribers</p>
-          </div>
-        )}
+          )
+        }
       </a>
-
     </div>
   </section>
 
@@ -255,7 +392,10 @@ function relativeDate(iso: string | null): string {
       </div>
 
       <!-- Loading state -->
-      <div id="cwv-loading" class="py-4 text-center text-(--content-meta) text-sm">
+      <div
+        id="cwv-loading"
+        class="py-4 text-center text-(--content-meta) text-sm"
+      >
         Loading field data…
       </div>
 
@@ -265,37 +405,62 @@ function relativeDate(iso: string | null): string {
           No Chrome UX Report data yet for this origin.
         </p>
         <p class="text-xs text-(--content-meta) mt-1">
-          Field data becomes available once the site has sufficient real-user traffic (~1,000 visits).
+          Field data becomes available once the site has sufficient real-user
+          traffic (~1,000 visits).
         </p>
       </div>
 
       <!-- No API key state (hidden by default) -->
       <div id="cwv-no-key" class="hidden py-6 text-center">
         <p class="text-(--content-meta) text-sm">
-          Set the <code class="font-mono text-xs bg-(--surface-tertiary) px-1 rounded">CRUX_API_KEY</code> environment variable to enable field data.
+          Set the <code
+            class="font-mono text-xs bg-(--surface-tertiary) px-1 rounded"
+            >CRUX_API_KEY</code
+          > environment variable to enable field data.
         </p>
         <p class="text-xs text-(--content-meta) mt-1">
-          Get a free key at <span class="font-mono text-xs">console.cloud.google.com</span> → APIs &amp; Services → Chrome UX Report API.
+          Get a free key at <span class="font-mono text-xs"
+            >console.cloud.google.com</span
+          > → APIs &amp; Services → Chrome UX Report API.
         </p>
       </div>
 
       <!-- Metrics grid (hidden until data loads) -->
-      <div id="cwv-metrics" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div
+        id="cwv-metrics"
+        style="display:none"
+        class="grid grid-cols-1 md:grid-cols-3 gap-6"
+      >
         <!-- LCP -->
         <div class="text-center">
-          <div id="lcp-value" class="text-4xl font-bold mb-1 text-(--content-heading)">—</div>
+          <div
+            id="lcp-value"
+            class="text-4xl font-bold mb-1 text-(--content-heading)"
+          >
+            —
+          </div>
           <div class="text-sm text-(--content-meta)">LCP (p75)</div>
           <div id="lcp-status" class="text-xs mt-1"></div>
         </div>
         <!-- INP -->
         <div class="text-center">
-          <div id="inp-value" class="text-4xl font-bold mb-1 text-(--content-heading)">—</div>
+          <div
+            id="inp-value"
+            class="text-4xl font-bold mb-1 text-(--content-heading)"
+          >
+            —
+          </div>
           <div class="text-sm text-(--content-meta)">INP (p75)</div>
           <div id="inp-status" class="text-xs mt-1"></div>
         </div>
         <!-- CLS -->
         <div class="text-center">
-          <div id="cls-value" class="text-4xl font-bold mb-1 text-(--content-heading)">—</div>
+          <div
+            id="cls-value"
+            class="text-4xl font-bold mb-1 text-(--content-heading)"
+          >
+            —
+          </div>
           <div class="text-sm text-(--content-meta)">CLS (p75)</div>
           <div id="cls-status" class="text-xs mt-1"></div>
         </div>
@@ -594,21 +759,30 @@ function relativeDate(iso: string | null): string {
     return good ? "text-green-600" : "text-yellow-600";
   }
 
-  function lcpStatus(ms: number | null): { label: string; good: boolean | null } {
+  function lcpStatus(ms: number | null): {
+    label: string;
+    good: boolean | null;
+  } {
     if (ms === null) return { label: "—", good: null };
     if (ms <= 2500) return { label: "Good", good: true };
     if (ms <= 4000) return { label: "Needs improvement", good: false };
     return { label: "Poor", good: false };
   }
 
-  function inpStatus(ms: number | null): { label: string; good: boolean | null } {
+  function inpStatus(ms: number | null): {
+    label: string;
+    good: boolean | null;
+  } {
     if (ms === null) return { label: "—", good: null };
     if (ms <= 200) return { label: "Good", good: true };
     if (ms <= 500) return { label: "Needs improvement", good: false };
     return { label: "Poor", good: false };
   }
 
-  function clsStatus(score: number | null): { label: string; good: boolean | null } {
+  function clsStatus(score: number | null): {
+    label: string;
+    good: boolean | null;
+  } {
     if (score === null) return { label: "—", good: null };
     if (score <= 0.1) return { label: "Good", good: true };
     if (score <= 0.25) return { label: "Needs improvement", good: false };
@@ -664,7 +838,7 @@ function relativeDate(iso: string | null): string {
       clsStatusEl.textContent = clsSt.label;
       clsStatusEl.className = `text-xs mt-1 ${vitalClass(clsSt.good)}`;
 
-      metrics.classList.remove("hidden");
+      metrics.style.display = "grid";
     } catch {
       loading.textContent = "Could not load field data.";
     }

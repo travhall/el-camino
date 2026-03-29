@@ -73,7 +73,7 @@ try {
           <div class="px-4 py-2.5 border-b border-(--border-primary)">
             <ol class="space-y-0.5">
               {product.subscribers.map((sub, i) => (
-                <li class="flex items-baseline gap-3 text-sm">
+                <li class="flex items-baseline gap-1 text-sm">
                   <span class="text-amber-600 font-mono text-xs shrink-0 text-right">{i + 1}.</span>
                   <span class="text-(--content-body)">{sub.email}</span>
                   <span class="text-xs text-(--content-meta) ml-auto shrink-0">
@@ -114,7 +114,8 @@ try {
   <div
     id="bis-undo-toast"
     role="status"
-    class="hidden opacity-0 fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 bg-(--surface-secondary) border border-(--border-primary) rounded-md shadow-lg text-sm min-w-72 max-w-sm transition-opacity duration-200"
+    style="display:none"
+    class="opacity-0 fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 bg-(--surface-secondary) border border-(--border-primary) rounded-md shadow-lg text-sm min-w-72 max-w-sm transition-opacity duration-200"
   >
     <span id="bis-undo-message" class="flex-1 text-(--content-body) truncate min-w-0">Subscribers removed</span>
     <div class="flex items-center gap-3 shrink-0">
@@ -177,7 +178,7 @@ try {
     toastMsg.textContent = `${count} subscriber${count !== 1 ? "s" : ""} removed`;
 
     // Reset + show
-    toast.classList.remove("hidden");
+    toast.style.display = "flex";
     toastBar.style.transition = "none";
     toastBar.style.width = "100%";
 
@@ -195,7 +196,7 @@ try {
   function dismissToast() {
     if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
     toast.style.opacity = "0";
-    setTimeout(() => toast.classList.add("hidden"), 200);
+    setTimeout(() => { toast.style.display = "none"; }, 200);
     pendingRestoreData = null;
     pendingCard = null;
   }
