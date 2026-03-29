@@ -1,8 +1,8 @@
 ---
 // src/components/BackInStock.astro
-// Shown when a product/variant is sold out. Captures customer email so the shop
-// owner can follow up when stock is restored. Uses Netlify Forms for zero-config
-// email forwarding — no external service required.
+// Shown when a product/variant is sold out. Captures customer email and stores
+// the subscription in Netlify Blobs. Tyler triggers notification emails from
+// the admin Back in Stock page when the product is restocked.
 
 interface Props {
   productId: string;
@@ -19,6 +19,8 @@ const {
   variationName,
   hidden = false,
 } = Astro.props;
+
+const productUrl = Astro.url.href;
 const label = variationName
   ? `${productTitle} — ${variationName}`
   : productTitle;
@@ -50,9 +52,8 @@ const label = variationName
     class="flex flex-col sm:flex-row gap-2"
     novalidate
   >
-    <!-- Hidden fields for Netlify Forms bot detection + product context -->
-    <input type="hidden" name="form-name" value="back-in-stock" />
     <input type="hidden" name="product_id" value={productId} />
+    <input type="hidden" name="product_url" value={productUrl} />
     <input
       type="hidden"
       id="bis-variation-id"

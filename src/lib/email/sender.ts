@@ -7,6 +7,7 @@ import {
   buildPickupNotificationHtml,
   buildShippingOrderNotificationHtml,
   buildShippingConfirmationHtml,
+  buildBackInStockHtml,
   type ShippingConfirmationPayload,
 } from "./templates";
 
@@ -80,6 +81,42 @@ export async function sendShippingConfirmation({
 
   if (error) {
     throw new Error(`Resend failed: ${JSON.stringify(error)}`);
+  }
+}
+
+export async function sendBackInStockNotification({
+  email,
+  productName,
+  productUrl,
+  variationId,
+}: {
+  email: string;
+  productName: string;
+  productUrl: string;
+  variationId?: string;
+}): Promise<void> {
+  // Derive a friendly first name from the email local part
+  // e.g. "travis.hall@gmail.com" → "Travis"
+  const localPart = email.split("@")[0].replace(/[._+-]/g, " ").trim();
+  const customerName =
+    localPart.charAt(0).toUpperCase() + localPart.slice(1) || "there";
+
+  const html = buildBackInStockHtml({
+    customerName,
+    productName,
+    productUrl,
+    variationName: variationId || undefined,
+  });
+
+  const { error } = await getResend().emails.send({
+    from: import.meta.env.EMAIL_FROM,
+    to: email,
+    subject: `Good news — ${productName} is back in stock`,
+    html,
+  });
+
+  if (error) {
+    throw new Error(`Resend failed for ${email}: ${JSON.stringify(error)}`);
   }
 }
 
