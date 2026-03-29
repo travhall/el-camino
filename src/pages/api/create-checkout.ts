@@ -293,7 +293,7 @@ export const POST: APIRoute = async ({ request }) => {
             },
           },
           expectedShippedAt: shipDate.toISOString(),
-          note: shipmentNote,
+          shippingNote: shipmentNote,
         },
       });
     } else if (fulfillmentMethod === "pickup" && pickupContact) {
