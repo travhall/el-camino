@@ -59,6 +59,7 @@ export interface ProductSummary {
   productTitle: string;
   productUrl: string;
   count: number;
+  subscribers: Array<{ email: string; submittedAt: string }>;
 }
 
 export async function getAllProductSummaries(): Promise<ProductSummary[]> {
@@ -77,11 +78,19 @@ export async function getAllProductSummaries(): Promise<ProductSummary[]> {
           productTitle: sub.productTitle,
           productUrl: sub.productUrl,
           count: 0,
+          subscribers: [],
         });
       }
-      map.get(sub.productId)!.count++;
+      const entry = map.get(sub.productId)!;
+      entry.count++;
+      entry.subscribers.push({ email: sub.email, submittedAt: sub.submittedAt });
     })
   );
 
-  return [...map.values()].sort((a, b) => b.count - a.count);
+  // Sort products by subscriber count descending; subscribers by signup date ascending
+  const summaries = [...map.values()].sort((a, b) => b.count - a.count);
+  summaries.forEach((s) =>
+    s.subscribers.sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))
+  );
+  return summaries;
 }

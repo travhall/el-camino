@@ -55,17 +55,24 @@ try {
         <div class="border border-(--border-primary) border-l-4 border-l-amber-500 rounded-sm overflow-hidden">
           <!-- Header -->
           <div class="flex flex-wrap items-center gap-4 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)">
-            <div class="flex-1 min-w-0">
-              <p class="text-base font-semibold text-(--content-heading)">{product.productTitle}</p>
-              <a href={product.productUrl}
-                 target="_blank"
-                 class="text-xs text-(--content-meta) hover:text-(--content-body) transition-colors underline underline-offset-2">
-                View product page
-              </a>
-            </div>
+            <p class="text-base font-semibold text-(--content-heading) flex-1 min-w-0">{product.productTitle}</p>
             <span class="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-amber-800 bg-amber-100 border border-amber-200 rounded-full px-3 py-1">
               {product.count} {product.count === 1 ? "subscriber" : "subscribers"}
             </span>
+          </div>
+          <!-- Subscriber list -->
+          <div class="px-4 py-2.5 bg-amber-50 border-b border-(--border-primary)">
+            <ol class="space-y-0.5">
+              {product.subscribers.map((sub, i) => (
+                <li class="flex items-baseline gap-3 text-sm">
+                  <span class="text-amber-600 font-mono text-xs w-5 shrink-0 text-right">{i + 1}.</span>
+                  <span class="text-(--content-body)">{sub.email}</span>
+                  <span class="text-xs text-(--content-meta) ml-auto shrink-0">
+                    {new Date(sub.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </span>
+                </li>
+              ))}
+            </ol>
           </div>
           <!-- Action -->
           <div class="px-4 py-3 bg-(--surface-primary) flex items-center gap-4">
