@@ -639,3 +639,65 @@ export function buildPickupNotificationHtml({
 
   return emailWrapper(content);
 }
+
+// ─── Tyler Back-in-Stock Subscriber Notification ─────────────────────────────
+
+export function buildBisAdminNotificationHtml({
+  subscriberEmail,
+  productName,
+  totalSubscribers,
+  adminUrl,
+}: {
+  subscriberEmail: string;
+  productName: string;
+  totalSubscribers: number;
+  adminUrl: string;
+}): string {
+  const content = `
+  ${emailHeader()}
+
+  <tr>
+    <td style="background-color:#ffffff;padding:32px 32px 0;">
+      <h1 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#2b2215;">
+        New Back-in-Stock Request
+      </h1>
+      <p style="margin:0 0 24px;font-size:15px;color:#4f3d22;">
+        Someone wants to know when <strong>${productName}</strong> is available again.
+      </p>
+    </td>
+  </tr>
+
+  ${divider()}
+
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px;">
+      <table role="presentation" cellpadding="0" cellspacing="0"
+             style="background-color:#f5edda;border-radius:6px;width:100%;">
+        <tr>
+          <td style="padding:20px 24px;">
+            <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
+              Subscriber
+            </p>
+            <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#2b2215;">
+              ${subscriberEmail}
+            </p>
+            <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
+              Total waiting
+            </p>
+            <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#2b2215;">
+              ${totalSubscribers} ${totalSubscribers === 1 ? "person" : "people"}
+            </p>
+            <a href="${adminUrl}"
+               style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:10px 24px;border-radius:6px;border:2px solid #3a5e22;">
+              View in Admin
+            </a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  ${emailFooter()}`;
+
+  return emailWrapper(content);
+}

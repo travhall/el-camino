@@ -5,6 +5,7 @@ import { getAllProductSummaries } from "@/lib/backInStock";
 const params = Astro.url.searchParams;
 const sent = params.get("sent");
 const failed = params.get("failed");
+const removed = params.get("removed");
 const errorType = params.get("error");
 
 let summaries: Awaited<ReturnType<typeof getAllProductSummaries>> = [];
@@ -20,15 +21,20 @@ try {
 
 <AdminLayout title="Back in Stock" description="">
   {sent && (
-    <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-800">
+    <div class="bis-banner mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-800">
       {failed
         ? `Sent ${sent} notification${Number(sent) !== 1 ? "s" : ""}. ${failed} failed — check logs.`
         : `Sent ${sent} notification${Number(sent) !== 1 ? "s" : ""} successfully.`
       }
     </div>
   )}
+  {removed && (
+    <div class="bis-banner mb-4 px-4 py-3 bg-slate-50 border border-slate-200 rounded-sm text-sm text-slate-700">
+      Removed {removed} subscriber{Number(removed) !== 1 ? "s" : ""} without sending notifications.
+    </div>
+  )}
   {errorType === "none" && (
-    <div class="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-sm text-sm text-amber-800">
+    <div class="bis-banner mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-sm text-sm text-amber-800">
       No subscribers found for that product.
     </div>
   )}
@@ -61,11 +67,11 @@ try {
             </span>
           </div>
           <!-- Subscriber list -->
-          <div class="px-4 py-2.5 bg-amber-50 border-b border-(--border-primary)">
+          <div class="px-4 py-2.5 border-b border-(--border-primary)">
             <ol class="space-y-0.5">
               {product.subscribers.map((sub, i) => (
                 <li class="flex items-baseline gap-3 text-sm">
-                  <span class="text-amber-600 font-mono text-xs w-5 shrink-0 text-right">{i + 1}.</span>
+                  <span class="text-amber-600 font-mono text-xs shrink-0 text-right">{i + 1}.</span>
                   <span class="text-(--content-body)">{sub.email}</span>
                   <span class="text-xs text-(--content-meta) ml-auto shrink-0">
                     {new Date(sub.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
@@ -75,7 +81,7 @@ try {
             </ol>
           </div>
           <!-- Action -->
-          <div class="px-4 py-3 bg-(--surface-primary) flex items-center gap-4">
+          <div class="px-4 py-3 bg-(--surface-primary) flex flex-wrap items-center gap-3">
             <form method="POST" action="/api/admin/send-back-in-stock">
               <input type="hidden" name="productId" value={product.productId} />
               <button type="submit"
@@ -83,12 +89,36 @@ try {
                 Send Notifications
               </button>
             </form>
+            <form method="POST" action="/api/admin/remove-back-in-stock"
+                  onsubmit="return confirm('Remove all subscribers for this product without emailing them?')">
+              <input type="hidden" name="productId" value={product.productId} />
+              <button type="submit"
+                      class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-slate-600 bg-transparent border-slate-300 hover:bg-slate-100 focus-visible:ring-slate-400 text-sm py-1.5 px-4 whitespace-nowrap">
+                Remove
+              </button>
+            </form>
             <p class="text-xs text-(--content-meta)">
-              Emails all {product.count} {product.count === 1 ? "subscriber" : "subscribers"} and removes them from this list.
+              Notify all {product.count} {product.count === 1 ? "subscriber" : "subscribers"} and remove them from this list. <em>Remove</em> silently discards without emailing.
             </p>
           </div>
         </div>
       ))}
     </div>
   )}
+<script>
+  // Auto-dismiss flash banners after 5 s and clean query params from URL
+  const banners = document.querySelectorAll<HTMLElement>(".bis-banner");
+  if (banners.length) {
+    setTimeout(() => {
+      banners.forEach((el) => {
+        el.style.transition = "opacity 0.5s ease";
+        el.style.opacity = "0";
+        setTimeout(() => el.remove(), 500);
+      });
+      const url = new URL(window.location.href);
+      ["sent", "failed", "removed", "error"].forEach((p) => url.searchParams.delete(p));
+      history.replaceState(null, "", url.toString());
+    }, 5000);
+  }
+</script>
 </AdminLayout>

@@ -4,7 +4,8 @@
 // the product is restocked.
 
 import type { APIRoute } from "astro";
-import { addSubscription, isAlreadySubscribed } from "@/lib/backInStock";
+import { addSubscription, isAlreadySubscribed, getSubscriptionsForProduct } from "@/lib/backInStock";
+import { sendBisAdminNotification } from "@/lib/email/sender";
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -47,6 +48,18 @@ export const POST: APIRoute = async ({ request }) => {
     console.log(
       `[back-in-stock] ${alreadyOn ? "Already subscribed" : "Subscribed"}: ${email} → ${productTitle}`
     );
+
+    // Notify Tyler of new subscription (non-blocking)
+    if (!alreadyOn) {
+      const allSubs = await getSubscriptionsForProduct(productId);
+      const origin = request.headers.get("origin") ?? "";
+      sendBisAdminNotification({
+        subscriberEmail: email,
+        productName: productTitle,
+        totalSubscribers: allSubs.length,
+        origin,
+      }).catch((err) => console.error("[back-in-stock] Admin notify failed:", err));
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

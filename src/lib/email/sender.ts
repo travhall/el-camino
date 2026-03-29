@@ -8,6 +8,7 @@ import {
   buildShippingOrderNotificationHtml,
   buildShippingConfirmationHtml,
   buildBackInStockHtml,
+  buildBisAdminNotificationHtml,
   type ShippingConfirmationPayload,
 } from "./templates";
 
@@ -81,6 +82,37 @@ export async function sendShippingConfirmation({
 
   if (error) {
     throw new Error(`Resend failed: ${JSON.stringify(error)}`);
+  }
+}
+
+export async function sendBisAdminNotification({
+  subscriberEmail,
+  productName,
+  totalSubscribers,
+  origin,
+}: {
+  subscriberEmail: string;
+  productName: string;
+  totalSubscribers: number;
+  origin: string;
+}): Promise<void> {
+  const html = buildBisAdminNotificationHtml({
+    subscriberEmail,
+    productName,
+    totalSubscribers,
+    adminUrl: `${origin}/admin/back-in-stock`,
+  });
+
+  const { error } = await getResend().emails.send({
+    from: import.meta.env.EMAIL_FROM,
+    to: import.meta.env.TYLER_EMAIL,
+    subject: `Back-in-stock request: ${productName}`,
+    html,
+  });
+
+  if (error) {
+    // Non-blocking — Tyler not getting the alert shouldn't break the customer experience
+    console.error("[sender] Failed to send BIS admin notification:", error);
   }
 }
 

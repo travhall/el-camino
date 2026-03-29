@@ -54,6 +54,14 @@ export async function removeSubscription(
   await store().delete(key(productId, email));
 }
 
+export async function removeAllSubscriptionsForProduct(
+  productId: string
+): Promise<number> {
+  const { blobs } = await store().list({ prefix: `${productId}/` });
+  await Promise.all(blobs.map((b) => store().delete(b.key)));
+  return blobs.length;
+}
+
 export interface ProductSummary {
   productId: string;
   productTitle: string;
