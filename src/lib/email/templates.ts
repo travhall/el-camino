@@ -655,6 +655,110 @@ export function buildPickupNotificationHtml({
   return emailWrapper(content);
 }
 
+// ─── Customer Pickup Reminder ─────────────────────────────────────────────────
+
+export interface PickupReminderPayload {
+  customerName: string;
+  orderId: string; // raw Square ID — short form derived internally
+  items: { name: string; qty: string }[];
+  pickupAt?: string; // formatted date string, e.g. "Tue, Apr 1, 2:00 PM CDT"
+}
+
+export function buildPickupReminderHtml({
+  customerName,
+  orderId,
+  items,
+  pickupAt,
+}: PickupReminderPayload): string {
+  const firstName = customerName.split(" ")[0];
+  const shortId = orderId.slice(-8).toUpperCase();
+
+  const itemRows = items
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding:8px 0;font-size:14px;color:#2b2215;vertical-align:top;">
+          ${item.name}
+          ${Number(item.qty) > 1 ? `<span style="color:#4f3d22;font-size:13px;"> &times; ${item.qty}</span>` : ""}
+        </td>
+      </tr>`,
+    )
+    .join("");
+
+  const pickupTimeNote = pickupAt
+    ? `<p style="margin:0 0 8px;font-size:13px;color:#4f3d22;">
+        This order was expected for pickup by approximately <strong>${pickupAt}</strong>. Stop by when you can — we'll hold it for you.
+       </p>`
+    : "";
+
+  const content = `
+  ${emailHeader()}
+
+  <!-- Body card -->
+  <tr>
+    <td style="background-color:#ffffff;padding:32px 32px 0;">
+      <h1 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#2b2215;">
+        Your order is waiting for you
+      </h1>
+      <p style="margin:0 0 20px;font-size:15px;color:#4f3d22;">
+        Hey ${firstName}, just a reminder — your pickup order is still here and ready to collect.
+      </p>
+      <p style="margin:0 0 24px;font-size:13px;color:#6b6256;">
+        Order reference: <strong style="color:#2b2215;">#${shortId}</strong>
+      </p>
+    </td>
+  </tr>
+
+  ${divider()}
+
+  <!-- Order items -->
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px;">
+      <p style="margin:0 0 16px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
+        Your Order
+      </p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        ${itemRows}
+      </table>
+    </td>
+  </tr>
+
+  ${divider()}
+
+  <!-- Pickup details -->
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px;">
+      <p style="margin:0 0 16px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
+        Pickup Details
+      </p>
+      <p style="margin:0 0 8px;font-size:14px;color:#2b2215;line-height:1.6;">
+        <strong>${siteConfig.contact.address.display}</strong>
+      </p>
+      ${pickupTimeNote}
+      <p style="margin:0;font-size:13px;color:#4f3d22;">
+        Store hours: Wed&ndash;Fri 11am&ndash;7pm &middot; Sat 11am&ndash;7pm &middot; Sun 11am&ndash;5pm
+      </p>
+    </td>
+  </tr>
+
+  <!-- CTA -->
+  <tr>
+    <td style="background-color:#ffffff;padding:24px 32px 32px;text-align:center;">
+      <p style="margin:0 0 16px;font-size:14px;color:#4f3d22;">
+        Questions or need to make other arrangements? Give us a call.
+      </p>
+      <a href="tel:${siteConfig.contact.phone.number}"
+         style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:12px 28px;border-radius:6px;border:2px solid #3a5e22;">
+        ${siteConfig.contact.phone.display}
+      </a>
+    </td>
+  </tr>
+
+  ${emailFooter()}`;
+
+  return emailWrapper(content);
+}
+
 // ─── Tyler Back-in-Stock Subscriber Notification ─────────────────────────────
 
 export function buildBisAdminNotificationHtml({

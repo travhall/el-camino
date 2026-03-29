@@ -189,12 +189,16 @@ import {
           </div>
 
           <!-- Back-in-stock capture — shown when selected variant is out of stock -->
-          <div id="qv-bis-section" class="mt-4 p-4 border-2 border-(--border-secondary) rounded-sm bg-(--surface-secondary) hidden">
+          <div
+            id="qv-bis-section"
+            class="mt-4 p-4 border-2 border-(--border-secondary) rounded-sm bg-(--surface-secondary) hidden"
+          >
             <p class="text-base font-bold text-(--content-heading) mb-1">
               Get notified when it's back
             </p>
             <p id="qv-bis-label" class="text-sm text-(--content-body) mb-4">
-              Enter your email and we'll reach out when this item is back in stock.
+              Enter your email and we'll reach out when this item is back in
+              stock.
             </p>
             <form
               id="qv-bis-form"
@@ -204,10 +208,30 @@ import {
               class="flex flex-col gap-2"
               novalidate
             >
-              <input type="hidden" id="qv-bis-product-id" name="product_id" value="" />
-              <input type="hidden" id="qv-bis-variation-id" name="variation_id" value="" />
-              <input type="hidden" id="qv-bis-product-title" name="product_title" value="" />
-              <input type="hidden" id="qv-bis-product-url" name="product_url" value="" />
+              <input
+                type="hidden"
+                id="qv-bis-product-id"
+                name="product_id"
+                value=""
+              />
+              <input
+                type="hidden"
+                id="qv-bis-variation-id"
+                name="variation_id"
+                value=""
+              />
+              <input
+                type="hidden"
+                id="qv-bis-product-title"
+                name="product_title"
+                value=""
+              />
+              <input
+                type="hidden"
+                id="qv-bis-product-url"
+                name="product_url"
+                value=""
+              />
               <input
                 type="email"
                 name="email"
@@ -225,11 +249,20 @@ import {
                 Notify Me
               </button>
             </form>
-            <p id="qv-bis-success" class="hidden mt-3 text-sm text-state-success-text font-semibold">
+            <p
+              id="qv-bis-success"
+              class="hidden mt-3 text-sm text-state-success-surface font-semibold"
+            >
               ✓ You're on the list! We'll email you when it's available.
             </p>
-            <p id="qv-bis-error" class="hidden mt-3 text-sm text-state-error-text">
-              Something went wrong — please try again or <a href="mailto:elcaminoboardshop@gmail.com" class="underline hover:no-underline">email us directly</a>.
+            <p
+              id="qv-bis-error"
+              class="hidden mt-3 text-sm text-state-error-surface"
+            >
+              Something went wrong — please try again or <a
+                href="mailto:elcaminoboardshop@gmail.com"
+                class="underline hover:no-underline">email us directly</a
+              >.
             </p>
           </div>
         </div>
@@ -243,21 +276,21 @@ import {
     >
       <div class="space-y-2">
         <div id="qv-atc-wrapper">
-        <Button
-          id="quick-view-add-to-cart"
-          variant="primary"
-          classes="w-full"
-          disabled
-        >
-          <span class="add-to-cart-text">Add to Cart</span>
-          <div class="add-to-cart-loading hidden">
-            <div
-              class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"
-            >
+          <Button
+            id="quick-view-add-to-cart"
+            variant="primary"
+            classes="w-full"
+            disabled
+          >
+            <span class="add-to-cart-text">Add to Cart</span>
+            <div class="add-to-cart-loading hidden">
+              <div
+                class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"
+              >
+              </div>
+              Adding...
             </div>
-            Adding...
-          </div>
-        </Button>
+          </Button>
         </div>
         <Button id="quick-view-full-details" variant="outline" classes="w-full">
           View Full Details
@@ -314,7 +347,10 @@ import {
       });
     }
 
-    async openQuickView(productId: string, preferredVariationId?: string): Promise<void> {
+    async openQuickView(
+      productId: string,
+      preferredVariationId?: string,
+    ): Promise<void> {
       this.lastProductId = productId;
       try {
         this.showLoading();
@@ -362,7 +398,10 @@ import {
       }
     }
 
-    private initializeProduct(product: Product, preferredVariationId?: string): void {
+    private initializeProduct(
+      product: Product,
+      preferredVariationId?: string,
+    ): void {
       // EXACTLY mirror PDP initialization
       let defaultVariationId = product.variationId;
       let variations = product.variations || [];
@@ -370,7 +409,9 @@ import {
       // If a preferred variation was requested (e.g. from the Sale page), honour it
       // as long as it exists and is in stock; otherwise fall through to normal logic.
       if (preferredVariationId) {
-        const preferred = variations.find((v) => v.variationId === preferredVariationId);
+        const preferred = variations.find(
+          (v) => v.variationId === preferredVariationId,
+        );
         if (preferred?.inStock) {
           defaultVariationId = preferredVariationId;
         }
@@ -520,7 +561,10 @@ import {
             const span = document.createElement("span");
             span.className =
               "px-2.5 py-1.5 border rounded-sm text-sm cursor-default bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)";
-            span.setAttribute("aria-label", `${displayName}: ${attributeValues[0]}`);
+            span.setAttribute(
+              "aria-label",
+              `${displayName}: ${attributeValues[0]}`,
+            );
             span.textContent = attributeValues[0];
             buttonContainer.appendChild(span);
           } else {
@@ -558,7 +602,8 @@ import {
           section.className = "mt-4";
 
           const heading = document.createElement("h4");
-          heading.className = "text-sm font-medium text-(--content-heading) mb-2";
+          heading.className =
+            "text-sm font-medium text-(--content-heading) mb-2";
           heading.textContent = displayName;
 
           const buttonContainer = document.createElement("div");
@@ -567,7 +612,10 @@ import {
           const span = document.createElement("span");
           span.className =
             "px-2.5 py-1.5 border rounded-sm text-sm cursor-default bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)";
-          span.setAttribute("aria-label", `${displayName}: ${attributeValues[0]}`);
+          span.setAttribute(
+            "aria-label",
+            `${displayName}: ${attributeValues[0]}`,
+          );
           span.textContent = attributeValues[0];
 
           buttonContainer.appendChild(span);
@@ -708,7 +756,9 @@ import {
 
     // Show/hide quantity stepper and back-in-stock form based on stock state
     private updateQuantityAndBis(inStock: boolean, quantity: number): void {
-      const quantitySection = document.getElementById("quick-view-quantity-section");
+      const quantitySection = document.getElementById(
+        "quick-view-quantity-section",
+      );
       const bisSection = document.getElementById("qv-bis-section");
       // Target the wrapper div, not the Button element itself — toggling hidden
       // on the <button> directly loses to Tailwind's inline-flex utility
@@ -729,29 +779,55 @@ import {
           ? `${this.currentProduct.title} — ${this.currentVariation.name}`
           : this.currentProduct.title;
 
-        (document.getElementById("qv-bis-product-id") as HTMLInputElement | null)
-          && ((document.getElementById("qv-bis-product-id") as HTMLInputElement).value = this.currentProduct.id);
-        (document.getElementById("qv-bis-variation-id") as HTMLInputElement | null)
-          && ((document.getElementById("qv-bis-variation-id") as HTMLInputElement).value = this.currentVariation.variationId);
-        (document.getElementById("qv-bis-product-title") as HTMLInputElement | null)
-          && ((document.getElementById("qv-bis-product-title") as HTMLInputElement).value = label);
+        (document.getElementById(
+          "qv-bis-product-id",
+        ) as HTMLInputElement | null) &&
+          ((
+            document.getElementById("qv-bis-product-id") as HTMLInputElement
+          ).value = this.currentProduct.id);
+        (document.getElementById(
+          "qv-bis-variation-id",
+        ) as HTMLInputElement | null) &&
+          ((
+            document.getElementById("qv-bis-variation-id") as HTMLInputElement
+          ).value = this.currentVariation.variationId);
+        (document.getElementById(
+          "qv-bis-product-title",
+        ) as HTMLInputElement | null) &&
+          ((
+            document.getElementById("qv-bis-product-title") as HTMLInputElement
+          ).value = label);
         // Ensure product_url is always a fully-qualified URL so email links work
         const absProductUrl = this.currentProduct.url
           ? new URL(this.currentProduct.url, window.location.origin).href
           : window.location.href;
-        (document.getElementById("qv-bis-product-url") as HTMLInputElement | null)
-          && ((document.getElementById("qv-bis-product-url") as HTMLInputElement).value = absProductUrl);
+        (document.getElementById(
+          "qv-bis-product-url",
+        ) as HTMLInputElement | null) &&
+          ((
+            document.getElementById("qv-bis-product-url") as HTMLInputElement
+          ).value = absProductUrl);
 
         const labelEl = document.getElementById("qv-bis-label");
-        if (labelEl) labelEl.textContent = `Enter your email and we'll reach out when ${label} is back in stock.`;
+        if (labelEl)
+          labelEl.textContent = `Enter your email and we'll reach out when ${label} is back in stock.`;
 
         // Reset form state when switching to a different sold-out variant (or reopening QuickView)
-        const form = document.getElementById("qv-bis-form") as HTMLFormElement | null;
-        const emailInput = document.getElementById("qv-bis-email") as HTMLInputElement | null;
-        const submitBtn = document.getElementById("qv-bis-submit") as HTMLButtonElement | null;
+        const form = document.getElementById(
+          "qv-bis-form",
+        ) as HTMLFormElement | null;
+        const emailInput = document.getElementById(
+          "qv-bis-email",
+        ) as HTMLInputElement | null;
+        const submitBtn = document.getElementById(
+          "qv-bis-submit",
+        ) as HTMLButtonElement | null;
         if (form) form.classList.remove("hidden");
         if (emailInput) emailInput.value = "";
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Notify Me"; }
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Notify Me";
+        }
         document.getElementById("qv-bis-success")?.classList.add("hidden");
         document.getElementById("qv-bis-error")?.classList.add("hidden");
 
@@ -761,17 +837,23 @@ import {
     }
 
     private setupBisForm(): void {
-      const form = document.getElementById("qv-bis-form") as HTMLFormElement | null;
+      const form = document.getElementById(
+        "qv-bis-form",
+      ) as HTMLFormElement | null;
       if (!form || form.dataset.initialized === "true") return;
       form.dataset.initialized = "true";
 
-      const submitBtn = document.getElementById("qv-bis-submit") as HTMLButtonElement | null;
+      const submitBtn = document.getElementById(
+        "qv-bis-submit",
+      ) as HTMLButtonElement | null;
       const successMsg = document.getElementById("qv-bis-success");
       const errorMsg = document.getElementById("qv-bis-error");
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const email = (document.getElementById("qv-bis-email") as HTMLInputElement | null)?.value?.trim();
+        const email = (
+          document.getElementById("qv-bis-email") as HTMLInputElement | null
+        )?.value?.trim();
         if (!email || !submitBtn) return;
 
         submitBtn.disabled = true;
@@ -937,7 +1019,7 @@ import {
               result.message || "Added to cart",
               "success",
               3000,
-              { label: "View Cart", href: "/cart" }
+              { label: "View Cart", href: "/cart" },
             );
           }
 
@@ -1205,7 +1287,10 @@ import {
     controller.setupEventHandlers();
 
     // Global function for product cards
-    (window as any).openQuickView = (productId: string, preferredVariationId?: string) => {
+    (window as any).openQuickView = (
+      productId: string,
+      preferredVariationId?: string,
+    ) => {
       controller.openQuickView(productId, preferredVariationId);
     };
   }

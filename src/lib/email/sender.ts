@@ -5,6 +5,7 @@ import type { PendingOrderContact } from "./pendingOrders";
 import {
   buildOrderConfirmationHtml,
   buildPickupNotificationHtml,
+  buildPickupReminderHtml,
   buildShippingOrderNotificationHtml,
   buildShippingConfirmationHtml,
   buildBackInStockHtml,
@@ -148,6 +149,33 @@ export async function sendBackInStockNotification({
 
   if (error) {
     throw new Error(`Resend failed for ${email}: ${JSON.stringify(error)}`);
+  }
+}
+
+export async function sendPickupReminderEmail({
+  to,
+  customerName,
+  orderId,
+  items,
+  pickupAt,
+}: {
+  to: string;
+  customerName: string;
+  orderId: string;
+  items: { name: string; qty: string }[];
+  pickupAt?: string;
+}): Promise<void> {
+  const html = buildPickupReminderHtml({ customerName, orderId, items, pickupAt });
+
+  const { error } = await getResend().emails.send({
+    from: import.meta.env.EMAIL_FROM,
+    to,
+    subject: "Reminder: Your El Camino pickup order is ready",
+    html,
+  });
+
+  if (error) {
+    throw new Error(`Resend failed: ${JSON.stringify(error)}`);
   }
 }
 

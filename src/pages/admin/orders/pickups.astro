@@ -25,6 +25,7 @@ interface PickupOrder {
   customerName: string; customerEmail: string; customerPhone: string;
   items: { name: string; qty: string }[];
   total: string; totalCents: number; note: string;
+  pickupAt: string; // formatted ready-by time, empty string if not set
 }
 
 const params = Astro.url.searchParams;
@@ -64,6 +65,14 @@ try {
     const rawNote = pd?.note ?? "";
     const customerNotesMatch = rawNote.match(/Customer Notes:\s*(.+)$/s);
     const note = customerNotesMatch?.[1]?.trim() ?? "";
+    const pickupAtIso = pd?.pickupAt ?? "";
+    const pickupAt = pickupAtIso
+      ? new Date(pickupAtIso).toLocaleString("en-US", {
+          weekday: "short", month: "short", day: "numeric",
+          hour: "numeric", minute: "2-digit",
+          timeZone: "America/Chicago", timeZoneName: "short",
+        })
+      : "";
     const items = (order.lineItems ?? [])
       .filter((li) => li.catalogObjectId)
       .map((li) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
@@ -76,7 +85,7 @@ try {
       customerPhone: recipient?.phoneNumber ?? "",
       items, total: formatMoney(order.totalMoney?.amount),
       totalCents: toTotalCents(order.totalMoney?.amount),
-      note,
+      note, pickupAt,
     });
   }
 } catch (err) {
@@ -178,12 +187,17 @@ const count = orders.length;
                   )}
                 </div>
               </div>
-              <div class="flex items-center gap-2 ml-auto shrink-0">
-                <span class="text-xs text-(--content-meta)">{order.createdAt}</span>
-                <button class="copy-btn font-mono text-xs font-semibold text-(--content-meta) bg-(--surface-primary) border border-(--border-primary) rounded px-1.5 py-0.5 hover:text-(--content-body) transition-colors"
-                        data-copy={order.shortId}
-                        aria-label={`Copy order ID ${order.shortId}`}>#{order.shortId}</button>
-                <span class="text-base font-bold text-(--content-heading)">{order.total}</span>
+              <div class="flex flex-col items-end gap-1 ml-auto shrink-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-(--content-meta)">{order.createdAt}</span>
+                  <button class="copy-btn font-mono text-xs font-semibold text-(--content-meta) bg-(--surface-primary) border border-(--border-primary) rounded px-1.5 py-0.5 hover:text-(--content-body) transition-colors"
+                          data-copy={order.shortId}
+                          aria-label={`Copy order ID ${order.shortId}`}>#{order.shortId}</button>
+                  <span class="text-base font-bold text-(--content-heading)">{order.total}</span>
+                </div>
+                {order.pickupAt && (
+                  <span class="text-xs font-medium text-emerald-700">Ready by {order.pickupAt}</span>
+                )}
               </div>
             </div>
             <!-- Row 2: item pills + optional note -->
@@ -199,7 +213,7 @@ const count = orders.length;
               )}
             </div>
             <!-- Row 3: action -->
-            <div class="flex items-center px-4 py-2.5 bg-(--surface-secondary)">
+            <div class="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-(--surface-secondary)">
               <form method="POST" action="/api/admin/mark-pickedup">
                 <input type="hidden" name="orderId" value={order.orderId} />
                 <button type="submit"
@@ -207,6 +221,14 @@ const count = orders.length;
                   Mark as Picked Up
                 </button>
               </form>
+              <button
+                type="button"
+                class="reminder-btn font-sans font-medium transition-all ease-in-out duration-200 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-emerald-800 border-emerald-700 hover:bg-emerald-700/10 focus-visible:ring-emerald-400 text-sm py-1.5 px-4 whitespace-nowrap"
+                data-order-id={order.orderId}
+                aria-label={`Send pickup reminder to ${order.customerName}`}
+              >
+                Send Reminder
+              </button>
             </div>
           </div>
         ))}
@@ -262,6 +284,43 @@ const count = orders.length;
     searchEl.addEventListener("input", applySearch);
     sortEl.addEventListener("change", () => { applySort(); applySearch(); });
   }
+
+  // Send reminder — fetch-based, no page reload
+  document.querySelectorAll<HTMLButtonElement>(".reminder-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const orderId = btn.dataset.orderId!;
+      const orig = btn.textContent!;
+      btn.textContent = "Sending…";
+      btn.disabled = true;
+
+      try {
+        const fd = new FormData();
+        fd.append("orderId", orderId);
+        const res = await fetch("/api/admin/send-pickup-reminder", {
+          method: "POST",
+          body: fd,
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          console.error("[reminder] failed:", res.status, body);
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        btn.textContent = "Sent!";
+        btn.classList.add("text-emerald-600", "border-emerald-400");
+      } catch (err) {
+        console.error("[reminder] error:", err);
+        btn.textContent = "Failed";
+        btn.classList.add("text-red-600", "border-red-400");
+      } finally {
+        btn.disabled = false;
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.classList.remove("text-emerald-600", "border-emerald-400", "text-red-600", "border-red-400");
+        }, 2500);
+      }
+    });
+  });
 
   // Click-to-copy with screen-reader announcement
   document.querySelectorAll<HTMLButtonElement>(".copy-btn").forEach((btn) => {
