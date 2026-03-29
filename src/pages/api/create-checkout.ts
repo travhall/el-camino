@@ -112,6 +112,7 @@ interface ShippingAddress {
   city: string;
   state: string;
   zip: string;
+  instructions?: string;
 }
 
 interface PickupContact {
@@ -269,6 +270,11 @@ export const POST: APIRoute = async ({ request }) => {
       const shipDate = new Date();
       shipDate.setDate(shipDate.getDate() + 2);
       
+      // Build shipment note — stores delivery instructions so the admin page can surface them
+      const shipmentNote = shippingAddress.instructions?.trim()
+        ? `Delivery Instructions: ${shippingAddress.instructions.trim()}`
+        : undefined;
+
       fulfillments.push({
         type: "SHIPMENT",
         state: "PROPOSED",
@@ -287,6 +293,7 @@ export const POST: APIRoute = async ({ request }) => {
             },
           },
           expectedShippedAt: shipDate.toISOString(),
+          note: shipmentNote,
         },
       });
     } else if (fulfillmentMethod === "pickup" && pickupContact) {
