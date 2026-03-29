@@ -60,26 +60,51 @@ const adminDescription =
     <!-- Admin Header with Logo and Navigation -->
     <AdminHeader />
 
+    <!-- Page Header -->
+    <div class="my-6 p-3">
+      <h1 class="text-4xl font-bold text-(--content-heading) mb-4">
+        {title}
+      </h1>
+      {
+        description && (
+          <p class="text-lg text-(--content-body) max-w-2xl">{description}</p>
+        )
+      }
+    </div>
+
     <!-- Main Content -->
     <main
       class="p-1 lg:p-4 relative min-h-[calc(100vh-100px)]"
       id="main-content"
     >
-      <!-- Page Header -->
-      <div class="mb-8 p-3">
-        <h1 class="text-4xl font-bold text-(--content-heading) mb-4">
-          {title}
-        </h1>
-        {
-          description && (
-            <p class="text-lg text-(--content-body) max-w-2xl">{description}</p>
-          )
-        }
-      </div>
-
       <!-- Page Content -->
       <slot />
     </main>
     <AdminFooter />
   </body>
 </html>
+
+<style>
+  /* Consistent entry animation for all admin pages */
+  main {
+    animation: fadeInUp 0.4s ease-out both;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Respect reduced-motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    main {
+      animation: none;
+    }
+  }
+</style>

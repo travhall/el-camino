@@ -1,0 +1,38 @@
+---
+// src/components/admin/OrdersSubNav.astro
+// Extracted secondary nav shared by all Orders pages.
+// Uses aria-current="page" (not role="tab") because these are page-level
+// links, not in-page tab panels.
+
+interface Props {
+  activeTab: "shipping" | "pickups" | "archive";
+}
+
+const { activeTab } = Astro.props;
+
+const tabs = [
+  { name: "Shipping",  href: "/admin/orders/shipping", slug: "shipping"  },
+  { name: "Pick Ups",  href: "/admin/orders/pickups",  slug: "pickups"   },
+  { name: "Archive",   href: "/admin/orders/archive",  slug: "archive"   },
+];
+---
+
+<nav
+  aria-label="Orders sections"
+  class="flex gap-1 border-b border-(--border-primary) mb-6 -mt-4"
+>
+  {tabs.map((tab) => (
+    <a
+      href={tab.href}
+      aria-current={activeTab === tab.slug ? "page" : undefined}
+      class:list={[
+        "px-4 py-2 text-sm font-semibold border-b-2 transition-colors",
+        activeTab === tab.slug
+          ? "border-(--content-heading) text-(--content-heading)"
+          : "border-transparent text-(--content-meta) hover:text-(--content-body)",
+      ]}
+    >
+      {tab.name}
+    </a>
+  ))}
+</nav>

@@ -1,5 +1,6 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
+import OrdersSubNav from "@/components/admin/OrdersSubNav.astro";
 import { Client, Environment } from "square/legacy";
 
 function formatMoney(amount: bigint | number | undefined | null): string {
@@ -80,25 +81,14 @@ try {
 const count = orders.length;
 ---
 
-<AdminLayout title="Orders" description="">
-  <!-- Sub-nav tabs -->
-  <div class="flex gap-1 border-b border-(--border-primary) mb-6 -mt-4">
-    <a href="/admin/orders/shipping"
-       class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-(--content-meta) hover:text-(--content-body) transition-colors">
-      Shipping
-    </a>
-    <a href="/admin/orders/pickups"
-       class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-(--content-meta) hover:text-(--content-body) transition-colors">
-      Pick Ups
-    </a>
-    <a href="/admin/orders/archive"
-       class="px-4 py-2 text-sm font-semibold border-b-2 border-(--content-heading) text-(--content-heading)">
-      Archive
-    </a>
-  </div>
+<AdminLayout
+  title="Orders"
+  description="Completed shipping and pickup orders from Square."
+>
+  <OrdersSubNav activeTab="archive" />
 
   {fetchError && (
-    <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700">
+    <div role="alert" class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700">
       Could not load orders from Square. Check credentials and refresh.
     </div>
   )}
@@ -117,14 +107,17 @@ const count = orders.length;
         <p class="text-sm text-(--content-meta) mr-auto">
           Showing <span id="order-count">{count}</span> of {count} orders
         </p>
+        <label for="order-search" class="sr-only">Search orders</label>
         <input id="order-search" type="search" placeholder="Search customer or order…"
                class="border border-(--border-primary) rounded-sm px-3 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) w-56 focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)" />
+        <label for="order-type" class="sr-only">Filter by order type</label>
         <select id="order-type"
                 class="border border-(--border-primary) rounded-sm px-2 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)">
           <option value="all">All types</option>
           <option value="SHIPMENT">Shipped</option>
           <option value="PICKUP">Picked Up</option>
         </select>
+        <label for="order-sort" class="sr-only">Sort orders by</label>
         <select id="order-sort"
                 class="border border-(--border-primary) rounded-sm px-2 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)">
           <option value="newest">Newest first</option>
@@ -147,7 +140,7 @@ const count = orders.length;
             <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-2.5 border-b border-(--border-primary)">
               <span class="font-mono text-xs font-bold text-(--content-heading) shrink-0">#{order.shortId}</span>
               <span class="text-xs text-(--content-meta) shrink-0">{order.createdAt}</span>
-              <span class="text-sm font-semibold text-(--content-heading)">{order.customerName}</span>
+              <h2 class="text-sm font-semibold text-(--content-heading)">{order.customerName}</h2>
               <span class={`text-xs font-semibold px-1.5 py-0.5 rounded-sm shrink-0 ${
                 order.type === "SHIPMENT"
                   ? "bg-blue-100 text-blue-700"
