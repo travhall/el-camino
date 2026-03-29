@@ -284,6 +284,34 @@ const count = orders.length;
     sortEl.addEventListener("change", () => { applySort(); applySearch(); });
   }
 
+  // Auto-detect carrier from tracking number pattern
+  function detectCarrier(tracking: string): string | null {
+    const t = tracking.replace(/\s+/g, "").toUpperCase();
+    if (!t) return null;
+    if (/^1Z/i.test(t)) return "UPS";                          // UPS: always starts with 1Z
+    if (/^9[0-9]{19,21}$/.test(t)) return "USPS";             // USPS domestic: 20–22 digits starting with 9
+    if (/^[A-Z]{2}[0-9]{8}[A-Z]{2}$/.test(t)) return "USPS"; // USPS international: EA123456789US
+    if (/^96[0-9]{18,20}$/.test(t)) return "FedEx";           // FedEx Ground: starts with 96
+    if (/^[0-9]{12}$/.test(t) && !t.startsWith("9")) return "FedEx";
+    if (/^[0-9]{15}$/.test(t) && !t.startsWith("9")) return "FedEx";
+    return null;
+  }
+
+  document.querySelectorAll<HTMLElement>(".order-row").forEach((row) => {
+    const trackingInput = row.querySelector<HTMLInputElement>("input[name='trackingNumber']");
+    const carrierSelect = row.querySelector<HTMLSelectElement>("select[name='carrier']");
+    if (!trackingInput || !carrierSelect) return;
+
+    trackingInput.addEventListener("input", () => {
+      const detected = detectCarrier(trackingInput.value);
+      if (detected) {
+        carrierSelect.value = detected;
+        carrierSelect.classList.add("ring-2", "ring-sky-400");
+        setTimeout(() => carrierSelect.classList.remove("ring-2", "ring-sky-400"), 1200);
+      }
+    });
+  });
+
   // Click-to-copy for email, address, and order ID
   document.querySelectorAll<HTMLButtonElement>(".copy-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
