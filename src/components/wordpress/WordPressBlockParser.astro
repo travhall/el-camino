@@ -1,6 +1,7 @@
 ---
 // src/components/wordpress/WordPressBlockParser.astro
 
+import { processRawWordPressHTML } from "@/lib/wordpress/content-utils";
 import JetpackSlideshow from "./blocks/JetpackSlideshow.astro";
 import WPGallery from "./blocks/WPGallery.astro";
 import WPQuote from "./blocks/WPQuote.astro";
@@ -840,7 +841,7 @@ const parsedBlocks = parseWordPressBlocks(content);
           ) : (
             <div
               class={`wp-content-block ${blockClasses}`}
-              set:html={block.html}
+              set:html={processRawWordPressHTML(block.html, { isAboveFold: block.originalIndex < 2 })}
             />
           );
 
@@ -852,7 +853,7 @@ const parsedBlocks = parseWordPressBlocks(content);
           ) : (
             <div
               class={`wp-content-block ${blockClasses}`}
-              set:html={block.html}
+              set:html={processRawWordPressHTML(block.html, { isAboveFold: block.originalIndex < 2 })}
             />
           );
 
@@ -864,7 +865,7 @@ const parsedBlocks = parseWordPressBlocks(content);
           ) : (
             <div
               class={`wp-content-block ${blockClasses}`}
-              set:html={block.html}
+              set:html={processRawWordPressHTML(block.html, { isAboveFold: block.originalIndex < 2 })}
             />
           );
 
@@ -876,7 +877,7 @@ const parsedBlocks = parseWordPressBlocks(content);
           ) : (
             <div
               class={`wp-content-block ${blockClasses}`}
-              set:html={block.html}
+              set:html={processRawWordPressHTML(block.html, { isAboveFold: block.originalIndex < 2 })}
             />
           );
 
@@ -888,7 +889,7 @@ const parsedBlocks = parseWordPressBlocks(content);
           ) : (
             <div
               class={`wp-content-block ${blockClasses}`}
-              set:html={block.html}
+              set:html={processRawWordPressHTML(block.html, { isAboveFold: block.originalIndex < 2 })}
             />
           );
 
@@ -900,7 +901,7 @@ const parsedBlocks = parseWordPressBlocks(content);
           ) : (
             <div
               class={`wp-content-block ${blockClasses}`}
-              set:html={block.html}
+              set:html={processRawWordPressHTML(block.html, { isAboveFold: block.originalIndex < 2 })}
             />
           );
 
@@ -912,7 +913,7 @@ const parsedBlocks = parseWordPressBlocks(content);
           ) : (
             <div
               class={`wp-content-block ${blockClasses}`}
-              set:html={block.html}
+              set:html={processRawWordPressHTML(block.html, { isAboveFold: block.originalIndex < 2 })}
             />
           );
 
@@ -922,7 +923,7 @@ const parsedBlocks = parseWordPressBlocks(content);
             ? `wp-content-block ${blockClasses}`
             : `wp-content-block ${blockClasses}`;
 
-          return <div class={wrapperClass} set:html={block.html} />;
+          return <div class={wrapperClass} set:html={processRawWordPressHTML(block.html, { isAboveFold: block.originalIndex < 2 })} />;
       }
       });
     })()

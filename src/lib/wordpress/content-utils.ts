@@ -202,6 +202,89 @@ export function getWordPressBlocks(content: string): string[] {
 }
 
 /**
+ * Post-process raw WordPress HTML before set:html rendering.
+ *
+ * Prevents CLS by injecting width/height on unsized <img> tags.
+ * Also routes WordPress image URLs through Netlify Image CDN and
+ * adds lazy loading for below-fold content.
+ *
+ * Use on all set:html={block.html} fallback paths in WordPressBlockParser.
+ */
+export function processRawWordPressHTML(
+  html: string,
+  options: {
+    defaultWidth?: number;
+    defaultHeight?: number;
+    isAboveFold?: boolean;
+  } = {}
+): string {
+  if (!html) return html;
+
+  const { defaultWidth = 800, defaultHeight = 600, isAboveFold = false } =
+    options;
+
+  return html.replace(/<img([^>]*)>/gi, (_match, attrs: string) => {
+    const widthMatch = attrs.match(/width=["']?(\d+)["']?/i);
+    const heightMatch = attrs.match(/height=["']?(\d+)["']?/i);
+    const srcMatch = attrs.match(/src=["']([^"']+)["']/i);
+
+    const existingWidth = widthMatch ? parseInt(widthMatch[1]) : null;
+    const existingHeight = heightMatch ? parseInt(heightMatch[1]) : null;
+    const src = srcMatch ? srcMatch[1] : null;
+
+    const imgWidth = existingWidth || defaultWidth;
+    const imgHeight = existingHeight || defaultHeight;
+
+    let newAttrs = attrs;
+
+    // Inject width/height if missing — this is the primary CLS fix.
+    // Browser can reserve the correct space before the image loads.
+    if (!existingWidth) newAttrs += ` width="${imgWidth}"`;
+    if (!existingHeight) newAttrs += ` height="${imgHeight}"`;
+
+    // Route WordPress images through Netlify Image CDN for AVIF/WebP + edge cache.
+    // Only replaces the src value, preserving all other attributes.
+    if (
+      src &&
+      (src.includes("wordpress.com") || src.includes("wp.com")) &&
+      !src.startsWith("/.netlify/images")
+    ) {
+      const cdnUrl = buildNetlifyImageCDNUrl(src, imgWidth);
+      newAttrs = newAttrs.replace(src, cdnUrl);
+    }
+
+    // Add lazy loading for below-fold images (first 2 blocks are above fold).
+    if (!isAboveFold && !attrs.includes("loading=")) {
+      newAttrs += ' loading="lazy"';
+    }
+
+    // Async decoding reduces main-thread blocking during image decode.
+    if (!attrs.includes("decoding=")) {
+      newAttrs += ' decoding="async"';
+    }
+
+    return `<img${newAttrs}>`;
+  });
+}
+
+/**
+ * Build a Netlify Image CDN URL for a WordPress image source.
+ * Width-only (no height) preserves aspect ratio for arbitrary content images.
+ */
+function buildNetlifyImageCDNUrl(src: string, width: number): string {
+  try {
+    const params = new URLSearchParams({
+      url: src,
+      w: Math.min(width, 1200).toString(),
+      q: "75",
+    });
+    return `/.netlify/images?${params.toString()}`;
+  } catch {
+    return src;
+  }
+}
+
+/**
  * WordPress content analytics for debugging/optimization
  */
 export function analyzeWordPressContent(content: string): {
