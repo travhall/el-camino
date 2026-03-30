@@ -368,21 +368,31 @@ const getExcerptClasses = () => {
       )
     }
 
-    <!-- Article Tags (masonry + grid only — not teaser) -->
+    <!-- Article Tags (masonry only, max 5 visible) -->
     {
-      variant !== "teaser" && displayTags.length > 0 && (
-        <div class="flex flex-wrap gap-2 mt-auto pt-2 items-center">
-          {displayTags.map((tag) => (
-            <Tag
-              tag={tag}
-              variant="default"
-              size="sm"
-              clickable={true}
-              useButton={true}
-            />
-          ))}
-        </div>
-      )
+      variant === "masonry" && displayTags.length > 0 && (() => {
+        const maxVisible = 5;
+        const visibleTags = displayTags.slice(0, maxVisible);
+        const hiddenCount = displayTags.length - maxVisible;
+        return (
+          <div class="flex flex-wrap gap-2 mt-auto pt-2 items-center">
+            {visibleTags.map((tag) => (
+              <Tag
+                tag={tag}
+                variant="default"
+                size="sm"
+                clickable={true}
+                useButton={true}
+              />
+            ))}
+            {hiddenCount > 0 && (
+              <span class="text-xs text-(--content-meta-small) font-medium">
+                +{hiddenCount} more
+              </span>
+            )}
+          </div>
+        );
+      })()
     }
 
     <!-- Teaser read-more affordance -->

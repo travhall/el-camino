@@ -365,7 +365,7 @@ const structuredData = {
         <nav aria-label="Article navigation">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-1">
             <div class="flex justify-start">
-              {prevPost && (
+              {prevPost ? (
                 <a
                   href={`/news/${prevPost.slug}`}
                   class="group relative flex flex-col w-full p-8 lg:p-12 bg-(--surface-secondary) hover:bg-(--surface-tertiary) transition-all duration-200"
@@ -396,11 +396,36 @@ const structuredData = {
                   </h3>
                   <div class="absolute bg-(--surface-secondary)/95 group-hover:bg-(--surface-secondary)/80 top-0 left-0 h-full w-full z-0 transition-all duration-500" />
                 </a>
+              ) : (
+                <a
+                  href="/news"
+                  class="group flex flex-col w-full p-8 lg:p-12 bg-(--surface-secondary) hover:bg-(--surface-tertiary) transition-all duration-200"
+                >
+                  <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center">
+                    <svg
+                      class="w-4 h-4 mr-2 group-hover:mr-0 transition-all"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                    All Articles
+                  </span>
+                  <h3 class="text-(--content-heading) font-display group-hover:font-black font-semibold text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all duration-300">
+                    See All News
+                  </h3>
+                </a>
               )}
             </div>
 
             <div class="flex justify-end">
-              {nextPost && (
+              {nextPost ? (
                 <a
                   href={`/news/${nextPost.slug}`}
                   class="group relative flex flex-col w-full p-8 lg:p-12 bg-(--surface-secondary) hover:bg-(--surface-tertiary) transition-all duration-200 text-right"
@@ -430,6 +455,31 @@ const structuredData = {
                     {nextPost.title.rendered}
                   </h3>
                   <div class="absolute bg-(--surface-secondary)/95 group-hover:bg-(--surface-secondary)/80 top-0 left-0 h-full w-full z-0 transition-all duration-500" />
+                </a>
+              ) : (
+                <a
+                  href="/news"
+                  class="group flex flex-col w-full p-8 lg:p-12 bg-(--surface-secondary) hover:bg-(--surface-tertiary) transition-all duration-200 text-right"
+                >
+                  <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center justify-end">
+                    All Articles
+                    <svg
+                      class="w-4 h-4 ml-2 group-hover:ml-0 transition-all"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </span>
+                  <h3 class="text-(--content-heading) font-display group-hover:font-black font-semibold text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all duration-300">
+                    See All News
+                  </h3>
                 </a>
               )}
             </div>
