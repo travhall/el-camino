@@ -223,7 +223,35 @@ export function processRawWordPressHTML(
   const { defaultWidth = 800, defaultHeight = 600, isAboveFold = false } =
     options;
 
-  return html.replace(/<img([^>]*)>/gi, (_match, attrs: string) => {
+  let processed = html;
+
+  // Step 1: Make iframe embeds responsive to prevent CLS.
+  // WordPress outputs: <span class="embed-youtube" style="..."><iframe width="640" height="360" ...>
+  // The fixed pixel dimensions cause layout shift when CSS constrains the width.
+  // Fix: wrap the span with a padding-bottom aspect-ratio container and strip
+  // the fixed width/height from the iframe so CSS takes full control.
+  processed = processed.replace(
+    /(<span[^>]*class="[^"]*embed-(?:youtube|vimeo|responsive)[^"]*"[^>]*>)([\s\S]*?)(<\/span>)/gi,
+    (_match, openTag, inner, closeTag) => {
+      // Strip fixed width/height from any iframes inside the wrapper
+      const cleanedInner = inner.replace(
+        /<iframe([^>]*)>/gi,
+        (_iMatch: string, attrs: string) => {
+          const cleaned = attrs
+            .replace(/\s*width=["']?\d+["']?/gi, "")
+            .replace(/\s*height=["']?\d+["']?/gi, "");
+          return `<iframe${cleaned}>`;
+        }
+      );
+      // Wrap in a responsive aspect-ratio container using inline styles
+      // (inline styles are more reliable than CSS classes for WordPress-rendered HTML
+      // since the class selector depends on DOM ancestry matching)
+      return `<div style="position:relative;width:100%;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.5rem 0;">${openTag.replace(/style="[^"]*"/i, 'style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"')}${cleanedInner}${closeTag}</div>`;
+    }
+  );
+
+  // Step 2: Process <img> tags — inject dimensions and CDN routing.
+  processed = processed.replace(/<img([^>]*)>/gi, (_match, attrs: string) => {
     const widthMatch = attrs.match(/width=["']?(\d+)["']?/i);
     const heightMatch = attrs.match(/height=["']?(\d+)["']?/i);
     const srcMatch = attrs.match(/src=["']([^"']+)["']/i);
@@ -237,13 +265,11 @@ export function processRawWordPressHTML(
 
     let newAttrs = attrs;
 
-    // Inject width/height if missing — this is the primary CLS fix.
-    // Browser can reserve the correct space before the image loads.
+    // Inject width/height if missing — browser can reserve space before image loads.
     if (!existingWidth) newAttrs += ` width="${imgWidth}"`;
     if (!existingHeight) newAttrs += ` height="${imgHeight}"`;
 
-    // Route WordPress images through Netlify Image CDN for AVIF/WebP + edge cache.
-    // Only replaces the src value, preserving all other attributes.
+    // Route WordPress images through Netlify Image CDN.
     if (
       src &&
       (src.includes("wordpress.com") || src.includes("wp.com")) &&
@@ -253,18 +279,20 @@ export function processRawWordPressHTML(
       newAttrs = newAttrs.replace(src, cdnUrl);
     }
 
-    // Add lazy loading for below-fold images (first 2 blocks are above fold).
+    // Lazy load below-fold images.
     if (!isAboveFold && !attrs.includes("loading=")) {
       newAttrs += ' loading="lazy"';
     }
 
-    // Async decoding reduces main-thread blocking during image decode.
+    // Async decoding reduces main-thread blocking.
     if (!attrs.includes("decoding=")) {
       newAttrs += ' decoding="async"';
     }
 
     return `<img${newAttrs}>`;
   });
+
+  return processed;
 }
 
 /**

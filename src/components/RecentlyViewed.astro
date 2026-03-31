@@ -10,9 +10,9 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
 ---
 
 <section
-  class="recently-viewed pt-10 lg:pt-12"
+  class="recently-viewed"
   id="recently-viewed-section"
-  style="opacity: 0; pointer-events: none; min-height: 0;"
+  style="display: none;"
   data-current-product-id={currentProductId}
 >
   <!-- Heading with extending rule line -->
@@ -73,13 +73,13 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
       .filter((item) => item.id !== currentProductId);
 
     if (items.length === 0) {
-      section.style.opacity = "0";
-      section.style.pointerEvents = "none";
-      section.style.minHeight = "0";
+      section.style.display = "none";
       return;
     }
 
-    // Populate content first, then reveal — prevents CLS from empty→populated shift
+    // Populate content while still display:none, then reveal in one paint.
+    // This prevents CLS — the section goes from 0px to full height in a single
+    // frame after content is ready, rather than expanding from empty to populated.
     const [inventoryMap, saleInfoMap] = await Promise.all([
       fetchInventoryForItems(items),
       fetchSaleInfoForItems(items),
@@ -171,11 +171,9 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
       })
       .join("");
 
-    // Reveal after content is fully populated — no layout shift since
-    // section already occupied 0 height (min-height: 0) while hidden
-    section.style.opacity = "1";
-    section.style.pointerEvents = "";
-    section.style.minHeight = "";
+    // Reveal after content is fully populated — single paint, no shift
+    section.classList.add("pt-10", "lg:pt-12");
+    section.style.display = "block";
   }
 
   async function fetchInventoryForItems(
