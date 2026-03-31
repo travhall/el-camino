@@ -777,11 +777,37 @@ blockquote.is-style-large {
 /* Embeds - Consolidated */
 .wp-content-block .wp-block-embed iframe,
 .wp-content-block .wp-block-video video,
-.wp-content-block .wp-block-audio audio,
-.wp-content-block .youtube-player {
+.wp-content-block .wp-block-audio audio {
   max-width: 100%;
   border-radius: 0.25rem;
   aspect-ratio: 16 / 9;
+}
+
+/* YouTube embed wrapper — WordPress outputs span.embed-youtube with a fixed-size iframe.
+   Use a padding-based aspect ratio container so the iframe is always responsive
+   and the browser reserves the correct height before the iframe loads (prevents CLS). */
+.wp-content-block .embed-youtube,
+.wp-content-block .embed-vimeo,
+.wp-content-block .embed-responsive {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* 16:9 */
+  height: 0;
+  overflow: hidden;
+  margin: 2rem 0;
+}
+
+.wp-content-block .embed-youtube iframe,
+.wp-content-block .embed-vimeo iframe,
+.wp-content-block .embed-responsive iframe,
+.wp-content-block .youtube-player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.25rem;
+  border: 0;
 }
 
 /* =============================================================================
@@ -814,12 +840,6 @@ blockquote.is-style-large {
   .wp-content-block .wp-block-columns {
     grid-template-columns: 1fr;
   }
-}
-
-.youtube-player {
-  position: relative;
-  width: 100%;
-  height: auto;
 }
 
 /* =============================================================================

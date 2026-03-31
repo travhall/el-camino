@@ -12,7 +12,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
 <section
   class="recently-viewed pt-10 lg:pt-12"
   id="recently-viewed-section"
-  style="display: none;"
+  style="opacity: 0; pointer-events: none; min-height: 0;"
   data-current-product-id={currentProductId}
 >
   <!-- Heading with extending rule line -->
@@ -73,12 +73,13 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
       .filter((item) => item.id !== currentProductId);
 
     if (items.length === 0) {
-      section.style.display = "none";
+      section.style.opacity = "0";
+      section.style.pointerEvents = "none";
+      section.style.minHeight = "0";
       return;
     }
 
-    section.style.display = "block";
-
+    // Populate content first, then reveal — prevents CLS from empty→populated shift
     const [inventoryMap, saleInfoMap] = await Promise.all([
       fetchInventoryForItems(items),
       fetchSaleInfoForItems(items),
@@ -169,6 +170,12 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
         `;
       })
       .join("");
+
+    // Reveal after content is fully populated — no layout shift since
+    // section already occupied 0 height (min-height: 0) while hidden
+    section.style.opacity = "1";
+    section.style.pointerEvents = "";
+    section.style.minHeight = "";
   }
 
   async function fetchInventoryForItems(
