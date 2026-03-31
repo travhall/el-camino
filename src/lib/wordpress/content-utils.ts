@@ -1,0 +1,356 @@
+// src/lib/wordpress/content-utils.ts
+// Utility functions for processing WordPress content
+
+/**
+ * Clean and sanitize WordPress content for display
+ */
+export function sanitizeWordPressContent(content: string): string {
+  if (!content) return "";
+
+  // Remove WordPress's automatic p tags around images
+  return (
+    content
+      .replace(/<p>(\s*<img[^>]*>\s*)<\/p>/gi, "$1")
+      .replace(/<p>(\s*<figure[^>]*>[\s\S]*?<\/figure>\s*)<\/p>/gi, "$1")
+      .replace(/<p>(\s*<iframe[^>]*>[\s\S]*?<\/iframe>\s*)<\/p>/gi, "$1")
+      // Fix WordPress's sometimes broken figure captions
+      .replace(/<figcaption class="wp-element-caption">/gi, "<figcaption>")
+      // Ensure proper spacing around blocks
+      .replace(
+        /(<\/figure>|<\/blockquote>|<\/div>)(\s*)(<h[1-6])/gi,
+        "$1\n\n$3"
+      )
+      // Clean up extra whitespace
+      .replace(/\n\s*\n\s*\n/g, "\n\n")
+      .trim()
+  );
+}
+
+/**
+ * Extract first paragraph as excerpt if needed
+ */
+export function extractExcerpt(
+  content: string,
+  maxLength: number = 160
+): string {
+  if (!content) return "";
+
+  // Strip HTML tags
+  const textOnly = content
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (textOnly.length <= maxLength) {
+    return textOnly;
+  }
+
+  // Find the last complete word within the limit
+  const trimmed = textOnly.substring(0, maxLength);
+  const lastSpace = trimmed.lastIndexOf(" ");
+
+  return lastSpace > 0
+    ? trimmed.substring(0, lastSpace) + "..."
+    : trimmed + "...";
+}
+
+/**
+ * Calculate estimated reading time
+ */
+export function calculateReadingTime(content: string): {
+  minutes: number;
+  seconds: number;
+  text: string;
+} {
+  if (!content) return { minutes: 0, seconds: 0, text: "0 min read" };
+
+  const wordsPerMinute = 200;
+  const textOnly = content
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const wordCount = textOnly
+    .split(" ")
+    .filter((word) => word.length > 0).length;
+
+  const totalMinutes = wordCount / wordsPerMinute;
+  const minutes = Math.floor(totalMinutes);
+  const seconds = Math.round((totalMinutes - minutes) * 60);
+
+  let text: string;
+  if (minutes === 0) {
+    text = "< 1 min read";
+  } else if (minutes === 1) {
+    text = "1 min read";
+  } else {
+    text = `${minutes} min read`;
+  }
+
+  return { minutes, seconds, text };
+}
+
+/**
+ * Get WordPress image URLs with optimization parameters
+ */
+export function optimizeWordPressImage(
+  url: string,
+  options: {
+    width?: number;
+    height?: number;
+    quality?: number;
+    crop?: boolean;
+  } = {}
+): string {
+  if (!url || !url.includes("wordpress.com")) {
+    return url;
+  }
+
+  const urlObj = new URL(url);
+  const params = new URLSearchParams(urlObj.search);
+
+  if (options.width) {
+    params.set("w", options.width.toString());
+  }
+
+  if (options.height) {
+    params.set("h", options.height.toString());
+  }
+
+  if (options.quality) {
+    params.set("quality", options.quality.toString());
+  }
+
+  if (options.crop) {
+    params.set("crop", "1");
+  }
+
+  // Default optimization
+  if (!params.has("quality")) {
+    params.set("quality", "85");
+  }
+
+  urlObj.search = params.toString();
+  return urlObj.toString();
+}
+
+/**
+ * Generate responsive image srcset for WordPress images
+ */
+export function generateWordPressSrcSet(
+  url: string,
+  baseWidth: number = 800
+): string {
+  if (!url || !url.includes("wordpress.com")) {
+    return "";
+  }
+
+  const sizes = [
+    Math.round(baseWidth * 0.5),
+    Math.round(baseWidth * 0.75),
+    baseWidth,
+    Math.round(baseWidth * 1.5),
+    Math.round(baseWidth * 2),
+  ];
+
+  return sizes
+    .map((width) => `${optimizeWordPressImage(url, { width })} ${width}w`)
+    .join(", ");
+}
+
+/**
+ * Extract all images from WordPress content for preloading
+ */
+export function extractContentImages(content: string): string[] {
+  if (!content) return [];
+
+  const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  const images: string[] = [];
+  let match;
+
+  while ((match = imgRegex.exec(content)) !== null) {
+    images.push(match[1]);
+  }
+
+  return images;
+}
+
+/**
+ * Check if content has specific WordPress blocks
+ */
+export function hasWordPressBlock(content: string, blockType: string): boolean {
+  if (!content) return false;
+
+  const blockClass = `wp-block-${blockType}`;
+  return content.includes(blockClass);
+}
+
+/**
+ * Get WordPress block types used in content
+ */
+export function getWordPressBlocks(content: string): string[] {
+  if (!content) return [];
+
+  const blockRegex = /wp-block-([a-zA-Z0-9-]+)/g;
+  const blocks = new Set<string>();
+  let match;
+
+  while ((match = blockRegex.exec(content)) !== null) {
+    blocks.add(match[1]);
+  }
+
+  return Array.from(blocks);
+}
+
+/**
+ * Post-process raw WordPress HTML before set:html rendering.
+ *
+ * Prevents CLS by injecting width/height on unsized <img> tags.
+ * Also routes WordPress image URLs through Netlify Image CDN and
+ * adds lazy loading for below-fold content.
+ *
+ * Use on all set:html={block.html} fallback paths in WordPressBlockParser.
+ */
+export function processRawWordPressHTML(
+  html: string,
+  options: {
+    defaultWidth?: number;
+    defaultHeight?: number;
+    isAboveFold?: boolean;
+  } = {}
+): string {
+  if (!html) return html;
+
+  const { defaultWidth = 800, defaultHeight = 600, isAboveFold = false } =
+    options;
+
+  let processed = html;
+
+  // Step 1: Make iframe embeds responsive to prevent CLS.
+  // WordPress outputs: <span class="embed-youtube" style="..."><iframe width="640" height="360" ...>
+  // The fixed pixel dimensions cause layout shift when CSS constrains the width.
+  // Fix: wrap the span with a padding-bottom aspect-ratio container and strip
+  // the fixed width/height from the iframe so CSS takes full control.
+  processed = processed.replace(
+    /(<span[^>]*class="[^"]*embed-(?:youtube|vimeo|responsive)[^"]*"[^>]*>)([\s\S]*?)(<\/span>)/gi,
+    (_match, openTag, inner, closeTag) => {
+      // Strip fixed width/height from any iframes inside the wrapper
+      const cleanedInner = inner.replace(
+        /<iframe([^>]*)>/gi,
+        (_iMatch: string, attrs: string) => {
+          const cleaned = attrs
+            .replace(/\s*width=["']?\d+["']?/gi, "")
+            .replace(/\s*height=["']?\d+["']?/gi, "");
+          return `<iframe${cleaned}>`;
+        }
+      );
+      // Wrap in a responsive aspect-ratio container using inline styles
+      // (inline styles are more reliable than CSS classes for WordPress-rendered HTML
+      // since the class selector depends on DOM ancestry matching)
+      return `<div style="position:relative;width:100%;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.5rem 0;">${openTag.replace(/style="[^"]*"/i, 'style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"')}${cleanedInner}${closeTag}</div>`;
+    }
+  );
+
+  // Step 2: Process <img> tags — inject dimensions and CDN routing.
+  processed = processed.replace(/<img([^>]*)>/gi, (_match, attrs: string) => {
+    const widthMatch = attrs.match(/width=["']?(\d+)["']?/i);
+    const heightMatch = attrs.match(/height=["']?(\d+)["']?/i);
+    const srcMatch = attrs.match(/src=["']([^"']+)["']/i);
+
+    const existingWidth = widthMatch ? parseInt(widthMatch[1]) : null;
+    const existingHeight = heightMatch ? parseInt(heightMatch[1]) : null;
+    const src = srcMatch ? srcMatch[1] : null;
+
+    const imgWidth = existingWidth || defaultWidth;
+    const imgHeight = existingHeight || defaultHeight;
+
+    let newAttrs = attrs;
+
+    // Inject width/height if missing — browser can reserve space before image loads.
+    if (!existingWidth) newAttrs += ` width="${imgWidth}"`;
+    if (!existingHeight) newAttrs += ` height="${imgHeight}"`;
+
+    // Route WordPress images through Netlify Image CDN.
+    if (
+      src &&
+      (src.includes("wordpress.com") || src.includes("wp.com")) &&
+      !src.startsWith("/.netlify/images")
+    ) {
+      const cdnUrl = buildNetlifyImageCDNUrl(src, imgWidth);
+      newAttrs = newAttrs.replace(src, cdnUrl);
+    }
+
+    // Lazy load below-fold images.
+    if (!isAboveFold && !attrs.includes("loading=")) {
+      newAttrs += ' loading="lazy"';
+    }
+
+    // Async decoding reduces main-thread blocking.
+    if (!attrs.includes("decoding=")) {
+      newAttrs += ' decoding="async"';
+    }
+
+    // Ensure all images have at least an empty alt attribute for accessibility
+    if (!/alt=["']/i.test(attrs)) {
+      newAttrs += ' alt=""';
+    }
+
+    return `<img${newAttrs}>`;
+  });
+
+  return processed;
+}
+
+/**
+ * Build a Netlify Image CDN URL for a WordPress image source.
+ * Width-only (no height) preserves aspect ratio for arbitrary content images.
+ */
+function buildNetlifyImageCDNUrl(src: string, width: number): string {
+  try {
+    const params = new URLSearchParams({
+      url: src,
+      w: Math.min(width, 1200).toString(),
+      q: "75",
+    });
+    return `/.netlify/images?${params.toString()}`;
+  } catch {
+    return src;
+  }
+}
+
+/**
+ * WordPress content analytics for debugging/optimization
+ */
+export function analyzeWordPressContent(content: string): {
+  wordCount: number;
+  readingTime: ReturnType<typeof calculateReadingTime>;
+  blockTypes: string[];
+  imageCount: number;
+  hasGallery: boolean;
+  hasVideo: boolean;
+  hasCode: boolean;
+  estimatedLoadTime: string;
+} {
+  const blocks = getWordPressBlocks(content);
+  const images = extractContentImages(content);
+
+  return {
+    wordCount: content
+      .replace(/<[^>]*>/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 0).length,
+    readingTime: calculateReadingTime(content),
+    blockTypes: blocks,
+    imageCount: images.length,
+    hasGallery: hasWordPressBlock(content, "gallery"),
+    hasVideo:
+      hasWordPressBlock(content, "video") ||
+      hasWordPressBlock(content, "embed"),
+    hasCode: hasWordPressBlock(content, "code") || content.includes("<pre>"),
+    estimatedLoadTime:
+      images.length > 5
+        ? "Slow (5+ images)"
+        : images.length > 2
+        ? "Medium (2-5 images)"
+        : "Fast",
+  };
+}

@@ -1,0 +1,767 @@
+---
+// src/components/ProductFilters.astro
+import type { FilterOptions, ProductFilters } from "@/lib/square/types";
+
+interface Props {
+  filterOptions: FilterOptions;
+  totalProducts: number;
+  filteredCount: number;
+  categoryPath: string;
+  appliedFilters?: ProductFilters;
+}
+
+const {
+  filterOptions,
+  totalProducts,
+  filteredCount,
+  categoryPath: _categoryPath,
+  appliedFilters,
+} = Astro.props;
+
+const currentParams = new URLSearchParams(Astro.url.search);
+const currentBrands = appliedFilters?.brands || currentParams.getAll("brands") || [];
+const currentCategories = appliedFilters?.categories || currentParams.getAll("categories") || [];
+const currentAvailability = appliedFilters?.availability ?? (currentParams.get("availability") === "true");
+
+const totalActiveFilters = currentBrands.length + currentCategories.length + (currentAvailability ? 1 : 0);
+---
+
+<style is:inline>
+  /* Accordion animation using CSS grid-template-rows */
+  .filter-section-content {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.25s ease;
+  }
+
+  .filter-section-content.is-closed {
+    grid-template-rows: 0fr;
+  }
+
+  /* Inner wrapper must have overflow:hidden and min-height:0 for grid trick to work */
+  .filter-section-inner {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Chevron: animated via .is-collapsed class set by JS */
+  .filter-chevron {
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+  }
+
+  .filter-chevron.is-collapsed {
+    transform: rotate(-90deg);
+  }
+
+  /* Phantom click prevention */
+  :disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  body:not(.filtering-in-progress) :disabled {
+    opacity: 0.6;
+  }
+
+  input[type="checkbox"],
+  button {
+    transition: opacity 0.15s ease;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  body:not(.filtering-in-progress) button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html::view-transition-old(root),
+    html::view-transition-new(root) {
+      animation: none !important;
+    }
+
+    .filter-section-content {
+      transition: none;
+    }
+
+    .filter-chevron {
+      transition: none;
+    }
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Thin scrollbar for brand list on desktop */
+  .brand-scroll-list::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .brand-scroll-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .brand-scroll-list::-webkit-scrollbar-thumb {
+    background-color: var(--border-tertiary);
+    border-radius: 3px;
+  }
+</style>
+
+<div class="relative lg:block bg-(--surface-primary)">
+  <!-- Mobile Filter Button -->
+  <button
+    id="mobile-filter-toggle"
+    class="lg:hidden fixed bottom-4 right-4 bg-(--surface-tertiary) text-(--content-body) border border-(--border-tertiary) rounded-md flex flex-row gap-2 p-4 shadow-lg z-250"
+    aria-label="Open Filters"
+  >
+    Filters
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"
+      ></path>
+    </svg>
+    <span
+      data-mobile-filter-badge
+      class="absolute -top-1 -right-1 bg-(--ui-button-surface) text-(--ui-button-text) font-bold text-sm rounded-full min-w-5 h-5 flex items-center justify-center px-1"
+      style={totalActiveFilters === 0 ? "display: none;" : ""}
+    >
+      {totalActiveFilters || ""}
+    </span>
+  </button>
+
+  <!-- Mobile Overlay -->
+  <div
+    id="mobile-filter-overlay"
+    class="lg:hidden fixed inset-0 bg-(--ui-modal-overlay)/90 z-40 opacity-0 pointer-events-none transition-opacity duration-300"
+  />
+
+  <!-- Single Form — Desktop static sidebar, Mobile bottom drawer -->
+  <div
+    id="filter-container"
+    class="lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-md lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-secondary)/0 border-4 border-(--border-tertiary) z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+  >
+    <form class="px-4 lg:p-2" id="filter-form">
+      <!-- Mobile Header -->
+      <div
+        class="flex items-center justify-between mb-4 p-6 -mx-4 bg-(--surface-secondary) border-b-4 border-(--border-tertiary) sticky top-0 z-50 lg:hidden"
+      >
+        <h2 class="text-lg font-semibold text-(--content-heading)">Filter Products</h2>
+        <button
+          type="button"
+          id="mobile-filter-close"
+          class="p-1 text-(--content-meta) hover:text-(--content-emphasis)"
+          aria-label="Close Filters"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Results Count -->
+      <div class="min-w-fit mt-2 mb-3">
+        <div class="lg:hidden p-3 bg-(--surface-tertiary) rounded-sm">
+          <p class="text-sm text-(--content-meta)" data-result-count>
+            {filteredCount} of {totalProducts} products
+          </p>
+        </div>
+        <div class="hidden lg:flex justify-between items-baseline h-8">
+          <p class="text-sm lg:text-base text-(--content-meta)" data-result-count>
+            {
+              filteredCount === totalProducts
+                ? `${totalProducts} products`
+                : `${filteredCount} of ${totalProducts} products`
+            }
+          </p>
+          <button
+            type="button"
+            data-clear-filters
+            class="text-sm text-(--content-meta) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer lg:mr-2"
+            style={(currentBrands.length > 0 || currentCategories.length > 0 || currentAvailability) ? "" : "display: none;"}
+          >
+            Clear all
+          </button>
+        </div>
+        <div
+          id="filter-results-live-region"
+          aria-live="polite"
+          aria-atomic="true"
+          class="sr-only"
+        >
+          {
+            filteredCount === totalProducts
+              ? `Showing all ${totalProducts} products`
+              : `Filtered to ${filteredCount} of ${totalProducts} products`
+          }
+        </div>
+      </div>
+
+      <!-- Brand Filter Section -->
+      {
+        filterOptions.brands.length > 0 && (
+          <div class="filter-section border-t-2 border-(--border-primary)">
+            <!-- Full-row accordion trigger: entire header block is the toggle -->
+            <div class="relative">
+              <button
+                type="button"
+                class="w-full flex items-center gap-2 text-left py-2.5 pr-16 group"
+                data-section-toggle="brand"
+                aria-expanded="true"
+                aria-controls="filter-section-brand"
+              >
+                <span class="text-xl font-medium font-display text-(--content-heading) group-hover:text-(--content-emphasis) transition-colors">
+                  Brand
+                </span>
+                <span
+                  data-brand-badge
+                  class="text-xs bg-(--ui-button-surface) text-(--ui-button-text) rounded-full px-1.5 py-0.5 font-medium leading-none tabular-nums"
+                  style={currentBrands.length === 0 ? "display: none;" : ""}
+                >
+                  {currentBrands.length || ""}
+                </span>
+              </button>
+              <!-- Chevron: absolutely positioned at far right, pointer-events-none so clicks fall through to the button -->
+              <svg
+                class="filter-chevron absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 text-(--content-meta) pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+              <!-- Clear: absolutely positioned to the left of the chevron, z-10 so it intercepts its own clicks -->
+              <button
+                type="button"
+                data-clear-brands
+                aria-label="Clear brand filters"
+                class="absolute right-6 top-1/2 -translate-y-1/2 text-sm text-(--content-meta) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all z-10"
+                style={currentBrands.length === 0 ? "display: none;" : ""}
+              >
+                Clear
+              </button>
+            </div>
+
+            <div
+              id="filter-section-brand"
+              class="filter-section-content"
+              role="region"
+              aria-label="Brand filters"
+            >
+              <div class="filter-section-inner">
+                <div class="brand-scroll-list lg:max-h-48 lg:overflow-y-auto space-y-3 lg:space-y-0 pb-4 lg:pr-0.5">
+                  {filterOptions.brands.map((brand) => (
+                    <label class="flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors">
+                      <div class="flex items-center">
+                        <input
+                          type="checkbox"
+                          name="brands"
+                          value={brand.name}
+                          checked={currentBrands.includes(brand.name)}
+                          class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                        />
+                        <span class="text-(--content-body) group-hover:text-(--content-emphasis)">
+                          {brand.name}
+                        </span>
+                      </div>
+                      <span class="text-sm text-(--content-meta) lg:mr-2">({brand.count})</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      <!-- Category Filter Section -->
+      {
+        filterOptions.categories.length > 0 && (
+          <div class="filter-section border-t-2 border-(--border-primary)">
+            <!-- Full-row accordion trigger: entire header block is the toggle -->
+            <div class="relative">
+              <button
+                type="button"
+                class="w-full flex items-center gap-2 text-left py-2.5 pr-16 group"
+                data-section-toggle="category"
+                aria-expanded="true"
+                aria-controls="filter-section-category"
+              >
+                <span class="text-xl font-medium font-display text-(--content-heading) group-hover:text-(--content-emphasis) transition-colors">
+                  Category
+                </span>
+                <span
+                  data-category-badge
+                  class="text-xs bg-(--ui-button-surface) text-(--ui-button-text) rounded-full px-1.5 py-0.5 font-medium leading-none tabular-nums"
+                  style={currentCategories.length === 0 ? "display: none;" : ""}
+                >
+                  {currentCategories.length || ""}
+                </span>
+              </button>
+              <!-- Chevron: absolutely positioned at far right, pointer-events-none so clicks fall through to the button -->
+              <svg
+                class="filter-chevron absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 text-(--content-meta) pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+              <!-- Clear: absolutely positioned to the left of the chevron, z-10 so it intercepts its own clicks -->
+              <button
+                type="button"
+                data-clear-categories
+                aria-label="Clear category filters"
+                class="absolute right-6 top-1/2 -translate-y-1/2 text-sm text-(--content-meta) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all z-10"
+                style={currentCategories.length === 0 ? "display: none;" : ""}
+              >
+                Clear
+              </button>
+            </div>
+
+            <div
+              id="filter-section-category"
+              class="filter-section-content"
+              role="region"
+              aria-label="Category filters"
+            >
+              <div class="filter-section-inner">
+                <div class="lg:max-h-48 lg:overflow-y-auto space-y-0 pb-4 lg:pr-0.5">
+                  {filterOptions.categories.map((category) => {
+                    const isTopSelected = currentCategories.includes(category.slug);
+                    return (
+                      <div class="category-filter-group">
+                        <label class="flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors">
+                          <div class="flex items-center">
+                            <input
+                              type="checkbox"
+                              name="categories"
+                              value={category.slug}
+                              checked={isTopSelected}
+                              class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                            />
+                            <span class="text-(--content-body) group-hover:text-(--content-emphasis) font-medium">
+                              {category.name}
+                            </span>
+                          </div>
+                          <span class="text-sm text-(--content-meta) lg:mr-2">({category.count})</span>
+                        </label>
+                        {category.subcategories.length > 0 && (
+                          <div class="pl-4 lg:pl-3 space-y-0">
+                            {category.subcategories.map((sub) => (
+                              <label class="flex items-center justify-between group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors">
+                                <div class="flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    name="categories"
+                                    value={sub.slug}
+                                    checked={currentCategories.includes(sub.slug)}
+                                    class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+                                  />
+                                  <span class="text-(--content-body) group-hover:text-(--content-emphasis) text-sm">
+                                    {sub.name}
+                                  </span>
+                                </div>
+                                <span class="text-sm text-(--content-meta) lg:mr-2">({sub.count})</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      <!-- Availability Filter — always visible, no accordion needed (single binary choice) -->
+      <div class="filter-section border-t-2 border-(--border-primary)">
+        <div class="py-2.5">
+          <h3 class="text-xl font-medium font-display text-(--content-heading)">Availability</h3>
+        </div>
+        <div class="pb-4">
+          <label
+            class="flex items-center group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors"
+          >
+            <input
+              type="checkbox"
+              name="availability"
+              value="true"
+              checked={currentAvailability}
+              class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+            />
+            <span class="text-(--content-body) group-hover:text-(--content-emphasis)">In stock only</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Mobile Actions -->
+      <div
+        class="flex gap-3 p-6 -mx-4 bg-(--surface-secondary) border-t-4 border-(--border-tertiary) sticky bottom-0 lg:hidden"
+      >
+        <button
+          type="button"
+          data-clear-filters-mobile
+          class="flex-1 py-3 px-4 border border-(--ui-button-border) text-ui-button-border rounded-sm hover:bg-ui-button-hover transition-colors text-center"
+          style={totalActiveFilters === 0 ? "display: none;" : ""}
+        >
+          Clear Filters
+        </button>
+        <button
+          type="submit"
+          class="flex-1 py-3 px-4 bg-(--ui-button-surface) text-(--ui-button-text) rounded-sm hover:bg-ui-button-primary-hover transition-colors font-medium"
+        >
+          Apply Filters
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  import { FilterCoordinator } from "@/lib/filterCoordinator";
+
+  // Section state keys in sessionStorage
+  const SECTION_KEYS: Record<string, string> = {
+    brand: "filter-section-brand",
+    category: "filter-section-category",
+  };
+
+  // ── Module-level: update UI from filter state ────────────────────────────────
+
+  function updateCheckboxStates(brands: string[], categories: string[], availability: boolean) {
+    const form = document.getElementById("filter-form") as HTMLFormElement | null;
+    if (!form) return;
+    form.querySelectorAll<HTMLInputElement>('input[name="brands"]').forEach((cb) => {
+      cb.checked = brands.includes(cb.value);
+    });
+    form.querySelectorAll<HTMLInputElement>('input[name="categories"]').forEach((cb) => {
+      cb.checked = categories.includes(cb.value);
+    });
+    const availCb = form.querySelector<HTMLInputElement>('input[name="availability"]');
+    if (availCb) availCb.checked = availability;
+  }
+
+  function updateSectionBadges(brands: string[], categories: string[], availability: boolean) {
+    // Brand badge
+    const brandBadge = document.querySelector<HTMLElement>("[data-brand-badge]");
+    if (brandBadge) {
+      brandBadge.textContent = brands.length > 0 ? String(brands.length) : "";
+      brandBadge.style.display = brands.length > 0 ? "" : "none";
+    }
+    // Brand clear button
+    const clearBrandsBtn = document.querySelector<HTMLElement>("[data-clear-brands]");
+    if (clearBrandsBtn) clearBrandsBtn.style.display = brands.length > 0 ? "" : "none";
+
+    // Category badge
+    const categoryBadge = document.querySelector<HTMLElement>("[data-category-badge]");
+    if (categoryBadge) {
+      categoryBadge.textContent = categories.length > 0 ? String(categories.length) : "";
+      categoryBadge.style.display = categories.length > 0 ? "" : "none";
+    }
+    // Category clear button
+    const clearCategoriesBtn = document.querySelector<HTMLElement>("[data-clear-categories]");
+    if (clearCategoriesBtn) clearCategoriesBtn.style.display = categories.length > 0 ? "" : "none";
+
+    // Availability badge
+    const availBadge = document.querySelector<HTMLElement>("[data-availability-badge]");
+    if (availBadge) availBadge.style.display = availability ? "" : "none";
+
+    // Mobile button badge
+    const total = brands.length + categories.length + (availability ? 1 : 0);
+    const mobileBadge = document.querySelector<HTMLElement>("[data-mobile-filter-badge]");
+    if (mobileBadge) {
+      mobileBadge.textContent = total > 0 ? String(total) : "";
+      mobileBadge.style.display = total > 0 ? "" : "none";
+    }
+
+    // Mobile "Clear Filters" button
+    const clearMobileBtn = document.querySelector<HTMLElement>("[data-clear-filters-mobile]");
+    if (clearMobileBtn) clearMobileBtn.style.display = total > 0 ? "" : "none";
+  }
+
+  function updateCountDisplay(count: number, total: number) {
+    document.querySelectorAll("[data-result-count]").forEach((el) => {
+      el.textContent =
+        count === total ? `${total} products` : `${count} of ${total} products`;
+    });
+    // Show/hide "Clear all" button
+    const clearBtn = document.querySelector<HTMLElement>("[data-clear-filters]");
+    if (clearBtn) clearBtn.style.display = count < total ? "" : "none";
+    // Live region for screen readers
+    const liveRegion = document.getElementById("filter-results-live-region");
+    if (liveRegion) {
+      setTimeout(() => {
+        liveRegion.textContent =
+          count === total
+            ? `Showing all ${total} products`
+            : `Filtered to ${count} of ${total} products`;
+      }, 100);
+    }
+  }
+
+  // ── Module-level event listeners (registered once per script load) ───────────
+
+  window.addEventListener("filterresult", (e: Event) => {
+    const evt = e as CustomEvent<{ count: number; total: number }>;
+    updateCountDisplay(evt.detail.count, evt.detail.total);
+  });
+
+  window.addEventListener("filterchange", (e: Event) => {
+    const evt = e as CustomEvent<{ brands: string[]; categories: string[]; availability: boolean }>;
+    const { brands, categories, availability } = evt.detail;
+    // Sync checkboxes (handles popstate / pill removal dispatching filterchange)
+    updateCheckboxStates(brands, categories, availability);
+    // Sync all badges and section-level clear buttons
+    updateSectionBadges(brands, categories, availability);
+    // Show/hide "Clear all" based on active filter state (not just count diff)
+    const hasFilters = brands.length > 0 || categories.length > 0 || availability;
+    const clearBtn = document.querySelector<HTMLElement>("[data-clear-filters]");
+    if (clearBtn) clearBtn.style.display = hasFilters ? "" : "none";
+  });
+
+  // ── ProductFilters class ─────────────────────────────────────────────────────
+
+  class ProductFilters {
+    private form: HTMLFormElement | null = null;
+    private container: HTMLElement | null = null;
+    private overlay: HTMLElement | null = null;
+
+    constructor() {
+      this.form = document.getElementById("filter-form") as HTMLFormElement;
+      this.container = document.getElementById("filter-container");
+      this.overlay = document.getElementById("mobile-filter-overlay");
+
+      if (!this.form) return;
+
+      this.setupMobileDrawer();
+      this.setupHybridFiltering();
+      this.setupAccordions();
+      this.setupClearButtons();
+    }
+
+    private setupMobileDrawer(): void {
+      const toggle = document.getElementById("mobile-filter-toggle");
+      const close = document.getElementById("mobile-filter-close");
+
+      toggle?.addEventListener("click", () => this.openMobileDrawer());
+      close?.addEventListener("click", () => this.closeMobileDrawer());
+      this.overlay?.addEventListener("click", () => this.closeMobileDrawer());
+    }
+
+    private openMobileDrawer(): void {
+      this.overlay?.classList.remove("pointer-events-none", "opacity-0");
+      this.container?.classList.remove("translate-y-full", "opacity-0", "pointer-events-none");
+      document.body.style.overflow = "hidden";
+    }
+
+    private closeMobileDrawer(): void {
+      this.overlay?.classList.add("opacity-0");
+      this.container?.classList.add("translate-y-full", "opacity-0");
+
+      let hasCompleted = false;
+      const handleTransitionEnd = () => {
+        if (hasCompleted) return;
+        hasCompleted = true;
+        this.overlay?.classList.add("pointer-events-none");
+        this.container?.classList.add("pointer-events-none");
+      };
+
+      this.container?.addEventListener("transitionend", handleTransitionEnd, { once: true });
+      setTimeout(handleTransitionEnd, 350);
+      document.body.style.overflow = "";
+    }
+
+    private setupHybridFiltering(): void {
+      if (!this.form) return;
+
+      const isDesktop = () => window.matchMedia("(min-width: 1024px)").matches;
+
+      this.form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (!isDesktop()) {
+          this.closeMobileDrawer();
+          setTimeout(() => this.submitForm(), 300);
+        } else {
+          this.submitForm();
+        }
+      });
+
+      this.form.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+        checkbox.addEventListener("change", () => {
+          if (isDesktop()) this.submitForm();
+        });
+      });
+    }
+
+    private submitForm(): void {
+      const formData = new FormData(this.form!);
+      const params = new URLSearchParams();
+
+      const brands = formData.getAll("brands") as string[];
+      const categories = formData.getAll("categories") as string[];
+      const availability = formData.get("availability") === "true";
+
+      brands.forEach((b) => params.append("brands", b));
+      categories.forEach((c) => params.append("categories", c));
+      if (availability) params.set("availability", "true");
+
+      const queryString = params.toString();
+      const newUrl = `${window.location.pathname}${queryString ? "?" + queryString : ""}`;
+
+      history.pushState({}, "", newUrl);
+      window.dispatchEvent(
+        new CustomEvent("filterchange", { detail: { brands, categories, availability } })
+      );
+    }
+
+    private setupAccordions(): void {
+      document.querySelectorAll<HTMLButtonElement>("[data-section-toggle]").forEach((btn) => {
+        const section = btn.dataset.sectionToggle!;
+        const contentId = btn.getAttribute("aria-controls")!;
+        const contentEl = document.getElementById(contentId);
+        if (!contentEl) return;
+
+        // The chevron is a sibling SVG in the same header row (not inside the button)
+        const chevron = btn.closest(".filter-section")?.querySelector<SVGElement>(".filter-chevron");
+
+        // Restore saved state
+        const storageKey = SECTION_KEYS[section];
+        const savedState = storageKey ? sessionStorage.getItem(storageKey) : null;
+
+        if (savedState === "closed") {
+          // Suppress transition so state restoration doesn't animate on page load
+          contentEl.style.transition = "none";
+          contentEl.classList.add("is-closed");
+          btn.setAttribute("aria-expanded", "false");
+          chevron?.classList.add("is-collapsed");
+          // Re-enable after two frames (browser has committed the layout)
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            contentEl.style.transition = "";
+          }));
+        }
+
+        btn.addEventListener("click", () => {
+          const isClosed = contentEl.classList.contains("is-closed");
+          if (isClosed) {
+            contentEl.classList.remove("is-closed");
+            btn.setAttribute("aria-expanded", "true");
+            chevron?.classList.remove("is-collapsed");
+            if (storageKey) sessionStorage.setItem(storageKey, "open");
+          } else {
+            contentEl.classList.add("is-closed");
+            btn.setAttribute("aria-expanded", "false");
+            chevron?.classList.add("is-collapsed");
+            if (storageKey) sessionStorage.setItem(storageKey, "closed");
+          }
+        });
+      });
+    }
+
+    private setupClearButtons(): void {
+      document.querySelectorAll("[data-clear-filters]").forEach((btn) => {
+        btn.addEventListener("click", () => this.clearAllFilters());
+      });
+
+      document.querySelector("[data-clear-filters-mobile]")?.addEventListener("click", () => {
+        this.closeMobileDrawer();
+        setTimeout(() => this.clearAllFilters(), 100);
+      });
+
+      document.querySelector("[data-clear-brands]")?.addEventListener("click", () => {
+        this.form
+          ?.querySelectorAll<HTMLInputElement>('input[name="brands"]')
+          .forEach((cb) => { cb.checked = false; });
+        if (window.matchMedia("(min-width: 1024px)").matches) this.submitForm();
+      });
+
+      document.querySelector("[data-clear-categories]")?.addEventListener("click", () => {
+        this.form
+          ?.querySelectorAll<HTMLInputElement>('input[name="categories"]')
+          .forEach((cb) => { cb.checked = false; });
+        if (window.matchMedia("(min-width: 1024px)").matches) this.submitForm();
+      });
+    }
+
+    public clearAllFilters(): void {
+      history.pushState({}, "", window.location.pathname);
+      window.dispatchEvent(
+        new CustomEvent("filterchange", {
+          detail: { brands: [], categories: [], availability: false },
+        })
+      );
+    }
+
+    public destroy(): void {
+      document.body.style.overflow = "";
+    }
+  }
+
+  // ── Astro lifecycle handlers ─────────────────────────────────────────────────
+
+  document.addEventListener("astro:before-preparation", () => {
+    document
+      .getElementById("filter-container")
+      ?.classList.add("translate-y-full", "opacity-0", "pointer-events-none");
+    document
+      .getElementById("mobile-filter-overlay")
+      ?.classList.add("pointer-events-none", "opacity-0");
+    document.body.style.overflow = "";
+  });
+
+  document.addEventListener("astro:after-swap", () => {
+    // Ensure incoming cards start invisible so entrance animation plays correctly
+    document.querySelectorAll<HTMLElement>(".product-card-wrapper").forEach((card) => {
+      if (!card.classList.contains("opacity-100")) {
+        card.classList.add("opacity-0");
+      }
+    });
+  });
+
+  document.addEventListener("astro:page-load", () => {
+    const grid = document.getElementById("filterable-product-grid");
+    if (grid) {
+      grid.style.visibility = "visible";
+      grid.style.opacity = "1";
+    }
+    document.body.classList.remove("filtering-in-progress");
+  });
+
+  // ── Instance management ──────────────────────────────────────────────────────
+
+  let currentInstance: ProductFilters | null = null;
+
+  FilterCoordinator.initialize();
+
+  document.addEventListener("astro:page-load", () => {
+    currentInstance?.destroy();
+    currentInstance = new ProductFilters();
+  });
+
+  document.addEventListener("astro:before-preparation", () => {
+    currentInstance?.destroy();
+    currentInstance = null;
+    FilterCoordinator.reset();
+  });
+</script>
