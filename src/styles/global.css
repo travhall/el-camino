@@ -148,7 +148,7 @@
   --free-shipping-bar-bg: var(--color-elco-honey-cream-200);
 
   /* Custom Font Families */
-  --font-display: "Alumni", serif;
+  --font-display: "Alumni", "Alumni Fallback", serif;
   --font-display-italic: "Alumni Italic", serif;
   --font-sans: "Cabin", sans-serif;
 }
@@ -258,6 +258,32 @@
 }
 
 /* Font Faces - Optimized for View Transitions */
+
+/*
+ * Metric-matched fallback for Alumni Sans (display font).
+ * Targets the macOS system font (-apple-system / SF Pro) and Arial as cross-platform fallback.
+ *
+ * Alumni Sans metrics (UPM 1000):
+ *   ascent: 900 (90%), descent: -300 (-30%), lineGap: 0, xAvgCharWidth: 358 (35.8%)
+ * SF Pro metrics (UPM 2048):
+ *   ascent: 1980 (96.68%), descent: -432 (-21.09%), lineGap: 0, xAvgCharWidth: 1187 (57.96%)
+ *
+ * Overrides adjust SF Pro to match Alumni's metrics, minimising layout shift
+ * during the font-display:swap period (CLS fix for article and PDP pages).
+ *
+ * ascent-override  = alumniAscent(90%) / sfAscent(96.68%)   = 93.09%
+ * descent-override = alumniDescent(30%) / sfDescent(21.09%) = 142.22%
+ * size-adjust      = alumniWidth(35.8%) / sfWidth(57.96%)   = 61.77%
+ */
+@font-face {
+  font-family: "Alumni Fallback";
+  src: local("-apple-system"), local("BlinkMacSystemFont"), local("Segoe UI"), local("Arial");
+  ascent-override: 93.09%;
+  descent-override: 142.22%;
+  line-gap-override: 0%;
+  size-adjust: 61.77%;
+}
+
 @font-face {
   font-family: "Alumni";
   font-display: swap; /* swap: preload gets it fast; opacity trick prevents FOUT on first load;
