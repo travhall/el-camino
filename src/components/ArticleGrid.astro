@@ -396,7 +396,8 @@ const getSkeletonVariant = () => {
         // Calculate animation order
         let animationOrder: number;
         if (isSidebar) {
-          animationOrder = 9;
+          // Animate after above-fold cards (indices 0–3), not after below-fold cards (4–5)
+          animationOrder = 5;
         } else {
           const rowIndex = Math.floor(index / cardsPerRow);
           const cardInRow = index % cardsPerRow;
@@ -431,8 +432,7 @@ const getSkeletonVariant = () => {
           ? ANIMATION_CONFIG.priorityDuration
           : ANIMATION_CONFIG.duration;
         const totalAnimationTime =
-          cardDuration +
-          animationOrder * ANIMATION_CONFIG.staggerDelay;
+          cardDuration + animationOrder * ANIMATION_CONFIG.staggerDelay;
         setTimeout(() => {
           htmlCard.classList.remove("animating");
         }, totalAnimationTime);
