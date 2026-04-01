@@ -59,8 +59,8 @@ export const siteConfig: SiteConfig = {
       number: "+7159121169",
       display: "(715) 912-1169",
     },
-    email: "elcaminoboardshop@gmail.com",
-    support: "elcaminoboardshop@gmail.com",
+    email: "elco@elcaminoskateshop.com",
+    support: "elco@elcaminoskateshop.com",
   },
   hours: [
     { day: "Monday", hours: "Closed", isOpen: false },
