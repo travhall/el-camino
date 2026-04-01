@@ -45,7 +45,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           </div>
 
           <!-- FulfillmentSelector: always 2nd (below heading), on both mobile and desktop -->
-          <div class="order-2">
+          <div class="order-2" id="fulfillment-selector-wrapper" data-has-gift-card="false">
             <FulfillmentSelector subtotal={0} />
           </div>
 
@@ -350,7 +350,9 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     }
 
     try {
-      const variationIds = items.map((item) => item.variationId);
+      const variationIds = items
+        .filter((item: CartItem) => !item.isGiftCard)
+        .map((item: CartItem) => item.variationId);
       const response = await fetch("/api/cart-inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -385,15 +387,19 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     const itemSubtotal = displayPrice * item.quantity;
 
     const inventory = inventoryData[item.variationId] || 999;
-    const isOutOfStock = inventory <= 0;
-    const canIncrement = !isOutOfStock && item.quantity < inventory;
+    const isOutOfStock = !item.isGiftCard && inventory <= 0;
+    const canIncrement = item.isGiftCard
+      ? item.quantity < 10
+      : !isOutOfStock && item.quantity < inventory;
 
-    // Only show stock warnings for real low/zero stock; suppress sentinel values (99=error, 999=no data)
+    // Only show stock warnings for real low/zero stock; suppress for gift cards and sentinel values (99=error, 999=no data)
     let stockDisplay = "";
-    if (inventory === 0) {
-      stockDisplay = `<div class="text-xs text-red-600">Out of stock</div>`;
-    } else if (inventory > 0 && inventory < 10) {
-      stockDisplay = `<div class="text-xs text-(--content-meta)">Only ${inventory} left</div>`;
+    if (!item.isGiftCard) {
+      if (inventory === 0) {
+        stockDisplay = `<div class="text-xs text-red-600">Out of stock</div>`;
+      } else if (inventory > 0 && inventory < 10) {
+        stockDisplay = `<div class="text-xs text-(--content-meta)">Only ${inventory} left</div>`;
+      }
     }
 
     // Generate slug-based URL to match other components
@@ -1298,6 +1304,16 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         // Show cart with items
         emptyCart.classList.add("hidden");
         cartContent.classList.remove("hidden");
+
+        // Detect gift cards in cart and notify FulfillmentSelector
+        const hasGiftCard = items.some((item: CartItem) => item.isGiftCard);
+        const wrapper = document.getElementById("fulfillment-selector-wrapper");
+        if (wrapper) {
+          wrapper.dataset.hasGiftCard = String(hasGiftCard);
+        }
+        document.dispatchEvent(
+          new CustomEvent("cart:giftcard", { detail: { hasGiftCard } }),
+        );
 
         // Update items list
         const cartItemsHtml = items.map(createCartItem).join("");

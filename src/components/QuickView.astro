@@ -705,10 +705,13 @@ import {
         this.currentVariation.quantity || 0,
       );
 
+      const isGiftCard = !!this.currentProduct?.isGiftCard;
+
       // Use centralized updateAvailabilityDisplay for complete UI update
       this.uiManager.updateAvailabilityDisplay(
         availabilityInfo,
         this.currentVariation.saleInfo,
+        isGiftCard,
       );
 
       // Update price separately with unit
@@ -725,7 +728,7 @@ import {
       // Show quantity stepper only when >1 unit available; show BIS when OOS
       const qty = this.currentVariation.quantity || 0;
       const inStock = this.currentVariation.inStock ?? qty > 0;
-      this.updateQuantityAndBis(inStock, qty);
+      this.updateQuantityAndBis(inStock, qty, isGiftCard);
 
       // Update button product data
       this.uiManager.updateButtonProductData(
@@ -747,6 +750,7 @@ import {
         variationName: variation.name || "",
         quantity: 1,
         saleInfo: variation.saleInfo || undefined,
+        isGiftCard: this.currentProduct.isGiftCard || undefined,
       };
 
       if (variation.image) productData.image = variation.image;
@@ -755,17 +759,22 @@ import {
     }
 
     // Show/hide quantity stepper and back-in-stock form based on stock state
-    private updateQuantityAndBis(inStock: boolean, quantity: number): void {
+    private updateQuantityAndBis(inStock: boolean, quantity: number, isGiftCard = false): void {
       const quantitySection = document.getElementById(
         "quick-view-quantity-section",
       );
       const bisSection = document.getElementById("qv-bis-section");
-      // Target the wrapper div, not the Button element itself — toggling hidden
-      // on the <button> directly loses to Tailwind's inline-flex utility
       const atcWrapper = document.getElementById("qv-atc-wrapper");
 
-      const showQuantity = inStock && quantity > 1;
-      const showBis = !inStock;
+      // Gift cards: always show stepper (capped at 10), never show BIS
+      const showQuantity = isGiftCard ? true : (inStock && quantity > 1);
+      const showBis = isGiftCard ? false : !inStock;
+
+      // Update quantity input max for gift cards
+      if (isGiftCard) {
+        const qtyInput = document.getElementById("quick-view-quantity") as HTMLInputElement | null;
+        if (qtyInput) qtyInput.max = "10";
+      }
 
       quantitySection?.classList.toggle("hidden", !showQuantity);
       bisSection?.classList.toggle("hidden", !showBis);

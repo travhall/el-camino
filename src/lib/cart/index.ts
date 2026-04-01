@@ -442,10 +442,15 @@ class CartManager implements ICartManager {
         item.quantity && item.quantity > 0 ? item.quantity : 1;
 
       // Fetch inventory and sale info in parallel to reduce latency
+      // Skip inventory check for gift cards — they are always in stock
+      const isGiftCard = !!item.isGiftCard;
+
       const [inventoryResult, saleInfoResult] = await Promise.allSettled([
-        fetch(`/api/check-inventory?variationId=${item.variationId}`)
-          .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-          .then((data) => data.success ? (data.quantity || 0) : 0),
+        isGiftCard
+          ? Promise.resolve(99) // Gift cards: treat as always in stock
+          : fetch(`/api/check-inventory?variationId=${item.variationId}`)
+              .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+              .then((data) => data.success ? (data.quantity || 0) : 0),
         fetch("/api/sale-info", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

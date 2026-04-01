@@ -1,9 +1,10 @@
 ---
 interface Props {
   subtotal: number;
+  hasGiftCard?: boolean;
 }
 
-const { subtotal } = Astro.props;
+const { subtotal, hasGiftCard = false } = Astro.props;
 
 const FREE_SHIPPING_THRESHOLD = 7500; // $75.00 in cents
 const FLAT_RATE_SHIPPING = 599; // $5.99 in cents
@@ -157,6 +158,17 @@ const progressPct = Math.min(
         <p class="text-sm font-semibold text-(--content-heading) mb-1">
           Shipping Details
         </p>
+
+        {hasGiftCard && (
+          <p id="gift-card-shipping-disclaimer" class="text-xs text-(--content-meta) border border-(--border-primary) bg-(--surface-secondary) px-3 py-2 rounded-sm italic">
+            ⚠️ Physical gift cards are shipped at your own risk. El Camino is not responsible for cards lost or stolen in transit. Consider picking up in-store for guaranteed delivery.
+          </p>
+        )}
+        {!hasGiftCard && (
+          <p id="gift-card-shipping-disclaimer" class="hidden text-xs text-(--content-meta) border border-(--border-primary) bg-(--surface-secondary) px-3 py-2 rounded-sm italic">
+            ⚠️ Physical gift cards are shipped at your own risk. El Camino is not responsible for cards lost or stolen in transit. Consider picking up in-store for guaranteed delivery.
+          </p>
+        )}
 
         <div class="grid grid-cols-2 gap-3">
           <div class="col-span-2 sm:col-span-1">
@@ -992,6 +1004,45 @@ const progressPct = Math.min(
   }
 
   document.addEventListener("astro:page-load", initFulfillmentSelector);
+
+  // Listen for gift card detection from cart — auto-select pickup and show disclaimer.
+  // Guard: only act after initFulfillmentSelector has completed so we don't interfere
+  // with restoreForm() on initial cart load.
+  let fulfillmentSelectorReady = false;
+  document.addEventListener("astro:page-load", () => {
+    // Set flag in a separate listener that runs after initFulfillmentSelector
+    // (listeners fire in registration order — this runs second).
+    fulfillmentSelectorReady = true;
+  });
+
+  document.addEventListener("cart:giftcard", (e: Event) => {
+    const { hasGiftCard } = (e as CustomEvent).detail as { hasGiftCard: boolean };
+    const disclaimer = document.getElementById("gift-card-shipping-disclaimer");
+
+    if (disclaimer) {
+      disclaimer.classList.toggle("hidden", !hasGiftCard);
+    }
+
+    // Only nudge toward pickup if the user has never chosen a fulfillment method.
+    // If sessionStorage has a saved form, restoreForm() already handled the state —
+    // don't override it. If it has no saved form, the user is on a fresh visit and
+    // we should not open the panel at all; let them choose deliberately.
+    if (hasGiftCard && fulfillmentSelectorReady) {
+      const hasSavedForm = !!sessionStorage.getItem("fulfillment-form");
+      const anySelected = document.querySelector<HTMLButtonElement>(
+        '[data-tab][aria-pressed="true"]',
+      );
+      // Only auto-select if form is open and no tab chosen yet — never force-open
+      if (!hasSavedForm && !anySelected) {
+        // Don't click — just highlight the pickup tab visually as a suggestion
+        // without opening the form panel. The user still chooses deliberately.
+        const pickupTab = document.querySelector<HTMLButtonElement>(
+          '[data-tab="pickup"]',
+        );
+        pickupTab?.focus();
+      }
+    }
+  });
 </script>
 
 <style>

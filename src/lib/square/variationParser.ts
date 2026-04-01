@@ -169,10 +169,12 @@ export function buildAvailableAttributes(
     });
   });
 
-  // Convert sets to sorted arrays
+  // Convert sets to arrays — preserve insertion order (variations are pre-sorted by ordinal)
+  // Do NOT sort alphabetically: ordinal order from Square is the source of truth,
+  // and lexicographic sort breaks numeric variant names like $25/$50/$100/$250.
   const result: Record<string, string[]> = {};
   Object.entries(attributeMap).forEach(([attributeType, valueSet]) => {
-    result[attributeType] = Array.from(valueSet).sort();
+    result[attributeType] = Array.from(valueSet);
   });
 
   return result;
@@ -227,7 +229,8 @@ export function getAttributeValues(
     }
   });
 
-  return Array.from(values).sort();
+  // Preserve insertion order — variations are pre-sorted by ordinal
+  return Array.from(values);
 }
 
 /**

@@ -83,43 +83,41 @@ export class PDPUIManager {
     };
   }
 
-  updateAvailabilityDisplay(info: ProductAvailabilityInfo, saleInfo?: any): void {
-    this.updateQuantityControls(info);
+  updateAvailabilityDisplay(info: ProductAvailabilityInfo, saleInfo?: any, isGiftCard?: boolean): void {
+    this.updateQuantityControls(info, isGiftCard);
     this.updateAddToCartButton(info);
     this.updateImageOverlay(info, saleInfo);
-    this.updateInventoryDisplay(info);
+    this.updateInventoryDisplay(info, isGiftCard);
   }
 
-  updateQuantityControls(info: ProductAvailabilityInfo): void {
+  updateQuantityControls(info: ProductAvailabilityInfo, isGiftCard?: boolean): void {
     // Re-cache elements in case they were cloned/replaced
     this.cacheElements(this.elementIds); // Use stored IDs
 
     const { quantityInput, decreaseButton, increaseButton } = this.elements;
     if (!quantityInput) return;
 
-    const defaultQty = getDefaultQuantity(info.state);
-    const maxQty = getMaxQuantity(info);
-    const isDisabled = isQuantityInputDisabled(info.state);
+    // Gift cards: always available, qty capped at 10, stepper always visible
+    const effectiveMax = isGiftCard ? 10 : getMaxQuantity(info);
+    const defaultQty = isGiftCard ? 1 : getDefaultQuantity(info.state);
+    const isDisabled = isGiftCard ? false : isQuantityInputDisabled(info.state);
 
     quantityInput.value = defaultQty.toString();
-    quantityInput.max = maxQty.toString();
+    quantityInput.max = effectiveMax.toString();
     quantityInput.disabled = isDisabled;
 
     if (decreaseButton) {
       decreaseButton.disabled = isDisabled || defaultQty <= 1;
     }
     if (increaseButton) {
-      increaseButton.disabled = isDisabled || defaultQty >= maxQty;
+      increaseButton.disabled = isDisabled || defaultQty >= effectiveMax;
     }
 
-    // Show stepper only when there's more than 1 unit to choose from
+    // Show stepper: always for gift cards, otherwise only when >1 unit available
     const stepper = document.getElementById("quantity-stepper");
     if (stepper) {
-      if (info.state === ProductAvailabilityState.AVAILABLE && maxQty > 1) {
-        stepper.classList.remove("hidden");
-      } else {
-        stepper.classList.add("hidden");
-      }
+      const showStepper = isGiftCard || (info.state === ProductAvailabilityState.AVAILABLE && effectiveMax > 1);
+      stepper.classList.toggle("hidden", !showStepper);
     }
   }
 
@@ -164,11 +162,17 @@ export class PDPUIManager {
     }
   }
 
-  updateInventoryDisplay(info: ProductAvailabilityInfo): void {
+  updateInventoryDisplay(info: ProductAvailabilityInfo, isGiftCard?: boolean): void {
     const { remainingCount, cartQuantity, inventoryStatus } = this.elements;
 
     if (remainingCount) {
-      remainingCount.textContent = `${info.remaining} available`;
+      if (isGiftCard) {
+        // Gift cards have no meaningful stock count — hide entirely
+        remainingCount.classList.add("hidden");
+      } else {
+        remainingCount.classList.remove("hidden");
+        remainingCount.textContent = `${info.remaining} available`;
+      }
     }
 
     if (cartQuantity) {

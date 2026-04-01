@@ -14,6 +14,7 @@ export interface CartItem {
   unit?: string; // Add unit property
   catalogVersion?: number; // Add for test compatibility
   saleInfo?: SaleInfo; // Sale pricing information
+  isGiftCard?: boolean; // Physical gift card — unlimited stock, pickup or ship with disclaimer
 }
 
 export interface CartState {

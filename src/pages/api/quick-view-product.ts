@@ -26,10 +26,17 @@ export const GET: APIRoute = async ({ url }) => {
       });
     }
 
-    // Get inventory for all variations
+    // Get inventory for all variations — skip for gift cards (unlimited stock)
     let inventoryMap: Record<string, number> = {};
 
-    if (product.variations && product.variations.length > 0) {
+    if (product.isGiftCard) {
+      // Gift cards: always in stock, no inventory tracking
+      product.variations = (product.variations || []).map((v) => ({
+        ...v,
+        inStock: true,
+        quantity: 99,
+      }));
+    } else if (product.variations && product.variations.length > 0) {
       try {
         const variationIds = product.variations.map((v) => v.variationId);
         inventoryMap = await checkBulkInventory(variationIds);
@@ -50,7 +57,7 @@ export const GET: APIRoute = async ({ url }) => {
         }));
       }
     } else {
-      // Single variation product
+      // Single variation product (non-gift-card)
       const quantity = inventoryMap[product.variationId] || 999;
       product.variations = [
         {

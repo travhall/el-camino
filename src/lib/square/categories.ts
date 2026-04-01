@@ -1,6 +1,6 @@
 // src/lib/square/categories.ts - WITH COMPREHENSIVE DEBUGGING
 import { squareClient, extractSaleInfo } from "./client";
-import { extractBrandValue, fetchMeasurementUnits } from "./productUtils";
+import { extractBrandValue, extractIsGiftCard, fetchMeasurementUnits } from "./productUtils";
 import { batchGetImageUrls } from "./imageUtils";
 import type {
   Category,
@@ -173,7 +173,7 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
  */
 async function fetchAllCatalogItems(): Promise<any[]> {
   // Cache key with version to bust old cached object format
-  const cacheKey = "all-catalog-items-v2";
+  const cacheKey = "all-catalog-items-v3";
 
   return productCache.getOrCompute(cacheKey, async () => {
     try {
@@ -356,9 +356,17 @@ export async function fetchProductsByCategory(
 
       // Extract brand from custom attributes
       const brandValue = extractBrandValue(item.customAttributeValues);
+      const isGiftCard = extractIsGiftCard(item.customAttributeValues);
 
-      // Build variations array with sale info
-      const productVariations = variations.map((v: any) => {
+      // Build variations array with sale info, sorted by Square ordinal
+      const productVariations = variations
+        .slice()
+        .sort((a: any, b: any) => {
+          const ordA = a.itemVariationData?.ordinal ?? 0;
+          const ordB = b.itemVariationData?.ordinal ?? 0;
+          return ordA - ordB;
+        })
+        .map((v: any) => {
         const variationPrice = v.itemVariationData?.priceMoney;
         const regularPrice = variationPrice ? Number(variationPrice.amount) / 100 : 0;
         
@@ -385,6 +393,7 @@ export async function fetchProductsByCategory(
         url: createProductUrl({ title: item.itemData?.name || "" }),
         unit: unit,
         brand: brandValue || undefined,
+        isGiftCard: isGiftCard || undefined,
         variations: productVariations.length > 0 ? productVariations : undefined,
       };
     });

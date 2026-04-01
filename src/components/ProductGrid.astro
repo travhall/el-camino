@@ -35,18 +35,23 @@ let productsWithInventory: ProductWithInventory[] = initialProducts;
 
 if (!skipInventoryCheck && initialProducts.length > 0) {
   try {
+    // Exclude gift cards — they have no inventory tracking and are always in stock
     const variationIds = initialProducts
+      .filter((p) => !p.isGiftCard)
       .map((p) => p.variationId)
       .filter(Boolean);
     const inventoryMap =
       await batchInventoryService.getBatchInventoryStatus(variationIds);
 
     productsWithInventory = initialProducts.map((product) => {
-      const inventoryStatus = inventoryMap.get(product.variationId) || {
-        isOutOfStock: false,
-        hasLimitedOptions: false,
-        totalQuantity: 0,
-      };
+      // Gift cards are always in stock — skip inventory lookup entirely
+      const inventoryStatus = product.isGiftCard
+        ? { isOutOfStock: false, hasLimitedOptions: false, totalQuantity: 99 }
+        : inventoryMap.get(product.variationId) || {
+            isOutOfStock: false,
+            hasLimitedOptions: false,
+            totalQuantity: 0,
+          };
       return { ...product, inventoryStatus };
     });
   } catch (error) {

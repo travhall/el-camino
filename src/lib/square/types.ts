@@ -28,6 +28,7 @@ export interface Product {
   // Category membership
   categories?: string[]; // Array of Square category IDs
   reportingCategoryId?: string; // Square reporting category ID
+  isGiftCard?: boolean; // Physical gift card — set via Square custom attribute, not category name
 }
 
 export interface ProductData {

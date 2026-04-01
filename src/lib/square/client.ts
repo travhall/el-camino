@@ -8,7 +8,7 @@ import { processSquareError } from "./serverErrorUtils";
 import { buildAvailableAttributes } from "./variationParser";
 import { createProductUrl } from "./slugUtils";
 import { requestDeduplicator } from "./requestDeduplication";
-import { extractBrandValue, fetchMeasurementUnits } from "./productUtils";
+import { extractBrandValue, extractIsGiftCard, fetchMeasurementUnits } from "./productUtils";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 import { productCache } from "@/lib/cache/blobCache";
 
@@ -231,6 +231,22 @@ export async function fetchProducts(): Promise<Product[]> {
 
             // Extract brand from custom attributes
             const brandValue = extractBrandValue(item.customAttributeValues);
+            const isGiftCard = extractIsGiftCard(item.customAttributeValues);
+
+            // DEBUG: log custom attributes for gift card diagnosis — remove after fix
+            if (item.itemData?.name?.toLowerCase().includes("gift card")) {
+              console.log(
+                `[DEBUG gift card] "${item.itemData.name}" customAttributeValues:`,
+                JSON.stringify(item.customAttributeValues, null, 2),
+                "→ isGiftCard:", isGiftCard,
+              );
+            }
+
+            // DEBUG: log raw custom attributes for gift card detection troubleshooting
+            if (item.itemData?.name?.toLowerCase().includes("gift card")) {
+              console.log(`[GiftCard Debug] "${item.itemData.name}" customAttributeValues:`, JSON.stringify(item.customAttributeValues, null, 2));
+              console.log(`[GiftCard Debug] extractIsGiftCard result:`, isGiftCard);
+            }
 
             return {
               id: item.id,
@@ -243,6 +259,7 @@ export async function fetchProducts(): Promise<Product[]> {
                 variation?.itemVariationData?.measurementUnitId || null,
               price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
               brand: brandValue,
+              isGiftCard: isGiftCard || undefined,
               categoryIds: (item.itemData?.categories || []).map((c: any) => c.id).filter(Boolean),
               reportingCategoryId: item.itemData?.reportingCategory?.id || null,
             };
@@ -292,8 +309,15 @@ export async function fetchProducts(): Promise<Product[]> {
             variation?.itemVariationData?.name || undefined
           );
 
-          // Build variations array with sale info and images
-          const productVariations = variations.map((v: any) => {
+          // Build variations array with sale info and images, sorted by Square ordinal
+          const productVariations = variations
+            .slice()
+            .sort((a: any, b: any) => {
+              const ordA = a.itemVariationData?.ordinal ?? 0;
+              const ordB = b.itemVariationData?.ordinal ?? 0;
+              return ordA - ordB;
+            })
+            .map((v: any) => {
             const variationPrice = v.itemVariationData?.priceMoney;
             const regularPrice = variationPrice ? Number(variationPrice.amount) / 100 : 0;
 
@@ -338,6 +362,7 @@ export async function fetchProducts(): Promise<Product[]> {
             variations: productVariations.length > 0 ? productVariations : undefined,
             categories: p.categoryIds?.length > 0 ? p.categoryIds : undefined,
             reportingCategoryId: p.reportingCategoryId || undefined,
+            isGiftCard: p.isGiftCard || undefined,
           };
         });
 
@@ -444,8 +469,15 @@ export async function fetchProduct(id: string): Promise<Product | null> {
               !!url && url !== EL_CAMINO_LOGO_DATA_URI,
           );
 
-        // Process all variations with their data including measurement units
-        const productVariations = variations.map((v) => {
+        // Process all variations with their data including measurement units, sorted by ordinal
+        const productVariations = variations
+          .slice()
+          .sort((a: any, b: any) => {
+            const ordA = (a as any).itemVariationData?.ordinal ?? 0;
+            const ordB = (b as any).itemVariationData?.ordinal ?? 0;
+            return ordA - ordB;
+          })
+          .map((v) => {
           const priceMoney = v.itemVariationData?.priceMoney;
           const regularPrice = priceMoney ? Number(priceMoney.amount) / 100 : 0;
 
@@ -486,6 +518,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
 
         // Extract brand using the same function as fetchProducts
         const brandValue = extractBrandValue(item.customAttributeValues);
+        const isGiftCard = extractIsGiftCard(item.customAttributeValues);
 
         // Use default variation unit or first found unit
         const defaultUnit = productVariations[0]?.unit ?? "";
@@ -505,6 +538,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
           brand: brandValue || undefined, // Only include if brand exists
           unit: defaultUnit,
           availableAttributes: availableAttributes, // Add available attributes
+          isGiftCard: isGiftCard || undefined, // Physical gift card flag
         };
 
         // console.log(

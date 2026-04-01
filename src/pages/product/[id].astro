@@ -122,12 +122,17 @@ if (!product) {
   return Astro.redirect("/404");
 }
 
+// Detect gift card via custom attribute set in Square Dashboard.
+// More robust than category name matching — survives any category rename.
+const isGiftCard = product.isGiftCard ?? false;
+
 // Set default variation ID and prepare for inventory checking
 let defaultVariationId = product.variationId;
 let variations = product.variations || [];
 
 // Fetch and process inventory (API call + data processing in one try block)
-if (variations.length > 0) {
+// Skip entirely for gift cards — they have no tracked inventory
+if (!isGiftCard && variations.length > 0) {
   try {
     const inventoryMap = await checkBulkInventory(
       variations.map((v) => v.variationId),
@@ -161,6 +166,21 @@ if (variations.length > 0) {
       quantity: 0,
     }));
   }
+} else if (isGiftCard) {
+  // Gift cards: unlimited stock, always in-stock, no API call needed
+  variations = (product.variations?.length ? product.variations : [
+    {
+      id: product.variationId,
+      variationId: product.variationId,
+      name: product.title,
+      price: product.price,
+      attributes: {},
+    },
+  ]).map((v) => ({
+    ...v,
+    inStock: true,
+    quantity: 99, // sentinel — UI will suppress display of this value
+  }));
 } else {
   // Single-variation product — fetch inventory for the lone variation
   try {
@@ -825,14 +845,14 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
           )
         }
 
-        <!-- Quantity Input — only shown when more than 1 unit is available -->
+        <!-- Quantity Input — only shown when more than 1 unit is available (or gift card) -->
         {
           selectedVariationInStock && (
             <div class="mt-6">
               <div class="flex flex-col space-y-2 items-start">
                 <div
                   id="quantity-stepper"
-                  class:list={[selectedVariationQuantity <= 1 ? "hidden" : ""]}
+                  class:list={[(!isGiftCard && selectedVariationQuantity <= 1) ? "hidden" : ""]}
                 >
                   <label
                     for="quantity-input"
@@ -853,7 +873,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                       type="number"
                       id="quantity-input"
                       min="1"
-                      max={selectedVariationQuantity}
+                      max={isGiftCard ? 10 : selectedVariationQuantity}
                       value="1"
                       class="w-14 h-10 text-center bg-(--surface-primary) text-(--ui-input-text) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
@@ -861,16 +881,18 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                       type="button"
                       id="increase-quantity"
                       class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
-                      disabled={selectedVariationQuantity <= 1}
+                      disabled={!isGiftCard && selectedVariationQuantity <= 1}
                     >
                       +
                     </button>
                   </div>
                 </div>
                 <div id="availability-indicator" class="text-sm">
-                  <span class="text-(--content-meta)" id="remaining-count">
-                    {selectedVariationQuantity} available
-                  </span>
+                  {!isGiftCard && (
+                    <span class="text-(--content-meta)" id="remaining-count">
+                      {selectedVariationQuantity} available
+                    </span>
+                  )}
                   <span id="cart-quantity" class="ml-1 hidden">
                     ( 0 in cart )
                   </span>
@@ -911,6 +933,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
               unit: unitDisplay,
               variationName: selectedVariation?.name || "",
               saleInfo: selectedVariation?.saleInfo || undefined,
+              isGiftCard: isGiftCard || undefined,
             })}
             id="add-to-cart-button"
             disabled={!selectedVariationInStock}

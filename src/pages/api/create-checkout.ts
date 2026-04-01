@@ -164,15 +164,21 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Validate inventory before checkout
-    const variationIds = items.map((item) => item.variationId);
-    const inventoryLevels = await checkBulkInventory(variationIds);
+    // Skip gift cards — they have no tracked inventory and are always available
+    const nonGiftCardItems = items.filter((item) => !item.isGiftCard);
+    const giftCardItems = items.filter((item) => item.isGiftCard);
+
+    const variationIds = nonGiftCardItems.map((item) => item.variationId);
+    const inventoryLevels = variationIds.length > 0
+      ? await checkBulkInventory(variationIds)
+      : {};
 
     // Filter out out-of-stock items and adjust quantities
-    const validItems: CartItem[] = [];
+    const validItems: CartItem[] = [...giftCardItems]; // gift cards always valid
     const removedItems: string[] = [];
     const adjustedItems: { name: string; oldQty: number; newQty: number }[] = [];
 
-    for (const item of items) {
+    for (const item of nonGiftCardItems) {
       const availableQuantity = inventoryLevels[item.variationId] || 0;
 
       if (availableQuantity <= 0) {
@@ -404,7 +410,7 @@ export const POST: APIRoute = async ({ request }) => {
       validItems.map((item) => inventoryCache.delete(item.variationId))
     );
     batchInventoryService.clearCache();
-    await productCache.delete("all-catalog-items-v2");
+    await productCache.delete("all-catalog-items-v3");
 
     // Set a server-readable cookie with the orderId so the confirmation page can
     // retrieve it without relying on Square appending it to the redirect URL

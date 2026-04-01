@@ -29,8 +29,11 @@ const {
 // Use inventory status if provided, otherwise perform individual check
 let isOutOfStock = false;
 
-// If we have batch inventory status, use it
-if (inventoryStatus) {
+// Gift cards have no inventory tracking — always in stock
+if (product.isGiftCard) {
+  isOutOfStock = false;
+} else if (inventoryStatus) {
+  // If we have batch inventory status, use it
   isOutOfStock = inventoryStatus.isOutOfStock;
 } else if (!skipInventoryCheck && product.variationId) {
   // Fallback to individual inventory check
@@ -68,8 +71,22 @@ const defaultVariation = product.variations?.[0];
 const saleInfo = defaultVariation?.saleInfo;
 const isOnSale = !!saleInfo && !isOutOfStock; // Don't show sale if sold out
 
+// Gift card: compute price range across all variations
+const giftCardPriceRange = (() => {
+  if (!product.isGiftCard || !product.variations?.length) return null;
+  const prices = product.variations.map((v) => v.price).filter((p) => p > 0);
+  if (prices.length < 2) return null;
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  return min === max
+    ? MoneyUtils.format(MoneyUtils.fromFloat(min))
+    : `${MoneyUtils.format(MoneyUtils.fromFloat(min))}–${MoneyUtils.format(MoneyUtils.fromFloat(max))}`;
+})();
+
 // Format prices for display
-const formattedPrice = saleInfo
+const formattedPrice = giftCardPriceRange
+  ? giftCardPriceRange
+  : saleInfo
   ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.salePrice))
   : MoneyUtils.format(MoneyUtils.fromFloat(product.price));
 
