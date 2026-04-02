@@ -101,12 +101,17 @@ if (!product) {
 //   `[PDP] Successfully loaded product: ${product.title} (ID: ${product.id})`
 // );
 
+// Shallow-clone the product before any mutations so the BlobCache reference
+// (fallbackCache returns the same object in dev/production) is never touched.
+// Without this, mutations like product.image or product.selectedVariationId
+// persist in the in-memory fallback cache and bleed across unrelated requests.
+product = { ...product };
+
 // Handle variant parameter
 if (variantParam && product.variations) {
   const targetVariation = getVariationFromVariantParam(product, variantParam);
 
   if (targetVariation) {
-    // Update product with selected variant
     product.selectedVariationId = targetVariation.variationId;
     product.price = targetVariation.price;
     if (targetVariation.image) {
@@ -127,7 +132,8 @@ if (!product) {
 const isGiftCard = product.isGiftCard ?? false;
 
 // Set default variation ID and prepare for inventory checking
-let defaultVariationId = product.variationId;
+// selectedVariationId is set above when ?variant= param is present.
+let defaultVariationId = product.selectedVariationId ?? product.variationId;
 let variations = product.variations || [];
 
 // Fetch and process inventory (API call + data processing in one try block)

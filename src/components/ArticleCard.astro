@@ -212,7 +212,7 @@ const getContentClasses = () => {
     default:
       return `flex flex-col gap-2 px-6 py-12 xl:p-12 absolute bottom-0 m-1 bg-(--ui-card-surface)/00 lg:group-hover:bg-(--ui-card-surface)/100 transition-all duration-300 ${
         featured &&
-        "bg-(--ui-card-surface)/90 md:bg-(--ui-card-surface) first-of-type:m-0 md:border-t-4 md:border-l-4 md:border-(--ui-card-border) md:w-5/6 lg:w-2/3 right-0"
+        "bg-(--ui-card-surface)/90 md:bg-(--ui-card-surface) first-of-type:m-0 md:border-t-4 md:border-l-4 md:border-(--ui-card-border) md:w-5/6 lg:w-4/5 xl:max-w-[44rem] right-0"
       }`;
   }
 };
@@ -257,7 +257,9 @@ const getExcerptClasses = () => {
 <a
   href={`/news/${post.slug}`}
   class={`${getCardClasses()} ${shouldAnimate ? `article-card-wrapper${priority ? " card-entrance-ready" : " opacity-0"}` : ""}`}
-  style={featured && variant === "masonry" ? "opacity: 0.001; transition: none" : undefined}
+  style={featured && variant === "masonry"
+    ? "opacity: 0.001; transition: none"
+    : undefined}
   data-initial-index={shouldAnimate
     ? Astro.props["data-initial-index"]
     : undefined}
@@ -370,29 +372,31 @@ const getExcerptClasses = () => {
 
     <!-- Article Tags (masonry only, max 5 visible) -->
     {
-      variant === "masonry" && displayTags.length > 0 && (() => {
-        const maxVisible = 5;
-        const visibleTags = displayTags.slice(0, maxVisible);
-        const hiddenCount = displayTags.length - maxVisible;
-        return (
-          <div class="flex flex-wrap gap-2 mt-auto pt-2 items-center">
-            {visibleTags.map((tag) => (
-              <Tag
-                tag={tag}
-                variant="default"
-                size="sm"
-                clickable={true}
-                useButton={true}
-              />
-            ))}
-            {hiddenCount > 0 && (
-              <span class="text-xs text-(--content-meta-small) font-medium">
-                +{hiddenCount} more
-              </span>
-            )}
-          </div>
-        );
-      })()
+      variant === "masonry" &&
+        displayTags.length > 0 &&
+        (() => {
+          const maxVisible = 5;
+          const visibleTags = displayTags.slice(0, maxVisible);
+          const hiddenCount = displayTags.length - maxVisible;
+          return (
+            <div class="flex flex-wrap gap-2 mt-auto pt-2 items-center">
+              {visibleTags.map((tag) => (
+                <Tag
+                  tag={tag}
+                  variant="default"
+                  size="sm"
+                  clickable={true}
+                  useButton={true}
+                />
+              ))}
+              {hiddenCount > 0 && (
+                <span class="text-xs text-(--content-meta-small) font-medium">
+                  +{hiddenCount} more
+                </span>
+              )}
+            </div>
+          );
+        })()
     }
 
     <!-- Teaser read-more affordance -->

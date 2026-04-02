@@ -54,11 +54,11 @@ const getContainerClasses = () => {
       return "flex flex-col gap-1";
     } else {
       // Grid view for news page - simpler than masonry
-      return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-1";
+      return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 3xl:grid-cols-5 gap-1";
     }
   }
   // Original masonry layout for home page
-  return "article-grid flex flex-col sm:grid sm:justify-center sm:grid-cols-6 2xl:grid-cols-8 sm:auto-rows-auto md:auto-rows-[12vw] lg:auto-rows-[10vw] xl:auto-rows-[9vw] 2xl:auto-rows-[9.5vw] w-full gap-1 p-1 pb-0";
+  return "article-grid flex flex-col sm:grid sm:justify-center sm:grid-cols-6 3xl:grid-cols-8 sm:auto-rows-auto md:auto-rows-[12vw] lg:auto-rows-[10vw] xl:auto-rows-[9vw] 3xl:auto-rows-[9.5vw] w-full gap-1 p-1 pb-0";
 };
 
 // Get skeleton variant for loading states
@@ -136,20 +136,7 @@ const getSkeletonVariant = () => {
         {showSidebar && !filterable && (
           <>
             <Sidebar />
-            <div class="bg-(--surface-secondary) col-span-full md:col-span-4 2xl:col-span-6 2xl:row-span-2 p-8 place-content-center flex flex-col -mt-1 md:mt-0 lg:flex-row gap-4 lg:justify-between lg:items-center">
-              {/* <h3 class="font-display font-bold text-4xl lg:text-5xl text-balance inline-block text-(--content-meta) leading-[.95]">
-                Get all the latest <span class="inline-block">El Camino</span>
-                news here
-              </h3>
-              <Button
-                href="/news"
-                variant="outline"
-                size="sm"
-                class="self-start"
-              >
-                Read all about it
-              </Button> */}
-            </div>
+            <div class="bg-(--surface-secondary) col-span-full md:col-span-4 3xl:col-span-6 3xl:row-span-2 p-8 place-content-center flex flex-col -mt-1 md:mt-0 lg:flex-row gap-4 lg:justify-between lg:items-center" />
           </>
         )}
       </>
@@ -342,13 +329,13 @@ const getSkeletonVariant = () => {
 
     // Masonry layout (home page) - use grid column count
     if (view === "masonry") {
-      if (width >= 1536) return 8; // 2xl:grid-cols-8
+      if (width >= 1536) return 8; // 3xl:grid-cols-8
       if (width >= 640) return 6; // sm:grid-cols-6
       return 1; // mobile - single column
     }
 
     // Grid view (news page)
-    if (width >= 1536) return 5; // 2xl:grid-cols-5
+    if (width >= 1536) return 5; // 3xl:grid-cols-5
     if (width >= 1280) return 4; // xl:grid-cols-4
     if (width >= 1024) return 3; // lg:grid-cols-3
     if (width >= 768) return 2; // md:grid-cols-2

@@ -963,11 +963,28 @@ import {
       ) as HTMLButtonElement;
       if (button && product) {
         button.onclick = () => {
+          // Capture variant BEFORE closeModal() — resetState() nulls
+          // this.currentVariation synchronously, so reading it afterward
+          // always returns undefined and the slug is lost.
+          const baseUrl = product.url.split("?")[0];
+          const variationName = this.currentVariation?.name;
+          const variantSlug = variationName
+            ? variationName
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, "")
+                .replace(/\s+/g, "-")
+                .replace(/-+/g, "-")
+                .replace(/^-|-$/g, "")
+            : null;
+          const url = variantSlug
+            ? `${baseUrl}?variant=${variantSlug}`
+            : baseUrl;
+
           this.closeModal();
           // Use Astro's navigate() so the view-transition router handles the
           // navigation — this uses any prefetched content and plays the page
           // transition animation instead of a jarring hard reload.
-          navigate(product.url);
+          navigate(url);
         };
       }
     }

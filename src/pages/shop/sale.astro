@@ -12,6 +12,7 @@ import {
   filterProductsWithCache,
   filterSaleProducts,
 } from "@/lib/square/filterUtils";
+import { createVariantSlug } from "@/lib/square/slugUtils";
 import type {
   Product,
   ProductFilters as ProductFiltersType,
@@ -33,13 +34,18 @@ function withSaleVariationFirst(product: Product): Product {
     ...variations.slice(saleIdx + 1),
   ];
 
+  const saleVariation = reordered[0];
+  const variantSlug = saleVariation.name ? createVariantSlug(saleVariation.name) : null;
+  const baseUrl = product.url.split("?")[0];
+
   return {
     ...product,
-    variationId: reordered[0].variationId,
-    price: reordered[0].price,
-    image: reordered[0].image || product.image,
-    images: reordered[0].images || product.images,
+    variationId: saleVariation.variationId,
+    price: saleVariation.price,
+    image: saleVariation.image || product.image,
+    images: saleVariation.images || product.images,
     variations: reordered,
+    url: variantSlug ? `${baseUrl}?variant=${variantSlug}` : baseUrl,
   };
 }
 
