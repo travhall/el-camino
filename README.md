@@ -2,10 +2,10 @@
 
 A modern e-commerce platform built with Astro and Square integration, featuring dynamic product catalogs, cart management, and seamless checkout experiences.
 
-![Astro](https://img.shields.io/badge/Astro-5.16.0-orange?logo=astro&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-blue?logo=typescript&logoColor=white)
-![Square](https://img.shields.io/badge/Square-43.2.0-success?logo=square&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.1.17-blue?logo=tailwind-css&logoColor=white)
+![Astro](https://img.shields.io/badge/Astro-6.1.2-orange?logo=astro&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6.0.2-blue?logo=typescript&logoColor=white)
+![Square](https://img.shields.io/badge/Square-44.0.1-success?logo=square&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.2.2-blue?logo=tailwind-css&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Production_Ready-brightgreen)
 
 ## 🛍️ Features
@@ -22,6 +22,8 @@ A modern e-commerce platform built with Astro and Square integration, featuring 
 - **Sale Pricing** - Full sale price support with discount badges and dedicated pages
 - **QuickView** - Instant product preview modal with add-to-cart functionality
 - **Fulfillment Options** - Multiple fulfillment methods including shipping selector
+- **Back-in-Stock Notifications** - Email capture for sold-out items with automated notifications
+- **Email System** - Order confirmations, shipping notifications, pickup reminders via Resend
 
 ### Technical Highlights
 
@@ -38,8 +40,8 @@ A modern e-commerce platform built with Astro and Square integration, featuring 
 
 ### Prerequisites
 
-- Node.js ≥20.0.0
-- pnpm 9.15.0 (enforced)
+- \*\*Node.js ≥20.0.0
+- pnpm 10.33.0 (enforced)
 - Square Developer Account
 
 ### Installation
@@ -91,26 +93,29 @@ pnpm test:e2e
 
 ## 📁 Project Structure
 
-```
+```text
 src/
-├── components/          # Reusable UI components (36 components)
+├── components/          # Reusable UI components
 │   ├── ProductCard.astro       # Product display cards
 │   ├── QuickView.astro         # Quick view modal
 │   ├── ProductFilters.astro    # Filtering interface
 │   ├── ProductGrid.astro       # Product grid layout
 │   ├── MiniCart.astro          # Shopping cart dropdown
 │   ├── Nav.astro               # Main navigation
+│   ├── BackInStock.astro       # Back-in-stock notification form
 │   ├── wordpress/              # WordPress block renderers
 │   └── admin/                  # Admin dashboard components
+│       ├── AdminNav.astro      # Admin navigation
 │       └── performance/        # Performance monitoring UI
 ├── layouts/            # Page layouts
-│   └── Layout.astro            # Main layout with SEO, fonts, device detection
+│   ├── Layout.astro            # Main layout with SEO, fonts, device detection
+│   └── AdminLayout.astro       # Admin dashboard layout
 ├── lib/               # Business logic
 │   ├── cart/          # Cart management system
 │   │   ├── index.ts           # CartManager singleton
 │   │   ├── types.ts           # Cart type definitions
 │   │   └── cartHelpers.ts     # Utility functions
-│   ├── square/        # Square API integration (23 files)
+│   ├── square/        # Square API integration
 │   │   ├── client.ts          # Square client configuration
 │   │   ├── categories.ts      # Category management
 │   │   ├── variationParser.ts # Product variation parsing
@@ -134,9 +139,15 @@ src/
 │   ├── performance/   # Performance monitoring
 │   │   ├── PerformanceManager.ts      # Core Web Vitals tracking
 │   │   └── BudgetManager.ts           # Resource budget tracking
+│   ├── email/         # Email system with Resend
+│   │   ├── sender.ts          # Email sending functions
+│   │   └── templates.ts       # Email HTML templates
+│   ├── admin/         # Admin utilities
+│   │   └── dismissedOrders.ts # Order dismissal tracking
+│   ├── backInStock.ts # Back-in-stock subscription management
 │   └── image/         # Enhanced image optimization
 ├── pages/             # Routes and API endpoints
-│   ├── api/           # Server endpoints (16 endpoints)
+│   ├── api/           # Server endpoints
 │   │   ├── list-catalog.ts         # Product catalog
 │   │   ├── create-checkout.ts      # Square checkout
 │   │   ├── cart-actions.ts         # Cart operations
@@ -145,7 +156,14 @@ src/
 │   │   ├── get-categories.ts       # Category listing
 │   │   ├── load-more-products.ts   # Pagination
 │   │   ├── quick-view-product.ts   # Quick view data
-│   │   └── sale-info.ts            # Sale pricing
+│   │   ├── sale-info.ts            # Sale pricing
+│   │   ├── back-in-stock.ts        # Back-in-stock subscriptions
+│   │   ├── admin/                  # Admin API endpoints
+│   │   │   ├── mark-shipped.ts     # Mark order as shipped
+│   │   │   ├── mark-pickedup.ts    # Mark order as picked up
+│   │   │   ├── send-back-in-stock.ts # Send BIS notifications
+│   │   │   └── dismiss-order.ts    # Dismiss order notifications
+│   │   └── webhooks/               # Webhook handlers
 │   ├── product/       # Dynamic product pages
 │   │   └── [id].astro
 │   ├── category/      # Dynamic category pages
@@ -153,6 +171,24 @@ src/
 │   ├── shop/          # Shop pages
 │   ├── news/          # WordPress content pages
 │   ├── admin/         # Admin dashboards
+│   │   ├── index.astro           # Admin dashboard overview
+│   │   ├── orders/               # Order management
+│   │   │   ├── shipping.astro    # Shipping orders
+│   │   │   ├── pickups.astro     # Pickup orders
+│   │   │   └── archive.astro     # Order archive
+│   │   ├── notifications/        # Notification management
+│   │   │   └── back-in-stock.astro # BIS subscriber management
+│   │   ├── content/              # Content tools
+│   │   │   ├── sku-reference.astro # Product SKU reference
+│   │   │   ├── styleguide.astro  # Design system reference
+│   │   │   ├── event-reference.astro # Analytics events
+│   │   │   └── wordpress-demo.astro # WP block demo
+│   │   └── performance/          # Performance monitoring
+│   │       ├── index.astro       # Performance overview
+│   │       ├── core-vitals.astro # Core Web Vitals dashboard
+│   │       ├── business-impact.astro # Business impact analysis
+│   │       ├── competitive.astro # Competitive analysis
+│   │       └── resources.astro   # Resource performance
 │   ├── cart.astro     # Shopping cart page
 │   └── order-confirmation.astro
 ├── scripts/           # Client-side scripts
@@ -162,7 +198,7 @@ src/
 
 ## 🔧 Key Integrations
 
-### Square Commerce (v43.2.0)
+### Square Commerce (v44.0.1)
 
 - **Catalog Management** - Automatic product sync with Square POS
 - **Inventory Tracking** - Real-time stock levels with bulk validation
@@ -182,6 +218,22 @@ src/
 - **QuickView Integration** - Instant product preview with full add-to-cart functionality
 - **Sale Pricing System** - Complete sale price support with badges and filtering
 
+### Email & Notifications (Resend)
+
+- **Order Confirmations** - Automatic email receipts for customer orders
+- **Shipping Notifications** - Tracking number delivery when orders ship
+- **Pickup Reminders** - Automated reminders for pickup orders
+- **Back-in-Stock Alerts** - Customer notifications when products restock
+- **Admin Notifications** - Real-time alerts for new orders and subscriptions
+
+### Back-in-Stock System
+
+- **Email Capture** - Customer signup forms on sold-out product variants
+- **Netlify Blobs Storage** - Persistent subscription management
+- **Admin Dashboard** - View and manage subscribers by product
+- **Bulk Notifications** - Send restock alerts to all subscribers
+- **Deduplication** - Prevent duplicate subscriptions per product/email
+
 ### WordPress Integration
 
 - **Content Management** - News and blog content via WordPress REST API
@@ -191,21 +243,27 @@ src/
 
 ## 🛠️ API Endpoints
 
-| Endpoint                  | Method | Purpose                    |
-| ------------------------- | ------ | -------------------------- |
-| `/api/list-catalog`       | GET    | Fetch product catalog      |
-| `/api/create-checkout`    | POST   | Initialize Square checkout |
-| `/api/cart-actions`       | POST   | Cart operations            |
-| `/api/cart-inventory`     | POST   | Bulk inventory validation  |
-| `/api/check-inventory`    | GET    | Single item stock check    |
-| `/api/get-categories`     | GET    | Product categories         |
-| `/api/load-more-products` | GET    | Paginated product loading  |
-| `/api/quick-view-product` | GET    | Quick view product data    |
-| `/api/calculate-cart`     | POST   | Calculate cart totals      |
-| `/api/sale-info`          | GET    | Sale pricing information   |
-| `/api/related-products`   | GET    | Related products           |
-| `/api/resolve-product`    | GET    | Product resolution         |
-| `/api/warmup`             | GET    | Cache warming endpoint     |
+| Endpoint                        | Method | Purpose                    |
+| ------------------------------- | ------ | -------------------------- |
+| `/api/list-catalog`             | GET    | Fetch product catalog      |
+| `/api/create-checkout`          | POST   | Initialize Square checkout |
+| `/api/cart-actions`             | POST   | Cart operations            |
+| `/api/cart-inventory`           | POST   | Bulk inventory validation  |
+| `/api/check-inventory`          | GET    | Single item stock check    |
+| `/api/get-categories`           | GET    | Product categories         |
+| `/api/load-more-products`       | GET    | Paginated product loading  |
+| `/api/quick-view-product`       | GET    | Quick view product data    |
+| `/api/calculate-cart`           | POST   | Calculate cart totals      |
+| `/api/sale-info`                | GET    | Sale pricing information   |
+| `/api/related-products`         | GET    | Related products           |
+| `/api/resolve-product`          | GET    | Product resolution         |
+| `/api/warmup`                   | GET    | Cache warming endpoint     |
+| `/api/back-in-stock`            | POST   | Back-in-stock subscription |
+| `/api/admin/mark-shipped`       | POST   | Mark order as shipped      |
+| `/api/admin/mark-pickedup`      | POST   | Mark order as picked up    |
+| `/api/admin/send-back-in-stock` | POST   | Send BIS notifications     |
+| `/api/admin/dismiss-order`      | POST   | Dismiss order notification |
+| `/api/crux-data`                | GET    | Core Web Vitals field data |
 
 ## 📱 Pages
 
@@ -217,7 +275,16 @@ src/
 - **`/cart`** - Shopping cart management with quantity controls and fulfillment options
 - **`/order-confirmation`** - Post-purchase confirmation with order details
 - **`/news`** - WordPress-powered blog and news section
-- **`/admin/performance`** - Performance monitoring dashboard (admin only)
+- **`/admin`** - Admin dashboard overview with needs attention summary
+- **`/admin/orders/shipping`** - Shipping order management with tracking
+- **`/admin/orders/pickups`** - Pickup order management
+- **`/admin/orders/archive`** - Order history and archive
+- **`/admin/notifications/back-in-stock`** - Back-in-stock subscriber management
+- **`/admin/content/sku-reference`** - Product SKU reference for content creators
+- **`/admin/content/styleguide`** - Design system and component reference
+- **`/admin/content/event-reference`** - Analytics events and tracking guide
+- **`/admin/content/wordpress-demo`** - WordPress block component demo
+- **`/admin/performance`** - Performance monitoring dashboard with Core Web Vitals
 
 ## 🎨 Styling
 
@@ -265,8 +332,8 @@ pnpm preview-local
 - **Build Command**: `pnpm build`
 - **Publish Directory**: `dist`
 - **Node Version**: 20.x
-- **Package Manager**: pnpm 9.15.0
-- **Adapter**: @astrojs/netlify with SSR
+- **Package Manager**: pnpm 10.33.0
+- **Adapter**: @astrojs/netlify v7.0.5 with SSR
 - **Image CDN**: Enabled with AVIF/WebP conversion
 - **Caching**: Netlify Blobs for distributed state management
 
@@ -365,30 +432,35 @@ Additional documentation available:
 
 ### Core Framework
 
-- **Astro 5.16.0** - Modern web framework with SSR
-- **TypeScript 5.9.3** - Type safety and developer experience
-- **Tailwind CSS 4.1.17** - Utility-first CSS framework v4
+- **Astro 6.1.2** - Modern web framework with SSR
+- **TypeScript 6.0.2** - Type safety and developer experience
+- **Tailwind CSS 4.2.2** - Utility-first CSS framework v4
 
 ### E-commerce Integration
 
-- **Square SDK 43.2.0** - Payment processing and inventory
+- **Square SDK 44.0.1** - Payment processing and inventory
 - **Square Legacy Support** - ES module compatibility
-- **@netlify/blobs 10.3.3** - Distributed caching layer
+- **@netlify/blobs 10.7.4** - Distributed caching layer
+
+### Email & Notifications
+
+- **Resend 6.10.0** - Email delivery service
 
 ### Performance & Optimization
 
-- **@astrojs/netlify 6.6.2** - Deployment adapter with SSR
+- **@astrojs/netlify 7.0.5** - Deployment adapter with SSR
+- **@astrojs/sitemap 3.7.2** - SEO sitemap generation
 - **astro-icon 1.1.5** - Optimized icon system
 - **astro-seo-metadata 0.6.0** - SEO optimization
 - **sharp 0.34.5** - Image processing and optimization
-- **web-vitals 5.1.0** - Core Web Vitals monitoring
+- **web-vitals 5.2.0** - Core Web Vitals monitoring
 
 ### Development Tools
 
-- **@astrojs/node 9.5.1** - Local development adapter
-- **Vitest 4.0.8** - Unit testing framework with 80% coverage
-- **Playwright 1.56.1** - E2E testing across browsers
-- **pnpm 9.15.0** - Fast, disk space efficient package manager
+- **@astrojs/node 10.0.4** - Local development adapter
+- **Vitest 4.1.2** - Unit testing framework with 80% coverage
+- **Playwright 1.58.2** - E2E testing across browsers
+- **pnpm 10.33.0** - Fast, disk space efficient package manager
 
 ## 📈 Roadmap
 
@@ -404,12 +476,15 @@ Additional documentation available:
 - [x] Performance monitoring dashboard
 - [x] WordPress content integration
 - [x] E2E test suite with Playwright
+- [x] Back-in-stock notification system
+- [x] Email notifications (order confirmations, shipping, pickups)
+- [x] Order management dashboard (shipping, pickups, archive)
+- [x] Order history and tracking
 
 ### In Progress 🚧
 
-- [ ] Enhanced search functionality
+- [ ] Enhanced search functionality (news search implemented, product search planned)
 - [ ] Customer account system
-- [ ] Order history and tracking
 
 ### Future Enhancements 🔮
 
@@ -442,7 +517,7 @@ For issues and questions:
 
 ### Recent Achievements
 
-- ✅ Successful Square SDK v43.2.0 migration using legacy approach
+- ✅ Successful Square SDK v44.0.1 migration using legacy approach
 - ✅ Complete cart system implementation with View Transitions persistence
 - ✅ Real-time inventory validation and stock management with bulk validation
 - ✅ Product variations with advanced type detection and attribute parsing
@@ -452,6 +527,10 @@ For issues and questions:
 - ✅ Sale pricing system with discount badges and filtering
 - ✅ Core Web Vitals monitoring and performance regression testing
 - ✅ Enhanced image optimization with format detection (AVIF, WebP)
+- ✅ Back-in-stock notification system with Netlify Blobs storage
+- ✅ Email notifications via Resend (orders, shipping, pickups, BIS)
+- ✅ Order management dashboard (shipping, pickups, archive)
+- ✅ Admin dashboard with needs attention summary
 
 ---
 
@@ -463,4 +542,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 Built with ❤️ using Astro, TypeScript, and Square Commerce APIs
 
-_Last updated: November 2025_
+Last updated: April 2026
