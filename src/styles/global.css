@@ -482,20 +482,35 @@ h6 {
    The inset box-shadow paints over the autofill background (UA cannot override box-shadow),
    and -webkit-text-fill-color overrides color:fieldtext for <input> and <textarea>.
 
-   NOTE: :-webkit-autofill does NOT match <select> elements — Chrome uses the internal
-   :-internal-autofill-selected pseudo-class for autofilled selects instead, which is
-   not targetable from author CSS. The native arrow forced by that rule's
-   appearance:menulist-button !important is masked by the ::before cover strip below. */
+   Because standard CSS has historically had spotty support for overriding autofilled <select>,
+   we target :autofill and :-webkit-autofill broadly. We also use a cover strip below 
+   to mask the native arrow forced by Chrome's appearance:menulist-button !important. */
 .elco-field-float > input:-webkit-autofill,
 .elco-field-float > input:-webkit-autofill:hover,
 .elco-field-float > input:-webkit-autofill:focus,
 .elco-field-float > input:-webkit-autofill:active,
+.elco-field-float > input:autofill,
+.elco-field-float > input:autofill:hover,
+.elco-field-float > input:autofill:focus,
+.elco-field-float > input:autofill:active,
 .elco-field-float > textarea:-webkit-autofill,
 .elco-field-float > textarea:-webkit-autofill:hover,
 .elco-field-float > textarea:-webkit-autofill:focus,
-.elco-field-float > textarea:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0px 1000px var(--surface-secondary) inset !important;
-  box-shadow: 0 0 0px 1000px var(--surface-secondary) inset !important;
+.elco-field-float > textarea:-webkit-autofill:active,
+.elco-field-float > textarea:autofill,
+.elco-field-float > textarea:autofill:hover,
+.elco-field-float > textarea:autofill:focus,
+.elco-field-float > textarea:autofill:active,
+.elco-field-float > select:-webkit-autofill,
+.elco-field-float > select:-webkit-autofill:hover,
+.elco-field-float > select:-webkit-autofill:focus,
+.elco-field-float > select:-webkit-autofill:active,
+.elco-field-float > select:autofill,
+.elco-field-float > select:autofill:hover,
+.elco-field-float > select:autofill:focus,
+.elco-field-float > select:autofill:active {
+  -webkit-box-shadow: 0 0 0px 1000px var(--ui-input-surface) inset !important;
+  box-shadow: 0 0 0px 1000px var(--ui-input-surface) inset !important;
   -webkit-text-fill-color: var(--ui-input-text) !important;
   caret-color: var(--ui-input-text);
 }
@@ -561,7 +576,10 @@ h6 {
   appearance: none;
   cursor: pointer;
   outline: none;
-  transition: border-color 0.15s ease;
+  /* Suppress WebKit autofill background flash */
+  transition:
+    background-color 9999s ease-in-out 0s,
+    border-color 0.15s ease;
 }
 
 .elco-field-float > select:focus {
@@ -592,17 +610,17 @@ h6 {
    be overridden by author !important, we instead paint over the native arrow
    region with the field's background color. pointer-events:none preserves
    click-through so the select still opens normally. */
-/* .elco-field-float:has(> select)::before {
+.elco-field-float:has(> select)::before {
   content: "";
   position: absolute;
   right: 0;
   top: 1.25rem; 
   bottom: 1px;  
   width: 1.5rem;
-  background-color: var(--surface-secondary);
+  background-color: var(--ui-input-surface);
   pointer-events: none;
   z-index: 1;
-} */
+}
 
 /* Chevron arrow — rendered above the cover strip */
 .elco-field-float:has(> select)::after {
