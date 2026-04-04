@@ -8,14 +8,25 @@ import { Icon } from "astro-icon/components";
 // breaks in SSR builds because import.meta.url points into the compiled dist/.
 // AdminLayout imports global.css, so the variables are available at runtime.
 
-const STOPS = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
+const STOPS = [
+  "50",
+  "100",
+  "200",
+  "300",
+  "400",
+  "500",
+  "600",
+  "700",
+  "800",
+  "900",
+];
 
 const palettes = [
-  { name: "Beeswax",     prefix: "elco-beeswax" },
+  { name: "Beeswax", prefix: "elco-beeswax" },
   { name: "Black Pearl", prefix: "elco-black-pearl" },
-  { name: "Fig Leaf",    prefix: "elco-fig-leaf" },
+  { name: "Fig Leaf", prefix: "elco-fig-leaf" },
   { name: "Honey Cream", prefix: "elco-honey-cream" },
-  { name: "Sweet Tea",   prefix: "elco-sweet-tea" },
+  { name: "Sweet Tea", prefix: "elco-sweet-tea" },
 ];
 
 const stateColors = ["success", "error", "warning", "info"].map((name) => ({
@@ -28,6 +39,14 @@ const iconList = [
   "uil:angle-left",
   "uil:angle-right",
   "uil:angle-up",
+  "uil:arrow-down",
+  "uil:arrow-left",
+  "uil:arrow-right",
+  "uil:arrow-up",
+  "uil:bill",
+  "uil:box",
+  "uil:check",
+  "uil:check-circle",
   "uil:cloud-moon",
   "uil:cloud-sun",
   "uil:envelope",
@@ -37,8 +56,11 @@ const iconList = [
   "uil:map-marker",
   "uil:moon",
   "uil:mountains-sun",
+  "uil:package",
   "uil:search",
+  "uil:ship",
   "uil:shopping-cart",
+  "uil:store",
   "uil:sun",
   "uil:user",
   "uil:youtube",
@@ -331,7 +353,8 @@ const prototypes = [
                     <span
                       class={`font-sans text-xs text-(--content-body) ${stop === "500" ? "font-bold" : ""}`}
                     >
-                      {stop}{stop === "500" ? " ★" : ""}
+                      {stop}
+                      {stop === "500" ? " ★" : ""}
                     </span>
                   </div>
                 </div>
@@ -661,40 +684,40 @@ const prototypes = [
         >
           Text Input
         </p>
-        <div class="space-y-4">
-          <div>
-            <label
-              class="mb-1 block font-sans text-sm font-semibold text-(--content-body)"
-              >Default</label
-            >
-            <input
-              type="text"
-              placeholder="Placeholder text..."
-              class="w-full rounded-sm border border-(--ui-input-border) bg-(--ui-input-surface) px-3 py-2 font-sans text-sm text-(--ui-input-text) outline-none transition-colors focus:border-(--ui-input-focus) focus:ring-1 focus:ring-(--ui-input-focus)"
-            />
+        <div class="space-y-6">
+          <div class="elco-field-float">
+            <input type="text" id="sg-input-default" placeholder=" " />
+            <label for="sg-input-default">Full name <em>- required</em></label>
           </div>
-          <div>
-            <label
-              class="mb-1 block font-sans text-sm font-semibold text-(--content-body)"
-              >Filled</label
-            >
+          <div class="elco-field-float">
             <input
               type="text"
+              id="sg-input-filled"
+              placeholder=" "
               value="El Camino Skate Co."
-              class="w-full rounded-sm border border-(--ui-input-border) bg-(--ui-input-surface) px-3 py-2 font-sans text-sm text-(--ui-input-text) outline-none transition-colors focus:border-(--ui-input-focus) focus:ring-1 focus:ring-(--ui-input-focus)"
             />
+            <label for="sg-input-filled">Store name <em>- required</em></label>
           </div>
-          <div>
-            <label
-              class="mb-1 block font-sans text-sm font-semibold text-(--content-meta)"
-              >Disabled</label
-            >
+          <div class="elco-field-float is-disabled">
             <input
               type="text"
+              id="sg-input-disabled"
+              placeholder=" "
               value="Disabled value"
               disabled
-              class="w-full cursor-not-allowed rounded-sm border border-(--ui-input-border) bg-(--ui-input-surface) px-3 py-2 font-sans text-sm text-(--ui-input-text) opacity-50 outline-none"
             />
+            <label for="sg-input-disabled"
+              >Disabled field <em>- optional</em></label
+            >
+          </div>
+          <div class="elco-field-float">
+            <select id="sg-select-float" required>
+              <option value=""></option>
+              <option>Minnesota</option>
+              <option>Wisconsin</option>
+              <option>Illinois</option>
+            </select>
+            <label for="sg-select-float">State <em>- required</em></label>
           </div>
         </div>
       </div>
@@ -812,11 +835,15 @@ const prototypes = [
         >
           Textarea
         </p>
-        <textarea
-          rows="4"
-          placeholder="Write something..."
-          class="w-full max-w-lg rounded-sm border border-(--ui-input-border) bg-(--ui-input-surface) px-3 py-2 font-sans text-sm text-(--ui-input-text) outline-none transition-colors focus:border-(--ui-input-focus) focus:ring-1 focus:ring-(--ui-input-focus)"
-        ></textarea>
+        <div class="max-w-lg">
+          <div class="elco-field-float">
+            <textarea id="sg-textarea-default" rows="4" placeholder=" "
+            ></textarea>
+            <label for="sg-textarea-default"
+              >Delivery instructions <em>- optional</em></label
+            >
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -1050,3 +1077,8 @@ const prototypes = [
     </div>
   </section>
 </AdminLayout>
+
+<script>
+  import { initFloatSelects } from "@/lib/ui/floatFields";
+  initFloatSelects();
+</script>

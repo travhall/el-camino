@@ -130,7 +130,7 @@
   --ui-card-border: var(--surface-primary);
   --ui-card-surface-hover: var(--surface-primary);
 
-  --ui-input-surface: var(--surface-secondary);
+  --ui-input-surface: var(--surface-primary);
   --ui-input-text: var(--content-body);
   --ui-input-border: var(--color-elco-sweet-tea-400);
   --ui-input-focus: var(--color-elco-sweet-tea-500);
@@ -211,7 +211,7 @@
   --ui-card-border: var(--surface-primary);
   --ui-card-surface-hover: var(--surface-primary); */
 
-  --ui-input-surface: var(--surface-secondary);
+  --ui-input-surface: var(--surface-primary);
   --ui-input-text: var(--content-body);
   --ui-input-border: var(--content-body);
   --ui-input-focus: var(--color-elco-sweet-tea-300);
@@ -451,6 +451,191 @@ h6 {
   border-width: 2px;
 }
 
+/* ── Floating label fields ──────────────────────────────────────────────── */
+.elco-field-float {
+  position: relative;
+  padding-top: 1.25rem;
+}
+
+.elco-field-float > input,
+.elco-field-float > textarea {
+  display: block;
+  width: 100%;
+  padding-bottom: 0.375rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ui-input-border);
+  color: var(--ui-input-text);
+  -webkit-text-fill-color: var(--ui-input-text);
+  caret-color: var(--ui-input-text);
+  font-family: inherit;
+  font-size: 0.875rem;
+  outline: none;
+  /* Suppress WebKit autofill background flash so the floating label stays visible */
+  transition:
+    background-color 9999s ease-in-out 0s,
+    border-color 0.15s ease;
+}
+
+/* Override browser autofill styles (:-webkit-autofill / :-internal-autofill-selected).
+   Chrome injects background-color and color:fieldtext with !important via its UA stylesheet.
+   The inset box-shadow paints over the autofill background (UA cannot override box-shadow),
+   and -webkit-text-fill-color overrides color:fieldtext for <input> and <textarea>.
+
+   NOTE: :-webkit-autofill does NOT match <select> elements — Chrome uses the internal
+   :-internal-autofill-selected pseudo-class for autofilled selects instead, which is
+   not targetable from author CSS. The native arrow forced by that rule's
+   appearance:menulist-button !important is masked by the ::before cover strip below. */
+.elco-field-float > input:-webkit-autofill,
+.elco-field-float > input:-webkit-autofill:hover,
+.elco-field-float > input:-webkit-autofill:focus,
+.elco-field-float > input:-webkit-autofill:active,
+.elco-field-float > textarea:-webkit-autofill,
+.elco-field-float > textarea:-webkit-autofill:hover,
+.elco-field-float > textarea:-webkit-autofill:focus,
+.elco-field-float > textarea:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0px 1000px var(--surface-secondary) inset !important;
+  box-shadow: 0 0 0px 1000px var(--surface-secondary) inset !important;
+  -webkit-text-fill-color: var(--ui-input-text) !important;
+  caret-color: var(--ui-input-text);
+}
+
+.elco-field-float > input:focus,
+.elco-field-float > textarea:focus {
+  border-color: var(--ui-input-focus);
+}
+
+.elco-field-float > input:focus-visible,
+.elco-field-float > textarea:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
+.elco-field-float > label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--content-meta);
+  font-family: inherit;
+  font-size: 0.875rem;
+  pointer-events: none;
+  transform: translateY(1.25rem);
+  transform-origin: left top;
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease;
+}
+
+/* Float the label on focus or when the field has a value (:placeholder-shown
+   requires placeholder=" " on the input — the single-space trick) */
+.elco-field-float > input:focus ~ label,
+.elco-field-float > input:not(:placeholder-shown) ~ label,
+.elco-field-float > textarea:focus ~ label,
+.elco-field-float > textarea:not(:placeholder-shown) ~ label {
+  transform: translateY(0) scale(0.8);
+  color: var(--content-meta);
+}
+
+.elco-field-float > input:focus ~ label,
+.elco-field-float > textarea:focus ~ label {
+  color: var(--ui-input-focus);
+}
+
+.elco-field-float > textarea {
+  resize: vertical;
+  padding-top: 0.25rem;
+}
+
+/* Select */
+.elco-field-float > select {
+  display: block;
+  width: 100%;
+  padding-bottom: 0.375rem;
+  padding-right: 1.25rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ui-input-border);
+  color: var(--ui-input-text);
+  font-family: inherit;
+  font-size: 0.875rem;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.elco-field-float > select:focus {
+  border-color: var(--ui-input-focus);
+}
+
+.elco-field-float > select:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
+/* Select: label floats when a real value is chosen (.has-value toggled by JS)
+   or on focus. At rest, the label inherits translateY(1.25rem) from the base
+   label rule. Use initFloatSelects() to wire up change/init behaviour. */
+.elco-field-float.has-value > select ~ label,
+.elco-field-float > select:focus ~ label {
+  transform: translateY(0) scale(0.8);
+  color: var(--content-meta);
+}
+
+.elco-field-float > select:focus ~ label {
+  color: var(--ui-input-focus);
+}
+
+/* Cover strip — masks the native browser arrow button that Chrome forces back
+   via appearance:menulist-button !important on :-internal-autofill-selected.
+   Because :-webkit-autofill does not match <select>, and UA !important cannot
+   be overridden by author !important, we instead paint over the native arrow
+   region with the field's background color. pointer-events:none preserves
+   click-through so the select still opens normally. */
+.elco-field-float:has(> select)::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 1.25rem; /* flush with select top (below label padding-top) */
+  bottom: 1px;  /* just above the 1px border-bottom */
+  width: 1.5rem;
+  background-color: var(--surface-secondary);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Chevron arrow — rendered above the cover strip */
+.elco-field-float:has(> select)::after {
+  content: "";
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.6rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 1.5px solid var(--ui-input-border);
+  border-bottom: 1.5px solid var(--ui-input-border);
+  transform: rotate(45deg);
+  pointer-events: none;
+  z-index: 2;
+  transition: border-color 0.15s ease;
+}
+
+.elco-field-float:has(> select:focus)::after {
+  border-color: var(--ui-input-focus);
+}
+
+.elco-field-float.is-disabled > input,
+.elco-field-float.is-disabled > textarea,
+.elco-field-float.is-disabled > select {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.elco-field-float.is-disabled > label {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .tag-pending {
   background-color: var(--ui-button-surface);
   color: var(--ui-button-text);
@@ -464,6 +649,13 @@ h6 {
 
 @media (prefers-reduced-motion: reduce) {
   .elco-checkbox {
+    transition: none !important;
+  }
+  .elco-field-float > label,
+  .elco-field-float > input,
+  .elco-field-float > textarea,
+  .elco-field-float > select,
+  .elco-field-float:has(> select)::after {
     transition: none !important;
   }
 }

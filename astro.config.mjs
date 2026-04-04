@@ -34,6 +34,10 @@ export default defineConfig({
     defaultStrategy: "viewport", // Prefetch when visible in viewport - better for mobile
   },
 
+  devToolbar: {
+    enabled: false,
+  },
+
   experimental: {
     clientPrerender: true, // Enable Speculation Rules API support (already enabled)
   },

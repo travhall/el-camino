@@ -1,4 +1,6 @@
 ---
+import { Icon } from "astro-icon/components";
+
 interface Props {
   subtotal: number;
   hasGiftCard?: boolean;
@@ -32,14 +34,10 @@ const progressPct = Math.min(
 ---
 
 <div data-component="fulfillment-selector">
-  <fieldset>
-    <legend class="text-sm font-semibold text-(--content-heading) p-2">
-      Choose Fulfillment Method <span class="text-(--content-emphasis) italic">
-        - required</span
-      >
-    </legend>
+  <fieldset class="min-w-0 w-full">
+    <legend class="sr-only">Choose Fulfillment Method</legend>
 
-    <!-- Summary chip: shown after collapse (mobile), hidden on desktop -->
+    <!-- Summary chip: shown after collapse, hidden by default -->
     <div
       id="fulfillment-summary-chip"
       class="hidden mb-3 items-center justify-between border border-(--border-primary) bg-(--surface-primary) px-4 py-3"
@@ -49,14 +47,10 @@ const progressPct = Math.min(
       <div class="flex flex-col gap-0.5 min-w-0 pr-3">
         <span
           id="fulfillment-summary-label"
-          class="text-sm font-semibold text-(--content-heading)"
-        >
-          📦 Ship to Me
-        </span>
+          class="text-sm font-semibold text-(--content-heading)"></span>
         <span
           id="fulfillment-summary-detail"
-          class="text-xs text-(--content-meta) truncate"
-        ></span>
+          class="text-xs text-(--content-meta) truncate"></span>
       </div>
       <button
         id="fulfillment-expand-btn"
@@ -85,7 +79,7 @@ const progressPct = Math.min(
       class="sr-only"
     />
 
-    <!-- Tab row — segmented control track -->
+    <!-- Tab row -->
     <div
       id="fulfillment-tab-row"
       class="grid grid-cols-2 gap-1 p-1 bg-(--surface-secondary)"
@@ -96,7 +90,7 @@ const progressPct = Math.min(
         class="tab-btn flex flex-row items-center justify-center gap-2 rounded px-4 py-3 text-sm font-semibold text-(--content-meta) border-2 border-(--surface-tertiary) hover:bg-(--surface-primary) hover:text-(--content-body) cursor-pointer transition-all ease-in-out duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
         aria-pressed="false"
       >
-        <span class="text-lg leading-none">📦</span>
+        <Icon name="uil:ship" class="w-5 h-5 shrink-0" />
         <span>Ship to Me</span>
         <span class="text-xs font-normal opacity-75" data-shipping-cost-label
           >{shippingLabel}</span
@@ -109,25 +103,30 @@ const progressPct = Math.min(
         class="tab-btn flex flex-row items-center justify-center gap-2 rounded px-4 py-3 text-sm font-semibold text-(--content-meta) border-2 border-(--surface-tertiary) hover:bg-(--surface-primary) hover:text-(--content-body) cursor-pointer transition-all ease-in-out duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-(--content-emphasis)"
         aria-pressed="false"
       >
-        <span class="text-lg leading-none">🏪</span>
+        <Icon name="uil:store" class="w-5 h-5 shrink-0" />
         <span>Store Pickup</span>
         <span class="text-xs font-normal opacity-75">FREE</span>
       </button>
     </div>
 
-    <!-- Free shipping progress tracker -->
+    <!-- Free shipping progress tracker (hidden until shipping tab is active) -->
     <div
       id="free-shipping-tracker"
-      class={`px-4 py-3 text-sm font-medium text-(--content-body)${remainingForFree <= 0 ? " hidden" : ""}`}
+      class="hidden px-4 py-3 text-sm font-medium text-(--content-body)"
       style="background-color: var(--free-shipping-bar-bg);"
     >
-      Add{" "}
-      <span
-        id="free-shipping-remaining"
-        class="font-bold text-(--content-heading)"
-        >{formatMoney(remainingForFree)}</span
-      >{" "}
-      more for free shipping!
+      <div class="flex items-center justify-between">
+        <div>
+          Add{" "}
+          <span
+            id="free-shipping-remaining"
+            class="font-bold text-(--content-heading)"
+            >{formatMoney(remainingForFree)}</span
+          >{" "}
+          more for free shipping!
+        </div>
+        <a href="/shop/all" class="self-end">Continue Shopping</a>
+      </div>
       <div
         class="mt-2 h-3 w-full rounded-full"
         style="background-color: var(--free-shipping-bar-track);"
@@ -142,179 +141,135 @@ const progressPct = Math.min(
     </div>
     <div
       id="free-shipping-earned"
-      class={`mb-4  px-4 py-3 text-sm font-medium text-(--content-heading)${subtotalCents < FREE_SHIPPING_THRESHOLD ? " hidden" : ""}`}
+      class="hidden px-4 py-3 text-sm font-medium text-(--content-heading)"
       style="background-color: var(--free-shipping-bar-bg);"
     >
-      🎉 You've earned free shipping!
+      You've earned free shipping!
     </div>
 
-    <!-- Form panel (shown below tabs, full width) -->
+    <!-- Form panel -->
     <div
       id="fulfillment-form-panel"
-      class="hidden space-y-4 border border-(--border-primary) bg-(--surface-secondary) p-4"
+      class="hidden space-y-5 border border-(--border-primary) bg-(--surface-secondary) p-4"
     >
       <!-- Shipping form -->
-      <div data-shipping-form class="hidden space-y-3">
-        <p class="text-sm font-semibold text-(--content-heading) mb-1">
-          Shipping Details
-        </p>
-
-        {hasGiftCard && (
-          <p id="gift-card-shipping-disclaimer" class="text-xs text-(--content-meta) border border-(--border-primary) bg-(--surface-secondary) px-3 py-2 rounded-sm italic">
-            ⚠️ Physical gift cards are shipped at your own risk. El Camino is not responsible for cards lost or stolen in transit. Consider picking up in-store for guaranteed delivery.
-          </p>
-        )}
-        {!hasGiftCard && (
-          <p id="gift-card-shipping-disclaimer" class="hidden text-xs text-(--content-meta) border border-(--border-primary) bg-(--surface-secondary) px-3 py-2 rounded-sm italic">
-            ⚠️ Physical gift cards are shipped at your own risk. El Camino is not responsible for cards lost or stolen in transit. Consider picking up in-store for guaranteed delivery.
-          </p>
-        )}
-
-        <div class="grid grid-cols-2 gap-3">
-          <div class="col-span-2 sm:col-span-1">
-            <label
-              for="shipping-first-name"
-              class="block text-xs font-semibold text-(--content-body) mb-1"
+      <div data-shipping-form class="hidden space-y-5">
+        {
+          hasGiftCard && (
+            <p
+              id="gift-card-shipping-disclaimer"
+              class="text-xs text-(--content-meta) border border-(--border-primary) bg-(--surface-secondary) px-3 py-2 rounded-sm italic"
             >
-              First Name <span class="text-red-500">*</span>
-            </label>
+              Physical gift cards are shipped at your own risk. El Camino is not
+              responsible for cards lost or stolen in transit. Consider picking
+              up in-store for guaranteed delivery.
+            </p>
+          )
+        }
+        {
+          !hasGiftCard && (
+            <p
+              id="gift-card-shipping-disclaimer"
+              class="hidden text-xs text-(--content-meta) border border-(--border-primary) bg-(--surface-secondary) px-3 py-2 rounded-sm italic"
+            >
+              Physical gift cards are shipped at your own risk. El Camino is not
+              responsible for cards lost or stolen in transit. Consider picking
+              up in-store for guaranteed delivery.
+            </p>
+          )
+        }
+
+        <div class="grid grid-cols-2 gap-x-4 gap-y-5">
+          <div class="elco-field-float col-span-2 sm:col-span-1">
             <input
               type="text"
               id="shipping-first-name"
               name="shipping-first-name"
-              required
               autocomplete="given-name"
-              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
-              placeholder="First name"
+              placeholder=" "
             />
-          </div>
-          <div class="col-span-2 sm:col-span-1">
-            <label
-              for="shipping-last-name"
-              class="block text-xs font-semibold text-(--content-body) mb-1"
+            <label for="shipping-first-name"
+              >First Name <em>— required</em></label
             >
-              Last Name <span class="text-red-500">*</span>
-            </label>
+          </div>
+          <div class="elco-field-float col-span-2 sm:col-span-1">
             <input
               type="text"
               id="shipping-last-name"
               name="shipping-last-name"
-              required
               autocomplete="family-name"
-              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
-              placeholder="Last name"
+              placeholder=" "
             />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div class="col-span-2 sm:col-span-1">
-            <label
-              for="shipping-email"
-              class="block text-xs font-semibold text-(--content-body) mb-1"
+            <label for="shipping-last-name">Last Name <em>— required</em></label
             >
-              Email <span class="text-red-500">*</span>
-            </label>
+          </div>
+          <div class="elco-field-float col-span-2 sm:col-span-1">
             <input
               type="email"
               id="shipping-email"
               name="shipping-email"
-              required
               autocomplete="email"
-              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
-              placeholder="you@example.com"
+              placeholder=" "
             />
+            <label for="shipping-email">Email <em>— required</em></label>
           </div>
-          <div class="col-span-2 sm:col-span-1">
-            <label
-              for="shipping-phone"
-              class="block text-xs font-semibold text-(--content-body) mb-1"
-            >
-              Phone <span class="text-red-500">*</span>
-            </label>
+          <div class="elco-field-float col-span-2 sm:col-span-1">
             <input
               type="tel"
               id="shipping-phone"
               name="shipping-phone"
-              required
               autocomplete="tel"
               maxlength="14"
               pattern={"\\(\\d{3}\\) \\d{3}-\\d{4}"}
               inputmode="numeric"
-              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
-              placeholder="(555) 555-5555"
+              placeholder=" "
             />
+            <label for="shipping-phone">Phone <em>— required</em></label>
+          </div>
+          <div class="elco-field-float col-span-2">
+            <input
+              type="text"
+              id="shipping-address"
+              name="shipping-address"
+              autocomplete="street-address"
+              placeholder=" "
+            />
+            <label for="shipping-address"
+              >Street Address <em>— required</em></label
+            >
+          </div>
+          <div class="elco-field-float col-span-2">
+            <input
+              type="text"
+              id="shipping-address2"
+              name="shipping-address2"
+              autocomplete="address-line2"
+              placeholder=" "
+            />
+            <label for="shipping-address2"
+              >Apt, Suite, Unit <em>— optional</em></label
+            >
           </div>
         </div>
 
-        <div>
-          <label
-            for="shipping-address"
-            class="block text-xs font-semibold text-(--content-body) mb-1"
-          >
-            Street Address <span class="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="shipping-address"
-            name="shipping-address"
-            required
-            autocomplete="street-address"
-            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
-            placeholder="123 Main St"
-          />
-        </div>
-
-        <div>
-          <label
-            for="shipping-address2"
-            class="block text-xs font-semibold text-(--content-body) mb-1"
-          >
-            Apt, Suite, Unit (Optional)
-          </label>
-          <input
-            type="text"
-            id="shipping-address2"
-            name="shipping-address2"
-            autocomplete="address-line2"
-            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
-            placeholder="Apt 4B"
-          />
-        </div>
-
-        <div class="grid grid-cols-6 gap-3">
-          <div class="col-span-3">
-            <label
-              for="shipping-city"
-              class="block text-xs font-semibold text-(--content-body) mb-1"
-            >
-              City <span class="text-red-500">*</span>
-            </label>
+        <div class="grid grid-cols-6 gap-x-4 gap-y-5">
+          <div class="elco-field-float col-span-3">
             <input
               type="text"
               id="shipping-city"
               name="shipping-city"
-              required
               autocomplete="address-level2"
-              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
-              placeholder="City"
+              placeholder=" "
             />
+            <label for="shipping-city">City <em>— required</em></label>
           </div>
-          <div class="col-span-1">
-            <label
-              for="shipping-state"
-              class="block text-xs font-semibold text-(--content-body) mb-1"
-            >
-              State <span class="text-red-500">*</span>
-            </label>
+          <div class="elco-field-float col-span-1">
             <select
               id="shipping-state"
               name="shipping-state"
-              required
               autocomplete="address-level1"
-              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-2 py-2 text-sm text-(--content-body) focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
             >
-              <option value="">—</option>
+              <option value=""></option>
               <option value="AL">AL</option>
               <option value="AK">AK</option>
               <option value="AZ">AZ</option>
@@ -366,131 +321,89 @@ const progressPct = Math.min(
               <option value="WI">WI</option>
               <option value="WY">WY</option>
             </select>
+            <label for="shipping-state">State <em>— required</em></label>
           </div>
-          <div class="col-span-2">
-            <label
-              for="shipping-zip"
-              class="block text-xs font-semibold text-(--content-body) mb-1"
-            >
-              ZIP <span class="text-red-500">*</span>
-            </label>
+          <div class="elco-field-float col-span-2">
             <input
               type="text"
               id="shipping-zip"
               name="shipping-zip"
-              required
               autocomplete="postal-code"
               inputmode="numeric"
               maxlength="5"
               pattern="[0-9]{5}"
-              class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
-              placeholder="54901"
+              placeholder=" "
             />
+            <label for="shipping-zip">ZIP <em>— required</em></label>
           </div>
         </div>
 
-        <div>
-          <label
-            for="shipping-instructions"
-            class="block text-xs font-semibold text-(--content-body) mb-1"
-          >
-            Delivery Instructions (Optional)
-          </label>
+        <div class="elco-field-float">
           <textarea
             id="shipping-instructions"
             name="shipping-instructions"
             rows="2"
-            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis) resize-none"
-            placeholder="Leave at door, ring bell, etc."></textarea>
+            placeholder=" "></textarea>
+          <label for="shipping-instructions"
+            >Delivery Instructions <em>— optional</em></label
+          >
         </div>
       </div>
 
       <!-- Pickup form -->
-      <div data-pickup-form class="hidden space-y-3">
-        <p class="text-sm font-semibold text-(--content-heading) mb-1">
-          Pickup Information
-        </p>
+      <div data-pickup-form class="hidden space-y-5">
         <p class="text-xs text-(--content-meta)">
           Pick up your order at <strong>El Camino Skate Shop</strong> — we'll email
           you when it's ready.
         </p>
 
-        <div>
-          <label
-            for="pickup-name"
-            class="block text-xs font-semibold text-(--content-body) mb-1"
-          >
-            Full Name <span class="text-red-500">*</span>
-          </label>
+        <div class="elco-field-float">
           <input
             type="text"
             id="pickup-name"
             name="pickup-name"
-            required
             autocomplete="name"
-            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
-            placeholder="Your name"
+            placeholder=" "
           />
+          <label for="pickup-name">Full Name <em>— required</em></label>
         </div>
 
-        <div>
-          <label
-            for="pickup-email"
-            class="block text-xs font-semibold text-(--content-body) mb-1"
-          >
-            Email <span class="text-red-500">*</span>
-          </label>
+        <div class="elco-field-float">
           <input
             type="email"
             id="pickup-email"
             name="pickup-email"
-            required
             autocomplete="email"
-            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
-            placeholder="you@example.com"
+            placeholder=" "
           />
+          <label for="pickup-email">Email <em>— required</em></label>
         </div>
 
-        <div>
-          <label
-            for="pickup-phone"
-            class="block text-xs font-semibold text-(--content-body) mb-1"
-          >
-            Phone <span class="text-red-500">*</span>
-          </label>
+        <div class="elco-field-float">
           <input
             type="tel"
             id="pickup-phone"
             name="pickup-phone"
-            required
             autocomplete="tel"
             maxlength="14"
             pattern={"\\(\\d{3}\\) \\d{3}-\\d{4}"}
             inputmode="numeric"
-            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis)"
-            placeholder="(555) 555-5555"
+            placeholder=" "
           />
+          <label for="pickup-phone">Phone <em>— required</em></label>
         </div>
 
-        <div>
-          <label
-            for="pickup-notes"
-            class="block text-xs font-semibold text-(--content-body) mb-1"
-          >
-            Pickup Notes (Optional)
-          </label>
+        <div class="elco-field-float">
           <textarea
             id="pickup-notes"
             name="pickup-notes"
             rows="2"
-            class="w-full rounded-sm border border-(--border-primary) bg-(--surface-primary) px-3 py-2 text-sm text-(--content-body) placeholder:text-(--content-meta) placeholder:italic placeholder:opacity-60 focus:border-(--content-emphasis) focus:outline-none focus:ring-1 focus:ring-(--content-emphasis) resize-none"
-            placeholder="Any special instructions for pickup"></textarea>
+            placeholder=" "></textarea>
+          <label for="pickup-notes">Pickup Notes <em>— optional</em></label>
         </div>
       </div>
 
-      <!-- Confirm button: shown after a method is selected, on all screen sizes -->
-      <!-- Validates required fields before collapsing — prevents false "confirmed" state -->
-      <!-- Label is updated dynamically by JS to reflect the active method -->
+      <!-- Confirm button: shown after a method is selected -->
       <button
         id="fulfillment-done-btn"
         type="button"
@@ -505,9 +418,10 @@ const progressPct = Math.min(
 
 <script>
   import { cart } from "@/lib/cart";
+  import { initFloatSelects } from "@/lib/ui/floatFields";
 
-  const FREE_SHIPPING_THRESHOLD = 75; // $75.00 in dollars (cart stores prices in dollars)
-  const FLAT_RATE_SHIPPING = 5.99; // $5.99 in dollars
+  const FREE_SHIPPING_THRESHOLD = 75;
+  const FLAT_RATE_SHIPPING = 5.99;
 
   declare global {
     interface Window {
@@ -517,6 +431,7 @@ const progressPct = Math.min(
         formIsValid: boolean,
         shouldRecalculate?: boolean,
       ) => void;
+      elco_expandFulfillmentForm?: () => void;
     }
   }
 
@@ -541,8 +456,6 @@ const progressPct = Math.min(
     const pickupForm =
       selector.querySelector<HTMLElement>("[data-pickup-form]");
     const tabs = selector.querySelectorAll<HTMLButtonElement>("[data-tab]");
-
-    // Collapse / expand elements
     const summaryChip = selector.querySelector<HTMLElement>(
       "#fulfillment-summary-chip",
     );
@@ -566,9 +479,9 @@ const progressPct = Math.min(
           "[data-shipping-cost-label]",
         );
         const cost = costLabel?.textContent?.trim() || "$5.99";
-        return `📦 Ship to Me — ${cost}`;
+        return `Ship to Me — ${cost}`;
       }
-      return "🏪 Store Pickup — FREE";
+      return "Store Pickup — FREE";
     }
 
     function collapseForm(method: "shipping" | "pickup") {
@@ -576,25 +489,53 @@ const progressPct = Math.min(
       formPanel?.setAttribute("aria-hidden", "true");
       tabRow?.classList.add("hidden");
       doneBtn?.classList.add("hidden");
+      selector
+        ?.querySelector<HTMLElement>("#free-shipping-tracker")
+        ?.classList.add("hidden");
+      selector
+        ?.querySelector<HTMLElement>("#free-shipping-earned")
+        ?.classList.add("hidden");
       if (summaryLabel) summaryLabel.textContent = getSummaryLabel(method);
 
-      // Populate the detail line with a preview of the confirmed info
       if (summaryDetail) {
         if (method === "shipping") {
-          const firstName = (document.getElementById("shipping-first-name") as HTMLInputElement)?.value ?? "";
-          const lastName  = (document.getElementById("shipping-last-name")  as HTMLInputElement)?.value ?? "";
-          const address   = (document.getElementById("shipping-address")    as HTMLInputElement)?.value ?? "";
-          const address2  = (document.getElementById("shipping-address2")   as HTMLInputElement)?.value ?? "";
-          const city      = (document.getElementById("shipping-city")       as HTMLInputElement)?.value ?? "";
-          const state     = (document.getElementById("shipping-state")      as HTMLSelectElement)?.value ?? "";
-          const zip       = (document.getElementById("shipping-zip")        as HTMLInputElement)?.value ?? "";
-          const name      = [firstName, lastName].filter(Boolean).join(" ");
-          const street    = [address, address2].filter(Boolean).join(", ");
-          const cityLine  = [city, state, zip].filter(Boolean).join(" ");
-          summaryDetail.textContent = [name, [street, cityLine].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
+          const firstName =
+            (document.getElementById("shipping-first-name") as HTMLInputElement)
+              ?.value ?? "";
+          const lastName =
+            (document.getElementById("shipping-last-name") as HTMLInputElement)
+              ?.value ?? "";
+          const address =
+            (document.getElementById("shipping-address") as HTMLInputElement)
+              ?.value ?? "";
+          const address2 =
+            (document.getElementById("shipping-address2") as HTMLInputElement)
+              ?.value ?? "";
+          const city =
+            (document.getElementById("shipping-city") as HTMLInputElement)
+              ?.value ?? "";
+          const state =
+            (document.getElementById("shipping-state") as HTMLSelectElement)
+              ?.value ?? "";
+          const zip =
+            (document.getElementById("shipping-zip") as HTMLInputElement)
+              ?.value ?? "";
+          const name = [firstName, lastName].filter(Boolean).join(" ");
+          const street = [address, address2].filter(Boolean).join(", ");
+          const cityLine = [city, state, zip].filter(Boolean).join(" ");
+          summaryDetail.textContent = [
+            name,
+            [street, cityLine].filter(Boolean).join(", "),
+          ]
+            .filter(Boolean)
+            .join(" · ");
         } else {
-          const name  = (document.getElementById("pickup-name")  as HTMLInputElement)?.value ?? "";
-          const email = (document.getElementById("pickup-email") as HTMLInputElement)?.value ?? "";
+          const name =
+            (document.getElementById("pickup-name") as HTMLInputElement)
+              ?.value ?? "";
+          const email =
+            (document.getElementById("pickup-email") as HTMLInputElement)
+              ?.value ?? "";
           summaryDetail.textContent = [name, email].filter(Boolean).join(" · ");
         }
       }
@@ -603,8 +544,6 @@ const progressPct = Math.min(
       summaryChip?.classList.add("flex");
       expandBtn?.setAttribute("aria-expanded", "false");
 
-      // Notify cart that the form has been confirmed and is valid — enable the CTA and
-      // trigger a fresh price calculation now that we have a complete address/method.
       if (typeof window.updateOrderSummaryOnFulfillmentChange === "function") {
         window.updateOrderSummaryOnFulfillmentChange(
           method,
@@ -622,58 +561,32 @@ const progressPct = Math.min(
       summaryChip?.classList.add("hidden");
       summaryChip?.classList.remove("flex");
       expandBtn?.setAttribute("aria-expanded", "true");
-      // Show done button again once form is re-opened
       const checkedRadio = selector?.querySelector<HTMLInputElement>(
         'input[name="fulfillment"]:checked',
       );
       if (checkedRadio) doneBtn?.classList.remove("hidden");
+
+      // Restore free shipping tracker if shipping is the active method
+      // (collapseForm hides it; expandForm must bring it back)
+      updateFreeShippingTracker(cart.getTotal());
+
+      // Notify cart that form is now open/unconfirmed — disable CTA
+      if (
+        checkedRadio &&
+        typeof window.updateOrderSummaryOnFulfillmentChange === "function"
+      ) {
+        const m = checkedRadio.value as "shipping" | "pickup";
+        window.updateOrderSummaryOnFulfillmentChange(
+          m,
+          getFormData(m),
+          false,
+          false,
+        );
+      }
     }
 
-    // Wire up Done button — validates all required fields before collapsing.
-    // If any required field is empty/invalid, browser validation UI fires on the
-    // first offending field and the form stays open. Only collapses when valid.
-    doneBtn?.addEventListener("click", () => {
-      const checkedRadio = selector?.querySelector<HTMLInputElement>(
-        'input[name="fulfillment"]:checked',
-      );
-      if (!checkedRadio) return;
-
-      const method = checkedRadio.value as "shipping" | "pickup";
-      const activeForm = method === "shipping" ? shippingForm : pickupForm;
-
-      // Find all required inputs in the active sub-form
-      const requiredFields = activeForm?.querySelectorAll<
-        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-      >("[required]");
-
-      // Find the first invalid field (if any)
-      let firstInvalid:
-        | HTMLInputElement
-        | HTMLSelectElement
-        | HTMLTextAreaElement
-        | null = null;
-      requiredFields?.forEach((field) => {
-        if (!field.validity.valid && !firstInvalid) firstInvalid = field;
-      });
-
-      if (firstInvalid) {
-        // Show native validation tooltip on the first invalid field
-        (firstInvalid as HTMLInputElement).reportValidity();
-        // Scroll it into view so the user can see the error on small screens
-        (firstInvalid as HTMLInputElement).scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-        return; // Do NOT collapse
-      }
-
-      // All required fields are valid — save and collapse
-      saveForm();
-      collapseForm(method);
-    });
-
-    // Wire up Edit button in summary chip
-    expandBtn?.addEventListener("click", expandForm);
+    // Expose expandForm so cart.astro can call it when "Edit" is clicked from Step 2
+    window.elco_expandFulfillmentForm = expandForm;
 
     function getFormData(
       method: "shipping" | "pickup",
@@ -690,7 +603,7 @@ const progressPct = Math.min(
       return data;
     }
 
-    function saveForm() {
+    function saveForm(confirmed = false) {
       const checkedRadio = selector?.querySelector<HTMLInputElement>(
         'input[name="fulfillment"]:checked',
       );
@@ -698,10 +611,10 @@ const progressPct = Math.min(
       const method = checkedRadio.value as "shipping" | "pickup";
       const data = getFormData(method);
       data._method = method;
+      data._confirmed = String(confirmed);
       sessionStorage.setItem("fulfillment-form", JSON.stringify(data));
     }
 
-    // Returns true only if every [required] field in the active form is filled & valid.
     function checkFormValidity(method: "shipping" | "pickup"): boolean {
       const form = method === "shipping" ? shippingForm : pickupForm;
       const requiredFields = form?.querySelectorAll<
@@ -715,8 +628,6 @@ const progressPct = Math.min(
       return allValid;
     }
 
-    // Calls the cart's global hook with the current validity state so the CTA
-    // can be enabled/disabled without the cart needing to query the form directly.
     function notifyValidity() {
       const checkedRadio = selector?.querySelector<HTMLInputElement>(
         'input[name="fulfillment"]:checked',
@@ -724,58 +635,23 @@ const progressPct = Math.min(
       if (!checkedRadio) return;
       const m = checkedRadio.value as "shipping" | "pickup";
       if (typeof window.updateOrderSummaryOnFulfillmentChange === "function") {
-        // shouldRecalculate = false: only update CTA state, no API call on every keystroke
+        // Form panel is open — keep CTA disabled; only collapseForm() enables it
         window.updateOrderSummaryOnFulfillmentChange(
           m,
           getFormData(m),
-          checkFormValidity(m),
+          false,
           false,
         );
       }
     }
 
-    function restoreForm() {
-      const raw = sessionStorage.getItem("fulfillment-form");
-      if (!raw) return;
-      try {
-        const data = JSON.parse(raw) as Record<string, string>;
-        const method = data._method as "shipping" | "pickup";
-        if (method === "shipping" || method === "pickup") {
-          handleTabClick(method, false);
-          const form = method === "shipping" ? shippingForm : pickupForm;
-          form
-            ?.querySelectorAll<
-              HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-            >("input, select, textarea")
-            .forEach((el) => {
-              if (el.id && data[el.id] !== undefined) el.value = data[el.id];
-            });
-
-          // If all required fields are filled, restore the collapsed chip state
-          // so the user doesn't have to re-close the form after every page load.
-          const requiredFields = form?.querySelectorAll<
-            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-          >("[required]");
-          let allValid = requiredFields && requiredFields.length > 0;
-          requiredFields?.forEach((field) => {
-            if (!field.validity.valid) allValid = false;
-          });
-          if (allValid) collapseForm(method);
-        }
-      } catch {
-        sessionStorage.removeItem("fulfillment-form");
-      }
-    }
-
     function setRequiredFields(method: "shipping" | "pickup") {
-      // Remove required from all fields first
       selector
         ?.querySelectorAll<
           HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
         >("[data-shipping-form] input, [data-shipping-form] select, [data-pickup-form] input")
         .forEach((el) => el.removeAttribute("required"));
 
-      // Add required to the active form's required fields
       if (method === "shipping") {
         [
           "shipping-first-name",
@@ -813,6 +689,13 @@ const progressPct = Math.min(
         "[data-shipping-cost-label]",
       );
 
+      // Tracker only appears when shipping tab is active AND form is expanded (not collapsed to chip)
+      if (!shippingRadio?.checked || formPanel?.classList.contains("hidden")) {
+        tracker?.classList.add("hidden");
+        earned?.classList.add("hidden");
+        return;
+      }
+
       if (subtotal >= FREE_SHIPPING_THRESHOLD) {
         tracker?.classList.add("hidden");
         earned?.classList.remove("hidden");
@@ -843,23 +726,18 @@ const progressPct = Math.min(
       method: "shipping" | "pickup",
       triggerUpdate = true,
     ) {
-      // Update radio inputs
       if (method === "shipping" && shippingRadio) shippingRadio.checked = true;
       if (method === "pickup" && pickupRadio) pickupRadio.checked = true;
 
-      // Active state is driven entirely by CSS via [aria-pressed="true"] —
-      // no classList manipulation needed here.
       tabs.forEach((tab) => {
         tab.setAttribute("aria-pressed", String(tab.dataset.tab === method));
       });
 
-      // Show form panel (ensure chip is fully hidden when form is open)
       formPanel?.classList.remove("hidden");
       formPanel?.removeAttribute("aria-hidden");
       summaryChip?.classList.add("hidden");
-      summaryChip?.classList.remove("flex"); // prevent hidden + flex conflict
+      summaryChip?.classList.remove("flex");
 
-      // Show confirm button and update its label to reflect the active method
       if (doneBtn) {
         doneBtn.classList.remove("hidden");
         doneBtn.textContent =
@@ -874,36 +752,104 @@ const progressPct = Math.min(
         );
       }
 
-      // If summary chip was visible before, update its label for the newly chosen method
       if (summaryLabel && summaryChip) {
         summaryLabel.textContent = getSummaryLabel(method);
       }
 
-      // Show correct form
       if (method === "shipping") {
         shippingForm?.classList.remove("hidden");
         pickupForm?.classList.add("hidden");
+        // Show free shipping tracker for shipping method
+        updateFreeShippingTracker(cart.getTotal());
       } else {
         pickupForm?.classList.remove("hidden");
         shippingForm?.classList.add("hidden");
+        // Hide free shipping tracker for pickup
+        selector
+          ?.querySelector<HTMLElement>("#free-shipping-tracker")
+          ?.classList.add("hidden");
+        selector
+          ?.querySelector<HTMLElement>("#free-shipping-earned")
+          ?.classList.add("hidden");
       }
 
-      // Manage required fields
       setRequiredFields(method);
 
       if (
         triggerUpdate &&
         typeof window.updateOrderSummaryOnFulfillmentChange === "function"
       ) {
-        // Tab switch is an intentional user action — recalculate so the sidebar
-        // reflects the newly selected method. Also resets CTA validity since the
-        // new form may be empty.
+        // Form panel is open during a tab click — always unconfirmed, pass false
         window.updateOrderSummaryOnFulfillmentChange(
           method,
           getFormData(method),
-          checkFormValidity(method),
+          false,
           true,
         );
+      }
+    }
+
+    // Done button — validate then collapse
+    doneBtn?.addEventListener("click", () => {
+      const checkedRadio = selector?.querySelector<HTMLInputElement>(
+        'input[name="fulfillment"]:checked',
+      );
+      if (!checkedRadio) return;
+      const method = checkedRadio.value as "shipping" | "pickup";
+      const activeForm = method === "shipping" ? shippingForm : pickupForm;
+      const requiredFields = activeForm?.querySelectorAll<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >("[required]");
+      let firstInvalid:
+        | HTMLInputElement
+        | HTMLSelectElement
+        | HTMLTextAreaElement
+        | null = null;
+      requiredFields?.forEach((field) => {
+        if (!field.validity.valid && !firstInvalid) firstInvalid = field;
+      });
+      if (firstInvalid) {
+        (firstInvalid as HTMLInputElement).reportValidity();
+        (firstInvalid as HTMLInputElement).scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        return;
+      }
+      saveForm(true);
+      collapseForm(method);
+    });
+
+    expandBtn?.addEventListener("click", expandForm);
+
+    function restoreForm() {
+      const raw = sessionStorage.getItem("fulfillment-form");
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw) as Record<string, string>;
+        const method = data._method as "shipping" | "pickup";
+        if (method === "shipping" || method === "pickup") {
+          handleTabClick(method, false);
+          const form = method === "shipping" ? shippingForm : pickupForm;
+          form
+            ?.querySelectorAll<
+              HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+            >("input, select, textarea")
+            .forEach((el) => {
+              if (el.id && data[el.id] !== undefined) el.value = data[el.id];
+            });
+
+          initFloatSelects(selector as Element);
+
+          const requiredFields = form?.querySelectorAll<
+            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          >("[required]");
+          // Only collapse to chip if the user had previously clicked Confirm
+          const wasConfirmed = data._confirmed === "true";
+          if (wasConfirmed) collapseForm(method);
+        }
+      } catch {
+        sessionStorage.removeItem("fulfillment-form");
       }
     }
 
@@ -916,65 +862,61 @@ const progressPct = Math.min(
       });
     });
 
-    // ── Phone masking ─────────────────────────────────────────────────────────
-    // Formats input as (XXX) XXX-XXXX as the user types, digits only.
+    // Phone masking
     function maskPhone(value: string): string {
       let d = value.replace(/\D/g, "").slice(0, 11);
-      // Strip leading country code: +1 or 1 prefix on an 11-digit number
       if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
       d = d.slice(0, 10);
       if (d.length <= 3) return d.length ? `(${d}` : "";
       if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
       return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
     }
-
     ["shipping-phone", "pickup-phone"].forEach((id) => {
       const el = selector.querySelector<HTMLInputElement>(`#${id}`);
       if (!el) return;
       const applyMask = () => {
         const masked = maskPhone(el.value);
         el.value = masked;
-        // Always move caret to end — phone masking builds left-to-right,
-        // restoring the pre-format position inserts digits at the wrong place.
         el.setSelectionRange(masked.length, masked.length);
       };
-      // "input" handles manual typing; "change" catches autofill/password managers
-      // that bypass the input event entirely.
       el.addEventListener("input", applyMask);
       el.addEventListener("change", applyMask);
     });
 
-    // ── ZIP: digits only + Zippopotam.us auto-fill ────────────────────────────
+    // ZIP: digits only + Zippopotam.us auto-fill
     const zipInput = selector.querySelector<HTMLInputElement>("#shipping-zip");
-    const cityInput = selector.querySelector<HTMLInputElement>("#shipping-city");
-    const stateSelect = selector.querySelector<HTMLSelectElement>("#shipping-state");
+    const cityInput =
+      selector.querySelector<HTMLInputElement>("#shipping-city");
+    const stateSelect =
+      selector.querySelector<HTMLSelectElement>("#shipping-state");
 
     zipInput?.addEventListener("input", () => {
       zipInput.value = zipInput.value.replace(/\D/g, "").slice(0, 5);
     });
-
     zipInput?.addEventListener("blur", async () => {
       const zip = zipInput.value;
       if (zip.length !== 5) return;
       try {
         const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
         if (!res.ok) return;
-        const data = await res.json() as { places: Array<{ "place name": string; "state abbreviation": string }> };
+        const data = (await res.json()) as {
+          places: Array<{ "place name": string; "state abbreviation": string }>;
+        };
         const place = data.places?.[0];
         if (!place) return;
-        if (cityInput && !cityInput.value) {
+        if (cityInput && !cityInput.value)
           cityInput.value = place["place name"];
-        }
         if (stateSelect && !stateSelect.value) {
           stateSelect.value = place["state abbreviation"];
+          initFloatSelects(selector as Element);
         }
         saveForm();
         notifyValidity();
-      } catch { /* network failure — silent */ }
+      } catch {
+        /* silent */
+      }
     });
 
-    // Save on form field changes and notify the cart of the current validity state
-    // so the CTA can be enabled as soon as all required fields are filled.
     selector
       .querySelectorAll<
         HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -990,71 +932,53 @@ const progressPct = Math.min(
         });
       });
 
-    // Sync free shipping tracker with live cart subtotal
     function syncCart() {
-      const subtotalVal = cart.getTotal();
-      updateFreeShippingTracker(subtotalVal);
+      updateFreeShippingTracker(cart.getTotal());
     }
-
     syncCart();
     restoreForm();
-
-    // Listen for cart updates (event fires on window as "cartUpdated")
+    // If nothing was restored, open shipping tab by default
+    if (!shippingRadio?.checked && !pickupRadio?.checked) {
+      handleTabClick("shipping", false);
+    }
+    initFloatSelects(selector as Element);
     window.addEventListener("cartUpdated", syncCart);
   }
 
   document.addEventListener("astro:page-load", initFulfillmentSelector);
 
-  // Listen for gift card detection from cart — auto-select pickup and show disclaimer.
-  // Guard: only act after initFulfillmentSelector has completed so we don't interfere
-  // with restoreForm() on initial cart load.
   let fulfillmentSelectorReady = false;
   document.addEventListener("astro:page-load", () => {
-    // Set flag in a separate listener that runs after initFulfillmentSelector
-    // (listeners fire in registration order — this runs second).
     fulfillmentSelectorReady = true;
   });
 
   document.addEventListener("cart:giftcard", (e: Event) => {
-    const { hasGiftCard } = (e as CustomEvent).detail as { hasGiftCard: boolean };
+    const { hasGiftCard } = (e as CustomEvent).detail as {
+      hasGiftCard: boolean;
+    };
     const disclaimer = document.getElementById("gift-card-shipping-disclaimer");
-
-    if (disclaimer) {
-      disclaimer.classList.toggle("hidden", !hasGiftCard);
-    }
-
-    // Only nudge toward pickup if the user has never chosen a fulfillment method.
-    // If sessionStorage has a saved form, restoreForm() already handled the state —
-    // don't override it. If it has no saved form, the user is on a fresh visit and
-    // we should not open the panel at all; let them choose deliberately.
+    if (disclaimer) disclaimer.classList.toggle("hidden", !hasGiftCard);
     if (hasGiftCard && fulfillmentSelectorReady) {
       const hasSavedForm = !!sessionStorage.getItem("fulfillment-form");
       const anySelected = document.querySelector<HTMLButtonElement>(
         '[data-tab][aria-pressed="true"]',
       );
-      // Only auto-select if form is open and no tab chosen yet — never force-open
       if (!hasSavedForm && !anySelected) {
-        // Don't click — just highlight the pickup tab visually as a suggestion
-        // without opening the form panel. The user still chooses deliberately.
-        const pickupTab = document.querySelector<HTMLButtonElement>(
-          '[data-tab="pickup"]',
-        );
-        pickupTab?.focus();
+        document
+          .querySelector<HTMLButtonElement>('[data-tab="pickup"]')
+          ?.focus();
       }
     }
   });
 </script>
 
 <style>
-  /* Active tab state — driven by aria-pressed so JS only needs to set the attribute */
   .tab-btn[aria-pressed="true"] {
     background-color: var(--surface-primary);
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     color: var(--content-heading);
     border-top-color: var(--content-emphasis);
   }
-
-  /* Suppress hover changes on the already-selected tab so it feels stable */
   .tab-btn[aria-pressed="true"]:hover {
     background-color: var(--surface-primary);
     color: var(--content-heading);
