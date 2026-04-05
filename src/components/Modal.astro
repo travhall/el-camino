@@ -1,9 +1,38 @@
 ---
 // src/components/Modal.astro
 import { siteConfig } from "@/lib/site-config";
+import { getContactInfo } from "@/lib/contactInfo";
+import { getSocialLinks } from "@/lib/socialLinks";
+import { getShopHours } from "@/lib/shopHours";
 
-// Serialize config for client-side use
-const serializedSiteConfig = JSON.stringify(siteConfig);
+const [contact, social, hours] = await Promise.all([
+  getContactInfo(),
+  getSocialLinks(),
+  getShopHours(),
+]);
+
+// Build a config object that matches the shape the client-side modal code expects
+const liveConfig = {
+  name: contact.name,
+  tagline: siteConfig.tagline,
+  contact: {
+    address: {
+      street: contact.street,
+      city: contact.city,
+      state: contact.state,
+      zip: contact.zip,
+    },
+    phone: {
+      number: contact.phoneRaw,
+      display: contact.phone,
+    },
+    email: contact.email,
+  },
+  hours,
+  social,
+};
+
+const serializedSiteConfig = JSON.stringify(liveConfig);
 ---
 
 <script>

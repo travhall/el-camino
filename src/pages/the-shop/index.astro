@@ -9,6 +9,8 @@ import {
   EL_CAMINO_LOADER_DATA_URI,
 } from "@/lib/constants/assets";
 import { getShopHours } from "@/lib/shopHours";
+import { getContactInfo } from "@/lib/contactInfo";
+import { getSocialLinks } from "@/lib/socialLinks";
 import CategoryStrip from "@/components/CategoryStrip.astro";
 import ArticleCard from "@/components/ArticleCard.astro";
 import OpenStatusBadge from "@/components/OpenStatusBadge.astro";
@@ -19,6 +21,8 @@ import {
 } from "@/lib/wordpress/types";
 
 const shopHours = await getShopHours();
+const contact = await getContactInfo();
+const social = await getSocialLinks();
 
 // Fetch "Shop News" category posts, fall back to most recent posts if empty
 const shopNewsPosts = await getPostsByCategory("shop-news");
@@ -208,14 +212,12 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
                   Address
                 </h3>
                 <p>
-                  {siteConfig.contact.address.street}<br />
-                  {siteConfig.contact.address.city}, {
-                    siteConfig.contact.address.state
-                  }
-                  {siteConfig.contact.address.zip}
+                  {contact.street}<br />
+                  {contact.city}, {contact.state}
+                  {contact.zip}
                 </p>
                 <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(siteConfig.contact.address.display)}`}
+                  href={`https://maps.google.com/?q=${encodeURIComponent(`${contact.street}, ${contact.city}, ${contact.state} ${contact.zip}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   class="text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all block mt-3"
@@ -232,21 +234,21 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
                   Get in Touch
                 </h3>
                 <a
-                  href={`tel:${siteConfig.contact.phone.number}`}
+                  href={`tel:${contact.phoneRaw}`}
                   class="relative font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all block"
                 >
-                  {siteConfig.contact.phone.display}
+                  {contact.phone}
                 </a>
                 <a
-                  href={`mailto:${siteConfig.contact.email}`}
+                  href={`mailto:${contact.email}`}
                   class="relative font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all block"
                 >
-                  {siteConfig.contact.email}
+                  {contact.email}
                 </a>
 
                 <div class="flex gap-2 mt-3">
                   {
-                    siteConfig.social.map((social) => (
+                    social.map((social) => (
                       <a
                         href={social.url}
                         target="_blank"

@@ -1,5 +1,5 @@
 ---
-import { getStructuredData } from "@/lib/site-config";
+import { getStructuredData } from "@/lib/structuredData";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import QuickView from "@/components/QuickView.astro";
@@ -24,7 +24,7 @@ const deviceInfo = detectDeviceFromUA(userAgent);
 const isDesktop = deviceInfo.isDesktop;
 
 // Get structured data from site config
-const orgSchema = getStructuredData();
+const orgSchema = await getStructuredData();
 
 // Get current path for context-aware prefetching
 const currentPath = Astro.url.pathname;

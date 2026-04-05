@@ -93,51 +93,8 @@ export const siteConfig: SiteConfig = {
 };
 
 // Utility functions
-export function getSocialLinks() {
-  return siteConfig.social;
-}
-
-export function getContactInfo() {
-  return siteConfig.contact;
-}
-
-export function getBusinessHours() {
-  return siteConfig.hours;
-}
-
 export function getSEODefaults() {
   return siteConfig.seo;
-}
-
-export function getStructuredData() {
-  return {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "@id": siteConfig.url,
-    name: siteConfig.name,
-    description: siteConfig.description,
-    url: siteConfig.url,
-    logo: `${siteConfig.url}${siteConfig.logo}`,
-    image: `${siteConfig.url}${siteConfig.seo.defaultImage}`,
-    telephone: siteConfig.contact.phone.number,
-    email: siteConfig.contact.email,
-    support: siteConfig.contact.support,
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: siteConfig.contact.address.street,
-      addressLocality: siteConfig.contact.address.city,
-      addressRegion: siteConfig.contact.address.state,
-      postalCode: siteConfig.contact.address.zip,
-      addressCountry: "US",
-    },
-    openingHoursSpecification: siteConfig.hours.map((day) => ({
-      "@type": "OpeningHoursSpecification",
-      dayOfWeek: day.day,
-      opens: day.isOpen ? day.hours.split(" - ")[0] : undefined,
-      closes: day.isOpen ? day.hours.split(" - ")[1] : undefined,
-    })),
-    sameAs: siteConfig.social.map((social) => social.url),
-  };
 }
 
 export const apiConfig = {

@@ -1,6 +1,8 @@
 ---
 // src/components/Nav.astro - Enhanced with strategic prefetching
 import { siteConfig } from "@/lib/site-config";
+import { getContactInfo } from "@/lib/contactInfo";
+import { getSocialLinks } from "@/lib/socialLinks";
 import type { CategoryHierarchy } from "@/lib/square/types";
 import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
 import { Icon } from "astro-icon/components";
@@ -11,7 +13,8 @@ interface Props {
 }
 
 const { activeCategory } = Astro.props;
-const { contact, social } = siteConfig;
+const contact = await getContactInfo();
+const social = await getSocialLinks();
 
 let categoryHierarchy: CategoryHierarchy[];
 let navigationStatus: "loading" | "success" | "timeout" | "error" = "loading";
@@ -292,14 +295,14 @@ const isCategoryPage = currentPath.includes("/category/");
     <address
       class="flex flex-col text-lg gap-2 uppercase not-italic text-(--ui-nav-text) wrap-break-word"
     >
-      <span class="font-semibold">{siteConfig.name}</span>
-      <span>{contact.address.street}</span>
+      <span class="font-semibold">{contact.name}</span>
+      <span>{contact.street}</span>
       <span class="mb-1"
-        >{contact.address.city}, {contact.address.state}
-        {contact.address.zip}</span
+        >{contact.city}, {contact.state}
+        {contact.zip}</span
       >
-      <a href={`tel:${contact.phone.number}`} class="py-2 self-start">
-        {contact.phone.display}
+      <a href={`tel:${contact.phoneRaw}`} class="py-2 self-start">
+        {contact.phone}
       </a>
       <a href={`mailto:${contact.email}`} class="py-2 self-start">
         {contact.email}

@@ -8,6 +8,7 @@ import type { SquareMoneyObject } from "@/lib/square/types";
 import { Image } from "astro:assets";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 import { siteConfig } from "@/lib/site-config";
+import { getContactInfo } from "@/lib/contactInfo";
 
 // Track line item additional info
 type LineItemInfo = {
@@ -17,6 +18,7 @@ type LineItemInfo = {
 };
 type LineItemDetails = Record<string, LineItemInfo>;
 
+const contact = await getContactInfo();
 let orderId = Astro.url.searchParams.get("orderId");
 const transactionId = Astro.url.searchParams.get("transactionId");
 
@@ -467,12 +469,12 @@ const fullTitle = `${pageTitle} | El Camino`;
                       <p class="text-xs uppercase tracking-wider text-(--content-meta) mb-1">
                         Location
                       </p>
-                      <p class="font-medium">{siteConfig.name}</p>
+                      <p class="font-medium">{contact.name}</p>
                       <p class="text-sm text-(--content-meta)">
-                        {siteConfig.contact.address.display}
+                        {`${contact.street}, ${contact.city}, ${contact.state} ${contact.zip}`}
                       </p>
                       <p class="text-sm text-(--content-meta)">
-                        {siteConfig.contact.phone.display}
+                        {contact.phone}
                       </p>
                     </div>
 
