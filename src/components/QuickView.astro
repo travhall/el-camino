@@ -759,7 +759,11 @@ import {
     }
 
     // Show/hide quantity stepper and back-in-stock form based on stock state
-    private updateQuantityAndBis(inStock: boolean, quantity: number, isGiftCard = false): void {
+    private updateQuantityAndBis(
+      inStock: boolean,
+      quantity: number,
+      isGiftCard = false,
+    ): void {
       const quantitySection = document.getElementById(
         "quick-view-quantity-section",
       );
@@ -767,12 +771,14 @@ import {
       const atcWrapper = document.getElementById("qv-atc-wrapper");
 
       // Gift cards: always show stepper (capped at 10), never show BIS
-      const showQuantity = isGiftCard ? true : (inStock && quantity > 1);
+      const showQuantity = isGiftCard ? true : inStock && quantity > 1;
       const showBis = isGiftCard ? false : !inStock;
 
       // Update quantity input max for gift cards
       if (isGiftCard) {
-        const qtyInput = document.getElementById("quick-view-quantity") as HTMLInputElement | null;
+        const qtyInput = document.getElementById(
+          "quick-view-quantity",
+        ) as HTMLInputElement | null;
         if (qtyInput) qtyInput.max = "10";
       }
 
@@ -923,9 +929,11 @@ import {
 
             // Apply opacity for availability (but keep clickable)
             if (!isAvailable) {
-              button.classList.add("opacity-50");
+              button.classList.add("opacity-40");
+              button.classList.add("line-through");
             } else {
-              button.classList.remove("opacity-50");
+              button.classList.remove("opacity-40");
+              button.classList.remove("line-through");
             }
           });
         },
