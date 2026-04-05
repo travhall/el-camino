@@ -1,6 +1,7 @@
 ---
 // src/components/OpenStatusBadge.astro
 // Displays a live open/closed badge driven by siteConfig.hours.
+// Admin overrides (manual mode or holiday list) take priority over the schedule.
 // Uses a data attribute so multiple instances can coexist on the same page.
 import { siteConfig } from "@/lib/site-config";
 
@@ -20,48 +21,116 @@ const { class: className = "" } = Astro.props;
   aria-live="polite"></span>
 
 <script>
-  // Runs once per page; finds every [data-open-status-badge] and updates each.
-  function updateOpenStatusBadges() {
+  interface ShopOverride {
+    mode: "auto" | "open" | "closed";
+    until: string | null;
+    holidays: Array<{
+      id: string;
+      label?: string;
+      date?: string;
+      recurring?: string;
+    }>;
+  }
+
+  /** Returns "YYYY-MM-DD" for the given Date using local (browser) time. */
+  function toDateString(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  /**
+   * Resolves admin override/holiday against the current local date.
+   * Returns "open" | "closed" if an override applies, null to fall back to
+   * the regular schedule.
+   */
+  function resolveOverride(
+    override: ShopOverride,
+    now: Date,
+  ): "open" | "closed" | null {
+    const todayStr = toDateString(now);
+
+    if (override.mode !== "auto") {
+      if (!override.until || override.until >= todayStr) {
+        return override.mode;
+      }
+      // "until" has expired — fall through
+    }
+
+    const monthDay = todayStr.slice(5); // "MM-DD"
+    for (const h of override.holidays) {
+      if (
+        (h.date && h.date === todayStr) ||
+        (h.recurring && h.recurring === monthDay)
+      ) {
+        return "closed";
+      }
+    }
+
+    return null; // no override active
+  }
+
+  async function updateOpenStatusBadges() {
     const badges = document.querySelectorAll<HTMLElement>(
       "[data-open-status-badge]",
     );
     if (!badges.length) return;
 
     const now = new Date();
-    const todayName = new Intl.DateTimeFormat("en-US", {
-      weekday: "long",
-    }).format(now);
 
-    // Read hours from the JSON data island written by the Layout / site-config.
-    // Fall back to the hours list rendered in the shop hours table if present,
-    // otherwise fall back to the global siteConfig hours data attribute.
-    // We embed the hours directly at build time via a hidden data element.
-    const hoursEl = document.getElementById("site-hours-data");
-    let hours: { day: string; isOpen: boolean; hours: string }[] = [];
-    if (hoursEl) {
-      try {
-        hours = JSON.parse(hoursEl.textContent || "[]");
-      } catch {}
+    // ── 1. Check admin override ──────────────────────────────────────────────
+    let overrideStatus: "open" | "closed" | null = null;
+    try {
+      const res = await fetch("/api/shop-status");
+      if (res.ok) {
+        const override = (await res.json()) as ShopOverride;
+        overrideStatus = resolveOverride(override, now);
+      }
+    } catch {
+      // Network error — fall back to schedule silently
     }
 
-    const todayEntry = hours.find((h) => h.day === todayName);
+    // ── 2. Determine open/closed ─────────────────────────────────────────────
     let isOpenNow = false;
 
-    if (todayEntry?.isOpen) {
-      const match = todayEntry.hours.match(/(\d+)(am|pm)\s*-\s*(\d+)(am|pm)/i);
-      if (match) {
-        const toMinutes = (h: number, period: string) => {
-          let hrs = h % 12;
-          if (period.toLowerCase() === "pm") hrs += 12;
-          return hrs * 60;
-        };
-        const openMins = toMinutes(parseInt(match[1]), match[2]);
-        const closeMins = toMinutes(parseInt(match[3]), match[4]);
-        const nowMins = now.getHours() * 60 + now.getMinutes();
-        isOpenNow = nowMins >= openMins && nowMins < closeMins;
+    if (overrideStatus !== null) {
+      isOpenNow = overrideStatus === "open";
+    } else {
+      // Fall back to regular schedule logic
+      const todayName = new Intl.DateTimeFormat("en-US", {
+        weekday: "long",
+      }).format(now);
+
+      const hoursEl = document.getElementById("site-hours-data");
+      let hours: { day: string; isOpen: boolean; hours: string }[] = [];
+      if (hoursEl) {
+        try {
+          hours = JSON.parse(hoursEl.textContent || "[]");
+        } catch {}
+      }
+
+      const todayEntry = hours.find((h) => h.day === todayName);
+
+      if (todayEntry?.isOpen) {
+        const match = todayEntry.hours.match(
+          /(\d+)(am|pm)\s*-\s*(\d+)(am|pm)/i,
+        );
+        if (match) {
+          const toMinutes = (h: number, period: string) => {
+            let hrs = h % 12;
+            if (period.toLowerCase() === "pm") hrs += 12;
+            return hrs * 60;
+          };
+          const openMins = toMinutes(parseInt(match[1]), match[2]);
+          const closeMins = toMinutes(parseInt(match[3]), match[4]);
+          const nowMins = now.getHours() * 60 + now.getMinutes();
+          isOpenNow = nowMins >= openMins && nowMins < closeMins;
+        }
       }
     }
 
+    // ── 3. Update badge UI ───────────────────────────────────────────────────
     badges.forEach((badge) => {
       badge.classList.remove("hidden");
       if (isOpenNow) {

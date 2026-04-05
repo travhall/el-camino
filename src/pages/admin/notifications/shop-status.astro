@@ -1,0 +1,499 @@
+---
+// src/pages/admin/notifications/shop-status.astro
+// Admin UI for managing the shop open-status badge override.
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import {
+  getShopStatusConfig,
+  resolveShopStatus,
+  formatFullDate,
+  formatMonthDay,
+} from "@/lib/shopStatus";
+
+const params = Astro.url.searchParams;
+const saved = params.get("saved");
+const removed = params.get("removed");
+const error = params.get("error");
+
+const config = await getShopStatusConfig();
+
+// Compute today in Central Time so the server-side status preview is accurate.
+const todayCT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Chicago",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date()); // "YYYY-MM-DD"
+
+const resolved = resolveShopStatus(config, todayCT);
+const overrideExpired =
+  config.mode !== "auto" && !!config.until && config.until < todayCT;
+
+// Effective form values — if override expired, treat form as auto
+const formMode = overrideExpired ? "auto" : config.mode;
+const formUntil = overrideExpired ? "" : (config.until ?? "");
+
+const INPUT_CLASS =
+  "border border-(--border-primary) bg-(--surface-primary) text-(--content-body) rounded-sm px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-(--content-body)/30 focus:ring-offset-1";
+const BTN_CLASS =
+  "font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap";
+---
+
+<AdminLayout
+  title="Open Status Badge"
+  description="Override when the shop badge appears open or closed to customers."
+>
+  <!-- ── Flash banners ──────────────────────────────────────────────────────── -->
+  {
+    saved === "override" && (
+      <div
+        role="status"
+        class="status-banner mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-800"
+      >
+        Override saved.
+      </div>
+    )
+  }
+  {
+    saved === "holiday" && (
+      <div
+        role="status"
+        class="status-banner mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-800"
+      >
+        Holiday added.
+      </div>
+    )
+  }
+  {
+    removed === "holiday" && (
+      <div
+        role="status"
+        class="status-banner mb-4 px-4 py-3 bg-slate-50 border border-slate-200 rounded-sm text-sm text-slate-700"
+      >
+        Holiday removed.
+      </div>
+    )
+  }
+  {
+    error === "missing-label" && (
+      <div
+        role="alert"
+        class="status-banner mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700"
+      >
+        Please enter a holiday name.
+      </div>
+    )
+  }
+  {
+    error === "invalid-date" && (
+      <div
+        role="alert"
+        class="status-banner mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700"
+      >
+        Please enter a valid date.
+      </div>
+    )
+  }
+
+  <div class="space-y-6">
+    <!-- ── Current Status Preview ───────────────────────────────────────────── -->
+    <div
+      class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border border-(--border-primary) rounded-sm text-sm"
+    >
+      <span class="text-(--content-meta) shrink-0">Customers currently see:</span>
+      {
+        resolved.source === "auto" ? (
+          <span class="text-(--content-body) font-medium">
+            Following regular schedule
+          </span>
+        ) : resolved.source === "override" ? (
+          <span
+            class:list={[
+              "font-semibold px-2 py-0.5 rounded-full border-2 text-xs",
+              resolved.status === "open"
+                ? "bg-state-success-surface text-state-success-text border-state-success-surface"
+                : "bg-state-error-surface text-state-error-text border-state-error-surface",
+            ]}
+          >
+            {resolved.status === "open" ? "Open Now" : "Closed"}
+          </span>
+        ) : (
+          <span class="font-semibold px-2 py-0.5 rounded-full border-2 text-xs bg-state-error-surface text-state-error-text border-state-error-surface">
+            Closed
+          </span>
+        )
+      }
+      {
+        resolved.source === "override" && (
+          <span class="text-(--content-meta) text-xs">— manual override</span>
+        )
+      }
+      {
+        resolved.source === "holiday" && (
+          <span class="text-(--content-meta) text-xs">
+            — {resolved.label}
+          </span>
+        )
+      }
+    </div>
+
+    <!-- ── Status Override ───────────────────────────────────────────────────── -->
+    <div
+      class="border border-(--border-primary) border-l-4 border-l-violet-500 rounded-sm overflow-hidden"
+    >
+      <!-- Header -->
+      <div
+        class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)"
+      >
+        <p class="text-base font-semibold text-(--content-heading)">
+          Status Override
+        </p>
+        <p class="text-sm text-(--content-meta)">
+          Overrides the regular schedule for all customers.
+        </p>
+      </div>
+
+      <!-- Body -->
+      <div class="px-4 py-5">
+        {
+          overrideExpired && (
+            <div class="mb-5 px-3 py-2 bg-amber-50 border border-amber-200 rounded-sm text-sm text-amber-800">
+              Previous override expired — currently following schedule.
+            </div>
+          )
+        }
+
+        <form
+          method="POST"
+          action="/api/admin/shop-status"
+          class="space-y-5"
+        >
+          <input type="hidden" name="action" value="save-override" />
+
+          <!-- Mode selector -->
+          <div>
+            <p class="text-sm font-medium text-(--content-body) mb-2">
+              Badge mode
+            </p>
+            <div
+              class="flex border border-(--border-primary) rounded-sm overflow-hidden"
+              role="group"
+              aria-label="Badge mode"
+            >
+              <!-- Auto -->
+              <label
+                class="flex-1 text-center cursor-pointer select-none"
+                title="Follow the regular business-hours schedule"
+              >
+                <input
+                  type="radio"
+                  name="mode"
+                  value="auto"
+                  class="sr-only peer"
+                  checked={formMode === "auto"}
+                />
+                <span
+                  class="block py-2.5 px-3 text-sm font-medium text-(--content-meta) peer-checked:bg-(--surface-tertiary) peer-checked:text-(--content-heading) peer-checked:font-semibold transition-colors"
+                >
+                  Follow Schedule
+                </span>
+              </label>
+
+              <!-- Force Open -->
+              <label
+                class="flex-1 text-center cursor-pointer select-none border-l border-(--border-primary)"
+                title="Always show Open Now, regardless of hours"
+              >
+                <input
+                  type="radio"
+                  name="mode"
+                  value="open"
+                  class="sr-only peer"
+                  checked={formMode === "open"}
+                />
+                <span
+                  class="block py-2.5 px-3 text-sm font-medium text-green-700 peer-checked:bg-green-600 peer-checked:text-white peer-checked:font-semibold transition-colors"
+                >
+                  Force Open
+                </span>
+              </label>
+
+              <!-- Force Closed -->
+              <label
+                class="flex-1 text-center cursor-pointer select-none border-l border-(--border-primary)"
+                title="Always show Closed, regardless of hours"
+              >
+                <input
+                  type="radio"
+                  name="mode"
+                  value="closed"
+                  class="sr-only peer"
+                  checked={formMode === "closed"}
+                />
+                <span
+                  class="block py-2.5 px-3 text-sm font-medium text-red-700 peer-checked:bg-red-600 peer-checked:text-white peer-checked:font-semibold transition-colors"
+                >
+                  Force Closed
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Until date (shown when mode != auto) -->
+          <div id="until-row" class:list={[formMode === "auto" && "hidden"]}>
+            <label
+              class="text-sm font-medium text-(--content-body) mb-1 block"
+              for="until-date"
+            >
+              Revert automatically after
+            </label>
+            <input
+              type="date"
+              id="until-date"
+              name="until"
+              value={formUntil}
+              min={todayCT}
+              class={`${INPUT_CLASS} max-w-48`}
+            />
+            <p class="text-xs text-(--content-meta) mt-1.5">
+              Leave empty to keep indefinitely. The override is active through
+              this date, then reverts to the regular schedule.
+            </p>
+          </div>
+
+          <button type="submit" class={BTN_CLASS}>Save Override</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Holiday Closures ──────────────────────────────────────────────────── -->
+    <div
+      class="border border-(--border-primary) border-l-4 border-l-amber-500 rounded-sm overflow-hidden"
+    >
+      <!-- Header -->
+      <div
+        class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)"
+      >
+        <p class="text-base font-semibold text-(--content-heading)">
+          Holiday Closures
+        </p>
+        {
+          config.holidays.length > 0 && (
+            <span class="shrink-0 inline-flex items-center text-sm font-semibold text-amber-800 bg-amber-100 border border-amber-200 rounded-full px-3 py-0.5">
+              {config.holidays.length}{" "}
+              {config.holidays.length === 1 ? "holiday" : "holidays"}
+            </span>
+          )
+        }
+        <p class="text-sm text-(--content-meta)">
+          Automatically shows Closed on these dates regardless of schedule.
+        </p>
+      </div>
+
+      <!-- Holiday list -->
+      {
+        config.holidays.length === 0 && (
+          <div class="px-4 py-8 text-center">
+            <p class="text-(--content-meta) text-sm font-medium">
+              No holidays defined yet.
+            </p>
+            <p class="text-xs text-(--content-meta) mt-1">
+              Add dates below to automatically close the shop badge on
+              those days.
+            </p>
+          </div>
+        )
+      }
+
+      {
+        config.holidays.map((h) => (
+          <div class="flex items-center gap-4 px-4 py-3 border-b border-(--border-primary)">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-(--content-heading)">
+                {h.label}
+              </p>
+              <p class="text-xs text-(--content-meta) mt-0.5">
+                {h.date
+                  ? formatFullDate(h.date)
+                  : `Every ${formatMonthDay(h.recurring!)}`}
+              </p>
+            </div>
+            <span
+              class:list={[
+                "shrink-0 text-xs font-medium px-2 py-0.5 rounded-full border",
+                h.recurring
+                  ? "text-violet-700 bg-violet-50 border-violet-200"
+                  : "text-sky-700 bg-sky-50 border-sky-200",
+              ]}
+            >
+              {h.recurring ? "Annual" : "One-time"}
+            </span>
+            <form method="POST" action="/api/admin/shop-status">
+              <input type="hidden" name="action" value="remove-holiday" />
+              <input type="hidden" name="id" value={h.id} />
+              <button
+                type="submit"
+                class="font-sans font-medium transition-all ease-in-out duration-200 border border-dashed rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-slate-400 border-slate-300 hover:text-red-600 hover:border-red-300 hover:bg-red-50 focus-visible:ring-red-300 text-xs py-1 px-2.5 whitespace-nowrap"
+                aria-label={`Remove ${h.label}`}
+              >
+                Remove
+              </button>
+            </form>
+          </div>
+        ))
+      }
+
+      <!-- Add holiday form -->
+      <div
+        class="px-4 py-5 bg-(--surface-primary) border-t border-(--border-primary)"
+      >
+        <p class="text-sm font-semibold text-(--content-heading) mb-4">
+          Add Holiday
+        </p>
+        <form
+          method="POST"
+          action="/api/admin/shop-status"
+          class="space-y-4"
+          id="add-holiday-form"
+        >
+          <input type="hidden" name="action" value="add-holiday" />
+
+          <!-- Label -->
+          <div>
+            <label
+              class="text-sm font-medium text-(--content-body) mb-1 block"
+              for="holiday-label"
+            >
+              Holiday name
+            </label>
+            <input
+              type="text"
+              id="holiday-label"
+              name="label"
+              placeholder="e.g. Easter, Thanksgiving, Staff Retreat"
+              required
+              class={INPUT_CLASS}
+            />
+          </div>
+
+          <!-- Type toggle -->
+          <div>
+            <p class="text-sm font-medium text-(--content-body) mb-2">
+              Date type
+            </p>
+            <div class="flex items-center gap-6">
+              <label
+                class="flex items-center gap-2 cursor-pointer text-sm text-(--content-body)"
+              >
+                <input
+                  type="radio"
+                  name="type"
+                  value="specific"
+                  id="type-specific"
+                  checked
+                  class="accent-(--content-heading)"
+                />
+                Specific date
+              </label>
+              <label
+                class="flex items-center gap-2 cursor-pointer text-sm text-(--content-body)"
+              >
+                <input
+                  type="radio"
+                  name="type"
+                  value="recurring"
+                  id="type-recurring"
+                  class="accent-(--content-heading)"
+                />
+                Recurring annually
+              </label>
+            </div>
+          </div>
+
+          <!-- Specific date input -->
+          <div id="specific-date-row">
+            <label
+              class="text-sm font-medium text-(--content-body) mb-1 block"
+              for="holiday-date"
+            >
+              Date
+            </label>
+            <input
+              type="date"
+              id="holiday-date"
+              name="date"
+              class={`${INPUT_CLASS} max-w-48`}
+            />
+          </div>
+
+          <!-- Recurring date input -->
+          <div id="recurring-date-row" class="hidden">
+            <label
+              class="text-sm font-medium text-(--content-body) mb-1 block"
+              for="holiday-recurring"
+            >
+              Month and day
+            </label>
+            <input
+              type="text"
+              id="holiday-recurring"
+              name="recurring"
+              placeholder="MM-DD"
+              pattern="\d{2}-\d{2}"
+              class={`${INPUT_CLASS} max-w-48`}
+            />
+            <p class="text-xs text-(--content-meta) mt-1.5">
+              Two-digit month and day — e.g. <code class="font-mono bg-(--surface-secondary) px-1 rounded">12-25</code> for Christmas,
+              <code class="font-mono bg-(--surface-secondary) px-1 rounded">07-04</code> for July 4th.
+              Year is ignored; it will match every year.
+            </p>
+          </div>
+
+          <button type="submit" class={BTN_CLASS}>Add Holiday</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  // ── Override mode → show/hide "until" row ────────────────────────────────
+  function syncUntilRow() {
+    const mode = (
+      document.querySelector<HTMLInputElement>('input[name="mode"]:checked')
+    )?.value;
+    document.getElementById("until-row")?.classList.toggle("hidden", mode === "auto");
+  }
+
+  document.querySelectorAll<HTMLInputElement>('input[name="mode"]').forEach((r) => {
+    r.addEventListener("change", syncUntilRow);
+  });
+
+  // ── Holiday type → show/hide specific vs recurring inputs ──────────────
+  function syncHolidayType() {
+    const type = (
+      document.querySelector<HTMLInputElement>('input[name="type"]:checked')
+    )?.value;
+    document.getElementById("specific-date-row")?.classList.toggle("hidden", type === "recurring");
+    document.getElementById("recurring-date-row")?.classList.toggle("hidden", type === "specific");
+  }
+
+  document.querySelectorAll<HTMLInputElement>('input[name="type"]').forEach((r) => {
+    r.addEventListener("change", syncHolidayType);
+  });
+
+  // ── Auto-dismiss flash banners ──────────────────────────────────────────
+  const banners = document.querySelectorAll<HTMLElement>(".status-banner");
+  if (banners.length) {
+    setTimeout(() => {
+      banners.forEach((el) => {
+        el.style.transition = "opacity 0.5s ease";
+        el.style.opacity = "0";
+        setTimeout(() => el.remove(), 500);
+      });
+      const url = new URL(window.location.href);
+      ["saved", "removed", "error"].forEach((p) => url.searchParams.delete(p));
+      history.replaceState(null, "", url.toString());
+    }, 4000);
+  }
+</script>
