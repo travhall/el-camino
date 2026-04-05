@@ -174,7 +174,7 @@ src/
 │   │   ├── index.astro           # Admin dashboard overview
 │   │   ├── orders/               # Order management
 │   │   │   ├── shipping.astro    # Shipping orders
-│   │   │   ├── pickups.astro     # Pickup orders
+│   │   │   ├── pickups.astro     # Pick up orders
 │   │   │   └── archive.astro     # Order archive
 │   │   ├── notifications/        # Notification management
 │   │   │   └── back-in-stock.astro # BIS subscriber management
@@ -222,7 +222,7 @@ src/
 
 - **Order Confirmations** - Automatic email receipts for customer orders
 - **Shipping Notifications** - Tracking number delivery when orders ship
-- **Pickup Reminders** - Automated reminders for pickup orders
+- **Pick Up Reminders** - Automated reminders for pick up orders
 - **Back-in-Stock Alerts** - Customer notifications when products restock
 - **Admin Notifications** - Real-time alerts for new orders and subscriptions
 
@@ -277,7 +277,7 @@ src/
 - **`/news`** - WordPress-powered blog and news section
 - **`/admin`** - Admin dashboard overview with needs attention summary
 - **`/admin/orders/shipping`** - Shipping order management with tracking
-- **`/admin/orders/pickups`** - Pickup order management
+- **`/admin/orders/pickups`** - Pick up order management
 - **`/admin/orders/archive`** - Order history and archive
 - **`/admin/notifications/back-in-stock`** - Back-in-stock subscriber management
 - **`/admin/content/sku-reference`** - Product SKU reference for content creators

@@ -256,7 +256,7 @@ function pickupDetailsSection(order: Order): string {
   <tr>
     <td style="background-color:#ffffff;padding:24px 32px;">
       <p style="margin:0 0 16px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
-        Pickup Details
+        Pick Up Details
       </p>
       <p style="margin:0 0 8px;font-size:14px;color:#2b2215;line-height:1.6;">
         <strong>${siteConfig.contact.address.display}</strong>
@@ -561,7 +561,7 @@ export function buildShippingConfirmationHtml({
   return emailWrapper(content);
 }
 
-// ─── Tyler Pickup Notification ────────────────────────────────────────────────
+// ─── Tyler Pick Up Notification ────────────────────────────────────────────────
 
 export function buildPickupNotificationHtml({
   order,
@@ -583,7 +583,7 @@ export function buildPickupNotificationHtml({
   <tr>
     <td style="background-color:#ffffff;padding:32px 32px 0;">
       <h1 style="margin:0 0 6px;font-size:20px;font-weight:700;color:#2b2215;">
-        New Pickup Order
+        New Pick Up Order
       </h1>
       <p style="margin:0 0 20px;font-size:15px;color:#4f3d22;">
         A customer is coming to pick up their order.
@@ -655,7 +655,7 @@ export function buildPickupNotificationHtml({
   return emailWrapper(content);
 }
 
-// ─── Customer Pickup Reminder ─────────────────────────────────────────────────
+// ─── Customer Pick Up Reminder ─────────────────────────────────────────────────
 
 export interface PickupReminderPayload {
   customerName: string;
@@ -725,11 +725,11 @@ export function buildPickupReminderHtml({
 
   ${divider()}
 
-  <!-- Pickup details -->
+  <!-- Pick Up details -->
   <tr>
     <td style="background-color:#ffffff;padding:24px 32px;">
       <p style="margin:0 0 16px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
-        Pickup Details
+        Pick Up Details
       </p>
       <p style="margin:0 0 8px;font-size:14px;color:#2b2215;line-height:1.6;">
         <strong>${siteConfig.contact.address.display}</strong>

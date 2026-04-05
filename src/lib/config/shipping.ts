@@ -61,7 +61,7 @@ export const PICKUP_LOCATION: PickupLocation = {
   },
   phone: siteConfig.contact.phone.display,
   hours: Object.fromEntries(siteConfig.hours.map((h) => [h.day, h.hours])),
-  instructions: "Pickup only available during store hours.",
+  instructions: "Pick up only available during store hours.",
 };
 
 /**

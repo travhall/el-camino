@@ -158,7 +158,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (fulfillmentMethod === "pickup" && !pickupContact) {
       return new Response(
-        JSON.stringify({ error: "Pickup contact required" }),
+        JSON.stringify({ error: "Pick up contact required" }),
         { status: 400 }
       );
     }
@@ -307,7 +307,7 @@ export const POST: APIRoute = async ({ request }) => {
       const pickupTime = nextPickupTime(new Date());
 
       // Build pickup note with location details and customer instructions
-      let pickupNote = `Pickup at ${PICKUP_LOCATION.name}. ${PICKUP_LOCATION.instructions}`;
+      let pickupNote = `Pick up at ${PICKUP_LOCATION.name}. ${PICKUP_LOCATION.instructions}`;
       if (pickupContact.notes?.trim()) {
         pickupNote += `\n\nCustomer Notes: ${pickupContact.notes.trim()}`;
       }
