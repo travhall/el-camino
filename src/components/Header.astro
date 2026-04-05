@@ -4,6 +4,7 @@ import Nav from "@/components/Nav.astro";
 import { Icon } from "astro-icon/components";
 import CartButton from "./CartButton.astro";
 import CartButtonMobile from "./CartButtonMobile.astro";
+import AnnouncementBanner from "./AnnouncementBanner.astro";
 import { detectDeviceFromUA } from "@/utils/device";
 
 interface Props {
@@ -71,41 +72,45 @@ const isMobile = deviceInfo.isMobile;
 
 <header
   id="site-header"
-  class="flex flex-row items-center justify-between -mb-1 sticky top-0 z-50 border-4 border-(--border-secondary) bg-(--surface-secondary)"
+  class="flex flex-col -mb-1 sticky top-0 z-50 border-4 border-(--border-secondary) bg-(--surface-secondary)"
 >
-  <a
-    href="/"
-    class="flex self-center justify-start hover:opacity-60 transition-opacity rounded-sm focus-visible:ring-2 focus-visible:ring-(--content-body) focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-secondary) outline-none"
-    aria-label="Home Link"
-  >
-    <Icon
-      name="Logo"
-      class="w-48 xl:w-56 h-auto p-1 m-4 text-(--content-heading)"
-      title="Go Home to El Camino"
-    />
-  </a>
+  <AnnouncementBanner />
 
-  <Nav activeCategory={activeCategory} />
-
-  <div
-    class="utility-menu self-center justify-end lg:order-last flex mr-1 gap-2"
-  >
-    {showCart ? (isMobile ? <CartButtonMobile /> : <CartButton />) : <div class="p-2" aria-hidden="true"><div class="h-6 w-6 m-1"></div></div>}
-    <button
-      id="mobile-menu-toggle"
-      class="p-2 lg:hidden text-(--content-body) rounded-sm focus-visible:ring-2 focus-visible:ring-(--content-body) focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-secondary) outline-none"
-      aria-label="Open navigation"
-      aria-expanded="false"
-      aria-controls="main-nav"
+  <div class="flex flex-row items-center justify-between">
+    <a
+      href="/"
+      class="flex self-center justify-start hover:opacity-60 transition-opacity rounded-sm focus-visible:ring-2 focus-visible:ring-(--content-body) focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-secondary) outline-none"
+      aria-label="Home Link"
     >
-      <Icon name="uil:bars" class="w-6 h-6" id="menu-icon" aria-hidden="true" />
       <Icon
-        name="uil:times"
-        class="w-6 h-6 hidden"
-        id="close-icon"
-        aria-hidden="true"
+        name="Logo"
+        class="w-48 xl:w-56 h-auto p-1 m-4 text-(--content-heading)"
+        title="Go Home to El Camino"
       />
-    </button>
+    </a>
+
+    <Nav activeCategory={activeCategory} />
+
+    <div
+      class="utility-menu self-center justify-end lg:order-last flex mr-1 gap-2"
+    >
+      {showCart ? (isMobile ? <CartButtonMobile /> : <CartButton />) : <div class="p-2" aria-hidden="true"><div class="h-6 w-6 m-1"></div></div>}
+      <button
+        id="mobile-menu-toggle"
+        class="p-2 lg:hidden text-(--content-body) rounded-sm focus-visible:ring-2 focus-visible:ring-(--content-body) focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-secondary) outline-none"
+        aria-label="Open navigation"
+        aria-expanded="false"
+        aria-controls="main-nav"
+      >
+        <Icon name="uil:bars" class="w-6 h-6" id="menu-icon" aria-hidden="true" />
+        <Icon
+          name="uil:times"
+          class="w-6 h-6 hidden"
+          id="close-icon"
+          aria-hidden="true"
+        />
+      </button>
+    </div>
   </div>
 </header>
 

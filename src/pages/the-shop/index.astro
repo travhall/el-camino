@@ -8,6 +8,7 @@ import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
 } from "@/lib/constants/assets";
+import { getShopHours } from "@/lib/shopHours";
 import CategoryStrip from "@/components/CategoryStrip.astro";
 import ArticleCard from "@/components/ArticleCard.astro";
 import OpenStatusBadge from "@/components/OpenStatusBadge.astro";
@@ -16,6 +17,8 @@ import {
   extractEmbeddedData,
   generateFallbackContent,
 } from "@/lib/wordpress/types";
+
+const shopHours = await getShopHours();
 
 // Fetch "Shop News" category posts, fall back to most recent posts if empty
 const shopNewsPosts = await getPostsByCategory("shop-news");
@@ -130,6 +133,10 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
               stepped on a board, a seasoned vet, or you're dusting yours off
               after years, this place is for you.
             </p>
+          </div>
+          <div class="flex flex-row flex-wrap items-center gap-3 mt-8">
+            <Button variant="primary" href="#contact">Come Say Hi</Button>
+            <Button variant="outline" href="/shop/all">Shop Now</Button>
           </div>
         </div>
       </div>
@@ -268,9 +275,15 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
                 </h3>
                 <OpenStatusBadge />
               </div>
+              <!-- Shown by JS when an admin override is active for today -->
+              <p
+                id="hours-override-notice"
+                class="hidden text-xs text-(--content-meta) italic mb-3 -mt-1"
+              >
+              </p>
               <div class="space-y-1" id="store-hours-list">
                 {
-                  siteConfig.hours.map((day) => (
+                  shopHours.map((day) => (
                     <div
                       class="flex justify-between items-center border-b-2 border-(--border-tertiary) last-of-type:border-b-0 py-2"
                       data-day={day.day}
@@ -338,6 +351,56 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
                     ?.classList.remove("hidden");
                 });
               }
+            </script>
+
+            <script>
+              // Show a contextual notice when an admin override changes today's status.
+              (async () => {
+                const notice = document.getElementById("hours-override-notice");
+                if (!notice) return;
+
+                const now = new Date();
+                const todayStr = [
+                  now.getFullYear(),
+                  String(now.getMonth() + 1).padStart(2, "0"),
+                  String(now.getDate()).padStart(2, "0"),
+                ].join("-");
+                const monthDay = todayStr.slice(5); // "MM-DD"
+
+                try {
+                  const res = await fetch("/api/shop-status");
+                  if (!res.ok) return;
+                  const override = await res.json();
+
+                  let message: string | null = null;
+
+                  if (override.mode !== "auto") {
+                    if (!override.until || override.until >= todayStr) {
+                      message =
+                        override.mode === "closed"
+                          ? "Closed today"
+                          : "Open today — special hours";
+                    }
+                  } else {
+                    for (const h of override.holidays ?? []) {
+                      if (
+                        (h.date && h.date === todayStr) ||
+                        (h.recurring && h.recurring === monthDay)
+                      ) {
+                        message = `Closed today — ${h.label}`;
+                        break;
+                      }
+                    }
+                  }
+
+                  if (message) {
+                    notice.textContent = `* ${message}`;
+                    notice.classList.remove("hidden");
+                  }
+                } catch {
+                  // Fail silently — notice just won't appear
+                }
+              })();
             </script>
           </div>
         </div>

@@ -5,10 +5,16 @@ import ThemeToggle from "./ThemeToggle.astro";
 import { getLegalPages } from "@/lib/wordpress/api";
 import type { WordPressPage } from "@/lib/wordpress/types";
 import { siteConfig } from "@/lib/site-config";
+import { getShopHours } from "@/lib/shopHours";
+import { getContactInfo } from "@/lib/contactInfo";
+import { getSocialLinks } from "@/lib/socialLinks";
 import OpenStatusBadge from "./OpenStatusBadge.astro";
 
 const currentYear = new Date().getFullYear();
-const { contact, social, tagline, hours } = siteConfig;
+const { tagline } = siteConfig;
+const hours = await getShopHours();
+const contact = await getContactInfo();
+const social = await getSocialLinks();
 
 // Fetch footer pages from WordPress
 let footerPages: WordPressPage[] = [];
@@ -103,17 +109,17 @@ try {
         <strong class="sr-only">Contact Information</strong>
         <span class="flex items-center gap-2">
           <span aria-label="Business name" class="uppercase"
-            >{siteConfig.name}</span
+            >{contact.name}</span
           >
           <OpenStatusBadge />
         </span>
-        <span aria-label="Address" class="mb-4">{contact.address.display}</span>
+        <span aria-label="Address" class="mb-4">{`${contact.street}, ${contact.city}, ${contact.state} ${contact.zip}`}</span>
         <a
-          href={`tel:${contact.phone.number}`}
+          href={`tel:${contact.phoneRaw}`}
           class="relative font-semibold text-(--content-heading) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all"
-          aria-label={`Call us at ${contact.phone.display}`}
+          aria-label={`Call us at ${contact.phone}`}
         >
-          {contact.phone.display}
+          {contact.phone}
         </a>
         <a
           href={`mailto:${contact.email}`}
@@ -133,7 +139,7 @@ try {
     >
       <small class="block text-sm text-(--content-heading)">
         &copy;{currentYear}
-        {siteConfig.name}, all rights reserved
+        {contact.name}, all rights reserved
       </small>
       <div class="flex flex-wrap gap-4 lg:gap-6">
         {

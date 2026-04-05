@@ -36,7 +36,7 @@ export async function getShopStatusConfig(): Promise<ShopStatusConfig> {
     })) as ShopStatusConfig | null;
     if (!data) return { ...DEFAULT_CONFIG };
     // Ensure holidays array always exists even on old stored data
-    return { holidays: [], ...data };
+    return { ...data, holidays: data.holidays ?? [] };
   } catch {
     return { ...DEFAULT_CONFIG };
   }
