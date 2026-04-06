@@ -73,33 +73,44 @@ import {
 
       <!-- Product Content -->
       <div id="quick-view-product" class="hidden p-4">
-        <!-- Product Image -->
-        <div
-          id="quick-view-image-container"
-          class="aspect-square border-2 border-(--surface-tertiary) overflow-hidden bg-(--surface-tertiary) relative mb-4"
-        >
-          <!-- Loading placeholder -->
+        <!-- Product Image + Thumbnail Gallery -->
+        <div class="mb-4">
           <div
-            class="loading-skeleton absolute inset-0"
-            id="quick-view-image-placeholder"
+            id="quick-view-image-container"
+            class="aspect-square border-2 border-(--surface-tertiary) overflow-hidden bg-(--surface-tertiary) relative"
           >
-            <!-- El Camino logo as loading indicator -->
+            <!-- Loading placeholder -->
             <div
-              class="absolute inset-0 flex items-center justify-center opacity-70"
-              style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: 16px 14px; background-position: center; background-repeat: no-repeat;`}
+              class="loading-skeleton absolute inset-0"
+              id="quick-view-image-placeholder"
             >
+              <!-- El Camino logo as loading indicator -->
+              <div
+                class="absolute inset-0 flex items-center justify-center opacity-70"
+                style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: 16px 14px; background-position: center; background-repeat: no-repeat;`}
+              >
+              </div>
             </div>
+
+            <img
+              id="quick-view-image"
+              src=""
+              alt=""
+              class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
+              loading="lazy"
+              onload="this.style.opacity='0.9'; document.getElementById('quick-view-image-placeholder')?.remove();"
+              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('quick-view-image-placeholder')?.remove();`}
+            />
           </div>
 
-          <img
-            id="quick-view-image"
-            src=""
-            alt=""
-            class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
-            loading="lazy"
-            onload="this.style.opacity='0.9'; document.getElementById('quick-view-image-placeholder')?.remove();"
-            onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('quick-view-image-placeholder')?.remove();`}
-          />
+          <!-- Thumbnail strip — populated by JS, hidden when single image -->
+          <div
+            id="quick-view-thumbnails"
+            class="hidden flex gap-2 overflow-x-auto pt-2 pb-1"
+            role="list"
+            aria-label="Product images"
+          >
+          </div>
         </div>
 
         <!-- Product Info -->
@@ -433,6 +444,23 @@ import {
       // Create initial selection state using PDP parser
       const selectionState = createInitialSelectionState(variations);
 
+      // Mirror PDP fallback image assignment: if product has multiple images and
+      // no color attribute exists, the images are multi-angle shots shared by all
+      // variations (e.g. a deck in multiple sizes) — assign them to variation.images.
+      if (product.images && product.images.length > 1) {
+        const colorKey = Object.keys(variations[0]?.attributes ?? {}).find(
+          (k) => k.toLowerCase() === "color" || k.toLowerCase() === "colour",
+        );
+        if (!colorKey) {
+          for (const v of variations) {
+            if (!v.images || v.images.length === 0) {
+              v.images = product.images;
+              if (!v.image) v.image = product.images[0];
+            }
+          }
+        }
+      }
+
       // Set up product data structure (matching PDP)
       this.productData = {
         variations: variations,
@@ -461,55 +489,96 @@ import {
       this.updateAttributeButtonStates();
     }
 
+    // Optimize a Square CDN image URL to the requested square pixel size.
+    // Mirrors EnhancedImageOptimizer patterns used across the codebase.
+    private optimizeImageSrc(src: string, size: number): string {
+      if (!src || !src.includes("squarecdn.com")) return src;
+      try {
+        const url = new URL(src);
+        url.searchParams.set("w", String(size));
+        url.searchParams.set("h", String(size));
+        url.searchParams.set("fit", "crop");
+        const canvas = document.createElement("canvas");
+        if (canvas.toDataURL("image/avif").startsWith("data:image/avif")) {
+          url.searchParams.set("fm", "avif");
+          url.searchParams.set("q", "65");
+        } else if (canvas.toDataURL("image/webp").startsWith("data:image/webp")) {
+          url.searchParams.set("fm", "webp");
+          url.searchParams.set("q", "85");
+        } else {
+          url.searchParams.set("fm", "jpg");
+          url.searchParams.set("q", "90");
+        }
+        return url.toString();
+      } catch {
+        return src;
+      }
+    }
+
+    // Build/refresh the thumbnail strip from an array of image URLs.
+    // Hides the strip when there is only one image.
+    private renderGallery(images: string[], activeImageSrc: string): void {
+      const container = document.getElementById("quick-view-thumbnails");
+      if (!container) return;
+
+      if (!images || images.length <= 1) {
+        container.classList.add("hidden");
+        container.innerHTML = "";
+        return;
+      }
+
+      container.innerHTML = images
+        .map((src, i) => {
+          const thumbSrc = this.optimizeImageSrc(src, 64);
+          const isActive = src === activeImageSrc || i === 0;
+          return `<button
+            type="button"
+            role="listitem"
+            class="quick-view-thumb shrink-0 w-14 h-14 border-2 overflow-hidden bg-(--surface-secondary) transition-all ${isActive ? "border-(--ui-button-border) opacity-100" : "border-(--border-secondary) opacity-60 hover:opacity-100 hover:border-(--border-primary)"}"
+            data-gallery-src="${src}"
+            aria-label="View image ${i + 1}"
+            aria-pressed="${isActive ? "true" : "false"}"
+          >
+            <img src="${thumbSrc}" alt="Product image ${i + 1}" class="w-full h-full object-cover" loading="${i < 3 ? "eager" : "lazy"}" width="56" height="56" />
+          </button>`;
+        })
+        .join("");
+
+      container.classList.remove("hidden");
+    }
+
+    // Sync the active thumbnail highlight when the main image changes
+    // (e.g. on variation switch).
+    private setActiveThumbnail(imageUrl: string): void {
+      const container = document.getElementById("quick-view-thumbnails");
+      if (!container) return;
+
+      container
+        .querySelectorAll<HTMLButtonElement>(".quick-view-thumb")
+        .forEach((t) => {
+          const isActive = t.dataset.gallerySrc === imageUrl;
+          t.classList.toggle("border-(--ui-button-border)", isActive);
+          t.classList.toggle("opacity-100", isActive);
+          t.classList.toggle("border-(--border-secondary)", !isActive);
+          t.classList.toggle("opacity-60", !isActive);
+          t.setAttribute("aria-pressed", isActive ? "true" : "false");
+        });
+    }
+
     private renderProduct(product: Product): void {
-      // Update image with EnhancedImageOptimizer-style optimization
       const image = document.getElementById(
         "quick-view-image",
       ) as HTMLImageElement;
       if (image) {
-        // Optimize using EnhancedImageOptimizer patterns
-        let optimizedImageSrc = product.image;
-        if (product.image.includes("squarecdn.com")) {
-          try {
-            const url = new URL(product.image);
-            url.searchParams.set("w", "400");
-            url.searchParams.set("h", "400");
-            url.searchParams.set("fit", "crop");
-
-            // Format detection matching EnhancedImageOptimizer
-            const canvas = document.createElement("canvas");
-            if (
-              canvas.toDataURL("image/avif").indexOf("data:image/avif") === 0
-            ) {
-              url.searchParams.set("fm", "avif");
-              url.searchParams.set("q", "65");
-            } else if (
-              canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
-            ) {
-              url.searchParams.set("fm", "webp");
-              url.searchParams.set("q", "85");
-            } else {
-              url.searchParams.set("fm", "jpg");
-              url.searchParams.set("q", "90");
-            }
-            optimizedImageSrc = url.toString();
-          } catch {
-            optimizedImageSrc = product.image;
-          }
-        }
-
-        // Reset opacity and show placeholder
+        // Reset opacity and restore placeholder
         image.style.opacity = "0";
-        const placeholder = document.getElementById(
-          "quick-view-image-placeholder",
-        );
-        if (placeholder) {
-          placeholder.style.display = "block";
-        }
+        const placeholder = document.getElementById("quick-view-image-placeholder");
+        if (placeholder) placeholder.style.display = "block";
 
-        image.src = optimizedImageSrc;
+        image.src = this.optimizeImageSrc(product.image, 400);
         image.alt = product.title;
       }
+
 
       const brand = document.getElementById("quick-view-brand");
       if (product.brand && brand) {
@@ -656,6 +725,10 @@ import {
 
           if (colorMatchVariation?.image) {
             this.uiManager.updateProductImage(colorMatchVariation.image);
+            this.renderGallery(
+              colorMatchVariation.images || [],
+              colorMatchVariation.image,
+            );
           }
 
           this.showOutOfStockState();
@@ -720,10 +793,14 @@ import {
         unit: this.currentVariation.unit || this.currentProduct.unit,
       });
 
-      // Update image if variation has one
+      // Update image and thumbnail gallery from the current variation's image list
       if (this.currentVariation.image) {
         this.uiManager.updateProductImage(this.currentVariation.image);
       }
+      this.renderGallery(
+        this.currentVariation.images || [],
+        this.currentVariation.image || "",
+      );
 
       // Show quantity stepper only when >1 unit available; show BIS when OOS
       const qty = this.currentVariation.quantity || 0;
@@ -1304,6 +1381,41 @@ import {
           const panel = document.getElementById("quick-view-panel");
           if (panel && !panel.classList.contains("-translate-x-full")) {
             this.closeModal();
+          }
+        }
+      });
+
+      // Thumbnail gallery — event delegation so it survives innerHTML rebuilds
+      const thumbnailContainer = document.getElementById("quick-view-thumbnails");
+      thumbnailContainer?.addEventListener("click", (e) => {
+        const thumb = (e.target as Element).closest<HTMLButtonElement>(".quick-view-thumb");
+        if (!thumb) return;
+
+        const src = thumb.dataset.gallerySrc;
+        if (!src) return;
+
+        // Update active thumb styles
+        thumbnailContainer
+          .querySelectorAll<HTMLButtonElement>(".quick-view-thumb")
+          .forEach((t) => {
+            t.classList.remove("border-(--ui-button-border)", "opacity-100");
+            t.classList.add("border-(--border-secondary)", "opacity-60");
+            t.setAttribute("aria-pressed", "false");
+          });
+        thumb.classList.add("border-(--ui-button-border)", "opacity-100");
+        thumb.classList.remove("border-(--border-secondary)", "opacity-60");
+        thumb.setAttribute("aria-pressed", "true");
+
+        // Crossfade the main image
+        const mainImage = document.getElementById("quick-view-image") as HTMLImageElement | null;
+        if (mainImage) {
+          mainImage.style.opacity = "0";
+          mainImage.src = this.optimizeImageSrc(src, 400);
+          if (mainImage.complete && mainImage.naturalWidth > 0) {
+            mainImage.style.opacity = "0.9";
+          } else {
+            mainImage.onload = () => { mainImage.style.opacity = "0.9"; };
+            mainImage.onerror = () => { mainImage.style.opacity = "1"; };
           }
         }
       });

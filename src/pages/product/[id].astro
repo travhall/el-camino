@@ -244,6 +244,7 @@ if (product.images && product.images.length > 1) {
   );
 
   if (colorKey) {
+    // Color variants: map one product image per color value onto variation.image.
     // Collect unique color values in catalog order (first-seen order)
     const colorOrder: string[] = [];
     for (const v of variations) {
@@ -260,6 +261,16 @@ if (product.images && product.images.length > 1) {
         if (idx >= 0 && product.images[idx]) {
           v.image = product.images[idx];
         }
+      }
+    }
+  } else {
+    // No color attribute — product.images are multi-angle shots shared by all
+    // variations (e.g. a deck in multiple sizes). Assign the full image array to
+    // every variation that doesn't already have variation-level images.
+    for (const v of variations) {
+      if (!v.images || v.images.length === 0) {
+        v.images = product.images;
+        if (!v.image) v.image = product.images[0];
       }
     }
   }
