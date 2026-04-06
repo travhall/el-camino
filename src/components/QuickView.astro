@@ -1063,8 +1063,10 @@ import {
           // Close QuickView modal
           this.closeModal();
 
-          // Open MiniCart to show the item was added
-          window.dispatchEvent(new CustomEvent("openMiniCart"));
+          // Open MiniCart to show the item was added (desktop only)
+          if (window.innerWidth >= 1024) {
+            window.dispatchEvent(new CustomEvent("openMiniCart"));
+          }
         } else {
           throw new Error(result.message || "Failed to add to cart");
         }

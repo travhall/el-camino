@@ -358,11 +358,6 @@ if (hasValidImage) {
 
 <script>
   document.addEventListener("astro:page-load", () => {
-    // Mobile detection — evaluated at click time, not setup time
-    function isMobileDevice(): boolean {
-      return window.innerWidth < 1024; // lg breakpoint
-    }
-
     // Attach click handlers to product card anchor elements.
     //
     // IMPORTANT: We do NOT clone/replace elements here. The previous clone-and-replace
@@ -372,8 +367,7 @@ if (hasValidImage) {
     //
     // Instead, a data-mobile-handler attribute guards against duplicate listeners
     // if this function is somehow called more than once for the same elements.
-    // isMobileDevice() is evaluated on every click so no resize re-setup is needed.
-    function setupMobileQuickView(): void {
+    function setupQuickView(): void {
       const productCards = document.querySelectorAll(
         '[itemtype="http://schema.org/Product"]:not([data-mobile-handler])'
       );
@@ -388,24 +382,6 @@ if (hasValidImage) {
 
         // Mark element so subsequent calls skip it (prevents listener accumulation)
         link.dataset.mobileHandler = "true";
-
-        // Mobile tap → open Quick View; desktop click → let Astro handle navigation
-        link.addEventListener("click", (e) => {
-          if (isMobileDevice()) {
-            // On mobile: prevent navigation, open Quick View
-            e.preventDefault();
-            e.stopPropagation();
-
-            // Trigger Quick View if function exists
-            if (typeof (window as any).openQuickView === "function") {
-              (window as any).openQuickView(productId, variationId);
-            } else {
-              // Fallback to PDP if Quick View not available
-              window.location.href = link.href;
-            }
-          }
-          // On desktop: let the link and Astro's view transition work normally
-        });
 
         // Quick View button (desktop hover) — always opens Quick View
         const quickViewButton = link.querySelector(".quick-view-trigger");
@@ -423,6 +399,6 @@ if (hasValidImage) {
       });
     }
 
-    setupMobileQuickView();
+    setupQuickView();
   });
 </script>

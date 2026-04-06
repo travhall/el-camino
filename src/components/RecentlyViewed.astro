@@ -179,25 +179,42 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
   async function fetchInventoryForItems(
     items: any[],
   ): Promise<Record<string, boolean>> {
+    // Gift cards have no inventory tracking in Square — always in stock
+    const giftCardIds = items
+      .filter((item) => item.isGiftCard)
+      .map((item) => item.variationId);
+    const trackableItems = items.filter((item) => !item.isGiftCard);
+
+    const inventoryMap: Record<string, boolean> = {};
+    for (const id of giftCardIds) {
+      inventoryMap[id] = true;
+    }
+
+    if (trackableItems.length === 0) return inventoryMap;
+
     try {
-      const variationIds = items.map((item) => item.variationId);
+      const variationIds = trackableItems.map((item) => item.variationId);
       const response = await fetch("/api/cart-inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ variationIds }),
       });
-      if (!response.ok)
-        return Object.fromEntries(variationIds.map((id) => [id, true]));
+      if (!response.ok) {
+        for (const id of variationIds) inventoryMap[id] = true;
+        return inventoryMap;
+      }
       const data = await response.json();
-      if (!data.success || !data.inventory)
-        return Object.fromEntries(variationIds.map((id) => [id, true]));
-      const inventoryMap: Record<string, boolean> = {};
+      if (!data.success || !data.inventory) {
+        for (const id of variationIds) inventoryMap[id] = true;
+        return inventoryMap;
+      }
       for (const id of variationIds) {
         inventoryMap[id] = (data.inventory[id] || 0) > 0;
       }
       return inventoryMap;
     } catch {
-      return Object.fromEntries(items.map((item) => [item.variationId, true]));
+      for (const item of trackableItems) inventoryMap[item.variationId] = true;
+      return inventoryMap;
     }
   }
 

@@ -26,8 +26,9 @@ const {
 } = Astro.props;
 
 // Stock checking (same as ProductCard)
+// Gift cards have no inventory tracking in Square — always in stock
 let isOutOfStock = false;
-if (!skipInventoryCheck && product) {
+if (!skipInventoryCheck && product && !product.isGiftCard) {
   const stockStatus = await getProductStockStatus(product);
   isOutOfStock = stockStatus.isOutOfStock;
 }

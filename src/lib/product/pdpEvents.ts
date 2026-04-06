@@ -221,8 +221,10 @@ export class PDPEventManager {
         this.uiManager.resetQuantityToOne();
         this.callbacks.onCartUpdate();
 
-        // Open MiniCart to show the item was added
-        window.dispatchEvent(new CustomEvent("openMiniCart"));
+        // Open MiniCart to show the item was added (desktop only)
+        if (window.innerWidth >= 1024) {
+          window.dispatchEvent(new CustomEvent("openMiniCart"));
+        }
       } else {
         window.showNotification(
           result.message || "Failed to add to cart",

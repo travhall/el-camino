@@ -14,6 +14,7 @@ export interface RecentlyViewedItem {
   brand?: string;
   url: string;
   timestamp: number;
+  isGiftCard?: boolean;
 }
 
 /**
@@ -107,7 +108,8 @@ export class RecentlyViewedManager {
       price: product.price,
       brand: product.brand,
       url: product.url,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      isGiftCard: product.isGiftCard || undefined,
     };
 
     // Remove if exists (deduplication)
