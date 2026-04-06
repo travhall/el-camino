@@ -106,7 +106,7 @@ import {
           <!-- Thumbnail strip — populated by JS, hidden when single image -->
           <div
             id="quick-view-thumbnails"
-            class="hidden flex gap-2 overflow-x-auto pt-2 pb-1"
+            class="hidden gap-2 overflow-x-auto pt-2 pb-1"
             role="list"
             aria-label="Product images"
           >
@@ -502,7 +502,9 @@ import {
         if (canvas.toDataURL("image/avif").startsWith("data:image/avif")) {
           url.searchParams.set("fm", "avif");
           url.searchParams.set("q", "65");
-        } else if (canvas.toDataURL("image/webp").startsWith("data:image/webp")) {
+        } else if (
+          canvas.toDataURL("image/webp").startsWith("data:image/webp")
+        ) {
           url.searchParams.set("fm", "webp");
           url.searchParams.set("q", "85");
         } else {
@@ -523,6 +525,7 @@ import {
 
       if (!images || images.length <= 1) {
         container.classList.add("hidden");
+        container.classList.remove("flex");
         container.innerHTML = "";
         return;
       }
@@ -545,6 +548,7 @@ import {
         .join("");
 
       container.classList.remove("hidden");
+      container.classList.add("flex");
     }
 
     // Sync the active thumbnail highlight when the main image changes
@@ -572,13 +576,14 @@ import {
       if (image) {
         // Reset opacity and restore placeholder
         image.style.opacity = "0";
-        const placeholder = document.getElementById("quick-view-image-placeholder");
+        const placeholder = document.getElementById(
+          "quick-view-image-placeholder",
+        );
         if (placeholder) placeholder.style.display = "block";
 
         image.src = this.optimizeImageSrc(product.image, 400);
         image.alt = product.title;
       }
-
 
       const brand = document.getElementById("quick-view-brand");
       if (product.brand && brand) {
@@ -1386,9 +1391,13 @@ import {
       });
 
       // Thumbnail gallery — event delegation so it survives innerHTML rebuilds
-      const thumbnailContainer = document.getElementById("quick-view-thumbnails");
+      const thumbnailContainer = document.getElementById(
+        "quick-view-thumbnails",
+      );
       thumbnailContainer?.addEventListener("click", (e) => {
-        const thumb = (e.target as Element).closest<HTMLButtonElement>(".quick-view-thumb");
+        const thumb = (e.target as Element).closest<HTMLButtonElement>(
+          ".quick-view-thumb",
+        );
         if (!thumb) return;
 
         const src = thumb.dataset.gallerySrc;
@@ -1407,15 +1416,21 @@ import {
         thumb.setAttribute("aria-pressed", "true");
 
         // Crossfade the main image
-        const mainImage = document.getElementById("quick-view-image") as HTMLImageElement | null;
+        const mainImage = document.getElementById(
+          "quick-view-image",
+        ) as HTMLImageElement | null;
         if (mainImage) {
           mainImage.style.opacity = "0";
           mainImage.src = this.optimizeImageSrc(src, 400);
           if (mainImage.complete && mainImage.naturalWidth > 0) {
             mainImage.style.opacity = "0.9";
           } else {
-            mainImage.onload = () => { mainImage.style.opacity = "0.9"; };
-            mainImage.onerror = () => { mainImage.style.opacity = "1"; };
+            mainImage.onload = () => {
+              mainImage.style.opacity = "0.9";
+            };
+            mainImage.onerror = () => {
+              mainImage.style.opacity = "1";
+            };
           }
         }
       });
