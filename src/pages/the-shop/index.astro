@@ -107,12 +107,12 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
 
     <!-- OUR STORY -->
     <div
-      class="bg-(--surface-secondary) flex flex-col lg:flex-row items-start lg:items-center relative"
+      class="bg-(--surface-secondary) flex flex-col-reverse lg:flex-row items-start lg:items-center relative"
     >
       <div id="our-story" class="absolute h-16 -top-16" aria-hidden="true">
       </div>
 
-      <div class="relative lg:basis-1/2 px-4 py-8 lg:p-8 xl:p-12 my-8">
+      <div class="relative lg:basis-1/2 px-4 lg:p-8 xl:p-12 my-8">
         <div class="w-full md:max-w-lg mx-auto">
           <h2
             class="flex flex-col-reverse font-display font-black leading-none text-4xl md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl text-(--content-heading) text-balance mb-2"
@@ -146,12 +146,15 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
       </div>
 
       <div
-        class="aspect-square border-4 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative basis-1/2 self-center w-full"
+        class="grid grid-cols-2 grid-rows-2 gap-1 basis-1/2 aspect-video lg:aspect-square self-center w-full p-1"
       >
-        <div class="relative w-full h-full">
+        <!-- Image 1: full-width top row -->
+        <div
+          class="col-span-2 relative overflow-hidden bg-(--surface-secondary)"
+        >
           <div
             class="loading-skeleton absolute inset-0 animate-pulse bg-linear-to-r from-gray-200 via-gray-100 to-gray-200"
-            id="story-placeholder"
+            id="story-placeholder-1"
           >
             <div
               class="absolute inset-0 flex items-center justify-center opacity-70"
@@ -159,7 +162,6 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
             >
             </div>
           </div>
-
           <picture>
             <source
               srcset="/.netlify/images?url=/the-shop-02.png&fm=avif&w=1200&q=75"
@@ -171,13 +173,81 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
             />
             <img
               src="/the-shop-02.png"
-              alt="El Camino shop interior"
+              alt="El Camino owners inside the shop"
               class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
               loading="lazy"
               width="1200"
-              height="1200"
-              onload="this.style.opacity='0.9'; document.getElementById('story-placeholder')?.remove()"
-              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100', 'error'); document.getElementById('story-placeholder')?.remove()`}
+              height="600"
+              onload="this.style.opacity='0.9'; document.getElementById('story-placeholder-1')?.remove()"
+              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100', 'error'); document.getElementById('story-placeholder-1')?.remove()`}
+            />
+          </picture>
+        </div>
+
+        <!-- Image 2: bottom-left -->
+        <div class="relative overflow-hidden bg-(--surface-secondary)">
+          <div
+            class="loading-skeleton absolute inset-0 animate-pulse bg-linear-to-r from-gray-200 via-gray-100 to-gray-200"
+            id="story-placeholder-2"
+          >
+            <div
+              class="absolute inset-0 flex items-center justify-center opacity-70"
+              style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat;`}
+            >
+            </div>
+          </div>
+          <picture>
+            <source
+              srcset="/.netlify/images?url=/the-shop-03.png&fm=avif&w=800&q=75"
+              type="image/avif"
+            />
+            <source
+              srcset="/.netlify/images?url=/the-shop-03.png&fm=webp&w=800&q=75"
+              type="image/webp"
+            />
+            <img
+              src="/the-shop-03.png"
+              alt="El Camino shop interior with apparel"
+              class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
+              loading="lazy"
+              width="600"
+              height="600"
+              onload="this.style.opacity='0.9'; document.getElementById('story-placeholder-2')?.remove()"
+              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100', 'error'); document.getElementById('story-placeholder-2')?.remove()`}
+            />
+          </picture>
+        </div>
+
+        <!-- Image 3: bottom-right -->
+        <div class="relative overflow-hidden bg-(--surface-secondary)">
+          <div
+            class="loading-skeleton absolute inset-0 animate-pulse bg-linear-to-r from-gray-200 via-gray-100 to-gray-200"
+            id="story-placeholder-3"
+          >
+            <div
+              class="absolute inset-0 flex items-center justify-center opacity-70"
+              style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat;`}
+            >
+            </div>
+          </div>
+          <picture>
+            <source
+              srcset="/.netlify/images?url=/the-shop-04.png&fm=avif&w=800&q=75"
+              type="image/avif"
+            />
+            <source
+              srcset="/.netlify/images?url=/the-shop-04.png&fm=webp&w=800&q=75"
+              type="image/webp"
+            />
+            <img
+              src="/the-shop-04.png"
+              alt="Skate decks on display at El Camino"
+              class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
+              loading="lazy"
+              width="800"
+              height="450"
+              onload="this.style.opacity='0.9'; document.getElementById('story-placeholder-3')?.remove()"
+              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100', 'error'); document.getElementById('story-placeholder-3')?.remove()`}
             />
           </picture>
         </div>
