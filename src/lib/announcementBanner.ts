@@ -41,6 +41,6 @@ export function resolveAnnouncementBanner(
   todayStr: string,
 ): string | null {
   if (!banner.active || !banner.text.trim()) return null;
-  if (banner.expiresAt && todayStr > banner.expiresAt) return null;
+  if (banner.expiresAt && todayStr >= banner.expiresAt) return null;
   return banner.text.trim();
 }
