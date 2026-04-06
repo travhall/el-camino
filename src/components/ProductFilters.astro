@@ -547,6 +547,7 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
     private form: HTMLFormElement | null = null;
     private container: HTMLElement | null = null;
     private overlay: HTMLElement | null = null;
+    private abortController = new AbortController();
 
     constructor() {
       this.form = document.getElementById("filter-form") as HTMLFormElement;
@@ -564,10 +565,11 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
     private setupMobileDrawer(): void {
       const toggle = document.getElementById("mobile-filter-toggle");
       const close = document.getElementById("mobile-filter-close");
+      const { signal } = this.abortController;
 
-      toggle?.addEventListener("click", () => this.openMobileDrawer());
-      close?.addEventListener("click", () => this.closeMobileDrawer());
-      this.overlay?.addEventListener("click", () => this.closeMobileDrawer());
+      toggle?.addEventListener("click", () => this.openMobileDrawer(), { signal });
+      close?.addEventListener("click", () => this.closeMobileDrawer(), { signal });
+      this.overlay?.addEventListener("click", () => this.closeMobileDrawer(), { signal });
     }
 
     private openMobileDrawer(): void {
@@ -597,6 +599,7 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
       if (!this.form) return;
 
       const isDesktop = () => window.matchMedia("(min-width: 1024px)").matches;
+      const { signal } = this.abortController;
 
       this.form.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -606,12 +609,12 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
         } else {
           this.submitForm();
         }
-      });
+      }, { signal });
 
       this.form.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
         checkbox.addEventListener("change", () => {
           if (isDesktop()) this.submitForm();
-        });
+        }, { signal });
       });
     }
 
@@ -675,33 +678,35 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
             chevron?.classList.add("is-collapsed");
             if (storageKey) sessionStorage.setItem(storageKey, "closed");
           }
-        });
+        }, { signal: this.abortController.signal });
       });
     }
 
     private setupClearButtons(): void {
+      const { signal } = this.abortController;
+
       document.querySelectorAll("[data-clear-filters]").forEach((btn) => {
-        btn.addEventListener("click", () => this.clearAllFilters());
+        btn.addEventListener("click", () => this.clearAllFilters(), { signal });
       });
 
       document.querySelector("[data-clear-filters-mobile]")?.addEventListener("click", () => {
         this.closeMobileDrawer();
         setTimeout(() => this.clearAllFilters(), 100);
-      });
+      }, { signal });
 
       document.querySelector("[data-clear-brands]")?.addEventListener("click", () => {
         this.form
           ?.querySelectorAll<HTMLInputElement>('input[name="brands"]')
           .forEach((cb) => { cb.checked = false; });
         if (window.matchMedia("(min-width: 1024px)").matches) this.submitForm();
-      });
+      }, { signal });
 
       document.querySelector("[data-clear-categories]")?.addEventListener("click", () => {
         this.form
           ?.querySelectorAll<HTMLInputElement>('input[name="categories"]')
           .forEach((cb) => { cb.checked = false; });
         if (window.matchMedia("(min-width: 1024px)").matches) this.submitForm();
-      });
+      }, { signal });
     }
 
     public clearAllFilters(): void {
@@ -714,6 +719,7 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
     }
 
     public destroy(): void {
+      this.abortController.abort();
       document.body.style.overflow = "";
     }
   }

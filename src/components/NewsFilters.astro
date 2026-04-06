@@ -411,6 +411,7 @@ const hasActiveFilters = activeFilterCount > 0;
     private form!: HTMLFormElement | null;
     private container!: HTMLElement | null;
     private overlay!: HTMLElement | null;
+    private abortController = new AbortController();
 
     // Simple state
     private pendingTags: Set<string> = new Set();
@@ -424,6 +425,8 @@ const hasActiveFilters = activeFilterCount > 0;
       this.form = document.getElementById("news-filter-form") as HTMLFormElement;
       this.container = document.getElementById("news-filter-container");
       this.overlay = document.getElementById("mobile-news-filter-overlay");
+
+      if (!this.form) return;
 
       this.checkMobileState();
       this.storeTagCountsFromServerData();
@@ -443,7 +446,7 @@ const hasActiveFilters = activeFilterCount > 0;
           this.pendingTags.clear();
           this.updateApplyButton();
         }
-      });
+      }, { signal: this.abortController.signal });
     }
 
     private storeTagCountsFromServerData(): void {
@@ -458,10 +461,11 @@ const hasActiveFilters = activeFilterCount > 0;
     private setupMobileDrawer(): void {
       const toggle = document.getElementById("mobile-news-filter-toggle");
       const close = document.getElementById("mobile-news-filter-close");
+      const { signal } = this.abortController;
 
-      toggle?.addEventListener("click", () => this.openMobileDrawer());
-      close?.addEventListener("click", () => this.closeMobileDrawer());
-      this.overlay?.addEventListener("click", () => this.closeMobileDrawer());
+      toggle?.addEventListener("click", () => this.openMobileDrawer(), { signal });
+      close?.addEventListener("click", () => this.closeMobileDrawer(), { signal });
+      this.overlay?.addEventListener("click", () => this.closeMobileDrawer(), { signal });
     }
 
     private openMobileDrawer(): void {
@@ -523,7 +527,7 @@ const hasActiveFilters = activeFilterCount > 0;
             chevron?.classList.add("is-collapsed");
             if (storageKey) sessionStorage.setItem(storageKey, "closed");
           }
-        });
+        }, { signal: this.abortController.signal });
       });
     }
 
@@ -534,7 +538,7 @@ const hasActiveFilters = activeFilterCount > 0;
       inputs.forEach((input) => {
         input.addEventListener("change", () => {
           if (!this.isMobile) this.debouncedSubmit();
-        });
+        }, { signal: this.abortController.signal });
       });
     }
 
@@ -570,7 +574,7 @@ const hasActiveFilters = activeFilterCount > 0;
           } else {
             this.handleDesktopTagClick(tagSlug, button);
           }
-        });
+        }, { signal: this.abortController.signal });
       });
     }
 
@@ -695,11 +699,13 @@ const hasActiveFilters = activeFilterCount > 0;
     }
 
     private setupClearButtons(): void {
+      const { signal } = this.abortController;
+
       document.querySelector("[data-clear-categories]")?.addEventListener("click", () => {
         this.form?.querySelectorAll<HTMLInputElement>('input[name="categories"]:checked')
           .forEach((cb) => { cb.checked = false; });
         if (!this.isMobile) this.debouncedSubmit();
-      });
+      }, { signal });
 
       document.querySelector("[data-clear-tags]")?.addEventListener("click", () => {
         this.form?.querySelectorAll("[data-tag-input]").forEach((el) => el.remove());
@@ -709,7 +715,7 @@ const hasActiveFilters = activeFilterCount > 0;
           this.updateTagButton(btn, "unselected", btn.dataset.tagChip!);
         });
         if (!this.isMobile) this.debouncedSubmit();
-      });
+      }, { signal });
 
       document.querySelector("[data-clear-all-news-filters]")?.addEventListener("click", () => {
         FilterCoordinator.coordinateExit(
@@ -717,7 +723,7 @@ const hasActiveFilters = activeFilterCount > 0;
           "/news",
           GRID_CONFIGS.article
         );
-      });
+      }, { signal });
     }
 
     private setupMobileApply(): void {
@@ -727,12 +733,26 @@ const hasActiveFilters = activeFilterCount > 0;
           e.preventDefault();
           this.applyPendingChanges();
         }
-      });
+      }, { signal: this.abortController.signal });
+    }
+
+    public destroy(): void {
+      this.abortController.abort();
+      document.body.style.overflow = "";
     }
   }
 
-  // Initialize
+  // ── Instance management ──────────────────────────────────────────────────────
+
+  let currentInstance: NewsFiltersManager | null = null;
+
   document.addEventListener("astro:page-load", () => {
-    new NewsFiltersManager();
+    currentInstance?.destroy();
+    currentInstance = new NewsFiltersManager();
+  });
+
+  document.addEventListener("astro:before-preparation", () => {
+    currentInstance?.destroy();
+    currentInstance = null;
   });
 </script>
