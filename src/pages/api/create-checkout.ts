@@ -365,12 +365,6 @@ export const POST: APIRoute = async ({ request }) => {
             { title: "Order Notes" },
           ],
         },
-        prePopulatedData: {
-          buyerEmail:
-            fulfillmentMethod === "shipping"
-              ? shippingAddress?.email
-              : pickupContact?.email,
-        },
       });
     } catch (linkError) {
       const e = linkError as any;
