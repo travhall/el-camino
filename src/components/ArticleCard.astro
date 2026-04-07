@@ -231,7 +231,7 @@ const getTitleClasses = () => {
 
     case "masonry":
     default:
-      return "font-display font-black text-6xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-(--content-heading) mb-2";
+      return "font-display font-black text-6xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-(--content-heading) mb-4";
   }
 };
 
@@ -353,9 +353,16 @@ const getExcerptClasses = () => {
     <h2 class={getTitleClasses()} set:html={post.title.rendered} />
 
     <!-- Date  -->
-    <time datetime={post.date} class="text-xs text-(--content-meta-small) mb-1">
-      {formatDate(post.date)}
-    </time>
+    {
+      variant !== "masonry" && (
+        <time
+          datetime={post.date}
+          class="text-xs text-(--content-meta-small) mb-1"
+        >
+          {formatDate(post.date)}
+        </time>
+      )
+    }
 
     <!-- Article Excerpt -->
     <div class={getExcerptClasses()} set:html={post.excerpt.rendered} />
@@ -380,7 +387,7 @@ const getExcerptClasses = () => {
           const visibleTags = displayTags.slice(0, maxVisible);
           const hiddenCount = displayTags.length - maxVisible;
           return (
-            <div class="flex flex-wrap gap-2 mt-auto pt-2 items-center">
+            <div class="hidden lg:flex flex-wrap gap-2 mt-auto pt-2 items-center">
               {visibleTags.map((tag) => (
                 <Tag
                   tag={tag}
