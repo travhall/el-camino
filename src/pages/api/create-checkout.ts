@@ -353,7 +353,23 @@ export const POST: APIRoute = async ({ request }) => {
           redirectUrl: confirmationUrl.toString(),
           askForShippingAddress: false,
           enableCoupon: true,
+          enableLoyalty: true,
           merchantSupportEmail: siteConfig.contact.support,
+          acceptedPaymentMethods: {
+            applePay: true,
+            googlePay: true,
+            cashAppPay: true,
+            afterpayClearpay: true,
+          },
+          customFields: [
+            { title: "Order Notes" },
+          ],
+        },
+        prePopulatedData: {
+          buyerEmail:
+            fulfillmentMethod === "shipping"
+              ? shippingAddress?.email
+              : pickupContact?.email,
         },
       });
     } catch (linkError) {
