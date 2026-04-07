@@ -276,6 +276,12 @@ import {
               >.
             </p>
           </div>
+
+          <div
+            id="quick-view-description"
+            class="mt-6 pt-6 border-t border-(--border-secondary) text-sm text-(--content-body) leading-relaxed hidden"
+          >
+          </div>
         </div>
       </div>
     </div>
@@ -595,6 +601,17 @@ import {
 
       const title = document.getElementById("quick-view-title-text");
       if (title) title.textContent = product.title;
+
+      const description = document.getElementById("quick-view-description");
+      if (description) {
+        if (product.description) {
+          description.textContent = product.description;
+          description.classList.remove("hidden");
+        } else {
+          description.textContent = "";
+          description.classList.add("hidden");
+        }
+      }
 
       this.updateViewDetailsButton(product);
     }
