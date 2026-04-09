@@ -5,6 +5,7 @@
  */
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
+import { Icon } from "astro-icon/components";
 
 const pageTitle = "Performance Overview";
 const pageDescription =
@@ -17,34 +18,60 @@ const pageDescription =
   activeSection="performance"
 >
   <!-- Loading state -->
-  <div id="perf-loading" class="py-12 text-center text-(--content-meta) text-sm">
+  <div
+    id="perf-loading"
+    class="py-12 text-center text-(--content-meta) text-sm"
+  >
     Loading field data…
   </div>
 
   <!-- No API key state -->
   <div id="perf-no-key" class="hidden">
-    <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-8 text-center">
-      <h2 class="text-lg font-semibold text-(--content-heading) mb-2">CrUX API key required</h2>
+    <div
+      class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-8 text-center"
+    >
+      <h2 class="text-lg font-semibold text-(--content-heading) mb-2">
+        CrUX API key required
+      </h2>
       <p class="text-(--content-meta) text-sm max-w-md mx-auto">
-        Add a <code class="font-mono text-xs bg-(--surface-tertiary) px-1 rounded">CRUX_API_KEY</code> environment variable in your Netlify site settings to enable real field data.
+        Add a <code
+          class="font-mono text-xs bg-(--surface-tertiary) px-1 rounded"
+          >CRUX_API_KEY</code
+        > environment variable in your Netlify site settings to enable real field
+        data.
       </p>
       <p class="text-xs text-(--content-meta) mt-3">
-        Get a free key at <span class="font-mono">console.cloud.google.com</span> → APIs &amp; Services → Chrome UX Report API.
+        Get a free key at <span class="font-mono">console.cloud.google.com</span
+        > → APIs &amp; Services → Chrome UX Report API.
       </p>
     </div>
   </div>
 
   <!-- No data state -->
   <div id="perf-no-data" class="hidden">
-    <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-8 text-center">
-      <svg class="w-12 h-12 mx-auto mb-4 text-(--content-meta)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    <div
+      class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-8 text-center"
+    >
+      <svg
+        class="w-12 h-12 mx-auto mb-4 text-(--content-meta)"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.5"
+          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+        ></path>
       </svg>
-      <h2 class="text-lg font-semibold text-(--content-heading) mb-2">No field data yet</h2>
+      <h2 class="text-lg font-semibold text-(--content-heading) mb-2">
+        No field data yet
+      </h2>
       <p class="text-(--content-meta) text-sm max-w-md mx-auto">
-        Chrome UX Report data becomes available once the site receives sufficient
-        real-user traffic (approximately 1,000 visits). Check back after launch.
+        Chrome UX Report data becomes available once the site receives
+        sufficient real-user traffic (approximately 1,000 visits). Check back
+        after launch.
       </p>
       <p class="text-xs text-(--content-meta) mt-3">
         Origin: <span id="no-data-origin" class="font-mono"></span>
@@ -60,22 +87,31 @@ const pageDescription =
         <h2 class="text-2xl font-semibold text-(--content-heading)">
           Core Web Vitals
         </h2>
-        <p class="text-sm text-(--content-meta)">p75 field data · Chrome UX Report</p>
+        <p class="text-sm text-(--content-meta)">
+          p75 field data · Chrome UX Report
+        </p>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- LCP -->
-        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+        <div
+          class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+        >
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h3 class="font-semibold text-(--content-heading)">Largest Contentful Paint</h3>
+              <h3 class="font-semibold text-(--content-heading)">
+                Largest Contentful Paint
+              </h3>
               <p class="text-sm text-(--content-meta)">Loading performance</p>
             </div>
             <span id="lcp-badge" class="cwv-badge">—</span>
           </div>
           <div class="mb-4">
             <div class="flex items-end gap-2 mb-1">
-              <span id="lcp-value" class="text-3xl font-bold text-(--content-heading)">—</span>
+              <span
+                id="lcp-value"
+                class="text-3xl font-bold text-(--content-heading)">—</span
+              >
               <span class="text-sm text-(--content-body) mb-1">seconds</span>
             </div>
             <div class="text-sm text-(--content-meta)">Target: ≤ 2.5s</div>
@@ -86,18 +122,27 @@ const pageDescription =
         </div>
 
         <!-- INP -->
-        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+        <div
+          class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+        >
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h3 class="font-semibold text-(--content-heading)">Interaction to Next Paint</h3>
+              <h3 class="font-semibold text-(--content-heading)">
+                Interaction to Next Paint
+              </h3>
               <p class="text-sm text-(--content-meta)">Responsiveness</p>
             </div>
             <span id="inp-badge" class="cwv-badge">—</span>
           </div>
           <div class="mb-4">
             <div class="flex items-end gap-2 mb-1">
-              <span id="inp-value" class="text-3xl font-bold text-(--content-heading)">—</span>
-              <span class="text-sm text-(--content-body) mb-1">milliseconds</span>
+              <span
+                id="inp-value"
+                class="text-3xl font-bold text-(--content-heading)">—</span
+              >
+              <span class="text-sm text-(--content-body) mb-1"
+                >milliseconds</span
+              >
             </div>
             <div class="text-sm text-(--content-meta)">Target: ≤ 200ms</div>
           </div>
@@ -107,17 +152,24 @@ const pageDescription =
         </div>
 
         <!-- CLS -->
-        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+        <div
+          class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+        >
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h3 class="font-semibold text-(--content-heading)">Cumulative Layout Shift</h3>
+              <h3 class="font-semibold text-(--content-heading)">
+                Cumulative Layout Shift
+              </h3>
               <p class="text-sm text-(--content-meta)">Visual stability</p>
             </div>
             <span id="cls-badge" class="cwv-badge">—</span>
           </div>
           <div class="mb-4">
             <div class="flex items-end gap-2 mb-1">
-              <span id="cls-value" class="text-3xl font-bold text-(--content-heading)">—</span>
+              <span
+                id="cls-value"
+                class="text-3xl font-bold text-(--content-heading)">—</span
+              >
               <span class="text-sm text-(--content-body) mb-1">score</span>
             </div>
             <div class="text-sm text-(--content-meta)">Target: ≤ 0.1</div>
@@ -136,22 +188,38 @@ const pageDescription =
       </h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- FCP -->
-        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-          <h3 class="font-semibold text-(--content-heading) mb-1">First Contentful Paint</h3>
-          <p class="text-sm text-(--content-meta) mb-4">Time until first content is rendered</p>
+        <div
+          class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+        >
+          <h3 class="font-semibold text-(--content-heading) mb-1">
+            First Contentful Paint
+          </h3>
+          <p class="text-sm text-(--content-meta) mb-4">
+            Time until first content is rendered
+          </p>
           <div class="flex items-end gap-2">
-            <span id="fcp-value" class="text-3xl font-bold text-(--content-heading)">—</span>
+            <span
+              id="fcp-value"
+              class="text-3xl font-bold text-(--content-heading)">—</span
+            >
             <span class="text-sm text-(--content-body) mb-1">seconds</span>
           </div>
           <div class="text-sm text-(--content-meta) mt-1">Target: ≤ 1.8s</div>
         </div>
 
         <!-- TTFB -->
-        <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-          <h3 class="font-semibold text-(--content-heading) mb-1">Time to First Byte</h3>
+        <div
+          class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+        >
+          <h3 class="font-semibold text-(--content-heading) mb-1">
+            Time to First Byte
+          </h3>
           <p class="text-sm text-(--content-meta) mb-4">Server response time</p>
           <div class="flex items-end gap-2">
-            <span id="ttfb-value" class="text-3xl font-bold text-(--content-heading)">—</span>
+            <span
+              id="ttfb-value"
+              class="text-3xl font-bold text-(--content-heading)">—</span
+            >
             <span class="text-sm text-(--content-body) mb-1">milliseconds</span>
           </div>
           <div class="text-sm text-(--content-meta) mt-1">Target: ≤ 800ms</div>
@@ -161,9 +229,14 @@ const pageDescription =
 
     <!-- Link to detailed view -->
     <div class="flex gap-4">
-      <a href="/admin/performance/core-vitals"
-        class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4">
-        Detailed CWV Analysis →
+      <a
+        href="/admin/performance/core-vitals"
+        class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4"
+      >
+        Detailed CWV Analysis <Icon
+          class="h-4 w-4 text-(--content-emphasis)"
+          name="uil:arrow-right"
+        />
       </a>
     </div>
   </div>
@@ -219,14 +292,22 @@ const pageDescription =
     | { status: "no_key"; origin: string }
     | CruxOk;
 
-  function badgeClass(value: number | null, good: number, poor: number): string {
+  function badgeClass(
+    value: number | null,
+    good: number,
+    poor: number,
+  ): string {
     if (value === null) return "cwv-badge cwv-unknown";
     if (value <= good) return "cwv-badge cwv-good";
     if (value <= poor) return "cwv-badge cwv-needs-improvement";
     return "cwv-badge cwv-poor";
   }
 
-  function badgeLabel(value: number | null, good: number, poor: number): string {
+  function badgeLabel(
+    value: number | null,
+    good: number,
+    poor: number,
+  ): string {
     if (value === null) return "No data";
     if (value <= good) return "Good";
     if (value <= poor) return "Needs Improvement";
@@ -265,18 +346,24 @@ const pageDescription =
       // LCP
       const lcpEl = document.getElementById("lcp-value")!;
       const lcpBadge = document.getElementById("lcp-badge")!;
-      lcpEl.textContent = data.lcp !== null ? (data.lcp / 1000).toFixed(1) : "—";
+      lcpEl.textContent =
+        data.lcp !== null ? (data.lcp / 1000).toFixed(1) : "—";
       lcpBadge.textContent = badgeLabel(data.lcp, 2500, 4000);
       lcpBadge.className = badgeClass(data.lcp, 2500, 4000);
-      document.getElementById("lcp-good-pct")!.textContent = pctLabel(data.lcpGoodPercent);
+      document.getElementById("lcp-good-pct")!.textContent = pctLabel(
+        data.lcpGoodPercent,
+      );
 
       // INP
       const inpEl = document.getElementById("inp-value")!;
       const inpBadge = document.getElementById("inp-badge")!;
-      inpEl.textContent = data.inp !== null ? Math.round(data.inp).toString() : "—";
+      inpEl.textContent =
+        data.inp !== null ? Math.round(data.inp).toString() : "—";
       inpBadge.textContent = badgeLabel(data.inp, 200, 500);
       inpBadge.className = badgeClass(data.inp, 200, 500);
-      document.getElementById("inp-good-pct")!.textContent = pctLabel(data.inpGoodPercent);
+      document.getElementById("inp-good-pct")!.textContent = pctLabel(
+        data.inpGoodPercent,
+      );
 
       // CLS
       const clsEl = document.getElementById("cls-value")!;
@@ -284,15 +371,19 @@ const pageDescription =
       clsEl.textContent = data.cls !== null ? data.cls.toFixed(2) : "—";
       clsBadge.textContent = badgeLabel(data.cls, 0.1, 0.25);
       clsBadge.className = badgeClass(data.cls, 0.1, 0.25);
-      document.getElementById("cls-good-pct")!.textContent = pctLabel(data.clsGoodPercent);
+      document.getElementById("cls-good-pct")!.textContent = pctLabel(
+        data.clsGoodPercent,
+      );
 
       // FCP
       const fcpEl = document.getElementById("fcp-value")!;
-      fcpEl.textContent = data.fcp !== null ? (data.fcp / 1000).toFixed(1) : "—";
+      fcpEl.textContent =
+        data.fcp !== null ? (data.fcp / 1000).toFixed(1) : "—";
 
       // TTFB
       const ttfbEl = document.getElementById("ttfb-value")!;
-      ttfbEl.textContent = data.ttfb !== null ? Math.round(data.ttfb).toString() : "—";
+      ttfbEl.textContent =
+        data.ttfb !== null ? Math.round(data.ttfb).toString() : "—";
 
       dataView.classList.remove("hidden");
     } catch {

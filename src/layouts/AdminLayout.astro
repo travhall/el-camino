@@ -8,6 +8,20 @@ import AdminHeader from "@/components/admin/AdminHeader.astro";
 import "@/styles/global.css";
 import AdminFooter from "@/components/admin/AdminFooter.astro";
 
+// Auth guard — redirect to login if session cookie is absent or invalid
+const secret = process.env.ADMIN_SECRET;
+const COOKIE_NAME = "admin_session";
+
+if (secret) {
+  const { createHmac } = await import("node:crypto");
+  const expected = createHmac("sha256", secret).update("admin:authenticated").digest("hex");
+  const token = Astro.cookies.get(COOKIE_NAME)?.value;
+  if (token !== expected) {
+    const from = encodeURIComponent(Astro.url.pathname);
+    return Astro.redirect(`/admin/login?from=${from}`);
+  }
+}
+
 interface Props {
   title: string;
   activeSection?: string;
