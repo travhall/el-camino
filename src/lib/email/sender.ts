@@ -20,8 +20,11 @@ interface EmailPayload {
 
 // Lazy getter — Resend constructor throws if the key is missing, so we
 // instantiate inside each send function rather than at module load time.
+// Use process.env rather than import.meta.env: sender.ts is a plain lib
+// module imported by multiple API routes, and import.meta.env transforms
+// are not reliably applied outside of Astro component/route files.
 function getResend() {
-  return new Resend(import.meta.env.RESEND_API_KEY);
+  return new Resend(process.env.RESEND_API_KEY);
 }
 
 export async function sendOrderConfirmation({
@@ -36,7 +39,7 @@ export async function sendOrderConfirmation({
   const html = buildOrderConfirmationHtml({ order, contact });
 
   const { error } = await getResend().emails.send({
-    from: import.meta.env.EMAIL_FROM,
+    from: process.env.EMAIL_FROM!,
     to: contact.email,
     subject,
     html,
@@ -54,8 +57,8 @@ export async function sendShippingOrderNotification({
   const html = buildShippingOrderNotificationHtml({ order, contact });
 
   const { error } = await getResend().emails.send({
-    from: import.meta.env.EMAIL_FROM,
-    to: import.meta.env.TYLER_EMAIL,
+    from: process.env.EMAIL_FROM!,
+    to: process.env.TYLER_EMAIL!,
     subject: `New shipping order from ${contact.name} — #${order.id?.slice(-8).toUpperCase()}`,
     html,
   });
@@ -75,7 +78,7 @@ export async function sendShippingConfirmation({
   const html = buildShippingConfirmationHtml({ order, contact, trackingNumber, carrier });
 
   const { error } = await getResend().emails.send({
-    from: import.meta.env.EMAIL_FROM,
+    from: process.env.EMAIL_FROM!,
     to: contact.email,
     subject: `Your El Camino order has shipped`,
     html,
@@ -105,8 +108,8 @@ export async function sendBisAdminNotification({
   });
 
   const { error } = await getResend().emails.send({
-    from: import.meta.env.EMAIL_FROM,
-    to: import.meta.env.TYLER_EMAIL,
+    from: process.env.EMAIL_FROM!,
+    to: process.env.TYLER_EMAIL!,
     subject: `Back-in-stock request: ${productName}`,
     html,
   });
@@ -141,7 +144,7 @@ export async function sendBackInStockNotification({
   });
 
   const { error } = await getResend().emails.send({
-    from: import.meta.env.EMAIL_FROM,
+    from: process.env.EMAIL_FROM!,
     to: email,
     subject: `Good news — ${productName} is back in stock`,
     html,
@@ -168,7 +171,7 @@ export async function sendPickupReminderEmail({
   const html = buildPickupReminderHtml({ customerName, orderId, items, pickupAt });
 
   const { error } = await getResend().emails.send({
-    from: import.meta.env.EMAIL_FROM,
+    from: process.env.EMAIL_FROM!,
     to,
     subject: "Reminder: Your El Camino pickup order is ready",
     html,
@@ -186,8 +189,8 @@ export async function sendPickupNotification({
   const html = buildPickupNotificationHtml({ order, contact });
 
   const { error } = await getResend().emails.send({
-    from: import.meta.env.EMAIL_FROM,
-    to: import.meta.env.TYLER_EMAIL,
+    from: process.env.EMAIL_FROM!,
+    to: process.env.TYLER_EMAIL!,
     subject: `New pickup order from ${contact.name}`,
     html,
   });
