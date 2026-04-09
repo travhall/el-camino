@@ -153,8 +153,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     await sendShippingConfirmation({ order, contact, trackingNumber, carrier });
     console.log(`[mark-shipped] Shipping confirmation sent for order ${orderId}`);
   } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
     console.error(`[mark-shipped] Failed to send shipping confirmation:`, err);
-    return redirect("/admin/orders/shipping?error=email");
+    return redirect(`/admin/orders/shipping?error=email&detail=${encodeURIComponent(detail)}`);
   }
 
   return redirect(`/admin/orders/shipping?shipped=1&shippedId=${orderId}`);

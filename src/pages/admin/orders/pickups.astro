@@ -304,17 +304,32 @@ const count = orders.length;
           method: "POST",
           body: fd,
         });
+        const body = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
           console.error("[reminder] failed:", res.status, body);
-          throw new Error(`HTTP ${res.status}`);
+          const detail = body?.detail ?? body?.error ?? `HTTP ${res.status}`;
+          throw new Error(detail);
         }
 
         btn.textContent = "Sent!";
         btn.classList.add("text-emerald-600", "border-emerald-400");
       } catch (err) {
-        console.error("[reminder] error:", err);
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[reminder] error:", msg);
         btn.textContent = "Failed";
+        btn.title = msg; // hover to see error
+        // Also show inline so it's visible without devtools
+        const row = btn.closest(".order-row");
+        if (row) {
+          let errEl = row.querySelector<HTMLElement>(".reminder-error");
+          if (!errEl) {
+            errEl = document.createElement("p");
+            errEl.className = "reminder-error text-xs text-red-600 font-mono mt-1 px-4 pb-2";
+            btn.closest(".flex")?.after(errEl);
+          }
+          errEl.textContent = msg;
+          setTimeout(() => errEl?.remove(), 8000);
+        }
         btn.classList.add("text-red-600", "border-red-400");
       } finally {
         btn.disabled = false;
