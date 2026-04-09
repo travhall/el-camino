@@ -246,7 +246,7 @@ export function buildOrderConfirmationHtml({
   <!-- CTA -->
   <tr>
     <td style="background-color:#ffffff;padding:24px 32px 32px;text-align:center;">
-      <a href="${siteConfig.url}/shop"
+      <a href="${siteConfig.url}/shop/all"
          style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:12px 28px;border-radius:6px;border:2px solid #3a5e22;">
         Continue Shopping
       </a>
@@ -604,7 +604,7 @@ export function buildShippingConfirmationHtml({
   <!-- CTA -->
   <tr>
     <td style="background-color:#ffffff;padding:24px 32px 32px;text-align:center;">
-      <a href="${siteConfig.url}/shop"
+      <a href="${siteConfig.url}/shop/all"
          style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:12px 28px;border-radius:6px;border:2px solid #3a5e22;">
         Shop Again
       </a>
