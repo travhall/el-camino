@@ -305,9 +305,14 @@ const displayProducts = hideSoldOut
     const staggerStr = style.getPropertyValue("--product-stagger-delay").trim();
     const staggerDelay = parseInt(staggerStr.replace("ms", "")) || 0;
 
+    // Parse grid entrance delay (mobile: 250ms, desktop: 0ms)
+    const entranceDelayStr = style.getPropertyValue("--grid-entrance-delay").trim();
+    const entranceDelay = parseInt(entranceDelayStr.replace("ms", "")) || 0;
+
     return {
       duration: duration || 300,
       staggerDelay: staggerDelay,
+      entranceDelay: entranceDelay,
     };
   }
 
@@ -390,7 +395,14 @@ const displayProducts = hideSoldOut
       grid.style.opacity = "1";
     }
 
-    initializePageLoadAnimations();
+    // On mobile, defer card entrance until after the nav close animation (400ms)
+    // has had a head start. Desktop entrance delay is 0ms (no-op timeout).
+    const entranceDelay = ANIMATION_CONFIG.entranceDelay;
+    if (entranceDelay > 0) {
+      setTimeout(() => initializePageLoadAnimations(), entranceDelay);
+    } else {
+      initializePageLoadAnimations();
+    }
     initializeInfiniteScroll();
   });
 

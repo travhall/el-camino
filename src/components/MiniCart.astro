@@ -774,7 +774,7 @@ import Button from "@/components/Button.astro";
     }
   }
 
-  function initMiniCart() {
+  function initMiniCart(signal: AbortSignal) {
     const overlay = document.getElementById("mini-cart-overlay");
     const panel = document.getElementById("mini-cart-panel");
     const closeButton = document.getElementById("close-mini-cart");
@@ -859,8 +859,8 @@ import Button from "@/components/Button.astro";
       });
     }
 
-    window.addEventListener("openMiniCart", openMiniCart);
-    window.addEventListener("cartUpdated", updateMiniCartDisplay);
+    window.addEventListener("openMiniCart", openMiniCart, { signal });
+    window.addEventListener("cartUpdated", updateMiniCartDisplay, { signal });
 
     document.addEventListener("keydown", (e) => {
       if (
@@ -870,14 +870,24 @@ import Button from "@/components/Button.astro";
       ) {
         closeMiniCart();
       }
-    });
+    }, { signal });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initMiniCart, { once: true });
-  } else {
-    initMiniCart();
+  // AbortController ensures all window/document listeners from the previous
+  // initMiniCart call are torn down before re-registering on each navigation.
+  // Without this, every astro:page-load stacks a new openMiniCart listener on
+  // window, causing stale no-op handlers to absorb clicks before the live one fires.
+  let miniCartAbortController: AbortController | null = null;
+
+  function initMiniCartWithCleanup() {
+    if (miniCartAbortController) {
+      miniCartAbortController.abort();
+    }
+    miniCartAbortController = new AbortController();
+    initMiniCart(miniCartAbortController.signal);
   }
 
-  document.addEventListener("astro:page-load", initMiniCart);
+  // astro:page-load fires on first load (ClientRouter active) and every navigation.
+  // No need for a separate DOMContentLoaded/immediate-init path.
+  document.addEventListener("astro:page-load", initMiniCartWithCleanup);
 </script>

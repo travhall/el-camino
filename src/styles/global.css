@@ -371,15 +371,19 @@ h6 {
   --card-stagger-delay: 50ms;
   --row-stagger-delay: 100ms;
   --product-stagger-delay: 100ms; /* ProductGrid uses a wider stagger for larger cards */
+  /* Delay before grid entrance animations fire — gives mobile nav close animation
+     time to complete before cards appear. 0ms on desktop (nav is always visible). */
+  --grid-entrance-delay: 0ms;
 }
 
 @media (max-width: 1023px) {
   :root {
     --card-transition-duration: 0.2s;
     --card-entrance-priority-duration: 0.4s;
-    --card-stagger-delay: 50ms;
-    --row-stagger-delay: 100ms;
-    --product-stagger-delay: 50ms;
+    --card-stagger-delay: 30ms;   /* was 50ms — tightens total stagger window */
+    --row-stagger-delay: 60ms;    /* was 100ms — proportional reduction */
+    --product-stagger-delay: 30ms; /* was 50ms — consistent with article stagger */
+    --grid-entrance-delay: 250ms; /* nav close is 400ms; head-start before cards appear */
   }
 }
 

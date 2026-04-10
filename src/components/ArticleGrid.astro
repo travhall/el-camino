@@ -290,7 +290,11 @@ const getSkeletonVariant = () => {
       priorityDuration = parseFloat(priorityDurStr.replace("s", "")) * 1000;
     }
 
-    return { duration, staggerDelay, rowStaggerDelay, priorityDuration };
+    // Parse grid entrance delay (mobile: 250ms, desktop: 0ms)
+    const entranceDelayStr = style.getPropertyValue("--grid-entrance-delay").trim();
+    const entranceDelay = parseInt(entranceDelayStr.replace("ms", "")) || 0;
+
+    return { duration, staggerDelay, rowStaggerDelay, priorityDuration, entranceDelay };
   }
 
   const ANIMATION_CONFIG = getAnimationTiming();
@@ -476,7 +480,15 @@ const getSkeletonVariant = () => {
 
     // Initialize animations for any cards found
     if (homePageCards.length > 0) {
-      initializeArticleAnimations();
+      // On mobile, defer card entrance until after the nav close animation (400ms)
+      // has had a head start. Only apply the delay on the News page (filterable grid),
+      // not on the home page masonry layout where no nav close precedes the animation.
+      const entranceDelay = filterableGrid ? ANIMATION_CONFIG.entranceDelay : 0;
+      if (entranceDelay > 0) {
+        setTimeout(() => initializeArticleAnimations(), entranceDelay);
+      } else {
+        initializeArticleAnimations();
+      }
     }
 
     // SIMPLIFIED: Basic lazy loading without heavy intersection observer
