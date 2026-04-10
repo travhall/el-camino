@@ -8,33 +8,28 @@ import { siteConfig } from "@/lib/site-config";
 import { inventoryCache, productCache } from "@/lib/cache/blobCache";
 import { batchInventoryService } from "@/lib/square/batchInventory";
 import { storePendingOrder } from "@/lib/email/pendingOrders";
+import { getShopHoursRaw } from "@/lib/shopHours";
+import type { ShopHoursEntry } from "@/lib/shopHours";
 
 // Store timezone for business hours calculations
 const STORE_TIMEZONE = "America/Chicago";
 
 /**
- * Parse an hour string like "11am" or "7pm" into a 24-hour number.
+ * Return open/close hours (as 0–23 integers) for a JS day-of-week (0=Sun…6=Sat)
+ * from the live admin-managed hours, or null if the store is closed that day.
+ * DAYS_OF_WEEK in shopHours is Mon(0)…Sun(6), so we convert with (jsDay + 6) % 7.
  */
-function parseHour(s: string): number {
-  const m = s.trim().match(/^(\d+)(am|pm)$/i);
-  if (!m) return 0;
-  let h = parseInt(m[1], 10);
-  if (m[2].toLowerCase() === "pm" && h !== 12) h += 12;
-  if (m[2].toLowerCase() === "am" && h === 12) h = 0;
-  return h;
-}
-
-/**
- * Return open/close hours for a JS day-of-week (0=Sun … 6=Sat), or null if closed.
- * siteConfig.hours is ordered Mon(0)…Sun(6), so we convert with (jsDay + 6) % 7.
- */
-function storeHoursForDay(jsDay: number): { open: number; close: number } | null {
+function storeHoursForDay(
+  jsDay: number,
+  hoursData: ShopHoursEntry[],
+): { open: number; close: number } | null {
   const idx = (jsDay + 6) % 7;
-  const entry = siteConfig.hours[idx];
-  if (!entry?.isOpen) return null;
-  const parts = entry.hours.split(" - ");
-  if (parts.length !== 2) return null;
-  return { open: parseHour(parts[0]), close: parseHour(parts[1]) };
+  const entry = hoursData[idx];
+  if (!entry?.isOpen || !entry.open || !entry.close) return null;
+  const [oh, om] = entry.open.split(":").map(Number);
+  const [ch, cm] = entry.close.split(":").map(Number);
+  // Convert to fractional hours for simple comparison
+  return { open: oh + om / 60, close: ch + cm / 60 };
 }
 
 /**
@@ -57,23 +52,34 @@ function storeTimeOf(date: Date): { jsDay: number; hour: number } {
 }
 
 /**
- * Return the earliest time that is:
- *   (a) at least 4 hours from `from`, AND
- *   (b) during store business hours.
- *
- * Advances hour-by-hour until a valid slot is found (up to 7 days).
+ * Round a Date up to the next 15-minute boundary.
+ * e.g. 2:07 PM → 2:15 PM, 2:00 PM → 2:00 PM (already on boundary)
  */
-function nextPickupTime(from: Date): Date {
-  let candidate = new Date(from.getTime() + 4 * 60 * 60 * 1000);
+function roundUpTo15(date: Date): Date {
+  const ms = date.getTime();
+  const interval = 15 * 60 * 1000;
+  const remainder = ms % interval;
+  return remainder === 0 ? new Date(ms) : new Date(ms + (interval - remainder));
+}
 
-  for (let i = 0; i < 7 * 24; i++) {
+/**
+ * Return the earliest time that is:
+ *   (a) at least 2 hours from `from`, rounded up to the next 15-minute mark, AND
+ *   (b) during store business hours (from the live admin-managed schedule).
+ *
+ * Advances 15 minutes at a time until a valid slot is found (up to 7 days).
+ */
+async function nextPickupTime(from: Date): Promise<Date> {
+  const hoursData = await getShopHoursRaw();
+  let candidate = roundUpTo15(new Date(from.getTime() + 2 * 60 * 60 * 1000));
+
+  for (let i = 0; i < 7 * 24 * 4; i++) {
     const { jsDay, hour } = storeTimeOf(candidate);
-    const hours = storeHoursForDay(jsDay);
+    const hours = storeHoursForDay(jsDay, hoursData);
     if (hours && hour >= hours.open && hour < hours.close) {
       return candidate;
     }
-    // Advance one hour and try again
-    candidate = new Date(candidate.getTime() + 60 * 60 * 1000);
+    candidate = new Date(candidate.getTime() + 15 * 60 * 1000);
   }
 
   return candidate; // fallback — should never reach here
@@ -304,7 +310,7 @@ export const POST: APIRoute = async ({ request }) => {
       });
     } else if (fulfillmentMethod === "pickup" && pickupContact) {
       // Calculate pickup ready time: at least 4 hours from now, within store hours
-      const pickupTime = nextPickupTime(new Date());
+      const pickupTime = await nextPickupTime(new Date());
 
       // Build pickup note with location details and customer instructions
       let pickupNote = `Pick up at ${PICKUP_LOCATION.name}. ${PICKUP_LOCATION.instructions}`;

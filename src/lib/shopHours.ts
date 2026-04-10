@@ -121,3 +121,41 @@ export async function getShopHours(): Promise<HoursDisplayEntry[]> {
 export async function saveShopHours(entries: ShopHoursEntry[]): Promise<void> {
   await store().setJSON("shop-hours", entries);
 }
+
+/**
+ * Returns a compact human-readable hours summary for use in email templates.
+ * e.g. "Mon–Fri 11am–7pm · Sat 11am–6pm · Sun 11am–5pm"
+ * Consecutive days with identical hours are collapsed into ranges.
+ */
+export async function formatHoursForEmail(): Promise<string> {
+  const raw = await getShopHoursRaw();
+  const open = raw.filter((e) => e.isOpen);
+  if (open.length === 0) return "See website for hours";
+
+  // Group consecutive days that share the same open/close times
+  type Group = { days: string[]; open: string; close: string };
+  const groups: Group[] = [];
+  for (const entry of open) {
+    const last = groups[groups.length - 1];
+    if (last && last.open === entry.open && last.close === entry.close) {
+      last.days.push(entry.day);
+    } else {
+      groups.push({ days: [entry.day], open: entry.open, close: entry.close });
+    }
+  }
+
+  const SHORT: Record<string, string> = {
+    Monday: "Mon", Tuesday: "Tue", Wednesday: "Wed",
+    Thursday: "Thu", Friday: "Fri", Saturday: "Sat", Sunday: "Sun",
+  };
+
+  return groups
+    .map(({ days, open, close }) => {
+      const label =
+        days.length === 1
+          ? SHORT[days[0]]
+          : `${SHORT[days[0]]}–${SHORT[days[days.length - 1]]}`;
+      return `${label} ${formatTime(open)}–${formatTime(close)}`;
+    })
+    .join(" · ");
+}

@@ -12,6 +12,7 @@ import {
   buildBisAdminNotificationHtml,
   type ShippingConfirmationPayload,
 } from "./templates";
+import { formatHoursForEmail } from "@/lib/shopHours";
 
 interface EmailPayload {
   order: Order;
@@ -36,7 +37,11 @@ export async function sendOrderConfirmation({
       ? `Your El Camino pickup order is confirmed`
       : `Your El Camino order is confirmed`;
 
-  const html = buildOrderConfirmationHtml({ order, contact });
+  const hoursLine = contact.fulfillmentMethod === "pickup"
+    ? await formatHoursForEmail()
+    : undefined;
+
+  const html = buildOrderConfirmationHtml({ order, contact, hoursLine });
 
   const { error } = await getResend().emails.send({
     from: process.env.EMAIL_FROM!,
@@ -168,7 +173,8 @@ export async function sendPickupReminderEmail({
   items: { name: string; qty: string }[];
   pickupAt?: string;
 }): Promise<void> {
-  const html = buildPickupReminderHtml({ customerName, orderId, items, pickupAt });
+  const hoursLine = await formatHoursForEmail();
+  const html = buildPickupReminderHtml({ customerName, orderId, items, pickupAt, hoursLine });
 
   const { error } = await getResend().emails.send({
     from: process.env.EMAIL_FROM!,

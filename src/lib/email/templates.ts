@@ -21,6 +21,7 @@ import { siteConfig } from "@/lib/site-config";
 interface TemplatePayload {
   order: Order;
   contact: PendingOrderContact;
+  hoursLine?: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -34,6 +35,23 @@ function formatMoney(amount: bigint | number | undefined | null): string {
 function shortOrderId(orderId: string): string {
   // Show last 8 chars of the Square order ID as a human-friendly reference
   return orderId.slice(-8).toUpperCase();
+}
+
+/**
+ * Format a pickup ISO timestamp for display in Central Time.
+ * Output: "Thu, Apr 10 at 3:00 PM CDT"
+ */
+function formatPickupTime(isoString: string): string {
+  const date = new Date(isoString);
+  return date.toLocaleString("en-US", {
+    timeZone: "America/Chicago",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
 }
 
 // ─── Shared layout wrappers ───────────────────────────────────────────────────
@@ -200,12 +218,13 @@ function lineItemsTable(order: Order): string {
 export function buildOrderConfirmationHtml({
   order,
   contact,
+  hoursLine = "See website for hours",
 }: TemplatePayload): string {
   const orderId = order.id ?? "";
   const isPickup = contact.fulfillmentMethod === "pickup";
 
   const fulfillmentSection = isPickup
-    ? pickupDetailsSection(order)
+    ? pickupDetailsSection(order, hoursLine)
     : shippingDetailsSection(order, contact);
 
   const content = `
@@ -293,21 +312,13 @@ function shippingDetailsSection(
   </tr>`;
 }
 
-function pickupDetailsSection(order: Order): string {
+function pickupDetailsSection(order: Order, hoursLine: string): string {
   const fulfillment = order.fulfillments?.find((f) => f.type === "PICKUP");
   const pickupAt = fulfillment?.pickupDetails?.pickupAt;
 
   let readyText = "We'll reach out when your order is ready.";
   if (pickupAt) {
-    const date = new Date(pickupAt);
-    readyText = `Ready for pickup by approximately ${date.toLocaleString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZoneName: "short",
-    })}.`;
+    readyText = `Ready for pickup by approximately ${formatPickupTime(pickupAt)}.`;
   }
 
   return `
@@ -321,7 +332,7 @@ function pickupDetailsSection(order: Order): string {
       </p>
       <p style="margin:0 0 8px;font-size:13px;color:#4f3d22;">${readyText}</p>
       <p style="margin:0;font-size:13px;color:#4f3d22;">
-        Store hours: Wed&ndash;Fri 11am&ndash;7pm &middot; Sat 11am&ndash;7pm &middot; Sun 11am&ndash;5pm
+        Store hours: ${hoursLine}
       </p>
     </td>
   </tr>`;
@@ -720,6 +731,7 @@ export interface PickupReminderPayload {
   orderId: string; // raw Square ID — short form derived internally
   items: { name: string; qty: string }[];
   pickupAt?: string; // formatted date string, e.g. "Tue, Apr 1, 2:00 PM CDT"
+  hoursLine?: string; // formatted hours string, e.g. "Wed–Fri 11am–7pm · Sat 11am–7pm"
 }
 
 export function buildPickupReminderHtml({
@@ -727,6 +739,7 @@ export function buildPickupReminderHtml({
   orderId,
   items,
   pickupAt,
+  hoursLine = "See website for hours",
 }: PickupReminderPayload): string {
   const firstName = customerName.split(" ")[0];
   const shortId = orderId.slice(-8).toUpperCase();
@@ -794,7 +807,7 @@ export function buildPickupReminderHtml({
       </p>
       ${pickupTimeNote}
       <p style="margin:0;font-size:13px;color:#4f3d22;">
-        Store hours: Wed&ndash;Fri 11am&ndash;7pm &middot; Sat 11am&ndash;7pm &middot; Sun 11am&ndash;5pm
+        Store hours: ${hoursLine}
       </p>
     </td>
   </tr>
