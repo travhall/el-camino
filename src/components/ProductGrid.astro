@@ -74,27 +74,7 @@ const displayProducts = hideSoldOut
 ---
 
 <style>
-  /* Animation Configuration */
-  :root {
-    --card-transition-duration: 0.5s;
-    --card-stagger-delay: 100ms;
-  }
-
-  /* Responsive optimizations */
-  @media (max-width: 1023px) {
-    :root {
-      --card-transition-duration: 0.2s; /* Faster on mobile */
-      --card-stagger-delay: 50ms;
-    }
-  }
-
-  /* Respect reduced motion preferences */
-  @media (prefers-reduced-motion: reduce) {
-    :root {
-      --card-transition-duration: 0.1s;
-      --card-stagger-delay: 0ms;
-    }
-  }
+  /* Animation timing tokens live in global.css :root */
 
   /* SMOOTH FILTERING: Prevent layout shifts with transitions */
   .product-card-wrapper {
@@ -108,8 +88,8 @@ const displayProducts = hideSoldOut
 
     /* Stagger delay only applies when entering (via --animation-order) */
     transition-delay:
-      calc(var(--animation-order, 0) * var(--card-stagger-delay)),
-      calc(var(--animation-order, 0) * var(--card-stagger-delay));
+      calc(var(--animation-order, 0) * var(--product-stagger-delay)),
+      calc(var(--animation-order, 0) * var(--product-stagger-delay));
   }
 
   /* Exit state */
@@ -322,7 +302,7 @@ const displayProducts = hideSoldOut
     }
 
     // Parse stagger delay (handles "50ms", "0ms", etc.)
-    const staggerStr = style.getPropertyValue("--card-stagger-delay").trim();
+    const staggerStr = style.getPropertyValue("--product-stagger-delay").trim();
     const staggerDelay = parseInt(staggerStr.replace("ms", "")) || 0;
 
     return {

@@ -360,6 +360,33 @@ h6 {
    FilterCoordinator updates --header-height on every astro:page-load. */
 :root {
   --header-height: 80px;
+
+  /* Card animation timing — shared by ArticleGrid and ProductGrid */
+  --card-transition-duration: 0.5s;
+  --card-entrance-priority-duration: 0.75s;
+  --card-stagger-delay: 50ms;
+  --row-stagger-delay: 100ms;
+  --product-stagger-delay: 100ms; /* ProductGrid uses a wider stagger for larger cards */
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --card-transition-duration: 0.2s;
+    --card-entrance-priority-duration: 0.4s;
+    --card-stagger-delay: 50ms;
+    --row-stagger-delay: 100ms;
+    --product-stagger-delay: 50ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --card-transition-duration: 0.1s;
+    --card-entrance-priority-duration: 0.1s;
+    --card-stagger-delay: 0ms;
+    --row-stagger-delay: 0ms;
+    --product-stagger-delay: 0ms;
+  }
 }
 
 .elco-checkbox {
