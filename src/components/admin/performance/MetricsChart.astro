@@ -103,6 +103,10 @@ const { timeframe: _timeframe = '24h', height = 300, class: className = '' } = A
     private ctx: CanvasRenderingContext2D | null = null;
     private dataPoints: { timestamp: number; lcp: number; inp: number; cls: number }[] = [];
     private animationId: number | null = null;
+    private colorLcp  = '#3b82f6';
+    private colorInp  = '#10b981';
+    private colorCls  = '#f59e0b';
+    private colorGrid = '#e5e7eb';
 
     constructor() {
       this.init();
@@ -114,6 +118,13 @@ const { timeframe: _timeframe = '24h', height = 300, class: className = '' } = A
 
       this.ctx = this.canvas.getContext('2d');
       if (!this.ctx) return;
+
+      // Resolve chart colors from CSS design tokens
+      const style = getComputedStyle(document.documentElement);
+      this.colorLcp  = style.getPropertyValue('--color-state-info-surface').trim()    || '#3b82f6';
+      this.colorInp  = style.getPropertyValue('--color-state-success-surface').trim() || '#10b981';
+      this.colorCls  = style.getPropertyValue('--color-state-warning-surface').trim() || '#f59e0b';
+      this.colorGrid = style.getPropertyValue('--border-primary').trim()              || '#e5e7eb';
 
       this.setupChart();
       this.loadInitialData();
@@ -206,7 +217,7 @@ const { timeframe: _timeframe = '24h', height = 300, class: className = '' } = A
           x: padding + ((p.timestamp - this.dataPoints[0].timestamp) / timeRange) * (width - 2 * padding),
           y: height - padding - (p.lcp / maxLcp) * (height - 2 * padding)
         })),
-        '#3b82f6',
+        this.colorLcp,
         2
       );
 
@@ -216,7 +227,7 @@ const { timeframe: _timeframe = '24h', height = 300, class: className = '' } = A
           x: padding + ((p.timestamp - this.dataPoints[0].timestamp) / timeRange) * (width - 2 * padding),
           y: height - padding - (p.inp / maxInp) * (height - 2 * padding)
         })),
-        '#10b981',
+        this.colorInp,
         2
       );
 
@@ -226,20 +237,20 @@ const { timeframe: _timeframe = '24h', height = 300, class: className = '' } = A
           x: padding + ((p.timestamp - this.dataPoints[0].timestamp) / timeRange) * (width - 2 * padding),
           y: height - padding - (p.cls / maxCls) * (height - 2 * padding)
         })),
-        '#f59e0b',
+        this.colorCls,
         2
       );
 
       // Draw threshold lines
-      this.drawThresholdLine(height - padding - (2500 / maxLcp) * (height - 2 * padding), '#3b82f6', 'LCP Target');
-      this.drawThresholdLine(height - padding - (200 / maxInp) * (height - 2 * padding), '#10b981', 'INP Target');
-      this.drawThresholdLine(height - padding - (0.1 / maxCls) * (height - 2 * padding), '#f59e0b', 'CLS Target');
+      this.drawThresholdLine(height - padding - (2500 / maxLcp) * (height - 2 * padding), this.colorLcp, 'LCP Target');
+      this.drawThresholdLine(height - padding - (200 / maxInp) * (height - 2 * padding), this.colorInp, 'INP Target');
+      this.drawThresholdLine(height - padding - (0.1 / maxCls) * (height - 2 * padding), this.colorCls, 'CLS Target');
     }
 
     private drawGrid(width: number, height: number, padding: number): void {
       if (!this.ctx) return;
 
-      this.ctx.strokeStyle = '#e5e7eb';
+      this.ctx.strokeStyle = this.colorGrid;
       this.ctx.lineWidth = 1;
 
       // Horizontal grid lines

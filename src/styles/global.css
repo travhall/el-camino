@@ -235,8 +235,7 @@
   --color-state-info-surface: oklch(55% 0.165 245);
 }
 
-/* Panel / Modal Shadow Utility */
-.panel-shadow {
+@utility panel-shadow {
   box-shadow: var(--ui-panel-shadow);
 }
 
@@ -250,7 +249,12 @@
     transition:
       background-color 0.3s ease,
       color 0.3s ease;
-    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body {
+      transition: none;
+    }
   }
 
   *:focus-visible {
@@ -511,44 +515,37 @@ h6 {
 
    Because standard CSS has historically had spotty support for overriding autofilled <select>,
    we target :autofill and :-webkit-autofill broadly. We also use a cover strip below 
-   to mask the native arrow forced by Chrome's appearance:menulist-button !important. */
+   to mask the native arrow forced by Chrome's appearance:menulist-button !important.
+
+   NOTE: :-webkit-autofill selectors must remain as a flat list — :is() with unknown
+   pseudo-classes causes the entire selector group to be silently dropped in Chrome. */
 .elco-field-float > input:-webkit-autofill,
 .elco-field-float > input:-webkit-autofill:hover,
 .elco-field-float > input:-webkit-autofill:focus,
 .elco-field-float > input:-webkit-autofill:active,
-.elco-field-float > input:autofill,
-.elco-field-float > input:autofill:hover,
-.elco-field-float > input:autofill:focus,
-.elco-field-float > input:autofill:active,
 .elco-field-float > textarea:-webkit-autofill,
 .elco-field-float > textarea:-webkit-autofill:hover,
 .elco-field-float > textarea:-webkit-autofill:focus,
 .elco-field-float > textarea:-webkit-autofill:active,
-.elco-field-float > textarea:autofill,
-.elco-field-float > textarea:autofill:hover,
-.elco-field-float > textarea:autofill:focus,
-.elco-field-float > textarea:autofill:active,
 .elco-field-float > select:-webkit-autofill,
 .elco-field-float > select:-webkit-autofill:hover,
 .elco-field-float > select:-webkit-autofill:focus,
 .elco-field-float > select:-webkit-autofill:active,
-.elco-field-float > select:autofill,
-.elco-field-float > select:autofill:hover,
-.elco-field-float > select:autofill:focus,
-.elco-field-float > select:autofill:active {
+.elco-field-float > :is(input, textarea, select):autofill,
+.elco-field-float > :is(input, textarea, select):autofill:hover,
+.elco-field-float > :is(input, textarea, select):autofill:focus,
+.elco-field-float > :is(input, textarea, select):autofill:active {
   -webkit-box-shadow: 0 0 0px 1000px var(--ui-input-surface) inset !important;
   box-shadow: 0 0 0px 1000px var(--ui-input-surface) inset !important;
   -webkit-text-fill-color: var(--ui-input-text) !important;
   caret-color: var(--ui-input-text);
 }
 
-.elco-field-float > input:focus,
-.elco-field-float > textarea:focus {
+.elco-field-float > :is(input, textarea):focus {
   border-color: var(--ui-input-focus);
 }
 
-.elco-field-float > input:focus-visible,
-.elco-field-float > textarea:focus-visible {
+.elco-field-float > :is(input, textarea):focus-visible {
   box-shadow: none;
   outline: none;
 }
@@ -570,16 +567,12 @@ h6 {
 
 /* Float the label on focus or when the field has a value (:placeholder-shown
    requires placeholder=" " on the input — the single-space trick) */
-.elco-field-float > input:focus ~ label,
-.elco-field-float > input:not(:placeholder-shown) ~ label,
-.elco-field-float > textarea:focus ~ label,
-.elco-field-float > textarea:not(:placeholder-shown) ~ label {
+.elco-field-float > :is(input, textarea):is(:focus, :not(:placeholder-shown)) ~ label {
   transform: translateY(0) scale(0.8);
   color: var(--content-meta);
 }
 
-.elco-field-float > input:focus ~ label,
-.elco-field-float > textarea:focus ~ label {
+.elco-field-float > :is(input, textarea):focus ~ label {
   color: var(--ui-input-focus);
 }
 
@@ -621,8 +614,7 @@ h6 {
 /* Select: label floats when a real value is chosen (.has-value toggled by JS)
    or on focus. At rest, the label inherits translateY(1.25rem) from the base
    label rule. Use initFloatSelects() to wire up change/init behaviour. */
-.elco-field-float.has-value > select ~ label,
-.elco-field-float > select:focus ~ label {
+.elco-field-float:is(.has-value, :focus-within) > select ~ label {
   transform: translateY(0) scale(0.8);
   color: var(--content-meta);
 }
@@ -709,6 +701,8 @@ h6 {
    WORDPRESS CONTENT SYSTEM - Optimized
    TYPOGRAPHY - Optimized Hierarchy
    ============================================================================= */
+
+@layer components {
 
 .wp-content-block h1,
 .wp-content-block h2,
@@ -929,7 +923,7 @@ blockquote.is-style-large {
   text-decoration: none;
   display: inline-block;
   font-weight: 600;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.2s ease;
   margin: 1.5rem 0;
 }
 
@@ -1087,4 +1081,6 @@ blockquote.is-style-large {
 .wp-content-block .screen-reader-text {
   @apply sr-only;
 }
+
+} /* end @layer components */
 

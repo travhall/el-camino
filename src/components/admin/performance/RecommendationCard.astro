@@ -226,8 +226,8 @@ const priorityColors = [
     height: 100%;
     background: linear-gradient(
       to bottom,
-      var(--ui-accent) 0%,
-      var(--ui-accent) / 50 100%
+      var(--ui-accent),
+      color-mix(in oklch, var(--ui-accent) 50%, transparent)
     );
   }
 
@@ -244,30 +244,33 @@ const priorityColors = [
   }
 
   @keyframes slideDown {
-    from {
-      opacity: 0;
-      max-height: 0;
-    }
-    to {
-      opacity: 1;
-      max-height: 200px;
-    }
+    from { opacity: 0; max-height: 0; }
+    to   { opacity: 1; max-height: 200px; }
   }
 
   /* Priority indicators */
   .recommendation-card.priority-1 {
-    border-left-color: #ef4444;
+    border-left-color: var(--color-state-error-surface);
     border-left-width: 4px;
   }
 
   .recommendation-card.priority-2 {
-    border-left-color: #f59e0b;
+    border-left-color: var(--color-state-warning-surface);
     border-left-width: 3px;
   }
 
   .recommendation-card.priority-3 {
-    border-left-color: #3b82f6;
+    border-left-color: var(--color-state-info-surface);
     border-left-width: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .recommendation-card:hover {
+      transform: none;
+    }
+    .recommendation-details {
+      animation: none;
+    }
   }
 </style>
 

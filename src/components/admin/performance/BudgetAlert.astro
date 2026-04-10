@@ -179,12 +179,12 @@ const config = severityConfig[severity];
 
 <style>
   .budget-alert {
-    transition: all 0.2s ease-in-out;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   }
 
   .budget-alert:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px color-mix(in oklch, var(--content-body) 12%, transparent);
   }
 
   /* Animation for progress bar */
@@ -195,11 +195,18 @@ const config = severityConfig[severity];
   }
 
   @keyframes slideIn {
-    from {
-      width: 0%;
+    from { width: 0%; }
+    to   { width: var(--final-width, 100%); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .budget-alert {
+      transition: none;
     }
-    to {
-      width: var(--final-width, 100%);
+    .budget-alert .bg-red-500,
+    .budget-alert .bg-yellow-500,
+    .budget-alert .bg-blue-500 {
+      animation: none;
     }
   }
 </style>
