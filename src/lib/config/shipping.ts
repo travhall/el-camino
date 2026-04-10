@@ -4,6 +4,8 @@
  */
 
 import { siteConfig } from "../site-config";
+import { getContactInfo } from "../contactInfo";
+import { getShopHoursRaw } from "../shopHours";
 
 export interface ShippingRate {
   id: string;
@@ -49,20 +51,35 @@ export const SHIPPING_RATES: ShippingRate[] = [
   },
 ];
 
-// Build pickup location from site config
-export const PICKUP_LOCATION: PickupLocation = {
-  id: "main-store",
-  name: siteConfig.name,
-  address: {
-    street1: siteConfig.contact.address.street,
-    city: siteConfig.contact.address.city,
-    state: siteConfig.contact.address.state,
-    zip: siteConfig.contact.address.zip,
-  },
-  phone: siteConfig.contact.phone.display,
-  hours: Object.fromEntries(siteConfig.hours.map((h) => [h.day, h.hours])),
-  instructions: "Pick up only available during store hours.",
-};
+/**
+ * Build pickup location from live admin-managed contact and hours data.
+ * Falls back to siteConfig values if Blobs are unavailable.
+ */
+export async function getPickupLocation(): Promise<PickupLocation> {
+  const [contact, hoursData] = await Promise.all([
+    getContactInfo(),
+    getShopHoursRaw(),
+  ]);
+
+  return {
+    id: "main-store",
+    name: contact.name,
+    address: {
+      street1: contact.street,
+      city: contact.city,
+      state: contact.state,
+      zip: contact.zip,
+    },
+    phone: contact.phone,
+    hours: Object.fromEntries(
+      hoursData.map((h) => [
+        h.day,
+        h.isOpen ? `${h.open} - ${h.close}` : "Closed",
+      ])
+    ),
+    instructions: "Pick up only available during store hours.",
+  };
+}
 
 /**
  * Calculate shipping rate based on subtotal
@@ -81,12 +98,3 @@ export function calculateShippingRate(subtotal: number): ShippingRate {
   return SHIPPING_RATES.find((rate) => rate.id === "standard")!;
 }
 
-/**
- * Get available fulfillment methods
- */
-export function getAvailableFulfillmentMethods() {
-  return {
-    shipping: SHIPPING_RATES,
-    pickup: PICKUP_LOCATION,
-  };
-}

@@ -20,6 +20,8 @@ const {
   hidden = false,
 } = Astro.props;
 
+import { getContactInfo } from "@/lib/contactInfo";
+const contact = await getContactInfo();
 const productUrl = Astro.url.href;
 const label = variationName
   ? `${productTitle} — ${variationName}`
@@ -93,7 +95,7 @@ const label = variationName
   </p>
   <p id="bis-error" class="hidden mt-3 text-sm text-state-error-surface">
     Something went wrong — please try again or <a
-      href="mailto:elcaminoboardshop@gmail.com"
+      href="mailto:{contact.email}"
       class="underline hover:no-underline">email us directly</a
     >.
   </p>

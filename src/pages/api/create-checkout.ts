@@ -3,7 +3,7 @@ import type { APIRoute } from "astro";
 import type { CartItem } from "@/lib/cart/types";
 import { squareClient } from "@/lib/square/client";
 import { checkBulkInventory } from "@/lib/square/inventory";
-import { calculateShippingRate, PICKUP_LOCATION } from "@/lib/config/shipping";
+import { calculateShippingRate, getPickupLocation } from "@/lib/config/shipping";
 import { siteConfig } from "@/lib/site-config";
 import { inventoryCache, productCache } from "@/lib/cache/blobCache";
 import { batchInventoryService } from "@/lib/square/batchInventory";
@@ -309,11 +309,14 @@ export const POST: APIRoute = async ({ request }) => {
         },
       });
     } else if (fulfillmentMethod === "pickup" && pickupContact) {
-      // Calculate pickup ready time: at least 4 hours from now, within store hours
-      const pickupTime = await nextPickupTime(new Date());
+      // Fetch live pickup location and calculate ready time concurrently
+      const [pickupLocation, pickupTime] = await Promise.all([
+        getPickupLocation(),
+        nextPickupTime(new Date()),
+      ]);
 
       // Build pickup note with location details and customer instructions
-      let pickupNote = `Pick up at ${PICKUP_LOCATION.name}. ${PICKUP_LOCATION.instructions}`;
+      let pickupNote = `Pick up at ${pickupLocation.name}. ${pickupLocation.instructions}`;
       if (pickupContact.notes?.trim()) {
         pickupNote += `\n\nCustomer Notes: ${pickupContact.notes.trim()}`;
       }
