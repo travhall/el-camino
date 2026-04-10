@@ -103,9 +103,10 @@ export class EnhancedImageOptimizer {
     src: string,
     options: ModernImageOptions = {}
   ): ResponsiveImageSet {
-    // Support Square CDN, Square's S3, and WordPress images
+    // Support Square CDN, Square's S3 (production + sandbox), and WordPress images
     const isSquareImage = src.includes('squarecdn.com') || 
-                          src.includes('items-images-production.s3');
+                          src.includes('.s3.amazonaws.com') ||
+                          src.includes('.s3-');
     
     const isWordPressImage = src.includes('wordpress.com') ||
                              src.includes('wp.com');
