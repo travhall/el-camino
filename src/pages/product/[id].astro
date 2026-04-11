@@ -505,7 +505,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
         >
           <!-- Loading placeholder with logo -->
           <div
-            class="loading-skeleton loading-image absolute inset-0 w-full h-full"
+            class="loading-skeleton absolute inset-0 w-full h-full"
             id="pdp-image-placeholder"
             aria-hidden="true"
           >
@@ -569,15 +569,16 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                   )}
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
                   alt={product.title}
-                  class={`w-full h-full object-cover transition-opacity duration-300 ${!selectedVariationInStock ? "opacity-75" : "opacity-100"}`}
+                  class="w-full h-full object-cover transition-opacity duration-300 opacity-0"
+                  data-in-stock={selectedVariationInStock ? "true" : "false"}
                   width="800"
                   height="800"
                   loading="eager"
                   fetchpriority="high"
                   decoding="sync"
                   data-placeholder-id="pdp-image-placeholder"
-                  onload="document.getElementById('pdp-image-placeholder')?.remove()"
-                  onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; document.getElementById('pdp-image-placeholder')?.remove()`}
+                  onload="this.classList.remove('opacity-0'); this.classList.add(this.dataset.inStock === 'true' ? 'opacity-100' : 'opacity-75'); document.getElementById('pdp-image-placeholder')?.remove();"
+                  onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.remove('opacity-0'); this.classList.add('opacity-100'); document.getElementById('pdp-image-placeholder')?.remove();`}
                   role="img"
                   aria-label={product.title || "Product image"}
                 />
