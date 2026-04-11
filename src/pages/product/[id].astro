@@ -502,7 +502,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
       <div class="flex flex-col gap-3">
         <div
           id="product-image-container"
-          class="aspect-square md:aspect-video lg:aspect-square border-4 border-(--border-primary) overflow-hidden bg-(--surface-secondary) relative"
+          class="aspect-4/3 sm:aspect-square md:aspect-video lg:aspect-square border-4 border-(--border-primary) overflow-hidden bg-(--surface-secondary) relative"
         >
           <!-- Loading placeholder with logo -->
           <div
@@ -663,7 +663,13 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
 
       <!-- Product Info -->
       <div class="product-info mt-4 max-w-xl">
-        {breadcrumbPath && <Breadcrumbs breadcrumbPath={breadcrumbPath} />}
+        {
+          breadcrumbPath && (
+            <div class="hidden sm:block">
+              <Breadcrumbs breadcrumbPath={breadcrumbPath} />
+            </div>
+          )
+        }
         <h1
           class="flex flex-col font-display font-bold text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl leading-[0.8] text-(--content-heading) text-balance mt-4 lg:mt-8"
         >
@@ -1090,36 +1096,6 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     <RecentlyViewed currentProductId={product.id} />
   </div>
 
-  <!-- Sticky mobile ATC bar — hidden on lg+ screens -->
-  <div
-    id="sticky-atc-bar"
-    class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-(--surface-primary) border-t-2 border-(--border-primary) p-3 flex items-center gap-3 translate-y-full transition-transform duration-300 shadow-lg"
-    aria-hidden="true"
-  >
-    <div class="flex-1 min-w-0">
-      <p class="text-sm text-(--content-meta) truncate">
-        {product.brand ?? ""}
-      </p>
-      <p class="text-base font-semibold text-(--content-heading) truncate">
-        {displayTitle}
-      </p>
-      <p
-        id="sticky-price"
-        class="text-xl font-display font-bold text-(--content-emphasis)"
-      >
-        {formattedPrice}
-      </p>
-    </div>
-    <button
-      type="button"
-      id="sticky-atc-button"
-      class="shrink-0 px-5 h-11 font-sans font-semibold text-sm rounded-sm bg-(--ui-button-surface) text-(--ui-button-text) border-2 border-(--ui-button-border) enabled:cursor-pointer enabled:hover:bg-(--ui-button-surface)/70 disabled:opacity-50 disabled:cursor-not-allowed disabled:data-[loading=true]:opacity-75 transition-opacity"
-      disabled={!selectedVariationInStock}
-    >
-      {selectedVariationInStock ? "Add to Cart" : "Sold Out"}
-    </button>
-  </div>
-
   <Modal />
 </Layout>
 
@@ -1226,105 +1202,6 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
     });
   }
 
-  function setupStickyATC(): void {
-    const stickyBar = document.getElementById("sticky-atc-bar");
-    const rawStickyBtn = document.getElementById(
-      "sticky-atc-button",
-    ) as HTMLButtonElement | null;
-    const mainBtn = document.getElementById(
-      "add-to-cart-button",
-    ) as HTMLButtonElement | null;
-
-    if (!stickyBar || !mainBtn || !rawStickyBtn) return;
-
-    // Clone to remove any listeners from a prior initialization.
-    // initializePage() runs twice on first load (DOMContentLoaded + astro:page-load),
-    // so without this clone each call would stack another click listener on the same
-    // element, causing two cart.addItem() calls per tap and "max quantity" errors.
-    const stickyBtn = rawStickyBtn.cloneNode(true) as HTMLButtonElement;
-    rawStickyBtn.parentNode!.replaceChild(stickyBtn, rawStickyBtn);
-
-    // Track both visibility states so the sticky hides when either is true
-    let mainBtnVisible = false;
-    let footerVisible = false;
-    const updateStickyVisibility = () => {
-      const hide = mainBtnVisible || footerVisible;
-      stickyBar.classList.toggle("translate-y-full", hide);
-      stickyBar.setAttribute("aria-hidden", hide ? "true" : "false");
-    };
-
-    // Hide when the main ATC button is in view
-    const mainBtnObserver = new IntersectionObserver(
-      ([entry]) => {
-        mainBtnVisible = entry.isIntersecting;
-        updateStickyVisibility();
-      },
-      { threshold: 0.5 },
-    );
-    mainBtnObserver.observe(mainBtn);
-
-    // Also hide when the footer enters view so it never covers footer links
-    const footer = document.querySelector("footer");
-    if (footer) {
-      const footerObserver = new IntersectionObserver(
-        ([entry]) => {
-          footerVisible = entry.isIntersecting;
-          updateStickyVisibility();
-        },
-        { threshold: 0 },
-      );
-      footerObserver.observe(footer);
-    }
-
-    // Proxy clicks from sticky button to main ATC button
-    stickyBtn.addEventListener("click", () => {
-      mainBtn.click();
-    });
-
-    // Keep sticky button state in sync with main button.
-    // CSS pseudo-classes in the sticky button's class list handle opacity/cursor
-    // automatically from the disabled attribute and data-loading attribute alone —
-    // no manual class mirroring needed.
-    const syncStickyState = () => {
-      if (!stickyBtn || !mainBtn) return;
-      stickyBtn.disabled = mainBtn.disabled;
-      // Sync innerHTML so the loading spinner is visible during cart add
-      stickyBtn.innerHTML = mainBtn.innerHTML;
-      // Sync data-loading so CSS drives the correct opacity (75% loading, 50% disabled)
-      const loading = mainBtn.getAttribute("data-loading");
-      if (loading) stickyBtn.setAttribute("data-loading", loading);
-      else stickyBtn.removeAttribute("data-loading");
-      // Sync price (handles variant switches and sale price changes)
-      const priceEl = document.getElementById("sticky-price");
-      const mainPrice = document.getElementById("price-display");
-      if (priceEl && mainPrice) priceEl.textContent = mainPrice.textContent;
-    };
-
-    // Run immediately so sticky reflects any state PDPController already applied
-    // (e.g. "All in Cart" if items are already in cart on page load)
-    syncStickyState();
-
-    // Observe main button for text/disabled/class/children changes
-    const mutationObs = new MutationObserver(syncStickyState);
-    mutationObs.observe(mainBtn, {
-      attributes: true,
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-
-    // Also observe price-display so sticky price stays in sync on variant switches
-    // even when the button text itself doesn't change (e.g. "Add to Cart" → "Add to Cart")
-    const priceDisplay = document.getElementById("price-display");
-    if (priceDisplay) {
-      mutationObs.observe(priceDisplay, {
-        childList: true,
-        characterData: true,
-        subtree: true,
-      });
-    }
-  }
-
   function setupPolicyTriggers(): void {
     // Easy returns → return policy modal
     const returnsTrigger = document.getElementById("easy-returns-trigger");
@@ -1428,7 +1305,6 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
 
       setupLocationModal();
       setupPolicyTriggers();
-      setupStickyATC();
       setupGallery();
     }
   }
