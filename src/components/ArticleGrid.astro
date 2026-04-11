@@ -2,7 +2,6 @@
 // src/components/ArticleGrid.astro - Enhanced with filterable grid/list support
 import ArticleCard from "./ArticleCard.astro";
 import ArticleCardSkeleton from "./ArticleCardSkeleton.astro";
-import Button from "./Button.astro";
 import Sidebar from "./Sidebar.astro";
 import type { WordPressPost } from "@/lib/wordpress/types";
 
@@ -58,7 +57,7 @@ const getContainerClasses = () => {
     }
   }
   // Original masonry layout for home page
-  return "article-grid flex flex-col sm:grid sm:justify-center sm:grid-cols-6 3xl:grid-cols-8 sm:auto-rows-auto md:auto-rows-[12vw] lg:auto-rows-[10vw] xl:auto-rows-[9vw] 3xl:auto-rows-[9.5vw] w-full gap-1 p-1 pb-0";
+  return "article-grid grid justify-center md:grid-cols-6 3xl:grid-cols-8 md:auto-rows-auto md:auto-rows-[12vw] lg:auto-rows-[10vw] xl:auto-rows-[9vw] 3xl:auto-rows-[9.5vw] w-full gap-1 p-1 pb-0";
 };
 
 // Get skeleton variant for loading states
@@ -136,7 +135,7 @@ const getSkeletonVariant = () => {
         {showSidebar && !filterable && (
           <>
             <Sidebar />
-            <div class="bg-(--surface-secondary) col-span-full md:col-span-4 3xl:col-span-6 3xl:row-span-2 p-8 place-content-center hidden md:flex flex-col -mt-1 md:mt-0 lg:flex-row gap-4 lg:justify-between lg:items-center" />
+            <div class="bg-(--surface-secondary) col-span-full lg:col-span-4 3xl:col-span-6 3xl:row-span-2 p-8 place-content-center hidden lg:flex flex-col -mt-1 md:mt-0 lg:flex-row gap-4 lg:justify-between lg:items-center" />
           </>
         )}
       </>
@@ -253,8 +252,6 @@ const getSkeletonVariant = () => {
 </style>
 
 <script>
-  import { FilterCoordinator } from "@/lib/filterCoordinator";
-
   // Check for reduced motion preference
   const prefersReducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
@@ -291,10 +288,18 @@ const getSkeletonVariant = () => {
     }
 
     // Parse grid entrance delay (mobile: 250ms, desktop: 0ms)
-    const entranceDelayStr = style.getPropertyValue("--grid-entrance-delay").trim();
+    const entranceDelayStr = style
+      .getPropertyValue("--grid-entrance-delay")
+      .trim();
     const entranceDelay = parseInt(entranceDelayStr.replace("ms", "")) || 0;
 
-    return { duration, staggerDelay, rowStaggerDelay, priorityDuration, entranceDelay };
+    return {
+      duration,
+      staggerDelay,
+      rowStaggerDelay,
+      priorityDuration,
+      entranceDelay,
+    };
   }
 
   const ANIMATION_CONFIG = getAnimationTiming();

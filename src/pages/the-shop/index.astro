@@ -35,10 +35,10 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
 <Layout title="The Shop | El Camino">
   <section class="p-1 pb-0 flex flex-col gap-1">
     <header
-      class="flex flex-col-reverse lg:flex-row-reverse items-start lg:items-center gap-4 lg:gap-8"
+      class="flex flex-col-reverse md:flex-row-reverse items-start md:items-center gap-4 md:gap-8 mb-24 md:mb-0"
     >
-      <div class="basis-1/2 p-4 md:p-12 my-8 w-full">
-        <div class="max-w-lg mx-auto">
+      <div class="basis-1/2 p-4 w-full">
+        <div class="max-w-lg lg:mx-auto">
           <div class="flex flex-row items-center">
             <h1
               class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-none text-(--content-heading) text-balance mb-2"
@@ -66,7 +66,7 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
       </div>
 
       <div
-        class="aspect-square border-4 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative basis-1/2 self-center w-full"
+        class="aspect-4/3 md:aspect-3/4 lg:aspect-square border-4 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative basis-1/2 self-center w-full"
       >
         <div class="relative w-full h-full">
           <div
@@ -128,9 +128,8 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
               skate products out the back, pop-up style. Bring gear that wasn't
               available around Eau Claire to the people who needed it. After
               talking to folks in the industry, they all said the same thing:
-              "Cool idea, but... you NEED a storefront."
+              "Cool idea, but... you NEED a storefront." So that's what we did.
             </p>
-            <p>So that's what we did.</p>
             <p>
               Now the mission is clearer than ever: keep growing the skateboard
               scene in and around the Chippewa Valley. Whether you've never
@@ -259,9 +258,47 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
 
     <!-- CONTACT -->
     <div
-      class="bg-(--surface-secondary) flex flex-col lg:flex-row-reverse items-stretch relative"
+      class="bg-(--surface-secondary) flex flex-col lg:flex-row items-stretch relative"
     >
       <div id="contact" class="absolute h-16 -top-16" aria-hidden="true"></div>
+      <div
+        class="aspect-square border-4 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative lg:basis-1/2 self-center w-full"
+      >
+        <div class="relative w-full h-full">
+          <div
+            class="loading-skeleton absolute inset-0 animate-pulse bg-linear-to-r from-gray-200 via-gray-100 to-gray-200"
+            id="location-placeholder"
+          >
+            <div
+              class="absolute inset-0 flex items-center justify-center opacity-70"
+              style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat;`}
+            >
+            </div>
+          </div>
+
+          <picture>
+            <source
+              srcset="/.netlify/images?url=/the-shop-04.png&fm=avif&w=1200&q=75"
+              type="image/avif"
+            />
+            <source
+              srcset="/.netlify/images?url=/the-shop-04.png&fm=webp&w=1200&q=75"
+              type="image/webp"
+            />
+            <img
+              src="/the-shop-04.png"
+              alt="Water Street location"
+              class="w-full h-full mix-blend-luminosity object-cover opacity-0 transition-opacity duration-300"
+              loading="lazy"
+              width="1200"
+              height="1200"
+              onload="this.style.opacity='0.9'; document.getElementById('location-placeholder')?.remove()"
+              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100', 'error'); document.getElementById('location-placeholder')?.remove()`}
+            />
+          </picture>
+        </div>
+      </div>
+
       <div class="relative w-full lg:basis-1/2 px-4 py-8 lg:p-8 xl:p-12 my-8">
         <div class="w-full max-w-xl mx-auto">
           <h2
@@ -475,44 +512,6 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
               })();
             </script>
           </div>
-        </div>
-      </div>
-
-      <div
-        class="aspect-square border-4 border-(--surface-secondary) overflow-hidden bg-(--surface-secondary) relative lg:basis-1/2 self-center w-full"
-      >
-        <div class="relative w-full h-full">
-          <div
-            class="loading-skeleton absolute inset-0 animate-pulse bg-linear-to-r from-gray-200 via-gray-100 to-gray-200"
-            id="location-placeholder"
-          >
-            <div
-              class="absolute inset-0 flex items-center justify-center opacity-70"
-              style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat;`}
-            >
-            </div>
-          </div>
-
-          <picture>
-            <source
-              srcset="/.netlify/images?url=/the-shop-04.png&fm=avif&w=1200&q=75"
-              type="image/avif"
-            />
-            <source
-              srcset="/.netlify/images?url=/the-shop-04.png&fm=webp&w=1200&q=75"
-              type="image/webp"
-            />
-            <img
-              src="/the-shop-04.png"
-              alt="Water Street location"
-              class="w-full h-full mix-blend-luminosity object-cover opacity-0 transition-opacity duration-300"
-              loading="lazy"
-              width="1200"
-              height="1200"
-              onload="this.style.opacity='0.9'; document.getElementById('location-placeholder')?.remove()"
-              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100', 'error'); document.getElementById('location-placeholder')?.remove()`}
-            />
-          </picture>
         </div>
       </div>
     </div>
