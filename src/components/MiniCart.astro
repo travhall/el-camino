@@ -46,7 +46,7 @@ import Button from "@/components/Button.astro";
       <div
         id="mini-cart-undo-bar"
         role="status"
-        class="hidden opacity-0 sticky top-0 z-10 bg-(--surface-secondary) border-b-2 border-(--border-secondary) px-4 py-2.5 flex items-center gap-3 text-sm overflow-hidden transition-opacity duration-200"
+        class="hidden opacity-0 sticky top-0 z-10 bg-(--surface-secondary) border-b-2 border-(--border-secondary) px-4 py-2.5 items-center gap-3 text-sm overflow-hidden transition-opacity duration-200"
       >
         <span
           id="mini-cart-undo-message"
@@ -204,6 +204,7 @@ import Button from "@/components/Button.astro";
 
     // Show with fade-in
     bar.classList.remove("hidden");
+    bar.classList.add("flex");
     requestAnimationFrame(() => {
       bar.classList.remove("opacity-0");
     });
@@ -225,7 +226,10 @@ import Button from "@/components/Button.astro";
     if (!bar) return;
 
     bar.classList.add("opacity-0");
-    setTimeout(() => bar.classList.add("hidden"), 200);
+    setTimeout(() => {
+      bar.classList.add("hidden");
+      bar.classList.remove("flex");
+    }, 200);
 
     pendingUndoItem = null;
     if (undoBarTimeout) {

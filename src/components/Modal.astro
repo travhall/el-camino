@@ -141,13 +141,15 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
       // Focus first interactive element
       const focusTarget = panel.querySelector(focusSelector) as HTMLElement;
 
-      // Animate in
-      requestAnimationFrame(() => {
-        backdrop.classList.remove("opacity-0");
-        panel.classList.remove("scale-95", "opacity-0");
-        panel.classList.add("scale-100", "opacity-100");
-        focusTarget?.focus();
-      });
+      // Force reflow to commit display:flex + opacity:0 state before removing
+      // the opacity classes. Without this, the browser can batch the display
+      // change and class removal into the same frame, skipping the transition.
+      // This mirrors the SizeGuide approach and gives CSS a real starting state.
+      void backdrop.offsetHeight;
+      backdrop.classList.remove("opacity-0");
+      panel.classList.remove("scale-95", "opacity-0");
+      panel.classList.add("scale-100", "opacity-100");
+      focusTarget?.focus();
     },
 
     showModal(

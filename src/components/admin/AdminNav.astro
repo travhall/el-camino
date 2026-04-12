@@ -130,8 +130,15 @@ const currentPath = Astro.url.pathname;
   >Skip to main content</a
 >
 
+<!-- Nav overlay - tablet only (md to lg) -->
+<div
+  id="admin-nav-overlay"
+  class="fixed inset-0 bg-(--ui-modal-overlay)/90 z-30 hidden opacity-0 transition-opacity duration-300"
+  aria-hidden="true"
+></div>
+
 <nav
-  class="flex flex-col lg:flex-row w-full lg:gap-2 justify-center border-4 border-(--border-secondary) lg:border-0 bg-(--surface-secondary) lg:relative inset-0 top-12 lg:top-auto fixed -translate-x-full lg:translate-x-0 transition-transform duration-400 ease-in-out z-40 [&.nav-open]:translate-x-0 overflow-y-auto lg:overflow-visible"
+  class="flex flex-col lg:flex-row w-full max-w-lg lg:max-w-full lg:gap-2 justify-center border-4 border-(--border-secondary) lg:border-0 bg-(--surface-secondary) lg:relative inset-0 top-12 lg:top-auto fixed -translate-x-full lg:translate-x-0 transition-transform duration-400 ease-in-out z-40 [&.nav-open]:translate-x-0 overflow-y-auto lg:overflow-visible"
   role="navigation"
   aria-label="Admin navigation"
 >
@@ -371,6 +378,8 @@ const currentPath = Astro.url.pathname;
     private isAnimating: boolean = false;
     private focusTimeout: number | null = null;
     private abortController: AbortController = new AbortController();
+    private overlay: HTMLElement | null = null;
+    private overlayObserver: MutationObserver | null = null;
 
     constructor() {
       this.init();
@@ -379,6 +388,7 @@ const currentPath = Astro.url.pathname;
     private init(): void {
       this.cacheElements();
       this.setupEventDelegation();
+      this.setupOverlay();
       this.enhanceAccessibility();
     }
 
@@ -622,10 +632,74 @@ const currentPath = Astro.url.pathname;
       });
     }
 
+    private setupOverlay(): void {
+      this.overlay = document.getElementById("admin-nav-overlay");
+      const nav = document.querySelector<HTMLElement>(
+        'nav[aria-label="Admin navigation"]',
+      );
+      if (!this.overlay || !nav) return;
+
+      // Portal the overlay to <body> so it escapes the header's stacking
+      // context. In the root stacking context, z-30 correctly appears above
+      // page content (z-auto) but below the header (z-50) and nav panel.
+      document.body.appendChild(this.overlay);
+
+      this.overlayObserver = new MutationObserver(() => {
+        const isMobileOrTablet = window.innerWidth < 1024;
+        if (nav.classList.contains("nav-open") && isMobileOrTablet) {
+          this.showOverlay();
+        } else {
+          this.hideOverlay();
+        }
+      });
+
+      this.overlayObserver.observe(nav, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+
+      window.addEventListener(
+        "resize",
+        () => {
+          const isMobileOrTablet = window.innerWidth < 1024;
+          if (!nav.classList.contains("nav-open") || !isMobileOrTablet) {
+            this.hideOverlay();
+          }
+        },
+        { signal: this.abortController.signal },
+      );
+    }
+
+    private showOverlay(): void {
+      if (!this.overlay) return;
+      this.overlay.classList.remove("hidden");
+      // Force reflow so the display:block state is committed before the
+      // opacity transition starts — more reliable than requestAnimationFrame
+      // in background/throttled contexts.
+      void this.overlay.offsetHeight;
+      this.overlay.classList.remove("opacity-0");
+    }
+
+    private hideOverlay(): void {
+      if (!this.overlay) return;
+      this.overlay.classList.add("opacity-0");
+      setTimeout(() => {
+        this.overlay?.classList.add("hidden");
+      }, 300);
+    }
+
     public destroy(): void {
       if (this.focusTimeout) {
         clearTimeout(this.focusTimeout);
       }
+
+      if (this.overlayObserver) {
+        this.overlayObserver.disconnect();
+        this.overlayObserver = null;
+      }
+
+      this.overlay?.classList.add("opacity-0");
+      this.overlay?.classList.add("hidden");
 
       this.abortController.abort();
       this.navElements.clear();
