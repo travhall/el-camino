@@ -143,7 +143,7 @@ const displayProducts = hideSoldOut
   role="feed"
   aria-label="Product listings"
   aria-busy="false"
-  class="product-grid grid xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-1 transition-all duration-300"
+  class="product-grid grid xs:grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-1 transition-all duration-300"
   data-category-path={categoryPath}
   data-product-count={displayProducts.length}
   data-slug-to-id={JSON.stringify(slugToIdMap)}
@@ -153,8 +153,10 @@ const displayProducts = hideSoldOut
       // Cards are either filter-hidden (doesn't match URL filters) or scroll-hidden (beyond initial batch).
       // When filteredIdSet is null (no active filters), use scroll-hiding.
       // When filteredIdSet is set (active filters), filter-hide non-matching cards; show all matching.
-      const isFilterHidden = filteredIdSet !== null && !filteredIdSet.has(product.id);
-      const isScrollHidden = filteredIdSet === null && index >= initialCardsToShow;
+      const isFilterHidden =
+        filteredIdSet !== null && !filteredIdSet.has(product.id);
+      const isScrollHidden =
+        filteredIdSet === null && index >= initialCardsToShow;
       const shouldHide = isFilterHidden || isScrollHidden;
 
       return (
@@ -170,7 +172,9 @@ const displayProducts = hideSoldOut
           data-brand={product.brand || ""}
           data-initial-index={index}
           data-categories={JSON.stringify(product.categories || [])}
-          data-out-of-stock={product.inventoryStatus?.isOutOfStock ? "true" : "false"}
+          data-out-of-stock={
+            product.inventoryStatus?.isOutOfStock ? "true" : "false"
+          }
           data-filter-hidden={isFilterHidden ? "true" : undefined}
           style={shouldHide ? "display: none;" : ""}
         >
@@ -274,7 +278,7 @@ const displayProducts = hideSoldOut
 <script>
   // Check for reduced motion preference
   const prefersReducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
+    "(prefers-reduced-motion: reduce)",
   ).matches;
 
   // Module-level responsive columns calculation (used by both scroll and filter systems)
@@ -306,7 +310,9 @@ const displayProducts = hideSoldOut
     const staggerDelay = parseInt(staggerStr.replace("ms", "")) || 0;
 
     // Parse grid entrance delay (mobile: 250ms, desktop: 0ms)
-    const entranceDelayStr = style.getPropertyValue("--grid-entrance-delay").trim();
+    const entranceDelayStr = style
+      .getPropertyValue("--grid-entrance-delay")
+      .trim();
     const entranceDelay = parseInt(entranceDelayStr.replace("ms", "")) || 0;
 
     return {
@@ -363,7 +369,7 @@ const displayProducts = hideSoldOut
       // Set CSS custom property for animation delay
       htmlCard.style.setProperty(
         "--animation-order",
-        animationOrder.toString()
+        animationOrder.toString(),
       );
 
       // Add animating class for temporary will-change
@@ -455,7 +461,7 @@ const displayProducts = hideSoldOut
     const allCards = Array.from(grid.querySelectorAll(".product-card-wrapper"));
     // Only scroll-manage cards that aren't filter-hidden (those are handled by applyClientFilters)
     const scrollPool = allCards.filter(
-      (c) => (c as HTMLElement).dataset.filterHidden !== "true"
+      (c) => (c as HTMLElement).dataset.filterHidden !== "true",
     );
 
     // Progressive enhancement check
@@ -543,7 +549,7 @@ const displayProducts = hideSoldOut
 
             card.style.setProperty(
               "--animation-order",
-              animationOrder.toString()
+              animationOrder.toString(),
             );
             card.classList.add("animating");
             card.classList.remove("opacity-0");
@@ -562,7 +568,7 @@ const displayProducts = hideSoldOut
           }
         });
       },
-      { threshold: 0.1, rootMargin: "200px" }
+      { threshold: 0.1, rootMargin: "200px" },
     );
 
     // Add scroll-pool cards 16+ to observer
@@ -578,7 +584,7 @@ const displayProducts = hideSoldOut
     // Fallback for stuck cards
     const fallbackTimeout = setTimeout(() => {
       const stuckCards = document.querySelectorAll(
-        ".product-card-wrapper.opacity-0"
+        ".product-card-wrapper.opacity-0",
       );
       stuckCards.forEach((card) => {
         const htmlCard = card as HTMLElement;
@@ -605,7 +611,7 @@ const displayProducts = hideSoldOut
       const cardsToAdd = cardsPerRow * 2;
       const newVisibleCount = Math.min(
         visibleCount + cardsToAdd,
-        scrollPool.length
+        scrollPool.length,
       );
 
       // Show the new cards
@@ -631,7 +637,7 @@ const displayProducts = hideSoldOut
 
       // Announce to screen readers
       announceToScreenReader(
-        `Loaded ${cardsToAdd} more products. ${visibleCount} of ${scrollPool.length} total products shown.`
+        `Loaded ${cardsToAdd} more products. ${visibleCount} of ${scrollPool.length} total products shown.`,
       );
 
       // Update grid aria-busy state
@@ -719,7 +725,7 @@ const displayProducts = hideSoldOut
           }
         });
       },
-      { threshold: 0.1, rootMargin: "200px" }
+      { threshold: 0.1, rootMargin: "200px" },
     );
 
     if (loadMoreObserver && trigger) loadMoreObserver.observe(trigger);
@@ -751,19 +757,21 @@ const displayProducts = hideSoldOut
   async function applyClientFilters(
     brands: string[],
     categorySlugs: string[],
-    availability: boolean
+    availability: boolean,
   ) {
     const grid = document.getElementById("filterable-product-grid");
     if (!grid) return;
 
     const allCards = Array.from(
-      grid.querySelectorAll<HTMLElement>(".product-card-wrapper")
+      grid.querySelectorAll<HTMLElement>(".product-card-wrapper"),
     );
-    const slugToId = JSON.parse(
-      grid.dataset.slugToId || "{}"
-    ) as Record<string, string>;
+    const slugToId = JSON.parse(grid.dataset.slugToId || "{}") as Record<
+      string,
+      string
+    >;
     const categoryIds = categorySlugs.map((s) => slugToId[s] ?? s);
-    const hasFilters = brands.length > 0 || categorySlugs.length > 0 || availability;
+    const hasFilters =
+      brands.length > 0 || categorySlugs.length > 0 || availability;
 
     const trigger = document.getElementById("infinite-scroll-trigger");
     const loadMoreContainer = document.getElementById("load-more-container");
@@ -798,7 +806,7 @@ const displayProducts = hideSoldOut
       window.dispatchEvent(
         new CustomEvent("filterresult", {
           detail: { count: allCards.length, total: allCards.length },
-        })
+        }),
       );
       return;
     }
@@ -810,7 +818,7 @@ const displayProducts = hideSoldOut
     allCards.forEach((card) => {
       const cardBrand = card.dataset.brand || "";
       const cardCategories = JSON.parse(
-        card.dataset.categories || "[]"
+        card.dataset.categories || "[]",
       ) as string[];
       const isOutOfStock = card.dataset.outOfStock === "true";
 
@@ -828,7 +836,9 @@ const displayProducts = hideSoldOut
     });
 
     // Mark filter-hidden state
-    nonMatchingCards.forEach((c) => c.setAttribute("data-filter-hidden", "true"));
+    nonMatchingCards.forEach((c) =>
+      c.setAttribute("data-filter-hidden", "true"),
+    );
     matchingCards.forEach((c) => c.removeAttribute("data-filter-hidden"));
 
     // Filters bypass infinite scroll — hide trigger
@@ -871,7 +881,7 @@ const displayProducts = hideSoldOut
           }
         });
       },
-      { threshold: 0.1, rootMargin: "200px" }
+      { threshold: 0.1, rootMargin: "200px" },
     );
 
     // Enter phase: ALL matching cards animate in with column-based stagger.
@@ -893,7 +903,10 @@ const displayProducts = hideSoldOut
         card.classList.add("opacity-100");
         const totalTime =
           ANIMATION_CONFIG.duration + col * ANIMATION_CONFIG.staggerDelay;
-        const t = setTimeout(() => card.classList.remove("animating"), totalTime);
+        const t = setTimeout(
+          () => card.classList.remove("animating"),
+          totalTime,
+        );
         animationTimeouts.push(t);
       } else {
         if (cardAnimationObserver) cardAnimationObserver.observe(card);
@@ -909,7 +922,7 @@ const displayProducts = hideSoldOut
     window.dispatchEvent(
       new CustomEvent("filterresult", {
         detail: { count: matchingCards.length, total: allCards.length },
-      })
+      }),
     );
   }
 
@@ -924,7 +937,7 @@ const displayProducts = hideSoldOut
     applyClientFilters(
       evt.detail.brands,
       evt.detail.categories,
-      evt.detail.availability
+      evt.detail.availability,
     );
   });
 
@@ -937,7 +950,7 @@ const displayProducts = hideSoldOut
     window.dispatchEvent(
       new CustomEvent("filterchange", {
         detail: { brands, categories, availability },
-      })
+      }),
     );
   });
 
