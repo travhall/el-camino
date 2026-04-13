@@ -60,7 +60,7 @@ const getImageDimensions = () => {
     case "grid":
       return { width: 400, height: 240 };
     case "teaser":
-      return { width: 400, height: 225 };
+      return { width: 600, height: 400 };
     case "masonry":
     default:
       return { width: featured ? 800 : 600, height: featured ? 533 : 400 };
@@ -80,7 +80,7 @@ let imageSizes =
   variant === "list"
     ? "(max-width: 768px) 0px, 256px"
     : variant === "teaser"
-      ? "(max-width: 767px) 100vw, 400px"
+      ? "(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
       : featured
         ? "(max-width: 767px) 100vw, (max-width: 1535px) 67vw, 50vw"
         : "(max-width: 767px) 100vw, 33vw";
@@ -142,7 +142,7 @@ const getCardClasses = () => {
       return `${baseClasses} flex flex-col p-1 transition-all duration-300 w-full max-w-full min-w-0`;
 
     case "teaser":
-      return `${baseClasses} flex flex-col overflow-hidden rounded-sm transition-all duration-300 w-full max-w-full min-w-0`;
+      return `${baseClasses} flex flex-col justify-end overflow-hidden aspect-[3/2] transition-all duration-300 w-full max-w-full min-w-0`;
 
     case "masonry":
     default:
@@ -165,7 +165,7 @@ const getImageContainerClasses = () => {
       return "block overflow-hidden relative";
 
     case "teaser":
-      return "block overflow-hidden relative aspect-video";
+      return "absolute inset-0";
 
     case "masonry":
     default:
@@ -187,7 +187,7 @@ const getImageClasses = () => {
       return `${baseClasses} w-full h-48 group-hover:scale-105 aspect-video`;
 
     case "teaser":
-      return `${baseClasses} w-full h-full group-hover:scale-105`;
+      return "object-cover w-full h-full group-hover:scale-105 transition-all duration-300 mix-blend-luminosity group-hover:mix-blend-normal";
 
     case "masonry":
     default:
@@ -208,7 +208,7 @@ const getContentClasses = () => {
       return "flex flex-col p-4 flex-1 gap-2 h-auto";
 
     case "teaser":
-      return "flex flex-col p-4 flex-1 gap-1.5";
+      return "relative z-10 flex flex-col gap-1.5 p-4";
 
     case "masonry":
     default:
@@ -228,7 +228,7 @@ const getTitleClasses = () => {
       return "font-display font-bold text-3xl lg:text-4xl leading-[0.8] text-(--content-heading) line-clamp-2";
 
     case "teaser":
-      return "font-display font-bold text-xl lg:text-2xl leading-tight text-(--content-heading) line-clamp-2";
+      return "font-display font-bold text-4xl lg:text-5xl leading-[0.9] text-(--content-heading) line-clamp-2";
 
     case "masonry":
     default:
@@ -245,7 +245,7 @@ const getExcerptClasses = () => {
       return "text-sm leading-snug text-(--content-body) line-clamp-3 mb-2";
 
     case "teaser":
-      return "text-sm leading-snug text-(--content-body) line-clamp-2";
+      return "hidden";
 
     case "masonry":
     default:
@@ -341,7 +341,14 @@ const getExcerptClasses = () => {
     )
   }
 
-  <!-- Content Container - Layout preserved from _BU -->
+  <!-- Gradient overlay for teaser — ensures text legibility over background image -->
+  {
+    variant === "teaser" && (
+      <div class="absolute inset-0 bg-linear-to-t from-(--ui-card-surface) via-(--ui-card-surface)/70 to-transparent pointer-events-none" />
+    )
+  }
+
+  <!-- Content Container -->
   <div class={getContentClasses()}>
     <!-- Category Badge -->
     <span
@@ -355,7 +362,7 @@ const getExcerptClasses = () => {
 
     <!-- Date  -->
     {
-      variant !== "masonry" && (
+      variant !== "masonry" && variant !== "teaser" && (
         <time
           datetime={post.date}
           class="text-xs text-(--content-meta-small) mb-1"
@@ -411,12 +418,9 @@ const getExcerptClasses = () => {
     <!-- Teaser read-more affordance -->
     {
       variant === "teaser" && (
-        <span class="mt-auto flex items-center pt-2 text-xs font-bold text-(--content-link) self-start">
+        <span class="mt-auto flex items-center pt-2 font-bold text-(--content-link) self-start">
           Read More{" "}
-          <Icon
-            class="h-4 w-4 text-(--content-emphasis)"
-            name="uil:arrow-right"
-          />
+          <Icon class="h-5 w-5 text-(--content-link)" name="uil:arrow-right" />
         </span>
       )
     }

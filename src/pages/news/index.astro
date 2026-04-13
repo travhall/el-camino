@@ -181,7 +181,7 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
       (function () {
         try {
           if (!new URLSearchParams(window.location.search).has("view")) {
-            var pref = sessionStorage.getItem("newsViewPreference");
+            var pref = localStorage.getItem("newsViewPreference");
             if (pref && pref !== "grid") {
               var params = new URLSearchParams(window.location.search);
               params.set("view", pref);
@@ -338,78 +338,6 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
 </Layout>
 
 <script>
-  // console.log("🚨 NEWS PAGE SCRIPT RUNNING!");
-  // console.log("🚨 Location:", window.location.href);
-  
-  setTimeout(() => {
-    // console.log("🚨 Testing DOM elements...");
-    
-    // Test if NewsSearchSort component rendered
-    const newsSearchSort = document.querySelector('[class*="NewsSearchSort"], .news-search-sort');
-    // console.log("🚨 NewsSearchSort element:", newsSearchSort);
-    
-    // Test view toggle buttons specifically
-    const viewButtons = document.querySelectorAll('.view-toggle');
-    // console.log("🚨 View toggle buttons:", viewButtons.length);
-    viewButtons.forEach((btn, i) => {
-      // console.log(`🚨 Button ${i}:`, btn, btn.getAttribute('data-view'));
-    });
-    
-    // Test for any buttons at all
-    const allButtons = document.querySelectorAll('button');
-    // console.log("🚨 All buttons on page:", allButtons.length);
-    
-    // Test clear search button
-    const clearBtn = document.querySelector('.clear-search-btn');
-    // console.log("🚨 Clear search button:", clearBtn);
-    
-    // REAL FUNCTIONALITY - Add actual working handlers
-    if (viewButtons.length > 0) {
-      viewButtons.forEach((btn, i) => {
-        btn.addEventListener('click', () => {
-          // console.log(`🚨 REAL HANDLER - Button ${i} clicked!`);
-          const view = btn.getAttribute('data-view');
-          const currentParams = new URLSearchParams(window.location.search);
-          
-          if (view === 'grid') {
-            currentParams.delete('view');
-          } else if (view === 'list') {
-            currentParams.set('view', 'list');
-          }
-          
-          // Save preference
-          try {
-            sessionStorage.setItem('newsViewPreference', view || 'grid');
-          } catch (e) {
-            // console.log('localStorage failed:', e);
-          }
-          
-          const newUrl = window.location.pathname + (currentParams.toString() ? '?' + currentParams.toString() : '');
-          // console.log(`🚨 Navigating to: ${newUrl}`);
-          window.location.href = newUrl;
-        });
-      });
-      // console.log("🚨 Added REAL view toggle handlers");
-    }
-    
-    // REAL CLEAR BUTTON FUNCTIONALITY
-    if (clearBtn) {
-      clearBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        // console.log("🚨 REAL CLEAR HANDLER clicked!");
-        const currentParams = new URLSearchParams(window.location.search);
-        currentParams.delete('search');
-        currentParams.delete('page'); // Reset pagination
-        
-        const newUrl = window.location.pathname + (currentParams.toString() ? '?' + currentParams.toString() : '');
-        // console.log(`🚨 Clearing search, navigating to: ${newUrl}`);
-        window.location.href = newUrl;
-      });
-      // console.log("🚨 Added REAL clear button handler");
-    }
-    
-  }, 2000);
-
   document.addEventListener("astro:page-load", () => {
     // CRITICAL: Only run on the news index page, not article or tag pages
     if (window.location.pathname !== '/news') {
@@ -422,7 +350,7 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
     // This handles View Transitions navigations where the is:inline head
     // script does not re-run.
     if (!urlParams.has("view")) {
-      const stored = sessionStorage.getItem("newsViewPreference");
+      const stored = localStorage.getItem("newsViewPreference");
       if (stored && stored !== "grid") {
         const params = new URLSearchParams(window.location.search);
         params.set("view", stored);
@@ -434,9 +362,6 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
     }
 
     const currentView = urlParams.get("view") || "grid";
-
-    // Store current view preference (simplified)
-    sessionStorage.setItem("newsViewPreference", currentView);
 
     // Clean form parameter handling - only add view to news-specific forms
     const preserveViewInForms = () => {
