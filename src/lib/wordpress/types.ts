@@ -3,6 +3,7 @@
 export interface WordPressPost {
   id: number;
   date: string;
+  modified: string;
   slug: string;
   title: {
     rendered: string;
@@ -333,7 +334,7 @@ export function generateStructuredData(
       },
     },
     datePublished: post.date,
-    dateModified: post.date,
+    dateModified: post.modified,
     articleSection: embeddedData.category?.name,
     description: fallbackContent.excerpt,
     wordCount,

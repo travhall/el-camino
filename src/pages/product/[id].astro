@@ -725,12 +725,21 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
               return (
                 <div class="mt-6">
                   <div class="flex items-center mb-1">
-                    <span class="text-sm font-medium">{displayName}</span>
+                    <span
+                      class="text-sm font-medium"
+                      id={`attr-label-${attributeType}`}
+                    >
+                      {displayName}
+                    </span>
                     {sizeGuideCategory && attributeType === "size" && (
                       <SizeGuide category={sizeGuideCategory} />
                     )}
                   </div>
-                  <div class="flex flex-wrap gap-2">
+                  <div
+                    class="flex flex-wrap gap-2"
+                    role="group"
+                    aria-labelledby={`attr-label-${attributeType}`}
+                  >
                     {isSingleValue
                       ? attributeValues.map((value) => (
                           <span
@@ -763,12 +772,16 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
                                   ? "border border-(--ui-variant-selected-border) bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text)"
                                   : "border border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text)",
                                 !isAvailable &&
-                                  "opacity-40 line-through cursor-not-allowed",
+                                  "text-(--content-meta) line-through cursor-not-allowed pointer-events-none",
                               ]}
                               disabled={!isAvailable}
-                              title={!isAvailable ? "Out of stock" : undefined}
+                              aria-pressed={isSelected ? "true" : "false"}
                               aria-label={
-                                !isAvailable ? `${value} — out of stock` : value
+                                isSelected
+                                  ? `${value}, selected`
+                                  : !isAvailable
+                                    ? `${value} — out of stock`
+                                    : value
                               }
                             >
                               {value}

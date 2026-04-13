@@ -116,7 +116,7 @@ const structuredData = {
     },
   },
   datePublished: post.date,
-  dateModified: post.date,
+  dateModified: post.modified,
   articleSection: category?.name,
   description: post.excerpt.rendered.replace(/<[^>]*>/g, "").substring(0, 160),
   keywords: tags.length > 0 ? tags.map((tag) => tag.name) : undefined,
@@ -143,16 +143,21 @@ const structuredData = {
     crossorigin
   />
 
-  <!-- PHASE 4: Preload LCP Image with explicit format hint -->
-  <!-- This triggers earlier fetch and format negotiation -->
+  <!-- Preload LCP hero image with responsive srcset so mobile gets the right size -->
   {
-    imageSet && (
+    imageSet && rawImageUrl && (
       <link
         rel="preload"
         as="image"
         href={imageSet.avif || imageSet.webp || imageSet.jpeg}
         fetchpriority="high"
         type="image/avif"
+        imagesrcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
+          rawImageUrl,
+          "avif",
+          { width: heroImageWidth, height: heroImageHeight, quality: 75 },
+        )}
+        imagesizes="(max-width: 768px) 100vw, (max-width: 1024px) 66vw, 1200px"
         slot="head"
       />
     )
@@ -207,7 +212,7 @@ const structuredData = {
                     width="96"
                     height="96"
                     class="w-12 h-12 rounded-full opacity-0 transition-opacity duration-300"
-                    loading="lazy"
+                    loading="eager"
                     onload="this.style.opacity='0.9'; document.getElementById('author-avatar-placeholder')?.remove();"
                     onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('author-avatar-placeholder')?.remove();`}
                   />

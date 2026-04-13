@@ -157,6 +157,7 @@ function processPost(post: any): WordPressPost {
     return {
       id: post.ID || 0,
       date: post.date || new Date().toISOString(),
+      modified: post.modified || post.date || new Date().toISOString(),
       slug: post.slug || "",
       title: { rendered: post.title || "Untitled" },
       excerpt: { rendered: post.excerpt || "" },
@@ -215,6 +216,7 @@ function processPost(post: any): WordPressPost {
     return {
       id: post?.ID || 0,
       date: new Date().toISOString(),
+      modified: new Date().toISOString(),
       slug: post?.slug || "untitled",
       title: { rendered: "Content temporarily unavailable" },
       excerpt: { rendered: "Please try again later." },
@@ -322,7 +324,7 @@ export async function getPost(slug: string): Promise<WordPressPost | null> {
   try {
     const cacheKey = `post_${slug}`;
     const post = await fetchWithCache<any>(
-      `/posts/slug:${slug}?fields=ID,title,date,excerpt,content,slug,featured_image,author,categories,tags`,
+      `/posts/slug:${slug}?fields=ID,title,date,modified,excerpt,content,slug,featured_image,author,categories,tags`,
       cacheKey
     );
 

@@ -288,14 +288,12 @@ export class PDPUIManager {
 
         // Update availability styling
         if (!isAvailable) {
-          btn.classList.add("opacity-40", "line-through", "cursor-not-allowed");
-          btn.classList.remove("opacity-100");
-          btn.title = "Out of stock";
+          btn.classList.add("text-(--content-meta)", "line-through", "cursor-not-allowed", "pointer-events-none");
+          btn.classList.remove("opacity-40", "opacity-100");
           btn.setAttribute("aria-label", `${value} — out of stock`);
         } else {
-          btn.classList.remove("opacity-40", "line-through", "cursor-not-allowed");
-          btn.title = "";
-          btn.setAttribute("aria-label", value);
+          btn.classList.remove("text-(--content-meta)", "line-through", "cursor-not-allowed", "pointer-events-none", "opacity-40");
+          btn.setAttribute("aria-label", isSelected ? `${value}, selected` : value);
         }
 
         // Update selected state — use dedicated variant-selected token
@@ -311,6 +309,7 @@ export class PDPUIManager {
             "text-(--ui-variant-selected-text)",
             "border-(--ui-variant-selected-border)"
           );
+          btn.setAttribute("aria-pressed", "true");
         } else {
           btn.classList.remove(
             "bg-(--ui-variant-selected-surface)",
@@ -322,6 +321,7 @@ export class PDPUIManager {
             "text-(--ui-input-text)",
             "border-(--ui-input-border)/50"
           );
+          btn.setAttribute("aria-pressed", "false");
         }
       });
     });

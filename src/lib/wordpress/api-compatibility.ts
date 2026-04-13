@@ -108,6 +108,7 @@ export function processPostWithCompatibility(post: any): WordPressPost {
   return {
     id: post.ID || 0,
     date: post.date || new Date().toISOString(),
+    modified: post.modified || post.date || new Date().toISOString(),
     slug: post.slug || "",
     title: { rendered: post.title || "Untitled" },
     excerpt: { rendered: post.excerpt || "" },
