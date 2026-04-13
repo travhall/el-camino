@@ -461,6 +461,11 @@ const hasActiveFilters = activeFilterCount > 0;
     // Mobile (< 768px): bottom drawer / Tablet (768–1023px): right panel
     private initClosedState(): void {
       if (!this.container) return;
+      if (window.innerWidth >= 1024) {
+        // Desktop: lg: CSS handles visibility; clear any translate classes
+        this.container.classList.remove("translate-x-full", "translate-y-full");
+        return;
+      }
       if (window.innerWidth < 768) {
         this.container.classList.remove("translate-x-full");
         this.container.classList.add("translate-y-full");

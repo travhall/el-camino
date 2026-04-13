@@ -558,6 +558,11 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
 
     private initClosedState(): void {
       if (!this.container) return;
+      if (window.innerWidth >= 1024) {
+        // Desktop: lg: CSS handles visibility; clear any translate classes
+        this.container.classList.remove("translate-x-full", "translate-y-full");
+        return;
+      }
       if (this.isNarrowMobile()) {
         this.container.classList.remove("translate-x-full");
         this.container.classList.add("translate-y-full");
@@ -762,7 +767,7 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
 
   document.addEventListener("astro:before-preparation", () => {
     const container = document.getElementById("filter-container");
-    if (container) {
+    if (container && window.innerWidth < 1024) {
       const cls = window.innerWidth < 768 ? "translate-y-full" : "translate-x-full";
       container.classList.add(cls, "opacity-0", "pointer-events-none");
     }
