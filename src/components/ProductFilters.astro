@@ -141,10 +141,10 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
     class="lg:hidden fixed inset-0 bg-(--ui-modal-overlay)/90 z-40 opacity-0 pointer-events-none transition-opacity duration-300"
   />
 
-  <!-- Single Form — Desktop static sidebar, Mobile bottom drawer -->
+  <!-- Single Form — Desktop static sidebar, Tablet right panel, Mobile bottom drawer -->
   <div
     id="filter-container"
-    class="lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-md lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-secondary)/0 z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+    class="lg:static lg:transform-none lg:h-auto lg:max-h-none lg:w-auto lg:opacity-100 lg:pointer-events-auto lg:bg-(--surface-secondary)/0 lg:transition-none md:top-0 md:right-0 md:left-auto md:bottom-auto md:h-screen md:max-h-none md:w-md fixed bottom-0 left-0 right-0 max-h-[80vh] bg-(--surface-secondary) z-500 overflow-y-auto opacity-0 pointer-events-none transition-all duration-300"
   >
     <form class="px-4 lg:p-2" id="filter-form">
       <!-- Mobile Header -->
@@ -551,25 +551,66 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
       this.setupClearButtons();
     }
 
+    // Mobile (< 768px): bottom drawer / Tablet (768–1023px): right panel
+    private isNarrowMobile(): boolean {
+      return window.innerWidth < 768;
+    }
+
+    private initClosedState(): void {
+      if (!this.container) return;
+      if (this.isNarrowMobile()) {
+        this.container.classList.remove("translate-x-full");
+        this.container.classList.add("translate-y-full");
+      } else {
+        this.container.classList.remove("translate-y-full");
+        this.container.classList.add("translate-x-full");
+      }
+    }
+
     private setupMobileDrawer(): void {
       const toggle = document.getElementById("mobile-filter-toggle");
       const close = document.getElementById("mobile-filter-close");
       const { signal } = this.abortController;
 
+      this.initClosedState();
+
       toggle?.addEventListener("click", () => this.openMobileDrawer(), { signal });
       close?.addEventListener("click", () => this.closeMobileDrawer(), { signal });
       this.overlay?.addEventListener("click", () => this.closeMobileDrawer(), { signal });
+
+      // When crossing the mobile/tablet boundary while drawer is closed, update
+      // the hidden transform so it re-enters from the correct edge.
+      window.addEventListener("resize", () => {
+        if (this.container?.classList.contains("opacity-0")) {
+          this.initClosedState();
+        }
+      }, { signal });
     }
 
     private openMobileDrawer(): void {
+      // Lower the header below <main>'s stacking context (z-10) so the filter
+      // panel and overlay — which live inside <main> — can paint above it,
+      // matching MiniCart's behavior. Body overflow:hidden prevents any scroll
+      // that would expose the header being temporarily behind main content.
+      const header = document.getElementById("site-header");
+      if (header) header.style.zIndex = "9";
+
       this.overlay?.classList.remove("pointer-events-none", "opacity-0");
-      this.container?.classList.remove("translate-y-full", "opacity-0", "pointer-events-none");
+      if (this.isNarrowMobile()) {
+        this.container?.classList.remove("translate-y-full", "opacity-0", "pointer-events-none");
+      } else {
+        this.container?.classList.remove("translate-x-full", "opacity-0", "pointer-events-none");
+      }
       document.body.style.overflow = "hidden";
     }
 
     private closeMobileDrawer(): void {
       this.overlay?.classList.add("opacity-0");
-      this.container?.classList.add("translate-y-full", "opacity-0");
+      if (this.isNarrowMobile()) {
+        this.container?.classList.add("translate-y-full", "opacity-0");
+      } else {
+        this.container?.classList.add("translate-x-full", "opacity-0");
+      }
 
       let hasCompleted = false;
       const handleTransitionEnd = () => {
@@ -577,6 +618,8 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
         hasCompleted = true;
         this.overlay?.classList.add("pointer-events-none");
         this.container?.classList.add("pointer-events-none");
+        const header = document.getElementById("site-header");
+        if (header) header.style.zIndex = "";
       };
 
       this.container?.addEventListener("transitionend", handleTransitionEnd, { once: true });
@@ -710,15 +753,19 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
     public destroy(): void {
       this.abortController.abort();
       document.body.style.overflow = "";
+      const header = document.getElementById("site-header");
+      if (header) header.style.zIndex = "";
     }
   }
 
   // ── Astro lifecycle handlers ─────────────────────────────────────────────────
 
   document.addEventListener("astro:before-preparation", () => {
-    document
-      .getElementById("filter-container")
-      ?.classList.add("translate-y-full", "opacity-0", "pointer-events-none");
+    const container = document.getElementById("filter-container");
+    if (container) {
+      const cls = window.innerWidth < 768 ? "translate-y-full" : "translate-x-full";
+      container.classList.add(cls, "opacity-0", "pointer-events-none");
+    }
     document
       .getElementById("mobile-filter-overlay")
       ?.classList.add("pointer-events-none", "opacity-0");

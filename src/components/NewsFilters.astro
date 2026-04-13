@@ -116,10 +116,10 @@ const hasActiveFilters = activeFilterCount > 0;
     class="lg:hidden fixed inset-0 bg-(--ui-modal-overlay)/90 z-40 opacity-0 pointer-events-none transition-opacity duration-300"
   />
 
-  <!-- Single Form - Desktop Static, Mobile Drawer -->
+  <!-- Single Form - Desktop Static, Tablet right panel, Mobile bottom drawer -->
   <div
     id="news-filter-container"
-    class="lg:static lg:transform-none lg:max-h-none fixed bottom-0 left-0 right-0 md:left-auto md:w-md lg:w-auto bg-(--surface-secondary) lg:bg-(--surface-secondary)/0 border-4 border-(--border-secondary) z-500 max-h-[80vh] overflow-y-auto transform translate-y-full lg:translate-y-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto transition-all duration-300 lg:transition-none"
+    class="lg:static lg:transform-none lg:h-auto lg:max-h-none lg:w-auto lg:opacity-100 lg:pointer-events-auto lg:bg-(--surface-secondary)/0 lg:transition-none md:top-0 md:right-0 md:left-auto md:bottom-auto md:h-screen md:max-h-none md:w-md fixed bottom-0 left-0 right-0 max-h-[80vh] bg-(--surface-secondary) border-4 border-(--border-secondary) z-500 overflow-y-auto opacity-0 pointer-events-none transition-all duration-300"
   >
     <form
       method="GET"
@@ -458,25 +458,62 @@ const hasActiveFilters = activeFilterCount > 0;
       }
     }
 
+    // Mobile (< 768px): bottom drawer / Tablet (768–1023px): right panel
+    private initClosedState(): void {
+      if (!this.container) return;
+      if (window.innerWidth < 768) {
+        this.container.classList.remove("translate-x-full");
+        this.container.classList.add("translate-y-full");
+      } else {
+        this.container.classList.remove("translate-y-full");
+        this.container.classList.add("translate-x-full");
+      }
+    }
+
     private setupMobileDrawer(): void {
       const toggle = document.getElementById("mobile-news-filter-toggle");
       const close = document.getElementById("mobile-news-filter-close");
       const { signal } = this.abortController;
 
+      this.initClosedState();
+
       toggle?.addEventListener("click", () => this.openMobileDrawer(), { signal });
       close?.addEventListener("click", () => this.closeMobileDrawer(), { signal });
       this.overlay?.addEventListener("click", () => this.closeMobileDrawer(), { signal });
+
+      // When crossing the mobile/tablet boundary while drawer is closed, update
+      // the hidden transform so it re-enters from the correct edge.
+      window.addEventListener("resize", () => {
+        if (this.container?.classList.contains("opacity-0")) {
+          this.initClosedState();
+        }
+      }, { signal });
     }
 
     private openMobileDrawer(): void {
+      // Lower the header below <main>'s stacking context (z-10) so the filter
+      // panel and overlay — which live inside <main> — can paint above it,
+      // matching MiniCart's behavior. Body overflow:hidden prevents any scroll
+      // that would expose the header being temporarily behind main content.
+      const header = document.getElementById("site-header");
+      if (header) header.style.zIndex = "9";
+
       this.overlay?.classList.remove("pointer-events-none", "opacity-0");
-      this.container?.classList.remove("translate-y-full", "opacity-0", "pointer-events-none");
+      if (window.innerWidth < 768) {
+        this.container?.classList.remove("translate-y-full", "opacity-0", "pointer-events-none");
+      } else {
+        this.container?.classList.remove("translate-x-full", "opacity-0", "pointer-events-none");
+      }
       document.body.style.overflow = "hidden";
     }
 
     private closeMobileDrawer(): void {
       this.overlay?.classList.add("opacity-0");
-      this.container?.classList.add("translate-y-full", "opacity-0");
+      if (window.innerWidth < 768) {
+        this.container?.classList.add("translate-y-full", "opacity-0");
+      } else {
+        this.container?.classList.add("translate-x-full", "opacity-0");
+      }
 
       let hasCompleted = false;
       const handleTransitionEnd = () => {
@@ -484,6 +521,8 @@ const hasActiveFilters = activeFilterCount > 0;
         hasCompleted = true;
         this.overlay?.classList.add("pointer-events-none");
         this.container?.classList.add("pointer-events-none");
+        const header = document.getElementById("site-header");
+        if (header) header.style.zIndex = "";
       };
 
       this.container?.addEventListener("transitionend", handleTransitionEnd, { once: true });
@@ -739,6 +778,8 @@ const hasActiveFilters = activeFilterCount > 0;
     public destroy(): void {
       this.abortController.abort();
       document.body.style.overflow = "";
+      const header = document.getElementById("site-header");
+      if (header) header.style.zIndex = "";
     }
   }
 
