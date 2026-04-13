@@ -293,7 +293,9 @@ export class PDPUIManager {
           btn.setAttribute("aria-label", `${value} — out of stock`);
         } else {
           btn.classList.remove("text-(--content-meta)", "line-through", "cursor-not-allowed", "pointer-events-none", "opacity-40");
-          btn.setAttribute("aria-label", isSelected ? `${value}, selected` : value);
+          // Remove aria-label on available buttons — aria-pressed conveys selection state,
+          // and WCAG 2.5.3 requires the accessible name to match visible text.
+          btn.removeAttribute("aria-label");
         }
 
         // Update selected state — use dedicated variant-selected token

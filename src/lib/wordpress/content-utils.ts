@@ -250,7 +250,41 @@ export function processRawWordPressHTML(
     }
   );
 
-  // Step 2: Process <img> tags — inject dimensions and CDN routing.
+  // Step 2: Inject title attributes on <iframe> tags that lack one.
+  // WCAG 4.1.2 / Lighthouse frame-title: every iframe must have a descriptive title
+  // for screen readers. WordPress post content may contain raw iframes (e.g. from
+  // shortcodes or classic editor embeds) that were never processed by WPEmbed.astro.
+  processed = processed.replace(/<iframe([^>]*)>/gi, (_match, attrs: string) => {
+    // Already has a title — leave it alone
+    if (/\btitle\s*=/i.test(attrs)) {
+      return `<iframe${attrs}>`;
+    }
+
+    // Derive a meaningful title from the src URL when possible
+    const srcMatch = attrs.match(/src=["']([^"']+)["']/i);
+    const src = srcMatch ? srcMatch[1] : "";
+
+    let title = "Embedded content";
+    if (src.includes("youtube.com") || src.includes("youtu.be")) {
+      title = "YouTube video player";
+    } else if (src.includes("vimeo.com")) {
+      title = "Vimeo video player";
+    } else if (src.includes("spotify.com")) {
+      title = "Spotify player";
+    } else if (src.includes("soundcloud.com")) {
+      title = "SoundCloud player";
+    } else if (src.includes("google.com/maps")) {
+      title = "Google Maps";
+    } else if (src.includes("twitter.com") || src.includes("x.com")) {
+      title = "Twitter / X post";
+    } else if (src.includes("instagram.com")) {
+      title = "Instagram post";
+    }
+
+    return `<iframe${attrs} title="${title}">`;
+  });
+
+  // Step 4: Process <img> tags — inject dimensions and CDN routing.
   processed = processed.replace(/<img([^>]*)>/gi, (_match, attrs: string) => {
     const widthMatch = attrs.match(/width=["']?(\d+)["']?/i);
     const heightMatch = attrs.match(/height=["']?(\d+)["']?/i);
