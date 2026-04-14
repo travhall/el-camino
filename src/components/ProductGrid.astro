@@ -190,39 +190,33 @@ const displayProducts = hideSoldOut
     })
   }
 
-  <!-- Infinite Scroll Trigger -->
-  <div
-    id="infinite-scroll-trigger"
-    class="col-span-full h-20 flex items-center justify-center"
-    style="display: none;"
-  >
-    <div class="flex items-center space-x-3">
-      <div
-        class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"
-      >
-      </div>
-      <span class="text-(--content-body) font-medium"
-        >Loading more products...</span
-      >
-    </div>
-  </div>
+</div>
 
-  <!-- Load More Button (Progressive Enhancement Fallback) -->
-  <div
-    id="load-more-container"
-    class="col-span-full flex items-center justify-center py-8"
-    style="display: none;"
-  >
-    <button
-      id="load-more-button"
-      type="button"
-      class="font-sans font-semibold text-sm text-center lg:text-base py-3 px-6 lg:py-3 lg:px-8 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
-      aria-label="Load more products"
+<!-- Infinite Scroll Trigger — lives OUTSIDE the product grid so that its
+     display:none → display:flex transition doesn't expand the grid's height
+     while it's in the viewport, which was causing CLS = 0.066 on category pages. -->
+<div
+  id="infinite-scroll-trigger"
+  class="h-20 flex items-center justify-center"
+  style="display: none;"
+>
+  <div class="flex items-center space-x-3">
+    <div
+      class="animate-spin rounded-full h-5 w-5 border-2 border-ui-accent border-t-transparent"
     >
-      Load More Products
-    </button>
+    </div>
+    <span class="text-(--content-body) font-medium"
+      >Loading more products...</span
+    >
   </div>
 </div>
+
+<!-- Load More Button (Progressive Enhancement Fallback) -->
+<div
+  id="load-more-container"
+  class="flex items-center justify-center py-8"
+  style="display: none;"
+>
 
 <!-- Enhanced Loading Overlay -->
 <div
