@@ -225,6 +225,40 @@ export function processRawWordPressHTML(
 
   let processed = html;
 
+  // Step 0: Replace YouTube iframes with a lightweight facade.
+  // The live YouTube player is the LCP element and takes 8-9s to load.
+  // A static thumbnail from img.youtube.com loads in ~200ms, improving LCP
+  // dramatically. The player loads only when the user clicks to play.
+  // Also switches to youtube-nocookie.com to eliminate SameSite cookie warnings.
+  //
+  // Handles two WordPress patterns:
+  //   A) <span class="embed-youtube"><iframe src="...youtube.com/embed/ID..."></iframe></span>
+  //   B) <iframe src="...youtube.com/embed/ID..."></iframe>  (raw embed)
+
+  function youtubeFacadeHtml(videoId: string): string {
+    const thumb = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    return (
+      `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.5rem 0;background:var(--surface-secondary);border-radius:0.5rem;" class="youtube-facade" data-videoid="${videoId}">` +
+      `<img src="${thumb}" alt="YouTube video thumbnail" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" width="480" height="360" loading="lazy" decoding="async" />` +
+      `<button class="youtube-play-btn" data-videoid="${videoId}" aria-label="Play YouTube video" style="position:absolute;inset:0;width:100%;height:100%;background:transparent;border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;">` +
+      `<span style="width:4rem;height:4rem;border-radius:9999px;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;transition:background-color 0.2s;" aria-hidden="true">` +
+      `<svg style="width:2rem;height:2rem;fill:white;margin-left:0.25rem;" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>` +
+      `</span></button></div>`
+    );
+  }
+
+  // Pattern A: span.embed-youtube wrapper containing a YouTube iframe
+  processed = processed.replace(
+    /<span[^>]*class="[^"]*embed-youtube[^"]*"[^>]*>[\s\S]*?<iframe[^>]*src=["']https?:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/([^"'?&\s/]+)[^"']*["'][^>]*>(?:<\/iframe>)?[\s\S]*?<\/span>/gi,
+    (_match: string, videoId: string) => youtubeFacadeHtml(videoId)
+  );
+
+  // Pattern B: standalone YouTube iframe not inside an embed-youtube span
+  processed = processed.replace(
+    /<iframe[^>]*src=["']https?:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/([^"'?&\s/]+)[^"']*["'][^>]*>(?:<\/iframe>)?/gi,
+    (_match: string, videoId: string) => youtubeFacadeHtml(videoId)
+  );
+
   // Step 1: Make iframe embeds responsive to prevent CLS.
   // WordPress outputs: <span class="embed-youtube" style="..."><iframe width="640" height="360" ...>
   // The fixed pixel dimensions cause layout shift when CSS constrains the width.

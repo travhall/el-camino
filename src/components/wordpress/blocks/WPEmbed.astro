@@ -41,15 +41,34 @@ const videoId = getVideoId(url, embedType);
 
 <div class="wp-embed my-8">
   {embedType === 'youtube' && videoId ? (
-    <div class="aspect-video bg-(--surface-secondary) rounded-lg overflow-hidden">
-      <iframe
-        src={`https://www.youtube.com/embed/${videoId}`}
-        title="YouTube video player"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen
-        class="w-full h-full youtube-embed"
+    <!-- Facade: static thumbnail + play button; iframe loads only on click -->
+    <div
+      class="youtube-facade aspect-video bg-(--surface-secondary) rounded-lg overflow-hidden relative group"
+      data-videoid={videoId}
+    >
+      <img
+        src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+        alt="YouTube video thumbnail"
+        class="w-full h-full object-cover"
+        width="480"
+        height="360"
+        decoding="async"
         loading="lazy"
       />
+      <button
+        class="youtube-play-btn absolute inset-0 w-full h-full flex items-center justify-center bg-transparent border-0 cursor-pointer"
+        data-videoid={videoId}
+        aria-label="Play YouTube video"
+      >
+        <span
+          class="w-16 h-16 rounded-full bg-black/70 flex items-center justify-center group-hover:bg-[#FF0000] transition-colors duration-200 pointer-events-none"
+          aria-hidden="true"
+        >
+          <svg class="w-8 h-8 text-white ml-1" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </span>
+      </button>
     </div>
   ) : embedType === 'vimeo' && videoId ? (
     <div class="aspect-video bg-(--surface-secondary) rounded-lg overflow-hidden">
@@ -72,9 +91,9 @@ const videoId = getVideoId(url, embedType);
           </svg>
           <span class="font-semibold text-(--content-heading)">Twitter Post</span>
         </div>
-        <a 
-          href={url} 
-          target="_blank" 
+        <a
+          href={url}
+          target="_blank"
           rel="noopener noreferrer"
           class="text-(--ui-accent) hover:underline"
         >
@@ -94,9 +113,9 @@ const videoId = getVideoId(url, embedType);
           </svg>
           <span class="font-semibold text-(--content-heading)">Instagram Post</span>
         </div>
-        <a 
-          href={url} 
-          target="_blank" 
+        <a
+          href={url}
+          target="_blank"
           rel="noopener noreferrer"
           class="text-(--ui-accent) hover:underline"
         >
@@ -113,9 +132,35 @@ const videoId = getVideoId(url, embedType);
   )}
 </div>
 
+<script>
+  // YouTube facade: replace thumbnail+button with live iframe on click.
+  // Uses youtube-nocookie.com to avoid SameSite cookie issues.
+  // Event delegation handles multiple embeds per page with a single listener.
+  document.addEventListener('click', (e: MouseEvent) => {
+    const btn = (e.target as Element).closest<HTMLButtonElement>('.youtube-play-btn');
+    if (!btn) return;
+
+    const videoId = btn.dataset.videoid;
+    const container = btn.closest<HTMLElement>('.youtube-facade');
+    if (!videoId || !container) return;
+
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
+    iframe.title = 'YouTube video player';
+    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+    iframe.setAttribute('allowfullscreen', '');
+    iframe.className = 'absolute inset-0 w-full h-full';
+    iframe.style.border = 'none';
+
+    // Swap facade for live player
+    container.innerHTML = '';
+    container.appendChild(iframe);
+    iframe.focus();
+  }, { passive: true });
+</script>
+
 <style>
-  .youtube-embed,
   .vimeo-embed {
-    border: none; /* Replaces frameborder="0" */
+    border: none;
   }
 </style>
