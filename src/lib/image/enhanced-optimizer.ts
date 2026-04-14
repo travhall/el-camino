@@ -364,3 +364,31 @@ export class EnhancedImageOptimizer {
 }
 
 export default EnhancedImageOptimizer;
+
+/**
+ * Route any external image URL through Netlify Image CDN.
+ *
+ * Single canonical helper for all components — server-side and client-side alike.
+ * Handles squarecdn.com, s3.amazonaws.com, wordpress.com, and any other HTTP URL
+ * uniformly, so no component needs to know which domain it's dealing with.
+ *
+ * @param src    Source URL (must be an absolute http/https URL)
+ * @param width  Desired output width in pixels
+ * @param opts   Optional height, quality (default 80), and fit (default "cover")
+ */
+export function toNetlifyImageCDN(
+  src: string,
+  width: number,
+  opts: { height?: number; quality?: number; fit?: string } = {}
+): string {
+  if (!src?.startsWith("http")) return src ?? "";
+  const { height, quality = 80, fit = "cover" } = opts;
+  const params = new URLSearchParams({
+    url: src,
+    w: String(width),
+    q: String(quality),
+    fit,
+  });
+  if (height) params.set("h", String(height));
+  return `/.netlify/images?${params.toString()}`;
+}

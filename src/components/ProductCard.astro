@@ -119,15 +119,17 @@ let optimizedImageSrc = EL_CAMINO_LOGO_DATA_URI; // Default fallback
 let avifSrcSet: string | undefined;
 let webpSrcSet: string | undefined;
 let jpegSrcSet: string | undefined;
-// Matches the actual grid: xs:grid-cols-2 → lg:grid-cols-3 → xl:grid-cols-4 → 2xl:grid-cols-6
-let imageSizes = "(max-width: 1024px) 50vw, (max-width: 1280px) 33vw, (max-width: 1536px) 25vw, 16vw";
+// Matches actual rendered card widths accounting for the category page sidebar
+// (lg:col-span-1 of lg:grid-cols-4, xl:col-span-1 of xl:grid-cols-5) and product
+// grid columns (xs:2 → sm:3 → xl:4 → 2xl:6). Cards are never wider than ~360px.
+let imageSizes = "(max-width: 640px) 50vw, (max-width: 1024px) 34vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 14vw";
 
 if (hasValidImage) {
   const imageSet = EnhancedImageOptimizer.generateOptimizedSources(
     product.image,
     {
-      width: 600,
-      height: 400,
+      width: 800,
+      height: 800,
       quality: 85,
       priority: isDynamicPriority,
     }
@@ -135,26 +137,29 @@ if (hasValidImage) {
 
   optimizedImageSrc = imageSet.avif || imageSet.webp || imageSet.jpeg;
 
-  // Generate responsive srcset for each format
-  avifSrcSet = imageSet.avif 
+  // Generate responsive srcset for each format.
+  // baseWidth:800 unlocks the 1024w breakpoint (ceiling = 800*1.5 = 1200px),
+  // giving browsers [320w, 640w, 768w, 1024w] to choose from. Cards are square
+  // on most grids so height matches width.
+  avifSrcSet = imageSet.avif
     ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'avif', {
-        width: 600,
-        height: 400,
+        width: 800,
+        height: 800,
         quality: 85
       })
     : undefined;
 
   webpSrcSet = imageSet.webp
     ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'webp', {
-        width: 600,
-        height: 400,
+        width: 800,
+        height: 800,
         quality: 85
       })
     : undefined;
 
   jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'jpeg', {
-    width: 600,
-    height: 400,
+    width: 800,
+    height: 800,
     quality: 85
   });
 }

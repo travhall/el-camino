@@ -93,8 +93,52 @@ const seoData = {
     crossorigin="anonymous"
 />
 
-<!-- Critical font styling to prevent FOUT on h1 elements cSpell:ignore Segoe -->
+<!-- Critical CSS: design tokens + base styles inlined for immediate first-paint.
+     The browser can render body background/text/headings before global.css downloads.
+     Values must stay in sync with src/styles/global.css @theme and .dark blocks. -->
 <style>
+    /* Palette values used by critical semantic tokens */
+    :root {
+        --color-elco-beeswax-100: oklch(96.5% 0.008 70);
+        --color-elco-beeswax-200: oklch(92% 0.012 70);
+        --color-elco-beeswax-800: oklch(40% 0.026 70);
+        --color-elco-beeswax-900: oklch(18% 0.024 70);
+        --color-elco-sweet-tea-700: oklch(35% 0.06 60);
+        --color-elco-fig-leaf-50: oklch(98.5% 0.008 117);
+        --color-elco-fig-leaf-100: oklch(90% 0.016 117);
+        --color-elco-fig-leaf-800: oklch(22% 0.052 117);
+        --color-elco-fig-leaf-900: oklch(12.5% 0.042 117);
+        --color-elco-sweet-tea-200: oklch(85% 0.04 60);
+
+        /* Semantic surface + content tokens (light mode defaults) */
+        --surface-primary: var(--color-elco-beeswax-100);
+        --surface-secondary: var(--color-elco-beeswax-200);
+        --content-heading: var(--color-elco-beeswax-800);
+        --content-body: var(--color-elco-beeswax-900);
+        --content-meta: var(--color-elco-sweet-tea-700);
+
+        /* Font stacks */
+        --font-display: "Alumni", "Alumni Fallback", serif;
+        --font-sans: "Cabin", sans-serif;
+    }
+
+    /* Dark mode token overrides */
+    .dark {
+        --surface-primary: var(--color-elco-fig-leaf-900);
+        --surface-secondary: var(--color-elco-fig-leaf-800);
+        --content-heading: var(--color-elco-fig-leaf-100);
+        --content-body: var(--color-elco-fig-leaf-50);
+        --content-meta: var(--color-elco-sweet-tea-200);
+    }
+
+    /* Base body styles — prevents flash of white before global.css applies */
+    body {
+        background-color: var(--surface-primary);
+        color: var(--content-body);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
     h1 {
         font-family:
             "Alumni",

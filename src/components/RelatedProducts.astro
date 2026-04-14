@@ -4,6 +4,7 @@
 import type { Product } from "@/lib/square/types";
 import { MoneyUtils } from "@/lib/square/money";
 import { batchInventoryService } from "@/lib/square/batchInventory";
+import { toNetlifyImageCDN } from "@/lib/image/enhanced-optimizer";
 
 interface Props {
   products: Product[];
@@ -29,26 +30,6 @@ const variationIds = displayProducts.map((p) => p.variationId).filter(Boolean);
 const inventoryMap =
   await batchInventoryService.getBatchInventoryStatus(variationIds);
 
-function optimizeImageUrl(src: string, width = 600): string {
-  if (!src) return src;
-  try {
-    if (src.includes("squarecdn.com") || src.includes("square-cdn")) {
-      const url = new URL(src);
-      url.searchParams.set("w", String(width));
-      url.searchParams.set("h", String(width));
-      url.searchParams.set("fit", "crop");
-      url.searchParams.set("fm", "webp");
-      url.searchParams.set("q", "80");
-      return url.toString();
-    }
-    if (src.startsWith("http")) {
-      return `/.netlify/images?url=${encodeURIComponent(src)}&w=${width}&h=${width}&fit=cover&fm=webp&q=80`;
-    }
-    return src;
-  } catch {
-    return src;
-  }
-}
 ---
 
 <section class="related-products py-12 lg:py-16">
@@ -98,7 +79,7 @@ function optimizeImageUrl(src: string, width = 600): string {
           const formattedOriginal = saleInfo
             ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))
             : null;
-          const imageUrl = optimizeImageUrl(product.image ?? "");
+          const imageUrl = toNetlifyImageCDN(product.image ?? "", 600, { height: 600 });
           const productUrl = product.url;
 
           return (

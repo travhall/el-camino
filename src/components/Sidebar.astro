@@ -1,12 +1,12 @@
 ---
-// src/components/Sidebar.astro - Updated with Pattern A (EnhancedImageOptimizer)
+// src/components/Sidebar.astro
 import { getCategoriesForSidebar } from "@/lib/square/categoryUtils";
 import { squareClient } from "@/lib/square/client";
 import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
 } from "@/lib/constants/assets";
-import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
+import { toNetlifyImageCDN } from "@/lib/image/enhanced-optimizer";
 import { Icon } from "astro-icon/components";
 
 interface Props {
@@ -21,29 +21,14 @@ const categoriesWithImages = await getCategoriesForSidebar();
 // Square image URLs by category ID
 const categoryImageUrls: Record<string, string> = {};
 
-// Enhanced function to get optimized image URL for a category
+// Get an optimized image URL for a category via Netlify Image CDN.
+// Routes squarecdn.com, s3.amazonaws.com, and any other external URL through
+// the CDN proxy so all images get compression, format conversion, and long-lived
+// cache headers — regardless of which Square storage backend served the original.
 function getCategoryImageUrl(category: { id: string; slug: string }): string {
-  // Try to get image from Square if available
   if (category.id && categoryImageUrls[category.id]) {
-    const squareImageUrl = categoryImageUrls[category.id];
-
-    // Optimize Square CDN image (same as ProductCard)
-    if (squareImageUrl.includes("squarecdn.com")) {
-      try {
-        const url = new URL(squareImageUrl);
-        url.searchParams.set("w", "600");
-        url.searchParams.set("h", "338"); // 16:9 aspect ratio
-        url.searchParams.set("q", "85");
-        url.searchParams.set("f", "auto");
-        return url.toString();
-      } catch {
-        return squareImageUrl;
-      }
-    }
-    return squareImageUrl;
+    return toNetlifyImageCDN(categoryImageUrls[category.id], 600, { height: 338 });
   }
-
-  // Otherwise fall back to local path
   return `/images/category-${category.slug}.png`;
 }
 
@@ -112,98 +97,39 @@ const prodCats = categoriesWithImages.map((item) => ({
         const placeholderId = `category-placeholder-${e.id || e.category}`;
         const staggerDelay = index * 0.1;
 
-        // Generate optimized image sources using Pattern A
-        const imageSet = EnhancedImageOptimizer.generateOptimizedSources(
-          e.src,
-          {
-            width: 600,
-            height: 338,
-            quality: 85,
-            priority: index < 2,
-          },
-        );
-
         return (
           <a
             href={e.url}
             class="category-link group block relative border-t-4 border-t-(--ui-button-surface) lg:border-b-4 lg:border-b-(--surface-primary) overflow-hidden loading-container aspect-video"
             style={`--loading-stagger-delay: ${staggerDelay}s`}
           >
-            {/* <!-- Unified Loading Placeholder --> */}
+            {/* Loading placeholder */}
             <div
               class="loading-skeleton loading-image absolute inset-0 w-full h-full"
               id={placeholderId}
               aria-hidden="true"
             >
-              {/* <!-- El Camino logo using data URI --> */}
               <div
                 class="absolute inset-0 flex items-center justify-center"
                 style={`background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;`}
               />
             </div>
 
-            {/* <!-- Pattern A: Picture element with AVIF/WebP/JPEG --> */}
-            <picture>
-              {/* AVIF format (best compression) */}
-              {imageSet.avif && (
-                <source
-                  type="image/avif"
-                  srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
-                    e.src,
-                    "avif",
-                    {
-                      width: 600,
-                      height: 338,
-                      quality: 85,
-                    },
-                  )}
-                  sizes="(max-width: 768px) 50vw, 600px"
-                />
-              )}
-
-              {/* WebP format (good compression) */}
-              {imageSet.webp && (
-                <source
-                  type="image/webp"
-                  srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
-                    e.src,
-                    "webp",
-                    {
-                      width: 600,
-                      height: 338,
-                      quality: 85,
-                    },
-                  )}
-                  sizes="(max-width: 768px) 50vw, 600px"
-                />
-              )}
-
-              {/* JPEG fallback */}
-              <img
-                id={imageId}
-                src={imageSet.jpeg}
-                srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
-                  e.src,
-                  "jpeg",
-                  {
-                    width: 600,
-                    height: 338,
-                    quality: 85,
-                  },
-                )}
-                sizes="(max-width: 768px) 50vw, 600px"
-                alt={e.category}
-                width="600"
-                height="338"
-                class="category-img object-cover w-full h-full will-change-transform opacity-0 translate-y-1 transition-all duration-300 ease-in-out [&.loaded]:opacity-30 [&.loaded]:sepia-50 [&.loaded]:translate-y-0 group-hover:scale-105 group-hover:[&.loaded]:opacity-80 group-hover:[&.loaded]:sepia-10"
-                loading={index < 2 ? "eager" : "lazy"}
-                decoding={index < 2 ? "sync" : "async"}
-                fetchpriority={index < 2 ? "high" : "auto"}
-                data-placeholder-id={placeholderId}
-                onload={`this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
-                onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
-              />
-            </picture>
+            {/* Netlify Image CDN handles AVIF/WebP negotiation via Accept header */}
+            <img
+              id={imageId}
+              src={e.src}
+              alt={e.category}
+              width="600"
+              height="338"
+              class="category-img object-cover w-full h-full will-change-transform opacity-0 translate-y-1 transition-all duration-300 ease-in-out [&.loaded]:opacity-30 [&.loaded]:sepia-50 [&.loaded]:translate-y-0 group-hover:scale-105 group-hover:[&.loaded]:opacity-80 group-hover:[&.loaded]:sepia-10"
+              loading={index < 2 ? "eager" : "lazy"}
+              decoding={index < 2 ? "sync" : "async"}
+              fetchpriority={index < 2 ? "high" : "auto"}
+              data-placeholder-id={placeholderId}
+              onload={`this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
+              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('loaded'); document.getElementById('${placeholderId}')?.remove()`}
+            />
 
             <h4 class="category-title font-display text-2xl lg:text-3xl font-medium absolute bottom-0 p-4 lg:px-8 border-4 border-l-0 border-(--border-secondary) border-b-0 bg-(--surface-secondary) text-(--content-heading) transition-all group-hover:font-bold group-hover:tracking-wide">
               {e.category}

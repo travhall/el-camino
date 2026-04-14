@@ -10,6 +10,7 @@ import {
   EL_CAMINO_LOADER_DATA_URI,
 } from "@/lib/constants/assets";
 import { Icon } from "astro-icon/components";
+import { toNetlifyImageCDN } from "@/lib/image/enhanced-optimizer";
 
 interface Props {
   title?: string;
@@ -71,30 +72,6 @@ for (const cat of flatCategories) {
   }
 }
 
-function getOptimizedImageUrl(
-  rawUrl: string,
-  width = 600,
-  height = 600,
-): string {
-  if (!rawUrl) return "";
-  try {
-    if (rawUrl.includes("squarecdn.com") || rawUrl.includes("square-cdn")) {
-      const url = new URL(rawUrl);
-      url.searchParams.set("w", String(width));
-      url.searchParams.set("h", String(height));
-      url.searchParams.set("fit", "crop");
-      url.searchParams.set("fm", "webp");
-      url.searchParams.set("q", "80");
-      return url.toString();
-    }
-    if (rawUrl.startsWith("http")) {
-      return `/.netlify/images?url=${encodeURIComponent(rawUrl)}&w=${width}&h=${height}&fit=cover&fm=webp&q=80`;
-    }
-  } catch {
-    // ignore
-  }
-  return rawUrl;
-}
 ---
 
 <section class="py-8 bg-(--surface-primary)">
@@ -122,7 +99,7 @@ function getOptimizedImageUrl(
       {
         flatCategories.map((cat, index) => {
           const rawImageUrl = categoryImageUrls[cat.id] ?? "";
-          const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl) : "";
+          const imageUrl = rawImageUrl ? toNetlifyImageCDN(rawImageUrl, 600, { height: 600 }) : "";
           const placeholderId = `cat-strip-placeholder-${cat.id}`;
           const isSubcategory = !!cat.parentName;
 
