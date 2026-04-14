@@ -192,13 +192,17 @@ const displayProducts = hideSoldOut
 
 </div>
 
-<!-- Infinite Scroll Trigger — lives OUTSIDE the product grid so that its
-     display:none → display:flex transition doesn't expand the grid's height
-     while it's in the viewport, which was causing CLS = 0.066 on category pages. -->
+<!-- Infinite Scroll Trigger — lives OUTSIDE the product grid so its appearance
+     doesn't expand the grid height while in the viewport (CLS fix).
+     When the total product count exceeds the initial batch (16), we know at render
+     time that infinite scroll WILL be needed. We use visibility:hidden instead of
+     display:none so the 80px space is reserved from the start — no layout shift
+     when JS makes the spinner visible. For pages with ≤16 products, display:none
+     is correct (infinite scroll never activates; JS sets display:none anyway). -->
 <div
   id="infinite-scroll-trigger"
   class="h-20 flex items-center justify-center"
-  style="display: none;"
+  style={displayProducts.length > initialCardsToShow ? "visibility: hidden;" : "display: none;"}
 >
   <div class="flex items-center space-x-3">
     <div
@@ -680,8 +684,15 @@ const displayProducts = hideSoldOut
       return;
     }
 
-    // Standard infinite scroll mode
-    trigger.style.display = "flex";
+    // Standard infinite scroll mode.
+    // If SSR set visibility:hidden (products > 16), reveal via visibility — no layout shift
+    // because the 80px space was already reserved. If SSR set display:none (≤16 products
+    // but JS recalculated a smaller batch), fall back to display:flex.
+    if (trigger.style.visibility === "hidden") {
+      trigger.style.visibility = "visible";
+    } else {
+      trigger.style.display = "flex";
+    }
     if (loadMoreContainer) loadMoreContainer.style.display = "none";
 
     // PHASE 5: Debounced load more to prevent rapid-fire loading
