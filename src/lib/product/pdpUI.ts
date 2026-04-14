@@ -385,7 +385,6 @@ export class PDPUIManager {
         (imgUrl, i) => `
       <button
         type="button"
-        role="listitem"
         class="gallery-thumb shrink-0 w-16 h-16 border-2 overflow-hidden bg-(--surface-secondary) transition-all ${
           i === 0
             ? "border-(--ui-button-border) opacity-100"
