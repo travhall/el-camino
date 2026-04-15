@@ -152,9 +152,16 @@ const getCardClasses = () => {
       // browsers resolve lazily, causing the card to change height at ~3s (CLS 0.238).
       // With `block`, aspect-ratio height is definite from the first layout pass and
       // percentage-height children (h-full on the picture) resolve without ambiguity.
+      //
+      // `contain-layout` REMOVED from featured card: `contain: layout` + `aspect-ratio`
+      // + `min-h-full` on a CSS Grid auto-row item creates residual layout ambiguity —
+      // Chrome can resolve it in a second layout pass when a style recalculation is
+      // triggered later (e.g., by will-change removal). Removing containment eliminates
+      // the ambiguity; the absolute-positioned children mean containment had no real
+      // benefit here anyway.
       return `${baseClasses} block aspect-3/4 md:aspect-video lg:aspect-auto col-span-full lg:first-of-type:col-span-4 lg:col-span-2 lg:row-span-5 lg:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 ${
         featured
-          ? "banner-card contain-layout"
+          ? "banner-card"
           : "article-card transition-all duration-300"
       }`;
   }

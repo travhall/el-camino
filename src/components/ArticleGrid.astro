@@ -186,9 +186,9 @@ const getSkeletonVariant = () => {
   }
 
   /* card-entrance-ready: applied to the featured (priority) card for a smooth
-     opacity entrance. The root CLS cause was a circular flex/h-full height
-     dependency on the masonry image container — now resolved by using
-     absolute inset-0 on the picture element. Opacity transitions are safe. */
+     opacity entrance. Only opacity is animated here — no transform — so this card
+     deliberately skips the `animating` class (and its will-change:transform hint)
+     to avoid a style recalculation at ~3200ms that can trigger a second layout pass. */
   .article-card-wrapper.card-entrance-ready {
     opacity: 0.001;
     transition: opacity var(--card-entrance-priority-duration, 800ms) ease-out;
@@ -366,19 +366,30 @@ const getSkeletonVariant = () => {
           animationOrder.toString(),
         );
 
-        htmlCard.classList.add("animating");
+        // The featured card (card-entrance-ready) only animates opacity — it does NOT
+        // use the scale+translateY transform animation. Skipping `animating` prevents
+        // will-change:transform from being set and then removed ~800ms later via
+        // setTimeout. That removal triggers a style recalculation which, combined with
+        // any residual layout ambiguity on the grid item, can cause a CLS at ~3200ms.
+        // Non-featured cards (opacity-0) use transform animation and still benefit from
+        // will-change:transform during their shorter animation window.
+        const isFeaturedCard = htmlCard.classList.contains("card-entrance-ready");
+        if (!isFeaturedCard) {
+          htmlCard.classList.add("animating");
+        }
+
         htmlCard.classList.remove("opacity-0");
         htmlCard.classList.add("opacity-100");
 
-        // Remove will-change after animation — featured card uses longer duration
-        const cardDuration = htmlCard.classList.contains("card-entrance-ready")
-          ? ANIMATION_CONFIG.priorityDuration
-          : ANIMATION_CONFIG.duration;
-        const totalAnimationTime =
-          cardDuration + animationOrder * ANIMATION_CONFIG.staggerDelay;
-        setTimeout(() => {
-          htmlCard.classList.remove("animating");
-        }, totalAnimationTime);
+        // Remove will-change after animation (non-featured cards only)
+        if (!isFeaturedCard) {
+          const cardDuration = ANIMATION_CONFIG.duration;
+          const totalAnimationTime =
+            cardDuration + animationOrder * ANIMATION_CONFIG.staggerDelay;
+          setTimeout(() => {
+            htmlCard.classList.remove("animating");
+          }, totalAnimationTime);
+        }
       });
 
       return; // Skip intersection observer setup
