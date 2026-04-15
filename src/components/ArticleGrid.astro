@@ -185,19 +185,15 @@ const getSkeletonVariant = () => {
     /* Delay is inherited from base rule for staggered entrance */
   }
 
-  /* Priority card — starts near-invisible so the LCP image is tracked from
-     first render (opacity > 0), but practically hidden until JS triggers
-     the entrance alongside the other cards.
-     NOTE: opacity:0.001 + transition are defined here in CSS only (no inline
-     style override). This keeps the transition active from first render so
-     that adding opacity-100 triggers it without a forced reflow (offsetHeight),
-     which previously caused intermittent CLS 0.238 on the homepage. */
+  /* card-entrance-ready: applied to the featured (priority) card for a smooth
+     opacity entrance. The root CLS cause was a circular flex/h-full height
+     dependency on the masonry image container — now resolved by using
+     absolute inset-0 on the picture element. Opacity transitions are safe. */
   .article-card-wrapper.card-entrance-ready {
     opacity: 0.001;
     transition: opacity var(--card-entrance-priority-duration, 800ms) ease-out;
   }
 
-  /* JS adds opacity-100 to trigger the transition */
   .article-card-wrapper.card-entrance-ready.opacity-100 {
     opacity: 1;
   }
@@ -314,10 +310,12 @@ const getSkeletonVariant = () => {
 
   // Initialize entrance animations for article cards and sidebar
   function initializeArticleAnimations() {
-    // Include the featured card (card-entrance-ready) alongside non-featured cards (opacity-0)
-    // so all cards share the same astro:page-load trigger and animate in sync.
+    // card-entrance-ready (featured card) and opacity-0 (non-featured) are both
+    // queried here. The CLS 0.238 was caused by a circular flex/h-full height
+    // dependency on the image container — fixed by switching to absolute inset-0
+    // on the masonry picture element. The opacity animation is safe to restore.
     const cards = document.querySelectorAll(
-      ".article-card-wrapper.opacity-0, .article-card-wrapper.card-entrance-ready:not(.opacity-100)",
+      ".article-card-wrapper.opacity-0, .article-card-wrapper.card-entrance-ready",
     );
 
     if (!cards.length) return;
@@ -368,11 +366,6 @@ const getSkeletonVariant = () => {
           animationOrder.toString(),
         );
 
-        // The featured card uses the CSS class .card-entrance-ready which
-        // already sets opacity:0.001 and transition:opacity 0.75s. Adding
-        // opacity-100 triggers the CSS transition naturally — no inline style
-        // override or forced reflow (offsetHeight) needed, which previously
-        // risked triggering a layout flush mid-flight and causing CLS.
         htmlCard.classList.add("animating");
         htmlCard.classList.remove("opacity-0");
         htmlCard.classList.add("opacity-100");
@@ -514,21 +507,23 @@ const getSkeletonVariant = () => {
     initializeArticleAnimations();
   });
 
-  // BFCache restore: DOM is preserved as-is. If the featured card was
-  // mid-animation when cached, it won't have opacity-100 yet. Show it
-  // immediately without a transition so the user doesn't see a half-visible card.
+  // BFCache restore: DOM is preserved as-is. Cards that were mid-animation
+  // when cached may still have opacity-0 or card-entrance-ready without
+  // opacity-100. Show them immediately without a transition so the user
+  // doesn't see half-visible cards.
   window.addEventListener("pageshow", (e) => {
     if (e.persisted) {
-      const card = document.querySelector<HTMLElement>(
-        ".article-card-wrapper.card-entrance-ready:not(.opacity-100)",
+      const cards = document.querySelectorAll<HTMLElement>(
+        ".article-card-wrapper.opacity-0, .article-card-wrapper.card-entrance-ready:not(.opacity-100)",
       );
-      if (card) {
+      cards.forEach((card) => {
         card.style.transition = "none";
+        card.classList.remove("opacity-0");
         card.classList.add("opacity-100");
         requestAnimationFrame(() => {
           card.style.transition = "";
         });
-      }
+      });
     }
   });
 </script>

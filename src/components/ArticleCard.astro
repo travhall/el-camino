@@ -169,8 +169,11 @@ const getImageContainerClasses = () => {
 
     case "masonry":
     default:
-      // block ensures <picture> (inline by default) respects w-full/h-full
-      return "block w-full h-full relative";
+      // absolute inset-0: picture fills the card via its position:relative ancestor.
+      // This breaks the circular flex/h-full size dependency that caused the featured
+      // card to change height at ~3s (CLS 0.238). Card height now comes solely from
+      // aspect-ratio: 3/4 with no content feedback loop. Same pattern used by teaser.
+      return "absolute inset-0";
   }
 };
 
