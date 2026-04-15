@@ -511,18 +511,14 @@ const displayProducts = hideSoldOut
     }
 
     const cardsPerRow = getCardsPerRowCurrent();
-    const initialBatchSize = calculateAdaptiveBatchSize();
-    let visibleCount = initialBatchSize;
 
-    // Show initial scroll-pool cards, hide the rest
-    scrollPool.forEach((card, index) => {
-      const htmlCard = card as HTMLElement;
-      if (index < visibleCount) {
-        htmlCard.style.display = "";
-      } else {
-        htmlCard.style.display = "none";
-      }
-    });
+    // visibleCount must match what SSR showed (initialCardsToShow=16) so JS never
+    // hides products that the server already rendered visible. The old approach of
+    // using calculateAdaptiveBatchSize() (which returned 4 on mobile) caused a
+    // layout collapse that registered as CLS 0.066 on every category page.
+    // SSR is the source of truth for the initial visible set; adaptive sizing
+    // only applies to subsequent loadMore batches.
+    let visibleCount = 16; // matches initialCardsToShow constant in SSR
 
     // Create animation observer for both modes (infinite scroll and button)
     // MUST be created BEFORE checking if infinite scroll is needed

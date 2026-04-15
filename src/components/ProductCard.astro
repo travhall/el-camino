@@ -125,12 +125,17 @@ let jpegSrcSet: string | undefined;
 let imageSizes = "(max-width: 640px) 50vw, (max-width: 1024px) 34vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 14vw";
 
 if (hasValidImage) {
+  // q=70 for product grid thumbnails. Lighthouse reported ~84% wasted bytes at
+  // q=85 (151KB served vs 24KB needed). At small card sizes (320–640px) the
+  // quality difference between 85 and 70 is imperceptible.
+  const THUMB_QUALITY = 70;
+
   const imageSet = EnhancedImageOptimizer.generateOptimizedSources(
     product.image,
     {
       width: 800,
       height: 800,
-      quality: 85,
+      quality: THUMB_QUALITY,
       priority: isDynamicPriority,
     }
   );
@@ -145,7 +150,7 @@ if (hasValidImage) {
     ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'avif', {
         width: 800,
         height: 800,
-        quality: 85
+        quality: THUMB_QUALITY
       })
     : undefined;
 
@@ -153,14 +158,14 @@ if (hasValidImage) {
     ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'webp', {
         width: 800,
         height: 800,
-        quality: 85
+        quality: THUMB_QUALITY
       })
     : undefined;
 
   jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'jpeg', {
     width: 800,
     height: 800,
-    quality: 85
+    quality: THUMB_QUALITY
   });
 }
 ---

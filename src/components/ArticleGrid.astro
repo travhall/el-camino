@@ -187,20 +187,17 @@ const getSkeletonVariant = () => {
 
   /* Priority card — starts near-invisible so the LCP image is tracked from
      first render (opacity > 0), but practically hidden until JS triggers
-     the entrance alongside the other cards. Uses a longer duration and
-     scale+translate for a more intentional feel than the secondary cards. */
+     the entrance alongside the other cards. Opacity-only fade avoids the
+     scale/translate transform that caused CLS 0.204 on the homepage
+     (Lighthouse measures visual bounding-rect changes even for CSS transforms). */
   .article-card-wrapper.card-entrance-ready {
     opacity: 0.001;
-    transform: scale(0.95) translate3d(0, 10px, 0);
-    transition:
-      opacity var(--card-entrance-priority-duration, 800ms) ease-out,
-      transform var(--card-entrance-priority-duration, 800ms) ease-out;
+    transition: opacity var(--card-entrance-priority-duration, 800ms) ease-out;
   }
 
   /* JS adds opacity-100 to trigger the transition */
   .article-card-wrapper.card-entrance-ready.opacity-100 {
     opacity: 1;
-    transform: scale(1) translate3d(0, 0, 0);
   }
 
   @media (prefers-reduced-motion: reduce) {
