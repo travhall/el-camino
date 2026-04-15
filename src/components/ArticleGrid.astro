@@ -187,9 +187,11 @@ const getSkeletonVariant = () => {
 
   /* Priority card — starts near-invisible so the LCP image is tracked from
      first render (opacity > 0), but practically hidden until JS triggers
-     the entrance alongside the other cards. Opacity-only fade avoids the
-     scale/translate transform that caused CLS 0.204 on the homepage
-     (Lighthouse measures visual bounding-rect changes even for CSS transforms). */
+     the entrance alongside the other cards.
+     NOTE: opacity:0.001 + transition are defined here in CSS only (no inline
+     style override). This keeps the transition active from first render so
+     that adding opacity-100 triggers it without a forced reflow (offsetHeight),
+     which previously caused intermittent CLS 0.238 on the homepage. */
   .article-card-wrapper.card-entrance-ready {
     opacity: 0.001;
     transition: opacity var(--card-entrance-priority-duration, 800ms) ease-out;
@@ -366,18 +368,11 @@ const getSkeletonVariant = () => {
           animationOrder.toString(),
         );
 
-        // Featured card has opacity:0.001 + transition:none inline to prevent a
-        // FOUC-triggered flash on dev cold-load (CSS hasn't loaded yet when the
-        // HTML is first painted, so without inline opacity the card flashes at
-        // the browser default opacity:1). Clear both here, force a reflow so
-        // the browser commits the starting state from the CSS rule before the
-        // transition fires.
-        if (htmlCard.classList.contains("card-entrance-ready")) {
-          htmlCard.style.opacity = "";
-          htmlCard.style.transition = "";
-          void htmlCard.offsetHeight;
-        }
-
+        // The featured card uses the CSS class .card-entrance-ready which
+        // already sets opacity:0.001 and transition:opacity 0.75s. Adding
+        // opacity-100 triggers the CSS transition naturally — no inline style
+        // override or forced reflow (offsetHeight) needed, which previously
+        // risked triggering a layout flush mid-flight and causing CLS.
         htmlCard.classList.add("animating");
         htmlCard.classList.remove("opacity-0");
         htmlCard.classList.add("opacity-100");
