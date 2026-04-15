@@ -146,7 +146,13 @@ const getCardClasses = () => {
 
     case "masonry":
     default:
-      return `${baseClasses} flex flex-col aspect-3/4 md:aspect-video lg:aspect-auto col-span-full lg:first-of-type:col-span-4 lg:col-span-2 lg:row-span-5 lg:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 ${
+      // `block` instead of `flex flex-col`: <a> is inline by default so we need
+      // an explicit block context, but `flex` + `aspect-ratio` creates a circular
+      // height dependency (flex container height ↔ h-full child height) that some
+      // browsers resolve lazily, causing the card to change height at ~3s (CLS 0.238).
+      // With `block`, aspect-ratio height is definite from the first layout pass and
+      // percentage-height children (h-full on the picture) resolve without ambiguity.
+      return `${baseClasses} block aspect-3/4 md:aspect-video lg:aspect-auto col-span-full lg:first-of-type:col-span-4 lg:col-span-2 lg:row-span-5 lg:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 ${
         featured
           ? "banner-card contain-layout"
           : "article-card transition-all duration-300"
@@ -169,11 +175,10 @@ const getImageContainerClasses = () => {
 
     case "masonry":
     default:
-      // absolute inset-0: picture fills the card via its position:relative ancestor.
-      // This breaks the circular flex/h-full size dependency that caused the featured
-      // card to change height at ~3s (CLS 0.238). Card height now comes solely from
-      // aspect-ratio: 3/4 with no content feedback loop. Same pattern used by teaser.
-      return "absolute inset-0";
+      // `block` on the picture (inline by default) ensures it participates in block
+      // layout. `h-full` resolves against the card's aspect-ratio-determined height,
+      // which is definite for block containers (no circular dependency).
+      return "block w-full h-full relative";
   }
 };
 
