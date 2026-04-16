@@ -404,13 +404,8 @@ const pageDescription =
 </AdminLayout>
 
 <script>
-  declare global {
-    interface Window {
-      copyURL: (btn: HTMLButtonElement, url: string) => void;
-    }
-  }
-
-  window.copyURL = function (btn: HTMLButtonElement, url: string) {
+  // @ts-ignore
+  window.copyURL = function (btn, url) {
     navigator.clipboard.writeText(url).then(() => {
       btn.textContent = "Copied!";
       btn.classList.add("copied");
