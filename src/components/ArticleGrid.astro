@@ -1,5 +1,5 @@
 ---
-// src/components/ArticleGrid.astro - Enhanced with filterable grid/list support
+// src/components/ArticleGrid.astro
 import ArticleCard from "./ArticleCard.astro";
 import ArticleCardSkeleton from "./ArticleCardSkeleton.astro";
 import Sidebar from "./Sidebar.astro";
@@ -10,8 +10,8 @@ interface Props {
   error?: string | null;
   isLoading?: boolean;
   showSidebar?: boolean; // Legacy support for home page
-  filterable?: boolean; // New: enables filterable news page layout
-  view?: "grid" | "list"; // New: controls grid vs list view for filterable mode
+  filterable?: boolean; // Enables filterable news page layout
+  view?: "grid" | "list"; // Controls grid vs list view for filterable mode
 }
 
 const {
@@ -191,11 +191,13 @@ const getSkeletonVariant = () => {
      to avoid a style recalculation at ~3200ms that can trigger a second layout pass. */
   .article-card-wrapper.card-entrance-ready {
     opacity: 0.001;
-    transition: opacity var(--card-entrance-priority-duration, 800ms) ease-out;
+    transform: scale(0.95) translate3d(0, 10px, 0);
+    transition: all var(--card-entrance-priority-duration, 800ms) ease-out;
   }
 
   .article-card-wrapper.card-entrance-ready.opacity-100 {
     opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -231,7 +233,6 @@ const getSkeletonVariant = () => {
   .article-grid .group:hover {
     z-index: 10;
   }
-
 </style>
 
 <script>
@@ -373,7 +374,9 @@ const getSkeletonVariant = () => {
         // any residual layout ambiguity on the grid item, can cause a CLS at ~3200ms.
         // Non-featured cards (opacity-0) use transform animation and still benefit from
         // will-change:transform during their shorter animation window.
-        const isFeaturedCard = htmlCard.classList.contains("card-entrance-ready");
+        const isFeaturedCard = htmlCard.classList.contains(
+          "card-entrance-ready",
+        );
         if (!isFeaturedCard) {
           htmlCard.classList.add("animating");
         }
