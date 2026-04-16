@@ -1,23 +1,16 @@
 /**
  * Phase 1 Device Detection Initializer
- * This script should be included in the main layout to enable device-aware loading
+ * Adds device-type classes to <body> for CSS targeting and stores
+ * device info on window for quick access elsewhere.
  */
 
-import { initializeConditionalLoading } from '@/lib/conditionalLoader';
 import { getDeviceInfo } from '@/utils/device';
 
-// Store device info globally for quick access
 if (typeof window !== 'undefined') {
-  (window as any).__DEVICE_INFO__ = getDeviceInfo();
-  
-  // Log device info for debugging
-  console.debug('[El Camino] Device Info:', (window as any).__DEVICE_INFO__);
-  
-  // Initialize conditional feature loading
-  initializeConditionalLoading();
-  
-  // Add device class to body for CSS targeting
   const deviceInfo = getDeviceInfo();
+  (window as any).__DEVICE_INFO__ = deviceInfo;
+
+  // Add device class to body for CSS targeting
   if (deviceInfo.isMobile) {
     document.body.classList.add('device-mobile');
   } else if (deviceInfo.isTablet) {
@@ -25,24 +18,22 @@ if (typeof window !== 'undefined') {
   } else {
     document.body.classList.add('device-desktop');
   }
-  
-  // Listen for resize events to update device info
-  let resizeTimeout: NodeJS.Timeout;
+
+  // Debounced resize handler — keep device classes in sync
+  let resizeTimeout: ReturnType<typeof setTimeout>;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
-      const newDeviceInfo = getDeviceInfo();
-      (window as any).__DEVICE_INFO__ = newDeviceInfo;
-      
-      // Update body classes
+      const updated = getDeviceInfo();
+      (window as any).__DEVICE_INFO__ = updated;
       document.body.classList.remove('device-mobile', 'device-tablet', 'device-desktop');
-      if (newDeviceInfo.isMobile) {
+      if (updated.isMobile) {
         document.body.classList.add('device-mobile');
-      } else if (newDeviceInfo.isTablet) {
+      } else if (updated.isTablet) {
         document.body.classList.add('device-tablet');
       } else {
         document.body.classList.add('device-desktop');
       }
-    }, 150); // Debounce resize events
+    }, 150);
   });
 }

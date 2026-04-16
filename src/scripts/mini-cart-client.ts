@@ -1,0 +1,691 @@
+import type { CartItem } from "@/lib/cart/types";
+  import { createSlug } from "@/lib/square/slugUtils";
+  import {
+    EL_CAMINO_LOGO_DATA_URI,
+    EL_CAMINO_LOADER_DATA_URI,
+  } from "@/lib/constants/assets";
+
+  let cart: any = null;
+  let inventoryData: Record<string, number> = {};
+
+  // Undo bar state
+  let undoBarTimeout: ReturnType<typeof setTimeout> | null = null;
+  let pendingUndoItem: CartItem | null = null;
+
+  function showUndoBar(item: CartItem): void {
+    const bar = document.getElementById("mini-cart-undo-bar");
+    const messageEl = document.getElementById("mini-cart-undo-message");
+    const progressEl = document.getElementById(
+      "mini-cart-undo-progress",
+    ) as HTMLElement | null;
+
+    if (!bar || !messageEl) return;
+
+    // Cancel any running undo timer
+    if (undoBarTimeout) {
+      clearTimeout(undoBarTimeout);
+      undoBarTimeout = null;
+    }
+
+    pendingUndoItem = item;
+    messageEl.textContent = `"${item.title}" removed`;
+
+    // Show with fade-in
+    bar.classList.remove("hidden");
+    bar.classList.add("flex");
+    requestAnimationFrame(() => {
+      bar.classList.remove("opacity-0");
+    });
+
+    // Animate the timer progress bar over 6s
+    if (progressEl) {
+      progressEl.style.transition = "none";
+      progressEl.style.width = "100%";
+      progressEl.offsetWidth; // force reflow so the reset paints before transition starts
+      progressEl.style.transition = "width 6000ms linear";
+      progressEl.style.width = "0%";
+    }
+
+    undoBarTimeout = setTimeout(dismissUndoBar, 6000);
+  }
+
+  function dismissUndoBar(): void {
+    const bar = document.getElementById("mini-cart-undo-bar");
+    if (!bar) return;
+
+    bar.classList.add("opacity-0");
+    setTimeout(() => {
+      bar.classList.add("hidden");
+      bar.classList.remove("flex");
+    }, 200);
+
+    pendingUndoItem = null;
+    if (undoBarTimeout) {
+      clearTimeout(undoBarTimeout);
+      undoBarTimeout = null;
+    }
+  }
+
+  async function handleUndoRemove(): Promise<void> {
+    if (!pendingUndoItem) return;
+
+    const itemToRestore = { ...pendingUndoItem };
+    dismissUndoBar();
+
+    try {
+      const cartInstance = await loadCart();
+      const key = `${itemToRestore.id}:${itemToRestore.variationId}`;
+      const alreadyInCart = cartInstance
+        .getItems()
+        .some((i: CartItem) => `${i.id}:${i.variationId}` === key);
+
+      let result: { success: boolean; message?: string };
+      if (alreadyInCart) {
+        // Item was re-added during the undo window — restore the snapshot quantity exactly
+        cartInstance.updateQuantity(key, itemToRestore.quantity);
+        result = { success: true };
+      } else {
+        result = await cartInstance.addItem(itemToRestore);
+      }
+
+      if (result.success) {
+        await updateMiniCartDisplay();
+        window.showNotification(`"${itemToRestore.title}" restored`, "success");
+      } else {
+        window.showNotification(
+          result.message || "Could not restore item",
+          "error",
+        );
+      }
+    } catch {
+      window.showNotification("Could not restore item", "error");
+    }
+  }
+
+  /** Escape HTML special characters to prevent XSS in innerHTML templates */
+  function sanitize(str: string): string {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;");
+  }
+
+  async function loadCart() {
+    if (!cart) {
+      const module = await import("@/lib/cart");
+      cart = module.cart;
+    }
+    return cart;
+  }
+
+  // Route any external image URL through Netlify Image CDN for compression,
+  // format negotiation (AVIF/WebP), and edge caching — covers squarecdn.com,
+  // s3.amazonaws.com, and any other Square storage backend.
+  // Cart thumbnails: 100×100 is sufficient; CDN handles retina via format negotiation.
+  function optimizeCartImage(src: string): string {
+    if (!src || src.startsWith("/") || src.startsWith("data:")) return src;
+    const p = new URLSearchParams({ url: src, w: "100", h: "100", fit: "cover", q: "80" });
+    return `/.netlify/images?${p.toString()}`;
+  }
+
+  function formatPrice(price: number): string {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(price);
+  }
+
+  const FREE_SHIPPING_THRESHOLD = 75; // $75.00
+
+  function updateShippingTracker(total: number): void {
+    const tracker = document.getElementById("mini-cart-shipping-tracker");
+    const earned = document.getElementById("mini-cart-shipping-earned");
+    const remaining = document.getElementById("mini-cart-shipping-remaining");
+    const progress = document.getElementById(
+      "mini-cart-shipping-progress",
+    ) as HTMLElement | null;
+
+    if (!tracker || !earned) return;
+
+    if (total >= FREE_SHIPPING_THRESHOLD) {
+      tracker.classList.add("hidden");
+      earned.classList.remove("hidden");
+    } else {
+      tracker.classList.remove("hidden");
+      earned.classList.add("hidden");
+      if (remaining)
+        remaining.textContent = formatPrice(FREE_SHIPPING_THRESHOLD - total);
+      if (progress) {
+        progress.style.width = `${Math.min((total / FREE_SHIPPING_THRESHOLD) * 100, 100)}%`;
+      }
+    }
+  }
+
+  function renderCartItem(item: CartItem): string {
+    const itemKey = `${item.id}:${item.variationId}`;
+    const inventory = inventoryData[item.variationId] || 999;
+    const maxQuantity = Math.min(inventory, 99);
+
+    // Sanitize all user-controlled strings before inserting into innerHTML
+    const safeItemKey = sanitize(itemKey);
+    const safeTitle = sanitize(item.title);
+    const safeVariationName = item.variationName
+      ? sanitize(item.variationName)
+      : "";
+
+    // Generate proper slug from product title
+    const productSlug = createSlug(item.title);
+    const productUrl = `/product/${productSlug}`;
+    const safeProductUrl = sanitize(productUrl);
+
+    // Optimize cart image using client-side optimization
+    const optimizedImageSrc = item.image ? optimizeCartImage(item.image) : null;
+    const safeImageSrc = optimizedImageSrc ? sanitize(optimizedImageSrc) : null;
+
+    // Hoist saleInfo so both the image badge and pricing block can reference it
+    const saleInfo = (item as any).saleInfo as { salePrice: number; originalPrice: number; discountPercent?: number } | undefined;
+    const saleLabel = saleInfo
+      ? `${saleInfo.discountPercent ?? Math.round((1 - saleInfo.salePrice / saleInfo.originalPrice) * 100)}% Off`
+      : null;
+
+    return `
+    <div class="flex gap-3 p-3 bg-(--surface-secondary)" data-item-key="${safeItemKey}">
+      <div class="relative w-16 h-16">
+        ${saleLabel ? `<div class="absolute top-0 left-0 z-10 bg-state-success-surface text-state-success-text px-1 py-px text-[9px] font-bold leading-tight rounded-br-sm">${saleLabel}</div>` : ""}
+        ${
+          safeImageSrc
+            ? `
+          <!-- Loading placeholder - absolutely positioned -->
+          <div
+            class="loading-skeleton absolute inset-0 rounded-sm transition-opacity duration-300"
+            id="mini-cart-placeholder-${safeItemKey}"
+          >
+            <!-- El Camino logo as loading indicator -->
+            <div
+              class="absolute inset-0 flex items-center justify-center rounded-sm opacity-70"
+              style="background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: 20px 18px; background-position: center; background-repeat: no-repeat;"
+            ></div>
+          </div>
+
+          <!-- Optimized product image - absolutely positioned -->
+          <img
+            src="${safeImageSrc}"
+            alt="${safeTitle}"
+            class="absolute inset-0 w-full h-full object-cover rounded-sm bg-(--surface-secondary) opacity-0 transition-opacity duration-300"
+            loading="eager"
+            onload="this.style.opacity='0.9'; document.getElementById('mini-cart-placeholder-${safeItemKey}')?.remove();"
+            onerror="this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('mini-cart-placeholder-${safeItemKey}')?.remove();"
+          />
+        `
+            : `
+          <!-- No image fallback with El Camino logo -->
+          <div class="w-16 h-16 bg-(--surface-secondary) rounded-sm flex items-center justify-center">
+            <svg class="w-8 h-8 text-(--content-meta)" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+        `
+        }
+      </div>
+
+      <div class="flex-1 min-w-0">
+        <h3 class="font-medium text-(--content-heading) text-sm leading-tight line-clamp-2">
+          <a
+            href="${safeProductUrl}"
+            class="hover:text-(--content-emphasis) transition-colors product-link"
+            data-product-url="${safeProductUrl}"
+          >
+          ${safeTitle}
+          </a>
+        </h3>
+
+        ${
+          safeVariationName
+            ? `
+          <p class="text-xs text-(--content-meta) mt-1">${safeVariationName}</p>
+        `
+            : ""
+        }
+
+        ${(() => {
+          const displayPrice = saleInfo?.salePrice || item.price;
+          const itemTotal = displayPrice * item.quantity;
+
+          if (saleInfo) {
+            return `
+              <div class="mt-2 text-xs text-(--content-meta) line-through">${formatPrice(saleInfo.originalPrice)} each</div>
+              <div class="font-display text-xl font-semibold text-(--content-emphasis)">${formatPrice(itemTotal)}</div>
+            `;
+          } else {
+            return `
+              <div class="mt-2 text-xs text-(--content-meta)">${formatPrice(item.price)} each</div>
+              <div class="font-display text-xl font-semibold text-(--content-emphasis)">${formatPrice(itemTotal)}</div>
+            `;
+          }
+        })()}
+
+        <div class="flex items-center justify-between mt-2">
+          <!-- Remove button on the left -->
+          <button
+            class="font-sans font-semibold focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) inline-flex items-center justify-center text-xs py-1 px-2 text-(--content-body) bg-none border-none focus-visible:ring-(--ui-button-ring) underline underline-offset-1 decoration-(--content-body)/0 hover:decoration-(--content-body)/80 hover:underline-offset-4 transition-all ease-in-out duration-300"
+            data-action="remove"
+            data-item-key="${safeItemKey}"
+            data-item-title="${safeTitle}"
+          >
+            Remove
+          </button>
+
+          <!-- Quantity Controls on the right -->
+          <div class="flex items-center">
+            <button
+              class="w-7 h-7 flex items-center justify-center border-2 rounded-sm transition-all ease-in-out duration-300 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) text-(--content-body) bg-(--surface-secondary) border-(--border-primary) hover:bg-(--surface-primary) ${
+                item.quantity <= 1 ? "opacity-50 cursor-not-allowed" : ""
+              }"
+              data-action="decrease"
+              data-item-key="${safeItemKey}"
+              ${item.quantity <= 1 ? "disabled" : ""}
+              aria-label="Decrease quantity"
+            >
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+              </svg>
+            </button>
+
+            <span class="w-10 text-center text-base font-medium bg-(--surface-primary)">${item.quantity}</span>
+
+            <button
+              class="w-7 h-7 flex items-center justify-center border-2 rounded-sm transition-all ease-in-out duration-300 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) text-(--content-body) bg-(--surface-secondary) border-(--border-primary) hover:bg-(--surface-primary) ${
+                item.quantity >= maxQuantity
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
+              }"
+              data-action="increase"
+              data-item-key="${safeItemKey}"
+              ${item.quantity >= maxQuantity ? "disabled" : ""}
+              aria-label="Increase quantity"
+            >
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  }
+
+  async function loadInventoryData(items: CartItem[]): Promise<void> {
+    if (items.length === 0) return;
+
+    try {
+      const variationIds = items.map((item) => item.variationId);
+      const response = await fetch("/api/cart-inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variationIds }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        inventoryData = data.inventory || {};
+      }
+    } catch (error) {
+      console.warn("Failed to load inventory data:", error);
+    }
+  }
+
+  async function updateMiniCartItemQuantity(itemKey: string): Promise<void> {
+    const cartInstance = await loadCart();
+    const items = cartInstance.getItems();
+    const item = items.find(
+      (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
+    );
+
+    if (!item) {
+      // Item was removed, do full update
+      await updateMiniCartDisplay();
+      return;
+    }
+
+    const inventory = inventoryData[item.variationId] || 999;
+    const total = cartInstance.getTotal();
+    const count = cartInstance.getItemCount();
+
+    // Update cart count
+    const countEl = document.getElementById("mini-cart-count");
+    if (countEl) {
+      countEl.textContent = count.toString();
+    }
+
+    // Update item quantity display
+    const itemContainer = document
+      .querySelector(`[data-item-key="${itemKey}"]`)
+      ?.closest(".p-3") as HTMLElement;
+    if (itemContainer) {
+      const quantitySpan = itemContainer.querySelector(".w-10.text-center");
+      if (quantitySpan) {
+        quantitySpan.textContent = item.quantity.toString();
+      }
+
+      // Update button states
+      const decreaseBtn = itemContainer.querySelector(
+        '[data-action="decrease"]',
+      ) as HTMLButtonElement;
+      const increaseBtn = itemContainer.querySelector(
+        '[data-action="increase"]',
+      ) as HTMLButtonElement;
+
+      if (decreaseBtn) {
+        decreaseBtn.disabled = item.quantity <= 1;
+        decreaseBtn.classList.toggle("opacity-50", item.quantity <= 1);
+      }
+
+      if (increaseBtn) {
+        const maxQuantity = Math.min(inventory, 99);
+        const canIncrement = item.quantity < maxQuantity;
+        increaseBtn.disabled = !canIncrement;
+        increaseBtn.classList.toggle("opacity-50", !canIncrement);
+      }
+    }
+
+    // Update cart total
+    const totalEl = document.getElementById("mini-cart-total");
+    if (totalEl) {
+      totalEl.textContent = formatPrice(total);
+    }
+    updateShippingTracker(total);
+  }
+
+  async function updateMiniCartDisplay(): Promise<void> {
+    const loadingEl = document.getElementById("mini-cart-loading");
+    const emptyEl = document.getElementById("mini-cart-empty");
+    const itemsEl = document.getElementById("mini-cart-items");
+    const footerEl = document.getElementById("mini-cart-footer");
+    const countEl = document.getElementById("mini-cart-count");
+    const totalEl = document.getElementById("mini-cart-total");
+    const itemsListEl = document.getElementById("items-list");
+
+    if (
+      !loadingEl ||
+      !emptyEl ||
+      !itemsEl ||
+      !footerEl ||
+      !countEl ||
+      !totalEl ||
+      !itemsListEl
+    ) {
+      console.error("Mini cart elements not found");
+      return;
+    }
+
+    try {
+      const cartInstance = await loadCart();
+      const items = cartInstance.getItems();
+      const total = cartInstance.getTotal();
+      const count = cartInstance.getItemCount();
+
+      await loadInventoryData(items);
+
+      countEl.textContent = count.toString();
+      loadingEl.classList.add("hidden");
+
+      if (items.length === 0) {
+        emptyEl.classList.remove("hidden");
+        itemsEl.classList.add("hidden");
+        footerEl.classList.add("hidden");
+      } else {
+        emptyEl.classList.add("hidden");
+        itemsEl.classList.remove("hidden");
+        footerEl.classList.remove("hidden");
+
+        itemsListEl.innerHTML = items.map(renderCartItem).join("");
+        totalEl.textContent = formatPrice(total);
+        updateShippingTracker(total);
+
+        setupQuantityControls();
+      }
+    } catch (error) {
+      console.error("Error updating mini cart display:", error);
+      loadingEl.classList.add("hidden");
+      emptyEl.classList.remove("hidden");
+    }
+  }
+
+  function setupQuantityControls(): void {
+    const itemsListEl = document.getElementById("items-list");
+    if (!itemsListEl) return;
+
+    // Remove existing listeners to prevent conflicts
+    const newItemsList = itemsListEl.cloneNode(true) as HTMLElement;
+    const parent = itemsListEl.parentNode;
+    if (parent) {
+      parent.replaceChild(newItemsList, itemsListEl);
+    }
+
+    // Add event listener for both quantity controls AND product links
+    newItemsList.addEventListener("click", async (e) => {
+      // Handle product links
+      const productLink = (e.target as HTMLElement).closest(
+        "a.product-link",
+      ) as HTMLAnchorElement;
+      if (productLink) {
+        // Don't prevent default - let link work naturally
+        // Just close the mini cart and let Astro handle navigation
+        closeMiniCart();
+        return;
+      }
+
+      // Handle quantity control buttons (existing logic)
+      const button = (e.target as HTMLElement).closest(
+        "button[data-action]",
+      ) as HTMLButtonElement;
+      if (!button || button.disabled) return;
+
+      e.preventDefault();
+
+      const action = button.dataset.action;
+      const itemKey = button.dataset.itemKey;
+
+      if (!itemKey) return;
+
+      try {
+        const cartInstance = await loadCart();
+
+        switch (action) {
+          case "increase":
+            const items = cartInstance.getItems();
+            const item = items.find(
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
+            );
+            if (item) {
+              const newQty = item.quantity + 1;
+              const inventory = inventoryData[item.variationId] || 999;
+
+              if (newQty <= inventory) {
+                await cartInstance.updateQuantity(itemKey, newQty);
+                await updateMiniCartItemQuantity(itemKey);
+              } else {
+                window.showNotification(`Only ${inventory} available`, "error");
+              }
+            }
+            break;
+
+          case "decrease": {
+            const currentItems = cartInstance.getItems();
+            const currentItem = currentItems.find(
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
+            );
+            if (currentItem) {
+              if (currentItem.quantity === 1) {
+                cartInstance.removeItem(itemKey);
+                await updateMiniCartDisplay();
+                showUndoBar(currentItem);
+              } else {
+                await cartInstance.updateQuantity(
+                  itemKey,
+                  currentItem.quantity - 1,
+                );
+                await updateMiniCartItemQuantity(itemKey);
+              }
+            }
+            break;
+          }
+
+          case "remove": {
+            const allItems = cartInstance.getItems();
+            const itemToRemove = allItems.find(
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
+            );
+            if (itemToRemove) {
+              cartInstance.removeItem(itemKey);
+              await updateMiniCartDisplay();
+              showUndoBar(itemToRemove);
+            }
+            break;
+          }
+        }
+      } catch (error) {
+        console.error("Error handling quantity action:", error);
+        window.showNotification("Error updating cart", "error");
+      }
+    });
+
+    // Make closeMiniCart function accessible to this scope
+    function closeMiniCart() {
+      const overlay = document.getElementById("mini-cart-overlay");
+      const panel = document.getElementById("mini-cart-panel");
+
+      if (overlay && panel) {
+        panel.setAttribute("inert", "");
+        overlay.classList.add("opacity-0");
+        panel.classList.add("translate-x-full");
+        document.body.style.overflow = "unset";
+        dismissUndoBar();
+
+        setTimeout(() => {
+          overlay.classList.add("hidden");
+          panel.removeAttribute("inert");
+        }, 300);
+      }
+    }
+  }
+
+  function initMiniCart(signal: AbortSignal) {
+    const overlay = document.getElementById("mini-cart-overlay");
+    const panel = document.getElementById("mini-cart-panel");
+    const closeButton = document.getElementById("close-mini-cart");
+    const continueShoppingButton = document.getElementById("continue-shopping");
+    const continueShoppingFooterButton = document.getElementById(
+      "continue-shopping-footer",
+    );
+    const checkoutButton = document.getElementById("mini-cart-checkout");
+    const undoBtn = document.getElementById("mini-cart-undo-btn");
+    const undoDismissBtn = document.getElementById("mini-cart-undo-dismiss");
+
+    // Early return if essential elements missing
+    if (!overlay || !panel || !closeButton) {
+      console.error("Mini cart elements not found");
+      return;
+    }
+
+    function openMiniCart() {
+      if (overlay && panel && closeButton) {
+        overlay.classList.remove("hidden");
+        panel.removeAttribute("inert");
+
+        // Prevent page scrolling when MiniCart is open
+        document.body.style.overflow = "hidden";
+
+        requestAnimationFrame(() => {
+          overlay.classList.remove("opacity-0");
+          panel.classList.remove("translate-x-full");
+        });
+
+        closeButton.focus();
+        updateMiniCartDisplay();
+      }
+    }
+
+    function closeMiniCart() {
+      if (overlay && panel) {
+        panel.setAttribute("inert", "");
+        overlay.classList.add("opacity-0");
+        panel.classList.add("translate-x-full");
+
+        // Restore page scrolling when MiniCart is closed
+        document.body.style.overflow = "unset";
+        dismissUndoBar();
+
+        setTimeout(() => {
+          overlay.classList.add("hidden");
+          panel.removeAttribute("inert");
+        }, 300);
+      }
+    }
+
+    if (undoBtn) undoBtn.addEventListener("click", handleUndoRemove);
+    if (undoDismissBtn)
+      undoDismissBtn.addEventListener("click", dismissUndoBar);
+
+    closeButton.addEventListener("click", closeMiniCart);
+    overlay.addEventListener("click", closeMiniCart);
+
+    // Continue shopping buttons close the mini cart
+    if (continueShoppingButton) {
+      continueShoppingButton.addEventListener("click", closeMiniCart);
+    }
+
+    if (continueShoppingFooterButton) {
+      continueShoppingFooterButton.addEventListener("click", closeMiniCart);
+    }
+
+    // Checkout button navigates to cart page
+    if (checkoutButton) {
+      checkoutButton.addEventListener("click", async () => {
+        const cartInstance = await loadCart();
+        const items = cartInstance.getItems();
+
+        if (items.length === 0) {
+          window.showNotification("Your cart is empty", "error");
+          return;
+        }
+
+        // Navigate to cart page (which is now the checkout page)
+        window.location.href = "/cart";
+      });
+    }
+
+    window.addEventListener("openMiniCart", openMiniCart, { signal });
+    window.addEventListener("cartUpdated", updateMiniCartDisplay, { signal });
+
+    document.addEventListener("keydown", (e) => {
+      if (
+        e.key === "Escape" &&
+        panel &&
+        !panel.classList.contains("translate-x-full")
+      ) {
+        closeMiniCart();
+      }
+    }, { signal });
+  }
+
+  // AbortController ensures all window/document listeners from the previous
+  // initMiniCart call are torn down before re-registering on each navigation.
+  // Without this, every astro:page-load stacks a new openMiniCart listener on
+  // window, causing stale no-op handlers to absorb clicks before the live one fires.
+  let miniCartAbortController: AbortController | null = null;
+
+  function initMiniCartWithCleanup() {
+    if (miniCartAbortController) {
+      miniCartAbortController.abort();
+    }
+    miniCartAbortController = new AbortController();
+    initMiniCart(miniCartAbortController.signal);
+  }
+
+  // astro:page-load fires on first load (ClientRouter active) and every navigation.
+  // No need for a separate DOMContentLoaded/immediate-init path.
+  document.addEventListener("astro:page-load", initMiniCartWithCleanup);
