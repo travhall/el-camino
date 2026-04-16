@@ -4,8 +4,8 @@ import type { CartItem } from "@/lib/cart/types";
     EL_CAMINO_LOGO_DATA_URI,
     EL_CAMINO_LOADER_DATA_URI,
   } from "@/lib/constants/assets";
+  import { cart as cartInstance } from "@/lib/cart";
 
-  let cart: any = null;
   let inventoryData: Record<string, number> = {};
 
   // Undo bar state
@@ -113,11 +113,7 @@ import type { CartItem } from "@/lib/cart/types";
   }
 
   async function loadCart() {
-    if (!cart) {
-      const module = await import("@/lib/cart");
-      cart = module.cart;
-    }
-    return cart;
+    return cartInstance;
   }
 
   // Route any external image URL through Netlify Image CDN for compression,

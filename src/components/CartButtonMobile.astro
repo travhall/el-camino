@@ -26,6 +26,8 @@ const cartCount = cart.getItemCount();
 </a>
 
 <script>
+  import { cart as cartInstance } from "@/lib/cart";
+
   // Initialize with server-rendered count to prevent initial flash
   let lastKnownCount = (() => {
     const countElement = document.getElementById("mobile-cart-count");
@@ -37,20 +39,18 @@ const cartCount = cart.getItemCount();
     const countElement = document.getElementById("mobile-cart-count");
     if (!countElement) return;
 
-    import("@/lib/cart")
-      .then(({ cart }) => {
-        const count = cart.getItemCount();
+    try {
+      const count = cartInstance.getItemCount();
 
-        // Only update DOM if count actually changed (prevents flash)
-        if (force || lastKnownCount !== count) {
-          countElement.textContent = count.toString();
-          countElement.classList.toggle("hidden", count === 0);
-          lastKnownCount = count;
-        }
-      })
-      .catch((err) => {
-        console.error("Cart count update failed:", err);
-      });
+      // Only update DOM if count actually changed (prevents flash)
+      if (force || lastKnownCount !== count) {
+        countElement.textContent = count.toString();
+        countElement.classList.toggle("hidden", count === 0);
+        lastKnownCount = count;
+      }
+    } catch (err) {
+      console.error("Cart count update failed:", err);
+    }
   }
 
   // Update cart count when cart is actually modified

@@ -25,7 +25,8 @@ const cartCount = cart.getItemCount();
 </button>
 
 <script>
-  let cartLoaded = false;
+  import { cart as cartInstance } from "@/lib/cart";
+
   let updateTimeout: number | null = null;
   // Initialize with server-rendered count to prevent initial flash
   let lastKnownCount: number | null = (() => {
@@ -34,12 +35,7 @@ const cartCount = cart.getItemCount();
   })();
 
   async function loadCart() {
-    if (!cartLoaded) {
-      const { cart } = await import("@/lib/cart");
-      cartLoaded = true;
-      return cart;
-    }
-    return (await import("@/lib/cart")).cart;
+    return cartInstance;
   }
 
   async function updateCartCount(force = false) {
