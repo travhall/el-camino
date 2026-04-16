@@ -44,6 +44,167 @@ const pageDescription =
         Get a free key at <span class="font-mono">console.cloud.google.com</span
         > → APIs &amp; Services → Chrome UX Report API.
       </p>
+
+      <div>
+        <header>
+          <div class="label">El Camino Skate Shop — Admin Setup</div>
+          <h1>Getting a CrUX API Key</h1>
+          <p class="subtitle">
+            Required for the Core Web Vitals dashboard in the admin panel. Free,
+            takes about 5 minutes.
+          </p>
+        </header>
+
+        <div class="note">
+          <strong>What this is for:</strong> The Chrome UX Report (CrUX) API provides
+          real-world performance data from Chrome users visiting your site. The admin
+          dashboard uses it to show Core Web Vitals metrics. Without it, that section
+          of the dashboard won't load — but the rest of the site works fine.
+        </div>
+
+        <section>
+          <div class="step-header">
+            <div class="step-num">1</div>
+            <h2>Go to Google Cloud Console</h2>
+          </div>
+          <p>
+            Open the link below in your browser. Sign in with your Google
+            account (any Google/Gmail account works).
+          </p>
+          <div class="url-block">
+            <span>https://console.cloud.google.com/</span>
+            <button
+              class="copy-btn"
+              onclick="copyURL(this, 'https://console.cloud.google.com/')"
+              >Copy</button
+            >
+          </div>
+          <p>
+            If this is your first time, you may be asked to agree to terms of
+            service. Accept and continue.
+          </p>
+        </section>
+
+        <section>
+          <div class="step-header">
+            <div class="step-num">2</div>
+            <h2>Create or select a project</h2>
+          </div>
+          <p>
+            At the top of the page, click the project selector dropdown (it may
+            say "Select a project" or show an existing project name).
+          </p>
+          <ul>
+            <li>Click <strong>New Project</strong></li>
+            <li>Name it something like <strong>El Camino</strong></li>
+            <li>Click <strong>Create</strong></li>
+            <li>Wait a moment, then make sure the new project is selected</li>
+          </ul>
+          <div class="callout">
+            <div class="callout-label">Already have a project?</div>
+            <p>
+              You can use an existing one — no need to create a new project just
+              for this.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <div class="step-header">
+            <div class="step-num">3</div>
+            <h2>Enable the CrUX API</h2>
+          </div>
+          <p>Go directly to the CrUX API page using the link below:</p>
+          <div class="url-block">
+            <span
+              >https://console.cloud.google.com/apis/library/chromeuxreport.googleapis.com</span
+            >
+            <button
+              class="copy-btn"
+              onclick="copyURL(this, 'https://console.cloud.google.com/apis/library/chromeuxreport.googleapis.com')"
+              >Copy</button
+            >
+          </div>
+          <p>
+            Click the blue <strong>Enable</strong> button. If it says "Manage" instead,
+            the API is already enabled — move on to the next step.
+          </p>
+        </section>
+
+        <section>
+          <div class="step-header">
+            <div class="step-num">4</div>
+            <h2>Create an API key</h2>
+          </div>
+          <p>Go to the credentials page:</p>
+          <div class="url-block">
+            <span>https://console.cloud.google.com/apis/credentials</span>
+            <button
+              class="copy-btn"
+              onclick="copyURL(this, 'https://console.cloud.google.com/apis/credentials')"
+              >Copy</button
+            >
+          </div>
+          <ul>
+            <li>Click <strong>+ Create Credentials</strong> at the top</li>
+            <li>Select <strong>API key</strong></li>
+            <li>
+              A dialog will appear with your new key — copy it immediately
+            </li>
+          </ul>
+          <p>The key will look something like this:</p>
+          <div class="key-format">
+            <span>AIzaSyD_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
+          </div>
+        </section>
+
+        <section>
+          <div class="step-header">
+            <div class="step-num">5</div>
+            <h2>Add it to Netlify</h2>
+          </div>
+          <p>
+            In your Netlify dashboard for <strong>elcaminoskateshop.com</strong
+            >:
+          </p>
+          <ul>
+            <li>
+              Go to <strong>Site configuration → Environment variables</strong>
+            </li>
+            <li>Click <strong>Add a variable</strong></li>
+            <li>Key: <strong>CRUX_API_KEY</strong></li>
+            <li>Value: paste your API key</li>
+            <li>Click <strong>Save</strong></li>
+            <li>Trigger a new deploy for the change to take effect</li>
+          </ul>
+        </section>
+
+        <hr class="divider" />
+
+        <section>
+          <div class="step-header">
+            <div
+              class="step-num"
+              style="background: var(--surface); color: var(--text-dim); border: 1px solid var(--border);"
+            >
+              ?
+            </div>
+            <h2>Optional: Restrict the key</h2>
+          </div>
+          <p>
+            By default the key works from anywhere. You can optionally restrict
+            it to only work from your site — in the credentials page, click your
+            key, then under <strong>API restrictions</strong> select <strong
+              >Chrome UX Report API</strong
+            > only.
+          </p>
+          <p>This is a good practice but not required for things to work.</p>
+        </section>
+
+        <footer>
+          El Camino Skate Shop — Eau Claire, WI &nbsp;·&nbsp; Admin Setup Guide
+        </footer>
+      </div>
     </div>
   </div>
 
@@ -243,6 +404,23 @@ const pageDescription =
 </AdminLayout>
 
 <script>
+  declare global {
+    interface Window {
+      copyURL: (btn: HTMLButtonElement, url: string) => void;
+    }
+  }
+
+  window.copyURL = function (btn: HTMLButtonElement, url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      btn.textContent = "Copied!";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.textContent = "Copy";
+        btn.classList.remove("copied");
+      }, 2000);
+    });
+  };
+
   type CruxOk = {
     status: "ok";
     origin: string;
@@ -362,3 +540,240 @@ const pageDescription =
 
   loadPerf();
 </script>
+
+<style is:inline>
+  @import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap");
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface-2: #242424;
+    --border: #2e2e2e;
+    --accent: #e8f048;
+    --accent-dim: rgba(232, 240, 72, 0.12);
+    --text: #f0f0f0;
+    --text-dim: #888;
+    --text-muted: #555;
+    --mono: "DM Mono", monospace;
+    --sans: "DM Sans", sans-serif;
+    --radius: 8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 48px 24px 80px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  header {
+    margin-bottom: 48px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  .note {
+    background: var(--accent-dim);
+    border: 1px solid rgba(232, 240, 72, 0.25);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #d4dc3a;
+    margin-bottom: 40px;
+  }
+
+  .note strong {
+    color: var(--accent);
+  }
+
+  section {
+    margin-bottom: 40px;
+  }
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #0f0f0f;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  h2 {
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  p {
+    color: #ccc;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+
+  .url-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    margin: 12px 0;
+    word-break: break-all;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .copy-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .copy-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .copy-btn.copied {
+    border-color: #4caf50;
+    color: #4caf50;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0;
+  }
+
+  ul li {
+    color: #ccc;
+    font-size: 14px;
+    padding: 6px 0 6px 20px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+
+  ul li:last-child {
+    border-bottom: none;
+  }
+
+  ul li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin: 16px 0;
+  }
+
+  .callout .callout-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .callout p {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .key-format {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #aaa;
+    margin: 12px 0;
+  }
+
+  .key-format span {
+    color: var(--accent);
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 40px 0;
+  }
+
+  footer {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-family: var(--mono);
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+</style>

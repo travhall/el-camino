@@ -23,9 +23,14 @@ export const GET: APIRoute = async () => {
     });
   }
 
-  const url = apiKey
-    ? `${CRUX_API_URL}?key=${apiKey}`
-    : CRUX_API_URL;
+  // No key configured — return early so the UI can show the setup prompt
+  if (!apiKey) {
+    return new Response(JSON.stringify({ status: "no_key", origin }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const url = `${CRUX_API_URL}?key=${apiKey}`;
 
   let res: Response;
   try {
