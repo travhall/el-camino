@@ -286,13 +286,14 @@ export class PDPUIManager {
         const isAvailable = canAddToCartFn(attributeType, value);
         const isSelected = selectedAttributes[attributeType] === value;
 
-        // Update availability styling
+        // Update availability styling — keep OOS buttons clickable so users can
+        // select them and see the back-in-stock form (mirrors QuickView behaviour)
         if (!isAvailable) {
-          btn.classList.add("text-(--content-meta)", "line-through", "cursor-not-allowed", "pointer-events-none");
-          btn.classList.remove("opacity-40", "opacity-100");
+          btn.classList.add("text-(--content-meta)", "line-through", "opacity-40");
+          btn.classList.remove("opacity-100");
           btn.setAttribute("aria-label", `${value} — out of stock`);
         } else {
-          btn.classList.remove("text-(--content-meta)", "line-through", "cursor-not-allowed", "pointer-events-none", "opacity-40");
+          btn.classList.remove("text-(--content-meta)", "line-through", "opacity-40");
           // Remove aria-label on available buttons — aria-pressed conveys selection state,
           // and WCAG 2.5.3 requires the accessible name to match visible text.
           btn.removeAttribute("aria-label");
