@@ -262,6 +262,7 @@ const filterOptions = {
     </div>
   </div>
 
+  <Fragment slot="panels">
   <!-- Examples Drawer (slides from left) -->
   <!-- Overlay -->
   <div
@@ -273,8 +274,9 @@ const filterOptions = {
   <!-- Slide Panel -->
   <div
     id="examples-panel"
-    class="fixed top-0 left-0 h-screen w-96 max-w-full bg-(--surface-primary) border-4 border-(--surface-primary) z-60 transform -translate-x-full transition-transform duration-300 shadow-lg overflow-y-scroll"
+    class="fixed top-0 left-0 h-screen w-96 max-w-full bg-(--surface-secondary) border-4 border-(--border-secondary) z-60 transform -translate-x-full transition-transform duration-300 panel-shadow overflow-y-scroll"
     role="dialog"
+    aria-modal="true"
     aria-labelledby="examples-title"
   >
     <div class="container grid grid-rows-[auto_1fr] h-full">
@@ -291,7 +293,7 @@ const filterOptions = {
         <button
           id="close-examples"
           type="button"
-          class="p-2 hover:border-(--ui-nav-border) border rounded-sm transition-colors"
+          class="p-2 border-(--border-secondary) hover:border-(--ui-nav-border) border-2 rounded-sm transition-colors"
           aria-label="Close examples"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -349,8 +351,9 @@ const filterOptions = {
   <!-- Slide Panel -->
   <div
     id="showcase-builder-panel"
-    class="fixed top-0 right-0 h-screen w-96 max-w-full bg-(--surface-primary) border-4 border-(--surface-primary) z-70 transform translate-x-full transition-transform duration-300 shadow-lg overflow-y-scroll"
+    class="fixed top-0 right-0 h-screen w-96 max-w-full bg-(--surface-secondary) border-4 border-(--border-secondary) z-70 transform translate-x-full transition-transform duration-300 panel-shadow overflow-y-scroll"
     role="dialog"
+    aria-modal="true"
     aria-labelledby="showcase-builder-title"
   >
     <div class="container grid grid-rows-[auto_1fr_auto] h-full">
@@ -367,7 +370,7 @@ const filterOptions = {
         <button
           id="close-showcase-builder"
           type="button"
-          class="p-2 hover:border-(--ui-nav-border) border rounded-sm transition-colors"
+          class="p-2 border-(--border-secondary) hover:border-(--ui-nav-border) border-2 rounded-sm transition-colors"
           aria-label="Close showcase builder"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -473,8 +476,8 @@ const filterOptions = {
       </div>
     </div>
   </div>
-
-
+  </Fragment>
+</AdminLayout>
 
 <script define:vars={{ skus, filterOptions, categorized }}>
   // Enhanced SKU Reference with improved UX and hierarchical categories
@@ -503,6 +506,15 @@ const filterOptions = {
   const tableResults = document.getElementById('table-results');
   const emptyState = document.getElementById('empty-state');
   const selectAllCheckbox = document.getElementById('select-all-checkbox');
+
+  // Move panels to document.body immediately — the inline script runs after
+  // the panel elements are parsed (they appear before this script in main),
+  // so getElementById finds them synchronously. This escapes main's CSS
+  // stacking context so fixed panels cover the full viewport including header.
+  ['examples-overlay', 'examples-panel', 'showcase-builder-overlay', 'showcase-builder-panel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) document.body.appendChild(el);
+  });
 
   // Initialize
   document.addEventListener('DOMContentLoaded', () => {
@@ -558,12 +570,30 @@ const filterOptions = {
     // Examples drawer
     document.getElementById('open-examples')?.addEventListener('click', openExamples);
     document.getElementById('close-examples')?.addEventListener('click', closeExamples);
-    document.getElementById('examples-overlay')?.addEventListener('click', closeExamples);
+    document.getElementById('examples-overlay')?.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeExamples();
+    });
 
     // Showcase builder drawer
     document.getElementById('open-showcase-builder')?.addEventListener('click', openShowcaseBuilder);
     document.getElementById('close-showcase-builder')?.addEventListener('click', closeShowcaseBuilder);
-    document.getElementById('showcase-builder-overlay')?.addEventListener('click', closeShowcaseBuilder);
+    document.getElementById('showcase-builder-overlay')?.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeShowcaseBuilder();
+    });
+
+    // Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const examplesPanel = document.getElementById('examples-panel');
+        if (examplesPanel && !examplesPanel.classList.contains('-translate-x-full')) {
+          closeExamples();
+        }
+        const showcasePanel = document.getElementById('showcase-builder-panel');
+        if (showcasePanel && !showcasePanel.classList.contains('translate-x-full')) {
+          closeShowcaseBuilder();
+        }
+      }
+    });
 
     // Layout buttons
     document.querySelectorAll('.layout-btn').forEach(btn => {
@@ -598,27 +628,25 @@ const filterOptions = {
     const panel = document.getElementById('examples-panel');
 
     overlay.classList.remove('hidden');
-    panel.classList.remove('-translate-x-full');
-
-    // Trigger animations
-    setTimeout(() => {
-      overlay.classList.remove('opacity-0');
-    }, 10);
-
+    panel.removeAttribute('inert');
     document.body.style.overflow = 'hidden';
+
+    requestAnimationFrame(() => {
+      overlay.classList.remove('opacity-0');
+      panel.classList.remove('-translate-x-full');
+    });
   }
 
   function closeExamples() {
     const overlay = document.getElementById('examples-overlay');
     const panel = document.getElementById('examples-panel');
 
+    panel.setAttribute('inert', '');
     overlay.classList.add('opacity-0');
     panel.classList.add('-translate-x-full');
+    document.body.style.overflow = '';
 
-    setTimeout(() => {
-      overlay.classList.add('hidden');
-      document.body.style.overflow = '';
-    }, 300);
+    setTimeout(() => overlay.classList.add('hidden'), 300);
   }
 
   function openShowcaseBuilder() {
@@ -626,27 +654,25 @@ const filterOptions = {
     const panel = document.getElementById('showcase-builder-panel');
 
     overlay.classList.remove('hidden');
-    panel.classList.remove('translate-x-full');
-
-    // Trigger animations
-    setTimeout(() => {
-      overlay.classList.remove('opacity-0');
-    }, 10);
-
+    panel.removeAttribute('inert');
     document.body.style.overflow = 'hidden';
+
+    requestAnimationFrame(() => {
+      overlay.classList.remove('opacity-0');
+      panel.classList.remove('translate-x-full');
+    });
   }
 
   function closeShowcaseBuilder() {
     const overlay = document.getElementById('showcase-builder-overlay');
     const panel = document.getElementById('showcase-builder-panel');
 
+    panel.setAttribute('inert', '');
     overlay.classList.add('opacity-0');
     panel.classList.add('translate-x-full');
+    document.body.style.overflow = '';
 
-    setTimeout(() => {
-      overlay.classList.add('hidden');
-      document.body.style.overflow = '';
-    }, 300);
+    setTimeout(() => overlay.classList.add('hidden'), 300);
   }
 
   function updateBuilderButton() {
