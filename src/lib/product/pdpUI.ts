@@ -289,11 +289,11 @@ export class PDPUIManager {
         // Update availability styling — keep OOS buttons clickable so users can
         // select them and see the back-in-stock form (mirrors QuickView behaviour)
         if (!isAvailable) {
-          btn.classList.add("text-(--content-meta)", "line-through", "opacity-40");
+          btn.classList.add("text-(--content-meta)", "line-through", "opacity-60");
           btn.classList.remove("opacity-100");
           btn.setAttribute("aria-label", `${value} — out of stock`);
         } else {
-          btn.classList.remove("text-(--content-meta)", "line-through", "opacity-40");
+          btn.classList.remove("text-(--content-meta)", "line-through", "opacity-60");
           // Remove aria-label on available buttons — aria-pressed conveys selection state,
           // and WCAG 2.5.3 requires the accessible name to match visible text.
           btn.removeAttribute("aria-label");
