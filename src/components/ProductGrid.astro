@@ -175,6 +175,9 @@ const displayProducts = hideSoldOut
           data-out-of-stock={
             product.inventoryStatus?.isOutOfStock ? "true" : "false"
           }
+          data-on-sale={
+            product.variations?.some((v) => v.saleInfo) ? "true" : "false"
+          }
           data-filter-hidden={isFilterHidden ? "true" : undefined}
           style={shouldHide ? "display: none;" : ""}
         >
@@ -759,6 +762,7 @@ const displayProducts = hideSoldOut
     brands: string[],
     categorySlugs: string[],
     availability: boolean,
+    onSale: boolean = false,
   ) {
     const grid = document.getElementById("filterable-product-grid");
     if (!grid) return;
@@ -772,7 +776,7 @@ const displayProducts = hideSoldOut
     >;
     const categoryIds = categorySlugs.map((s) => slugToId[s] ?? s);
     const hasFilters =
-      brands.length > 0 || categorySlugs.length > 0 || availability;
+      brands.length > 0 || categorySlugs.length > 0 || availability || onSale;
 
     const trigger = document.getElementById("infinite-scroll-trigger");
     const loadMoreContainer = document.getElementById("load-more-container");
@@ -822,6 +826,7 @@ const displayProducts = hideSoldOut
         card.dataset.categories || "[]",
       ) as string[];
       const isOutOfStock = card.dataset.outOfStock === "true";
+      const isOnSale = card.dataset.onSale === "true";
 
       let matches = true;
       if (brands.length > 0 && !brands.includes(cardBrand)) matches = false;
@@ -831,6 +836,7 @@ const displayProducts = hideSoldOut
       )
         matches = false;
       if (availability && isOutOfStock) matches = false;
+      if (onSale && !isOnSale) matches = false;
 
       if (matches) matchingCards.push(card);
       else nonMatchingCards.push(card);
@@ -934,11 +940,13 @@ const displayProducts = hideSoldOut
       brands: string[];
       categories: string[];
       availability: boolean;
+      onSale?: boolean;
     }>;
     applyClientFilters(
       evt.detail.brands,
       evt.detail.categories,
       evt.detail.availability,
+      evt.detail.onSale ?? false,
     );
   });
 
@@ -947,10 +955,10 @@ const displayProducts = hideSoldOut
     const brands = params.getAll("brands");
     const categories = params.getAll("categories");
     const availability = params.get("availability") === "true";
-    // Dispatch filterchange so all components (ProductFilters, AppliedFilters) also update
+    const onSale = params.get("onSale") === "true";
     window.dispatchEvent(
       new CustomEvent("filterchange", {
-        detail: { brands, categories, availability },
+        detail: { brands, categories, availability, onSale },
       }),
     );
   });

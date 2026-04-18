@@ -118,6 +118,13 @@ export async function filterProducts(
     });
   }
 
+  // On-sale filtering — synchronous, no API call needed
+  if (filters.onSale === true) {
+    filteredProducts = filteredProducts.filter((product) =>
+      product.variations?.some((v) => v.saleInfo) ?? false
+    );
+  }
+
   // OPTIMIZED: Batch availability filtering
   if (filters.availability === true) {
     const startTime = performance.now();
@@ -233,13 +240,14 @@ export function parseFiltersFromURL(
   // Category IDs
   const categories = searchParams.getAll("categories").filter(Boolean);
 
-  // Parse availability parameter
   const availability = searchParams.get("availability") === "true";
+  const onSale = searchParams.get("onSale") === "true";
 
   return {
     brands,
     categories,
     availability,
+    onSale,
   };
 }
 
@@ -260,9 +268,12 @@ export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
     filters.categories.forEach((id) => params.append("categories", id));
   }
 
-  // Add availability parameter
   if (filters.availability === true) {
     params.set("availability", "true");
+  }
+
+  if (filters.onSale === true) {
+    params.set("onSale", "true");
   }
 
   return params;
@@ -284,7 +295,8 @@ export function getActiveFiltersCount(filters: ProductFilters): number {
   return (
     filters.brands.length +
     filters.categories.length +
-    (filters.availability ? 1 : 0)
+    (filters.availability ? 1 : 0) +
+    (filters.onSale ? 1 : 0)
   );
 }
 
@@ -296,15 +308,13 @@ export function hasActiveFilters(filters: ProductFilters): boolean {
   return (
     filters.brands.length > 0 ||
     filters.categories.length > 0 ||
-    filters.availability === true
+    filters.availability === true ||
+    filters.onSale === true
   );
 }
 
-/**
- * Clear all filters
- */
 export function clearAllFilters(): ProductFilters {
-  return { brands: [], categories: [], availability: false };
+  return { brands: [], categories: [], availability: false, onSale: false };
 }
 
 /**

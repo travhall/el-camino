@@ -8,6 +8,7 @@ interface Props {
   filteredCount: number;
   categoryPath: string;
   appliedFilters?: ProductFilters;
+  hideSaleFilter?: boolean;
 }
 
 const {
@@ -16,14 +17,16 @@ const {
   filteredCount,
   categoryPath: _categoryPath,
   appliedFilters,
+  hideSaleFilter = false,
 } = Astro.props;
 
 const currentParams = new URLSearchParams(Astro.url.search);
 const currentBrands = appliedFilters?.brands || currentParams.getAll("brands") || [];
 const currentCategories = appliedFilters?.categories || currentParams.getAll("categories") || [];
 const currentAvailability = appliedFilters?.availability ?? (currentParams.get("availability") === "true");
+const currentOnSale = appliedFilters?.onSale ?? (currentParams.get("onSale") === "true");
 
-const totalActiveFilters = currentBrands.length + currentCategories.length + (currentAvailability ? 1 : 0);
+const totalActiveFilters = currentBrands.length + currentCategories.length + (currentAvailability ? 1 : 0) + (currentOnSale ? 1 : 0);
 ---
 
 <style is:inline>
@@ -183,7 +186,7 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
             type="button"
             data-clear-filters
             class="text-sm text-(--content-meta) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer lg:mr-2"
-            style={(currentBrands.length > 0 || currentCategories.length > 0 || currentAvailability) ? "" : "display: none;"}
+            style={(currentBrands.length > 0 || currentCategories.length > 0 || currentAvailability || currentOnSale) ? "" : "display: none;"}
           >
             Clear all
           </button>
@@ -405,6 +408,29 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
         </div>
       </div>
 
+      <!-- On Sale Filter — hidden on /shop/sale where all items are already on sale -->
+      {!hideSaleFilter && (
+        <div class="filter-section border-t-2 border-(--border-primary)">
+          <div class="py-2.5">
+            <p class="text-xl font-medium font-display text-(--content-heading)">Price</p>
+          </div>
+          <div class="pb-4">
+            <label
+              class="flex items-center group cursor-pointer p-3 lg:p-1 rounded-sm hover:bg-(--surface-tertiary) lg:hover:bg-(--surface-secondary) transition-colors"
+            >
+              <input
+                type="checkbox"
+                name="onSale"
+                value="true"
+                checked={currentOnSale}
+                class="elco-checkbox mr-3 lg:mr-2 w-5 h-5 lg:w-4 lg:h-4 rounded-sm border-2 border-(--ui-input-border) text-ui-accent focus:ring-2 focus:ring-ui-accent focus:ring-offset-0"
+              />
+              <span class="text-(--content-body) group-hover:text-(--content-emphasis)">On sale only</span>
+            </label>
+          </div>
+        </div>
+      )}
+
       <!-- Mobile Actions -->
       <div
         class="flex gap-3 p-6 -mx-4 bg-(--surface-secondary) border-t-4 border-(--border-tertiary) sticky bottom-0 lg:hidden"
@@ -439,7 +465,7 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
 
   // ── Module-level: update UI from filter state ────────────────────────────────
 
-  function updateCheckboxStates(brands: string[], categories: string[], availability: boolean) {
+  function updateCheckboxStates(brands: string[], categories: string[], availability: boolean, onSale: boolean) {
     const form = document.getElementById("filter-form") as HTMLFormElement | null;
     if (!form) return;
     form.querySelectorAll<HTMLInputElement>('input[name="brands"]').forEach((cb) => {
@@ -450,9 +476,11 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
     });
     const availCb = form.querySelector<HTMLInputElement>('input[name="availability"]');
     if (availCb) availCb.checked = availability;
+    const onSaleCb = form.querySelector<HTMLInputElement>('input[name="onSale"]');
+    if (onSaleCb) onSaleCb.checked = onSale;
   }
 
-  function updateSectionBadges(brands: string[], categories: string[], availability: boolean) {
+  function updateSectionBadges(brands: string[], categories: string[], availability: boolean, onSale: boolean) {
     // Brand badge
     const brandBadge = document.querySelector<HTMLElement>("[data-brand-badge]");
     if (brandBadge) {
@@ -478,7 +506,7 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
     if (availBadge) availBadge.style.display = availability ? "" : "none";
 
     // Mobile button badge
-    const total = brands.length + categories.length + (availability ? 1 : 0);
+    const total = brands.length + categories.length + (availability ? 1 : 0) + (onSale ? 1 : 0);
     const mobileBadge = document.querySelector<HTMLElement>("[data-mobile-filter-badge]");
     if (mobileBadge) {
       mobileBadge.textContent = total > 0 ? String(total) : "";
@@ -518,14 +546,11 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
   });
 
   window.addEventListener("filterchange", (e: Event) => {
-    const evt = e as CustomEvent<{ brands: string[]; categories: string[]; availability: boolean }>;
-    const { brands, categories, availability } = evt.detail;
-    // Sync checkboxes (handles popstate / pill removal dispatching filterchange)
-    updateCheckboxStates(brands, categories, availability);
-    // Sync all badges and section-level clear buttons
-    updateSectionBadges(brands, categories, availability);
-    // Show/hide "Clear all" based on active filter state (not just count diff)
-    const hasFilters = brands.length > 0 || categories.length > 0 || availability;
+    const evt = e as CustomEvent<{ brands: string[]; categories: string[]; availability: boolean; onSale?: boolean }>;
+    const { brands, categories, availability, onSale = false } = evt.detail;
+    updateCheckboxStates(brands, categories, availability, onSale);
+    updateSectionBadges(brands, categories, availability, onSale);
+    const hasFilters = brands.length > 0 || categories.length > 0 || availability || onSale;
     const clearBtn = document.querySelector<HTMLElement>("[data-clear-filters]");
     if (clearBtn) clearBtn.style.display = hasFilters ? "" : "none";
   });
@@ -662,17 +687,19 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
       const brands = formData.getAll("brands") as string[];
       const categories = formData.getAll("categories") as string[];
       const availability = formData.get("availability") === "true";
+      const onSale = formData.get("onSale") === "true";
 
       brands.forEach((b) => params.append("brands", b));
       categories.forEach((c) => params.append("categories", c));
       if (availability) params.set("availability", "true");
+      if (onSale) params.set("onSale", "true");
 
       const queryString = params.toString();
       const newUrl = `${window.location.pathname}${queryString ? "?" + queryString : ""}`;
 
       history.pushState({}, "", newUrl);
       window.dispatchEvent(
-        new CustomEvent("filterchange", { detail: { brands, categories, availability } })
+        new CustomEvent("filterchange", { detail: { brands, categories, availability, onSale } })
       );
     }
 
@@ -750,7 +777,7 @@ const totalActiveFilters = currentBrands.length + currentCategories.length + (cu
       history.pushState({}, "", window.location.pathname);
       window.dispatchEvent(
         new CustomEvent("filterchange", {
-          detail: { brands: [], categories: [], availability: false },
+          detail: { brands: [], categories: [], availability: false, onSale: false },
         })
       );
     }

@@ -1,0 +1,79 @@
+---
+// src/pages/admin/settings/navigation.astro
+// Admin UI for toggling the Sale page link in the site navigation.
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { getSalePageVisible } from "@/lib/saleVisibility";
+
+const saved = Astro.url.searchParams.has("saved");
+const salePageVisible = await getSalePageVisible();
+
+const BTN_CLASS =
+  "font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap";
+---
+
+<AdminLayout
+  title="Navigation"
+  description="Control which links appear in the site navigation."
+>
+  {saved && (
+    <div role="status" class="saved-banner mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-800">
+      Navigation settings saved.
+    </div>
+  )}
+
+  <div class="border border-(--border-primary) border-l-4 border-l-violet-500 rounded-sm overflow-hidden">
+    <!-- Header -->
+    <div class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)">
+      <p class="text-base font-semibold text-(--content-heading)">Navigation Links</p>
+      <p class="text-sm text-(--content-meta)">
+        Changes take effect immediately — no rebuild required.
+      </p>
+    </div>
+
+    <!-- Form -->
+    <form method="POST" action="/api/admin/sale-visibility" class="divide-y divide-(--border-primary)">
+      <div class="flex flex-wrap items-center gap-4 px-4 py-4">
+        <!-- Label column -->
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-(--content-heading)">Sale Page</p>
+          <p class="text-sm text-(--content-meta) mt-0.5">
+            Show or hide the <strong>Sale</strong> link in the navigation. Hide it when you don't have enough sale inventory to justify the page.
+          </p>
+        </div>
+
+        <!-- Toggle -->
+        <label class="flex items-center gap-2 cursor-pointer select-none shrink-0">
+          <input
+            type="checkbox"
+            name="salePageVisible"
+            class="w-4 h-4 accent-(--content-heading) cursor-pointer"
+            checked={salePageVisible}
+            aria-label="Show Sale link in navigation"
+          />
+          <span class="text-sm text-(--content-body)">Show in nav</span>
+        </label>
+      </div>
+
+      <!-- Footer actions -->
+      <div class="flex items-center justify-end px-4 py-3 bg-(--surface-primary)">
+        <button type="submit" class={BTN_CLASS}>Save</button>
+      </div>
+    </form>
+  </div>
+</AdminLayout>
+
+<script>
+  // Auto-dismiss saved banner
+  const banner = document.querySelector<HTMLElement>(".saved-banner");
+  if (banner) {
+    setTimeout(() => {
+      banner.style.transition = "opacity 0.5s ease";
+      banner.style.opacity = "0";
+      setTimeout(() => banner.remove(), 500);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("saved");
+      history.replaceState(null, "", url.toString());
+    }, 4000);
+  }
+</script>

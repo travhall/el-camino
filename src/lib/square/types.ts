@@ -438,6 +438,7 @@ export interface ProductFilters {
   brands: string[];
   categories: string[];
   availability?: boolean;
+  onSale?: boolean;
 }
 
 export interface FilterOptions {

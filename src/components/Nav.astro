@@ -7,6 +7,7 @@ import type { CategoryHierarchy } from "@/lib/square/types";
 import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
 import { Icon } from "astro-icon/components";
 import { apiRetryClient } from "@/lib/square/apiRetry";
+import { getSalePageVisible } from "@/lib/saleVisibility";
 
 interface Props {
   activeCategory?: string;
@@ -86,9 +87,6 @@ const staticNavItems = [
   },
 ];
 
-// ============================================================
-// SALE NAV ITEM - Comment out this block to hide Sale link
-// ============================================================
 const saleNavItem = {
   category: {
     id: "sale",
@@ -99,9 +97,10 @@ const saleNavItem = {
     rootCategoryId: undefined,
   },
   subcategories: [],
-  prefetchStrategy: "hover", // Prefetch on hover
+  prefetchStrategy: "hover",
 };
-// ============================================================
+
+const showSaleLink = await getSalePageVisible();
 
 // Enhanced navigation items with prefetch strategies and error-aware fallback
 const navItems =
@@ -109,16 +108,15 @@ const navItems =
     ? [
         ...categoryHierarchy.map((item) => ({
           ...item,
-          // Assign prefetch strategy based on category importance
           prefetchStrategy: getPrefetchStrategyForCategory(item.category.name),
         })),
-        saleNavItem, // Add Sale link after categories (comment out to hide)
+        ...(showSaleLink ? [saleNavItem] : []),
         staticNavItems[0], // "The Shop" after sale
         staticNavItems[1], // "News" last navigation item
       ]
     : [
         // Minimal safe navigation when categories fail to load
-        saleNavItem, // Sale still available in minimal nav
+        ...(showSaleLink ? [saleNavItem] : []),
         staticNavItems[0], // "The Shop" - always works
         staticNavItems[1], // "News" - always works
       ];
