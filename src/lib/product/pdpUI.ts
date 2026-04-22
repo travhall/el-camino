@@ -40,8 +40,8 @@ export class PDPUIManager {
     cartQuantity?: HTMLElement;
     inventoryStatus?: HTMLElement;
   } = {};
-  
-  private elementIds?: ElementIds; // Store for recaching
+
+  private elementIds?: ElementIds; // Store for re-caching
 
   constructor(elementIds?: ElementIds) {
     this.elementIds = elementIds;
@@ -50,47 +50,67 @@ export class PDPUIManager {
 
   private cacheElements(customIds?: ElementIds): void {
     const ids = {
-      priceDisplay: customIds?.priceDisplay || 'price-display',
-      originalPriceDisplay: customIds?.originalPriceDisplay || 'original-price-display',
-      unitDisplay: customIds?.unitDisplay || 'unit-display',
-      quantityInput: customIds?.quantityInput || 'quantity-input',
-      addToCartButton: customIds?.addToCartButton || 'add-to-cart-button',
-      decreaseButton: customIds?.decreaseButton || 'decrease-quantity',
-      increaseButton: customIds?.increaseButton || 'increase-quantity',
-      productImage: customIds?.productImage || 'product-image',
-      imageContainer: customIds?.imageContainer || 'product-image-container',
-      remainingCount: customIds?.remainingCount || 'remaining-count',
-      cartQuantity: customIds?.cartQuantity || 'cart-quantity',
-      inventoryStatus: customIds?.inventoryStatus || 'inventory-status',
+      priceDisplay: customIds?.priceDisplay || "price-display",
+      originalPriceDisplay:
+        customIds?.originalPriceDisplay || "original-price-display",
+      unitDisplay: customIds?.unitDisplay || "unit-display",
+      quantityInput: customIds?.quantityInput || "quantity-input",
+      addToCartButton: customIds?.addToCartButton || "add-to-cart-button",
+      decreaseButton: customIds?.decreaseButton || "decrease-quantity",
+      increaseButton: customIds?.increaseButton || "increase-quantity",
+      productImage: customIds?.productImage || "product-image",
+      imageContainer: customIds?.imageContainer || "product-image-container",
+      remainingCount: customIds?.remainingCount || "remaining-count",
+      cartQuantity: customIds?.cartQuantity || "cart-quantity",
+      inventoryStatus: customIds?.inventoryStatus || "inventory-status",
     };
 
-    const productImage = document.getElementById(ids.productImage) as HTMLImageElement;
+    const productImage = document.getElementById(
+      ids.productImage,
+    ) as HTMLImageElement;
     const imageContainer = document.getElementById(ids.imageContainer);
 
     this.elements = {
       priceDisplay: document.getElementById(ids.priceDisplay) || undefined,
-      originalPriceDisplay: document.getElementById(ids.originalPriceDisplay) || undefined,
+      originalPriceDisplay:
+        document.getElementById(ids.originalPriceDisplay) || undefined,
       unitDisplay: document.getElementById(ids.unitDisplay) || undefined,
-      quantityInput: (document.getElementById(ids.quantityInput) as HTMLInputElement) || undefined,
-      addToCartButton: (document.getElementById(ids.addToCartButton) as HTMLButtonElement) || undefined,
-      decreaseButton: (document.getElementById(ids.decreaseButton) as HTMLButtonElement) || undefined,
-      increaseButton: (document.getElementById(ids.increaseButton) as HTMLButtonElement) || undefined,
+      quantityInput:
+        (document.getElementById(ids.quantityInput) as HTMLInputElement) ||
+        undefined,
+      addToCartButton:
+        (document.getElementById(ids.addToCartButton) as HTMLButtonElement) ||
+        undefined,
+      decreaseButton:
+        (document.getElementById(ids.decreaseButton) as HTMLButtonElement) ||
+        undefined,
+      increaseButton:
+        (document.getElementById(ids.increaseButton) as HTMLButtonElement) ||
+        undefined,
       productImage: productImage || undefined,
       imageContainer: imageContainer || undefined,
       remainingCount: document.getElementById(ids.remainingCount) || undefined,
       cartQuantity: document.getElementById(ids.cartQuantity) || undefined,
-      inventoryStatus: document.getElementById(ids.inventoryStatus) || undefined,
+      inventoryStatus:
+        document.getElementById(ids.inventoryStatus) || undefined,
     };
   }
 
-  updateAvailabilityDisplay(info: ProductAvailabilityInfo, saleInfo?: any, isGiftCard?: boolean): void {
+  updateAvailabilityDisplay(
+    info: ProductAvailabilityInfo,
+    saleInfo?: any,
+    isGiftCard?: boolean,
+  ): void {
     this.updateQuantityControls(info, isGiftCard);
     this.updateAddToCartButton(info);
     this.updateImageOverlay(info, saleInfo);
     this.updateInventoryDisplay(info, isGiftCard);
   }
 
-  updateQuantityControls(info: ProductAvailabilityInfo, isGiftCard?: boolean): void {
+  updateQuantityControls(
+    info: ProductAvailabilityInfo,
+    isGiftCard?: boolean,
+  ): void {
     // Re-cache elements in case they were cloned/replaced
     this.cacheElements(this.elementIds); // Use stored IDs
 
@@ -116,7 +136,9 @@ export class PDPUIManager {
     // Show stepper: always for gift cards, otherwise only when >1 unit available
     const stepper = document.getElementById("quantity-stepper");
     if (stepper) {
-      const showStepper = isGiftCard || (info.state === ProductAvailabilityState.AVAILABLE && effectiveMax > 1);
+      const showStepper =
+        isGiftCard ||
+        (info.state === ProductAvailabilityState.AVAILABLE && effectiveMax > 1);
       stepper.classList.toggle("hidden", !showStepper);
     }
   }
@@ -135,12 +157,12 @@ export class PDPUIManager {
 
     if (!imageContainer) return;
 
-    const existingOverlay = imageContainer.querySelector('[data-overlay]');
+    const existingOverlay = imageContainer.querySelector("[data-overlay]");
     if (existingOverlay) existingOverlay.remove();
 
     if (info.state === ProductAvailabilityState.OUT_OF_STOCK) {
       const overlay = document.createElement("div");
-      overlay.setAttribute('data-overlay', 'stock');
+      overlay.setAttribute("data-overlay", "stock");
       overlay.className =
         "absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-base font-bold rounded-br-sm";
       overlay.textContent = getButtonText(info.state);
@@ -150,7 +172,7 @@ export class PDPUIManager {
     } else if (saleInfo) {
       const discountPercent = saleInfo.discountPercent;
       const overlay = document.createElement("div");
-      overlay.setAttribute('data-overlay', 'sale');
+      overlay.setAttribute("data-overlay", "sale");
       overlay.className =
         "absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-base font-bold rounded-br-sm";
       overlay.textContent = `${discountPercent}% Off`;
@@ -162,7 +184,10 @@ export class PDPUIManager {
     }
   }
 
-  updateInventoryDisplay(info: ProductAvailabilityInfo, isGiftCard?: boolean): void {
+  updateInventoryDisplay(
+    info: ProductAvailabilityInfo,
+    isGiftCard?: boolean,
+  ): void {
     const { remainingCount, cartQuantity, inventoryStatus } = this.elements;
 
     if (remainingCount) {
@@ -197,7 +222,10 @@ export class PDPUIManager {
     }
   }
 
-  updatePriceDisplay(price: number, options?: { unit?: string; saleInfo?: any }): void {
+  updatePriceDisplay(
+    price: number,
+    options?: { unit?: string; saleInfo?: any },
+  ): void {
     const { priceDisplay, originalPriceDisplay, unitDisplay } = this.elements;
     if (!priceDisplay) return;
 
@@ -208,23 +236,30 @@ export class PDPUIManager {
       // Show original price with strikethrough
       if (originalPriceDisplay) {
         originalPriceDisplay.textContent = MoneyUtils.format(
-          MoneyUtils.fromFloat(saleInfo.originalPrice)
+          MoneyUtils.fromFloat(saleInfo.originalPrice),
         );
         originalPriceDisplay.classList.remove("hidden");
       }
       // Show sale price
       priceDisplay.textContent = MoneyUtils.format(
-        MoneyUtils.fromFloat(saleInfo.salePrice)
+        MoneyUtils.fromFloat(saleInfo.salePrice),
       );
     } else {
       // Regular price display
       const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(price));
       priceDisplay.textContent = formattedPrice;
-      
+
       // Hide original price if shown
       if (originalPriceDisplay) {
         originalPriceDisplay.classList.add("hidden");
       }
+    }
+
+    // textContent above removes all children of priceDisplay, including the
+    // #unit-display span that SSR rendered as a child. Re-attach it so the
+    // visibility toggle below operates on an in-DOM element.
+    if (unitDisplay) {
+      priceDisplay.appendChild(unitDisplay);
     }
 
     // Handle unit display
@@ -238,26 +273,26 @@ export class PDPUIManager {
 
   updateProductImage(imageUrl: string): void {
     const { productImage } = this.elements;
-    
+
     if (!productImage || !imageUrl) return;
 
     productImage.src = imageUrl;
-    
+
     // Update srcset if present (Netlify Image CDN)
-    if (productImage.hasAttribute('srcset')) {
+    if (productImage.hasAttribute("srcset")) {
       const sizes = [320, 640, 768, 1024];
-      const srcsetParts = sizes.map(size => {
+      const srcsetParts = sizes.map((size) => {
         const params = new URLSearchParams({
           url: imageUrl,
           w: size.toString(),
-          q: '85',
-          fit: 'cover',
-          h: size.toString()
+          q: "85",
+          fit: "cover",
+          h: size.toString(),
         });
         return `/.netlify/images?${params.toString()} ${size}w`;
       });
-      
-      productImage.setAttribute('srcset', srcsetParts.join(', '));
+
+      productImage.setAttribute("srcset", srcsetParts.join(", "));
     }
   }
 
@@ -271,11 +306,11 @@ export class PDPUIManager {
   updateAttributeButtonStates(
     availableAttributes: Record<string, string[]>,
     selectedAttributes: Record<string, string>,
-    canAddToCartFn: (attributeType: string, value: string) => boolean
+    canAddToCartFn: (attributeType: string, value: string) => boolean,
   ): void {
     Object.keys(availableAttributes).forEach((attributeType) => {
       const buttons = document.querySelectorAll(
-        `[data-attribute-type="${attributeType}"]`
+        `[data-attribute-type="${attributeType}"]`,
       );
 
       buttons.forEach((button) => {
@@ -287,13 +322,21 @@ export class PDPUIManager {
         const isSelected = selectedAttributes[attributeType] === value;
 
         // Update availability styling — keep OOS buttons clickable so users can
-        // select them and see the back-in-stock form (mirrors QuickView behaviour)
+        // select them and see the back-in-stock form (mirrors QuickView behavior)
         if (!isAvailable) {
-          btn.classList.add("text-(--content-meta)", "line-through", "opacity-60");
+          btn.classList.add(
+            "text-(--content-meta)",
+            "line-through",
+            "opacity-60",
+          );
           btn.classList.remove("opacity-100");
           btn.setAttribute("aria-label", `${value} — out of stock`);
         } else {
-          btn.classList.remove("text-(--content-meta)", "line-through", "opacity-60");
+          btn.classList.remove(
+            "text-(--content-meta)",
+            "line-through",
+            "opacity-60",
+          );
           // Remove aria-label on available buttons — aria-pressed conveys selection state,
           // and WCAG 2.5.3 requires the accessible name to match visible text.
           btn.removeAttribute("aria-label");
@@ -305,24 +348,24 @@ export class PDPUIManager {
           btn.classList.remove(
             "bg-(--ui-input-surface)",
             "text-(--ui-input-text)",
-            "border-(--ui-input-border)/50"
+            "border-(--ui-input-border)/50",
           );
           btn.classList.add(
             "bg-(--ui-variant-selected-surface)",
             "text-(--ui-variant-selected-text)",
-            "border-(--ui-variant-selected-border)"
+            "border-(--ui-variant-selected-border)",
           );
           btn.setAttribute("aria-pressed", "true");
         } else {
           btn.classList.remove(
             "bg-(--ui-variant-selected-surface)",
             "text-(--ui-variant-selected-text)",
-            "border-(--ui-variant-selected-border)"
+            "border-(--ui-variant-selected-border)",
           );
           btn.classList.add(
             "bg-(--ui-input-surface)",
             "text-(--ui-input-text)",
-            "border-(--ui-input-border)/50"
+            "border-(--ui-input-border)/50",
           );
           btn.setAttribute("aria-pressed", "false");
         }
@@ -332,7 +375,7 @@ export class PDPUIManager {
 
   updateVariationButtonStates(
     variationButtons: NodeListOf<Element>,
-    selectedVariationId: string
+    selectedVariationId: string,
   ): void {
     variationButtons.forEach((button) => {
       const btn = button as HTMLButtonElement;
@@ -342,23 +385,23 @@ export class PDPUIManager {
         btn.classList.add(
           "bg-(--ui-variant-selected-surface)",
           "text-(--ui-variant-selected-text)",
-          "border-(--ui-variant-selected-border)"
+          "border-(--ui-variant-selected-border)",
         );
         btn.classList.remove(
           "bg-(--ui-input-surface)",
           "text-(--ui-input-text)",
-          "border-(--ui-input-border)/50"
+          "border-(--ui-input-border)/50",
         );
       } else {
         btn.classList.remove(
           "bg-(--ui-variant-selected-surface)",
           "text-(--ui-variant-selected-text)",
-          "border-(--ui-variant-selected-border)"
+          "border-(--ui-variant-selected-border)",
         );
         btn.classList.add(
           "bg-(--ui-input-surface)",
           "text-(--ui-input-text)",
-          "border-(--ui-input-border)/50"
+          "border-(--ui-input-border)/50",
         );
       }
     });
@@ -403,13 +446,13 @@ export class PDPUIManager {
           width="64"
           height="64"
         />
-      </button>`
+      </button>`,
       )
       .join("");
 
     // Update the main image to the first variation image
     const mainImage = document.getElementById(
-      "product-image"
+      "product-image",
     ) as HTMLImageElement | null;
     if (mainImage && images[0]) {
       mainImage.src = images[0];

@@ -21,20 +21,6 @@ const deviceInfo = detectDeviceFromUA(userAgent);
 const isMobile = deviceInfo.isMobile;
 ---
 
-{
-  /*
-  Runs synchronously *before* the <header> element is streamed to the browser.
-  is:inline scripts are not deferred — they block the parser at their position,
-  so by the time <header id="site-header"> arrives, <html> already has the correct
-  class and CSS immediately applies the right opacity.
-
-  On first session load (no sessionStorage flag): adds header-first-load → CSS
-  hides the header and plays a one-time fade-in animation.
-  On every subsequent load (flag present, including hard refresh): does nothing →
-  header is visible as soon as it streams in, no waiting for deferred scripts.
-  sessionStorage persists across refreshes but not across tab closes.
-*/
-}
 <script is:inline>
   (function () {
     if (!sessionStorage.getItem("header-animated")) {
@@ -45,27 +31,22 @@ const isMobile = deviceInfo.isMobile;
 </script>
 
 <style is:global>
-  /* One-time entrance animation — only active on first session load */
+  /* Fade-in on first session load — prevents the snap-in feeling on cold
+     starts without animating on every in-session navigation. */
   .header-first-load #site-header {
     opacity: 0;
     animation: fadeInHeader 0.6s ease-out 0.2s forwards;
   }
 
   @keyframes fadeInHeader {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 
-  /* Respect reduced motion preferences */
   @media (prefers-reduced-motion: reduce) {
     .header-first-load #site-header {
       animation: none;
       opacity: 1;
-      transform: none;
     }
   }
 </style>
