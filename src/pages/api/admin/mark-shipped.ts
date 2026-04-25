@@ -10,25 +10,16 @@
 // Square increments it on each successful update.
 
 import type { APIRoute } from "astro";
-import { createHmac } from "node:crypto";
+import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
 import { Client, Environment } from "square/legacy";
 import { sendShippingConfirmation } from "@/lib/email/sender";
 import type { PendingOrderContact } from "@/lib/email/pendingOrders";
 
-const COOKIE_NAME = "admin_session";
 const SHIPMENT_STATES = ["PROPOSED", "RESERVED", "COMPLETED"] as const;
-
-function expectedToken(secret: string): string {
-  return createHmac("sha256", secret).update("admin:authenticated").digest("hex");
-}
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   // ── Auth check ────────────────────────────────────────────────────────────
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret) return new Response("Admin not configured", { status: 503 });
-
-  const sessionToken = cookies.get(COOKIE_NAME)?.value ?? "";
-  if (sessionToken !== expectedToken(secret)) {
+  if (!isAuthenticated(request, cookies.get(ADMIN_COOKIE_NAME)?.value)) {
     return redirect("/admin/login?from=/admin/orders");
   }
 

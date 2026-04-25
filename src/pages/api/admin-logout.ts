@@ -1,8 +1,7 @@
 import type { APIRoute } from "astro";
-
-const COOKIE_NAME = "admin_session";
+import { ADMIN_COOKIE_NAME } from "@/lib/admin/auth";
 
 export const POST: APIRoute = ({ cookies, redirect }) => {
-  cookies.delete(COOKIE_NAME, { path: "/" });
+  cookies.delete(ADMIN_COOKIE_NAME, { path: "/" });
   return redirect("/admin/login");
 };

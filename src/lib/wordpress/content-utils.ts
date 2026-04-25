@@ -2,6 +2,37 @@
 // Utility functions for processing WordPress content
 
 /**
+ * Minimal XSS hardening for HTML coming out of WordPress before it reaches
+ * `set:html`. WordPress is admin-controlled but a CMS-side compromise (or a
+ * misbehaving plugin) shouldn't immediately mean script execution on the
+ * storefront.
+ *
+ * We strip three classes of injection without touching legitimate markup:
+ *   - <script>...</script>, <style> on* attributes, etc.
+ *   - inline event handlers (onclick=, onerror=, ...)
+ *   - javascript: / vbscript: / data:text/html URIs in href/src/etc.
+ *
+ * We do NOT remove iframes here — the pipeline relies on iframe embeds
+ * (YouTube, Calendly, etc.) and reduces YouTube to a facade downstream.
+ */
+export function stripUnsafeHtml(html: string): string {
+  if (!html) return html;
+  return (
+    html
+      // Drop <script>...</script> and standalone <script ... />
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "")
+      .replace(/<script\b[^>]*\/?>/gi, "")
+      // Drop inline event handler attributes: on*="..." | on*='...' | on*=value
+      .replace(/\s+on[a-z]+\s*=\s*"(?:[^"]*)"/gi, "")
+      .replace(/\s+on[a-z]+\s*=\s*'(?:[^']*)'/gi, "")
+      .replace(/\s+on[a-z]+\s*=\s*[^\s>]+/gi, "")
+      // Neutralize javascript:/vbscript: URIs in any attribute
+      .replace(/(href|src|xlink:href|formaction|action|poster)\s*=\s*"\s*(?:javascript|vbscript):[^"]*"/gi, '$1="#"')
+      .replace(/(href|src|xlink:href|formaction|action|poster)\s*=\s*'\s*(?:javascript|vbscript):[^']*'/gi, "$1='#'")
+  );
+}
+
+/**
  * Clean and sanitize WordPress content for display
  */
 export function sanitizeWordPressContent(content: string): string {
@@ -365,7 +396,7 @@ export function processRawWordPressHTML(
     return `<img${newAttrs}>`;
   });
 
-  return processed;
+  return stripUnsafeHtml(processed);
 }
 
 /**

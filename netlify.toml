@@ -100,8 +100,9 @@ X-Content-Type-Options = "nosniff"
 Referrer-Policy = "strict-origin-when-cross-origin"
 Permissions-Policy = "camera=(), microphone=(), geolocation=()"
 
-# Content Security Policy - Updated for WordPress images
-Content-Security-Policy = "default-src 'self'; img-src 'self' https: data: *.wordpress.com; script-src 'self' 'unsafe-inline' https://sandbox.web.squarecdn.com https://web.squarecdn.com; style-src 'self' 'unsafe-inline'; font-src 'self' https:; connect-src 'self' https: wss:; frame-src 'none'; object-src 'none'"
+# Content-Security-Policy is set per-request by src/middleware.ts so it can
+# include a nonce for inline scripts (avoids needing 'unsafe-inline' in
+# script-src). Setting it here too would override the dynamic header.
 
 # Cross-Origin Opener Policy
 Cross-Origin-Opener-Policy = "same-origin"

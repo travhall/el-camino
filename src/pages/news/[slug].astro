@@ -5,6 +5,7 @@ import { getPost, getPosts } from "@/lib/wordpress/api";
 import { formatDate } from "@/utils/dates";
 import type { WordPressPost } from "@/lib/wordpress/types";
 import { extractEmbeddedData } from "@/lib/wordpress/types";
+import { stripUnsafeHtml } from "@/lib/wordpress/content-utils";
 import Tag from "@/components/Tag.astro";
 import WordPressBlockParser from "@/components/wordpress/WordPressBlockParser.astro";
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
@@ -23,7 +24,6 @@ if (!slug) {
 }
 
 let post: WordPressPost | null = null;
-let error: string | null = null;
 
 try {
   post = await getPost(slug);
@@ -34,8 +34,8 @@ try {
     });
   }
 } catch (e) {
-  error = e instanceof Error ? e.message : "An error occurred loading the post";
-  return new Response(error, { status: 500 });
+  console.error("[news/[slug]] Failed to load post", e);
+  return new Response("An error occurred loading the post.", { status: 500 });
 }
 
 let prevPost: WordPressPost | null = null;
@@ -163,7 +163,7 @@ const structuredData = {
     )
   }
 
-  <script
+  <script nonce={Astro.locals.nonce}
     is:inline
     type="application/ld+json"
     set:html={JSON.stringify(structuredData)}
@@ -184,7 +184,7 @@ const structuredData = {
 
         <h1
           class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.8] text-(--content-heading) text-balance mb-8"
-          set:html={post.title.rendered}
+          set:html={stripUnsafeHtml(post.title.rendered)}
         />
 
         {
@@ -396,7 +396,7 @@ const structuredData = {
                   </span>
                   <p
                     class="text-(--content-heading) font-display group-hover:font-bold font-semibold text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all duration-300 line-clamp-2 z-10"
-                    set:html={prevPost.title.rendered}
+                    set:html={stripUnsafeHtml(prevPost.title.rendered)}
                   />
                   <div class="absolute bg-(--surface-secondary)/95 group-hover:bg-(--surface-secondary)/80 top-0 left-0 h-full w-full z-0 transition-all duration-500" />
                 </a>
@@ -457,7 +457,7 @@ const structuredData = {
                   </span>
                   <p
                     class="text-(--content-heading) font-display group-hover:font-bold font-semibold text-5xl lg:text-6xl leading-none group-hover:text-(--content-emphasis) transition-all duration-300 line-clamp-2 z-10"
-                    set:html={nextPost.title.rendered}
+                    set:html={stripUnsafeHtml(nextPost.title.rendered)}
                   />
                   <div class="absolute bg-(--surface-secondary)/95 group-hover:bg-(--surface-secondary)/80 top-0 left-0 h-full w-full z-0 transition-all duration-500" />
                 </a>

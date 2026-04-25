@@ -6,8 +6,20 @@
 import type { APIRoute } from "astro";
 import { addSubscription, isAlreadySubscribed, getSubscriptionsForProduct } from "@/lib/backInStock";
 import { sendBisAdminNotification } from "@/lib/email/sender";
+import { createRateLimiter, clientIp } from "@/lib/rateLimit";
+
+// 5 submissions per minute per IP — high enough that real users typing
+// captchas slowly aren't blocked, low enough to stop a script.
+const limiter = createRateLimiter({ windowMs: 60_000, max: 5 });
 
 export const POST: APIRoute = async ({ request }) => {
+  if (limiter.check(clientIp(request))) {
+    return new Response(JSON.stringify({ error: "Too many requests. Please try again in a minute." }), {
+      status: 429,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const formData = await request.formData();
 
@@ -44,10 +56,6 @@ export const POST: APIRoute = async ({ request }) => {
         submittedAt: new Date().toISOString(),
       });
     }
-
-    console.log(
-      `[back-in-stock] ${alreadyOn ? "Already subscribed" : "Subscribed"}: ${email} → ${productTitle}`
-    );
 
     // Notify Tyler of new subscription (non-blocking)
     if (!alreadyOn) {

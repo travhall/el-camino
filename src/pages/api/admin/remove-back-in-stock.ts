@@ -7,21 +7,12 @@
 // JSON callers receive the removed subscriber list so the client can undo.
 
 import type { APIRoute } from "astro";
-import { createHmac } from "node:crypto";
+import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
 import { removeAllSubscriptionsForProduct } from "@/lib/backInStock";
 
-const COOKIE_NAME = "admin_session";
-
-function expectedToken(secret: string): string {
-  return createHmac("sha256", secret).update("admin:authenticated").digest("hex");
-}
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret) return new Response("Admin not configured", { status: 503 });
-
-  const sessionToken = cookies.get(COOKIE_NAME)?.value ?? "";
-  if (sessionToken !== expectedToken(secret)) {
+  if (!isAuthenticated(request, cookies.get(ADMIN_COOKIE_NAME)?.value)) {
     const isJson = request.headers.get("accept")?.includes("application/json");
     if (isJson) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     return redirect("/admin/login?from=/admin/notifications/back-in-stock");

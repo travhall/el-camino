@@ -3,6 +3,7 @@
 import { getPages, getLegalPages } from "@/lib/wordpress/api";
 import type { WordPressPage } from "@/lib/wordpress/types";
 import Layout from "@/layouts/Layout.astro";
+import { stripUnsafeHtml } from "@/lib/wordpress/content-utils";
 
 // Get the slug from the URL params
 const { slug } = Astro.params;
@@ -103,7 +104,7 @@ if (!page) {
 // Get the title and content from the page
 const pageTitle = page.title.rendered;
 const fullTitle = `${pageTitle} | El Camino`;
-const pageContent = page.content.rendered;
+const pageContent = stripUnsafeHtml(page.content.rendered);
 ---
 
 <Layout title={fullTitle}>

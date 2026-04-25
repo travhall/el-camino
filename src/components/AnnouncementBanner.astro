@@ -56,7 +56,7 @@ const dismissKey = text ? `banner-dismissed:${text}` : "";
     </div>
 
     {/* Synchronous reveal on initial page load — before paint, no CLS */}
-    <script is:inline define:vars={{ dismissKey }}>
+    <script nonce={Astro.locals.nonce} is:inline define:vars={{ dismissKey }}>
       if (sessionStorage.getItem(dismissKey) !== "1") {
         var el = document.getElementById("announcement-banner");
         if (el) el.classList.remove("hidden");

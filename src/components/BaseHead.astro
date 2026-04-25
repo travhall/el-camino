@@ -25,7 +25,7 @@ const seoData = {
 ---
 
 <meta charset="UTF-8" />
-<script is:inline>
+<script nonce={Astro.locals.nonce} is:inline>
     (function () {
         const storedTheme = localStorage.getItem("theme");
         const systemPrefersDark = window.matchMedia(
@@ -147,14 +147,14 @@ const seoData = {
 <!-- Speculation Rules for Advanced Prefetching -->
 <SpeculationRules currentPath={currentPath} eager={isHighTrafficPage} />
 
-<script
+<script nonce={Astro.locals.nonce}
     is:inline
     type="application/ld+json"
     set:html={JSON.stringify(orgSchema)}
 />
 {
     structuredData && (
-        <script
+        <script nonce={Astro.locals.nonce}
             is:inline
             type="application/ld+json"
             set:html={JSON.stringify(structuredData)}
@@ -165,7 +165,7 @@ const seoData = {
 <!-- Allow pages to inject custom head content -->
 <slot name="head" />
 
-<script
+<script nonce={Astro.locals.nonce}
     is:inline
     define:vars={{ squareEnv: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT }}
 >
@@ -198,7 +198,7 @@ const seoData = {
 <!-- Font cache warmer: re-load fonts into active memory after each View Transition.
      font-display:swap ensures they render when ready, but proactively warming
      the cache prevents a visible swap flash on the *next* navigation. -->
-<script is:inline>
+<script nonce={Astro.locals.nonce} is:inline>
     document.addEventListener("astro:page-load", function () {
         if (document.fonts && document.fonts.load) {
             Promise.all([
@@ -214,7 +214,7 @@ const seoData = {
 </script>
 
 <!-- Clean news parameters when outside news section -->
-<script is:inline>
+<script nonce={Astro.locals.nonce} is:inline>
     document.addEventListener("astro:page-load", function () {
         if (!window.location.pathname.startsWith("/news")) {
             const url = new URL(window.location);

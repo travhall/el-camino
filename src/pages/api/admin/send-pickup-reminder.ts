@@ -5,16 +5,11 @@
 // No Square state is mutated — this only sends an email.
 
 import type { APIRoute } from "astro";
-import { createHmac } from "node:crypto";
+import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
 import { Client, Environment } from "square/legacy";
 import { sendPickupReminderEmail } from "@/lib/email/sender";
 
-const COOKIE_NAME = "admin_session";
 const STORE_TIMEZONE = "America/Chicago";
-
-function expectedToken(secret: string): string {
-  return createHmac("sha256", secret).update("admin:authenticated").digest("hex");
-}
 
 function formatPickupAt(iso: string): string {
   return new Date(iso).toLocaleString("en-US", {
@@ -25,13 +20,7 @@ function formatPickupAt(iso: string): string {
 }
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret) {
-    return new Response(JSON.stringify({ error: "not_configured" }), { status: 503 });
-  }
-
-  const sessionToken = cookies.get(COOKIE_NAME)?.value ?? "";
-  if (sessionToken !== expectedToken(secret)) {
+  if (!isAuthenticated(request, cookies.get(ADMIN_COOKIE_NAME)?.value)) {
     return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
   }
 

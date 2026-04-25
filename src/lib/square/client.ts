@@ -12,25 +12,23 @@ import { extractBrandValue, extractIsGiftCard, fetchMeasurementUnits } from "./p
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 import { productCache } from "@/lib/cache/blobCache";
 
+// Validate at first use, not at import. Importing this module during prerender
+// (e.g. for the static 404 page) shouldn't crash the build when env is unset —
+// the actual API call will surface a clearer error if/when it runs.
+let envValidated = false;
 function validateEnvironment() {
+  if (envValidated) return;
   const missingVars = [];
-  if (!process.env.SQUARE_ACCESS_TOKEN) {
-    missingVars.push("SQUARE_ACCESS_TOKEN");
-  }
-  if (!import.meta.env.PUBLIC_SQUARE_LOCATION_ID) {
-    missingVars.push("PUBLIC_SQUARE_LOCATION_ID");
-  }
+  if (!process.env.SQUARE_ACCESS_TOKEN) missingVars.push("SQUARE_ACCESS_TOKEN");
+  if (!import.meta.env.PUBLIC_SQUARE_LOCATION_ID) missingVars.push("PUBLIC_SQUARE_LOCATION_ID");
   if (missingVars.length > 0) {
-    throw new Error(
-      `Missing required environment variables: ${missingVars.join(", ")}`
-    );
+    throw new Error(`Missing required environment variables: ${missingVars.join(", ")}`);
   }
+  envValidated = true;
 }
 
-validateEnvironment();
-
 export const squareClient = new Client({
-  accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+  accessToken: process.env.SQUARE_ACCESS_TOKEN ?? "",
   environment:
     import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
       ? Environment.Production
@@ -193,10 +191,10 @@ function extractBrandFromTitle(title: string): string {
 export async function fetchProducts(): Promise<Product[]> {
   const cacheKey = "products:all";
 
+  validateEnvironment();
   return requestDeduplicator.dedupe(cacheKey, () =>
     defaultCircuitBreaker.execute(async () => {
       try {
-        console.log("Fetching Square products...");
 
         // Paginate through all catalog pages to avoid silent truncation above ~200 items
         const allObjects: any[] = [];
@@ -232,21 +230,6 @@ export async function fetchProducts(): Promise<Product[]> {
             // Extract brand from custom attributes
             const brandValue = extractBrandValue(item.customAttributeValues);
             const isGiftCard = extractIsGiftCard(item.customAttributeValues);
-
-            // DEBUG: log custom attributes for gift card diagnosis — remove after fix
-            if (item.itemData?.name?.toLowerCase().includes("gift card")) {
-              console.log(
-                `[DEBUG gift card] "${item.itemData.name}" customAttributeValues:`,
-                JSON.stringify(item.customAttributeValues, null, 2),
-                "→ isGiftCard:", isGiftCard,
-              );
-            }
-
-            // DEBUG: log raw custom attributes for gift card detection troubleshooting
-            if (item.itemData?.name?.toLowerCase().includes("gift card")) {
-              console.log(`[GiftCard Debug] "${item.itemData.name}" customAttributeValues:`, JSON.stringify(item.customAttributeValues, null, 2));
-              console.log(`[GiftCard Debug] extractIsGiftCard result:`, isGiftCard);
-            }
 
             return {
               id: item.id,
@@ -384,6 +367,7 @@ export async function fetchProducts(): Promise<Product[]> {
 }
 
 export async function fetchProduct(id: string): Promise<Product | null> {
+  validateEnvironment();
   // Check blob cache first — persists across cold starts (TTL: 1 hour)
   const cached = await productCache.get(id);
   if (cached) return cached;

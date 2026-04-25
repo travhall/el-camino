@@ -1,21 +1,20 @@
 ---
 import Layout from "@/layouts/Layout.astro";
-// SSR (default for this project's `output: "server"`) so the layout's
-// UA-based device detection works on real 404 hits. Prerendering caused
-// `Astro.request.headers` warnings at build time and forced a desktop
-// fallback for every miss.
+// Branded 500 page. Astro renders this for unhandled errors in SSR routes.
+// Keep it dependency-light: if the layout itself throws (e.g. WordPress API
+// down), this page should still render usable copy.
 ---
 
-<Layout title="404 — Bailed | El Camino">
+<Layout title="500 — Wipeout | El Camino">
   <section
     class="relative min-h-[70vh] flex flex-col justify-center overflow-hidden p-4 sm:p-8 lg:p-12"
   >
-    <!-- Ghost 404 watermark -->
+    <!-- Ghost 500 watermark -->
     <span
       aria-hidden="true"
       class="absolute top-0 left-0 font-display font-black leading-[0.85] text-(--content-heading) opacity-[0.04] select-none pointer-events-none text-[clamp(10rem,40vw,32rem)]"
     >
-      404
+      500
     </span>
 
     <!-- Main content -->
@@ -23,30 +22,29 @@ import Layout from "@/layouts/Layout.astro";
       <h1
         class="font-display font-black text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl leading-[0.85] text-(--content-heading) mb-6"
       >
-        Bailed
+        Wipeout
       </h1>
 
       <p class="text-lg text-(--content-body) mb-2 max-w-prose">
-        That page took a slam — it might have been moved, renamed, or never even
-        existed in the first place &hellip; but hey, you made it to the slam
-        section!
+        Something on our end took a hard slam. The team has been notified —
+        give it a minute and try again.
       </p>
       <p class="text-(--content-meta) mb-10">
-        Let's get you set up and back on the streets.
+        If it keeps happening, head back to the shop and we'll get you sorted.
       </p>
 
       <nav aria-label="Find your way back" class="flex flex-wrap gap-3">
         <a
-          href="/shop/all"
+          href="/"
           class="px-6 py-3 bg-(--ui-button-surface) text-(--ui-button-text) font-semibold transition-opacity duration-200 hover:opacity-80"
         >
-          Go Shopping
+          Go Home
         </a>
         <a
-          href="/shop/sale/"
+          href="/shop/all"
           class="px-6 py-3 border border-(--border-primary) text-(--content-body) font-semibold hover:text-(--content-emphasis) transition-colors duration-200"
         >
-          See What's On Sale
+          Go Shopping
         </a>
       </nav>
     </div>

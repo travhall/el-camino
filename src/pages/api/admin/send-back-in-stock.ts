@@ -3,15 +3,10 @@
 // product and removes their entries from the blob store.
 
 import type { APIRoute } from "astro";
-import { createHmac } from "node:crypto";
+import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
 import { getSubscriptionsForProduct, removeSubscription } from "@/lib/backInStock";
 import { sendBackInStockNotification } from "@/lib/email/sender";
 
-const COOKIE_NAME = "admin_session";
-
-function expectedToken(secret: string): string {
-  return createHmac("sha256", secret).update("admin:authenticated").digest("hex");
-}
 
 function toAbsoluteUrl(url: string, origin: string): string {
   if (!url) return origin;
@@ -24,11 +19,7 @@ function toAbsoluteUrl(url: string, origin: string): string {
 }
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret) return new Response("Admin not configured", { status: 503 });
-
-  const sessionToken = cookies.get(COOKIE_NAME)?.value ?? "";
-  if (sessionToken !== expectedToken(secret)) {
+  if (!isAuthenticated(request, cookies.get(ADMIN_COOKIE_NAME)?.value)) {
     return redirect("/admin/login?from=/admin/notifications/back-in-stock");
   }
 

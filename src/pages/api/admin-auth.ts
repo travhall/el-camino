@@ -1,12 +1,12 @@
 import type { APIRoute } from "astro";
-import { createHmac, timingSafeEqual } from "node:crypto";
-
-const COOKIE_NAME = "admin_session";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
-
-function makeToken(secret: string): string {
-  return createHmac("sha256", secret).update("admin:authenticated").digest("hex");
-}
+import { timingSafeEqual } from "node:crypto";
+import {
+  ADMIN_COOKIE_NAME,
+  ADMIN_SESSION_TTL_SECONDS,
+  assertSameOrigin,
+  issueSessionToken,
+} from "@/lib/admin/auth";
+import { createRateLimiter, clientIp } from "@/lib/rateLimit";
 
 function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -15,6 +15,9 @@ function safeCompare(a: string, b: string): boolean {
   return timingSafeEqual(bufA, bufB);
 }
 
+// 8 attempts per 15 min per IP. Per-instance only.
+const loginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 8 });
+
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const secret = process.env.ADMIN_SECRET;
   const adminPassword = process.env.ADMIN_PASSWORD;
@@ -22,6 +25,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (!secret || !adminPassword) {
     console.error("[admin-auth] ADMIN_SECRET or ADMIN_PASSWORD env var is not set");
     return new Response("Admin not configured", { status: 503 });
+  }
+
+  if (!assertSameOrigin(request)) {
+    return new Response("Bad origin", { status: 403 });
+  }
+
+  if (loginLimiter.check(clientIp(request))) {
+    return new Response("Too many attempts. Try again later.", { status: 429 });
   }
 
   let from = "/admin";
@@ -40,12 +51,12 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       return redirect(`/admin/login?from=${encodeURIComponent(from)}&error=1`);
     }
 
-    cookies.set(COOKIE_NAME, makeToken(secret), {
+    cookies.set(ADMIN_COOKIE_NAME, issueSessionToken(secret), {
       httpOnly: true,
       secure: import.meta.env.PROD,
       sameSite: "strict",
       path: "/",
-      maxAge: COOKIE_MAX_AGE,
+      maxAge: ADMIN_SESSION_TTL_SECONDS,
     });
 
     return redirect(from);

@@ -5,6 +5,7 @@ import { fetchProducts } from "@/lib/square/client";
 import { fetchCategoryHierarchy } from "@/lib/square/categories";
 import { squareClient } from "@/lib/square/client";
 import type { Product } from "@/lib/square/types";
+import { logger } from "@/lib/logger";
 
 export interface SkuReference {
   humanReadableSku: string;
@@ -29,7 +30,7 @@ export async function generateSkuReference(): Promise<{
   error?: string;
 }> {
   try {
-    console.log('[generateSkuReference] Starting with actual Square categories...');
+    logger.debug('[generateSkuReference] Starting with actual Square categories...');
     
     // Fetch products and categories in parallel
     const [products, categoryHierarchy] = await Promise.all([
@@ -50,7 +51,7 @@ export async function generateSkuReference(): Promise<{
       console.warn('[generateSkuReference] No categories found, using fallback categorization');
     }
 
-    console.log(`[generateSkuReference] Processing ${products.length} products with ${categoryHierarchy.length} categories`);
+    logger.debug(`[generateSkuReference] Processing ${products.length} products with ${categoryHierarchy.length} categories`);
 
     // Build category lookup maps for efficient matching
     const categoryMap = new Map<string, string>(); // id -> name
@@ -133,7 +134,7 @@ export async function generateSkuReference(): Promise<{
       categorized[category].sort((a, b) => a.humanReadableSku.localeCompare(b.humanReadableSku));
     });
 
-    console.log(`[generateSkuReference] Successfully categorized ${skus.length} products into ${Object.keys(categorized).length} categories`);
+    logger.debug(`[generateSkuReference] Successfully categorized ${skus.length} products into ${Object.keys(categorized).length} categories`);
 
     return {
       success: true,
@@ -184,14 +185,14 @@ async function getProductCategoryMappings(_products: Product[]): Promise<Map<str
       });
     }
     
-    console.log(`[getProductCategoryMappings] Found category mappings for ${mappings.size} products`);
+    logger.debug(`[getProductCategoryMappings] Found category mappings for ${mappings.size} products`);
     
   } catch (error) {
     console.warn('Failed to fetch product category mappings:', error);
     
     // Fallback: Try alternative approach using search
     try {
-      console.log('[getProductCategoryMappings] Trying alternative search approach...');
+      logger.debug('[getProductCategoryMappings] Trying alternative search approach...');
       
       const searchResponse = await squareClient.catalogApi.searchCatalogObjects({
         objectTypes: ["ITEM"],
@@ -216,7 +217,7 @@ async function getProductCategoryMappings(_products: Product[]): Promise<Map<str
         });
       }
       
-      console.log(`[getProductCategoryMappings] Alternative search found ${mappings.size} category mappings`);
+      logger.debug(`[getProductCategoryMappings] Alternative search found ${mappings.size} category mappings`);
       
     } catch (searchError) {
       console.warn('Alternative search also failed:', searchError);

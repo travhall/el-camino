@@ -388,7 +388,6 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const orderId = linkResponse.result.paymentLink.orderId ?? "";
-    console.log("[create-checkout] Payment link created:", linkResponse.result.paymentLink.url, "orderId:", orderId);
 
     // Store contact info keyed by orderId so the webhook can send a confirmation email.
     // Must be awaited — Netlify functions stop executing once the response is sent,
@@ -470,8 +469,7 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error:
-          error instanceof Error ? error.message : "Checkout creation failed",
+        error: "Checkout creation failed. Please try again.",
       }),
       { status: 500 }
     );

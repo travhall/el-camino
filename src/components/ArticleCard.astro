@@ -11,6 +11,7 @@ import {
   generateFallbackContent,
 } from "@/lib/wordpress/types";
 import { formatDate } from "@/utils/dates";
+import { stripUnsafeHtml } from "@/lib/wordpress/content-utils";
 import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
@@ -370,7 +371,7 @@ const getExcerptClasses = () => {
     </span>
 
     <!-- Article Title -->
-    <h2 class={getTitleClasses()} set:html={post.title.rendered} />
+    <h2 class={getTitleClasses()} set:html={stripUnsafeHtml(post.title.rendered)} />
 
     <!-- Date  -->
     {
@@ -385,7 +386,7 @@ const getExcerptClasses = () => {
     }
 
     <!-- Article Excerpt -->
-    <div class={getExcerptClasses()} set:html={post.excerpt.rendered} />
+    <div class={getExcerptClasses()} set:html={stripUnsafeHtml(post.excerpt.rendered)} />
 
     <!-- Read More Link ('masonry' cards only) -->
     {

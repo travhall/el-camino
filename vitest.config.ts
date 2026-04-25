@@ -11,6 +11,7 @@ export default defineConfig(
         '**/node_modules/**',
         '**/dist/**',
         '**/.{idea,git,cache,output,temp}/**',
+        '**/.claude/**', // Worktrees and agent state
         '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
         'e2e/**' // Exclude Playwright e2e tests from Vitest
       ],

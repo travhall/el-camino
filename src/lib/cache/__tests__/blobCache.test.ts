@@ -496,13 +496,16 @@ describe('BlobCache', () => {
   });
 
   describe('Clear Operation', () => {
-    it('should log warning for clear operation', async () => {
+    it('should clear without throwing, logging only on failure', async () => {
       const consoleSpy = vi.spyOn(console, 'warn');
 
-      await cache.clear();
+      await expect(cache.clear()).resolves.toBeUndefined();
 
-      expect(consoleSpy).toHaveBeenCalled();
-      expect(consoleSpy.mock.calls[0][0]).toContain('not supported');
+      // If the underlying store throws, the warning includes 'Clear failed'.
+      // If it succeeds (fallback cache only), nothing is logged.
+      if (consoleSpy.mock.calls.length > 0) {
+        expect(consoleSpy.mock.calls[0][0]).toContain('Clear failed');
+      }
 
       consoleSpy.mockRestore();
     });

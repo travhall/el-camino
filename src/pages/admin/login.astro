@@ -8,13 +8,11 @@ import { Icon } from "astro-icon/components";
 
 // Already authenticated? Send them to the destination.
 const secret = process.env.ADMIN_SECRET;
-const COOKIE_NAME = "admin_session";
 
 if (secret) {
-  const { createHmac } = await import("node:crypto");
-  const expected = createHmac("sha256", secret).update("admin:authenticated").digest("hex");
-  const token = Astro.cookies.get(COOKIE_NAME)?.value;
-  if (token === expected) {
+  const { ADMIN_COOKIE_NAME, verifySessionToken } = await import("@/lib/admin/auth");
+  const token = Astro.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  if (verifySessionToken(secret, token)) {
     const dest = Astro.url.searchParams.get("from") || "/admin";
     return Astro.redirect(dest);
   }
@@ -33,7 +31,7 @@ const hasError = Astro.url.searchParams.has("error");
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
-    <script is:inline>
+    <script nonce={Astro.locals.nonce} is:inline>
       (function () {
         const storedTheme = localStorage.getItem("theme");
         const systemPrefersDark = window.matchMedia(
