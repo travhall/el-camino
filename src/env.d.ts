@@ -21,16 +21,6 @@ declare global {
     type IntrinsicElements = astroHTML.JSX.IntrinsicElements;
   }
 
-  namespace App {
-    interface Locals {
-      /**
-       * Per-request CSP nonce. Set by middleware. Apply to every inline
-       * <script> tag with `nonce={Astro.locals.nonce}` so the strict CSP
-       * header allows it to execute.
-       */
-      nonce: string;
-    }
-  }
 }
 
 // Make this file a module so `declare global` augmentations above are
