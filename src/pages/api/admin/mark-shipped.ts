@@ -11,7 +11,7 @@
 
 import type { APIRoute } from "astro";
 import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
-import { Client, Environment } from "square/legacy";
+import { Client, Environment } from "square-legacy";
 import { sendShippingConfirmation } from "@/lib/email/sender";
 import type { PendingOrderContact } from "@/lib/email/pendingOrders";
 
@@ -54,7 +54,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   let locationId: string;
   let customerEmail: string;
   let customerName: string;
-  let order: import("square/legacy").Order;
+  let order: import("square-legacy").Order;
 
   try {
     const { result } = await client.ordersApi.retrieveOrder(orderId);

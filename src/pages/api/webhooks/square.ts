@@ -18,11 +18,8 @@
 // "Send test event" feature in the Developer Dashboard against production.
 
 import type { APIRoute } from "astro";
-// "square" root is CJS-only. Use a default import so Node's CJS-ESM interop
-// works reliably at runtime — named imports from CJS are not guaranteed.
-import squarePkg from "square";
-const { WebhooksHelper } = squarePkg as any;
-import { Client, Environment } from "square/legacy";
+import { Client, Environment } from "square-legacy";
+import { verifySquareWebhookSignature } from "@/lib/square/verifyWebhookSignature";
 import {
   inventoryCache,
   productCache,
@@ -61,7 +58,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   // Square sends the full notification URL as the base for the HMAC.
   // Use request.url which Astro populates from the incoming request.
-  const isValid = await WebhooksHelper.verifySignature({
+  const isValid = verifySquareWebhookSignature({
     requestBody: rawBody,
     signatureHeader,
     signatureKey,
@@ -176,7 +173,7 @@ export const POST: APIRoute = async ({ request }) => {
         // If the fetch fails for any reason (bad credentials, network, etc.)
         // fall back to a minimal order built from the payment payload so the
         // confirmation email is never blocked by a Square API failure.
-        let order: import("square/legacy").Order;
+        let order: import("square-legacy").Order;
         try {
           const client = new Client({
             accessToken: process.env.SQUARE_ACCESS_TOKEN!,
@@ -201,7 +198,7 @@ export const POST: APIRoute = async ({ request }) => {
               ? { amount: payment.total_money.amount, currency: payment.total_money.currency }
               : undefined,
             lineItems: [],
-          } as unknown as import("square/legacy").Order;
+          } as unknown as import("square-legacy").Order;
         }
 
         await sendOrderConfirmation({ order, contact });

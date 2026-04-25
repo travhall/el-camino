@@ -1,5 +1,5 @@
 // src/lib/square/serverErrorUtils.ts
-import { ApiError } from "square/legacy";
+import { ApiError } from "square-legacy";
 import {
   type AppError,
   ErrorType,

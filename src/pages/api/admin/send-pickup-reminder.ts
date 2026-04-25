@@ -6,7 +6,7 @@
 
 import type { APIRoute } from "astro";
 import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
-import { Client, Environment } from "square/legacy";
+import { Client, Environment } from "square-legacy";
 import { sendPickupReminderEmail } from "@/lib/email/sender";
 
 const STORE_TIMEZONE = "America/Chicago";

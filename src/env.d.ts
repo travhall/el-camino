@@ -21,6 +21,19 @@ declare global {
     type IntrinsicElements = astroHTML.JSX.IntrinsicElements;
   }
 
+  namespace App {
+    interface Locals {
+      /**
+       * Per-request memoization slot for getSiteContext(). Lets Layout,
+       * Footer, and Nav share one parallel fetch of contact/social/hours
+       * instead of doing 6+ serial blob reads per page render.
+       *
+       * Treat as opaque — read via `getSiteContext(Astro.locals)`.
+       */
+      siteContext?: import("@/lib/siteContext").SiteContext;
+      siteContextPromise?: Promise<import("@/lib/siteContext").SiteContext>;
+    }
+  }
 }
 
 // Make this file a module so `declare global` augmentations above are

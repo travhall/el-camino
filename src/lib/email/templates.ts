@@ -13,7 +13,7 @@
 //   fig-leaf-500    → #4d7a2e  (CTA button / accent)
 //   fig-leaf-600    → #3a5e22  (CTA hover — used for border)
 
-import type { Order } from "square/legacy";
+import type { Order } from "square-legacy";
 import type { PendingOrderContact } from "./pendingOrders";
 import { siteConfig } from "@/lib/site-config";
 
@@ -525,7 +525,7 @@ export function buildShippingOrderNotificationHtml({
 // ─── Customer Shipping Confirmation ───────────────────────────────────────────
 
 export interface ShippingConfirmationPayload {
-  order: import("square/legacy").Order;
+  order: import("square-legacy").Order;
   contact: PendingOrderContact;
   trackingNumber?: string;
   carrier?: string; // "USPS" | "UPS" | "FedEx" | "Other"

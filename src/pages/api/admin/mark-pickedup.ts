@@ -10,7 +10,7 @@
 
 import type { APIRoute } from "astro";
 import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
-import { Client, Environment } from "square/legacy";
+import { Client, Environment } from "square-legacy";
 
 const PICKUP_STATES = ["PROPOSED", "RESERVED", "PREPARED", "COMPLETED"] as const;
 

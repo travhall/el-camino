@@ -5,18 +5,20 @@ import ThemeToggle from "./ThemeToggle.astro";
 import { getLegalPages } from "@/lib/wordpress/api";
 import type { WordPressPage } from "@/lib/wordpress/types";
 import { siteConfig } from "@/lib/site-config";
-import { getShopHours } from "@/lib/shopHours";
-import { getContactInfo } from "@/lib/contactInfo";
-import { getSocialLinks } from "@/lib/socialLinks";
+import { getSiteContext } from "@/lib/siteContext";
 import OpenStatusBadge from "./OpenStatusBadge.astro";
 
 const currentYear = new Date().getFullYear();
 const { tagline } = siteConfig;
-const hours = await getShopHours();
-const contact = await getContactInfo();
-const social = await getSocialLinks();
 
-// Fetch footer pages from WordPress
+// Shared per-request bundle (parallel-fetched in Layout). Avoids the
+// previous 3 serial blob reads here, plus the duplicate calls Nav was
+// making for contact/social.
+const siteCtx = await getSiteContext(Astro.locals);
+const { hours, contact, social } = siteCtx;
+
+// Fetch footer pages from WordPress (independent — runs in parallel with
+// the page's own fetches via Astro's render scheduler).
 let footerPages: WordPressPage[] = [];
 let wpError: string | null = null;
 

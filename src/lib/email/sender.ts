@@ -1,6 +1,6 @@
 // src/lib/email/sender.ts
 import { Resend } from "resend";
-import type { Order } from "square/legacy";
+import type { Order } from "square-legacy";
 import type { PendingOrderContact } from "./pendingOrders";
 import {
   buildOrderConfirmationHtml,

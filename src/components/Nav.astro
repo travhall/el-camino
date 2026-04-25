@@ -1,21 +1,22 @@
 ---
 // src/components/Nav.astro - Enhanced with strategic prefetching
 import { siteConfig } from "@/lib/site-config";
-import { getContactInfo } from "@/lib/contactInfo";
-import { getSocialLinks } from "@/lib/socialLinks";
+import { getSiteContext } from "@/lib/siteContext";
 import type { CategoryHierarchy } from "@/lib/square/types";
 import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
 import { Icon } from "astro-icon/components";
 import { apiRetryClient } from "@/lib/square/apiRetry";
-import { getSalePageVisible } from "@/lib/saleVisibility";
 
 interface Props {
   activeCategory?: string;
 }
 
 const { activeCategory } = Astro.props;
-const contact = await getContactInfo();
-const social = await getSocialLinks();
+// Read from the per-request memo populated by Layout — no fresh fetches
+// here. (Previously: 3 serial blob reads per render, 2 of which duplicated
+// what Footer was already doing.)
+const siteCtx = await getSiteContext(Astro.locals);
+const { contact, social, salePageVisible: showSaleLink } = siteCtx;
 
 let categoryHierarchy: CategoryHierarchy[];
 let navigationStatus: "loading" | "success" | "timeout" | "error" = "loading";
@@ -100,7 +101,7 @@ const saleNavItem = {
   prefetchStrategy: "hover",
 };
 
-const showSaleLink = await getSalePageVisible();
+// `showSaleLink` comes from the shared site context (above).
 
 // Enhanced navigation items with prefetch strategies and error-aware fallback
 const navItems =

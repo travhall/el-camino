@@ -1,5 +1,5 @@
 ---
-import { getStructuredData } from "@/lib/structuredData";
+import { getSiteContext } from "@/lib/siteContext";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import QuickView from "@/components/QuickView.astro";
@@ -23,8 +23,11 @@ const userAgent = Astro.request.headers.get("user-agent") || "";
 const deviceInfo = detectDeviceFromUA(userAgent);
 const isDesktop = deviceInfo.isDesktop;
 
-// Get structured data from site config
-const orgSchema = await getStructuredData();
+// Hydrate the per-request site context. Footer/Nav read from this same
+// memoized bundle, so the 6 blob reads happen in one parallel batch instead
+// of cascading serially through each child component.
+const siteCtx = await getSiteContext(Astro.locals);
+const orgSchema = siteCtx.structured;
 
 // Get current path for context-aware prefetching
 const currentPath = Astro.url.pathname;
