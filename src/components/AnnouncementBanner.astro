@@ -2,11 +2,21 @@
 // src/components/AnnouncementBanner.astro
 // Site-wide announcement banner. Rendered server-side — resolves against
 // today's date in America/Chicago (shop's timezone).
+//
+// Dismissal model: cookie, not sessionStorage.
+//
+// Why a cookie? Because the server can read it during SSR and skip rendering
+// the banner element entirely when the user has already dismissed *this exact
+// text*. That eliminates the layout shift (CLS) the previous sessionStorage
+// approach caused: it rendered the banner with `hidden`, then JS toggled it
+// visible after parse, pushing every element below down by ~40px.
 
 import {
   getAnnouncementBanner,
   resolveAnnouncementBanner,
 } from "@/lib/announcementBanner";
+
+const COOKIE_NAME = "ec-banner-dismissed";
 
 const banner = await getAnnouncementBanner();
 
@@ -15,54 +25,47 @@ const todayStr = new Intl.DateTimeFormat("en-CA", {
 }).format(new Date()); // "YYYY-MM-DD"
 
 const text = resolveAnnouncementBanner(banner, todayStr);
+// `dismissKey` is text-bound: a new banner with different copy invalidates
+// the previous dismissal automatically.
 const dismissKey = text ? `banner-dismissed:${text}` : "";
+
+// Server-side dismiss check — if cookie matches the current banner's key,
+// skip rendering entirely. No element in DOM, no CLS, no JS reveal needed.
+const dismissedCookie = Astro.cookies.get(COOKIE_NAME)?.value;
+const showBanner = !!text && dismissedCookie !== dismissKey;
 ---
 
-{text && (
-  <>
-    {/*
-      Starts hidden. The inline script below reveals it synchronously before
-      the first paint on initial page load to prevent CLS.
-      The module script handles reveal on view-transition navigations.
-    */}
-    <div
-      id="announcement-banner"
-      role="banner"
-      data-dismiss-key={dismissKey}
-      class="hidden w-full px-4 py-2.5 text-center font-medium bg-(--content-heading) text-(--surface-primary) relative"
+{showBanner && (
+  <div
+    id="announcement-banner"
+    role="banner"
+    data-dismiss-key={dismissKey}
+    data-cookie-name={COOKIE_NAME}
+    class="w-full px-4 py-2.5 text-center font-medium bg-(--content-heading) text-(--surface-primary) relative"
+  >
+    {text}
+    <button
+      id="dismiss-banner"
+      aria-label="Dismiss announcement"
+      class="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 transition-opacity text-(--surface-primary)"
     >
-      {text}
-      <button
-        id="dismiss-banner"
-        aria-label="Dismiss announcement"
-        class="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 transition-opacity text-(--surface-primary)"
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
-    </div>
-
-    {/* Synchronous reveal on initial page load — before paint, no CLS */}
-    <script is:inline define:vars={{ dismissKey }}>
-      if (sessionStorage.getItem(dismissKey) !== "1") {
-        var el = document.getElementById("announcement-banner");
-        if (el) el.classList.remove("hidden");
-      }
-    </script>
-  </>
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    </button>
+  </div>
 )}
 
 <script>
@@ -70,20 +73,21 @@ const dismissKey = text ? `banner-dismissed:${text}` : "";
     const banner = document.getElementById("announcement-banner");
     if (!banner) return;
 
-    const storageKey = banner.dataset.dismissKey ?? "";
-
-    // Handle visibility on view-transition navigations (inline script may not re-run)
-    if (storageKey && sessionStorage.getItem(storageKey) === "1") {
-      banner.remove();
-      return;
-    }
-    banner.classList.remove("hidden");
+    const dismissKey = banner.dataset.dismissKey ?? "";
+    const cookieName = banner.dataset.cookieName ?? "ec-banner-dismissed";
 
     const btn = document.getElementById("dismiss-banner");
     if (!btn) return;
 
     btn.addEventListener("click", () => {
-      if (storageKey) sessionStorage.setItem(storageKey, "1");
+      // Set a session cookie (no Expires/Max-Age) so dismissal scopes to the
+      // browser session, matching the prior sessionStorage behavior. The
+      // server reads this on the next render and skips the banner entirely.
+      if (dismissKey) {
+        document.cookie = `${cookieName}=${encodeURIComponent(
+          dismissKey,
+        )}; path=/; SameSite=Lax`;
+      }
       banner.style.transition = "opacity 0.3s ease";
       banner.style.opacity = "0";
       setTimeout(() => banner.remove(), 300);
