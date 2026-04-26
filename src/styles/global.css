@@ -148,9 +148,18 @@
   --free-shipping-bar-track: oklch(84% 0.05 80);
   --free-shipping-bar-bg: var(--color-elco-honey-cream-200);
 
-  /* Custom Font Families */
-  --font-display: "Alumni", "Alumni Fallback", serif;
-  --font-display-italic: "Alumni Italic", serif;
+  /* Custom Font Families
+     Alumni Sans is a sans-serif typeface — final fallback must be
+     `sans-serif`, not `serif`. Lighthouse runs in headless Chromium on
+     Linux, where none of the local() fonts in "Alumni Fallback"
+     (-apple-system, Segoe UI, Arial) reliably resolve. The chain then
+     falls through to this last entry. With `serif`, headless Chrome
+     landed on Times-style metrics; the swap to Alumni reflowed text
+     significantly, producing a Lighthouse-only mobile CLS of ~0.227
+     while Mac/Windows real users (where the local() fonts resolve and
+     the calibrated metric overrides apply) saw negligible CLS. */
+  --font-display: "Alumni", "Alumni Fallback", sans-serif;
+  --font-display-italic: "Alumni Italic", sans-serif;
   --font-sans: "Cabin", sans-serif;
 }
 
