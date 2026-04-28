@@ -2,7 +2,10 @@
 // src/components/Notification.astro
 ---
 
-<div id="notification-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 items-end pointer-events-none">
+<div
+  id="notification-container"
+  class="fixed top-4 right-4 z-9999 flex flex-col gap-2 items-end pointer-events-none"
+>
 </div>
 
 <script>
@@ -15,7 +18,7 @@
         duration?: number,
         action?:
           | { label: string; href: string }
-          | { label: string; onClick: () => void }
+          | { label: string; onClick: () => void },
       ): void;
     }
   }
@@ -31,7 +34,7 @@
       message: string,
       type: NotificationType = "success",
       duration: number = 3000,
-      action?: NotificationAction
+      action?: NotificationAction,
     ): void {
       const container = document.getElementById("notification-container");
       if (!container) {
