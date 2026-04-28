@@ -126,6 +126,7 @@ const getSkeletonVariant = () => {
                 variant={getCardVariant(index)}
                 data-initial-index={index}
                 data-variant={getCardVariant(index)}
+                style={`--animation-order: ${index};`}
               />
             );
           }
@@ -148,74 +149,109 @@ const getSkeletonVariant = () => {
 </div>
 
 <style is:global>
-  /* Animation Configuration — timing tokens live in global.css :root */
+  /* ─── Keyframes ─────────────────────────────────────────────────────────── */
 
-  /* Article Card Animation Wrapper - works for both masonry and grid/list */
+  /* Non-featured masonry cards: simultaneous opacity + transform entrance.
+     These cards are below-fold on mobile so their bounding-rect change while
+     partially visible has negligible CLS impact fraction. */
+  @keyframes cardEntrance {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translate3d(0, 10px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translate3d(0, 0, 0);
+    }
+  }
+
+  /* Featured (LCP) card: two-phase entrance.
+     Phase 1 (0 → 50%): transform settles while opacity is exactly 0.
+       opacity:0 elements are fully excluded from the CLS algorithm —
+       unlike opacity:0.001 which the spec counts as "visible."
+     Phase 2 (50 → 100%): fade-in at the resting position.
+       No position change while visible → CLS = 0. */
+  @keyframes cardEntranceFeatured {
+    /* Phase 1 (0–10%, ~80ms at 800ms total): transform settles while
+       opacity is exactly 0 — CLS-invisible per spec. This phase is fast
+       enough that the featured card starts appearing at ~80ms, coordinated
+       with card 1's 50ms stagger start. */
+    0% {
+      opacity: 0;
+      transform: scale(0.95) translate3d(0, 10px, 0);
+    }
+    10% {
+      opacity: 0;
+      transform: scale(1) translate3d(0, 0, 0);
+    }
+    /* Phase 2 (10–100%, ~720ms): fade-in at resting position.
+       No bounding-rect change while visible → CLS = 0. */
+    100% {
+      opacity: 1;
+      transform: scale(1) translate3d(0, 0, 0);
+    }
+  }
+
+  /* ─── Base wrapper (shared by masonry + filterable grid) ─────────────────── */
+
   .article-card-wrapper {
-    transform: translate3d(0, 0, 0); /* GPU acceleration */
-
-    /* CRITICAL: Prevent wrapper from exceeding grid boundaries */
+    transform: translate3d(0, 0, 0); /* GPU compositing layer */
     max-width: 100%;
     width: 100%;
-    min-width: 0; /* Allow flex/grid children to shrink */
+    min-width: 0;
+  }
 
-    /* Bidirectional transitions for entry AND exit */
+  /* ─── Filterable grid (news page) — JS/transition-driven, unchanged ──────── */
+
+  .article-card-wrapper.opacity-0 {
+    opacity: 0;
+    transform: scale(0.95) translate3d(0, 10px, 0);
     transition:
       opacity var(--card-transition-duration) ease,
       transform var(--card-transition-duration) ease;
+    transition-delay: 0s, 0s;
+  }
 
-    /* Stagger delay only applies when entering (via --animation-order) */
+  .article-card-wrapper.opacity-100 {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+    transition:
+      opacity var(--card-transition-duration) ease,
+      transform var(--card-transition-duration) ease;
     transition-delay:
       calc(var(--animation-order, 0) * var(--card-stagger-delay)),
       calc(var(--animation-order, 0) * var(--card-stagger-delay));
   }
 
-  /* Exit state */
-  .article-card-wrapper.opacity-0 {
-    opacity: 0;
-    transform: scale(0.95) translate3d(0, 10px, 0);
-    /* Remove delay on exit for immediate response */
-    transition-delay: 0s, 0s;
-  }
-
-  /* Entry state */
-  .article-card-wrapper.opacity-100 {
-    opacity: 1;
-    transform: scale(1) translate3d(0, 0, 0);
-    /* Delay is inherited from base rule for staggered entrance */
-  }
-
-  /* card-entrance-ready: applied to the featured (priority) card for a smooth
-     opacity entrance. Only opacity is animated here — NO transform — so the card
-     is always at its final layout position and the bounding rect never changes.
-     The CLS algorithm tracks bounding-rect changes even on opacity:0.001 elements
-     (0.001 ≠ 0 in the spec), so the zero-shift guarantee is what keeps CLS = 0,
-     not the near-zero opacity alone. */
-  .article-card-wrapper.card-entrance-ready {
-    opacity: 0.001;
-    transform: none;
-    transition: opacity var(--card-entrance-priority-duration, 800ms) ease-out;
-  }
-
-  .article-card-wrapper.card-entrance-ready.opacity-100 {
-    opacity: 1;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .article-card-wrapper.card-entrance-ready {
-      opacity: 1;
-      transform: none;
-      transition: none;
-    }
-  }
-
-  /* Temporary will-change during animation only */
   .article-card-wrapper.animating {
     will-change: opacity, transform;
   }
 
   .article-card-wrapper:not(.animating) {
     will-change: auto;
+  }
+
+  /* ─── Masonry grid (home page) — CSS-driven, fires at parse time ─────────── */
+
+  /* Non-featured cards: staggered entrance via --animation-order set server-side */
+  .article-grid .article-card-wrapper {
+    animation: cardEntrance var(--card-transition-duration, 0.5s) ease-out both;
+    animation-delay: calc(var(--animation-order, 0) * var(--card-stagger-delay));
+  }
+
+  /* Featured card: two-phase animation — no JS dependency, synced with header */
+  .article-grid .article-card-wrapper.card-entrance-ready {
+    animation: cardEntranceFeatured var(--card-entrance-priority-duration, 800ms) ease-out both;
+    animation-delay: 0s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .article-grid .article-card-wrapper,
+    .article-grid .article-card-wrapper.card-entrance-ready {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
   }
 </style>
 
@@ -344,59 +380,9 @@ const getSkeletonVariant = () => {
     const isMasonryLayout = view === "masonry";
 
     if (isMasonryLayout) {
-      // Animate all cards immediately
-      cards.forEach((card) => {
-        const htmlCard = card as HTMLElement;
-        const index = parseInt(htmlCard.dataset.initialIndex || "0");
-        const isSidebar = htmlCard.dataset.variant === "sidebar";
-
-        // Calculate animation order
-        let animationOrder: number;
-        if (isSidebar) {
-          // Animate after above-fold cards (indices 0–3), not after below-fold cards (4–5)
-          animationOrder = 5;
-        } else {
-          const rowIndex = Math.floor(index / cardsPerRow);
-          const cardInRow = index % cardsPerRow;
-          // LIGHTHOUSE FIX: First card (LCP element) animates immediately with no delay
-          animationOrder = index === 0 ? 0 : rowIndex * 3 + cardInRow * 1.2;
-        }
-
-        // Set animation properties
-        htmlCard.style.setProperty(
-          "--animation-order",
-          animationOrder.toString(),
-        );
-
-        // The featured card (card-entrance-ready) only animates opacity — it does NOT
-        // use the scale+translateY transform animation. Skipping `animating` prevents
-        // will-change:transform from being set and then removed ~800ms later via
-        // setTimeout. That removal triggers a style recalculation which, combined with
-        // any residual layout ambiguity on the grid item, can cause a CLS at ~3200ms.
-        // Non-featured cards (opacity-0) use transform animation and still benefit from
-        // will-change:transform during their shorter animation window.
-        const isFeaturedCard = htmlCard.classList.contains(
-          "card-entrance-ready",
-        );
-        if (!isFeaturedCard) {
-          htmlCard.classList.add("animating");
-        }
-
-        htmlCard.classList.remove("opacity-0");
-        htmlCard.classList.add("opacity-100");
-
-        // Remove will-change after animation (non-featured cards only)
-        if (!isFeaturedCard) {
-          const cardDuration = ANIMATION_CONFIG.duration;
-          const totalAnimationTime =
-            cardDuration + animationOrder * ANIMATION_CONFIG.staggerDelay;
-          setTimeout(() => {
-            htmlCard.classList.remove("animating");
-          }, totalAnimationTime);
-        }
-      });
-
-      return; // Skip intersection observer setup
+      // CSS animation handles the masonry entrance — fires at parse time,
+      // synced with the header. No JS class-toggling needed.
+      return;
     }
 
     // For grid/list views, use intersection observer
