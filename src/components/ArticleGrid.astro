@@ -42,7 +42,7 @@ const getCardVariant = (_index: number) => {
 // News grid: first 2 images (reduce eager loading for mobile)
 // News list: first image only (large cards)
 const shouldPrioritize = (index: number) => {
-  if (!filterable) return index === 0; // Home page - first only
+  if (!filterable) return index < 2; // Home page: first two (second card is actual LCP on mobile)
   return view === "grid" ? index < 2 : index === 0; // News - more conservative
 };
 
@@ -177,11 +177,11 @@ const getSkeletonVariant = () => {
        enough that the featured card starts appearing at ~80ms, coordinated
        with card 1's 50ms stagger start. */
     0% {
-      opacity: 0.001;
+      opacity: 0;
       transform: scale(0.95) translate3d(0, 10px, 0);
     }
     10% {
-      opacity: 0.001;
+      opacity: 0;
       transform: scale(1) translate3d(0, 0, 0);
     }
     /* Phase 2 (10–100%, ~720ms): fade-in at resting position.
