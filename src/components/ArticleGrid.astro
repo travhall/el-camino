@@ -186,18 +186,19 @@ const getSkeletonVariant = () => {
   }
 
   /* card-entrance-ready: applied to the featured (priority) card for a smooth
-     opacity entrance. Only opacity is animated here — no transform — so this card
-     deliberately skips the `animating` class (and its will-change:transform hint)
-     to avoid a style recalculation at ~3200ms that can trigger a second layout pass. */
+     opacity entrance. Only opacity is animated here — NO transform — so the card
+     is always at its final layout position and the bounding rect never changes.
+     The CLS algorithm tracks bounding-rect changes even on opacity:0.001 elements
+     (0.001 ≠ 0 in the spec), so the zero-shift guarantee is what keeps CLS = 0,
+     not the near-zero opacity alone. */
   .article-card-wrapper.card-entrance-ready {
     opacity: 0.001;
-    transform: scale(0.95) translate3d(0, 10px, 0);
-    transition: all var(--card-entrance-priority-duration, 800ms) ease-out;
+    transform: none;
+    transition: opacity var(--card-entrance-priority-duration, 800ms) ease-out;
   }
 
   .article-card-wrapper.card-entrance-ready.opacity-100 {
     opacity: 1;
-    transform: scale(1) translate3d(0, 0, 0);
   }
 
   @media (prefers-reduced-motion: reduce) {
