@@ -152,11 +152,16 @@ const getSkeletonVariant = () => {
   /* ─── Keyframes ─────────────────────────────────────────────────────────── */
 
   /* Non-featured masonry cards: simultaneous opacity + transform entrance.
-     These cards are below-fold on mobile so their bounding-rect change while
-     partially visible has negligible CLS impact fraction. */
+     opacity:0.001 (not 0) is intentional: Chrome's LCP algorithm excludes
+     elements with opacity:0 from candidacy. With animation-fill-mode:both,
+     the `from` keyframe is applied before the animation starts, meaning a
+     true opacity:0 gives Lighthouse nothing to track → NO_LCP error.
+     0.001 is perceptually invisible but registers as a valid LCP candidate.
+     CSS transform is composited — it does not affect layout position and
+     cannot cause CLS regardless of opacity. */
   @keyframes cardEntrance {
     from {
-      opacity: 0;
+      opacity: 0.001;
       transform: scale(0.95) translate3d(0, 10px, 0);
     }
     to {
@@ -166,26 +171,21 @@ const getSkeletonVariant = () => {
   }
 
   /* Featured (LCP) card: two-phase entrance.
-     Phase 1 (0 → 50%): transform settles while opacity is exactly 0.
-       opacity:0 elements are fully excluded from the CLS algorithm —
-       unlike opacity:0.001 which the spec counts as "visible."
-     Phase 2 (50 → 100%): fade-in at the resting position.
-       No position change while visible → CLS = 0. */
+     Phase 1 (0–10%, ~80ms): transform settles while opacity is 0.001.
+       0.001 is perceptually invisible yet Chrome registers it as visible,
+       allowing LCP tracking from the very first paint.
+       CSS transform is composited — no layout shift, no CLS impact.
+     Phase 2 (10–100%, ~720ms): fade-in at resting position.
+       No bounding-rect change while visible → CLS = 0. */
   @keyframes cardEntranceFeatured {
-    /* Phase 1 (0–10%, ~80ms at 800ms total): transform settles while
-       opacity is exactly 0 — CLS-invisible per spec. This phase is fast
-       enough that the featured card starts appearing at ~80ms, coordinated
-       with card 1's 50ms stagger start. */
     0% {
-      opacity: 0;
+      opacity: 0.001;
       transform: scale(0.95) translate3d(0, 10px, 0);
     }
     10% {
-      opacity: 0;
+      opacity: 0.001;
       transform: scale(1) translate3d(0, 0, 0);
     }
-    /* Phase 2 (10–100%, ~720ms): fade-in at resting position.
-       No bounding-rect change while visible → CLS = 0. */
     100% {
       opacity: 1;
       transform: scale(1) translate3d(0, 0, 0);
