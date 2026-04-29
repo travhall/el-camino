@@ -170,23 +170,16 @@ const getSkeletonVariant = () => {
     }
   }
 
-  /* Featured (LCP) card: two-phase entrance.
-     Phase 1 (0–10%, ~80ms): transform settles while opacity is 0.001.
-       0.001 is perceptually invisible yet Chrome registers it as visible,
-       allowing LCP tracking from the very first paint.
-       CSS transform is composited — no layout shift, no CLS impact.
-     Phase 2 (10–100%, ~720ms): fade-in at resting position.
-       No bounding-rect change while visible → CLS = 0. */
+  /* Featured (LCP) card: single-phase entrance — opacity and transform animate
+     simultaneously, matching production's visual quality.
+     opacity:0.001 (not 0) ensures Chrome registers this as an LCP candidate
+     from the very first paint. CSS transform is composited and cannot cause CLS. */
   @keyframes cardEntranceFeatured {
-    0% {
+    from {
       opacity: 0.001;
       transform: scale(0.95) translate3d(0, 10px, 0);
     }
-    10% {
-      opacity: 0.001;
-      transform: scale(1) translate3d(0, 0, 0);
-    }
-    100% {
+    to {
       opacity: 1;
       transform: scale(1) translate3d(0, 0, 0);
     }
@@ -233,13 +226,16 @@ const getSkeletonVariant = () => {
 
   /* ─── Masonry grid (home page) — CSS-driven, fires at parse time ─────────── */
 
-  /* Non-featured cards: staggered entrance via --animation-order set server-side */
+  /* Non-featured cards: staggered entrance, offset by 200ms so the header
+     animation (0.2s delay) leads before secondary cards begin appearing.
+     The featured card (card-entrance-ready) is excluded from this offset
+     so it starts immediately — it's the LCP element and must not be delayed. */
   .article-grid .article-card-wrapper {
     animation: cardEntrance var(--card-transition-duration, 0.5s) ease-out both;
-    animation-delay: calc(var(--animation-order, 0) * var(--card-stagger-delay));
+    animation-delay: calc(200ms + var(--animation-order, 0) * var(--card-stagger-delay));
   }
 
-  /* Featured card: two-phase animation — no JS dependency, synced with header */
+  /* Featured card: starts immediately — LCP-critical, no offset applied */
   .article-grid .article-card-wrapper.card-entrance-ready {
     animation: cardEntranceFeatured var(--card-entrance-priority-duration, 800ms) ease-out both;
     animation-delay: 0s;

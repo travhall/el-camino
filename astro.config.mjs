@@ -103,5 +103,19 @@ export default defineConfig({
     // "square" intentionally omitted from noExternal — it's a CJS package and
     // must be kept external so Node loads it natively. Bundling it as ESM
     // (via noExternal) causes "exports is not defined" at runtime.
+
+    // Pre-declare deps that Vite discovers lazily during the first page load.
+    // Without this, Vite triggers two mid-load reloads on every fresh local
+    // dev session: one when it finds the Astro transitions virtual modules,
+    // and a second when it finds web-vitals.
+    optimizeDeps: {
+      include: [
+        "astro/virtual-modules/transitions-router.js",
+        "astro/virtual-modules/transitions-types.js",
+        "astro/virtual-modules/transitions-events.js",
+        "astro/virtual-modules/transitions-swap-functions.js",
+        "web-vitals",
+      ],
+    },
   },
 });
