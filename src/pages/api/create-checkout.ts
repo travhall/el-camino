@@ -67,17 +67,31 @@ function roundUpTo15(date: Date): Date {
  *   (a) at least 2 hours from `from`, rounded up to the next 15-minute mark, AND
  *   (b) during store business hours (from the live admin-managed schedule).
  *
- * Advances 15 minutes at a time until a valid slot is found (up to 7 days).
+ * When ordering during store hours, the window starts from the order time.
+ * When ordering after close (or before open), the 2-hour window starts from
+ * the next time the store opens — so open+2h rather than open.
  */
 async function nextPickupTime(from: Date): Promise<Date> {
   const hoursData = await getShopHoursRaw();
-  let candidate = roundUpTo15(new Date(from.getTime() + 2 * 60 * 60 * 1000));
+  const initialCandidate = roundUpTo15(
+    new Date(from.getTime() + 2 * 60 * 60 * 1000),
+  );
 
+  // Fast path: order+2h already falls within business hours
+  const { jsDay: iDay, hour: iHour } = storeTimeOf(initialCandidate);
+  const iHours = storeHoursForDay(iDay, hoursData);
+  if (iHours && iHour >= iHours.open && iHour < iHours.close) {
+    return initialCandidate;
+  }
+
+  // After-hours path: find the next time the store opens, then give a full
+  // 2-hour window from that open time (e.g. opens 11 AM → ready at 1 PM).
+  let candidate = initialCandidate;
   for (let i = 0; i < 7 * 24 * 4; i++) {
     const { jsDay, hour } = storeTimeOf(candidate);
     const hours = storeHoursForDay(jsDay, hoursData);
     if (hours && hour >= hours.open && hour < hours.close) {
-      return candidate;
+      return roundUpTo15(new Date(candidate.getTime() + 2 * 60 * 60 * 1000));
     }
     candidate = new Date(candidate.getTime() + 15 * 60 * 1000);
   }
