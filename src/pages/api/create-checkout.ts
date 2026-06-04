@@ -10,6 +10,10 @@ import { batchInventoryService } from "@/lib/square/batchInventory";
 import { storePendingOrder } from "@/lib/email/pendingOrders";
 import { getShopHoursRaw } from "@/lib/shopHours";
 import type { ShopHoursEntry } from "@/lib/shopHours";
+import { createRateLimiter, clientIp } from "@/lib/rateLimit";
+
+// 10 checkout attempts per 5 min per IP — generous for real users, blocks scripts
+const checkoutLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
 
 // Store timezone for business hours calculations
 const STORE_TIMEZONE = "America/Chicago";
@@ -143,6 +147,13 @@ interface PickupContact {
 }
 
 export const POST: APIRoute = async ({ request }) => {
+  if (checkoutLimiter.check(clientIp(request))) {
+    return new Response(JSON.stringify({ error: "Too many requests. Please try again shortly." }), {
+      status: 429,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const body = await request.json();
     const {
@@ -450,7 +461,7 @@ export const POST: APIRoute = async ({ request }) => {
     // SameSite=Lax allows the cookie to be sent on the top-level cross-site
     // navigation from Square back to our domain.
     const cookie = orderId
-      ? `square-pending-orderId=${orderId}; Path=/; Max-Age=3600; SameSite=Lax; HttpOnly`
+      ? `square-pending-orderId=${orderId}; Path=/; Max-Age=3600; SameSite=Lax; HttpOnly${import.meta.env.PROD ? "; Secure" : ""}`
       : "";
 
     return new Response(

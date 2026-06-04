@@ -161,7 +161,7 @@ const config = severityConfig[severity];
           </div>
           <button
             class={`text-sm font-medium hover:underline ${config.iconColor} transition-colors`}
-            onclick="handleBudgetAlertAction(this)"
+            data-action="budget-alert"
             data-metric={metric}
             data-severity={severity}
           >
@@ -261,4 +261,10 @@ const config = severityConfig[severity];
         console.log(`Handling alert for ${metric} with severity ${severity}`);
     }
   }) as EventListener);
+
+  // Wire up data-action button without inline onclick handler
+  document.addEventListener("click", (e: MouseEvent) => {
+    const btn = (e.target as Element).closest<HTMLButtonElement>('[data-action="budget-alert"]');
+    if (btn) (window as any).handleBudgetAlertAction?.(btn);
+  });
 </script>

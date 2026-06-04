@@ -331,16 +331,11 @@ const getExcerptClasses = () => {
           fetchpriority={priority ? "high" : "auto"}
           decoding={priority ? "auto" : "async"}
           data-placeholder-id={`article-placeholder-${post.id}`}
-          onload={
-            variant === "masonry" && !featured
-              ? `this.style.opacity=''; this.classList.add('loaded'); document.getElementById('article-placeholder-${post.id}')?.remove();`
-              : `this.style.opacity='1'; this.classList.add('loaded'); document.getElementById('article-placeholder-${post.id}')?.remove();`
-          }
-          onerror={
-            variant === "masonry" && !featured
-              ? `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity=''; this.classList.add('error'); document.getElementById('article-placeholder-${post.id}')?.remove();`
-              : `this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; this.classList.add('error'); document.getElementById('article-placeholder-${post.id}')?.remove();`
-          }
+          data-shimmer-placeholder={`article-placeholder-${post.id}`}
+          data-shimmer-load-add="loaded"
+          data-shimmer-error-add="error"
+          data-shimmer-load-opacity={(variant === "masonry" && !featured) ? "" : "1"}
+          data-shimmer-error-opacity={(variant === "masonry" && !featured) ? "" : "1"}
         />
       </picture>
     ) : (

@@ -138,8 +138,11 @@ for (const cat of flatCategories) {
                     loading={index < 4 ? "eager" : "lazy"}
                     width="600"
                     height="600"
-                    onload={`this.style.opacity='1'; document.getElementById('${placeholderId}')?.remove()`}
-                    onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='0.3'; this.classList.remove('object-cover'); this.classList.add('object-contain','p-8'); document.getElementById('${placeholderId}')?.remove()`}
+                    data-shimmer-placeholder={placeholderId}
+                    data-shimmer-load-opacity="1"
+                    data-shimmer-error-opacity="0.3"
+                    data-shimmer-error-remove="object-cover"
+                    data-shimmer-error-add="object-contain p-8"
                   />
                 ) : (
                   <img

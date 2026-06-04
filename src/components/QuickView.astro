@@ -100,8 +100,6 @@ const contact = await getContactInfo();
               alt=""
               class="w-full h-full object-cover opacity-0 transition-opacity duration-300"
               loading="lazy"
-              onload="this.style.opacity='0.9'; document.getElementById('quick-view-image-placeholder')?.remove();"
-              onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('quick-view-image-placeholder')?.remove();`}
             />
           </div>
 
@@ -568,12 +566,23 @@ const contact = await getContactInfo();
         "quick-view-image",
       ) as HTMLImageElement;
       if (image) {
-        // Reset opacity and restore placeholder
+        // Reset opacity and restore placeholder for the new product
         image.style.opacity = "0";
         const placeholder = document.getElementById(
           "quick-view-image-placeholder",
         );
         if (placeholder) placeholder.style.display = "block";
+
+        // Reveal image and hide placeholder once loaded — replaces the
+        // former inline onload/onerror HTML attributes (removed for CSP).
+        image.onload = () => {
+          image.style.opacity = "0.9";
+          if (placeholder) placeholder.style.display = "none";
+        };
+        image.onerror = () => {
+          image.style.opacity = "1";
+          if (placeholder) placeholder.style.display = "none";
+        };
 
         image.src = this.optimizeImageSrc(product.image, 400);
         image.alt = product.title;

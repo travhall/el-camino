@@ -99,7 +99,7 @@ const priorityColors = [
     <div class="flex items-center gap-2">
       <button
         class="text-(--content-meta) hover:text-(--content-emphasis) p-1 rounded"
-        onclick="toggleRecommendationDetails(this)"
+        data-action="toggle-details"
         aria-label="More options"
       >
         <svg
@@ -193,14 +193,14 @@ const priorityColors = [
     <div class="flex items-center gap-2">
       <button
         class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors"
-        onclick="dismissRecommendation(this)"
+        data-action="dismiss"
         data-title={title}
       >
         Dismiss
       </button>
       <button
         class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-2 px-4"
-        onclick="applyRecommendation(this)"
+        data-action="apply"
         data-title={title}
         data-impact={impact}
         data-effort={effort}
@@ -379,4 +379,16 @@ const priorityColors = [
     dismissed.push(title);
     localStorage.setItem("dismissedRecommendations", JSON.stringify(dismissed));
   }) as EventListener);
+
+  // Wire up data-action buttons without inline onclick handlers
+  document.addEventListener("click", (e: MouseEvent) => {
+    const btn = (e.target as Element).closest<HTMLButtonElement>("[data-action]");
+    if (!btn) return;
+    const w = window as any;
+    switch (btn.dataset.action) {
+      case "toggle-details": w.toggleRecommendationDetails?.(btn); break;
+      case "dismiss":        w.dismissRecommendation?.(btn);        break;
+      case "apply":          w.applyRecommendation?.(btn);          break;
+    }
+  });
 </script>

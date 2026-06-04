@@ -101,10 +101,13 @@ Referrer-Policy = "strict-origin-when-cross-origin"
 Permissions-Policy = "camera=(), microphone=(), geolocation=()"
 
 # Content Security Policy
-# NOTE: 'unsafe-inline' for script-src is required because the codebase has
-# ~56 inline event handlers (img onload/onerror to clear loading shimmer,
-# etc.). Switching to nonce-based CSP requires refactoring those to
-# addEventListener first. See discussion in commit history.
+# NOTE: 'unsafe-inline' for script-src covers two distinct patterns:
+#   1. Inline HTML event handlers (onload, onerror, onclick, etc.) — these have
+#      been fully refactored away; see src/scripts/imageShimmer.ts.
+#   2. <script is:inline> blocks — 17 instances remain throughout the codebase
+#      (Square SDK loader, header animation, Speculation Rules, NewsFilters, etc.).
+#      Removing 'unsafe-inline' requires converting all of these to bundled modules
+#      or adopting a nonce-based CSP. That is a separate effort.
 Content-Security-Policy = "default-src 'self'; img-src 'self' https: data: *.wordpress.com; script-src 'self' 'unsafe-inline' https://sandbox.web.squarecdn.com https://web.squarecdn.com; style-src 'self' 'unsafe-inline'; font-src 'self' https:; connect-src 'self' https: wss:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; object-src 'none'; base-uri 'self'; form-action 'self'"
 
 # Cross-Origin Opener Policy

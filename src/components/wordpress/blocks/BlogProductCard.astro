@@ -141,8 +141,9 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
             fetchpriority={isDynamicPriority ? "high" : "auto"}
             decoding={isDynamicPriority ? "sync" : "async"}
             data-placeholder-id={`${placeholderId}-list`}
-            onload={`this.classList.add('opacity-100'); document.getElementById('${placeholderId}-list')?.remove();`}
-            onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100'); document.getElementById('${placeholderId}-list')?.remove();`}
+            data-shimmer-placeholder={`${placeholderId}-list`}
+            data-shimmer-load-add="opacity-100"
+            data-shimmer-error-add="opacity-100"
             itemprop="image"
           />
         </picture>
@@ -251,8 +252,9 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
             fetchpriority={isDynamicPriority ? "high" : "auto"}
             decoding={isDynamicPriority ? "sync" : "async"}
             data-placeholder-id={placeholderId}
-            onerror={`this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.classList.add('opacity-100', 'error'); document.getElementById('${placeholderId}')?.remove()`}
-            onload={`this.classList.add('opacity-100', 'loaded'); document.getElementById('${placeholderId}')?.remove()`}
+            data-shimmer-placeholder={placeholderId}
+            data-shimmer-load-add="opacity-100 loaded"
+            data-shimmer-error-add="opacity-100 error"
             itemprop="image"
           />
         </picture>
