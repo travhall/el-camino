@@ -77,6 +77,10 @@ import {
   getProductStockStatus,
   pruneInventoryCache,
 } from '../inventory';
+// Real circuit breaker (not mocked) — checkBulkInventory now flows through the
+// shared inventory core, which guards the batch call with it. Reset between
+// tests so failures from one test don't leave the circuit open for the next.
+import { defaultCircuitBreaker } from '../apiUtils';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -184,6 +188,7 @@ describe('isItemInStock', () => {
 describe('checkBulkInventory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    defaultCircuitBreaker.reset();
     mockCacheGet.mockResolvedValue(undefined); // cache miss by default
     mockCacheSet.mockResolvedValue(undefined);
     mockProcessSquareError.mockReturnValue({ message: 'sq-error' });
@@ -205,34 +210,29 @@ describe('checkBulkInventory', () => {
   });
 
   it('deduplicates repeated IDs before fetching', async () => {
-    // Single unique ID → delegates to checkItemInventory (single-fetch path)
-    useCacheMiss();
-    mockCacheGetOrCompute.mockImplementation((_k: string, fn: () => unknown) => fn());
-    mockRetrieveInventoryCount.mockResolvedValue({
+    mockBatchRetrieveInventory.mockResolvedValue({
       data: [makeCount('var-1', '4')],
     });
 
     const result = await checkBulkInventory(['var-1', 'var-1', 'var-1']);
     expect(result['var-1']).toBe(4);
-    // Deduplication means Square was called only once
-    expect(mockRetrieveInventoryCount).toHaveBeenCalledTimes(1);
+    // Deduplicated to a single ID → exactly one batch request
+    expect(mockBatchRetrieveInventory).toHaveBeenCalledTimes(1);
   });
 
-  it('uses the single-item path when exactly one ID is uncached', async () => {
-    // var-2 is in cache, var-1 is not → single-fetch path for var-1
+  it('merges a cached ID with one fetched via the batch endpoint', async () => {
+    // var-2 is cached, var-1 is not → var-1 goes through the batch endpoint
     mockCacheGet.mockImplementation(async (id: string) =>
       id === 'var-2' ? 9 : undefined
     );
-    useCacheMiss(); // fallback for getOrCompute calls inside checkItemInventory
-    mockCacheGetOrCompute.mockImplementation((_k: string, fn: () => unknown) => fn());
-    mockRetrieveInventoryCount.mockResolvedValue({
+    mockBatchRetrieveInventory.mockResolvedValue({
       data: [makeCount('var-1', '3')],
     });
 
     const result = await checkBulkInventory(['var-1', 'var-2']);
-    expect(result['var-2']).toBe(9);
-    expect(result['var-1']).toBe(3);
-    expect(mockBatchRetrieveInventory).not.toHaveBeenCalled();
+    expect(result['var-2']).toBe(9); // from cache
+    expect(result['var-1']).toBe(3); // from batch
+    expect(mockBatchRetrieveInventory).toHaveBeenCalledTimes(1);
   });
 
   it('uses the batch API path for multiple uncached IDs', async () => {
@@ -281,13 +281,23 @@ describe('checkBulkInventory', () => {
     expect(mockCacheSet).toHaveBeenCalledWith('var-2', 0);
   });
 
-  it('returns an empty object when the batch API throws', async () => {
-    mockBatchRetrieveInventory.mockRejectedValue(new Error('timeout'));
-    mockHandleError.mockReturnValue({});
+  it('falls back to individual lookups when the batch call fails', async () => {
+    mockBatchRetrieveInventory.mockRejectedValue(new Error('batch timeout'));
+    mockRetrieveInventoryCount.mockResolvedValue({ data: [makeCount('x', '5')] });
 
     const result = await checkBulkInventory(['var-1', 'var-2']);
-    expect(result).toEqual({});
-    expect(mockHandleError).toHaveBeenCalled();
+    // Individual fallback resolved both IDs
+    expect(result).toEqual({ 'var-1': 5, 'var-2': 5 });
+  });
+
+  it('reports 0 for IDs when both batch and individual lookups fail', async () => {
+    mockBatchRetrieveInventory.mockRejectedValue(new Error('batch down'));
+    mockRetrieveInventoryCount.mockRejectedValue(new Error('individual down'));
+
+    const result = await checkBulkInventory(['var-1', 'var-2']);
+    // Conservative policy: unresolved stock → 0 so checkout never oversells
+    expect(result).toEqual({ 'var-1': 0, 'var-2': 0 });
+    expect(mockProcessSquareError).toHaveBeenCalled();
   });
 
   it('mixes cached and fetched values in the result', async () => {
@@ -307,6 +317,7 @@ describe('checkBulkInventory', () => {
 describe('getProductStockStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    defaultCircuitBreaker.reset();
     mockCacheGet.mockResolvedValue(undefined);
     mockCacheSet.mockResolvedValue(undefined);
     mockProcessSquareError.mockReturnValue({ message: 'sq-error' });
@@ -397,12 +408,12 @@ describe('getProductStockStatus', () => {
     expect(status.hasLimitedOptions).toBe(false);
   });
 
-  it('marks product as out-of-stock when the batch API throws', async () => {
-    // Two uncached variations → takes the batch path inside checkBulkInventory.
-    // The batch call rejects; checkBulkInventory catches it and returns {}.
-    // getProductStockStatus then sees 0-stock for every variation → isOutOfStock.
+  it('marks product as out-of-stock when batch and individual lookups both fail', async () => {
+    // Both the batch call and the per-ID fallback reject → the core reports the
+    // variations as unresolved, checkBulkInventory maps them to 0, and
+    // getProductStockStatus sees 0-stock for every variation → isOutOfStock.
     mockBatchRetrieveInventory.mockRejectedValue(new Error('api error'));
-    mockHandleError.mockReturnValue({});
+    mockRetrieveInventoryCount.mockRejectedValue(new Error('individual error'));
 
     const status = await getProductStockStatus(makeProduct({
       variations: [{ variationId: 'var-1' }, { variationId: 'var-2' }],

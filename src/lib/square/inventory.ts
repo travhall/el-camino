@@ -5,6 +5,7 @@ import { inventoryCache } from "./cacheUtils";
 import { logError, handleError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
 import { requestDeduplicator } from './requestDeduplication';
+import { fetchInventoryCounts } from './inventoryCore';
 
 /**
  * Check if a specific item is in stock - with caching and deduplication
@@ -62,102 +63,17 @@ export async function isItemInStock(variationId: string): Promise<boolean> {
 export async function checkBulkInventory(
   variationIds: string[]
 ): Promise<Record<string, number>> {
-  // Copy before sorting — Array.prototype.sort mutates in place, and this
-  // array belongs to the caller.
-  const cacheKey = `bulk:${[...variationIds].sort().join(',')}`;
-  
-  return requestDeduplicator.dedupe(cacheKey, async () => {
-    // Deduplicate IDs
-    const uniqueIds = [...new Set(variationIds)];
+  const { counts, failed } = await fetchInventoryCounts(variationIds);
 
-    if (uniqueIds.length === 0) {
-      return {};
-    }
-
-    // Process cache hits and identify items that need fetching (now async)
-    const resultMap: Record<string, number> = {};
-    const idsToFetch: string[] = [];
-
-    await Promise.all(
-      uniqueIds.map(async (id) => {
-        const cached = await inventoryCache.get(id);
-        if (cached !== undefined) {
-          resultMap[id] = cached;
-        } else {
-          idsToFetch.push(id);
-        }
-      })
-    );
-
-    // If all items were cached, return early
-    if (idsToFetch.length === 0) return resultMap;
-
-    // For a single item to fetch, use the simpler endpoint
-    if (idsToFetch.length === 1) {
-      const quantity = await checkItemInventory(idsToFetch[0]);
-      resultMap[idsToFetch[0]] = quantity;
-      return resultMap;
-    }
-
-    try {
-      // Batch API requests (Square API can handle up to 100 items per request)
-      const BATCH_SIZE = 100;
-      const batches = [];
-
-      for (let i = 0; i < idsToFetch.length; i += BATCH_SIZE) {
-        const batchIds = idsToFetch.slice(i, i + BATCH_SIZE);
-        batches.push(batchIds);
-      }
-
-      // Process all batches in parallel
-      const batchResults = await Promise.all(
-        batches.map(async (batchIds) => {
-          const batchPage =
-            await squareClient.inventory.batchGetCounts({
-              catalogObjectIds: batchIds,
-              locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
-            });
-          return batchPage.data || [];
-        })
-      );
-
-      // Flatten and process all counts
-      const allCounts = batchResults.flat();
-
-      // Process API results - only consider IN_STOCK state (now async)
-      await Promise.all(
-        allCounts.map(async (count: any) => {
-          if (count.state === "IN_STOCK" && count.catalogObjectId) {
-            const quantity = parseInt(count.quantity || "0", 10);
-            resultMap[count.catalogObjectId] = quantity;
-
-            // Update cache
-            await inventoryCache.set(count.catalogObjectId, quantity);
-          }
-        })
-      );
-
-      // Set zero quantities for requested items that weren't found in IN_STOCK state (now async)
-      await Promise.all(
-        idsToFetch.map(async (id) => {
-          if (resultMap[id] === undefined) {
-            resultMap[id] = 0;
-            // Cache zero results too
-            await inventoryCache.set(id, 0);
-          }
-        })
-      );
-
-      return resultMap;
-    } catch (error) {
-      const appError = processSquareError(error, "checkBulkInventory");
-      return handleError<Record<string, number>>(
-        appError,
-        {}
-        // Optional retry function could be implemented here
-      );
-    }
-  });
+  // Conservative failure policy: anything we could not determine counts as 0 so
+  // checkout never sells stock it cannot confirm. Every requested ID is present
+  // in the result.
+  const result: Record<string, number> = { ...counts };
+  for (const id of failed) result[id] = 0;
+  for (const id of variationIds) {
+    if (result[id] === undefined) result[id] = 0;
+  }
+  return result;
 }
 
 /**
