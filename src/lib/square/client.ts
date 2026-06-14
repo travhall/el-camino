@@ -1,5 +1,5 @@
 // /src/lib/square/client.ts
-import { Client, Environment } from "square-legacy";
+import { SquareClient, SquareEnvironment } from "square-legacy";
 import type { Product, SaleInfo } from "./types";
 import { getImageUrl, batchGetImageUrls } from "./imageUtils";
 import { defaultCircuitBreaker, logApiError } from "./apiUtils";
@@ -27,13 +27,12 @@ function validateEnvironment() {
   envValidated = true;
 }
 
-export const squareClient = new Client({
-  accessToken: process.env.SQUARE_ACCESS_TOKEN ?? "",
+export const squareClient = new SquareClient({
+  token: process.env.SQUARE_ACCESS_TOKEN ?? "",
   environment:
     import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-      ? Environment.Production
-      : Environment.Sandbox,
-  squareVersion: "2026-01-22",
+      ? SquareEnvironment.Production
+      : SquareEnvironment.Sandbox,
 });
 
 export const jsonStringifyReplacer = (_key: string, value: any) => {
@@ -208,11 +207,11 @@ export async function fetchProducts(): Promise<Product[]> {
             console.warn(`[fetchProducts] Hit max requests limit (${maxRequests})`);
             break;
           }
-          const { result } = await squareClient.catalogApi.listCatalog(cursor, "ITEM");
-          if (result.objects?.length) {
-            allObjects.push(...result.objects);
+          const page = await squareClient.catalog.list({ types: "ITEM", cursor });
+          if (page.data?.length) {
+            allObjects.push(...page.data);
           }
-          cursor = result.cursor;
+          cursor = (page.response as any).cursor;
         } while (cursor);
 
         if (!allObjects.length) {
@@ -379,14 +378,14 @@ export async function fetchProduct(id: string): Promise<Product | null> {
       try {
         // console.log(`[fetchProduct] Fetching product: ${id}`);
 
-        const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-          id,
-          true
-        ); // Pass true as second param
+        const catalogResult = await squareClient.catalog.object.get({
+          objectId: id,
+          includeRelatedObjects: true,
+        });
 
-        if (!result.object || result.object.type !== "ITEM") return null;
+        if (!catalogResult.object || catalogResult.object.type !== "ITEM") return null;
 
-        const item = result.object;
+        const item = catalogResult.object as any;
         const variations = item.itemData?.variations || [];
 
         if (!variations.length) return null;
@@ -413,12 +412,12 @@ export async function fetchProduct(id: string): Promise<Product | null> {
 
         // Get ALL variation image IDs for batch fetching (not just the first per variation)
         const variationImageIds = variations.flatMap(
-          (v) => v.itemVariationData?.imageIds ?? []
+          (v: any) => v.itemVariationData?.imageIds ?? []
         );
 
         // Get all measurement unit IDs for batch fetching
         const measurementUnitIds = variations
-          .map((v) => v.itemVariationData?.measurementUnitId)
+          .map((v: any) => v.itemVariationData?.measurementUnitId)
           .filter(Boolean) as string[];
 
         // Fetch all variation images and measurement units in parallel
@@ -461,7 +460,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
             const ordB = (b as any).itemVariationData?.ordinal ?? 0;
             return ordA - ordB;
           })
-          .map((v) => {
+          .map((v: any) => {
           const priceMoney = v.itemVariationData?.priceMoney;
           const regularPrice = priceMoney ? Number(priceMoney.amount) / 100 : 0;
 

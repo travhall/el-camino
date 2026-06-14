@@ -38,16 +38,17 @@ for (const item of categoriesWithImages) {
     // Only try to fetch if we have a category ID
     if (item.id) {
       // Retrieve the category object with related objects
-      const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-        item.id,
-        true,
-      );
+      const catResult = await squareClient.catalog.object.get({
+        objectId: item.id,
+        includeRelatedObjects: true,
+      });
 
       // Find image objects in related objects
-      if (result.relatedObjects && result.relatedObjects.length > 0) {
+      const relatedObjects = (catResult as any).relatedObjects ?? [];
+      if (relatedObjects.length > 0) {
         // Look for IMAGE type objects
-        const imageObjects = result.relatedObjects.filter(
-          (obj) => obj.type === "IMAGE",
+        const imageObjects = relatedObjects.filter(
+          (obj: any) => obj.type === "IMAGE",
         );
 
         // If we found any images, use the first one

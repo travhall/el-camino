@@ -18,14 +18,14 @@ export async function checkItemInventory(variationId: string): Promise<number> {
     inventoryCache.getOrCompute(variationId, async () => {
       try {
         // Query Square API for current inventory count
-        const { result } = await squareClient.inventoryApi.retrieveInventoryCount(
-          variationId,
-          import.meta.env.PUBLIC_SQUARE_LOCATION_ID // locationIds (comma-separated string), not cursor
-        );
+        const inventoryPage = await squareClient.inventory.get({
+          catalogObjectId: variationId,
+          locationIds: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
+        });
 
         // Get the counts and find IN_STOCK state
-        const counts = result.counts || [];
-        const inStockCount = counts.find((count) => count.state === "IN_STOCK");
+        const counts = inventoryPage.data || [];
+        const inStockCount = counts.find((count: any) => count.state === "IN_STOCK");
 
         // Parse quantity as number (Square returns string)
         const quantity = inStockCount?.quantity
@@ -62,7 +62,9 @@ export async function isItemInStock(variationId: string): Promise<boolean> {
 export async function checkBulkInventory(
   variationIds: string[]
 ): Promise<Record<string, number>> {
-  const cacheKey = `bulk:${variationIds.sort().join(',')}`;
+  // Copy before sorting — Array.prototype.sort mutates in place, and this
+  // array belongs to the caller.
+  const cacheKey = `bulk:${[...variationIds].sort().join(',')}`;
   
   return requestDeduplicator.dedupe(cacheKey, async () => {
     // Deduplicate IDs
@@ -110,12 +112,12 @@ export async function checkBulkInventory(
       // Process all batches in parallel
       const batchResults = await Promise.all(
         batches.map(async (batchIds) => {
-          const { result } =
-            await squareClient.inventoryApi.batchRetrieveInventoryCounts({
+          const batchPage =
+            await squareClient.inventory.batchGetCounts({
               catalogObjectIds: batchIds,
               locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
             });
-          return result.counts || [];
+          return batchPage.data || [];
         })
       );
 
@@ -124,7 +126,7 @@ export async function checkBulkInventory(
 
       // Process API results - only consider IN_STOCK state (now async)
       await Promise.all(
-        allCounts.map(async (count) => {
+        allCounts.map(async (count: any) => {
           if (count.state === "IN_STOCK" && count.catalogObjectId) {
             const quantity = parseInt(count.quantity || "0", 10);
             resultMap[count.catalogObjectId] = quantity;

@@ -56,7 +56,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       await removeSubscription(sub.productId, sub.email);
       sent++;
     } catch (err) {
-      console.error(`[send-back-in-stock] Failed for ${sub.email}:`, err);
+      // Log full error detail so the server-side logs surface Resend's rejection reason
+      // (e.g. unverified domain, sandbox mode restriction, invalid address).
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error(`[send-back-in-stock] Failed for ${sub.email}: ${detail}`);
       failed++;
     }
   }

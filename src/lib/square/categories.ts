@@ -26,19 +26,16 @@ function createSlug(name: string): string {
 export async function fetchCategories(): Promise<Category[]> {
   return categoryCache.getOrCompute("all-categories", async () => {
     try {
-      const response = await squareClient.catalogApi.listCatalog(
-        undefined,
-        "CATEGORY"
-      );
+      const categoryPage = await squareClient.catalog.list({ types: "CATEGORY" });
 
-      if (!response.result?.objects?.length) {
+      if (!categoryPage.data?.length) {
         return [];
       }
 
-      const rawObjects = response.result.objects;
+      const rawObjects = categoryPage.data;
       const categories = rawObjects
-        .filter((item) => item.type === "CATEGORY")
-        .map((item, index) => {
+        .filter((item: any) => item.type === "CATEGORY")
+        .map((item: any, index: number) => {
           // Extract ordinal from parentCategory (BigInt)
           const parentOrdinal = item.categoryData?.parentCategory?.ordinal;
           const orderValue = parentOrdinal ? Number(parentOrdinal) : 999;
@@ -193,14 +190,11 @@ async function fetchAllCatalogItems(): Promise<any[]> {
           break;
         }
 
-        const { result } = await squareClient.catalogApi.listCatalog(
-          cursor,
-          "ITEM"
-        );
+        const page = await squareClient.catalog.list({ types: "ITEM", cursor });
 
-        if (result.objects?.length) {
+        if (page.data?.length) {
           // Convert BigInt values to strings to avoid serialization errors
-          const sanitizedObjects = result.objects.map((obj: any) => {
+          const sanitizedObjects = page.data.map((obj: any) => {
             // Deep clone and convert BigInts
             return JSON.parse(
               JSON.stringify(obj, (key, value) =>
@@ -211,7 +205,7 @@ async function fetchAllCatalogItems(): Promise<any[]> {
           allItems.push(...sanitizedObjects);
         }
 
-        cursor = result.cursor;
+        cursor = (page.response as any).cursor;
       } while (cursor);
 
       // console.log(`[Square API] Successfully fetched ${allItems.length} total catalog items in ${requestCount} requests`);

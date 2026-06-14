@@ -1,5 +1,5 @@
 // src/lib/square/serverErrorUtils.ts
-import { ApiError } from "square-legacy";
+import { SquareError } from "square-legacy";
 import {
   type AppError,
   ErrorType,
@@ -10,7 +10,7 @@ import {
 /**
  * Map Square error codes to our standardized types
  */
-export function getErrorTypeFromSquare(error: ApiError): ErrorType {
+export function getErrorTypeFromSquare(error: SquareError): ErrorType {
   // Square's status codes
   switch (error.statusCode) {
     case 401:
@@ -36,7 +36,7 @@ export function getErrorTypeFromSquare(error: ApiError): ErrorType {
  * Process Square API errors into standardized format
  */
 export function processSquareError(error: unknown, source: string): AppError {
-  if (error instanceof ApiError) {
+  if (error instanceof SquareError) {
     const type = getErrorTypeFromSquare(error);
     return createError(type, error.message, {
       source,

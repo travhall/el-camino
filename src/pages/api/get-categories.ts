@@ -15,10 +15,8 @@ export const GET: APIRoute = async ({ request }) => {
     // console.log("Fetching Square categories...");
 
     // Fetch all categories
-    const categoryResponse = await squareClient.catalogApi.listCatalog(
-      undefined,
-      "CATEGORY"
-    );
+    const categoryPage = await squareClient.catalog.list({ types: "CATEGORY" });
+    const categoryResponse = { result: { objects: categoryPage.data } };
 
     if (!categoryResponse.result?.objects?.length) {
       const responseTime = Date.now() - startTime;
@@ -49,15 +47,13 @@ export const GET: APIRoute = async ({ request }) => {
         id: obj.id,
         type: obj.type,
         version: obj.version,
-        name: obj.categoryData?.name,
-        categoryData: obj.categoryData,
+        name: (obj as any).categoryData?.name,
+        categoryData: (obj as any).categoryData,
       }));
 
     // Fetch some items to examine category relationships
-    const itemResponse = await squareClient.catalogApi.listCatalog(
-      undefined,
-      "ITEM"
-    );
+    const itemPage = await squareClient.catalog.list({ types: "ITEM" });
+    const itemResponse = { result: { objects: itemPage.data } };
 
     // Process item-category relationships
     const itemCategories =
@@ -66,10 +62,10 @@ export const GET: APIRoute = async ({ request }) => {
         .filter((obj: CatalogObject) => obj.type === "ITEM")
         .map((obj: CatalogObject) => ({
           itemId: obj.id,
-          itemName: obj.itemData?.name,
-          categoryId: obj.itemData?.categoryId,
-          categories: obj.itemData?.categories,
-          itemData: obj.itemData,
+          itemName: (obj as any).itemData?.name,
+          categoryId: (obj as any).itemData?.categoryId,
+          categories: (obj as any).itemData?.categories,
+          itemData: (obj as any).itemData,
         })) || [];
 
     const responseTime = Date.now() - startTime;

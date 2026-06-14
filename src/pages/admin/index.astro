@@ -6,7 +6,7 @@
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { Icon } from "astro-icon/components";
-import { Client, Environment } from "square-legacy";
+import { SquareClient, SquareEnvironment } from "square-legacy";
 import { getAllProductSummaries } from "@/lib/backInStock";
 
 const pageTitle = "Dashboard";
@@ -15,12 +15,12 @@ const pageDescription =
 
 // ── Attention summary — fetch all three sources in parallel ──────────────────
 function makeSquareClient() {
-  return new Client({
-    accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+  return new SquareClient({
+    token: process.env.SQUARE_ACCESS_TOKEN!,
     environment:
       import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-        ? Environment.Production
-        : Environment.Sandbox,
+        ? SquareEnvironment.Production
+        : SquareEnvironment.Sandbox,
   });
 }
 
@@ -42,7 +42,7 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
   // Pending shipments
   (async (): Promise<ShippingSummary> => {
     const client = makeSquareClient();
-    const { result } = await client.ordersApi.searchOrders({
+    const searchResult = await client.orders.search({
       locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
       query: {
         filter: {
@@ -55,8 +55,8 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
         sort: { sortField: "CREATED_AT", sortOrder: "ASC" },
       },
     });
-    const paid = (result.orders ?? []).filter((o) => o.tenders?.length);
-    const totalCents = paid.reduce((sum, o) => {
+    const paid = (searchResult.orders ?? []).filter((o: any) => o.tenders?.length);
+    const totalCents = paid.reduce((sum: number, o: any) => {
       const v = o.totalMoney?.amount;
       return sum + (v != null ? (typeof v === "bigint" ? Number(v) : v) : 0);
     }, 0);
@@ -67,7 +67,7 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
   // Pending pick ups
   (async (): Promise<PickupSummary> => {
     const client = makeSquareClient();
-    const { result } = await client.ordersApi.searchOrders({
+    const searchResult = await client.orders.search({
       locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
       query: {
         filter: {
@@ -80,7 +80,7 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
         sort: { sortField: "CREATED_AT", sortOrder: "ASC" },
       },
     });
-    const paid = (result.orders ?? []).filter((o) => o.tenders?.length);
+    const paid = (searchResult.orders ?? []).filter((o: any) => o.tenders?.length);
     const oldest = paid[0]?.createdAt ?? null;
     return { count: paid.length, oldestDate: oldest };
   })(),

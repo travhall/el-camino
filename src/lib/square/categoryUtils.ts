@@ -23,12 +23,10 @@ export async function categoryHasProducts(
         // Use enhanced API retry client for robust Square API calls
         const result = await apiRetryClient.executeWithRetry(
           async () => {
-            const { result } = await squareClient.catalogApi.searchCatalogItems(
-              {
-                categoryIds: [categoryId],
-                limit: 1, // We only need to know if ANY exist
-              }
-            );
+            const result = await squareClient.catalog.searchItems({
+              categoryIds: [categoryId],
+              limit: 1, // We only need to know if ANY exist
+            });
             return result;
           },
           `categoryHasProducts:${categoryId}`,
@@ -98,11 +96,10 @@ export async function batchCheckCategoriesHaveProducts(
                 try {
                   const searchResult = await apiRetryClient.executeWithRetry(
                     async () => {
-                      const { result } =
-                        await squareClient.catalogApi.searchCatalogItems({
-                          categoryIds: [categoryId],
-                          limit: 1,
-                        });
+                      const result = await squareClient.catalog.searchItems({
+                        categoryIds: [categoryId],
+                        limit: 1,
+                      });
                       return result;
                     },
                     `batchCategoryCheck:${categoryId}`,

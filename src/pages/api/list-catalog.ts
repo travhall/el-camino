@@ -5,21 +5,18 @@ import type { CatalogObject } from "square-legacy";
 export const GET: APIRoute = async () => {
   try {
     // console.log('Fetching catalog items...');
-    const { result } = await squareClient.catalogApi.listCatalog(
-      undefined,
-      "ITEM"
-    );
+    const catalogPage = await squareClient.catalog.list({ types: "ITEM" });
 
     const items =
-      result.objects
+      catalogPage.data
         ?.filter((item: CatalogObject) => item.type === "ITEM")
         .map((item: CatalogObject) => {
-          const variations = item.itemData?.variations || [];
+          const variations = (item as any).itemData?.variations || [];
           return {
             id: item.id,
-            name: item.itemData?.name,
-            description: item.itemData?.description,
-            variations: variations.map((variation) => ({
+            name: (item as any).itemData?.name,
+            description: (item as any).itemData?.description,
+            variations: variations.map((variation: any) => ({
               variationId: variation.id,
               name: variation.itemVariationData?.name,
               price: variation.itemVariationData?.priceMoney

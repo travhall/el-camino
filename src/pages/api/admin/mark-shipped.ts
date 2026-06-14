@@ -11,7 +11,7 @@
 
 import type { APIRoute } from "astro";
 import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
-import { Client, Environment } from "square-legacy";
+import { SquareClient, SquareEnvironment } from "square-legacy";
 import { sendShippingConfirmation } from "@/lib/email/sender";
 import type { PendingOrderContact } from "@/lib/email/pendingOrders";
 
@@ -40,12 +40,12 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (!orderId) return new Response("Missing orderId", { status: 400 });
 
   // ── Square client ─────────────────────────────────────────────────────────
-  const client = new Client({
-    accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+  const client = new SquareClient({
+    token: process.env.SQUARE_ACCESS_TOKEN!,
     environment:
       import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-        ? Environment.Production
-        : Environment.Sandbox,
+        ? SquareEnvironment.Production
+        : SquareEnvironment.Sandbox,
   });
 
   // ── Fetch the live order — get fulfillmentUid, current state, customer info ─
@@ -57,14 +57,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   let order: import("square-legacy").Order;
 
   try {
-    const { result } = await client.ordersApi.retrieveOrder(orderId);
-    if (!result.order) throw new Error("Order not returned");
-    order = result.order;
+    const orderResult = await client.orders.get({ orderId });
+    if (!orderResult.order) throw new Error("Order not returned");
+    order = orderResult.order;
 
     locationId = order.locationId ?? import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
 
     const fulfillment = order.fulfillments?.find(
-      (f) => f.type === "SHIPMENT" && f.state !== "COMPLETED" && f.state !== "CANCELED"
+      (f: any) => f.type === "SHIPMENT" && f.state !== "COMPLETED" && f.state !== "CANCELED"
     );
     if (!fulfillment?.uid) throw new Error("No active SHIPMENT fulfillment found");
 
@@ -101,7 +101,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   try {
     for (const targetState of steps) {
       // Re-fetch the version before each step — it increments on every update.
-      const { result: refreshed } = await client.ordersApi.retrieveOrder(orderId);
+      const refreshed = await client.orders.get({ orderId });
       if (!refreshed.order) throw new Error("Order not found on refresh");
 
       // Only attach tracking/carrier on the final COMPLETED transition.
@@ -113,7 +113,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
             }
           : undefined;
 
-      await client.ordersApi.updateOrder(orderId, {
+      await client.orders.update({
+        orderId,
         // Stable idempotency key per state — safe to retry if a step fails.
         idempotencyKey: `shipped-${orderId}-${targetState}`,
         order: {

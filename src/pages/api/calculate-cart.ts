@@ -51,7 +51,7 @@ export const POST: APIRoute = async ({ request }) => {
       // Override price if item has sale pricing
       if (item.saleInfo?.salePrice) {
         lineItem.basePriceMoney = {
-          amount: Math.round(item.saleInfo.salePrice * 100),
+          amount: BigInt(Math.round(item.saleInfo.salePrice * 100)),
           currency: "USD",
         };
       }
@@ -66,14 +66,14 @@ export const POST: APIRoute = async ({ request }) => {
         itemType: "ITEM" as const,
         name: "Shipping",
         basePriceMoney: {
-          amount: Math.round(shippingCost * 100),
+          amount: BigInt(Math.round(shippingCost * 100)),
           currency: "USD",
         },
       } as any);
     }
 
     // Call Square CalculateOrder to get real tax
-    const calculateResponse = await squareClient.ordersApi.calculateOrder({
+    const calculateResponse = await squareClient.orders.calculate({
       order: {
         locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
         lineItems,
@@ -83,7 +83,7 @@ export const POST: APIRoute = async ({ request }) => {
       },
     });
 
-    const order = calculateResponse.result.order;
+    const order = calculateResponse.order;
     
     if (!order) {
       throw new Error("Calculate order failed");

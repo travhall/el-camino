@@ -121,6 +121,7 @@ class CartManager implements ICartManager {
     window.addEventListener(VIEW_TRANSITION_EVENT, handleStateUpdate);
     window.addEventListener(PAGE_LOAD_EVENT, handleStateUpdate);
 
+    /* v8 ignore next 5 */
     if (import.meta.hot) {
       import.meta.hot.dispose(() => {
         window.removeEventListener(VIEW_TRANSITION_EVENT, handleStateUpdate);
@@ -431,6 +432,7 @@ class CartManager implements ICartManager {
   public async addItem(
     item: CartItem
   ): Promise<{ success: boolean; message?: string }> {
+    /* v8 ignore next 3 */
     if (!this.initialized) {
       this.init();
     }
@@ -702,6 +704,7 @@ class CartManager implements ICartManager {
 
 export const cart = CartManager.getInstance();
 
+/* v8 ignore next 5 */
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     CartManager.getInstance().forceRefresh();

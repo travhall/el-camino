@@ -19,8 +19,8 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    const { result } =
-      await squareClient.catalogApi.batchRetrieveCatalogObjects({
+    const batchResult =
+      await squareClient.catalog.batchGet({
         objectIds: variationIds,
         includeRelatedObjects: false,
       });
@@ -28,8 +28,8 @@ export const POST: APIRoute = async ({ request }) => {
     const saleInfo: Record<string, SaleInfo | null> = {};
 
     for (const variationId of variationIds) {
-      const catalogObject = result.objects?.find(
-        (obj) => obj.id === variationId
+      const catalogObject = batchResult.objects?.find(
+        (obj: any) => obj.id === variationId
       );
 
       if (!catalogObject || catalogObject.type !== "ITEM_VARIATION") {

@@ -12,6 +12,7 @@ import {
   filterProductsWithCache,
   filterSaleProducts,
 } from "@/lib/square/filterUtils";
+import { batchInventoryService } from "@/lib/square/batchInventory";
 import { createVariantSlug } from "@/lib/square/slugUtils";
 import type {
   Product,
@@ -96,6 +97,24 @@ try {
     const brandB = b.brand?.toLowerCase() ?? "\uFFFF";
     return brandA.localeCompare(brandB);
   });
+
+  // Pre-filter sold-out items before computing filter options so that brand/category
+  // counts only reflect products that will actually be displayed.
+  // Fail-open: if inventory check errors (sandbox not configured, API failure) keep
+  // the product \u2014 we can't confirm it's out of stock.
+  try {
+    const variationIds = saleProducts.map((p) => p.variationId).filter(Boolean);
+    if (variationIds.length > 0) {
+      const inventoryMap = await batchInventoryService.getBatchInventoryStatus(variationIds);
+      saleProducts = saleProducts.filter((p) => {
+        const status = inventoryMap.get(p.variationId);
+        if (!status || status.error) return true; // unknown \u2192 keep
+        return !status.isOutOfStock;
+      });
+    }
+  } catch {
+    // fail-open: if the whole inventory check throws, keep all products
+  }
 
   const totalProductCount = saleProducts.length;
   const needsPagination = totalProductCount > INFINITE_SCROLL_THRESHOLD;

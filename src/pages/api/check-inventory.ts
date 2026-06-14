@@ -21,15 +21,15 @@ export const GET: APIRoute = async ({ request, url }) => {
     }
 
     // Check inventory directly from Square API
-    const { result } = await squareClient.inventoryApi.retrieveInventoryCount(
-      variationId
-    );
+    const inventoryPage = await squareClient.inventory.get({
+      catalogObjectId: variationId,
+    });
 
     // Get the counts and find IN_STOCK state
-    const counts = result.counts || [];
+    const counts = inventoryPage.data || [];
 
     // Find in-stock quantity
-    const inStockCount = counts.find((count) => count.state === "IN_STOCK");
+    const inStockCount = counts.find((count: any) => count.state === "IN_STOCK");
 
     // Parse quantity as number (Square returns string)
     const quantity = inStockCount?.quantity

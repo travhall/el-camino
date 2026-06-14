@@ -3,6 +3,7 @@ import { defaultCircuitBreaker } from "./apiUtils";
 import { logError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
 import { requestDeduplicator } from "./requestDeduplication";
+import { inventoryCache } from "@/lib/cache/blobCache";
 import type { InventoryStatus } from "./types";
 
 export interface BatchInventoryOptions {
@@ -13,26 +14,8 @@ export interface BatchInventoryOptions {
 }
 
 export class BatchInventoryService {
-  private cache = new Map<string, { data: InventoryStatus; expires: number }>();
   private readonly MAX_BATCH_SIZE = 50; // Square API limit
-  private readonly DEFAULT_CACHE_TTL = this.getConfiguredTTL();
-
-  // Feature flag: Set to true to use TRUE batch API (recommended)
-  // Set to false to use fallback individual calls (current behavior)
   private readonly USE_TRUE_BATCH_API = true;
-
-  /**
-   * Get configured TTL from site config
-   * Defaults to 5 minutes (300s) to match apiConfig.square.cacheTTL
-   */
-  private getConfiguredTTL(): number {
-    try {
-      // Use apiConfig from site-config.ts
-      return 300000; // 5 minutes in milliseconds (matches apiConfig.square.cacheTTL)
-    } catch {
-      return 300000; // 5 minute fallback
-    }
-  }
 
   /**
    * Get inventory status for multiple products in batches
@@ -72,23 +55,28 @@ export class BatchInventoryService {
     const {
       maxBatchSize = this.MAX_BATCH_SIZE,
       useCache = true,
-      cacheTTL = this.DEFAULT_CACHE_TTL,
     } = options;
 
     const results = new Map<string, InventoryStatus>();
     const uncachedIds: string[] = [];
 
-    // Check cache first
+    // Check shared blob cache first
     if (useCache) {
-      const now = Date.now();
-      variationIds.forEach((id) => {
-        const cached = this.cache.get(id);
-        if (cached && cached.expires > now) {
-          results.set(id, cached.data);
-        } else {
-          uncachedIds.push(id);
-        }
-      });
+      await Promise.all(
+        variationIds.map(async (id) => {
+          const quantity = await inventoryCache.get(id);
+          if (quantity !== undefined) {
+            results.set(id, {
+              isOutOfStock: quantity <= 0,
+              hasLimitedOptions: quantity > 0 && quantity <= 3,
+              totalQuantity: quantity,
+              error: false,
+            });
+          } else {
+            uncachedIds.push(id);
+          }
+        })
+      );
     } else {
       uncachedIds.push(...variationIds);
     }
@@ -110,19 +98,19 @@ export class BatchInventoryService {
     try {
       const batchResults = await Promise.all(batchPromises);
 
-      // Merge results and update cache
-      const now = Date.now();
+      // Merge results and update shared blob cache (only for successful, non-error results)
+      const cacheWrites: Promise<void>[] = [];
       batchResults.forEach((batchResult) => {
         batchResult.forEach((status, id) => {
           results.set(id, status);
-          if (useCache) {
-            this.cache.set(id, {
-              data: status,
-              expires: now + cacheTTL,
-            });
+          // Never cache error results — a 0-quantity from an API failure would
+          // poison the cache and make in-stock items appear sold-out.
+          if (useCache && !status.error) {
+            cacheWrites.push(inventoryCache.set(id, status.totalQuantity ?? 0));
           }
         });
       });
+      await Promise.all(cacheWrites);
 
       // console.log(
       //   `[BatchInventory] Successfully processed ${results.size} items`
@@ -167,11 +155,6 @@ export class BatchInventoryService {
 
     return defaultCircuitBreaker.execute(async () => {
       try {
-        const startTime = performance.now();
-        // console.log(
-        //   `[BatchInventory] Using TRUE batch API for ${variationIds.length} items`
-        // );
-
         // Get location ID from environment
         const locationId = import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
         if (!locationId) {
@@ -181,10 +164,10 @@ export class BatchInventoryService {
           return this.processBatchFallback(variationIds);
         }
 
-        // TRUE BATCH API CALL (Legacy SDK method name)
+        // TRUE BATCH API CALL
         // variationIds work directly as catalogObjectIds (confirmed by research)
-        const response =
-          await squareClient.inventoryApi.batchRetrieveInventoryCounts({
+        const batchPage =
+          await squareClient.inventory.batchGetCounts({
             catalogObjectIds: variationIds,
             locationIds: [locationId],
             states: ["IN_STOCK"], // Only fetch in-stock quantities
@@ -194,9 +177,9 @@ export class BatchInventoryService {
         const batchResults = new Map<string, InventoryStatus>();
         let processedCount = 0;
 
-        // Process response from legacy SDK
-        // Response structure: { result: { counts: [...], cursor: ... } }
-        const counts = response.result?.counts || [];
+        // Process response from new SDK
+        // Response structure: Page<InventoryCount>
+        const counts = batchPage.data || [];
 
         for (const count of counts) {
           const variationId = count.catalogObjectId;
@@ -226,15 +209,6 @@ export class BatchInventoryService {
           }
         });
 
-        const duration = performance.now() - startTime;
-        // console.log(
-        //   `[BatchInventory] ✅ TRUE batch processed ${processedCount}/${
-        //     variationIds.length
-        //   } items in ${duration.toFixed(2)}ms (${(
-        //     duration / variationIds.length
-        //   ).toFixed(2)}ms per item)`
-        // );
-
         return batchResults;
       } catch (error) {
         // console.error(
@@ -256,24 +230,19 @@ export class BatchInventoryService {
     variationIds: string[]
   ): Promise<Map<string, InventoryStatus>> {
     return defaultCircuitBreaker.execute(async () => {
-      const startTime = performance.now();
-      // console.log(
-      //   `[BatchInventory] Using FALLBACK individual calls for ${variationIds.length} items`
-      // );
-
       try {
         // Use individual inventory calls in parallel
         const inventoryPromises = variationIds.map(async (variationId) => {
           try {
-            const response =
-              await squareClient.inventoryApi.retrieveInventoryCount(
-                variationId
-              );
+            const inventoryPage =
+              await squareClient.inventory.get({
+                catalogObjectId: variationId,
+              });
 
             // Process the response similar to individual inventory check
-            const counts = response.result.counts || [];
+            const counts = inventoryPage.data || [];
             const inStockCount = counts.find(
-              (count) => count.state === "IN_STOCK"
+              (count: any) => count.state === "IN_STOCK"
             );
             const quantity = inStockCount?.quantity
               ? parseInt(inStockCount.quantity, 10)
@@ -315,15 +284,6 @@ export class BatchInventoryService {
           batchResults.set(variationId, status);
         });
 
-        const duration = performance.now() - startTime;
-        // console.log(
-        //   `[BatchInventory] ⚠️ FALLBACK processed ${
-        //     batchResults.size
-        //   } items in ${duration.toFixed(2)}ms (${(
-        //     duration / variationIds.length
-        //   ).toFixed(2)}ms per item)`
-        // );
-
         return batchResults;
       } catch (error) {
         const appError = processSquareError(error, "processBatchFallback");
@@ -357,22 +317,14 @@ export class BatchInventoryService {
   }
 
   /**
-   * Clear cache (useful for testing or forced refresh)
+   * Invalidate cached inventory for specific variation IDs.
+   *
+   * This service and the bulk-inventory helpers in `inventory.ts` read and write
+   * the SAME shared `inventoryCache`, so callers should invalidate by calling
+   * `inventoryCache.delete(id)` directly rather than going through the service.
+   * No targeted invalidation method is exposed here to avoid implying a separate
+   * cache that needs its own clearing step.
    */
-  clearCache(): void {
-    this.cache.clear();
-    // console.log("[BatchInventory] Cache cleared");
-  }
-
-  /**
-   * Get cache statistics
-   */
-  getCacheStats(): { size: number; entries: number } {
-    return {
-      size: this.cache.size,
-      entries: this.cache.size,
-    };
-  }
 }
 
 // Global instance
