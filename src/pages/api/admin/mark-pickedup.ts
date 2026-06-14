@@ -10,7 +10,7 @@
 
 import type { APIRoute } from "astro";
 import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
-import { Client, Environment } from "square-legacy";
+import { SquareClient, SquareEnvironment } from "square-legacy";
 
 const PICKUP_STATES = ["PROPOSED", "RESERVED", "PREPARED", "COMPLETED"] as const;
 
@@ -29,10 +29,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   if (!orderId) return new Response("Missing orderId", { status: 400 });
 
-  const client = new Client({
-    accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+  const client = new SquareClient({
+    token: process.env.SQUARE_ACCESS_TOKEN!,
     environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-      ? Environment.Production : Environment.Sandbox,
+      ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
   });
 
   // Fetch the live order to get current fulfillment state and UID.
@@ -41,14 +41,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   let locationId: string;
 
   try {
-    const { result } = await client.ordersApi.retrieveOrder(orderId);
-    const order = result.order;
+    const orderResult = await client.orders.get({ orderId });
+    const order = orderResult.order;
     if (!order) throw new Error("Order not returned");
 
     locationId = order.locationId ?? import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
 
     const fulfillment = order.fulfillments?.find(
-      (f) => f.type === "PICKUP" && f.state !== "COMPLETED" && f.state !== "CANCELED"
+      (f: any) => f.type === "PICKUP" && f.state !== "COMPLETED" && f.state !== "CANCELED"
     );
     if (!fulfillment?.uid) throw new Error("No active PICKUP fulfillment found");
 
@@ -71,10 +71,11 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   try {
     for (const targetState of steps) {
       // Re-fetch the version before each step — it increments on every update.
-      const { result: refreshed } = await client.ordersApi.retrieveOrder(orderId);
+      const refreshed = await client.orders.get({ orderId });
       if (!refreshed.order) throw new Error("Order not found on refresh");
 
-      await client.ordersApi.updateOrder(orderId, {
+      await client.orders.update({
+        orderId,
         // Stable idempotency key per state — safe to retry if a step fails.
         idempotencyKey: `pickedup-${orderId}-${targetState}`,
         order: {

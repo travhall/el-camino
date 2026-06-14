@@ -6,7 +6,7 @@
 
 import type { APIRoute } from "astro";
 import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
-import { Client, Environment } from "square-legacy";
+import { SquareClient, SquareEnvironment } from "square-legacy";
 import { sendPickupReminderEmail } from "@/lib/email/sender";
 
 const STORE_TIMEZONE = "America/Chicago";
@@ -36,19 +36,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return new Response(JSON.stringify({ error: "missing_order_id" }), { status: 400 });
   }
 
-  const client = new Client({
-    accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+  const client = new SquareClient({
+    token: process.env.SQUARE_ACCESS_TOKEN!,
     environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-      ? Environment.Production : Environment.Sandbox,
+      ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
   });
 
   try {
-    const { result } = await client.ordersApi.retrieveOrder(orderId);
-    const order = result.order;
+    const orderResult = await client.orders.get({ orderId });
+    const order = orderResult.order;
     if (!order) throw new Error("Order not returned");
 
     const fulfillment = order.fulfillments?.find(
-      (f) => f.type === "PICKUP" && f.state !== "COMPLETED" && f.state !== "CANCELED",
+      (f: any) => f.type === "PICKUP" && f.state !== "COMPLETED" && f.state !== "CANCELED",
     );
     if (!fulfillment) {
       return new Response(JSON.stringify({ error: "no_active_pickup" }), { status: 422 });
@@ -66,8 +66,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const pickupAt = pickupAtIso ? formatPickupAt(pickupAtIso) : undefined;
 
     const items = (order.lineItems ?? [])
-      .filter((li) => li.catalogObjectId)
-      .map((li) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
+      .filter((li: any) => li.catalogObjectId)
+      .map((li: any) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
 
     await sendPickupReminderEmail({ to: email, customerName, orderId, items, pickupAt });
 

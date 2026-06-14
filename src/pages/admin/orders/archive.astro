@@ -1,7 +1,7 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import OrdersSubNav from "@/components/admin/OrdersSubNav.astro";
-import { Client, Environment } from "square-legacy";
+import { SquareClient, SquareEnvironment } from "square-legacy";
 
 function formatMoney(amount: bigint | number | undefined | null): string {
   if (amount == null) return "$0.00";
@@ -29,12 +29,12 @@ let orders: ArchivedOrder[] = [];
 let fetchError = false;
 
 try {
-  const client = new Client({
-    accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+  const client = new SquareClient({
+    token: process.env.SQUARE_ACCESS_TOKEN!,
     environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-      ? Environment.Production : Environment.Sandbox,
+      ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
   });
-  const { result } = await client.ordersApi.searchOrders({
+  const searchResult = await client.orders.search({
     locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
     query: {
       filter: {
@@ -48,9 +48,9 @@ try {
     limit: 50,
   });
 
-  for (const order of result.orders ?? []) {
+  for (const order of searchResult.orders ?? []) {
     const f = order.fulfillments?.find(
-      (f) => f.type === "SHIPMENT" || f.type === "PICKUP"
+      (f: any) => f.type === "SHIPMENT" || f.type === "PICKUP"
     );
     if (!f) continue;
 
@@ -60,8 +60,8 @@ try {
         : f.pickupDetails?.recipient?.displayName;
 
     const items = (order.lineItems ?? [])
-      .filter((li) => li.catalogObjectId)
-      .map((li) => `${Number(li.quantity ?? 1) > 1 ? li.quantity + "× " : ""}${li.name ?? "Item"}`)
+      .filter((li: any) => li.catalogObjectId)
+      .map((li: any) => `${Number(li.quantity ?? 1) > 1 ? li.quantity + "× " : ""}${li.name ?? "Item"}`)
       .join(" · ");
 
     orders.push({

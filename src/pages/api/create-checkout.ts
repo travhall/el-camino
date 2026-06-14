@@ -3,10 +3,10 @@ import type { APIRoute } from "astro";
 import type { CartItem } from "@/lib/cart/types";
 import { squareClient } from "@/lib/square/client";
 import { checkBulkInventory } from "@/lib/square/inventory";
+import { getAuthoritativePricing } from "@/lib/square/pricing";
 import { calculateShippingRate, getPickupLocation } from "@/lib/config/shipping";
 import { siteConfig } from "@/lib/site-config";
 import { inventoryCache, productCache } from "@/lib/cache/blobCache";
-import { batchInventoryService } from "@/lib/square/batchInventory";
 import { storePendingOrder } from "@/lib/email/pendingOrders";
 import { getShopHoursRaw } from "@/lib/shopHours";
 import type { ShopHoursEntry } from "@/lib/shopHours";
@@ -253,10 +253,21 @@ export const POST: APIRoute = async ({ request }) => {
         .join(", ")}. `;
     }
 
-    // Calculate subtotal for shipping calculation using sale prices when available
+    // ── Server-authoritative pricing ──────────────────────────────────────────
+    // Re-derive every price from the Square catalog. The client cart (and its
+    // saleInfo) is attacker-controlled via localStorage, so it is NEVER trusted
+    // for pricing — only for choosing WHICH variation and quantity to buy.
+    const pricedVariationIds = validItems
+      .filter((item) => !item.isGiftCard)
+      .map((item) => item.variationId);
+    const pricing = await getAuthoritativePricing(pricedVariationIds);
+
+    // Calculate subtotal for shipping using server-derived effective prices,
+    // falling back to the catalog regular price (item.price) when no trusted
+    // entry exists (e.g. variable-price gift cards).
     const subtotal = validItems.reduce((sum, item) => {
-      const effectivePrice = (item as any).saleInfo?.salePrice ?? item.price;
-      return sum + (effectivePrice * item.quantity);
+      const effectivePrice = pricing[item.variationId]?.effectivePrice ?? item.price;
+      return sum + effectivePrice * item.quantity;
     }, 0);
 
     // Calculate shipping cost (only for shipping orders)
@@ -274,11 +285,14 @@ export const POST: APIRoute = async ({ request }) => {
         itemType: "ITEM" as const,
       };
 
-      // Override price if item has sale pricing
-      const saleInfo = (item as any).saleInfo;
-      if (saleInfo?.salePrice) {
+      // Apply a sale price ONLY when the Square catalog confirms an active sale
+      // for this variation. Without an override Square charges the catalog's
+      // regular price, so a missing or failed price lookup safely falls back to
+      // full price rather than an attacker-supplied discount.
+      const salePrice = pricing[item.variationId]?.salePrice;
+      if (salePrice) {
         lineItem.basePriceMoney = {
-          amount: Math.round(saleInfo.salePrice * 100), // Convert to cents
+          amount: BigInt(Math.round(salePrice * 100)), // Convert to cents
           currency: "USD",
         };
       }
@@ -293,7 +307,7 @@ export const POST: APIRoute = async ({ request }) => {
         itemType: "ITEM" as const,
         name: "Shipping",
         basePriceMoney: {
-          amount: Math.round(shippingRate * 100), // Convert to cents
+          amount: BigInt(Math.round(shippingRate * 100)), // Convert to cents
           currency: "USD",
         },
       } as any); // Type assertion needed for custom line item
@@ -371,9 +385,9 @@ export const POST: APIRoute = async ({ request }) => {
     const confirmationUrl = new URL("/order-confirmation", request.url);
     confirmationUrl.searchParams.set("fulfillmentMethod", fulfillmentMethod);
 
-    let linkResponse: Awaited<ReturnType<typeof squareClient.checkoutApi.createPaymentLink>>;
+    let linkResponse: Awaited<ReturnType<typeof squareClient.checkout.paymentLinks.create>>;
     try {
-      linkResponse = await squareClient.checkoutApi.createPaymentLink({
+      linkResponse = await squareClient.checkout.paymentLinks.create({
         idempotencyKey,
         order: {
           locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
@@ -402,17 +416,24 @@ export const POST: APIRoute = async ({ request }) => {
       });
     } catch (linkError) {
       const e = linkError as any;
-      console.error("[create-checkout] checkoutApi.createPaymentLink FAILED");
+      console.error("[create-checkout] checkout.paymentLinks.create FAILED");
       console.error("  statusCode:", e?.statusCode);
       console.error("  errors:", JSON.stringify(e?.errors ?? e?.message, null, 2));
       throw linkError;
     }
 
-    if (!linkResponse.result.paymentLink?.url) {
+    if (!linkResponse.paymentLink?.url) {
       throw new Error("Failed to create payment link");
     }
 
-    const orderId = linkResponse.result.paymentLink.orderId ?? "";
+    // v44 SDK: orderId lives on paymentLink.orderId; fall back to the first
+    // order in relatedResources (which v44 always populates) if orderId is absent.
+    const orderId =
+      linkResponse.paymentLink.orderId ??
+      (linkResponse as any).relatedResources?.orders?.[0]?.id ??
+      "";
+
+    console.log(`[create-checkout] orderId=${orderId || "(empty)"}, url=${linkResponse.paymentLink.url?.slice(0, 60)}`);
 
     // Store contact info keyed by orderId so the webhook can send a confirmation email.
     // Must be awaited — Netlify functions stop executing once the response is sent,
@@ -441,18 +462,18 @@ export const POST: APIRoute = async ({ request }) => {
       }
     }
 
-    // Bust all inventory caches for every variation in this order so that the
+    // Bust the inventory caches for every variation in this order so the
     // product grid, PDP, and Quick View show accurate stock immediately after
     // purchase rather than serving stale cached values.
     //
-    // Three caches must be cleared:
-    // 1. inventoryCache (BlobCache) — used by checkItemInventory / PDP / QuickView
-    // 2. batchInventoryService.cache — used by ProductGrid (separate in-memory Map)
-    // 3. productCache "all-catalog-items-v2" — used by fetchProductsByCategory / category pages
+    // Two caches must be cleared:
+    // 1. inventoryCache (BlobCache) — backs both checkItemInventory (PDP/QuickView)
+    //    AND batchInventoryService (ProductGrid), which read/write the same store.
+    // 2. productCache "all-catalog-items-v3" — used by fetchProductsByCategory / category pages
+    const purchasedVariationIds = validItems.map((item) => item.variationId);
     await Promise.allSettled(
-      validItems.map((item) => inventoryCache.delete(item.variationId))
+      purchasedVariationIds.map((id) => inventoryCache.delete(id))
     );
-    batchInventoryService.clearCache();
     await productCache.delete("all-catalog-items-v3");
 
     // Set a server-readable cookie with the orderId so the confirmation page can
@@ -467,7 +488,7 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response(
       JSON.stringify({
         success: true,
-        checkoutUrl: linkResponse.result.paymentLink.url,
+        checkoutUrl: linkResponse.paymentLink?.url,
         orderId,
         fulfillmentMethod,
         shippingCost: fulfillmentMethod === "shipping" ? shippingRate : 0,

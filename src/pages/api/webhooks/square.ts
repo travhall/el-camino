@@ -18,7 +18,7 @@
 // "Send test event" feature in the Developer Dashboard against production.
 
 import type { APIRoute } from "astro";
-import { Client, Environment } from "square-legacy";
+import { SquareClient, SquareEnvironment } from "square-legacy";
 import { verifySquareWebhookSignature } from "@/lib/square/verifyWebhookSignature";
 import {
   inventoryCache,
@@ -28,7 +28,6 @@ import {
   slugCache,
   filterCache,
 } from "@/lib/cache/blobCache";
-import { batchInventoryService } from "@/lib/square/batchInventory";
 import { getPendingOrder, deletePendingOrder } from "@/lib/email/pendingOrders";
 import {
   sendOrderConfirmation,
@@ -99,12 +98,11 @@ export const POST: APIRoute = async ({ request }) => {
           .filter(Boolean);
 
         if (variationIds.length > 0) {
+          // inventoryCache backs both the bulk and batch inventory paths, so a
+          // single delete per variation invalidates everything that reads stock.
           await Promise.allSettled(
             variationIds.map((id) => inventoryCache.delete(id))
           );
-          // BatchInventoryService has its own separate in-memory Map — must
-          // be cleared independently of BlobCache.
-          batchInventoryService.clearCache();
           console.log(
             `[Webhook/Square] Inventory cache busted for ${variationIds.length} variation(s):`,
             variationIds
@@ -125,7 +123,6 @@ export const POST: APIRoute = async ({ request }) => {
             ...objectIds.map((id) => productCache.delete(id)),
             ...objectIds.map((id) => inventoryCache.delete(id)),
           ]);
-          batchInventoryService.clearCache();
         }
 
         // Clear structural caches — deletion/rename/category reassignment
@@ -160,14 +157,19 @@ export const POST: APIRoute = async ({ request }) => {
           break;
         }
 
+        console.log(`[Webhook/Square] payment.updated COMPLETED — orderId=${orderId}`);
+
         const contact = await getPendingOrder(orderId);
         if (!contact) {
           console.warn(
             `[Webhook/Square] No pending order found for orderId: ${orderId}. ` +
-              `Blob may have expired or order predates email capture.`
+              `Blob may have expired or order predates email capture. ` +
+              `Check that SQUARE_WEBHOOK_SIGNATURE_KEY is set and create-checkout ` +
+              `logged a non-empty orderId for this order.`
           );
           break;
         }
+        console.log(`[Webhook/Square] Found pending order for ${contact.email} (${contact.fulfillmentMethod})`);
 
         // Fetch the full order for rich line-item details in the email.
         // If the fetch fails for any reason (bad credentials, network, etc.)
@@ -175,16 +177,16 @@ export const POST: APIRoute = async ({ request }) => {
         // confirmation email is never blocked by a Square API failure.
         let order: import("square-legacy").Order;
         try {
-          const client = new Client({
-            accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+          const client = new SquareClient({
+            token: process.env.SQUARE_ACCESS_TOKEN!,
             environment:
               import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-                ? Environment.Production
-                : Environment.Sandbox,
+                ? SquareEnvironment.Production
+                : SquareEnvironment.Sandbox,
           });
-          const { result } = await client.ordersApi.retrieveOrder(orderId);
-          if (!result.order) throw new Error("Order not returned by API");
-          order = result.order;
+          const orderResult = await client.orders.get({ orderId });
+          if (!orderResult.order) throw new Error("Order not returned by API");
+          order = orderResult.order;
         } catch (fetchErr) {
           console.warn(
             `[Webhook/Square] Could not fetch order ${orderId}, falling back to payment data:`,
@@ -201,7 +203,13 @@ export const POST: APIRoute = async ({ request }) => {
           } as unknown as import("square-legacy").Order;
         }
 
-        await sendOrderConfirmation({ order, contact });
+        try {
+          await sendOrderConfirmation({ order, contact });
+          console.log(`[Webhook/Square] Confirmation email sent to ${contact.email}`);
+        } catch (emailErr) {
+          console.error(`[Webhook/Square] sendOrderConfirmation FAILED:`, emailErr);
+          throw emailErr; // re-throw so the outer catch logs it and we know
+        }
 
         if (contact.fulfillmentMethod === "pickup") {
           await sendPickupNotification({ order, contact });
@@ -212,7 +220,7 @@ export const POST: APIRoute = async ({ request }) => {
         // Delete blob — if Square retries, second delivery finds no contact and skips (idempotency)
         await deletePendingOrder(orderId);
 
-        console.log(`[Webhook/Square] Confirmation sent for order: ${orderId}`);
+        console.log(`[Webhook/Square] All emails sent for order: ${orderId}`);
         break;
       }
 

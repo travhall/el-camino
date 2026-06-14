@@ -45,9 +45,9 @@ if (!orderId) {
 // the redirect URL even when orderId is absent. Resolve it via the Payments API.
 if (!orderId && transactionId) {
   try {
-    const { result: paymentResult } =
-      await squareClient.paymentsApi.getPayment(transactionId);
-    orderId = paymentResult.payment?.orderId ?? null;
+    const paymentResult =
+      await squareClient.payments.get({ paymentId: transactionId });
+    orderId = (paymentResult as any).payment?.orderId ?? null;
   } catch {
     // fall through to the client-side sessionStorage head script
   }
@@ -62,13 +62,13 @@ if (!orderId) {
 } else {
   try {
     // Retrieve the basic order
-    const { result } = await squareClient.ordersApi.retrieveOrder(orderId);
+    const orderResult = await squareClient.orders.get({ orderId: orderId! });
 
-    if (!result.order) {
+    if (!orderResult.order) {
       throw new Error("Order not found in Square response");
     }
 
-    orderDetails = result.order;
+    orderDetails = orderResult.order;
 
     // Guard: only show confirmation for paid orders.
     //
@@ -86,13 +86,12 @@ if (!orderId) {
     const hasTenders = (orderDetails.tenders?.length ?? 0) > 0;
     if (!hasTenders) {
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      const { result: retryResult } =
-        await squareClient.ordersApi.retrieveOrder(orderId);
+      const retryResult = await squareClient.orders.get({ orderId: orderId! });
       if (retryResult.order) orderDetails = retryResult.order;
     }
 
-    if ((orderDetails.tenders?.length ?? 0) === 0) {
-      if (orderDetails.state === "CANCELED") {
+    if ((orderDetails!.tenders?.length ?? 0) === 0) {
+      if (orderDetails!.state === "CANCELED") {
         error =
           "This order was canceled. If you believe this is an error, please contact us.";
       } else {
@@ -110,17 +109,17 @@ if (!orderId) {
 
       if (catalogIds.length > 0) {
         try {
-          const { result: batchResult } =
-            await squareClient.catalogApi.batchRetrieveCatalogObjects({
+          const batchResult =
+            await squareClient.catalog.batchGet({
               objectIds: catalogIds,
               includeRelatedObjects: true,
             });
 
           const objectMap: Record<string, any> = {};
-          batchResult.objects?.forEach((obj) => {
+          batchResult.objects?.forEach((obj: any) => {
             objectMap[obj.id] = obj;
           });
-          batchResult.relatedObjects?.forEach((obj) => {
+          batchResult.relatedObjects?.forEach((obj: any) => {
             objectMap[obj.id] = obj;
           });
 

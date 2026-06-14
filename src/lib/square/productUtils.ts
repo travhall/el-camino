@@ -82,12 +82,10 @@ export async function fetchMeasurementUnits(
   const results = await Promise.allSettled(
     uniqueIds.map(async (unitId) => {
       try {
-        const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-          unitId
-        );
+        const result = await squareClient.catalog.object.get({ objectId: unitId });
 
-        if (result.object?.type === "MEASUREMENT_UNIT") {
-          const unitData = result.object.measurementUnitData;
+        if ((result as any).object?.type === "MEASUREMENT_UNIT") {
+          const unitData = (result as any).object.measurementUnitData;
           let unitName = "";
 
           if (unitData?.measurementUnit?.customUnit?.name) {

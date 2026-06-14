@@ -161,10 +161,10 @@ async function getProductCategoryMappings(_products: Product[]): Promise<Map<str
   
   try {
     // Use Square's catalog API to get all items with their category information
-    const { result } = await squareClient.catalogApi.listCatalog(undefined, "ITEM");
-    
-    if (result?.objects) {
-      result.objects.forEach(item => {
+    const catalogPage = await squareClient.catalog.list({ types: "ITEM" });
+
+    if (catalogPage.data?.length) {
+      catalogPage.data.forEach((item: any) => {
         if (item.type === "ITEM") {
           let categoryId: string | undefined;
           
@@ -194,13 +194,13 @@ async function getProductCategoryMappings(_products: Product[]): Promise<Map<str
     try {
       logger.debug('[getProductCategoryMappings] Trying alternative search approach...');
       
-      const searchResponse = await squareClient.catalogApi.searchCatalogObjects({
+      const searchResponse = await squareClient.catalog.search({
         objectTypes: ["ITEM"],
         includeRelatedObjects: true
       });
-      
-      if (searchResponse.result?.objects) {
-        searchResponse.result.objects.forEach(item => {
+
+      if (searchResponse.objects) {
+        searchResponse.objects.forEach((item: any) => {
           if (item.type === "ITEM") {
             let categoryId: string | undefined;
             

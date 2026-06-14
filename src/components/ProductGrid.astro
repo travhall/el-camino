@@ -67,9 +67,15 @@ if (!skipInventoryCheck && initialProducts.length > 0) {
   }
 }
 
-// Remove sold-out products entirely when requested (e.g. Sale page)
+// Remove sold-out products entirely when requested (e.g. Sale page).
+// Fail-open: if the inventory check returned an error (API failure, item not
+// configured in sandbox, etc.) keep the product — we don't know it's out of stock.
 const displayProducts = hideSoldOut
-  ? productsWithInventory.filter((p) => !p.inventoryStatus?.isOutOfStock)
+  ? productsWithInventory.filter((p) => {
+      const status = p.inventoryStatus;
+      if (status?.error) return true; // unknown inventory → keep
+      return !status?.isOutOfStock;
+    })
   : productsWithInventory;
 ---
 

@@ -54,19 +54,14 @@ class SlugResolver {
 
     try {
       // Fetch only ITEM objects with minimal data
-      const response = await squareClient.catalogApi.listCatalog(
-        undefined,
-        "ITEM"
-      );
+      const response = await squareClient.catalog.list({ types: "ITEM" });
 
       const map: Record<string, string> = {};
 
-      if (response.result?.objects) {
-        for (const item of response.result.objects) {
-          if (item.type === "ITEM" && item.itemData?.name) {
-            const slug = createSlug(item.itemData.name);
-            map[slug] = item.id;
-          }
+      for (const item of response.data ?? []) {
+        if (item.type === "ITEM" && (item as any).itemData?.name) {
+          const slug = createSlug((item as any).itemData.name);
+          map[slug] = item.id;
         }
       }
 

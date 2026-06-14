@@ -57,12 +57,12 @@ const categoryImageUrls: Record<string, string> = {};
 for (const cat of flatCategories) {
   if (!cat.id) continue;
   try {
-    const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-      cat.id,
-      true,
-    );
-    const imageObjects = (result.relatedObjects ?? []).filter(
-      (obj) => obj.type === "IMAGE",
+    const catResult = await squareClient.catalog.object.get({
+      objectId: cat.id,
+      includeRelatedObjects: true,
+    });
+    const imageObjects = ((catResult as any).relatedObjects ?? []).filter(
+      (obj: any) => obj.type === "IMAGE",
     );
     if (imageObjects.length > 0 && imageObjects[0].imageData?.url) {
       categoryImageUrls[cat.id] = imageObjects[0].imageData.url;

@@ -15,11 +15,9 @@ export async function getImageUrl(imageId: string): Promise<string | null> {
   }
 
   try {
-    const { result } = await squareClient.catalogApi.retrieveCatalogObject(
-      imageId
-    );
-    if (result.object?.type === "IMAGE") {
-      const url = result.object.imageData?.url || null;
+    const result = await squareClient.catalog.object.get({ objectId: imageId });
+    if ((result as any).object?.type === "IMAGE") {
+      const url = (result as any).object.imageData?.url || null;
       if (url) {
         // Cache the URL (now async)
         await imageCache.set(imageId, url);

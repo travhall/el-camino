@@ -1,7 +1,7 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import OrdersSubNav from "@/components/admin/OrdersSubNav.astro";
-import { Client, Environment } from "square-legacy";
+import { SquareClient, SquareEnvironment } from "square-legacy";
 import { filterDismissed } from "@/lib/admin/dismissedOrders";
 
 function formatMoney(amount: bigint | number | undefined | null): string {
@@ -40,12 +40,12 @@ let orders: ShippingOrder[] = [];
 let fetchError = false;
 
 try {
-  const client = new Client({
-    accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+  const client = new SquareClient({
+    token: process.env.SQUARE_ACCESS_TOKEN!,
     environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-      ? Environment.Production : Environment.Sandbox,
+      ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
   });
-  const { result } = await client.ordersApi.searchOrders({
+  const searchResult = await client.orders.search({
     locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
     query: {
       filter: {
@@ -56,10 +56,10 @@ try {
     },
   });
 
-  for (const order of result.orders ?? []) {
+  for (const order of searchResult.orders ?? []) {
     if (!order.tenders?.length) continue;
 
-    const f = order.fulfillments?.find((f) => f.type === "SHIPMENT");
+    const f = order.fulfillments?.find((f: any) => f.type === "SHIPMENT");
     if (!f) continue;
     const r = f.shipmentDetails?.recipient;
     const a = r?.address;
@@ -67,8 +67,8 @@ try {
       a ? `${a.locality}, ${a.administrativeDistrictLevel1} ${a.postalCode}` : null,
     ].filter(Boolean).join(", ");
     const items = (order.lineItems ?? [])
-      .filter((li) => li.catalogObjectId)
-      .map((li) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
+      .filter((li: any) => li.catalogObjectId)
+      .map((li: any) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
     const rawNote = f.shipmentDetails?.shippingNote ?? "";
     const deliveryInstructionsMatch = rawNote.match(/^Delivery Instructions:\s*(.+)$/s);
     const note = deliveryInstructionsMatch?.[1]?.trim() ?? "";
