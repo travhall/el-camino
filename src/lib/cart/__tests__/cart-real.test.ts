@@ -1363,4 +1363,192 @@ describe('CartManager Real Implementation Tests', () => {
       }
     });
   });
+
+  describe('branch-coverage gap fills (validateCart / addItem edge cases)', () => {
+    it('validateCart treats all items as unavailable when the batch-inventory fetch is non-ok', async () => {
+      await cart.addItem({
+        id: 'prod-bi-fail',
+        variationId: 'var-bi-fail',
+        catalogObjectId: 'cat-bi-fail',
+        title: 'Batch Inventory Fail',
+        price: 400,
+        quantity: 1,
+      });
+
+      (global.fetch as any).mockImplementation((url: string) => {
+        if (url.includes('/api/batch-inventory')) {
+          return Promise.resolve({ ok: false, status: 503 });
+        }
+        return Promise.reject(new Error(`Unexpected: ${url}`));
+      });
+
+      const result = await cart.validateCart();
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Removed');
+      expect(cart.getItems()).toHaveLength(0);
+    });
+
+    it('validateCart treats all items as unavailable when batch-inventory responds with success: false', async () => {
+      await cart.addItem({
+        id: 'prod-bi-unsuccessful',
+        variationId: 'var-bi-unsuccessful',
+        catalogObjectId: 'cat-bi-unsuccessful',
+        title: 'Batch Inventory Unsuccessful',
+        price: 400,
+        quantity: 1,
+      });
+
+      (global.fetch as any).mockImplementation((url: string) => {
+        if (url.includes('/api/batch-inventory')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: false }),
+          });
+        }
+        return Promise.reject(new Error(`Unexpected: ${url}`));
+      });
+
+      const result = await cart.validateCart();
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Removed');
+      expect(cart.getItems()).toHaveLength(0);
+    });
+
+    it('validateCart pluralizes "items" when removing more than one out-of-stock item', async () => {
+      await cart.addItem({
+        id: 'prod-multi-1',
+        variationId: 'var-multi-1',
+        catalogObjectId: 'cat-multi-1',
+        title: 'Multi Removal One',
+        price: 200,
+        quantity: 1,
+      });
+      await cart.addItem({
+        id: 'prod-multi-2',
+        variationId: 'var-multi-2',
+        catalogObjectId: 'cat-multi-2',
+        title: 'Multi Removal Two',
+        price: 250,
+        quantity: 1,
+      });
+
+      (global.fetch as any).mockImplementation((url: string) => {
+        if (url.includes('/api/batch-inventory')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              success: true,
+              stockLevels: { 'var-multi-1': 0, 'var-multi-2': 0 },
+            }),
+          });
+        }
+        return Promise.reject(new Error(`Unexpected: ${url}`));
+      });
+
+      const result = await cart.validateCart();
+      expect(result.message).toContain('items');
+      expect(cart.getItems()).toHaveLength(0);
+    });
+
+    it('defaults quantity to 1 when addItem is called without a positive quantity', async () => {
+      (global.fetch as any).mockImplementation((url: string) => {
+        if (url.includes('/api/check-inventory')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, quantity: 10 }) });
+        }
+        if (url.includes('/api/sale-info')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, saleInfo: {} }) });
+        }
+        return Promise.reject(new Error(`Unexpected: ${url}`));
+      });
+
+      const result = await cart.addItem({
+        id: 'prod-noqty',
+        variationId: 'var-noqty',
+        catalogObjectId: 'cat-noqty',
+        title: 'No Quantity Specified',
+        price: 600,
+        quantity: 0,
+      });
+
+      expect(result.success).toBe(true);
+      const item = cart.getItems().find((i: any) => i.variationId === 'var-noqty');
+      expect(item?.quantity).toBe(1);
+    });
+
+    it('treats check-inventory success: false the same as zero stock', async () => {
+      (global.fetch as any).mockImplementation((url: string) => {
+        if (url.includes('/api/check-inventory')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: false }) });
+        }
+        if (url.includes('/api/sale-info')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, saleInfo: {} }) });
+        }
+        return Promise.reject(new Error(`Unexpected: ${url}`));
+      });
+
+      const result = await cart.addItem({
+        id: 'prod-inv-unsuccessful',
+        variationId: 'var-inv-unsuccessful',
+        catalogObjectId: 'cat-inv-unsuccessful',
+        title: 'Inventory Unsuccessful',
+        price: 350,
+        quantity: 1,
+      });
+
+      // availableQuantity falls back to 0 (data.success was false), so the
+      // item cannot be added at the requested quantity — but the call itself
+      // does not throw.
+      expect(result.success).toBe(false);
+    });
+
+    it('treats sale-info success: false the same as no sale info', async () => {
+      (global.fetch as any).mockImplementation((url: string) => {
+        if (url.includes('/api/check-inventory')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, quantity: 10 }) });
+        }
+        if (url.includes('/api/sale-info')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: false }) });
+        }
+        return Promise.reject(new Error(`Unexpected: ${url}`));
+      });
+
+      const result = await cart.addItem({
+        id: 'prod-sale-unsuccessful',
+        variationId: 'var-sale-unsuccessful',
+        catalogObjectId: 'cat-sale-unsuccessful',
+        title: 'Sale Info Unsuccessful',
+        price: 700,
+        quantity: 1,
+      });
+
+      expect(result.success).toBe(true);
+      const item = cart.getItems().find((i: any) => i.variationId === 'var-sale-unsuccessful');
+      expect(item?.saleInfo).toBeFalsy();
+    });
+
+    it('falls back to item.id when catalogObjectId is not provided on a new item', async () => {
+      (global.fetch as any).mockImplementation((url: string) => {
+        if (url.includes('/api/check-inventory')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, quantity: 10 }) });
+        }
+        if (url.includes('/api/sale-info')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, saleInfo: {} }) });
+        }
+        return Promise.reject(new Error(`Unexpected: ${url}`));
+      });
+
+      const result = await cart.addItem({
+        id: 'prod-nocatalog',
+        variationId: 'var-nocatalog',
+        catalogObjectId: '',
+        title: 'No Catalog Object Id',
+        price: 450,
+        quantity: 1,
+      } as any);
+
+      expect(result.success).toBe(true);
+      const item = cart.getItems().find((i: any) => i.variationId === 'var-nocatalog');
+      expect(item?.catalogObjectId).toBe('prod-nocatalog');
+    });
+  });
 });
