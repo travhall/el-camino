@@ -28,7 +28,7 @@ A modern e-commerce platform built with Astro and Square integration, featuring 
 ### Technical Highlights
 
 - **Server-Side Rendering** - Optimized for performance and SEO
-- **Type-Safe Development** - Full TypeScript implementation with 0 errors
+- **Type-Safe Development** - TypeScript throughout, with `astro check` passing (zero compiler errors); see [docs/TYPE_SAFETY_NOTES.md](docs/TYPE_SAFETY_NOTES.md) for known `any`/`unknown` escape hatches, mostly around Square SDK response shapes
 - **Resilient Architecture** - Circuit breaker patterns and error recovery
 - **Netlify Blobs Caching** - Distributed caching with Netlify Blobs for serverless optimization
 - **Performance Monitoring** - Built-in Core Web Vitals tracking and regression testing
@@ -308,7 +308,7 @@ pnpm test:e2e
 # Run E2E tests with UI
 pnpm test:e2e:ui
 
-# Type checking (0 errors across 83 files)
+# Type checking (0 compiler errors as of 2026-06-24, 255 files — see docs/TYPE_SAFETY_NOTES.md for any/unknown usage)
 pnpm check
 
 # Build verification
@@ -374,7 +374,7 @@ Recent comprehensive performance optimization strategy implementation:
 ### Performance Metrics
 
 - **Build Time**: ~3 seconds
-- **TypeScript Compilation**: 0 errors across 83 files
+- **TypeScript Compilation**: 0 compiler errors (does not mean zero `any`/`unknown` usage — see [docs/TYPE_SAFETY_NOTES.md](docs/TYPE_SAFETY_NOTES.md))
 - **Codebase Size**: ~48,894 lines of code across 169 files
 - **Test Coverage**: 80% threshold with Vitest
 - **API Response Times**: Optimized with Netlify Blobs caching
@@ -509,7 +509,7 @@ For issues and questions:
 
 ### Current State: Production Ready ✅
 
-- **TypeScript**: 0 errors across 83 files
+- **TypeScript**: 0 compiler errors (does not mean zero `any`/`unknown` usage — see [docs/TYPE_SAFETY_NOTES.md](docs/TYPE_SAFETY_NOTES.md))
 - **Build Status**: Successful
 - **Core Features**: Complete and functional
 - **Payment Processing**: Operational
