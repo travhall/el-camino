@@ -396,6 +396,7 @@ Recent comprehensive performance optimization strategy implementation:
 ### Square SDK Integration
 
 - **Migration Strategy**: Using `square/legacy` for ES module compatibility
+- **Naming note**: the `square-legacy` entry in `package.json` is an npm alias pointing at the *current* Square SDK (`npm:square@^44.1.0`) — the name is a historical holdover from an earlier migration, not an indication of an outdated package. See `src/lib/square/client.ts` for the canonical client.
 - **Separation of Concerns**: Backend API calls, frontend state management
 - **Error Handling**: Comprehensive Square API error processing
 - **Performance**: Batch operations for inventory and images
