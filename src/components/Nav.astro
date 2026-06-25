@@ -16,7 +16,12 @@ const { activeCategory } = Astro.props;
 // here. (Previously: 3 serial blob reads per render, 2 of which duplicated
 // what Footer was already doing.)
 const siteCtx = await getSiteContext(Astro.locals);
-const { contact, social, salePageVisible: showSaleLink } = siteCtx;
+const {
+  contact,
+  social,
+  salePageVisible: showSaleLink,
+  shopPageVisible: showShopLink,
+} = siteCtx;
 
 let categoryHierarchy: CategoryHierarchy[];
 let navigationStatus: "loading" | "success" | "timeout" | "error" = "loading";
@@ -101,7 +106,7 @@ const saleNavItem = {
   prefetchStrategy: "hover",
 };
 
-// `showSaleLink` comes from the shared site context (above).
+// `showSaleLink` and `showShopLink` come from the shared site context (above).
 
 // Enhanced navigation items with prefetch strategies and error-aware fallback
 const navItems =
@@ -112,13 +117,13 @@ const navItems =
           prefetchStrategy: getPrefetchStrategyForCategory(item.category.name),
         })),
         ...(showSaleLink ? [saleNavItem] : []),
-        staticNavItems[0], // "The Shop" after sale
+        ...(showShopLink ? [staticNavItems[0]] : []), // "The Shop" after sale
         staticNavItems[1], // "News" last navigation item
       ]
     : [
         // Minimal safe navigation when categories fail to load
         ...(showSaleLink ? [saleNavItem] : []),
-        staticNavItems[0], // "The Shop" - always works
+        ...(showShopLink ? [staticNavItems[0]] : []), // "The Shop"
         staticNavItems[1], // "News" - always works
       ];
 

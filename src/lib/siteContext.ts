@@ -7,7 +7,7 @@
 //
 //   import { getSiteContext } from "@/lib/siteContext";
 //   const ctx = await getSiteContext(Astro.locals);
-//   // ctx.contact, ctx.social, ctx.hours, ctx.structured, ctx.salePageVisible
+//   // ctx.contact, ctx.social, ctx.hours, ctx.structured, ctx.salePageVisible, ctx.shopPageVisible
 //
 // Memoization is on `Astro.locals`, which Astro resets per request, so we
 // avoid the staleness traps of module-level caches on warm function instances.
@@ -17,6 +17,7 @@ import { getSocialLinks } from "@/lib/socialLinks";
 import { getShopHours } from "@/lib/shopHours";
 import { getStructuredData } from "@/lib/structuredData";
 import { getSalePageVisible } from "@/lib/saleVisibility";
+import { getShopPageVisible } from "@/lib/shopVisibility";
 
 export interface SiteContext {
   contact: ContactInfo;
@@ -24,6 +25,7 @@ export interface SiteContext {
   hours: Awaited<ReturnType<typeof getShopHours>>;
   structured: Awaited<ReturnType<typeof getStructuredData>>;
   salePageVisible: boolean;
+  shopPageVisible: boolean;
 }
 
 interface MemoLocals {
@@ -39,13 +41,14 @@ export async function getSiteContext(locals: App.Locals): Promise<SiteContext> {
   if (memo.siteContextPromise) return memo.siteContextPromise;
 
   memo.siteContextPromise = (async () => {
-    const [contact, social, hours, structured, salePageVisible] =
+    const [contact, social, hours, structured, salePageVisible, shopPageVisible] =
       await Promise.all([
         getContactInfo(),
         getSocialLinks(),
         getShopHours(),
         getStructuredData(),
         getSalePageVisible(),
+        getShopPageVisible(),
       ]);
     const ctx: SiteContext = {
       contact,
@@ -53,6 +56,7 @@ export async function getSiteContext(locals: App.Locals): Promise<SiteContext> {
       hours,
       structured,
       salePageVisible,
+      shopPageVisible,
     };
     memo.siteContext = ctx;
     return ctx;

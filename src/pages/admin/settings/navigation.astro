@@ -4,9 +4,11 @@
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { getSalePageVisible } from "@/lib/saleVisibility";
+import { getShopPageVisible } from "@/lib/shopVisibility";
 
 const saved = Astro.url.searchParams.has("saved");
 const salePageVisible = await getSalePageVisible();
+const shopPageVisible = await getShopPageVisible();
 
 const BTN_CLASS =
   "font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap";
@@ -31,35 +33,68 @@ const BTN_CLASS =
       </p>
     </div>
 
-    <!-- Form -->
-    <form method="POST" action="/api/admin/sale-visibility" class="divide-y divide-(--border-primary)">
-      <div class="flex flex-wrap items-center gap-4 px-4 py-4">
-        <!-- Label column -->
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold text-(--content-heading)">Sale Page</p>
-          <p class="text-sm text-(--content-meta) mt-0.5">
-            Show or hide the <strong>Sale</strong> link in the navigation. Hide it when you don't have enough sale inventory to justify the page.
-          </p>
+    <!-- Toggles -->
+    <div class="divide-y divide-(--border-primary)">
+      <!-- Sale Page -->
+      <form method="POST" action="/api/admin/sale-visibility">
+        <div class="flex flex-wrap items-center gap-4 px-4 py-4">
+          <!-- Label column -->
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-(--content-heading)">Sale Page</p>
+            <p class="text-sm text-(--content-meta) mt-0.5">
+              Show or hide the <strong>Sale</strong> link in the navigation. Hide it when you don't have enough sale inventory to justify the page.
+            </p>
+          </div>
+
+          <!-- Toggle -->
+          <label class="flex items-center gap-2 cursor-pointer select-none shrink-0">
+            <input
+              type="checkbox"
+              name="salePageVisible"
+              class="w-4 h-4 accent-(--content-heading) cursor-pointer"
+              checked={salePageVisible}
+              aria-label="Show Sale link in navigation"
+            />
+            <span class="text-sm text-(--content-body)">Show in nav</span>
+          </label>
         </div>
 
-        <!-- Toggle -->
-        <label class="flex items-center gap-2 cursor-pointer select-none shrink-0">
-          <input
-            type="checkbox"
-            name="salePageVisible"
-            class="w-4 h-4 accent-(--content-heading) cursor-pointer"
-            checked={salePageVisible}
-            aria-label="Show Sale link in navigation"
-          />
-          <span class="text-sm text-(--content-body)">Show in nav</span>
-        </label>
-      </div>
+        <!-- Footer actions -->
+        <div class="flex items-center justify-end px-4 py-3 bg-(--surface-primary)">
+          <button type="submit" class={BTN_CLASS}>Save</button>
+        </div>
+      </form>
 
-      <!-- Footer actions -->
-      <div class="flex items-center justify-end px-4 py-3 bg-(--surface-primary)">
-        <button type="submit" class={BTN_CLASS}>Save</button>
-      </div>
-    </form>
+      <!-- Shop Page -->
+      <form method="POST" action="/api/admin/shop-visibility">
+        <div class="flex flex-wrap items-center gap-4 px-4 py-4">
+          <!-- Label column -->
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-(--content-heading)">The Shop Page</p>
+            <p class="text-sm text-(--content-meta) mt-0.5">
+              Show or hide the <strong>The Shop</strong> link in the navigation. Hide it until the page is ready to launch.
+            </p>
+          </div>
+
+          <!-- Toggle -->
+          <label class="flex items-center gap-2 cursor-pointer select-none shrink-0">
+            <input
+              type="checkbox"
+              name="shopPageVisible"
+              class="w-4 h-4 accent-(--content-heading) cursor-pointer"
+              checked={shopPageVisible}
+              aria-label="Show The Shop link in navigation"
+            />
+            <span class="text-sm text-(--content-body)">Show in nav</span>
+          </label>
+        </div>
+
+        <!-- Footer actions -->
+        <div class="flex items-center justify-end px-4 py-3 bg-(--surface-primary)">
+          <button type="submit" class={BTN_CLASS}>Save</button>
+        </div>
+      </form>
+    </div>
   </div>
 </AdminLayout>
 
