@@ -1,23 +1,9 @@
 // src/lib/saleVisibility.ts
-// Stores and retrieves the sale page visibility toggle using Netlify Blobs.
-// Defaults to true (visible) so the Sale nav link shows until Tyler hides it.
+// Sale page visibility toggle — thin wrapper around the shared pageVisibility module.
 
-import { getStore } from "@netlify/blobs";
+import { getPageVisible, setPageVisible } from "@/lib/pageVisibility";
 
 const BLOB_KEY = "sale-page-visible";
 
-function store() {
-  return getStore({ name: "shop-config", consistency: "strong" });
-}
-
-export async function getSalePageVisible(): Promise<boolean> {
-  try {
-    const value = (await store().get(BLOB_KEY, { type: "json" })) as boolean | null;
-    if (typeof value === "boolean") return value;
-  } catch {}
-  return true;
-}
-
-export async function setSalePageVisible(visible: boolean): Promise<void> {
-  await store().setJSON(BLOB_KEY, visible);
-}
+export const getSalePageVisible = () => getPageVisible(BLOB_KEY);
+export const setSalePageVisible = (visible: boolean) => setPageVisible(BLOB_KEY, visible);
