@@ -26,9 +26,9 @@ export function stripUnsafeHtml(html: string): string {
       .replace(/\s+on[a-z]+\s*=\s*"(?:[^"]*)"/gi, "")
       .replace(/\s+on[a-z]+\s*=\s*'(?:[^']*)'/gi, "")
       .replace(/\s+on[a-z]+\s*=\s*[^\s>]+/gi, "")
-      // Neutralize javascript:/vbscript: URIs in any attribute
-      .replace(/(href|src|xlink:href|formaction|action|poster)\s*=\s*"\s*(?:javascript|vbscript):[^"]*"/gi, '$1="#"')
-      .replace(/(href|src|xlink:href|formaction|action|poster)\s*=\s*'\s*(?:javascript|vbscript):[^']*'/gi, "$1='#'")
+      // Neutralize javascript:/vbscript:/data:(html|javascript) URIs in any attribute
+      .replace(/(href|src|xlink:href|formaction|action|poster)\s*=\s*"\s*(?:(?:javascript|vbscript):|data:(?:text\/html|application\/javascript))[^"]*"/gi, '$1="#"')
+      .replace(/(href|src|xlink:href|formaction|action|poster)\s*=\s*'\s*(?:(?:javascript|vbscript):|data:(?:text\/html|application\/javascript))[^']*'/gi, "$1='#'")
   );
 }
 
