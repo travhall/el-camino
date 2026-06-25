@@ -53,7 +53,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
     cookies.set(ADMIN_COOKIE_NAME, issueSessionToken(secret), {
       httpOnly: true,
-      secure: import.meta.env.PROD,
+      secure: true,
       sameSite: "strict",
       path: "/",
       maxAge: ADMIN_SESSION_TTL_SECONDS,
