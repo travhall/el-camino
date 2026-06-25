@@ -6,7 +6,7 @@
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { Icon } from "astro-icon/components";
-import { SquareClient, SquareEnvironment } from "square-legacy";
+import { squareClient } from "@/lib/square/client";
 import { getAllProductSummaries } from "@/lib/backInStock";
 
 const pageTitle = "Dashboard";
@@ -14,16 +14,6 @@ const pageDescription =
   "Admin tools for performance monitoring and content management.";
 
 // ── Attention summary — fetch all three sources in parallel ──────────────────
-function makeSquareClient() {
-  return new SquareClient({
-    token: process.env.SQUARE_ACCESS_TOKEN!,
-    environment:
-      import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-        ? SquareEnvironment.Production
-        : SquareEnvironment.Sandbox,
-  });
-}
-
 interface ShippingSummary {
   count: number;
   oldestDate: string | null;
@@ -41,8 +31,7 @@ interface BisSummary {
 const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
   // Pending shipments
   (async (): Promise<ShippingSummary> => {
-    const client = makeSquareClient();
-    const searchResult = await client.orders.search({
+    const searchResult = await squareClient.orders.search({
       locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
       query: {
         filter: {
@@ -66,8 +55,7 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
 
   // Pending pick ups
   (async (): Promise<PickupSummary> => {
-    const client = makeSquareClient();
-    const searchResult = await client.orders.search({
+    const searchResult = await squareClient.orders.search({
       locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
       query: {
         filter: {

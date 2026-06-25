@@ -1,7 +1,7 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import OrdersSubNav from "@/components/admin/OrdersSubNav.astro";
-import { SquareClient, SquareEnvironment } from "square-legacy";
+import { squareClient } from "@/lib/square/client";
 import { filterDismissed } from "@/lib/admin/dismissedOrders";
 
 function formatMoney(amount: bigint | number | undefined | null): string {
@@ -40,12 +40,7 @@ let orders: ShippingOrder[] = [];
 let fetchError = false;
 
 try {
-  const client = new SquareClient({
-    token: process.env.SQUARE_ACCESS_TOKEN!,
-    environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-      ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
-  });
-  const searchResult = await client.orders.search({
+  const searchResult = await squareClient.orders.search({
     locationIds: [import.meta.env.PUBLIC_SQUARE_LOCATION_ID],
     query: {
       filter: {

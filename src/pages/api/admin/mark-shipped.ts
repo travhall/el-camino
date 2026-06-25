@@ -11,7 +11,7 @@
 
 import type { APIRoute } from "astro";
 import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
-import { SquareClient, SquareEnvironment } from "square-legacy";
+import { squareClient } from "@/lib/square/client";
 import { sendShippingConfirmation } from "@/lib/email/sender";
 import type { PendingOrderContact } from "@/lib/email/pendingOrders";
 
@@ -39,15 +39,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   if (!orderId) return new Response("Missing orderId", { status: 400 });
 
-  // ── Square client ─────────────────────────────────────────────────────────
-  const client = new SquareClient({
-    token: process.env.SQUARE_ACCESS_TOKEN!,
-    environment:
-      import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-        ? SquareEnvironment.Production
-        : SquareEnvironment.Sandbox,
-  });
-
   // ── Fetch the live order — get fulfillmentUid, current state, customer info ─
   let fulfillmentUid: string;
   let currentState: string;
@@ -57,7 +48,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   let order: import("square-legacy").Order;
 
   try {
-    const orderResult = await client.orders.get({ orderId });
+    const orderResult = await squareClient.orders.get({ orderId });
     if (!orderResult.order) throw new Error("Order not returned");
     order = orderResult.order;
 
@@ -101,7 +92,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   try {
     for (const targetState of steps) {
       // Re-fetch the version before each step — it increments on every update.
-      const refreshed = await client.orders.get({ orderId });
+      const refreshed = await squareClient.orders.get({ orderId });
       if (!refreshed.order) throw new Error("Order not found on refresh");
 
       // Only attach tracking/carrier on the final COMPLETED transition.
@@ -113,7 +104,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
             }
           : undefined;
 
-      await client.orders.update({
+      await squareClient.orders.update({
         orderId,
         // Stable idempotency key per state — safe to retry if a step fails.
         idempotencyKey: `shipped-${orderId}-${targetState}`,

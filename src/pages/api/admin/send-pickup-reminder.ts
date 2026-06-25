@@ -6,7 +6,7 @@
 
 import type { APIRoute } from "astro";
 import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
-import { SquareClient, SquareEnvironment } from "square-legacy";
+import { squareClient } from "@/lib/square/client";
 import { sendPickupReminderEmail } from "@/lib/email/sender";
 
 const STORE_TIMEZONE = "America/Chicago";
@@ -36,14 +36,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return new Response(JSON.stringify({ error: "missing_order_id" }), { status: 400 });
   }
 
-  const client = new SquareClient({
-    token: process.env.SQUARE_ACCESS_TOKEN!,
-    environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-      ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
-  });
-
   try {
-    const orderResult = await client.orders.get({ orderId });
+    const orderResult = await squareClient.orders.get({ orderId });
     const order = orderResult.order;
     if (!order) throw new Error("Order not returned");
 

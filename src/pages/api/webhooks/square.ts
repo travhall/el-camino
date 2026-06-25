@@ -18,7 +18,7 @@
 // "Send test event" feature in the Developer Dashboard against production.
 
 import type { APIRoute } from "astro";
-import { SquareClient, SquareEnvironment } from "square-legacy";
+import { squareClient } from "@/lib/square/client";
 import { verifySquareWebhookSignature } from "@/lib/square/verifyWebhookSignature";
 import {
   inventoryCache,
@@ -177,14 +177,7 @@ export const POST: APIRoute = async ({ request }) => {
         // confirmation email is never blocked by a Square API failure.
         let order: import("square-legacy").Order;
         try {
-          const client = new SquareClient({
-            token: process.env.SQUARE_ACCESS_TOKEN!,
-            environment:
-              import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-                ? SquareEnvironment.Production
-                : SquareEnvironment.Sandbox,
-          });
-          const orderResult = await client.orders.get({ orderId });
+          const orderResult = await squareClient.orders.get({ orderId });
           if (!orderResult.order) throw new Error("Order not returned by API");
           order = orderResult.order;
         } catch (fetchErr) {

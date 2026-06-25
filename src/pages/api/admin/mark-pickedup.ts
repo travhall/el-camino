@@ -10,7 +10,7 @@
 
 import type { APIRoute } from "astro";
 import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
-import { SquareClient, SquareEnvironment } from "square-legacy";
+import { squareClient } from "@/lib/square/client";
 
 const PICKUP_STATES = ["PROPOSED", "RESERVED", "PREPARED", "COMPLETED"] as const;
 
@@ -29,19 +29,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   if (!orderId) return new Response("Missing orderId", { status: 400 });
 
-  const client = new SquareClient({
-    token: process.env.SQUARE_ACCESS_TOKEN!,
-    environment: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-      ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
-  });
-
   // Fetch the live order to get current fulfillment state and UID.
   let fulfillmentUid: string;
   let currentState: string;
   let locationId: string;
 
   try {
-    const orderResult = await client.orders.get({ orderId });
+    const orderResult = await squareClient.orders.get({ orderId });
     const order = orderResult.order;
     if (!order) throw new Error("Order not returned");
 
@@ -71,10 +65,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   try {
     for (const targetState of steps) {
       // Re-fetch the version before each step — it increments on every update.
-      const refreshed = await client.orders.get({ orderId });
+      const refreshed = await squareClient.orders.get({ orderId });
       if (!refreshed.order) throw new Error("Order not found on refresh");
 
-      await client.orders.update({
+      await squareClient.orders.update({
         orderId,
         // Stable idempotency key per state — safe to retry if a step fails.
         idempotencyKey: `pickedup-${orderId}-${targetState}`,
