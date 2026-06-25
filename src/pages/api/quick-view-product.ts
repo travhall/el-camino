@@ -95,7 +95,6 @@ export const GET: APIRoute = async ({ url }) => {
     return new Response(
       JSON.stringify({
         error: "Failed to fetch product",
-        details: appError.message,
       }),
       {
         status: 500,

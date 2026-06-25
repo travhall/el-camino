@@ -110,7 +110,7 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : "Calculation failed",
+        error: "Unable to calculate cart total. Please try again.",
       }),
       { status: 500 }
     );

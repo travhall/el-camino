@@ -27,6 +27,32 @@ export enum ErrorType {
 }
 
 /**
+ * Maps an ErrorType to a generic, client-safe message. Never return
+ * `AppError.message` or a raw `Error.message` to an API client — those can
+ * contain Square API internals. Log the real error server-side via
+ * `logError()` / `console.error()` and return this instead.
+ */
+export function getClientSafeMessage(type: ErrorType): string {
+  switch (type) {
+    case ErrorType.DATA_NOT_FOUND:
+      return "The requested item could not be found.";
+    case ErrorType.DATA_VALIDATION:
+      return "The request was invalid.";
+    case ErrorType.API_RATE_LIMIT:
+      return "Too many requests. Please try again shortly.";
+    case ErrorType.AUTH_ERROR:
+    case ErrorType.PERMISSION_ERROR:
+      return "Not authorized.";
+    case ErrorType.NETWORK_ERROR:
+    case ErrorType.TIMEOUT_ERROR:
+    case ErrorType.API_UNAVAILABLE:
+      return "The service is temporarily unavailable. Please try again.";
+    default:
+      return "Something went wrong. Please try again.";
+  }
+}
+
+/**
  * Standardized error structure
  */
 export interface AppError {
