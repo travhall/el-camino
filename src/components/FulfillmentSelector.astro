@@ -1,5 +1,9 @@
 ---
 import { Icon } from "astro-icon/components";
+import {
+  FREE_SHIPPING_THRESHOLD_DOLLARS,
+  FLAT_RATE_SHIPPING_DOLLARS,
+} from "@/lib/config/shipping";
 
 interface Props {
   subtotal: number;
@@ -8,8 +12,10 @@ interface Props {
 
 const { subtotal, hasGiftCard = false } = Astro.props;
 
-const FREE_SHIPPING_THRESHOLD = 7500; // $75.00 in cents
-const FLAT_RATE_SHIPPING = 599; // $5.99 in cents
+const FREE_SHIPPING_THRESHOLD = Math.round(
+  FREE_SHIPPING_THRESHOLD_DOLLARS * 100,
+);
+const FLAT_RATE_SHIPPING = Math.round(FLAT_RATE_SHIPPING_DOLLARS * 100);
 
 function formatMoney(cents: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -33,7 +39,11 @@ const progressPct = Math.min(
 );
 ---
 
-<div data-component="fulfillment-selector">
+<div
+  data-component="fulfillment-selector"
+  data-free-shipping-threshold={FREE_SHIPPING_THRESHOLD_DOLLARS}
+  data-flat-rate-shipping={FLAT_RATE_SHIPPING_DOLLARS}
+>
   <fieldset class="min-w-0 w-full">
     <legend class="sr-only">Choose Fulfillment Method</legend>
 
@@ -459,9 +469,6 @@ const progressPct = Math.min(
   import { cart } from "@/lib/cart";
   import { initFloatSelects } from "@/lib/ui/floatFields";
 
-  const FREE_SHIPPING_THRESHOLD = 75;
-  const FLAT_RATE_SHIPPING = 5.99;
-
   declare global {
     interface Window {
       updateOrderSummaryOnFulfillmentChange?: (
@@ -479,6 +486,11 @@ const progressPct = Math.min(
       '[data-component="fulfillment-selector"]',
     );
     if (!selector) return;
+
+    const FREE_SHIPPING_THRESHOLD =
+      Number((selector as HTMLElement).dataset.freeShippingThreshold) || 75;
+    const FLAT_RATE_SHIPPING =
+      Number((selector as HTMLElement).dataset.flatRateShipping) || 5.99;
 
     const shippingRadio = selector.querySelector<HTMLInputElement>(
       "#fulfillment-shipping",
