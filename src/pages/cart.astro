@@ -67,17 +67,20 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
               <FulfillmentSelector subtotal={0} />
             </div>
           </div>
-
-          <!-- Cart items list: always in DOM, rendered by updateDisplay() -->
-          <div id="cart-items-list" class="grid gap-1"></div>
         </div>
 
         <!-- Right column: Order Summary + Checkout (always visible on desktop) -->
         <div
-          class="hidden md:flex md:col-span-1 md:sticky md:top-18 flex-col self-start"
+          class="flex md:col-span-1 md:sticky md:top-18 flex-col self-start"
         >
+          <!-- Cart items list: always in DOM, rendered by updateDisplay() -->
+          <div
+            id="cart-items-list"
+            class="grid gap-1 md:max-h-[50vh] md:overflow-y-auto md:pr-1"
+          ></div>
+
           <!-- Order Summary -->
-          <div class="bg-(--surface-secondary) p-4">
+          <div class="hidden md:block bg-(--surface-secondary) p-4">
             <h2 class="font-display text-3xl mb-2 text-(--content-heading)">
               Order Summary
             </h2>
@@ -115,7 +118,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           </div>
 
           <!-- Checkout actions -->
-          <div class="bg-(--surface-secondary) p-4 space-y-2">
+          <div class="hidden md:block bg-(--surface-secondary) p-4 space-y-2">
             <Button
               id="checkout-button"
               variant="primary"
