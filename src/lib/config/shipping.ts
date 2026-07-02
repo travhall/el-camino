@@ -51,6 +51,11 @@ export const SHIPPING_RATES: ShippingRate[] = [
   },
 ];
 
+export const FREE_SHIPPING_THRESHOLD_DOLLARS =
+  SHIPPING_RATES.find((r) => r.id === "free")!.freeThreshold!;
+export const FLAT_RATE_SHIPPING_DOLLARS =
+  SHIPPING_RATES.find((r) => r.id === "standard")!.rate;
+
 /**
  * Build pickup location from live admin-managed contact and hours data.
  * Falls back to siteConfig values if Blobs are unavailable.
