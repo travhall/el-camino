@@ -77,10 +77,10 @@ import {
   getProductStockStatus,
   pruneInventoryCache,
 } from '../inventory';
-// Real circuit breaker (not mocked) — checkBulkInventory now flows through the
+// Real retry client (not mocked) — checkBulkInventory now flows through the
 // shared inventory core, which guards the batch call with it. Reset between
 // tests so failures from one test don't leave the circuit open for the next.
-import { defaultCircuitBreaker } from '../apiUtils';
+import { apiRetryClient } from '../apiRetry';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -188,7 +188,7 @@ describe('isItemInStock', () => {
 describe('checkBulkInventory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    defaultCircuitBreaker.reset();
+    apiRetryClient.reset();
     mockCacheGet.mockResolvedValue(undefined); // cache miss by default
     mockCacheSet.mockResolvedValue(undefined);
     mockProcessSquareError.mockReturnValue({ message: 'sq-error' });
@@ -317,7 +317,7 @@ describe('checkBulkInventory', () => {
 describe('getProductStockStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    defaultCircuitBreaker.reset();
+    apiRetryClient.reset();
     mockCacheGet.mockResolvedValue(undefined);
     mockCacheSet.mockResolvedValue(undefined);
     mockProcessSquareError.mockReturnValue({ message: 'sq-error' });
