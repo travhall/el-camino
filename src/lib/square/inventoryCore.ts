@@ -12,7 +12,7 @@
 //   - display fails OPTIMISTIC   (unknown → keep the product visible; never hide
 //     stock over a transient hiccup)
 import { squareClient } from "./client";
-import { defaultCircuitBreaker } from "./apiUtils";
+import { apiRetryClient } from "./apiRetry";
 import { logError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
 import { requestDeduplicator } from "./requestDeduplication";
@@ -55,13 +55,15 @@ async function fetchChunk(
   const locationId = import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
 
   try {
-    const page = await defaultCircuitBreaker.execute(() =>
-      squareClient.inventory.batchGetCounts({
-        catalogObjectIds: ids,
-        locationIds: [locationId],
-        states: ["IN_STOCK"], // only in-stock quantities matter
-        limit: 100,
-      })
+    const page = await apiRetryClient.executeWithRetry(
+      () =>
+        squareClient.inventory.batchGetCounts({
+          catalogObjectIds: ids,
+          locationIds: [locationId],
+          states: ["IN_STOCK"], // only in-stock quantities matter
+          limit: 100,
+        }),
+      "fetchInventoryCounts:batchGetCounts"
     );
 
     const data = page.data || [];

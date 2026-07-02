@@ -2,7 +2,8 @@
 import { SquareClient, SquareEnvironment } from "square-legacy";
 import type { Product, SaleInfo } from "./types";
 import { getImageUrl, batchGetImageUrls } from "./imageUtils";
-import { defaultCircuitBreaker, logApiError } from "./apiUtils";
+import { logApiError } from "./apiUtils";
+import { apiRetryClient } from "./apiRetry";
 import { logError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
 import { buildAvailableAttributes } from "./variationParser";
@@ -192,7 +193,7 @@ export async function fetchProducts(): Promise<Product[]> {
 
   validateEnvironment();
   return requestDeduplicator.dedupe(cacheKey, () =>
-    defaultCircuitBreaker.execute(async () => {
+    apiRetryClient.executeWithRetry(async () => {
       try {
 
         // Paginate through all catalog pages to avoid silent truncation above ~200 items
@@ -361,7 +362,7 @@ export async function fetchProducts(): Promise<Product[]> {
         logApiError("fetchProducts", error);
         return [];
       }
-    })
+    }, "fetchProducts")
   );
 }
 
@@ -374,7 +375,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
   const cacheKey = `product:${id}`;
 
   return requestDeduplicator.dedupe(cacheKey, () =>
-    defaultCircuitBreaker.execute(async () => {
+    apiRetryClient.executeWithRetry(async () => {
       try {
         // console.log(`[fetchProduct] Fetching product: ${id}`);
 
@@ -549,7 +550,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         // Always return null on error, never undefined
         return null;
       }
-    })
+    }, "fetchProduct")
   );
 }
 
@@ -557,8 +558,8 @@ export async function fetchProduct(id: string): Promise<Product | null> {
  * Clean API state and caches
  */
 export function cleanupClientState(): void {
-  // Reset circuit breaker
-  defaultCircuitBreaker.reset();
+  // Reset retry client's circuit breaker state
+  apiRetryClient.reset();
   // Clear request deduplication cache
   requestDeduplicator.clear();
 }
