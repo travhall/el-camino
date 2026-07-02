@@ -4,6 +4,7 @@ import type { CartItem } from "@/lib/cart/types";
 import { squareClient } from "@/lib/square/client";
 import { apiRetryClient } from "@/lib/square/apiRetry";
 import { calculateShippingRate } from "@/lib/config/shipping";
+import { getAuthoritativePricing } from "@/lib/square/pricing";
 
 interface CalculateRequest {
   items: CartItem[];
@@ -27,10 +28,20 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // Calculate subtotal using sale prices when available
+    // Server-authoritative pricing: re-derive every price from the Square
+    // catalog. The client cart (and its client-supplied sale pricing) is
+    // attacker-controlled via localStorage, so it is NEVER trusted for
+    // pricing — only for choosing WHICH variation and quantity to preview.
+    const pricedVariationIds = items
+      .filter((item) => !item.isGiftCard)
+      .map((item) => item.variationId);
+    const pricing = await getAuthoritativePricing(pricedVariationIds);
+
+    // Calculate subtotal using server-derived effective prices, falling back
+    // to the catalog regular price (item.price) when no trusted entry exists
+    // (e.g. variable-price gift cards).
     const subtotal = items.reduce((sum, item) => {
-      // Use sale price if available, otherwise regular price
-      const effectivePrice = item.saleInfo?.salePrice ?? item.price;
+      const effectivePrice = pricing[item.variationId]?.effectivePrice ?? item.price;
       return sum + effectivePrice * item.quantity;
     }, 0);
 
@@ -41,7 +52,8 @@ export const POST: APIRoute = async ({ request }) => {
       shippingCost = rate.rate;
     }
 
-    // Build line items - use sale prices when available
+    // Build line items - apply a sale price ONLY when the Square catalog
+    // confirms an active sale for this variation.
     const lineItems = items.map((item) => {
       const lineItem: any = {
         quantity: String(item.quantity),
@@ -49,10 +61,10 @@ export const POST: APIRoute = async ({ request }) => {
         itemType: "ITEM" as const,
       };
 
-      // Override price if item has sale pricing
-      if (item.saleInfo?.salePrice) {
+      const salePrice = pricing[item.variationId]?.salePrice;
+      if (salePrice) {
         lineItem.basePriceMoney = {
-          amount: BigInt(Math.round(item.saleInfo.salePrice * 100)),
+          amount: BigInt(Math.round(salePrice * 100)),
           currency: "USD",
         };
       }
