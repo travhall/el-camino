@@ -2,6 +2,7 @@
 import type { APIRoute } from "astro";
 import type { CartItem } from "@/lib/cart/types";
 import { squareClient } from "@/lib/square/client";
+import { apiRetryClient } from "@/lib/square/apiRetry";
 import { checkBulkInventory } from "@/lib/square/inventory";
 import { getAuthoritativePricing } from "@/lib/square/pricing";
 import { calculateShippingRate, getPickupLocation } from "@/lib/config/shipping";
@@ -387,33 +388,38 @@ export const POST: APIRoute = async ({ request }) => {
 
     let linkResponse: Awaited<ReturnType<typeof squareClient.checkout.paymentLinks.create>>;
     try {
-      linkResponse = await squareClient.checkout.paymentLinks.create({
-        idempotencyKey,
-        order: {
-          locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
-          lineItems,
-          fulfillments: fulfillments.length > 0 ? fulfillments : undefined,
-          pricingOptions: {
-            autoApplyTaxes: true,
-          },
-        },
-        checkoutOptions: {
-          redirectUrl: confirmationUrl.toString(),
-          askForShippingAddress: false,
-          enableCoupon: true,
-          enableLoyalty: true,
-          merchantSupportEmail: siteConfig.contact.support,
-          acceptedPaymentMethods: {
-            applePay: true,
-            googlePay: true,
-            cashAppPay: true,
-            afterpayClearpay: true,
-          },
-          customFields: [
-            { title: "Order Notes" },
-          ],
-        },
-      });
+      linkResponse = await apiRetryClient.executeWithRetry(
+        () =>
+          squareClient.checkout.paymentLinks.create({
+            idempotencyKey,
+            order: {
+              locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
+              lineItems,
+              fulfillments: fulfillments.length > 0 ? fulfillments : undefined,
+              pricingOptions: {
+                autoApplyTaxes: true,
+              },
+            },
+            checkoutOptions: {
+              redirectUrl: confirmationUrl.toString(),
+              askForShippingAddress: false,
+              enableCoupon: true,
+              enableLoyalty: true,
+              merchantSupportEmail: siteConfig.contact.support,
+              acceptedPaymentMethods: {
+                applePay: true,
+                googlePay: true,
+                cashAppPay: true,
+                afterpayClearpay: true,
+              },
+              customFields: [
+                { title: "Order Notes" },
+              ],
+            },
+          }),
+        "create-checkout:paymentLinks.create",
+        { maxRetries: 2, baseDelay: 500 }
+      );
     } catch (linkError) {
       const e = linkError as any;
       console.error("[create-checkout] checkout.paymentLinks.create FAILED");

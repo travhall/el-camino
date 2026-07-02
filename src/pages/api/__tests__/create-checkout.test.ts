@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@/lib/square/inventory', () => ({
   checkBulkInventory: vi.fn(),
@@ -31,6 +31,7 @@ import { POST } from '../create-checkout';
 import { checkBulkInventory } from '@/lib/square/inventory';
 import { getAuthoritativePricing } from '@/lib/square/pricing';
 import { squareClient } from '@/lib/square/client';
+import { apiRetryClient } from '@/lib/square/apiRetry';
 import type { CartItem } from '@/lib/cart/types';
 
 const checkBulkInventoryMock = checkBulkInventory as unknown as ReturnType<typeof vi.fn>;
@@ -75,10 +76,15 @@ const SHIPPING_ADDRESS = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  apiRetryClient.reset();
   getAuthoritativePricingMock.mockResolvedValue({});
   createPaymentLinkMock.mockResolvedValue({
     paymentLink: { url: 'https://square.link/checkout/abc', orderId: 'order-123' },
   });
+});
+
+afterEach(() => {
+  apiRetryClient.reset();
 });
 
 describe('POST /api/create-checkout', () => {
@@ -159,5 +165,64 @@ describe('POST /api/create-checkout', () => {
       } as any);
     }
     expect(lastRes!.status).toBe(429);
+  });
+
+  describe('retry protection for paymentLinks.create', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('recovers and returns a checkout URL when paymentLinks.create fails once then succeeds', async () => {
+      checkBulkInventoryMock.mockResolvedValue({ 'var-1': 5 });
+      createPaymentLinkMock
+        .mockRejectedValueOnce(new Error('ECONNRESET'))
+        .mockResolvedValueOnce({
+          paymentLink: { url: 'https://square.link/checkout/recovered', orderId: 'order-456' },
+        });
+
+      const promise = POST({
+        request: makeRequest({
+          items: [makeItem()],
+          fulfillmentMethod: 'shipping',
+          shippingAddress: SHIPPING_ADDRESS,
+        }),
+      } as any);
+
+      await vi.runAllTimersAsync();
+      const res = await promise;
+
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.checkoutUrl).toBe('https://square.link/checkout/recovered');
+      expect(createPaymentLinkMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns a 500 error when paymentLinks.create fails on every retry attempt', async () => {
+      checkBulkInventoryMock.mockResolvedValue({ 'var-1': 5 });
+      createPaymentLinkMock.mockRejectedValue(new Error('Persistent Square outage'));
+
+      const promise = POST({
+        request: makeRequest({
+          items: [makeItem()],
+          fulfillmentMethod: 'shipping',
+          shippingAddress: SHIPPING_ADDRESS,
+        }),
+      } as any);
+
+      await vi.runAllTimersAsync();
+      const res = await promise;
+
+      expect(res.status).toBe(500);
+      const json = await res.json();
+      expect(json.success).toBe(false);
+      expect(json.error).toBe('Checkout creation failed. Please try again.');
+      // maxRetries: 2 → 1 initial attempt + 2 retries = 3 calls total
+      expect(createPaymentLinkMock).toHaveBeenCalledTimes(3);
+    });
   });
 });

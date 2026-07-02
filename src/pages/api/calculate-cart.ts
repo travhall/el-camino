@@ -2,6 +2,7 @@
 import type { APIRoute } from "astro";
 import type { CartItem } from "@/lib/cart/types";
 import { squareClient } from "@/lib/square/client";
+import { apiRetryClient } from "@/lib/square/apiRetry";
 import { calculateShippingRate } from "@/lib/config/shipping";
 
 interface CalculateRequest {
@@ -73,15 +74,20 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Call Square CalculateOrder to get real tax
-    const calculateResponse = await squareClient.orders.calculate({
-      order: {
-        locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
-        lineItems,
-        pricingOptions: {
-          autoApplyTaxes: true,
-        },
-      },
-    });
+    const calculateResponse = await apiRetryClient.executeWithRetry(
+      () =>
+        squareClient.orders.calculate({
+          order: {
+            locationId: import.meta.env.PUBLIC_SQUARE_LOCATION_ID,
+            lineItems,
+            pricingOptions: {
+              autoApplyTaxes: true,
+            },
+          },
+        }),
+      "calculate-cart:orders.calculate",
+      { maxRetries: 2, baseDelay: 500 }
+    );
 
     const order = calculateResponse.order;
     
