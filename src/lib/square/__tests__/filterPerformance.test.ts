@@ -4,8 +4,26 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { 
-  filterProducts 
+
+vi.mock('../batchInventory', () => ({
+  batchInventoryService: {
+    getBatchInventoryStatus: vi.fn(async (variationIds: string[]) => {
+      const map = new Map();
+      for (const id of variationIds) {
+        map.set(id, {
+          isOutOfStock: false,
+          hasLimitedOptions: false,
+          totalQuantity: 10,
+          error: false,
+        });
+      }
+      return map;
+    }),
+  },
+}));
+
+import {
+  filterProducts
 } from '../filterUtils';
 import type { Product, ProductFilters } from '../types';
 
