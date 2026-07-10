@@ -57,7 +57,11 @@ describe('POST /api/admin-auth', () => {
   });
 
   it('returns 503 when ADMIN_SECRET is missing', async () => {
-    vi.unstubAllEnvs();
+    // Stub to '' rather than relying on unstubAllEnvs() to produce
+    // `undefined` — CI sets a real ADMIN_SECRET at the job-env level (for
+    // other tests' module-load checks), and unstubAllEnvs() restores to
+    // that ambient value rather than clearing it.
+    vi.stubEnv('ADMIN_SECRET', '');
     vi.stubEnv('ADMIN_PASSWORD', 'correct-password');
     const ctx = makeContext({ formData: { password: 'x' }, origin: ORIGIN });
     const res = await POST(ctx);
@@ -65,8 +69,8 @@ describe('POST /api/admin-auth', () => {
   });
 
   it('returns 503 when ADMIN_PASSWORD is missing', async () => {
-    vi.unstubAllEnvs();
     vi.stubEnv('ADMIN_SECRET', 'test-secret');
+    vi.stubEnv('ADMIN_PASSWORD', '');
     const ctx = makeContext({ formData: { password: 'x' }, origin: ORIGIN });
     const res = await POST(ctx);
     expect(res.status).toBe(503);
