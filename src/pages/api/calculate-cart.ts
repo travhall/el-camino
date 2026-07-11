@@ -48,8 +48,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Calculate shipping
     let shippingCost = 0;
     if (fulfillmentMethod === "shipping") {
-      const rate = calculateShippingRate(subtotal);
-      shippingCost = rate.rate;
+      shippingCost = calculateShippingRate(subtotal);
     }
 
     // Build line items - apply a sale price ONLY when the Square catalog

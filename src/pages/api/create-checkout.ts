@@ -274,8 +274,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Calculate shipping cost (only for shipping orders)
     let shippingRate = 0;
     if (fulfillmentMethod === "shipping") {
-      const rate = calculateShippingRate(subtotal);
-      shippingRate = rate.rate;
+      shippingRate = calculateShippingRate(subtotal);
     }
 
     // Build line items array

@@ -27,32 +27,6 @@ export enum ErrorType {
 }
 
 /**
- * Maps an ErrorType to a generic, client-safe message. Never return
- * `AppError.message` or a raw `Error.message` to an API client — those can
- * contain Square API internals. Log the real error server-side via
- * `logError()` / `console.error()` and return this instead.
- */
-export function getClientSafeMessage(type: ErrorType): string {
-  switch (type) {
-    case ErrorType.DATA_NOT_FOUND:
-      return "The requested item could not be found.";
-    case ErrorType.DATA_VALIDATION:
-      return "The request was invalid.";
-    case ErrorType.API_RATE_LIMIT:
-      return "Too many requests. Please try again shortly.";
-    case ErrorType.AUTH_ERROR:
-    case ErrorType.PERMISSION_ERROR:
-      return "Not authorized.";
-    case ErrorType.NETWORK_ERROR:
-    case ErrorType.TIMEOUT_ERROR:
-    case ErrorType.API_UNAVAILABLE:
-      return "The service is temporarily unavailable. Please try again.";
-    default:
-      return "Something went wrong. Please try again.";
-  }
-}
-
-/**
  * Standardized error structure
  */
 export interface AppError {
@@ -146,46 +120,14 @@ export function processClientError(error: unknown, source: string): AppError {
 }
 
 /**
- * Handle error with appropriate recovery strategy
+ * Log an error and return a fallback value, or re-throw if none is given.
  */
-export function handleError<T>(
-  error: AppError,
-  fallbackValue?: T,
-  retryFn?: () => Promise<T>
-): Promise<T> | T {
+export function handleError<T>(error: AppError, fallbackValue?: T): T {
   logError(error);
 
-  // Implement specific recovery strategies based on error type
-  switch (error.type) {
-    case ErrorType.API_RATE_LIMIT:
-      // Could implement exponential backoff and retry
-      if (retryFn) {
-        console.log(`Rate limit hit, retrying with delay`);
-        return new Promise((resolve) => {
-          setTimeout(() => {
-            resolve(retryFn());
-          }, 2000);
-        });
-      }
-      break;
-
-    case ErrorType.NETWORK_ERROR:
-    case ErrorType.TIMEOUT_ERROR:
-      // Could attempt immediate retry for transient issues
-      if (retryFn) {
-        console.log(`Network/timeout error, retrying once`);
-        return retryFn();
-      }
-      break;
-
-    // Other error types...
-  }
-
-  // If no recovery or retry logic matched, return fallback
   if (fallbackValue !== undefined) {
     return fallbackValue;
   }
 
-  // Re-throw if no fallback provided
   throw error;
 }

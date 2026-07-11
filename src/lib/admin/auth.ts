@@ -8,6 +8,7 @@
 // `assertSameOrigin` adds a second layer that rejects POSTs whose Origin/Referer
 // doesn't match the request host.
 
+import type { AstroCookies } from "astro";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 export const ADMIN_COOKIE_NAME = "admin_session";
@@ -79,4 +80,25 @@ export function isAuthenticated(request: Request, cookieValue: string | undefine
     if (!assertSameOrigin(request)) return false;
   }
   return true;
+}
+
+/**
+ * Convenience wrapper over `isAuthenticated` for admin API routes — reads
+ * the session cookie for you.
+ */
+export function isAdminAuthenticated(request: Request, cookies: AstroCookies): boolean {
+  return isAuthenticated(request, cookies.get(ADMIN_COOKIE_NAME)?.value);
+}
+
+/**
+ * Parse a request body as FormData, returning null on failure instead of
+ * throwing. Shared by admin API routes that all handle malformed form
+ * submissions the same way.
+ */
+export async function parseAdminFormData(request: Request): Promise<FormData | null> {
+  try {
+    return await request.formData();
+  } catch {
+    return null;
+  }
 }

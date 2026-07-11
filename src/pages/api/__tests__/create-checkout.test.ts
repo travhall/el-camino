@@ -7,7 +7,7 @@ vi.mock('@/lib/square/pricing', () => ({
   getAuthoritativePricing: vi.fn(),
 }));
 vi.mock('@/lib/config/shipping', () => ({
-  calculateShippingRate: vi.fn(() => ({ id: 'standard', rate: 5, freeThreshold: 0 })),
+  calculateShippingRate: vi.fn(() => 5),
   getPickupLocation: vi.fn(),
 }));
 vi.mock('@/lib/email/pendingOrders', () => ({

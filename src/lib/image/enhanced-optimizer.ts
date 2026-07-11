@@ -26,14 +26,7 @@ export interface ResponsiveImageSet {
   aspectRatio: number;
 }
 
-export interface FormatSupport {
-  avif: boolean;
-  webp: boolean;
-  jpeg: boolean;
-}
-
 export class EnhancedImageOptimizer {
-  private static formatSupport: FormatSupport | null = null;
   private static readonly QUALITY_SETTINGS = {
     // PHASE 4 TRACK B: Further optimized quality settings for LCP improvement
     // Target: -300ms to -600ms faster downloads on WordPress images
@@ -41,60 +34,6 @@ export class EnhancedImageOptimizer {
     webp: { high: 78, medium: 68, low: 58 },   // -4 from high/medium  
     jpeg: { high: 85, medium: 75, low: 68 }    // -3 from high/medium
   };
-
-  /**
-   * Detect browser image format support
-   */
-  static async detectFormatSupport(): Promise<FormatSupport> {
-    if (this.formatSupport) {
-      return this.formatSupport;
-    }
-
-    // Try to get from sessionStorage first
-    if (typeof window !== 'undefined') {
-      const cached = sessionStorage.getItem('imageFormatSupport');
-      if (cached) {
-        this.formatSupport = JSON.parse(cached);
-        return this.formatSupport!;
-      }
-    }
-
-    const support: FormatSupport = {
-      avif: false,
-      webp: false,
-      jpeg: true // Always supported
-    };
-
-    if (typeof window !== 'undefined') {
-      // Test AVIF support
-      support.avif = await this.canUseFormat('avif');
-      // Test WebP support  
-      support.webp = await this.canUseFormat('webp');
-
-      // Cache the results
-      sessionStorage.setItem('imageFormatSupport', JSON.stringify(support));
-    }
-
-    this.formatSupport = support;
-    return support;
-  }
-
-  /**
-   * Test if browser can use specific image format
-   */
-  private static canUseFormat(format: 'avif' | 'webp'): Promise<boolean> {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
-      
-      if (format === 'avif') {
-        img.src = 'data:image/avif;base64,AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAADybWV0YQAAAAAAAAAoaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAGxpYmF2aWYAAAAADnBpdG0AAAAAAAEAAAAeaWxvYwAAAABEAAABAAEAAAABAAABGgAAAB0AAAAoaWluZgAAAAAAAQAAABppbmZlAgAAAAABAABhdjAxQ29sb3IAAAAAamlwcnAAAABLaXBjbwAAABRpc3BlAAAAAAAAAAIAAAACAAAAEHBpeGkAAAAAAwgICAAAAAxhdjFDgQ0MAAAAABNjb2xybmNseAACAAIAAYAAAAAXaXBtYQAAAAAAAAABAAEEAQKDBAAAACVtZGF0EgAKCBgABogQEAwgMg8f8D///8WfhwB8+ErK42A=';
-      } else if (format === 'webp') {
-        img.src = 'data:image/webp;base64,UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=';
-      }
-    });
-  }
 
   /**
    * Generate optimized image sources for Square CDN

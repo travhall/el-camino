@@ -10,7 +10,7 @@
 // Square increments it on each successful update.
 
 import type { APIRoute } from "astro";
-import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
+import { isAdminAuthenticated, parseAdminFormData } from "@/lib/admin/auth";
 import { squareClient } from "@/lib/square/client";
 import { sendShippingConfirmation } from "@/lib/email/sender";
 import type { PendingOrderContact } from "@/lib/email/pendingOrders";
@@ -19,23 +19,17 @@ const SHIPMENT_STATES = ["PROPOSED", "RESERVED", "COMPLETED"] as const;
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   // ── Auth check ────────────────────────────────────────────────────────────
-  if (!isAuthenticated(request, cookies.get(ADMIN_COOKIE_NAME)?.value)) {
+  if (!isAdminAuthenticated(request, cookies)) {
     return redirect("/admin/login?from=/admin/orders");
   }
 
   // ── Parse form body ───────────────────────────────────────────────────────
-  let orderId: string;
-  let trackingNumber: string | undefined;
-  let carrier: string | undefined;
+  const body = await parseAdminFormData(request);
+  if (!body) return new Response("Invalid form data", { status: 400 });
 
-  try {
-    const body = await request.formData();
-    orderId = (body.get("orderId") as string)?.trim();
-    trackingNumber = (body.get("trackingNumber") as string)?.trim() || undefined;
-    carrier = (body.get("carrier") as string)?.trim() || undefined;
-  } catch {
-    return new Response("Invalid form data", { status: 400 });
-  }
+  const orderId = (body.get("orderId") as string)?.trim();
+  const trackingNumber = (body.get("trackingNumber") as string)?.trim() || undefined;
+  const carrier = (body.get("carrier") as string)?.trim() || undefined;
 
   if (!orderId) return new Response("Missing orderId", { status: 400 });
 

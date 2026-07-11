@@ -16,14 +16,12 @@ import WPTeamMember from "./blocks/WPTeamMember.astro";
 interface Props {
   content: string;
   enhanceBlocks?: boolean;
-  debug?: boolean;
   groupImages?: boolean;
 }
 
 const {
   content,
   enhanceBlocks = true,
-  debug: _debug = false,
   groupImages = true,
 } = Astro.props;
 
@@ -776,22 +774,6 @@ const parsedBlocks = parseWordPressBlocks(content);
         const currentImagePriority = isPriorityImage && imageCounter < 2;
         if (isPriorityImage) imageCounter++;
 
-        // Define which blocks need WordPress content styling (content-only blocks)
-        const needsWordPressContentStyling = [
-          "paragraph",
-          "heading",
-          "list",
-          "quote",
-          "image",
-          "gallery",
-          "columns",
-          "separator",
-          "table",
-          "embed",
-          "video",
-          "audio",
-        ].includes(block.type);
-
       switch (block.type) {
         case "product-showcase":
           // PROTECTED: Never apply WordPress content styling
@@ -918,12 +900,12 @@ const parsedBlocks = parseWordPressBlocks(content);
           );
 
         default:
-          // All other content blocks - no longer need wordpress-content wrapper
-          const wrapperClass = needsWordPressContentStyling
-            ? `wp-content-block ${blockClasses}`
-            : `wp-content-block ${blockClasses}`;
-
-          return <div class={wrapperClass} set:html={processRawWordPressHTML(block.html, { isAboveFold: block.originalIndex < 2 })} />;
+          return (
+            <div
+              class={`wp-content-block ${blockClasses}`}
+              set:html={processRawWordPressHTML(block.html, { isAboveFold: block.originalIndex < 2 })}
+            />
+          );
       }
       });
     })()

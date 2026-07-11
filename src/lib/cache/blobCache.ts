@@ -24,13 +24,6 @@ export class BlobCache<T> {
   private fallbackCache = new Map<string, CacheEntry<T>>();
   private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
 
-  // Circuit breaker state
-  private failureCount = 0;
-  private lastFailureTime = 0;
-  private circuitBreakerThreshold = 5; // Disable after 5 consecutive failures
-  private circuitBreakerTimeout = 60000; // 1 minute timeout
-  private blobOperationsDisabled = false;
-
   /**
    * Create a new blob-backed cache
    * @param name Name for logging purposes
@@ -49,7 +42,6 @@ export class BlobCache<T> {
 
     if (isBrowser) {
       // Always disable in browser - environment variables not available client-side
-      this.blobOperationsDisabled = true;
       console.info(
         `[BlobCache:${this.name}] Browser environment - using fallback cache only`
       );
@@ -62,7 +54,6 @@ export class BlobCache<T> {
       process.env.ASTRO_NODE_ENV === "development";
 
     if (this.isDevelopment) {
-      this.blobOperationsDisabled = true;
       console.info(
         `[BlobCache:${this.name}] Development mode - using fallback cache only`
       );
@@ -92,45 +83,6 @@ export class BlobCache<T> {
         error
       );
       return null;
-    }
-  }
-
-  /**
-   * Handle failures and implement circuit breaker logic
-   */
-  private handleFailure(operation: string, error: any) {
-    this.failureCount++;
-    this.lastFailureTime = Date.now();
-
-    console.warn(
-      `[BlobCache:${this.name}] ${operation} failed (${this.failureCount}/${this.circuitBreakerThreshold}):`,
-      error
-    );
-
-    // Disable blob operations after threshold reached
-    if (this.failureCount >= this.circuitBreakerThreshold) {
-      this.blobOperationsDisabled = true;
-      console.warn(
-        `[BlobCache:${this.name}] Circuit breaker activated - disabling blob operations for ${this.circuitBreakerTimeout / 1000}s`
-      );
-
-      // Re-enable after timeout
-      setTimeout(() => {
-        this.blobOperationsDisabled = false;
-        this.failureCount = 0;
-        console.info(
-          `[BlobCache:${this.name}] Circuit breaker reset - re-enabling blob operations`
-        );
-      }, this.circuitBreakerTimeout);
-    }
-  }
-
-  /**
-   * Reset failure count on successful operation
-   */
-  private handleSuccess() {
-    if (this.failureCount > 0) {
-      this.failureCount = Math.max(0, this.failureCount - 1);
     }
   }
 
@@ -379,12 +331,11 @@ export class BlobCache<T> {
           if (now - entry.timestamp <= entry.ttl) {
             // Update fallback cache with fresh data
             this.fallbackCache.set(cacheKey, entry);
-            this.handleSuccess();
             return entry.value;
           }
         }
       } catch (error) {
-        this.handleFailure("get", error);
+        console.warn(`[BlobCache:${this.name}] get failed:`, error);
         // Continue to compute function
       }
     }
@@ -419,11 +370,8 @@ export class BlobCache<T> {
               expires: Date.now() + this.ttl,
             },
           })
-          .then(() => {
-            this.handleSuccess();
-          })
           .catch((error) => {
-            this.handleFailure("set", error);
+            console.warn(`[BlobCache:${this.name}] set failed:`, error);
           });
       }
 

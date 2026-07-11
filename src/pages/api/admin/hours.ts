@@ -2,23 +2,19 @@
 // Admin-only endpoint for saving the weekly business hours schedule.
 
 import type { APIRoute } from "astro";
-import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
+import { isAdminAuthenticated, parseAdminFormData } from "@/lib/admin/auth";
 import type { ShopHoursEntry } from "@/lib/shopHours";
 import { DAYS_OF_WEEK, saveShopHours } from "@/lib/shopHours";
 
 const REDIRECT_BASE = "/admin/settings/hours";
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
-  if (!isAuthenticated(request, cookies.get(ADMIN_COOKIE_NAME)?.value)) {
+  if (!isAdminAuthenticated(request, cookies)) {
     return redirect(`/admin/login?from=${REDIRECT_BASE}`);
   }
 
-  let body: FormData;
-  try {
-    body = await request.formData();
-  } catch {
-    return new Response("Invalid form data", { status: 400 });
-  }
+  const body = await parseAdminFormData(request);
+  if (!body) return new Response("Invalid form data", { status: 400 });
 
   const entries: ShopHoursEntry[] = DAYS_OF_WEEK.map((day) => {
     const isOpen = body.get(`isOpen_${day}`) === "on";

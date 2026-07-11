@@ -400,15 +400,6 @@ export interface NavigationAccessibility {
 }
 
 /**
- * Navigation performance metrics
- */
-export interface NavigationMetrics {
-  renderTime: number;
-  cacheHitRate: number;
-  interactionLatency: number;
-}
-
-/**
  * Navigation error states
  */
 export interface NavigationError extends AppError {

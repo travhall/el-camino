@@ -10,61 +10,6 @@ export interface NavigationContext {
   categoryDepth: number;
 }
 
-export interface NavigationMetrics {
-  navigationStartTime: number;
-  prefetchStrategy: string;
-  categoryName: string;
-  fromPath: string;
-  toPath: string;
-}
-
-/**
- * Determine prefetch strategy based on navigation context and category importance
- */
-export function getPrefetchStrategy(
-  categoryName: string,
-  context: NavigationContext
-): string {
-  const highPriorityPages = [
-    "The Shop",
-    "News",
-    "Decks",
-    "Apparel",
-    "Skateboards",
-  ];
-
-  if (highPriorityPages.includes(categoryName)) return "viewport";
-  if (context.isProductCategory) return "hover";
-  if (context.isMobile) return "tap";
-  if (context.isHomepage) return "viewport";
-  return "hover";
-}
-
-/**
- * Track navigation performance for optimization insights
- */
-export function trackNavigationPerformance(metrics: NavigationMetrics): void {
-  if (typeof performance !== "undefined") {
-    const navigationDuration = performance.now() - metrics.navigationStartTime;
-
-    if (import.meta.env.DEV) {
-      console.log(`[Navigation Performance] ${metrics.categoryName}:`, {
-        duration: `${navigationDuration.toFixed(2)}ms`,
-        strategy: metrics.prefetchStrategy,
-        path: `${metrics.fromPath} → ${metrics.toPath}`,
-      });
-    }
-
-    if (navigationDuration > 500) {
-      console.warn("[Navigation] Slow navigation detected:", {
-        duration: navigationDuration,
-        category: metrics.categoryName,
-        strategy: metrics.prefetchStrategy,
-      });
-    }
-  }
-}
-
 /**
  * Get navigation context from current page state
  */

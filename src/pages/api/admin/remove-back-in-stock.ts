@@ -7,12 +7,12 @@
 // JSON callers receive the removed subscriber list so the client can undo.
 
 import type { APIRoute } from "astro";
-import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
+import { isAdminAuthenticated, parseAdminFormData } from "@/lib/admin/auth";
 import { removeAllSubscriptionsForProduct } from "@/lib/backInStock";
 
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
-  if (!isAuthenticated(request, cookies.get(ADMIN_COOKIE_NAME)?.value)) {
+  if (!isAdminAuthenticated(request, cookies)) {
     const isJson = request.headers.get("accept")?.includes("application/json");
     if (isJson) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     return redirect("/admin/login?from=/admin/notifications/back-in-stock");
@@ -20,13 +20,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   const isJson = request.headers.get("accept")?.includes("application/json");
 
-  let productId: string;
-  try {
-    const body = await request.formData();
-    productId = (body.get("productId") as string)?.trim();
-  } catch {
-    return new Response("Invalid form data", { status: 400 });
-  }
+  const body = await parseAdminFormData(request);
+  if (!body) return new Response("Invalid form data", { status: 400 });
+  const productId = (body.get("productId") as string)?.trim();
 
   if (!productId) return new Response("Missing productId", { status: 400 });
 

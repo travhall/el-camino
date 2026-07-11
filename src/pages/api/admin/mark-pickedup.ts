@@ -9,23 +9,19 @@
 // Square increments it on each successful update.
 
 import type { APIRoute } from "astro";
-import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
+import { isAdminAuthenticated, parseAdminFormData } from "@/lib/admin/auth";
 import { squareClient } from "@/lib/square/client";
 
 const PICKUP_STATES = ["PROPOSED", "RESERVED", "PREPARED", "COMPLETED"] as const;
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
-  if (!isAuthenticated(request, cookies.get(ADMIN_COOKIE_NAME)?.value)) {
+  if (!isAdminAuthenticated(request, cookies)) {
     return redirect("/admin/login?from=/admin/orders/pickups");
   }
 
-  let orderId: string;
-  try {
-    const body = await request.formData();
-    orderId = (body.get("orderId") as string)?.trim();
-  } catch {
-    return new Response("Invalid form data", { status: 400 });
-  }
+  const body = await parseAdminFormData(request);
+  if (!body) return new Response("Invalid form data", { status: 400 });
+  const orderId = (body.get("orderId") as string)?.trim();
 
   if (!orderId) return new Response("Missing orderId", { status: 400 });
 

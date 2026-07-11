@@ -3,12 +3,12 @@
 // Called by the client-side undo toast when an admin changes their mind.
 
 import type { APIRoute } from "astro";
-import { ADMIN_COOKIE_NAME, isAuthenticated } from "@/lib/admin/auth";
+import { isAdminAuthenticated } from "@/lib/admin/auth";
 import { addSubscription, type BisSubscription } from "@/lib/backInStock";
 
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  if (!isAuthenticated(request, cookies.get(ADMIN_COOKIE_NAME)?.value)) {
+  if (!isAdminAuthenticated(request, cookies)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 

@@ -6,7 +6,6 @@
  */
 
 import { performanceManager } from "../lib/performance/PerformanceManager";
-import { EnhancedImageOptimizer } from "../lib/image/enhanced-optimizer";
 import { initMobileOptimization } from "../lib/performance/mobileOptimization";
 
 // Initialize Performance Manager
@@ -43,11 +42,6 @@ try {
   }, 10000);
 } catch (error) {
   console.warn("[Layout] Performance monitoring failed to load:", error);
-}
-
-// Critical performance optimizations — run immediately
-if ("HTMLCanvasElement" in window && !sessionStorage.getItem("imageFormatSupport")) {
-  EnhancedImageOptimizer.detectFormatSupport();
 }
 
 if (window.innerWidth <= 1024) {
