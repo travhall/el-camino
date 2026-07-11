@@ -14,18 +14,6 @@
 export const INITIAL_PAGE_SIZE = 24;
 
 /**
- * Products to load per "Load More" action
- * Smaller batch for progressive loading
- */
-export const LOAD_MORE_SIZE = 12;
-
-/**
- * Maximum products to fetch from Square API at once
- * Safety limit to prevent memory issues
- */
-export const MAX_API_FETCH_SIZE = 200;
-
-/**
  * Threshold for enabling infinite scroll vs "Load More" button
  * Below this number, show all products immediately
  * Above this number, enable progressive loading

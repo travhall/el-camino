@@ -318,49 +318,6 @@ export class EnhancedImageOptimizer {
     };
   }
 
-  /**
-   * Smart image loading strategy based on viewport and connection
-   */
-  static determineLoadingStrategy(
-    index: number,
-    options: {
-      viewport?: { width: number; height: number };
-      connection?: string;
-      priority?: boolean;
-    } = {}
-  ): {
-    loading: 'eager' | 'lazy';
-    fetchpriority?: 'high' | 'low';
-    preload: boolean;
-  } {
-    const { viewport, connection, priority } = options;
-    const isMobile = viewport ? viewport.width < 768 : false;
-    const isSlowConnection = connection === 'slow-2g' || connection === '2g';
-    
-    // Always load first few images eagerly
-    if (index < 2 || priority) {
-      return {
-        loading: 'eager',
-        fetchpriority: 'high',
-        preload: true
-      };
-    }
-    
-    // Load more images eagerly on larger screens with good connections
-    if (!isMobile && !isSlowConnection && index < 6) {
-      return {
-        loading: 'eager',
-        fetchpriority: 'low',
-        preload: false
-      };
-    }
-    
-    // Default to lazy loading
-    return {
-      loading: 'lazy',
-      preload: false
-    };
-  }
 }
 
 export default EnhancedImageOptimizer;

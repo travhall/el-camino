@@ -69,29 +69,6 @@ export class PDPController {
     }
   }
 
-  private _updateUIOnly(variation: any): void {
-    if (!variation) return;
-
-    // Use UI manager for all display updates
-    const availabilityInfo = cart.getProductAvailability(
-      this.productData.productId,
-      variation.variationId,
-      variation.quantity || 0
-    );
-
-    this.uiManager.updateAvailabilityDisplay(availabilityInfo, variation.saleInfo);
-    this.uiManager.updatePriceDisplay(variation.price, {
-      unit: variation.unit,
-      saleInfo: variation.saleInfo
-    });
-
-    if (variation.image) {
-      this.uiManager.updateProductImage(variation.image);
-    }
-
-    this.updateButtonProductData(variation);
-  }
-
   private updateProductUI(variation: any): void {
     if (!variation) return;
 

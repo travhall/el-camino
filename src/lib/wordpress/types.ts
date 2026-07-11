@@ -465,62 +465,6 @@ export function formatPublishDate(dateString: string): {
   }
 }
 
-/**
- * Helper functions for tag handling
- */
-
-/**
- * Check if post has tags
- */
-export function hasTagsAvailable(post: WordPressPost): boolean {
-  const embeddedData = extractEmbeddedData(post);
-  return embeddedData.tags.length > 0;
-}
-
-/**
- * Get formatted tag list for display
- */
-export function getFormattedTags(tags: WordPressTerm[]): Array<{
-  name: string;
-  slug: string;
-  url: string;
-}> {
-  return tags.map((tag) => ({
-    name: tag.name,
-    slug: tag.slug,
-    url: `/news/tag/${tag.slug}`, // Future tag archive URL
-  }));
-}
-
-/**
- * Get most popular tags from a collection of posts
- */
-export function getPopularTags(
-  posts: WordPressPost[],
-  limit: number = 10
-): Array<{
-  tag: WordPressTerm;
-  count: number;
-}> {
-  const tagCounts = new Map<string, { tag: WordPressTerm; count: number }>();
-
-  posts.forEach((post) => {
-    const embeddedData = extractEmbeddedData(post);
-    embeddedData.tags.forEach((tag) => {
-      const existing = tagCounts.get(tag.slug);
-      if (existing) {
-        existing.count++;
-      } else {
-        tagCounts.set(tag.slug, { tag, count: 1 });
-      }
-    });
-  });
-
-  return Array.from(tagCounts.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit);
-}
-
 export interface NewsFilterOptions {
   categories: Array<{ name: string; slug: string; count: number }>;
   tags: Array<{ name: string; slug: string; count: number }>;

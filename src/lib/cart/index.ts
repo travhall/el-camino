@@ -30,23 +30,7 @@ const DOM_READY_DELAY = 50;
 //   squareVersion: "2024-02-28",
 // });
 
-interface ICartManager {
-  getItems(): CartItem[];
-  getTotal(): number;
-  getItemCount(): number;
-  getState(): CartState;
-  addItem(item: CartItem): Promise<{ success: boolean; message?: string }>;
-  removeItem(id: string): void;
-  updateQuantity(
-    id: string,
-    quantity: number
-  ): Promise<{ success: boolean; message?: string }>;
-  validateCart(): Promise<{ success: boolean; message?: string }>;
-  clear(): void;
-  forceRefresh(): void;
-}
-
-class CartManager implements ICartManager {
+class CartManager {
   private static instance: CartManager;
   private items: Map<string, CartItem>;
   private storage: Storage | null;

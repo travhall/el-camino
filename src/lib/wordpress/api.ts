@@ -496,47 +496,6 @@ export async function getAllTags(): Promise<
   }
 }
 
-// =============================================================================
-// CACHE MANAGEMENT (Using standardized patterns)
-// =============================================================================
-
-/**
- * Clear WordPress cache using standard cache methods
- */
-export function clearWordPressCache(): void {
-  wordpressCache.clear();
-  console.log("[WordPress] Cache cleared");
-}
-
-/**
- * Clear specific WordPress cache item
- */
-export function clearWordPressCacheItem(key: string): void {
-  wordpressCache.delete(key);
-  console.log(`[WordPress] Cache item cleared: ${key}`);
-}
-
-/**
- * Get WordPress cache statistics
- */
-export function getWordPressCacheStats(): {
-  cacheSize: number;
-  cacheName: string;
-} {
-  // Note: This would require adding a getStats method to the Cache class
-  return {
-    cacheSize: Object.keys((wordpressCache as any).cache || {}).length,
-    cacheName: "wordpress",
-  };
-}
-
-/**
- * Prune expired WordPress cache entries
- */
-export function pruneWordPressCache(): number {
-  return wordpressCache.prune();
-}
-
 /**
  * Get all categories with post counts
  */
