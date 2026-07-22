@@ -70,14 +70,13 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         </div>
 
         <!-- Right column: Order Summary + Checkout (always visible on desktop) -->
-        <div
-          class="flex md:col-span-1 md:sticky md:top-18 flex-col self-start"
-        >
+        <div class="flex md:col-span-1 md:sticky md:top-18 flex-col self-start">
           <!-- Cart items list: always in DOM, rendered by updateDisplay() -->
           <div
             id="cart-items-list"
-            class="grid gap-1 md:max-h-[50vh] md:overflow-y-auto md:pr-1"
-          ></div>
+            class="grid gap-1 md:border-b-4 md:border-(--border-secondary) md:pr-1"
+          >
+          </div>
 
           <!-- Order Summary -->
           <div class="hidden md:block bg-(--surface-secondary) p-4">
@@ -524,9 +523,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         let isValid = true;
         shippingRequiredIds.forEach((id) => {
           const input = form.querySelector(`#${id}`) as
-            | HTMLInputElement
-            | HTMLSelectElement
-            | null;
+            HTMLInputElement | HTMLSelectElement | null;
           if (!input || !input.value.trim()) {
             isValid = false;
           }
