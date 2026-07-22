@@ -18,7 +18,6 @@ const {
   mockCacheGet,
   mockCacheSet,
   mockCacheGetOrCompute,
-  mockCachePrune,
   mockProcessSquareError,
   mockHandleError,
   mockLogError,
@@ -28,7 +27,6 @@ const {
   mockCacheGet:                 vi.fn(),
   mockCacheSet:                 vi.fn(),
   mockCacheGetOrCompute:        vi.fn(),
-  mockCachePrune:               vi.fn(),
   mockProcessSquareError:       vi.fn(),
   mockHandleError:              vi.fn(),
   mockLogError:                 vi.fn(),
@@ -48,7 +46,6 @@ vi.mock('../cacheUtils', () => ({
     get:          mockCacheGet,
     set:          mockCacheSet,
     getOrCompute: mockCacheGetOrCompute,
-    prune:        mockCachePrune,
   },
 }));
 
@@ -75,7 +72,6 @@ import {
   isItemInStock,
   checkBulkInventory,
   getProductStockStatus,
-  pruneInventoryCache,
 } from '../inventory';
 // Real retry client (not mocked) — checkBulkInventory now flows through the
 // shared inventory core, which guards the batch call with it. Reset between
@@ -424,15 +420,3 @@ describe('getProductStockStatus', () => {
   });
 });
 
-describe('pruneInventoryCache', () => {
-  it('delegates to inventoryCache.prune() and returns its count', () => {
-    mockCachePrune.mockReturnValue(5);
-    expect(pruneInventoryCache()).toBe(5);
-    expect(mockCachePrune).toHaveBeenCalledTimes(1);
-  });
-
-  it('returns 0 when nothing was pruned', () => {
-    mockCachePrune.mockReturnValue(0);
-    expect(pruneInventoryCache()).toBe(0);
-  });
-});

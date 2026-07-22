@@ -554,12 +554,3 @@ export async function fetchProduct(id: string): Promise<Product | null> {
   );
 }
 
-/**
- * Clean API state and caches
- */
-export function cleanupClientState(): void {
-  // Reset retry client's circuit breaker state
-  apiRetryClient.reset();
-  // Clear request deduplication cache
-  requestDeduplicator.clear();
-}

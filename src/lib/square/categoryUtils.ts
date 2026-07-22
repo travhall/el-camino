@@ -252,30 +252,6 @@ export async function fetchCategoryHierarchyWithProducts(): Promise<
 }
 
 /**
- * Clear category product count cache
- * Call when inventory changes significantly
- */
-export function clearCategoryProductCache(): void {
-  // Clear all category-related cache entries
-  const cache = categoryCache as any;
-  if (cache.cache) {
-    const keysToDelete = [];
-    for (const key of cache.cache.keys()) {
-      if (
-        key.includes("category-has-products") ||
-        key.includes("batch-category-check") ||
-        key === "hierarchy-with-products"
-      ) {
-        keysToDelete.push(key);
-      }
-    }
-    keysToDelete.forEach((key) => cache.cache.delete(key));
-  }
-
-  // console.log('[CategoryFilter] Cleared category product cache');
-}
-
-/**
  * Get categories for sidebar with products and optimal sorting
  * Includes fallback sorting strategies
  */

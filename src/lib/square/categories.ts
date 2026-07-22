@@ -371,24 +371,3 @@ export function clearCategoryCache(): void {
   productCache.clear();
 }
 
-/**
- * Fetch ALL products from category, then filter and paginate
- */
-async function _fetchAllProductsFromCategory(
-  categoryId: string
-): Promise<any[]> {
-  const allProducts: any[] = [];
-  let cursor: string | undefined = undefined;
-
-  do {
-    const batch = await fetchProductsByCategory(categoryId, {
-      limit: 100,
-      cursor,
-    });
-
-    allProducts.push(...batch.products);
-    cursor = batch.nextCursor;
-  } while (cursor);
-
-  return allProducts;
-}
