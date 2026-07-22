@@ -116,16 +116,14 @@ export default defineConfig({
     // (via noExternal) causes "exports is not defined" at runtime.
 
     // Pre-declare deps that Vite discovers lazily during the first page load.
-    // Without this, Vite triggers two mid-load reloads on every fresh local
-    // dev session: one when it finds the Astro transitions virtual modules,
-    // and a second when it finds web-vitals.
+    // Without this, Vite triggers a mid-load reload on every fresh local
+    // dev session when it finds the Astro transitions virtual modules.
     optimizeDeps: {
       include: [
         "astro/virtual-modules/transitions-router.js",
         "astro/virtual-modules/transitions-types.js",
         "astro/virtual-modules/transitions-events.js",
         "astro/virtual-modules/transitions-swap-functions.js",
-        "web-vitals",
       ],
     },
   },

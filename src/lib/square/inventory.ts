@@ -140,10 +140,3 @@ export async function getProductStockStatus(product: Product): Promise<{
   return result;
 }
 
-/**
- * Clear inventory cache entries older than the TTL
- * Call this periodically to prevent unbounded cache growth
- */
-export function pruneInventoryCache(): number {
-  return inventoryCache.prune();
-}
