@@ -26,13 +26,13 @@ interface TemplatePayload {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatMoney(amount: bigint | number | undefined | null): string {
+export function formatMoney(amount: bigint | number | undefined | null): string {
   if (amount == null) return "$0.00";
   const cents = typeof amount === "bigint" ? Number(amount) : amount;
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function shortOrderId(orderId: string): string {
+export function shortOrderId(orderId: string): string {
   // Show last 8 chars of the Square order ID as a human-friendly reference
   return orderId.slice(-8).toUpperCase();
 }
@@ -41,7 +41,7 @@ function shortOrderId(orderId: string): string {
  * Format a pickup ISO timestamp for display in Central Time.
  * Output: "Thu, Apr 10 at 3:00 PM CDT"
  */
-function formatPickupTime(isoString: string): string {
+export function formatPickupTime(isoString: string): string {
   const date = new Date(isoString);
   return date.toLocaleString("en-US", {
     timeZone: "America/Chicago",
