@@ -29,6 +29,7 @@ import {
   filterCache,
 } from "@/lib/cache/blobCache";
 import { getPendingOrder, deletePendingOrder } from "@/lib/email/pendingOrders";
+import { storeFailedEmail } from "@/lib/email/failedEmails";
 import {
   sendOrderConfirmation,
   sendPickupNotification,
@@ -199,21 +200,26 @@ export const POST: APIRoute = async ({ request }) => {
         try {
           await sendOrderConfirmation({ order, contact });
           console.log(`[Webhook/Square] Confirmation email sent to ${contact.email}`);
+
+          // Only send secondary notifications if the primary succeeded
+          if (contact.fulfillmentMethod === "pickup") {
+            await sendPickupNotification({ order, contact });
+          } else if (contact.fulfillmentMethod === "shipping") {
+            await sendShippingOrderNotification({ order, contact });
+          }
+
+          // Delete blob — if Square retries, second delivery finds no contact and skips (idempotency)
+          await deletePendingOrder(orderId);
+
+          console.log(`[Webhook/Square] All emails sent for order: ${orderId}`);
         } catch (emailErr) {
-          console.error(`[Webhook/Square] sendOrderConfirmation FAILED:`, emailErr);
-          throw emailErr; // re-throw so the outer catch logs it and we know
+          console.error(`[Webhook/Square] Email delivery failed for order ${orderId}:`, emailErr);
+          // Persist for admin retry — do NOT re-throw (would mask the 200 response)
+          await storeFailedEmail(orderId, order, contact, emailErr).catch((blobErr) => {
+            console.error(`[Webhook/Square] Failed to store retry record:`, blobErr);
+          });
+          // Pending order blob intentionally NOT deleted — idempotency guard stays intact
         }
-
-        if (contact.fulfillmentMethod === "pickup") {
-          await sendPickupNotification({ order, contact });
-        } else if (contact.fulfillmentMethod === "shipping") {
-          await sendShippingOrderNotification({ order, contact });
-        }
-
-        // Delete blob — if Square retries, second delivery finds no contact and skips (idempotency)
-        await deletePendingOrder(orderId);
-
-        console.log(`[Webhook/Square] All emails sent for order: ${orderId}`);
         break;
       }
 
