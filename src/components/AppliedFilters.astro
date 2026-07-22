@@ -256,7 +256,10 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
       btn.dataset.removeBrand = brand;
       btn.className = PILL_CLASS;
       btn.title = `Remove ${brand} filter`;
-      btn.innerHTML = `<span>${brand}</span>${X_ICON}`;
+      const brandSpan = document.createElement("span");
+      brandSpan.textContent = brand;
+      btn.appendChild(brandSpan);
+      btn.insertAdjacentHTML("beforeend", X_ICON);
       pillsDiv.appendChild(btn);
     });
 
@@ -269,7 +272,10 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
       btn.className = PILL_CLASS;
       btn.title = `Remove ${name} filter`;
       btn.setAttribute("aria-label", `Remove ${name} filter`);
-      btn.innerHTML = `<span>${name}</span>${X_ICON}`;
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = name;
+      btn.appendChild(nameSpan);
+      btn.insertAdjacentHTML("beforeend", X_ICON);
       pillsDiv.appendChild(btn);
     });
 
