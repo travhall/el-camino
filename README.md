@@ -2,10 +2,10 @@
 
 A modern e-commerce platform built with Astro and Square integration, featuring dynamic product catalogs, cart management, and seamless checkout experiences.
 
-![Astro](https://img.shields.io/badge/Astro-6.1.2-orange?logo=astro&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-6.0.2-blue?logo=typescript&logoColor=white)
-![Square](https://img.shields.io/badge/Square-44.0.1-success?logo=square&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.2.2-blue?logo=tailwind-css&logoColor=white)
+![Astro](https://img.shields.io/badge/Astro-7.1.3-orange?logo=astro&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6.0.3-blue?logo=typescript&logoColor=white)
+![Square](https://img.shields.io/badge/Square-44.1.0-success?logo=square&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3.0-blue?logo=tailwind-css&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Production_Ready-brightgreen)
 
 ## 🛍️ Features
@@ -31,7 +31,7 @@ A modern e-commerce platform built with Astro and Square integration, featuring 
 - **Type-Safe Development** - TypeScript throughout, with `astro check` passing (zero compiler errors); see [docs/TYPE_SAFETY_NOTES.md](docs/TYPE_SAFETY_NOTES.md) for known `any`/`unknown` escape hatches, mostly around Square SDK response shapes
 - **Resilient Architecture** - Circuit breaker patterns and error recovery
 - **Netlify Blobs Caching** - Distributed caching with Netlify Blobs for serverless optimization
-- **Performance Monitoring** - Built-in Core Web Vitals tracking and regression testing
+- **Core Web Vitals Dashboard** - CrUX field data via Google Chrome UX Report API
 - **Mobile-First Design** - Responsive interface with Tailwind CSS v4
 - **View Transitions** - SPA-like navigation with View Transitions API
 - **Image Optimization** - Enhanced image loading with format detection (AVIF, WebP) and placeholders
@@ -84,7 +84,10 @@ pnpm build
 # Preview production build locally
 pnpm preview-local
 
-# Run unit tests
+# Run unit tests (exits after run)
+pnpm test:run
+
+# Run unit tests in watch mode (interactive dev)
 pnpm test
 
 # Run E2E tests
@@ -105,8 +108,7 @@ src/
 │   ├── BackInStock.astro       # Back-in-stock notification form
 │   ├── wordpress/              # WordPress block renderers
 │   └── admin/                  # Admin dashboard components
-│       ├── AdminNav.astro      # Admin navigation
-│       └── performance/        # Performance monitoring UI
+│       └── AdminNav.astro      # Admin navigation
 ├── layouts/            # Page layouts
 │   ├── Layout.astro            # Main layout with SEO, fonts, device detection
 │   └── AdminLayout.astro       # Admin dashboard layout
@@ -136,9 +138,6 @@ src/
 │   │   └── block-config.ts    # Block renderer configuration
 │   ├── cache/         # Netlify Blobs caching layer
 │   │   └── blobCache.ts       # Distributed cache implementation
-│   ├── performance/   # Performance monitoring
-│   │   ├── PerformanceManager.ts      # Core Web Vitals tracking
-│   │   └── BudgetManager.ts           # Resource budget tracking
 │   ├── email/         # Email system with Resend
 │   │   ├── sender.ts          # Email sending functions
 │   │   └── templates.ts       # Email HTML templates
@@ -150,8 +149,8 @@ src/
 │   ├── api/           # Server endpoints
 │   │   ├── list-catalog.ts         # Product catalog
 │   │   ├── create-checkout.ts      # Square checkout
-│   │   ├── cart-actions.ts         # Cart operations
-│   │   ├── cart-inventory.ts       # Bulk inventory validation
+│   │   ├── batch-inventory.ts      # Bulk inventory validation (GET)
+│   │   ├── cart-inventory.ts       # Cart inventory validation (POST)
 │   │   ├── check-inventory.ts      # Single item stock check
 │   │   ├── get-categories.ts       # Category listing
 │   │   ├── load-more-products.ts   # Pagination
@@ -159,10 +158,18 @@ src/
 │   │   ├── sale-info.ts            # Sale pricing
 │   │   ├── back-in-stock.ts        # Back-in-stock subscriptions
 │   │   ├── admin/                  # Admin API endpoints
-│   │   │   ├── mark-shipped.ts     # Mark order as shipped
-│   │   │   ├── mark-pickedup.ts    # Mark order as picked up
-│   │   │   ├── send-back-in-stock.ts # Send BIS notifications
-│   │   │   └── dismiss-order.ts    # Dismiss order notifications
+│   │   │   ├── mark-shipped.ts          # Mark order as shipped
+│   │   │   ├── mark-pickedup.ts         # Mark order as picked up
+│   │   │   ├── send-back-in-stock.ts    # Send BIS notifications
+│   │   │   ├── send-pickup-reminder.ts  # Send pickup reminder email
+│   │   │   ├── dismiss-order.ts         # Dismiss order notifications
+│   │   │   ├── shop-visibility.ts       # Shop open/close toggle
+│   │   │   ├── banner.ts                # Announcement banner
+│   │   │   ├── shop-status.ts           # Shop status message
+│   │   │   ├── contact.ts               # Contact info settings
+│   │   │   ├── hours.ts                 # Store hours settings
+│   │   │   ├── navigation.ts            # Navigation settings
+│   │   │   └── social.ts                # Social links settings
 │   │   └── webhooks/               # Webhook handlers
 │   ├── product/       # Dynamic product pages
 │   │   └── [id].astro
@@ -183,9 +190,18 @@ src/
 │   │   │   ├── styleguide.astro  # Design system reference
 │   │   │   ├── event-reference.astro # Analytics events
 │   │   │   └── wordpress-demo.astro # WP block demo
-│   │   └── performance/          # Performance monitoring
+│   │   ├── settings/             # Store settings (Netlify Blobs-backed)
+│   │   │   ├── contact.astro     # Contact info
+│   │   │   ├── hours.astro       # Store hours
+│   │   │   ├── navigation.astro  # Navigation links
+│   │   │   └── social.astro      # Social links
+│   │   ├── notifications/        # Notification management (expanded)
+│   │   │   ├── back-in-stock.astro # BIS subscriber management
+│   │   │   ├── banner.astro      # Announcement banner
+│   │   │   └── shop-status.astro # Shop status message
+│   │   └── performance/          # Core Web Vitals dashboard (CrUX API)
 │   │       ├── index.astro       # Performance overview
-│   │       ├── core-vitals.astro # Core Web Vitals dashboard
+│   │       ├── core-vitals.astro # Core Web Vitals (field data)
 │   │       ├── business-impact.astro # Business impact analysis
 │   │       ├── competitive.astro # Competitive analysis
 │   │       └── resources.astro   # Resource performance
@@ -198,7 +214,7 @@ src/
 
 ## 🔧 Key Integrations
 
-### Square Commerce (v44.0.1)
+### Square Commerce (v44.1.0)
 
 - **Catalog Management** - Automatic product sync with Square POS
 - **Inventory Tracking** - Real-time stock levels with bulk validation
@@ -247,8 +263,8 @@ src/
 | ------------------------------- | ------ | -------------------------- |
 | `/api/list-catalog`             | GET    | Fetch product catalog      |
 | `/api/create-checkout`          | POST   | Initialize Square checkout |
-| `/api/cart-actions`             | POST   | Cart operations            |
-| `/api/cart-inventory`           | POST   | Bulk inventory validation  |
+| `/api/batch-inventory`          | GET    | Bulk inventory validation  |
+| `/api/cart-inventory`           | POST   | Cart inventory validation  |
 | `/api/check-inventory`          | GET    | Single item stock check    |
 | `/api/get-categories`           | GET    | Product categories         |
 | `/api/load-more-products`       | GET    | Paginated product loading  |
@@ -259,11 +275,19 @@ src/
 | `/api/resolve-product`          | GET    | Product resolution         |
 | `/api/warmup`                   | GET    | Cache warming endpoint     |
 | `/api/back-in-stock`            | POST   | Back-in-stock subscription |
-| `/api/admin/mark-shipped`       | POST   | Mark order as shipped      |
-| `/api/admin/mark-pickedup`      | POST   | Mark order as picked up    |
-| `/api/admin/send-back-in-stock` | POST   | Send BIS notifications     |
-| `/api/admin/dismiss-order`      | POST   | Dismiss order notification |
-| `/api/crux-data`                | GET    | Core Web Vitals field data |
+| `/api/admin/mark-shipped`            | POST   | Mark order as shipped         |
+| `/api/admin/mark-pickedup`           | POST   | Mark order as picked up       |
+| `/api/admin/send-back-in-stock`      | POST   | Send BIS notifications        |
+| `/api/admin/send-pickup-reminder`    | POST   | Send pickup reminder email    |
+| `/api/admin/dismiss-order`           | POST   | Dismiss order notification    |
+| `/api/admin/shop-visibility`         | POST   | Toggle shop open/closed       |
+| `/api/admin/banner`                  | POST   | Update announcement banner    |
+| `/api/admin/shop-status`             | POST   | Update shop status message    |
+| `/api/admin/contact`                 | POST   | Update contact info           |
+| `/api/admin/hours`                   | POST   | Update store hours            |
+| `/api/admin/navigation`              | POST   | Update navigation links       |
+| `/api/admin/social`                  | POST   | Update social links           |
+| `/api/crux-data`                     | GET    | Core Web Vitals field data    |
 
 ## 📱 Pages
 
@@ -280,11 +304,17 @@ src/
 - **`/admin/orders/pickups`** - Pick up order management
 - **`/admin/orders/archive`** - Order history and archive
 - **`/admin/notifications/back-in-stock`** - Back-in-stock subscriber management
+- **`/admin/notifications/banner`** - Announcement banner management
+- **`/admin/notifications/shop-status`** - Shop status message
+- **`/admin/settings/contact`** - Contact info settings
+- **`/admin/settings/hours`** - Store hours settings
+- **`/admin/settings/navigation`** - Navigation link settings
+- **`/admin/settings/social`** - Social media link settings
 - **`/admin/content/sku-reference`** - Product SKU reference for content creators
 - **`/admin/content/styleguide`** - Design system and component reference
 - **`/admin/content/event-reference`** - Analytics events and tracking guide
 - **`/admin/content/wordpress-demo`** - WordPress block component demo
-- **`/admin/performance`** - Performance monitoring dashboard with Core Web Vitals
+- **`/admin/performance`** - Core Web Vitals dashboard (CrUX field data)
 
 ## 🎨 Styling
 
@@ -299,8 +329,8 @@ Built with Tailwind CSS v4 featuring:
 ## 🧪 Testing
 
 ```bash
-# Run unit tests with Vitest
-pnpm test
+# Run unit tests with Vitest (exits after run)
+pnpm test:run
 
 # Run E2E tests with Playwright
 pnpm test:e2e
@@ -333,7 +363,7 @@ pnpm preview-local
 - **Publish Directory**: `dist`
 - **Node Version**: 20.x
 - **Package Manager**: pnpm 10.33.0
-- **Adapter**: @astrojs/netlify v7.0.5 with SSR
+- **Adapter**: @astrojs/netlify v8.1.2 with SSR
 - **Image CDN**: Enabled with AVIF/WebP conversion
 - **Caching**: Netlify Blobs for distributed state management
 
@@ -354,7 +384,7 @@ pnpm preview-local
 - **Bundle Splitting** - Optimal JavaScript delivery with code splitting
 - **Circuit Breakers** - API resilience and failure recovery
 - **Request Deduplication** - Eliminates redundant API calls
-- **Core Web Vitals Monitoring** - Real-time performance tracking with automated alerts
+- **Core Web Vitals Dashboard** - CrUX field data via Google Chrome UX Report API
 - **Prefetching** - Viewport-based prefetching with Speculation Rules API
 - **View Transitions** - SPA-like navigation for improved perceived performance
 - **Lazy Loading** - Deferred Square script loading and conditional component loading
@@ -366,10 +396,9 @@ Recent comprehensive performance optimization strategy implementation:
 
 - **Netlify Blobs Migration** - Solved serverless function memory isolation with distributed caching
 - **Enhanced Image Loading** - Format detection (AVIF, WebP), shimmer placeholders, and responsive images
-- **Core Web Vitals Tracking** - Built-in performance monitoring with regression testing
+- **Core Web Vitals Dashboard** - CrUX field data for real-user performance visibility
 - **Mobile Optimizations** - Device-specific component loading and mobile-first design
 - **Cache Warming** - Automated cache warming via GitHub Actions
-- **Performance Budgets** - Resource budget tracking and alerts
 
 ### Performance Metrics
 
@@ -385,7 +414,7 @@ Recent comprehensive performance optimization strategy implementation:
 
 ### Enterprise Patterns
 
-- **Singleton Pattern** - CartManager and PerformanceManager for centralized state
+- **Singleton Pattern** - CartManager for centralized cart state
 - **Circuit Breaker Pattern** - API resilience and failure recovery
 - **Request Deduplication** - Prevents duplicate API calls
 - **Observer Pattern** - Event-driven cart and performance monitoring
@@ -408,7 +437,7 @@ Recent comprehensive performance optimization strategy implementation:
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
 3. Follow TypeScript strict mode
-4. Ensure all tests pass (`pnpm check && pnpm test`)
+4. Ensure all tests pass (`pnpm check && pnpm test:run`)
 5. Submit pull request
 
 ### Development Guidelines
@@ -421,46 +450,40 @@ Recent comprehensive performance optimization strategy implementation:
 
 ## 📝 Documentation
 
-Additional documentation available:
+Additional documentation:
 
-- [Square Integration Guide](docs/square-integration.md)
-- [Product Variations Implementation](docs/product-variations.md)
-- [Inventory Management](docs/inventory-management.md)
-- [Cart System Architecture](docs/cart-system.md)
-- [Performance Optimization](docs/performance.md)
+- [Type Safety Notes](docs/TYPE_SAFETY_NOTES.md) — documents known `any`/`unknown` escape hatches and the reasoning behind them
 
 ## 🔧 Dependencies
 
 ### Core Framework
 
-- **Astro 6.1.2** - Modern web framework with SSR
-- **TypeScript 6.0.2** - Type safety and developer experience
-- **Tailwind CSS 4.2.2** - Utility-first CSS framework v4
+- **Astro 7.1.3** - Modern web framework with SSR
+- **TypeScript 6.0.3** - Type safety and developer experience
+- **Tailwind CSS 4.3.0** - Utility-first CSS framework v4
 
 ### E-commerce Integration
 
-- **Square SDK 44.0.1** - Payment processing and inventory
-- **Square Legacy Support** - ES module compatibility
-- **@netlify/blobs 10.7.4** - Distributed caching layer
+- **Square SDK 44.1.0** (`square-legacy` alias) - Payment processing and inventory
+- **@netlify/blobs** - Distributed caching layer
 
 ### Email & Notifications
 
-- **Resend 6.10.0** - Email delivery service
+- **Resend** - Email delivery service
 
 ### Performance & Optimization
 
-- **@astrojs/netlify 7.0.5** - Deployment adapter with SSR
-- **@astrojs/sitemap 3.7.2** - SEO sitemap generation
-- **astro-icon 1.1.5** - Optimized icon system
-- **astro-seo-metadata 0.6.0** - SEO optimization
-- **sharp 0.34.5** - Image processing and optimization
-- **web-vitals 5.2.0** - Core Web Vitals monitoring
+- **@astrojs/netlify 8.1.2** - Deployment adapter with SSR
+- **@astrojs/sitemap** - SEO sitemap generation with dynamic product/category/news pages
+- **astro-icon** - Optimized icon system
+- **sharp** - Image processing and optimization
 
 ### Development Tools
 
-- **@astrojs/node 10.0.4** - Local development adapter
-- **Vitest 4.1.2** - Unit testing framework with 80% coverage
-- **Playwright 1.58.2** - E2E testing across browsers
+- **@astrojs/node** - Local development adapter (preview mode)
+- **Vitest** - Unit testing framework with 80% coverage threshold
+- **Playwright** - E2E testing across browsers
+- **Husky** - Pre-commit hooks (`pnpm check && pnpm test:run`)
 - **pnpm 10.33.0** - Fast, disk space efficient package manager
 
 ## 📈 Roadmap
@@ -518,7 +541,7 @@ For issues and questions:
 
 ### Recent Achievements
 
-- ✅ Successful Square SDK v44.0.1 migration using legacy approach
+- ✅ Square SDK v44.1.0 integration via `square-legacy` npm alias
 - ✅ Complete cart system implementation with View Transitions persistence
 - ✅ Real-time inventory validation and stock management with bulk validation
 - ✅ Product variations with advanced type detection and attribute parsing
@@ -526,7 +549,7 @@ For issues and questions:
 - ✅ Netlify Blobs caching migration for distributed state
 - ✅ QuickView modal with full add-to-cart functionality
 - ✅ Sale pricing system with discount badges and filtering
-- ✅ Core Web Vitals monitoring and performance regression testing
+- ✅ Core Web Vitals dashboard via CrUX API
 - ✅ Enhanced image optimization with format detection (AVIF, WebP)
 - ✅ Back-in-stock notification system with Netlify Blobs storage
 - ✅ Email notifications via Resend (orders, shipping, pickups, BIS)
