@@ -1,4 +1,3 @@
-// src/lib/square/categories.ts - WITH COMPREHENSIVE DEBUGGING
 import { squareClient, extractSaleInfo } from "./client";
 import { extractBrandValue, extractIsGiftCard, fetchMeasurementUnits } from "./productUtils";
 import { batchGetImageUrls } from "./imageUtils";
@@ -35,7 +34,7 @@ export async function fetchCategories(): Promise<Category[]> {
       const rawObjects = categoryPage.data;
       const categories = rawObjects
         .filter((item: any) => item.type === "CATEGORY")
-        .map((item: any, index: number) => {
+        .map((item: any) => {
           // Extract ordinal from parentCategory (BigInt)
           const parentOrdinal = item.categoryData?.parentCategory?.ordinal;
           const orderValue = parentOrdinal ? Number(parentOrdinal) : 999;
@@ -69,30 +68,12 @@ export async function fetchCategories(): Promise<Category[]> {
             isTopLevel: item.categoryData?.isTopLevel || false,
             parentCategoryId: item.categoryData?.parentCategory?.id,
             rootCategoryId: rootCategoryId,
-            apiIndex: rawObjects.indexOf(item),
             rawOrder: orderValue,
           };
-
-          // DEBUG: Log Apparel subcategories to diagnose assignment issue
-          if (
-            category.name.includes("Tees") ||
-            category.name.includes("Hats") ||
-            category.name.includes("Bottoms") ||
-            category.name.includes("Accessories")
-          ) {
-            // console.log(`[CategoryFetch] ${category.name}:`, {
-            //   id: category.id,
-            //   isTopLevel: category.isTopLevel,
-            //   parentCategoryId: category.parentCategoryId,
-            //   rootCategoryId: category.rootCategoryId,
-            //   slug: category.slug,
-            // });
-          }
 
           return category;
         });
 
-      // console.log(`[DEBUG] Total categories processed: ${categories.length}`);
       return categories;
     } catch (error) {
       const appError = processSquareError(error, "fetchCategories");
@@ -110,13 +91,7 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
       // Sort by Square's ordinal instead of hardcoded order
       let topLevelCategories = allCategories.filter((cat) => cat.isTopLevel);
 
-      // console.log(
-      //   `[DEBUG] Top level categories found: ${topLevelCategories
-      //     .map((c) => c.name)
-      //     .join(", ")}`
-      // );
-
-      // REMOVE hardcoded getSortIndex, use Square's ordering
+      // Sort by Square's ordinal instead of hardcoded order
       topLevelCategories.sort((a, b) => {
         const orderA = a.rawOrder ?? 999;
         const orderB = b.rawOrder ?? 999;
@@ -152,9 +127,6 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
         };
       });
 
-      // console.log(
-      //   `[DEBUG] Hierarchy built with ${hierarchy.length} top-level categories`
-      // );
       return hierarchy;
     } catch (error) {
       const appError = processSquareError(error, "fetchCategoryHierarchy");
@@ -174,8 +146,6 @@ async function fetchAllCatalogItems(): Promise<any[]> {
 
   return productCache.getOrCompute(cacheKey, async () => {
     try {
-      // console.log(`[Square API] Fetching ALL catalog items (avoiding buggy categoryIds endpoint)`);
-
       const allItems: any[] = [];
       let cursor: string | undefined = undefined;
       let requestCount = 0;
@@ -208,7 +178,6 @@ async function fetchAllCatalogItems(): Promise<any[]> {
         cursor = (page.response as any).cursor;
       } while (cursor);
 
-      // console.log(`[Square API] Successfully fetched ${allItems.length} total catalog items in ${requestCount} requests`);
       return allItems;
     } catch (error) {
       console.error(`[Square API] Error fetching all catalog items:`, error);
@@ -268,7 +237,6 @@ export async function fetchProductsByCategory(
   categoryId: string,
   options?: ProductLoadingOptions
 ): Promise<PaginatedProducts> {
-  const startTime = Date.now(); // Performance tracking
   const { limit = 24, cursor } = options || {};
 
   // NOTE: We don't use cursor-based pagination with this approach
@@ -276,27 +244,18 @@ export async function fetchProductsByCategory(
   // This avoids the buggy searchCatalogItems(categoryIds) endpoint
 
   try {
-    // console.log(`[Perf] Fetching products for category: ${categoryId}`);
-
     // Fetch ALL items and categories (both are cached)
-    const fetchStart = Date.now();
     const [allItems, allCategories] = await Promise.all([
       fetchAllCatalogItems(),
       fetchCategories(),
     ]);
-    // console.log(`[Perf] Data fetch: ${Date.now() - fetchStart}ms`);
 
     // Filter items by category in-memory
-    const filterStart = Date.now();
     const matchingItems = allItems.filter((item) =>
       itemMatchesCategory(item, categoryId, allCategories)
     );
-    // console.log(
-    //   `[Perf] Filtering: ${Date.now() - filterStart}ms (${matchingItems.length} items)`
-    // );
 
     if (!matchingItems.length) {
-      // console.log(`[Perf] Total: ${Date.now() - startTime}ms (no results)`);
       return {
         products: [],
         hasMore: false,
@@ -304,7 +263,6 @@ export async function fetchProductsByCategory(
     }
 
     // Parallel processing for performance
-    const extractStart = Date.now();
     const imageIds = matchingItems
       .map((item: any) => item.itemData?.imageIds?.[0])
       .filter((id: any): id is string => Boolean(id));
@@ -315,10 +273,8 @@ export async function fetchProductsByCategory(
           item.itemData?.variations?.[0]?.itemVariationData?.measurementUnitId
       )
       .filter((id: any): id is string => Boolean(id));
-    // console.log(`[Perf] Extract IDs: ${Date.now() - extractStart}ms`);
 
     // Batch fetch images and units
-    const batchStart = Date.now();
     const [imageUrlMap, measurementUnitsMap] = await Promise.all([
       imageIds.length
         ? batchGetImageUrls(imageIds)
@@ -327,11 +283,7 @@ export async function fetchProductsByCategory(
         ? fetchMeasurementUnits(measurementUnitIds)
         : Promise.resolve({} as Record<string, string>),
     ]);
-    // console.log(
-    //   `[Perf] Batch fetch (images + units): ${Date.now() - batchStart}ms`
-    // );
 
-    const transformStart = Date.now();
     const products = matchingItems.map((item: any) => {
       const variations = item.itemData?.variations || [];
       const defaultVariation = variations[0];
@@ -397,25 +349,12 @@ export async function fetchProductsByCategory(
       const brandB = b.brand?.toLowerCase() ?? "\uffff";
       return brandA.localeCompare(brandB);
     });
-    // console.log(`[Perf] Transform: ${Date.now() - transformStart}ms`);
-
-    const totalTime = Date.now() - startTime;
-    // console.log(`[Perf] TOTAL fetchProductsByCategory: ${totalTime}ms`);
-
-    // Alert if slow
-    if (totalTime > 1000) {
-      // console.warn(
-      //   `[Perf] ⚠️ Slow category fetch: ${totalTime}ms for ${categoryId}`
-      // );
-    }
-
     return {
       products,
       nextCursor: undefined, // No cursor-based pagination with in-memory filtering
       hasMore: false, // All results returned at once
     };
   } catch (error) {
-    // console.error(`[Perf] Error after ${Date.now() - startTime}ms:`, error);
     const appError = processSquareError(
       error,
       `fetchProductsByCategory:${categoryId}`
