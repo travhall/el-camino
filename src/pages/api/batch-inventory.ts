@@ -4,6 +4,8 @@
 import type { APIRoute } from "astro";
 import { checkBulkInventory } from "@/lib/square/inventory";
 
+const MAX_VARIATION_IDS = 50;
+
 export const GET: APIRoute = async ({ url }) => {
   try {
     const param = url.searchParams.get("variationIds");
@@ -23,6 +25,13 @@ export const GET: APIRoute = async ({ url }) => {
     if (variationIds.length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: "No valid variation IDs provided" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (variationIds.length > MAX_VARIATION_IDS) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Too many variation IDs" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }

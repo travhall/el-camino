@@ -5,6 +5,10 @@ import { squareClient } from "@/lib/square/client";
 import { apiRetryClient } from "@/lib/square/apiRetry";
 import { calculateShippingRate } from "@/lib/config/shipping";
 import { getAuthoritativePricing } from "@/lib/square/pricing";
+import { createRateLimiter, clientIp } from "@/lib/rateLimit";
+
+const calculateLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 30 });
+const MAX_CART_ITEMS = 50;
 
 interface CalculateRequest {
   items: CartItem[];
@@ -14,6 +18,20 @@ interface CalculateRequest {
 export const POST: APIRoute = async ({ request }) => {
   try {
     const { items, fulfillmentMethod } = (await request.json()) as CalculateRequest;
+
+    if (calculateLimiter.check(clientIp(request))) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Too many requests" }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (items?.length > MAX_CART_ITEMS) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Cart too large" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     if (!items?.length) {
       return new Response(

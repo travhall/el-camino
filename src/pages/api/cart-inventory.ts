@@ -2,6 +2,8 @@
 import type { APIRoute } from "astro";
 import { checkBulkInventory } from "@/lib/square/inventory";
 
+const MAX_VARIATION_IDS = 50;
+
 export const POST: APIRoute = async ({ request }) => {
   try {
     const { variationIds } = (await request.json()) as {
@@ -15,6 +17,13 @@ export const POST: APIRoute = async ({ request }) => {
           status: 400,
           headers: { "Content-Type": "application/json" },
         }
+      );
+    }
+
+    if (variationIds.length > MAX_VARIATION_IDS) {
+      return new Response(
+        JSON.stringify({ error: "Too many variation IDs", success: false }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
