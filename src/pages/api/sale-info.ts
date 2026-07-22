@@ -2,6 +2,8 @@ import type { APIRoute } from "astro";
 import { squareClient, extractSaleInfo } from "@/lib/square/client";
 import type { SaleInfo } from "@/lib/square/types";
 
+const MAX_VARIATION_IDS = 50;
+
 export const POST: APIRoute = async ({ request }) => {
   try {
     const { variationIds } = await request.json();
@@ -16,6 +18,13 @@ export const POST: APIRoute = async ({ request }) => {
           status: 400,
           headers: { "Content-Type": "application/json" },
         }
+      );
+    }
+
+    if (variationIds.length > MAX_VARIATION_IDS) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Too many variation IDs" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
