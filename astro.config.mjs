@@ -5,15 +5,26 @@ import sitemap from "@astrojs/sitemap";
 import netlify from "@astrojs/netlify";
 import node from "@astrojs/node";
 import path from "path";
+import { buildSitemapPages } from "./src/lib/sitemapPages.ts";
 
 // Check if we're in preview mode
 const isPreview = process.env.PREVIEW === "true";
+
+// Falls back to [] if Square/WordPress are unreachable (e.g. during `astro check`).
+// Production builds with valid SQUARE_ACCESS_TOKEN get the full page list.
+const sitemapPages = await buildSitemapPages().catch((err) => {
+  console.warn("[sitemap] buildSitemapPages failed, using empty list:", err?.message ?? err);
+  return [];
+});
 
 export default defineConfig({
   site: "https://elcaminoskateshop.com",
   integrations: [
     icon({ iconDir: "src/assets/icons" }),
-    sitemap(),
+    sitemap({
+      customPages: sitemapPages,
+      filter: (page) => !page.includes("/admin") && !page.includes("/api/"),
+    }),
   ],
   output: "server",
   adapter: isPreview
