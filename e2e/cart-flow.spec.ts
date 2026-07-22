@@ -111,7 +111,7 @@ test.describe("Cart Operations", () => {
 
     // Verify checkout button
     await expect(
-      page.locator('button:has-text("Proceed to Checkout")')
+      page.locator('button:has-text("Continue to Payment")')
     ).toBeVisible();
   });
 

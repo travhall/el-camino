@@ -6,7 +6,7 @@ same change that fixes the discrepancy.
 
 ## Stack
 
-Astro 6 (SSR, `output: "server"`) + TypeScript, deployed to Netlify
+Astro 7 (SSR, `output: "server"`) + TypeScript, deployed to Netlify
 (`@astrojs/netlify` adapter, Netlify Blobs for caching/admin config).
 Square SDK for catalog/inventory/checkout, Resend for email, WordPress
 (headless) for blog/news content. Tailwind CSS v4.
