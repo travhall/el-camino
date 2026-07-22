@@ -54,6 +54,16 @@ function formatPickupTime(isoString: string): string {
   });
 }
 
+export function escHtml(str: string | null | undefined): string {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ─── Shared layout wrappers ───────────────────────────────────────────────────
 
 function emailWrapper(content: string): string {
@@ -237,7 +247,7 @@ export function buildOrderConfirmationHtml({
         Order Confirmed
       </h1>
       <p style="margin:0 0 20px;font-size:15px;color:#4f3d22;">
-        Thanks, ${contact.name.split(" ")[0]}! We've got your order.
+        Thanks, ${escHtml(contact.name.split(" ")[0])}! We've got your order.
       </p>
       <p style="margin:0 0 24px;font-size:13px;color:#6b6256;">
         Order reference: <strong style="color:#2b2215;">#${shortOrderId(orderId)}</strong>
@@ -302,7 +312,7 @@ function shippingDetailsSection(
         Shipping To
       </p>
       <p style="margin:0;font-size:14px;color:#2b2215;line-height:1.6;">
-        <strong>${contact.name}</strong><br>
+        <strong>${escHtml(contact.name)}</strong><br>
         ${addressLines || "Address on file"}
       </p>
       <p style="margin:12px 0 0;font-size:13px;color:#4f3d22;">
@@ -355,7 +365,7 @@ export function buildBackInStockHtml({
   variationName,
   price,
 }: BackInStockPayload): string {
-  const firstName = customerName.split(" ")[0];
+  const firstName = escHtml(customerName.split(" ")[0]);
   const displayName = variationName ? `${productName} — ${variationName}` : productName;
   const priceStr = price != null ? formatMoney(price) : null;
 
@@ -459,7 +469,7 @@ export function buildShippingOrderNotificationHtml({
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td style="font-size:14px;color:#4f3d22;padding-bottom:4px;width:100px;">Name</td>
-          <td style="font-size:14px;color:#2b2215;font-weight:600;padding-bottom:4px;">${contact.name}</td>
+          <td style="font-size:14px;color:#2b2215;font-weight:600;padding-bottom:4px;">${escHtml(contact.name)}</td>
         </tr>
         <tr>
           <td style="font-size:14px;color:#4f3d22;padding-bottom:4px;">Email</td>
@@ -484,7 +494,7 @@ export function buildShippingOrderNotificationHtml({
         Ship To
       </p>
       <p style="margin:0;font-size:14px;color:#2b2215;line-height:1.7;">
-        <strong>${contact.name}</strong><br>
+        <strong>${escHtml(contact.name)}</strong><br>
         ${addressLines || "Address not captured"}
       </p>
     </td>
@@ -551,7 +561,7 @@ export function buildShippingConfirmationHtml({
   carrier,
 }: ShippingConfirmationPayload): string {
   const orderId = order.id ?? "";
-  const firstName = contact.name.split(" ")[0];
+  const firstName = escHtml(contact.name.split(" ")[0]);
   const hasTracking = !!trackingNumber;
   const trackLink =
     hasTracking && carrier ? trackingUrl(carrier, trackingNumber!) : null;
@@ -671,7 +681,7 @@ export function buildPickupNotificationHtml({
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td style="font-size:14px;color:#4f3d22;padding-bottom:4px;width:100px;">Name</td>
-          <td style="font-size:14px;color:#2b2215;font-weight:600;padding-bottom:4px;">${contact.name}</td>
+          <td style="font-size:14px;color:#2b2215;font-weight:600;padding-bottom:4px;">${escHtml(contact.name)}</td>
         </tr>
         <tr>
           <td style="font-size:14px;color:#4f3d22;padding-bottom:4px;">Email</td>
@@ -686,7 +696,7 @@ export function buildPickupNotificationHtml({
       </table>
       ${customerNotes
         ? `<div style="margin-top:12px;padding:10px 14px;background-color:#f5edda;border-left:3px solid #4d7a2e;border-radius:0 4px 4px 0;">
-             <p style="margin:0;font-size:13px;color:#2b2215;"><strong>Customer note:</strong> ${customerNotes}</p>
+             <p style="margin:0;font-size:13px;color:#2b2215;"><strong>Customer note:</strong> ${escHtml(customerNotes)}</p>
            </div>`
         : ""}
     </td>
@@ -741,7 +751,7 @@ export function buildPickupReminderHtml({
   pickupAt,
   hoursLine = "See website for hours",
 }: PickupReminderPayload): string {
-  const firstName = customerName.split(" ")[0];
+  const firstName = escHtml(customerName.split(" ")[0]);
   const shortId = orderId.slice(-8).toUpperCase();
 
   const itemRows = items
@@ -852,7 +862,7 @@ export function buildBisAdminNotificationHtml({
         New Back-in-Stock Request
       </h1>
       <p style="margin:0 0 24px;font-size:15px;color:#4f3d22;">
-        Someone wants to know when <strong>${productName}</strong> is available again.
+        Someone wants to know when <strong>${escHtml(productName)}</strong> is available again.
       </p>
     </td>
   </tr>
@@ -869,7 +879,7 @@ export function buildBisAdminNotificationHtml({
               Subscriber
             </p>
             <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#2b2215;">
-              ${subscriberEmail}
+              ${escHtml(subscriberEmail)}
             </p>
             <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4f3d22;">
               Total waiting
