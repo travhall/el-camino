@@ -54,3 +54,9 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
 - Test coverage thresholds in `vitest.config.ts` will fail the build if a
   change drops coverage below the configured minimums — run
   `pnpm test:coverage` before considering a non-trivial change done.
+- `pnpm dev` runs `rm -rf .astro && sleep 1` before starting the dev server —
+  this clears Astro's `.astro` cache directory and pauses briefly before
+  Astro regenerates it. Both pieces were added incidentally in unrelated
+  feature commits with no explanatory message, so the original motivating bug
+  isn't recorded — treat it as a deliberate cache-freshness safeguard rather
+  than dead cruft, but confirm with the maintainer before removing it.
