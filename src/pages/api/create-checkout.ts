@@ -45,15 +45,18 @@ function storeTimeOf(date: Date): { jsDay: number; hour: number } {
     timeZone: STORE_TIMEZONE,
     weekday: "short",
     hour: "numeric",
+    minute: "numeric",
     hour12: false,
   });
   const parts = fmt.formatToParts(date);
   const wd = parts.find((p) => p.type === "weekday")?.value ?? "Sun";
   const hr = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+  const mn = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
   const dayMap: Record<string, number> = {
     Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
   };
-  return { jsDay: dayMap[wd] ?? 0, hour: hr };
+  // Fractional hour (e.g. 6:30 PM -> 18.5) to match storeHoursForDay's format
+  return { jsDay: dayMap[wd] ?? 0, hour: hr + mn / 60 };
 }
 
 /**
