@@ -23,8 +23,8 @@ export async function fetchMeasurementUnits(
         try {
           const result = await squareClient.catalog.object.get({ objectId: unitId });
 
-          if ((result as any).object?.type === "MEASUREMENT_UNIT") {
-            const unitData = (result as any).object.measurementUnitData;
+          if (result.object?.type === "MEASUREMENT_UNIT") {
+            const unitData = result.object.measurementUnitData;
             let unitName = "";
 
             if (unitData?.measurementUnit?.customUnit?.name) {

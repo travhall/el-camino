@@ -47,7 +47,7 @@ export async function getAuthoritativePricing(
     });
 
     const result: Record<string, AuthoritativePrice> = {};
-    for (const obj of (response as any).objects ?? []) {
+    for (const obj of response.objects ?? []) {
       if (obj?.type !== "ITEM_VARIATION") continue;
 
       const priceMoney = obj.itemVariationData?.priceMoney;

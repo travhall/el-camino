@@ -1,6 +1,8 @@
 // /src/lib/square/types.ts
 
 import type { AppError } from "./errorUtils";
+import type { CatalogCustomAttributeValue } from "square-legacy";
+
 export interface Money {
   amount: number; // Always in cents
   currency: string;
@@ -75,6 +77,19 @@ export interface SaleInfo {
   discountPercent: number; // Calculated discount percentage (e.g., 33)
   saleEndDate?: string; // Optional ISO date string (e.g., "2025-12-31")
 }
+
+// The `square-legacy` SDK already types CatalogObject.customAttributeValues
+// as Record<string, CatalogCustomAttributeValue> (see
+// square-legacy/api/types/CatalogCustomAttributeValue.d.ts) — it is not
+// actually untyped in the SDK, despite appearances from the ad-hoc `as any`
+// casts scattered across this codebase. Re-using the SDK's own type here
+// (rather than hand-rolling a duplicate) means it stays accurate if Square
+// adds fields, instead of silently drifting out of sync.
+export type SquareCatalogCustomAttributeValue = CatalogCustomAttributeValue;
+export type SquareCatalogCustomAttributes = Record<
+  string,
+  CatalogCustomAttributeValue
+>;
 
 export interface ProductVariation {
   id: string;
