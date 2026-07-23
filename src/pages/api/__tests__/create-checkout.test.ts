@@ -31,7 +31,7 @@ import { POST } from '../create-checkout';
 import { checkBulkInventory } from '@/lib/square/inventory';
 import { getAuthoritativePricing } from '@/lib/square/pricing';
 import { squareClient } from '@/lib/square/client';
-import { apiRetryClient } from '@/lib/square/apiRetry';
+import { checkoutRetryClient } from '@/lib/square/apiRetry';
 import type { CartItem } from '@/lib/cart/types';
 
 const checkBulkInventoryMock = checkBulkInventory as unknown as ReturnType<typeof vi.fn>;
@@ -76,7 +76,7 @@ const SHIPPING_ADDRESS = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  apiRetryClient.reset();
+  checkoutRetryClient.reset();
   getAuthoritativePricingMock.mockResolvedValue({});
   createPaymentLinkMock.mockResolvedValue({
     paymentLink: { url: 'https://square.link/checkout/abc', orderId: 'order-123' },
@@ -84,7 +84,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  apiRetryClient.reset();
+  checkoutRetryClient.reset();
 });
 
 describe('POST /api/create-checkout', () => {

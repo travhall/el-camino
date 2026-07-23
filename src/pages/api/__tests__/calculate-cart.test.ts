@@ -17,7 +17,7 @@ vi.mock('@/lib/square/client', () => ({
 import { POST } from '../calculate-cart';
 import { getAuthoritativePricing } from '@/lib/square/pricing';
 import { squareClient } from '@/lib/square/client';
-import { apiRetryClient } from '@/lib/square/apiRetry';
+import { checkoutRetryClient } from '@/lib/square/apiRetry';
 import type { CartItem } from '@/lib/cart/types';
 
 const getAuthoritativePricingMock = getAuthoritativePricing as unknown as ReturnType<typeof vi.fn>;
@@ -45,7 +45,7 @@ function makeItem(overrides: Partial<CartItem> = {}): CartItem {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  apiRetryClient.reset();
+  checkoutRetryClient.reset();
   getAuthoritativePricingMock.mockResolvedValue({});
   calculateOrderMock.mockResolvedValue({
     order: {
@@ -56,7 +56,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  apiRetryClient.reset();
+  checkoutRetryClient.reset();
 });
 
 describe('POST /api/calculate-cart', () => {

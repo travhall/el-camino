@@ -2,7 +2,7 @@
 import type { APIRoute } from "astro";
 import type { CartItem } from "@/lib/cart/types";
 import { squareClient } from "@/lib/square/client";
-import { apiRetryClient } from "@/lib/square/apiRetry";
+import { checkoutRetryClient } from "@/lib/square/apiRetry";
 import { checkBulkInventory } from "@/lib/square/inventory";
 import { getAuthoritativePricing } from "@/lib/square/pricing";
 import { calculateShippingRate, getPickupLocation } from "@/lib/config/shipping";
@@ -387,7 +387,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     let linkResponse: Awaited<ReturnType<typeof squareClient.checkout.paymentLinks.create>>;
     try {
-      linkResponse = await apiRetryClient.executeWithRetry(
+      linkResponse = await checkoutRetryClient.executeWithRetry(
         () =>
           squareClient.checkout.paymentLinks.create({
             idempotencyKey,

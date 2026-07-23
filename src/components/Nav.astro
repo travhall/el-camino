@@ -5,7 +5,7 @@ import { getSiteContext } from "@/lib/siteContext";
 import type { CategoryHierarchy } from "@/lib/square/types";
 import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryUtils";
 import { Icon } from "astro-icon/components";
-import { apiRetryClient } from "@/lib/square/apiRetry";
+import { catalogRetryClient } from "@/lib/square/apiRetry";
 
 interface Props {
   activeCategory?: string;
@@ -28,7 +28,7 @@ let navigationStatus: "loading" | "success" | "timeout" | "error" = "loading";
 
 try {
   // Fetch category hierarchy WITH product filtering to hide empty categories
-  categoryHierarchy = await apiRetryClient.executeWithRetry(
+  categoryHierarchy = await catalogRetryClient.executeWithRetry(
     () => fetchCategoryHierarchyWithProducts(),
     "navigation-fetch",
     {
