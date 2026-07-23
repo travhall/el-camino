@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
-import { squareClient, extractSaleInfo } from "@/lib/square/client";
+import { squareClient } from "@/lib/square/client";
+import { extractSaleInfo } from "@/lib/square/catalogUtils";
 import type { SaleInfo } from "@/lib/square/types";
 
 const MAX_VARIATION_IDS = 50;

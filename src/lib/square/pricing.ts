@@ -6,7 +6,8 @@
 // prices and `saleInfo` must NEVER be trusted when charging a customer. This
 // module re-derives every price directly from the Square catalog so checkout
 // can override line-item prices with values the server vouches for.
-import { squareClient, extractSaleInfo } from "./client";
+import { squareClient } from "./client";
+import { extractSaleInfo } from "./catalogUtils";
 import { logApiError } from "./apiUtils";
 
 export interface AuthoritativePrice {

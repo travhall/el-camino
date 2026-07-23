@@ -4,58 +4,6 @@ import { squareClient } from "./client";
 import { measurementUnitCache } from "@/lib/cache/blobCache";
 
 /**
- * Extract brand value from item-level custom attributes
- */
-export function extractBrandValue(customAttributeValues: any): string {
-  if (!customAttributeValues) return "";
-
-  const brandAttribute = Object.values(customAttributeValues).find(
-    (attr: any) =>
-      attr?.name?.toLowerCase() === "brand" ||
-      attr?.key?.toLowerCase() === "brand"
-  ) as any;
-
-  if (
-    brandAttribute &&
-    brandAttribute.type === "STRING" &&
-    brandAttribute.stringValue
-  ) {
-    return brandAttribute.stringValue;
-  }
-
-  return "";
-}
-
-/**
- * Detect physical gift cards via item-level custom attribute.
- * Tyler sets isGiftCard: true in Square Dashboard → Custom attributes.
- * Keyed by name or key to survive any Square attribute definition rename.
- */
-export function extractIsGiftCard(customAttributeValues: any): boolean {
-  if (!customAttributeValues) return false;
-
-  const attr = Object.values(customAttributeValues).find(
-    (a: any) =>
-      a?.name?.toLowerCase() === "isgiftcard" ||
-      a?.key?.toLowerCase() === "isgiftcard"
-  ) as any;
-
-  if (!attr) return false;
-
-  // Boolean type
-  if (attr.type === "BOOLEAN") return attr.booleanValue === true;
-
-  // String fallback: "true", "yes", "1"
-  if (attr.type === "STRING") {
-    return ["true", "yes", "1"].includes(
-      (attr.stringValue ?? "").toLowerCase()
-    );
-  }
-
-  return false;
-}
-
-/**
  * Batch-fetch measurement unit names from Square, cached via BlobCache to
  * survive cold starts across serverless function instances.
  * @param unitIds Array of Square measurement unit catalog object IDs

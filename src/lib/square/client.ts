@@ -1,6 +1,6 @@
 // /src/lib/square/client.ts
 import { SquareClient, SquareEnvironment } from "square-legacy";
-import type { Product, SaleInfo } from "./types";
+import type { Product } from "./types";
 import { getImageUrl, batchGetImageUrls } from "./imageUtils";
 import { logApiError } from "./apiUtils";
 import { apiRetryClient } from "./apiRetry";
@@ -9,7 +9,8 @@ import { processSquareError } from "./serverErrorUtils";
 import { buildAvailableAttributes } from "./variationParser";
 import { createProductUrl } from "./slugUtils";
 import { requestDeduplicator } from "./requestDeduplication";
-import { extractBrandValue, extractIsGiftCard, fetchMeasurementUnits } from "./productUtils";
+import { fetchMeasurementUnits } from "./productUtils";
+import { extractBrandValue, extractIsGiftCard, extractSaleInfo } from "./catalogUtils";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 import { productCache } from "@/lib/cache/blobCache";
 import { logger } from "@/lib/logger";
@@ -36,68 +37,6 @@ export const squareClient = new SquareClient({
       ? SquareEnvironment.Production
       : SquareEnvironment.Sandbox,
 });
-
-export const jsonStringifyReplacer = (_key: string, value: any) => {
-  if (typeof value === "bigint") {
-    return value.toString();
-  }
-  return value;
-};
-
-/**
- * Extract sale information from variation custom attributes
- * @param customAttributeValues - Variation-level custom attributes
- * @param regularPrice - Regular price from priceMoney (in dollars)
- * @returns SaleInfo object or null if no valid sale pricing
- */
-export function extractSaleInfo(
-  customAttributeValues: any,
-  regularPrice: number
-): SaleInfo | null {
-  if (!customAttributeValues) return null;
-
-  // Look for sale_price attribute
-  const salePriceAttr = Object.values(customAttributeValues).find(
-    (attr: any) =>
-      attr?.name?.toLowerCase() === "sale price" ||
-      attr?.key?.toLowerCase() === "sale_price"
-  ) as any;
-
-  if (!salePriceAttr || salePriceAttr.type !== "NUMBER") return null;
-
-  // Parse sale price (Square stores as string)
-  const salePrice = salePriceAttr.numberValue
-    ? Number(salePriceAttr.numberValue)
-    : null;
-
-  if (!salePrice || salePrice <= 0 || salePrice >= regularPrice) return null;
-
-  // Calculate discount percentage
-  const discountPercent = Math.round(
-    ((regularPrice - salePrice) / regularPrice) * 100
-  );
-
-  // Optional: Extract sale end date
-  const saleEndDateAttr = Object.values(customAttributeValues).find(
-    (attr: any) =>
-      attr?.name?.toLowerCase() === "sale end date" ||
-      attr?.key?.toLowerCase() === "sale_end_date"
-  ) as any;
-
-  const saleEndDate =
-    saleEndDateAttr?.type === "STRING" && saleEndDateAttr.stringValue
-      ? saleEndDateAttr.stringValue
-      : undefined;
-
-  const saleInfoResult = {
-    salePrice,
-    originalPrice: regularPrice,
-    discountPercent,
-    saleEndDate,
-  };
-
-  return saleInfoResult;
-}
 
 /**
  * Generate human-readable SKU from product data
