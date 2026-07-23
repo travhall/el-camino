@@ -17,14 +17,14 @@ interface CalculateRequest {
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const { items, fulfillmentMethod } = (await request.json()) as CalculateRequest;
-
     if (calculateLimiter.check(clientIp(request))) {
       return new Response(
         JSON.stringify({ success: false, error: "Too many requests" }),
         { status: 429, headers: { "Content-Type": "application/json" } }
       );
     }
+
+    const { items, fulfillmentMethod } = (await request.json()) as CalculateRequest;
 
     if (items?.length > MAX_CART_ITEMS) {
       return new Response(
