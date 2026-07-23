@@ -129,9 +129,11 @@ try {
 // === PAGE METADATA ===
 const pageTitle = "Shop All | El Camino";
 
-// Preload critical images (first 8 products)
+// Preload only the LCP image — preloading more creates resource contention
+// that can delay the LCP element; the browser's own preload scanner handles
+// the rest of the initial viewport.
 const preloadImages = allProducts
-  .slice(0, 8)
+  .slice(0, 1)
   .map((p) => p.image)
   .filter((img) => !img.includes("placeholder"));
 

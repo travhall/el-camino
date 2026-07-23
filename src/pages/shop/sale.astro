@@ -166,9 +166,11 @@ try {
 const pageTitle = "Sale | El Camino";
 const pageDescription = "Shop sale items at El Camino Skate Shop. Save on skateboards, decks, apparel, and accessories from top brands.";
 
-// Preload critical images (first 8 products)
+// Preload only the LCP image — preloading more creates resource contention
+// that can delay the LCP element; the browser's own preload scanner handles
+// the rest of the initial viewport.
 const preloadImages = allProducts
-  .slice(0, 8)
+  .slice(0, 1)
   .map((p) => p.image)
   .filter((img) => !img.includes("placeholder"));
 
