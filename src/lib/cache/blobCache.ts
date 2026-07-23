@@ -117,7 +117,7 @@ export class BlobCache<T> {
 
     try {
       const cached = await store.get(cacheKey, {
-        consistency: "strong",
+        consistency: "eventual",
         type: "text",
       });
 
@@ -320,7 +320,7 @@ export class BlobCache<T> {
     if (store) {
       try {
         const cached = await store.get(cacheKey, {
-          consistency: "strong",
+          consistency: "eventual",
           type: "text",
         });
 
