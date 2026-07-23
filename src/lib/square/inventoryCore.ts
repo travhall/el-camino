@@ -138,7 +138,7 @@ export async function fetchInventoryCounts(
       }
       for (const id of r.failed) failed.add(id);
     }
-    await Promise.all(cacheWrites);
+    void Promise.all(cacheWrites);
 
     return { counts, failed };
   });
