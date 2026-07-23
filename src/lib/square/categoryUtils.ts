@@ -1,6 +1,6 @@
 // src/lib/square/categoryUtils.ts - Category filtering and product count utilities
 
-import { squareClient } from "./client";
+import { squareClient, fetchProducts } from "./client";
 import { categoryCache, navigationCache } from "@/lib/cache/blobCache";
 import type { Category, CategoryHierarchy } from "./types";
 import { handleError } from "./errorUtils";
@@ -74,65 +74,35 @@ export async function batchCheckCategoriesHaveProducts(
       })
     );
 
-    // Batch check remaining categories
+    // Derive "has products" from the cached product catalog instead of one
+    // Square API call per category — fetchProducts() already fetches and
+    // caches the full catalog, and each Product carries its category
+    // membership (categories array + reportingCategoryId).
     if (idsToCheck.length > 0) {
       try {
-        // Process in parallel but limit concurrency for API stability
-        const batchSize = 5;
-        const batches = [];
-
-        for (let i = 0; i < idsToCheck.length; i += batchSize) {
-          const batchIds = idsToCheck.slice(i, i + batchSize);
-          batches.push(batchIds);
+        const products = await fetchProducts();
+        const categoryIdsWithProducts = new Set<string>();
+        for (const product of products) {
+          for (const categoryId of product.categories ?? []) {
+            categoryIdsWithProducts.add(categoryId);
+          }
+          if (product.reportingCategoryId) {
+            categoryIdsWithProducts.add(product.reportingCategoryId);
+          }
         }
 
-        const batchResults = await Promise.all(
-          batches.map(async (batchIds) => {
-            const batchResult: Record<string, boolean> = {};
-
-            // Check each category in the batch with retry logic
-            await Promise.all(
-              batchIds.map(async (categoryId) => {
-                try {
-                  const searchResult = await apiRetryClient.executeWithRetry(
-                    async () => {
-                      const result = await squareClient.catalog.searchItems({
-                        categoryIds: [categoryId],
-                        limit: 1,
-                      });
-                      return result;
-                    },
-                    `batchCategoryCheck:${categoryId}`,
-                    { maxRetries: 2, baseDelay: 200 } // Faster for batch operations
-                  );
-
-                  const hasProducts = !!searchResult?.items?.length;
-                  batchResult[categoryId] = hasProducts;
-
-                  // Cache individual results (now async)
-                  await categoryCache.set(
-                    `category-has-products:${categoryId}`,
-                    hasProducts
-                  );
-                } catch (error) {
-                  // On error, default to showing category
-                  batchResult[categoryId] = true;
-                  await categoryCache.set(
-                    `category-has-products:${categoryId}`,
-                    true
-                  );
-                }
-              })
+        await Promise.all(
+          idsToCheck.map(async (categoryId) => {
+            const hasProducts = categoryIdsWithProducts.has(categoryId);
+            result[categoryId] = hasProducts;
+            // Cache individual results so categoryHasProducts()'s own
+            // cache-read path (and the warm-cache fast path above) stay hot.
+            await categoryCache.set(
+              `category-has-products:${categoryId}`,
+              hasProducts
             );
-
-            return batchResult;
           })
         );
-
-        // Merge batch results
-        for (const batchResult of batchResults) {
-          Object.assign(result, batchResult);
-        }
       } catch (error) {
         const appError = processSquareError(
           error,
@@ -140,7 +110,7 @@ export async function batchCheckCategoriesHaveProducts(
         );
         handleError(appError, null);
 
-        // On batch error, default all remaining to true
+        // On error, default all remaining to true (fail open, show the category)
         for (const categoryId of idsToCheck) {
           result[categoryId] = true;
         }
