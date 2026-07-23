@@ -11,16 +11,8 @@ import type {
 import { categoryCache, productCache } from "./cacheUtils";
 import { handleError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
-import { createProductUrl } from "@/lib/square/slugUtils";
+import { createProductUrl, createSlug } from "@/lib/square/slugUtils";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
-
-function createSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 export async function fetchCategories(): Promise<Category[]> {
   return categoryCache.getOrCompute("all-categories", async () => {
