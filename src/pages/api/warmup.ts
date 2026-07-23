@@ -15,7 +15,15 @@ import { fetchProducts } from '@/lib/square/client';
 import { filterProductsWithCache, extractFilterOptions } from '@/lib/square/filterUtils';
 import { batchInventoryService } from '@/lib/square/batchInventory';
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ request }) => {
+  const secret = import.meta.env.WARMUP_SECRET;
+  if (!secret || request.headers.get("x-warmup-secret") !== secret) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const startTime = performance.now();
   const warmedCaches: string[] = [];
   const errors: string[] = [];
@@ -92,7 +100,7 @@ export const GET: APIRoute = async () => {
         timestamp: Date.now(),
         duration: `${totalDuration.toFixed(0)}ms`,
         caches: warmedCaches,
-        errors: errors.length > 0 ? errors : undefined,
+        // Do not expose internal error details to callers
         message: errors.length > 0
           ? `Partially warmed ${warmedCaches.length} caches with ${errors.length} errors`
           : `Successfully warmed ${warmedCaches.length} caches`

@@ -18,7 +18,7 @@ jobs:
           echo "Warming up functions..."
           
           # Warmup endpoint
-          curl -s https://elcaminoskateshop.netlify.app/api/warmup || true
+          curl -s -H "X-Warmup-Secret: ${{ secrets.WARMUP_SECRET }}" https://elcaminoskateshop.netlify.app/api/warmup || true
           
           # Key category pages that trigger SSR functions
           curl -s https://elcaminoskateshop.netlify.app/ || true
