@@ -220,6 +220,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     EL_CAMINO_LOGO_DATA_URI,
     EL_CAMINO_LOADER_DATA_URI,
   } from "@/lib/constants/assets";
+  import { showNotification } from "@/lib/events";
 
   let isUpdating = false;
   let inventoryData: Record<string, number> = {};
@@ -485,7 +486,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
     try {
       const items = cart.getItems();
       if (items.length === 0) {
-        window.showNotification("Your cart is empty", "error");
+        showNotification("Your cart is empty", "error");
         return;
       }
 
@@ -494,7 +495,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       ) as HTMLInputElement;
 
       if (!fulfillmentRadio) {
-        window.showNotification("Please choose a fulfillment method", "error");
+        showNotification("Please choose a fulfillment method", "error");
         (window as any).elco_expandFulfillmentForm?.();
         return;
       }
@@ -507,7 +508,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           "[data-shipping-form]",
         ) as HTMLElement;
         if (!form) {
-          window.showNotification("Shipping form not found", "error");
+          showNotification("Shipping form not found", "error");
           return;
         }
         const shippingRequiredIds = [
@@ -529,7 +530,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           }
         });
         if (!isValid) {
-          window.showNotification(
+          showNotification(
             "Please fill in all required shipping fields",
             "error",
           );
@@ -564,7 +565,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           "[data-pickup-form]",
         ) as HTMLElement;
         if (!form) {
-          window.showNotification("Pick up form not found", "error");
+          showNotification("Pick up form not found", "error");
           return;
         }
         const pickupRequiredIds = [
@@ -578,7 +579,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           if (!input || !input.value.trim()) isValid = false;
         });
         if (!isValid) {
-          window.showNotification(
+          showNotification(
             "Please fill in all required pickup fields",
             "error",
           );
@@ -611,7 +612,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
       if (!data.checkoutUrl) throw new Error("No checkout URL returned");
 
       if (data.stockMessage) {
-        window.showNotification(data.stockMessage, "error");
+        showNotification(data.stockMessage, "error");
         await new Promise((resolve) => setTimeout(resolve, 3000));
       }
 
@@ -619,10 +620,10 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         sessionStorage.setItem("square-pending-orderId", data.orderId);
       }
 
-      window.showNotification("Redirecting to checkout...", "success");
+      showNotification("Redirecting to checkout...", "success");
       window.location.href = data.checkoutUrl;
     } catch (error) {
-      window.showNotification(
+      showNotification(
         error instanceof Error
           ? error.message
           : "Checkout failed. Please try again.",
@@ -636,7 +637,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
   function handleClearCart(): void {
     const itemCount = cart.getItemCount();
     if (itemCount === 0) {
-      window.showNotification("Cart is already empty", "error");
+      showNotification("Cart is already empty", "error");
       return;
     }
 
@@ -654,7 +655,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         // Reset to step 1 when cart is cleared
         (window as any).elco_expandFulfillmentForm?.();
         await updateDisplay();
-        window.showNotification(
+        showNotification(
           isSingle ? `"${snapshot[0].title}" removed` : "Cart cleared",
           "success",
           10000,
@@ -664,14 +665,14 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
               try {
                 for (const item of snapshot) await restoreCartItem(item);
                 await updateDisplay();
-                window.showNotification(
+                showNotification(
                   snapshot.length === 1
                     ? `"${snapshot[0].title}" restored`
                     : `${snapshot.length} items restored`,
                   "success",
                 );
               } catch {
-                window.showNotification(
+                showNotification(
                   "Could not restore cart items",
                   "error",
                 );
@@ -752,7 +753,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                 await cart.updateQuantity(itemKey, newQty);
                 await updateCartItemQuantity(itemKey);
               } else {
-                window.showNotification(`Only ${inventory} available`, "error");
+                showNotification(`Only ${inventory} available`, "error");
               }
             }
             break;
@@ -767,7 +768,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                 const snapshot = { ...currentItem };
                 cart.removeItem(itemKey);
                 await updateDisplay();
-                window.showNotification(
+                showNotification(
                   `"${snapshot.title}" removed`,
                   "success",
                   6000,
@@ -778,18 +779,18 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                         const result = await restoreCartItem(snapshot);
                         if (result.success) {
                           await updateDisplay();
-                          window.showNotification(
+                          showNotification(
                             `"${snapshot.title}" restored`,
                             "success",
                           );
                         } else {
-                          window.showNotification(
+                          showNotification(
                             result.message || "Could not restore item",
                             "error",
                           );
                         }
                       } catch {
-                        window.showNotification(
+                        showNotification(
                           "Could not restore item",
                           "error",
                         );
@@ -813,7 +814,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
               const snapshot = { ...itemToRemove };
               cart.removeItem(itemKey);
               await updateDisplay();
-              window.showNotification(
+              showNotification(
                 `"${snapshot.title}" removed`,
                 "success",
                 6000,
@@ -824,18 +825,18 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                       const result = await restoreCartItem(snapshot);
                       if (result.success) {
                         await updateDisplay();
-                        window.showNotification(
+                        showNotification(
                           `"${snapshot.title}" restored`,
                           "success",
                         );
                       } else {
-                        window.showNotification(
+                        showNotification(
                           result.message || "Could not restore item",
                           "error",
                         );
                       }
                     } catch {
-                      window.showNotification(
+                      showNotification(
                         "Could not restore item",
                         "error",
                       );
@@ -849,7 +850,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         }
       } catch (error) {
         console.error("Error handling cart action:", error);
-        window.showNotification("Error updating cart", "error");
+        showNotification("Error updating cart", "error");
       }
     });
 
@@ -876,7 +877,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
         })();
         if (newQuantity > inventory) {
           target.value = inventory.toString();
-          window.showNotification(`Only ${inventory} available`, "error");
+          showNotification(`Only ${inventory} available`, "error");
           return;
         }
 
@@ -885,7 +886,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
           await updateCartItemQuantity(itemKey);
         } catch (error) {
           console.error("Error updating quantity:", error);
-          window.showNotification("Error updating quantity", "error");
+          showNotification("Error updating quantity", "error");
         }
       }, 500);
     });

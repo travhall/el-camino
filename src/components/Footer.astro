@@ -165,6 +165,8 @@ try {
 </footer>
 
 <script>
+  import { showPolicyModal } from "@/lib/events";
+
   function setupPolicyTriggers() {
     document
       .querySelectorAll<HTMLButtonElement>(".policy-modal-trigger")
@@ -173,9 +175,7 @@ try {
         btn.setAttribute("data-policy-initialized", "true");
         btn.addEventListener("click", () => {
           const slug = btn.dataset.policySlug;
-          if (slug && typeof window.showPolicyModal === "function") {
-            window.showPolicyModal(slug);
-          }
+          if (slug) showPolicyModal(slug);
         });
       });
   }

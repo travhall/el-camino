@@ -328,6 +328,7 @@ const contact = await getContactInfo();
   import { processClientError, logError } from "@/lib/square/errorUtils";
   import type { Product, ProductVariation } from "@/lib/square/types";
   import { PDPUIManager } from "@/lib/product/pdpUI";
+  import { showNotification } from "@/lib/events";
 
   // QuickView Controller - Uses centralized PDPUIManager
   class QuickViewController {
@@ -1144,14 +1145,12 @@ const contact = await getContactInfo();
         const result = await cart.addItem(cartItem);
 
         if (result.success) {
-          if (typeof window.showNotification === "function") {
-            window.showNotification(
-              result.message || "Added to cart",
-              "success",
-              3000,
-              { label: "View Cart", href: "/cart" },
-            );
-          }
+          showNotification(
+            result.message || "Added to cart",
+            "success",
+            3000,
+            { label: "View Cart", href: "/cart" },
+          );
 
           // Update UI after cart addition (PDP pattern)
           this.handleCartUpdate();
@@ -1170,9 +1169,7 @@ const contact = await getContactInfo();
         const appError = processClientError(error, "quickViewAddToCart");
         logError(appError);
 
-        if (typeof window.showNotification === "function") {
-          window.showNotification(appError.message, "error");
-        }
+        showNotification(appError.message, "error");
       } finally {
         this.isProcessing = false;
         if (addToCartBtn) addToCartBtn.disabled = false;

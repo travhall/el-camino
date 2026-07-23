@@ -9,19 +9,7 @@
 </div>
 
 <script>
-  // Add TypeScript declaration for the global function
-  declare global {
-    interface Window {
-      showNotification(
-        message: string,
-        type?: "success" | "error" | "info" | "warning",
-        duration?: number,
-        action?:
-          | { label: string; href: string }
-          | { label: string; onClick: () => void },
-      ): void;
-    }
-  }
+  import { EVENTS, type ShowNotificationDetail } from "@/lib/events";
 
   type NotificationType = "success" | "error" | "info" | "warning";
 
@@ -96,6 +84,19 @@
     },
   };
 
-  window.showNotification =
-    notificationManager.showNotification.bind(notificationManager);
+  const handleShowNotification = (e: Event) => {
+    const { message, type, duration, action } = (e as CustomEvent<ShowNotificationDetail>).detail;
+    notificationManager.showNotification(message, type, duration, action);
+  };
+  document.addEventListener(EVENTS.SHOW_NOTIFICATION, handleShowNotification);
+
+  // This script re-runs on every Astro view-transition navigation (it isn't
+  // transition:persist'd), so without this the listener above would pile up
+  // — one extra copy per navigation — firing the same notification multiple
+  // times. Remove it right before the next swap tears down this script instance.
+  document.addEventListener(
+    "astro:before-swap",
+    () => document.removeEventListener(EVENTS.SHOW_NOTIFICATION, handleShowNotification),
+    { once: true },
+  );
 </script>

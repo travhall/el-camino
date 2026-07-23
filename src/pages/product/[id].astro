@@ -1113,6 +1113,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
   import { processClientError, logError } from "@/lib/square/errorUtils";
   import { recentlyViewed } from "@/lib/product/recentlyViewed";
   import type { Product } from "@/lib/square/types";
+  import { showPolicyModal, showSecureCheckoutModal, showLocationModal } from "@/lib/events";
 
   let pdpController: PDPController | null = null;
 
@@ -1222,9 +1223,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
       returnsTrigger.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const open = () => window.showPolicyModal?.("return-policy");
-        if (typeof window.showPolicyModal === "function") open();
-        else setTimeout(open, 100);
+        showPolicyModal("return-policy");
       });
     }
 
@@ -1238,9 +1237,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
       secureTrigger.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const open = () => window.showSecureCheckoutModal?.();
-        if (typeof window.showSecureCheckoutModal === "function") open();
-        else setTimeout(open, 100);
+        showSecureCheckoutModal();
       });
     }
   }
@@ -1255,15 +1252,7 @@ Astro.response.headers.set("Netlify-Vary", "cookie");
       trigger.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (typeof window.showLocationModal === "function") {
-          window.showLocationModal();
-        } else {
-          setTimeout(() => {
-            if (typeof window.showLocationModal === "function") {
-              window.showLocationModal();
-            }
-          }, 100);
-        }
+        showLocationModal();
       });
     });
   }
