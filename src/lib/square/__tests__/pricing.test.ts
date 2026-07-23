@@ -18,6 +18,9 @@ vi.mock("../client", () => ({
   squareClient: {
     catalog: { batchGet: mockBatchGet },
   },
+}));
+
+vi.mock("../catalogUtils", () => ({
   // Deterministic stub: a sale exists only when the attrs carry an explicit
   // `__sale` dollar amount. Lets us assert pricing.ts wires it through faithfully.
   extractSaleInfo: mockExtractSaleInfo,

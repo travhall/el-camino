@@ -1,5 +1,6 @@
-import { squareClient, extractSaleInfo } from "./client";
-import { extractBrandValue, extractIsGiftCard, fetchMeasurementUnits } from "./productUtils";
+import { squareClient } from "./client";
+import { fetchMeasurementUnits } from "./productUtils";
+import { extractBrandValue, extractIsGiftCard, extractSaleInfo } from "./catalogUtils";
 import { batchGetImageUrls } from "./imageUtils";
 import type {
   Category,

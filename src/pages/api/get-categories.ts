@@ -1,6 +1,7 @@
 // src/pages/api/get-categories.ts
 import type { APIRoute } from "astro";
-import { squareClient, jsonStringifyReplacer } from "@/lib/square/client";
+import { squareClient } from "@/lib/square/client";
+import { jsonStringifyReplacer } from "@/lib/square/catalogUtils";
 import type { CatalogObject } from "square-legacy";
 
 export const GET: APIRoute = async ({ request }) => {
