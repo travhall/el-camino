@@ -296,10 +296,10 @@ function shippingDetailsSection(
   const address = recipient?.address;
 
   const addressLines = [
-    address?.addressLine1,
-    address?.addressLine2,
+    address?.addressLine1 ? escHtml(address.addressLine1) : null,
+    address?.addressLine2 ? escHtml(address.addressLine2) : null,
     address
-      ? `${address.locality}, ${address.administrativeDistrictLevel1} ${address.postalCode}`
+      ? `${escHtml(address.locality)}, ${escHtml(address.administrativeDistrictLevel1)} ${escHtml(address.postalCode)}`
       : null,
   ]
     .filter(Boolean)
@@ -366,7 +366,9 @@ export function buildBackInStockHtml({
   price,
 }: BackInStockPayload): string {
   const firstName = escHtml(customerName.split(" ")[0]);
-  const displayName = variationName ? `${productName} — ${variationName}` : productName;
+  const displayName = variationName
+    ? `${escHtml(productName)} — ${escHtml(variationName)}`
+    : escHtml(productName);
   const priceStr = price != null ? formatMoney(price) : null;
 
   const content = `
@@ -403,7 +405,7 @@ export function buildBackInStockHtml({
               ? `<p style="margin:0 0 16px;font-size:15px;color:#4d7a2e;font-weight:600;">${priceStr}</p>`
               : `<p style="margin:0 0 16px;"></p>`
             }
-            <a href="${productUrl}"
+            <a href="${escHtml(productUrl)}"
                style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:10px 24px;border-radius:6px;border:2px solid #3a5e22;">
               Shop Now
             </a>
@@ -434,10 +436,10 @@ export function buildShippingOrderNotificationHtml({
   const total = formatMoney(order.totalMoney?.amount);
 
   const addressLines = [
-    address?.addressLine1,
-    address?.addressLine2,
+    address?.addressLine1 ? escHtml(address.addressLine1) : null,
+    address?.addressLine2 ? escHtml(address.addressLine2) : null,
     address
-      ? `${address.locality}, ${address.administrativeDistrictLevel1} ${address.postalCode}`
+      ? `${escHtml(address.locality)}, ${escHtml(address.administrativeDistrictLevel1)} ${escHtml(address.postalCode)}`
       : null,
   ]
     .filter(Boolean)
