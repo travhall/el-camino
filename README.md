@@ -28,7 +28,7 @@ A modern e-commerce platform built with Astro and Square integration, featuring 
 ### Technical Highlights
 
 - **Server-Side Rendering** - Optimized for performance and SEO
-- **Type-Safe Development** - TypeScript throughout, with `astro check` passing (zero compiler errors); see [docs/TYPE_SAFETY_NOTES.md](docs/TYPE_SAFETY_NOTES.md) for known `any`/`unknown` escape hatches, mostly around Square SDK response shapes
+- **Type-Safe Development** - TypeScript throughout, with `astro check` passing (zero compiler errors); remaining `any`/`unknown` escape hatches are mostly around Square SDK response shapes and are being narrowed incrementally
 - **Resilient Architecture** - Circuit breaker patterns and error recovery
 - **Netlify Blobs Caching** - Distributed caching with Netlify Blobs for serverless optimization
 - **Core Web Vitals Dashboard** - CrUX field data via Google Chrome UX Report API
@@ -338,7 +338,7 @@ pnpm test:e2e
 # Run E2E tests with UI
 pnpm test:e2e:ui
 
-# Type checking (0 compiler errors as of 2026-06-24, 255 files — see docs/TYPE_SAFETY_NOTES.md for any/unknown usage)
+# Type checking (0 compiler errors)
 pnpm check
 
 # Build verification
@@ -403,7 +403,7 @@ Recent comprehensive performance optimization strategy implementation:
 ### Performance Metrics
 
 - **Build Time**: ~3 seconds
-- **TypeScript Compilation**: 0 compiler errors (does not mean zero `any`/`unknown` usage — see [docs/TYPE_SAFETY_NOTES.md](docs/TYPE_SAFETY_NOTES.md))
+- **TypeScript Compilation**: 0 compiler errors (does not mean zero `any`/`unknown` usage)
 - **Codebase Size**: ~48,894 lines of code across 169 files
 - **Test Coverage**: 80% threshold with Vitest
 - **API Response Times**: Optimized with Netlify Blobs caching
@@ -447,12 +447,6 @@ Recent comprehensive performance optimization strategy implementation:
 - Update documentation for new features
 - Test Square integration thoroughly
 - Use circuit breaker patterns for external APIs
-
-## 📝 Documentation
-
-Additional documentation:
-
-- [Type Safety Notes](docs/TYPE_SAFETY_NOTES.md) — documents known `any`/`unknown` escape hatches and the reasoning behind them
 
 ## 🔧 Dependencies
 
@@ -532,7 +526,7 @@ For issues and questions:
 
 ### Current State: Production Ready ✅
 
-- **TypeScript**: 0 compiler errors (does not mean zero `any`/`unknown` usage — see [docs/TYPE_SAFETY_NOTES.md](docs/TYPE_SAFETY_NOTES.md))
+- **TypeScript**: 0 compiler errors (does not mean zero `any`/`unknown` usage)
 - **Build Status**: Successful
 - **Core Features**: Complete and functional
 - **Payment Processing**: Operational
@@ -565,5 +559,3 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ---
 
 Built with ❤️ using Astro, TypeScript, and Square Commerce APIs
-
-Last updated: April 2026
