@@ -1,4 +1,5 @@
 // src/lib/square/apiRetry.ts - Enhanced API retry logic with exponential backoff and circuit breaker
+import { logger } from "@/lib/logger";
 
 /**
  * Configuration for API retry behavior
@@ -149,7 +150,7 @@ export class ApiRetryClient {
         this.circuitState = CircuitState.CLOSED;
         this.failureCount = 0;
         if (import.meta.env.DEV) {
-          console.log('[Circuit] Returned to CLOSED state after recovery');
+          logger.debug('[Circuit] Returned to CLOSED state after recovery');
         }
       }
     }

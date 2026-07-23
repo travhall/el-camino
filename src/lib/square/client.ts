@@ -12,6 +12,7 @@ import { requestDeduplicator } from "./requestDeduplication";
 import { extractBrandValue, extractIsGiftCard, fetchMeasurementUnits } from "./productUtils";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 import { productCache } from "@/lib/cache/blobCache";
+import { logger } from "@/lib/logger";
 
 // Validate at first use, not at import. Importing this module during prerender
 // (e.g. for the static 404 page) shouldn't crash the build when env is unset —
@@ -216,7 +217,7 @@ export async function fetchProducts(): Promise<Product[]> {
         } while (cursor);
 
         if (!allObjects.length) {
-          console.log("No products found in catalog");
+          logger.debug("No products found in catalog");
           return [];
         }
 
