@@ -402,3 +402,7 @@ export const slugCache = new BlobCache<Record<string, string>>(          // 30 m
   "slug-map",
   1800
 );
+export const measurementUnitCache = new BlobCache<Record<string, string>>(
+  "measurement-unit-data",
+  3600  // 1 hour — measurement units rarely change
+);
