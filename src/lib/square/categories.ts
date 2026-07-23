@@ -1,19 +1,15 @@
-import { squareClient } from "./client";
-import { fetchMeasurementUnits } from "./productUtils";
-import { extractBrandValue, extractIsGiftCard, extractSaleInfo } from "./catalogUtils";
-import { batchGetImageUrls } from "./imageUtils";
+import { squareClient, fetchProducts } from "./client";
 import type {
   Category,
   CategoryHierarchy,
   PaginatedProducts,
+  Product,
   ProductLoadingOptions,
-  SaleInfo,
 } from "./types";
 import { categoryCache, productCache } from "@/lib/cache/blobCache";
 import { handleError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
-import { createProductUrl, createSlug } from "@/lib/square/slugUtils";
-import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import { createSlug } from "@/lib/square/slugUtils";
 
 export async function fetchCategories(): Promise<Category[]> {
   return categoryCache.getOrCompute("all-categories", async () => {
@@ -129,89 +125,28 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
 }
 
 /**
- * Fetch ALL catalog items once and cache them
- * Avoids the buggy searchCatalogItems(categoryIds) endpoint entirely
- * This is more reliable and faster for most use cases
+ * Check if a product belongs to a category (handles both direct and subcategory matches)
  */
-async function fetchAllCatalogItems(): Promise<any[]> {
-  // Cache key with version to bust old cached object format
-  const cacheKey = "all-catalog-items-v3";
-
-  return productCache.getOrCompute(cacheKey, async () => {
-    try {
-      const allItems: any[] = [];
-      let cursor: string | undefined = undefined;
-      let requestCount = 0;
-      const maxRequests = 20; // Safety limit
-
-      do {
-        requestCount++;
-        if (requestCount > maxRequests) {
-          console.warn(
-            `[Square API] Hit max requests limit (${maxRequests}) when fetching all items`
-          );
-          break;
-        }
-
-        const page = await squareClient.catalog.list({ types: "ITEM", cursor });
-
-        if (page.data?.length) {
-          // Convert BigInt values to strings to avoid serialization errors
-          const sanitizedObjects = page.data.map((obj: any) => {
-            // Deep clone and convert BigInts
-            return JSON.parse(
-              JSON.stringify(obj, (key, value) =>
-                typeof value === "bigint" ? value.toString() : value
-              )
-            );
-          });
-          allItems.push(...sanitizedObjects);
-        }
-
-        cursor = (page.response as any).cursor;
-      } while (cursor);
-
-      return allItems;
-    } catch (error) {
-      console.error(`[Square API] Error fetching all catalog items:`, error);
-      throw error;
-    }
-  });
-}
-
-/**
- * Check if an item belongs to a category (handles both direct and subcategory matches)
- */
-function itemMatchesCategory(
-  item: any,
+function productMatchesCategory(
+  product: Product,
   categoryId: string,
   allCategories: Category[]
 ): boolean {
-  if (!item?.itemData) {
-    return false;
-  }
-
-  const itemData = item.itemData;
-
-  // Items can have multiple categories in an array
-  const itemCategories = itemData.categories || [];
+  const productCategories = product.categories || [];
 
   // Check direct match in categories array
-  const hasDirectMatch = itemCategories.some(
-    (cat: any) => cat.id === categoryId
-  );
-  if (hasDirectMatch) {
+  if (productCategories.includes(categoryId)) {
     return true;
   }
 
   // Check reporting category (primary category)
-  if (itemData.reportingCategory?.id === categoryId) {
+  if (product.reportingCategoryId === categoryId) {
     return true;
   }
 
-  // Check if any of the item's categories is a subcategory of the target category
-  for (const itemCat of itemCategories) {
-    const categoryDetails = allCategories.find((c) => c.id === itemCat.id);
+  // Check if any of the product's categories is a subcategory of the target category
+  for (const productCatId of productCategories) {
+    const categoryDetails = allCategories.find((c) => c.id === productCatId);
     if (!categoryDetails) continue;
 
     // Check if this category's parent or root is the target category
@@ -237,105 +172,17 @@ export async function fetchProductsByCategory(
   // This avoids the buggy searchCatalogItems(categoryIds) endpoint
 
   try {
-    // Fetch ALL items and categories (both are cached)
-    const [allItems, allCategories] = await Promise.all([
-      fetchAllCatalogItems(),
+    // Fetch ALL products and categories (both are cached)
+    const [allProducts, allCategories] = await Promise.all([
+      fetchProducts(),
       fetchCategories(),
     ]);
 
-    // Filter items by category in-memory
-    const matchingItems = allItems.filter((item) =>
-      itemMatchesCategory(item, categoryId, allCategories)
+    // Filter products by category in-memory
+    const products = allProducts.filter((product) =>
+      productMatchesCategory(product, categoryId, allCategories)
     );
 
-    if (!matchingItems.length) {
-      return {
-        products: [],
-        hasMore: false,
-      };
-    }
-
-    // Parallel processing for performance
-    const imageIds = matchingItems
-      .map((item: any) => item.itemData?.imageIds?.[0])
-      .filter((id: any): id is string => Boolean(id));
-
-    const measurementUnitIds = matchingItems
-      .map(
-        (item: any) =>
-          item.itemData?.variations?.[0]?.itemVariationData?.measurementUnitId
-      )
-      .filter((id: any): id is string => Boolean(id));
-
-    // Batch fetch images and units
-    const [imageUrlMap, measurementUnitsMap] = await Promise.all([
-      imageIds.length
-        ? batchGetImageUrls(imageIds)
-        : Promise.resolve({} as Record<string, string>),
-      measurementUnitIds.length
-        ? fetchMeasurementUnits(measurementUnitIds)
-        : Promise.resolve({} as Record<string, string>),
-    ]);
-
-    const products = matchingItems.map((item: any) => {
-      const variations = item.itemData?.variations || [];
-      const defaultVariation = variations[0];
-      const priceMoney = defaultVariation?.itemVariationData?.priceMoney;
-      const imageId = item.itemData?.imageIds?.[0];
-      const measurementUnitId = defaultVariation?.itemVariationData?.measurementUnitId;
-
-      const imageUrl =
-        imageId && imageUrlMap[imageId]
-          ? imageUrlMap[imageId]
-          : EL_CAMINO_LOGO_DATA_URI;
-
-      const unit = measurementUnitId
-        ? measurementUnitsMap[measurementUnitId] || undefined
-        : undefined;
-
-      // Extract brand from custom attributes
-      const brandValue = extractBrandValue(item.customAttributeValues);
-      const isGiftCard = extractIsGiftCard(item.customAttributeValues);
-
-      // Build variations array with sale info, sorted by Square ordinal
-      const productVariations = variations
-        .slice()
-        .sort((a: any, b: any) => {
-          const ordA = a.itemVariationData?.ordinal ?? 0;
-          const ordB = b.itemVariationData?.ordinal ?? 0;
-          return ordA - ordB;
-        })
-        .map((v: any) => {
-        const variationPrice = v.itemVariationData?.priceMoney;
-        const regularPrice = variationPrice ? Number(variationPrice.amount) / 100 : 0;
-        
-        // Extract sale info from variation custom attributes
-        const saleInfo = extractSaleInfo(v.customAttributeValues, regularPrice);
-
-        return {
-          id: v.id,
-          variationId: v.id,
-          name: v.itemVariationData?.name || "",
-          price: regularPrice,
-          saleInfo: saleInfo || undefined,
-        };
-      });
-
-      return {
-        id: item.id,
-        catalogObjectId: item.id,
-        variationId: defaultVariation?.id || item.id,
-        title: item.itemData?.name || "",
-        description: item.itemData?.description || "",
-        image: imageUrl,
-        price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
-        url: createProductUrl({ title: item.itemData?.name || "" }),
-        unit: unit,
-        brand: brandValue || undefined,
-        isGiftCard: isGiftCard || undefined,
-        variations: productVariations.length > 0 ? productVariations : undefined,
-      };
-    });
     // Sort products alphabetically by brand (case-insensitive), unbranded fall to end
     products.sort((a, b) => {
       const brandA = a.brand?.toLowerCase() ?? "\uffff";
