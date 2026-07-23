@@ -99,7 +99,17 @@ async function nextPickupTime(from: Date): Promise<Date> {
     const { jsDay, hour } = storeTimeOf(candidate);
     const hours = storeHoursForDay(jsDay, hoursData);
     if (hours && hour >= hours.open && hour < hours.close) {
-      return roundUpTo15(new Date(candidate.getTime() + 2 * 60 * 60 * 1000));
+      const pickupCandidate = roundUpTo15(
+        new Date(candidate.getTime() + 2 * 60 * 60 * 1000),
+      );
+      // The +2h window can itself cross closing time on a short operating
+      // day (or past midnight) — only return it if it's still within hours.
+      const { jsDay: pickupDay, hour: pickupHour } = storeTimeOf(pickupCandidate);
+      const pickupHours = storeHoursForDay(pickupDay, hoursData);
+      if (pickupHours && pickupHour < pickupHours.close) {
+        return pickupCandidate;
+      }
+      // Pickup window would exceed close — keep searching for the next slot.
     }
     candidate = new Date(candidate.getTime() + 15 * 60 * 1000);
   }
