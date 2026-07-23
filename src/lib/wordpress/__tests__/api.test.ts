@@ -20,7 +20,7 @@ import {
 } from '../api';
 
 // Mock dependencies
-vi.mock('@/lib/square/cacheUtils', () => ({
+vi.mock('@/lib/cache/blobCache', () => ({
   wordpressCache: {
     getOrCompute: vi.fn((key: string, compute: () => Promise<any>) => compute()),
     clear: vi.fn(),

@@ -8,7 +8,7 @@ import {
   logError,
 } from "@/lib/square/errorUtils";
 import type { AppError } from "@/lib/square/errorUtils";
-import { wordpressCache } from "@/lib/square/cacheUtils";
+import { wordpressCache } from "@/lib/cache/blobCache";
 
 // Configuration
 const WP_URL =

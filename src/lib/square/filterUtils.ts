@@ -10,7 +10,7 @@ import type {
 import { createFilterSlug } from "./types";
 import { getProductStockStatus } from "./inventory"; // Import individual inventory checking (fallback)
 import { batchInventoryService } from "./batchInventory"; // Import batch inventory service
-import { filterCache } from "./cacheUtils"; // Import filter cache
+import { filterCache } from "@/lib/cache/blobCache"; // Import filter cache
 import { fetchCategoryHierarchy } from "./categories";
 
 /**

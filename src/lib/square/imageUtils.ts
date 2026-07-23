@@ -1,6 +1,6 @@
 // src/lib/square/imageUtils.ts
 import { squareClient } from "./client";
-import { imageCache } from "./cacheUtils";
+import { imageCache } from "@/lib/cache/blobCache";
 
 /**
  * Get image URL with caching
