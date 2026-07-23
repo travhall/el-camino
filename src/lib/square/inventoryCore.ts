@@ -12,7 +12,7 @@
 //   - display fails OPTIMISTIC   (unknown → keep the product visible; never hide
 //     stock over a transient hiccup)
 import { squareClient } from "./client";
-import { apiRetryClient } from "./apiRetry";
+import { catalogRetryClient } from "./apiRetry";
 import { logError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
 import { requestDeduplicator } from "./requestDeduplication";
@@ -55,7 +55,7 @@ async function fetchChunk(
   const locationId = import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
 
   try {
-    const page = await apiRetryClient.executeWithRetry(
+    const page = await catalogRetryClient.executeWithRetry(
       () =>
         squareClient.inventory.batchGetCounts({
           catalogObjectIds: ids,

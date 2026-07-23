@@ -6,7 +6,7 @@ import type { Category, CategoryHierarchy } from "./types";
 import { handleError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
 import { requestDeduplicator } from "./requestDeduplication";
-import { apiRetryClient } from "./apiRetry";
+import { catalogRetryClient } from "./apiRetry";
 
 /**
  * Check if a category has any products (regardless of stock status)
@@ -21,7 +21,7 @@ export async function categoryHasProducts(
     categoryCache.getOrCompute(cacheKey, async () => {
       try {
         // Use enhanced API retry client for robust Square API calls
-        const result = await apiRetryClient.executeWithRetry(
+        const result = await catalogRetryClient.executeWithRetry(
           async () => {
             const result = await squareClient.catalog.searchItems({
               categoryIds: [categoryId],

@@ -2,7 +2,7 @@
 import type { APIRoute } from "astro";
 import type { CartItem } from "@/lib/cart/types";
 import { squareClient } from "@/lib/square/client";
-import { apiRetryClient } from "@/lib/square/apiRetry";
+import { checkoutRetryClient } from "@/lib/square/apiRetry";
 import { calculateShippingRate } from "@/lib/config/shipping";
 import { getAuthoritativePricing } from "@/lib/square/pricing";
 import { createRateLimiter, clientIp } from "@/lib/rateLimit";
@@ -103,7 +103,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Call Square CalculateOrder to get real tax
-    const calculateResponse = await apiRetryClient.executeWithRetry(
+    const calculateResponse = await checkoutRetryClient.executeWithRetry(
       () =>
         squareClient.orders.calculate({
           order: {

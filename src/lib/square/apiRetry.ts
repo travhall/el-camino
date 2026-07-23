@@ -54,7 +54,7 @@ export class ApiRetryClient {
     monitorWindowMs: parseInt(import.meta.env.SQUARE_MONITOR_WINDOW || '60000')
   };
 
-  private constructor() {}
+  constructor() {}
 
   public static getInstance(): ApiRetryClient {
     if (!ApiRetryClient.instance) {
@@ -230,4 +230,8 @@ export class ApiRetryClient {
 }
 
 // Export singleton instance
-export const apiRetryClient = ApiRetryClient.getInstance();
+// Two domain-specific instances instead of one shared singleton: a Square
+// catalog outage tripping the circuit breaker must not also block checkout,
+// since catalog reads and checkout writes hit entirely different Square APIs.
+export const catalogRetryClient = new ApiRetryClient();
+export const checkoutRetryClient = new ApiRetryClient();

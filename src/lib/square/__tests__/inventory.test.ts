@@ -76,7 +76,7 @@ import {
 // Real retry client (not mocked) — checkBulkInventory now flows through the
 // shared inventory core, which guards the batch call with it. Reset between
 // tests so failures from one test don't leave the circuit open for the next.
-import { apiRetryClient } from '../apiRetry';
+import { catalogRetryClient } from '../apiRetry';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -184,7 +184,7 @@ describe('isItemInStock', () => {
 describe('checkBulkInventory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    apiRetryClient.reset();
+    catalogRetryClient.reset();
     mockCacheGet.mockResolvedValue(undefined); // cache miss by default
     mockCacheSet.mockResolvedValue(undefined);
     mockProcessSquareError.mockReturnValue({ message: 'sq-error' });
@@ -313,7 +313,7 @@ describe('checkBulkInventory', () => {
 describe('getProductStockStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    apiRetryClient.reset();
+    catalogRetryClient.reset();
     mockCacheGet.mockResolvedValue(undefined);
     mockCacheSet.mockResolvedValue(undefined);
     mockProcessSquareError.mockReturnValue({ message: 'sq-error' });
