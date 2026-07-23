@@ -1,4 +1,5 @@
 import type { CartItem } from "@/lib/cart/types";
+import { showNotification } from "@/lib/events";
   import { createSlug } from "@/lib/square/slugUtils";
   import {
     EL_CAMINO_LOGO_DATA_URI,
@@ -90,15 +91,15 @@ import type { CartItem } from "@/lib/cart/types";
 
       if (result.success) {
         await updateMiniCartDisplay();
-        window.showNotification(`"${itemToRestore.title}" restored`, "success");
+        showNotification(`"${itemToRestore.title}" restored`, "success");
       } else {
-        window.showNotification(
+        showNotification(
           result.message || "Could not restore item",
           "error",
         );
       }
     } catch {
-      window.showNotification("Could not restore item", "error");
+      showNotification("Could not restore item", "error");
     }
   }
 
@@ -504,7 +505,7 @@ import type { CartItem } from "@/lib/cart/types";
                 await cartInstance.updateQuantity(itemKey, newQty);
                 await updateMiniCartItemQuantity(itemKey);
               } else {
-                window.showNotification(`Only ${inventory} available`, "error");
+                showNotification(`Only ${inventory} available`, "error");
               }
             }
             break;
@@ -545,7 +546,7 @@ import type { CartItem } from "@/lib/cart/types";
         }
       } catch (error) {
         console.error("Error handling quantity action:", error);
-        window.showNotification("Error updating cart", "error");
+        showNotification("Error updating cart", "error");
       }
     });
 
@@ -645,7 +646,7 @@ import type { CartItem } from "@/lib/cart/types";
         const items = cartInstance.getItems();
 
         if (items.length === 0) {
-          window.showNotification("Your cart is empty", "error");
+          showNotification("Your cart is empty", "error");
           return;
         }
 

@@ -2,13 +2,7 @@
 import { cart } from "@/lib/cart";
 import { PDPUIManager } from "./pdpUI";
 import { processClientError, logError } from "@/lib/square/errorUtils";
-
-// Global declarations
-declare global {
-  interface Window {
-    showLocationModal(): void;
-  }
-}
+import { showNotification, showLocationModal } from "@/lib/events";
 
 export interface ProductPageData {
   variations: any[];
@@ -186,7 +180,7 @@ export class PDPEventManager {
       const quantity = this.uiManager.getQuantityValue();
 
       if (isNaN(quantity) || quantity < 1) {
-        window.showNotification("Please enter a valid quantity", "error");
+        showNotification("Please enter a valid quantity", "error");
         return;
       }
 
@@ -204,7 +198,7 @@ export class PDPEventManager {
           quantity
         )
       ) {
-        window.showNotification("Cannot add that quantity to cart", "error");
+        showNotification("Cannot add that quantity to cart", "error");
         return;
       }
 
@@ -212,7 +206,7 @@ export class PDPEventManager {
       const result = await cart.addItem(product);
 
       if (result.success) {
-        window.showNotification(
+        showNotification(
           result.message || `Added ${quantity} to cart`,
           "success",
           3000,
@@ -226,7 +220,7 @@ export class PDPEventManager {
           window.dispatchEvent(new CustomEvent("openMiniCart"));
         }
       } else {
-        window.showNotification(
+        showNotification(
           result.message || "Failed to add to cart",
           "error"
         );
@@ -234,7 +228,7 @@ export class PDPEventManager {
     } catch (error) {
       const appError = processClientError(error, "addToCart");
       logError(appError);
-      window.showNotification("Failed to add to cart", "error");
+      showNotification("Failed to add to cart", "error");
     } finally {
       this.isProcessing = false;
       // Clear loading state first, then re-apply availability state.
@@ -334,7 +328,7 @@ export class PDPEventManager {
       newTrigger.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        window.showLocationModal();
+        showLocationModal();
       });
     });
   }

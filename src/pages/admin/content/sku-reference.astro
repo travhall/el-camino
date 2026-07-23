@@ -1055,9 +1055,12 @@ const filterOptions = {
   }
 
   function showToast(message, type = 'success') {
-    if (typeof window !== 'undefined' && window.showNotification) {
-      window.showNotification(message, type);
-    }
+    // This script uses define:vars, which Astro forces into is:inline mode —
+    // ES module imports aren't available here, so the event name is inlined
+    // rather than imported from @/lib/events (kept in sync with EVENTS.SHOW_NOTIFICATION there).
+    document.dispatchEvent(
+      new CustomEvent('elco:show-notification', { detail: { message, type } }),
+    );
   }
 </script>
 

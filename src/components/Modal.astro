@@ -36,6 +36,8 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
 ---
 
 <script>
+  import { EVENTS, type ShowPolicyModalDetail } from "@/lib/events";
+
   // Import types for use in script
   interface SiteConfig {
     name: string;
@@ -91,9 +93,6 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
         confirmText?: string,
         cancelText?: string,
       ): void;
-      showLocationModal(): void;
-      showPolicyModal(slug: string): void;
-      showSecureCheckoutModal(): void;
     }
   }
 
@@ -441,15 +440,24 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
     },
   };
 
+  const handleShowLocationModal = () => modalManager.showLocationModal();
+  const handleShowPolicyModal = (e: Event) => {
+    const { slug } = (e as CustomEvent<ShowPolicyModalDetail>).detail;
+    modalManager.showPolicyModal(slug);
+  };
+  const handleShowSecureCheckoutModal = () => modalManager.showSecureCheckoutModal();
+
   // Function to initialize modal functions
   function initializeModalFunctions() {
     initializeSiteConfig();
 
-    // Assign to window object
+    // Still window-assigned: showModal isn't part of plan 052's scope (no
+    // callers reference it yet) and is left as-is for a future migration pass.
     window.showModal = modalManager.showModal.bind(modalManager);
-    window.showLocationModal = modalManager.showLocationModal.bind(modalManager);
-    window.showPolicyModal = modalManager.showPolicyModal.bind(modalManager);
-    window.showSecureCheckoutModal = modalManager.showSecureCheckoutModal.bind(modalManager);
+
+    document.addEventListener(EVENTS.SHOW_LOCATION_MODAL, handleShowLocationModal);
+    document.addEventListener(EVENTS.SHOW_POLICY_MODAL, handleShowPolicyModal);
+    document.addEventListener(EVENTS.SHOW_SECURE_CHECKOUT_MODAL, handleShowSecureCheckoutModal);
   }
 
   // Initialize when DOM is ready
@@ -459,9 +467,15 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
     initializeModalFunctions();
   }
 
-  // Cleanup on page navigation
+  // Cleanup on page navigation. This script re-runs on every Astro
+  // view-transition navigation (it isn't transition:persist'd), so without
+  // removing these listeners here they'd pile up — one extra copy per
+  // navigation — firing each modal open multiple times per dispatch.
   const cleanup = () => {
     modalManager.closeModal();
+    document.removeEventListener(EVENTS.SHOW_LOCATION_MODAL, handleShowLocationModal);
+    document.removeEventListener(EVENTS.SHOW_POLICY_MODAL, handleShowPolicyModal);
+    document.removeEventListener(EVENTS.SHOW_SECURE_CHECKOUT_MODAL, handleShowSecureCheckoutModal);
   };
 
   document.addEventListener("astro:before-swap", cleanup);
