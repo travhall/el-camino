@@ -1,7 +1,7 @@
 // src/lib/square/inventory.ts
 import { squareClient } from "./client";
 import type { Product, ProductVariation } from "./types";
-import { inventoryCache } from "./cacheUtils";
+import { inventoryCache } from "@/lib/cache/blobCache";
 import { logError, handleError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
 import { requestDeduplicator } from './requestDeduplication';

@@ -16,7 +16,7 @@ import { apiRetryClient } from "./apiRetry";
 import { logError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
 import { requestDeduplicator } from "./requestDeduplication";
-import { inventoryCache } from "./cacheUtils";
+import { inventoryCache } from "@/lib/cache/blobCache";
 
 // Square's batchGetCounts accepts up to 1000 IDs, but smaller chunks keep each
 // request fast and limit blast radius when one call fails.

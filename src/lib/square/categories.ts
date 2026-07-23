@@ -8,7 +8,7 @@ import type {
   ProductLoadingOptions,
   SaleInfo,
 } from "./types";
-import { categoryCache, productCache } from "./cacheUtils";
+import { categoryCache, productCache } from "@/lib/cache/blobCache";
 import { handleError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
 import { createProductUrl, createSlug } from "@/lib/square/slugUtils";

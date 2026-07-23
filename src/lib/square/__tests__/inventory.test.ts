@@ -41,7 +41,7 @@ vi.mock('../client', () => ({
   },
 }));
 
-vi.mock('../cacheUtils', () => ({
+vi.mock('@/lib/cache/blobCache', () => ({
   inventoryCache: {
     get:          mockCacheGet,
     set:          mockCacheSet,

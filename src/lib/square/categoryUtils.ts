@@ -1,7 +1,7 @@
 // src/lib/square/categoryUtils.ts - Category filtering and product count utilities
 
 import { squareClient } from "./client";
-import { categoryCache, navigationCache } from "./cacheUtils";
+import { categoryCache, navigationCache } from "@/lib/cache/blobCache";
 import type { Category, CategoryHierarchy } from "./types";
 import { handleError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";

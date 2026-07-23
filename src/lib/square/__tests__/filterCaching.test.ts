@@ -21,7 +21,7 @@ import {
   filterProducts,
   filterProductsWithCache
 } from '../filterUtils';
-import { filterCache } from '../cacheUtils';
+import { filterCache } from '@/lib/cache/blobCache';
 import type { Product, ProductFilters } from '../types';
 
 // Mock products for testing

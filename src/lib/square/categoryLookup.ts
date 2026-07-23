@@ -1,6 +1,6 @@
 // src/lib/square/categoryLookup.ts - Optimized category lookup utilities
 
-import { categoryCache } from "./cacheUtils";
+import { categoryCache } from "@/lib/cache/blobCache";
 import { requestDeduplicator } from "./requestDeduplication";
 import type { Category, CategoryHierarchy } from "./types";
 
