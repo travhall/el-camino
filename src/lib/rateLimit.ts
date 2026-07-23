@@ -31,6 +31,11 @@ export function createRateLimiter(opts: { windowMs: number; max: number }): Limi
 }
 
 export function clientIp(request: Request): string {
+  // x-nf-client-connection-ip is injected by Netlify's CDN edge and cannot
+  // be spoofed by clients; fall back to the last XFF hop (least controllable).
+  const nf = request.headers.get("x-nf-client-connection-ip");
+  if (nf) return nf.trim();
   const fwd = request.headers.get("x-forwarded-for") ?? "";
-  return fwd.split(",")[0].trim() || "unknown";
+  const parts = fwd.split(",");
+  return parts[parts.length - 1].trim() || "unknown";
 }
