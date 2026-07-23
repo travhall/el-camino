@@ -152,7 +152,7 @@ export async function fetchProducts(): Promise<Product[]> {
           if (page.data?.length) {
             allObjects.push(...page.data);
           }
-          cursor = (page.response as any).cursor;
+          cursor = page.response.cursor;
         } while (cursor);
 
         if (!allObjects.length) {
@@ -326,13 +326,17 @@ export async function fetchProduct(id: string): Promise<Product | null> {
 
         if (!catalogResult.object || catalogResult.object.type !== "ITEM") return null;
 
-        const item = catalogResult.object as any;
+        const item = catalogResult.object;
         const variations = item.itemData?.variations || [];
 
         if (!variations.length) return null;
 
-        // Use first variation as default
-        const defaultVariation = variations[0];
+        // Use first variation as default. Like the sort comparator below,
+        // CatalogItem.variations is typed as the general CatalogObject union —
+        // every element is an item variation in practice, per Square's contract.
+        const defaultVariation = variations[0] as
+          | Extract<(typeof variations)[number], { type: "ITEM_VARIATION" }>
+          | undefined;
         const defaultPriceMoney =
           defaultVariation?.itemVariationData?.priceMoney;
 
@@ -396,9 +400,16 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         // Process all variations with their data including measurement units, sorted by ordinal
         const productVariations = variations
           .slice()
-          .sort((a: any, b: any) => {
-            const ordA = (a as any).itemVariationData?.ordinal ?? 0;
-            const ordB = (b as any).itemVariationData?.ordinal ?? 0;
+          .sort((a, b) => {
+            // CatalogItem.variations is typed as the full CatalogObject union
+            // (not narrowed to the ITEM_VARIATION member) — every element is an
+            // item variation in practice, per Square's own contract for this field.
+            const ordA =
+              (a as Extract<typeof a, { type: "ITEM_VARIATION" }>).itemVariationData
+                ?.ordinal ?? 0;
+            const ordB =
+              (b as Extract<typeof b, { type: "ITEM_VARIATION" }>).itemVariationData
+                ?.ordinal ?? 0;
             return ordA - ordB;
           })
           .map((v: any) => {

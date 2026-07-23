@@ -1,5 +1,9 @@
 // src/lib/filterCoordinator.ts
 // Unified animation and state coordination for filter components
+import type {
+  TransitionBeforeSwapEvent,
+  TransitionBeforePreparationEvent,
+} from "astro:transitions/client";
 
 // Grid configuration for different grid types
 export interface GridConfig {
@@ -256,7 +260,7 @@ export class FilterCoordinator {
     // Unified cleanup handler - runs before page swap
     document.addEventListener("astro:before-swap", (e) => {
       // Backup: Only fade AppliedFilters when removing all filters (not on filter changes)
-      const nextUrl = (e as any).to?.toString() ?? "";
+      const nextUrl = (e as TransitionBeforeSwapEvent).to?.toString() ?? "";
       if (nextUrl && !FilterCoordinator.urlHasFilters(nextUrl)) {
         const container = document.getElementById("applied-filters-container");
         if (container && !container.classList.contains("no-filters")) {
@@ -271,7 +275,7 @@ export class FilterCoordinator {
     // Early navigation preparation handler - runs before view transition preparation
     document.addEventListener("astro:before-preparation", (e) => {
       // Only fade AppliedFilters when removing all filters — not on filter changes
-      const nextUrl = (e as any).to?.toString() ?? "";
+      const nextUrl = (e as TransitionBeforePreparationEvent).to?.toString() ?? "";
       if (nextUrl && !FilterCoordinator.urlHasFilters(nextUrl)) {
         const container = document.getElementById("applied-filters-container");
         if (container && !container.classList.contains("no-filters")) {

@@ -22,8 +22,11 @@ export async function fetchCategories(): Promise<Category[]> {
 
       const rawObjects = categoryPage.data;
       const categories = rawObjects
-        .filter((item: any) => item.type === "CATEGORY")
-        .map((item: any) => {
+        .filter(
+          (item): item is Extract<typeof item, { type: "CATEGORY" }> =>
+            item.type === "CATEGORY"
+        )
+        .map((item) => {
           // Extract ordinal from parentCategory (BigInt)
           const parentOrdinal = item.categoryData?.parentCategory?.ordinal;
           const orderValue = parentOrdinal ? Number(parentOrdinal) : 999;
@@ -36,9 +39,15 @@ export async function fetchCategories(): Promise<Category[]> {
             rootCategoryId = item.categoryData.rootCategory;
           }
 
-          // Method 2: snake_case fallback
-          if (!rootCategoryId && (item.categoryData as any)?.root_category) {
-            rootCategoryId = (item.categoryData as any).root_category;
+          // Method 2: snake_case fallback — not part of the SDK's documented
+          // CatalogCategory shape (which only has camelCase rootCategory),
+          // but defensively probed for in case a raw/legacy response shape
+          // ever leaks through unconverted.
+          const rawCategoryData = item.categoryData as
+            | (typeof item.categoryData & { root_category?: string })
+            | undefined;
+          if (!rootCategoryId && rawCategoryData?.root_category) {
+            rootCategoryId = rawCategoryData.root_category;
           }
 
           // Method 3: parent category ID fallback for subcategories
