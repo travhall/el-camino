@@ -102,3 +102,10 @@ export async function parseAdminFormData(request: Request): Promise<FormData | n
     return null;
   }
 }
+
+export function unauthorizedResponse(): Response {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: { "Content-Type": "application/json" },
+  });
+}

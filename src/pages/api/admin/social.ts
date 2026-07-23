@@ -6,6 +6,15 @@ import { isAdminAuthenticated, parseAdminFormData } from "@/lib/admin/auth";
 import { getSocialLinks, saveSocialLinks, KNOWN_PLATFORMS, type SocialLink } from "@/lib/socialLinks";
 
 const REDIRECT_BASE = "/admin/settings/social";
+const ALLOWED_URL_SCHEMES = ["https:", "http:"];
+
+function hasAllowedScheme(url: string): boolean {
+  try {
+    return ALLOWED_URL_SCHEMES.includes(new URL(url).protocol);
+  } catch {
+    return false;
+  }
+}
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (!isAdminAuthenticated(request, cookies)) {
@@ -27,6 +36,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       return redirect(`${REDIRECT_BASE}?error=missing-fields`);
     }
 
+    if (!hasAllowedScheme(url)) {
+      return redirect(`${REDIRECT_BASE}?error=invalid-url`);
+    }
+
     // Don't allow duplicate platforms
     if (links.some((l) => l.platform === platform)) {
       return redirect(`${REDIRECT_BASE}?error=duplicate`);
@@ -42,6 +55,11 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   } else if (action === "update-url") {
     const platform = ((body.get("platform") as string) ?? "").trim();
     const url = ((body.get("url") as string) ?? "").trim();
+
+    if (!hasAllowedScheme(url)) {
+      return redirect(`${REDIRECT_BASE}?error=invalid-url`);
+    }
+
     const updated = links.map((l) =>
       l.platform === platform ? { ...l, url } : l,
     );

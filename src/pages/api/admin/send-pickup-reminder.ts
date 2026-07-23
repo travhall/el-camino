@@ -5,7 +5,7 @@
 // No Square state is mutated — this only sends an email.
 
 import type { APIRoute } from "astro";
-import { isAdminAuthenticated, parseAdminFormData } from "@/lib/admin/auth";
+import { isAdminAuthenticated, parseAdminFormData, unauthorizedResponse } from "@/lib/admin/auth";
 import { squareClient } from "@/lib/square/client";
 import { sendPickupReminderEmail } from "@/lib/email/sender";
 
@@ -21,7 +21,7 @@ function formatPickupAt(iso: string): string {
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   if (!isAdminAuthenticated(request, cookies)) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
+    return unauthorizedResponse();
   }
 
   const body = await parseAdminFormData(request);
