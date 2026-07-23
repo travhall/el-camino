@@ -12,6 +12,7 @@ import { getProductStockStatus } from "./inventory"; // Import individual invent
 import { batchInventoryService } from "./batchInventory"; // Import batch inventory service
 import { filterCache } from "@/lib/cache/blobCache"; // Import filter cache
 import { fetchCategoryHierarchy } from "./categories";
+import { logger } from "@/lib/logger";
 
 /**
  * Extract filter options from product array
@@ -162,7 +163,7 @@ export async function filterProducts(
       });
 
       const duration = performance.now() - startTime;
-      console.log(
+      logger.debug(
         `[FilterBatch] Batch inventory filter: ${products.length} → ${
           filteredProducts.length
         } products in ${duration.toFixed(2)}ms`

@@ -2,6 +2,7 @@
 import { squareClient } from "./client";
 import { createSlug } from "./slugUtils";
 import { slugCache } from "../cache/blobCache";
+import { logger } from "@/lib/logger";
 
 /**
  * Lightweight slug-to-ID resolver
@@ -49,7 +50,7 @@ class SlugResolver {
    * Only fetches minimal data needed for slug generation
    */
   private async buildSlugMap(): Promise<Record<string, string>> {
-    console.log("[SlugResolver] Building slug map from Square API...");
+    logger.debug("[SlugResolver] Building slug map from Square API...");
     const startTime = Date.now();
 
     try {
@@ -69,7 +70,7 @@ class SlugResolver {
       await slugCache.set(this.CACHE_KEY, map);
 
       const duration = Date.now() - startTime;
-      console.log(
+      logger.debug(
         `[SlugResolver] Cached ${Object.keys(map).length} slug mappings in ${duration}ms`
       );
 
@@ -85,7 +86,7 @@ class SlugResolver {
    * Manually refresh the slug map (e.g., after webhook)
    */
   async refresh(): Promise<void> {
-    console.log("[SlugResolver] Refreshing slug map...");
+    logger.debug("[SlugResolver] Refreshing slug map...");
     await slugCache.delete(this.CACHE_KEY);
     await this.buildSlugMap();
   }

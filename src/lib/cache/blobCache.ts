@@ -4,6 +4,7 @@
  * Replaces in-memory cache to solve function-per-route memory isolation
  */
 import { getStore } from "@netlify/blobs";
+import { logger } from "@/lib/logger";
 
 interface CacheEntry<T> {
   value: T;
@@ -42,7 +43,7 @@ export class BlobCache<T> {
 
     if (isBrowser) {
       // Always disable in browser - environment variables not available client-side
-      console.info(
+      logger.info(
         `[BlobCache:${this.name}] Browser environment - using fallback cache only`
       );
       return;
@@ -54,7 +55,7 @@ export class BlobCache<T> {
       process.env.ASTRO_NODE_ENV === "development";
 
     if (this.isDevelopment) {
-      console.info(
+      logger.info(
         `[BlobCache:${this.name}] Development mode - using fallback cache only`
       );
     }
@@ -246,7 +247,7 @@ export class BlobCache<T> {
     }
 
     if (cleanedCount > 0) {
-      console.log(
+      logger.debug(
         `[BlobCache:${this.name}] Cleaned ${cleanedCount} expired entries from fallback cache`
       );
     }
