@@ -1,7 +1,7 @@
 // /src/lib/square/client.ts
 import { SquareClient, SquareEnvironment } from "square-legacy";
 import type { Product } from "./types";
-import { getImageUrl, batchGetImageUrls } from "./imageUtils";
+import { batchGetImageUrls } from "./imageUtils";
 import { logApiError } from "./apiUtils";
 import { apiRetryClient } from "./apiRetry";
 import { logError } from "./errorUtils";
@@ -349,11 +349,6 @@ export async function fetchProduct(id: string): Promise<Product | null> {
           allItemImageIds.length > 0
             ? batchGetImageUrls(allItemImageIds)
             : Promise.resolve({} as Record<string, string>);
-        // Keep single-image promise for the parallel await below
-        const imagePromise: Promise<string | null> =
-          allItemImageIds.length > 0
-            ? getImageUrl(allItemImageIds[0])
-            : Promise.resolve(null);
 
         // Get ALL variation image IDs for batch fetching (not just the first per variation)
         const variationImageIds = variations.flatMap(
@@ -377,14 +372,17 @@ export async function fetchProduct(id: string): Promise<Product | null> {
             : Promise.resolve({} as Record<string, string>);
 
         // Wait for all promises to resolve (including all product-level images)
-        const [mainImage, variationImages, unitsMap, allItemImages] =
+        const [variationImages, unitsMap, allItemImages] =
           await Promise.all([
-            imagePromise,
             variationImagePromise,
             measurementUnitsPromise,
             allItemImagesPromise,
           ]);
 
+        // Derive the primary image from the same batch fetch instead of a
+        // second, redundant getImageUrl() call for the same image ID.
+        const primaryImageId = allItemImageIds[0];
+        const mainImage = primaryImageId ? allItemImages[primaryImageId] : undefined;
         if (mainImage) {
           imageUrl = mainImage;
         }
