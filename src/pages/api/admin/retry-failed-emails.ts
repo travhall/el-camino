@@ -1,7 +1,7 @@
 // src/pages/api/admin/retry-failed-emails.ts
 // Admin endpoint to list and retry failed webhook email deliveries.
 import type { APIRoute } from "astro";
-import { isAdminAuthenticated } from "@/lib/admin/auth";
+import { isAdminAuthenticated, unauthorizedResponse } from "@/lib/admin/auth";
 import {
   listFailedEmails,
   getFailedEmail,
@@ -12,7 +12,7 @@ import { sendOrderConfirmation } from "@/lib/email/sender";
 // GET: list all failed email delivery records
 export const GET: APIRoute = async ({ request, cookies }) => {
   if (!isAdminAuthenticated(request, cookies)) {
-    return new Response(null, { status: 302, headers: { Location: "/admin/login" } });
+    return unauthorizedResponse();
   }
   const failed = await listFailedEmails();
   return new Response(JSON.stringify({ success: true, failed }), {
@@ -24,7 +24,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
 // POST: retry a specific failed email by orderId
 export const POST: APIRoute = async ({ request, cookies }) => {
   if (!isAdminAuthenticated(request, cookies)) {
-    return new Response(null, { status: 302, headers: { Location: "/admin/login" } });
+    return unauthorizedResponse();
   }
   const { orderId } = await request.json();
   if (!orderId) {
