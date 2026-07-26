@@ -98,10 +98,25 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
       animation: none; /* New state shown immediately; JS manages entrance animation */
     }
   }
+
+  /* Thin scrollbar for the horizontal chip row below the lg: breakpoint */
+  .applied-filters-scroll::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  .applied-filters-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .applied-filters-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--border-tertiary);
+    border-radius: 3px;
+  }
 </style>
 
 <div
   id="applied-filters-container"
+  tabindex="-1"
   class:list={[
     "applied-filters-container px-2",
     classes,
@@ -111,25 +126,24 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
   data-category-names={JSON.stringify(Object.fromEntries(categorySlugNameMap))}
   data-category-path={categoryPath}
 >
-  <div class="flex flex-wrap items-center gap-3 my-2">
+  <div
+    id="applied-filters-row"
+    class="applied-filters-scroll flex flex-nowrap lg:flex-wrap items-center gap-2 lg:gap-3 my-2 overflow-x-auto lg:overflow-visible"
+  >
     {
       hasActiveFilters && (
         <>
-          <div class="flex flex-wrap gap-2">
-            {currentBrands.map((brand) => (
+          {currentBrands.map((brand) => (
+            <span class="shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50">
+              <span>{brand}</span>
               <button
                 type="button"
                 data-remove-brand={brand}
-                class="inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 group"
+                aria-label={`Remove ${brand} filter`}
                 title={`Remove ${brand} filter`}
+                class="inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors"
               >
-                <span>{brand}</span>
-                <svg
-                  class="w-3 h-3 ml-1 text-(--content-meta) group-hover:text-(--content-body)"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -138,25 +152,22 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
                   />
                 </svg>
               </button>
-            ))}
-            {currentCategories.map((categoryId) => {
-              const name = getCategoryName(categoryId, filterOptions?.categories || []);
-              return (
+            </span>
+          ))}
+          {currentCategories.map((categoryId) => {
+            const name = getCategoryName(categoryId, filterOptions?.categories || []);
+            return (
+              <span class="shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50">
+                <span>{name}</span>
                 <button
                   type="button"
                   data-filter-type="categories"
                   data-filter-value={categoryId}
-                  class="inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 group"
-                  title={`Remove ${name} filter`}
                   aria-label={`Remove ${name} filter`}
+                  title={`Remove ${name} filter`}
+                  class="inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors"
                 >
-                  <span>{name}</span>
-                  <svg
-                    class="w-3 h-3 ml-1 text-(--content-meta) group-hover:text-(--content-body)"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -165,22 +176,20 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
                     />
                   </svg>
                 </button>
-              );
-            })}
-            {currentAvailability && (
+              </span>
+            );
+          })}
+          {currentAvailability && (
+            <span class="shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50">
+              <span>In stock only</span>
               <button
                 type="button"
                 data-remove-availability
-                class="inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 group"
-                title="Remove availability filter"
+                aria-label="Remove in stock only filter"
+                title="Remove in stock only filter"
+                class="inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--state-success-text)/70 hover:text-(--state-success-text) hover:bg-(--surface-tertiary) transition-colors"
               >
-                <span>In stock only</span>
-                <svg
-                  class="w-3 h-3 ml-1 text-(--state-success-text)/70 group-hover:text-(--state-success-text)"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -189,21 +198,19 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
                   />
                 </svg>
               </button>
-            )}
-            {currentOnSale && (
+            </span>
+          )}
+          {currentOnSale && (
+            <span class="shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50">
+              <span>On sale only</span>
               <button
                 type="button"
                 data-remove-on-sale
-                class="inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 group"
-                title="Remove on sale filter"
+                aria-label="Remove on sale only filter"
+                title="Remove on sale only filter"
+                class="inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors"
               >
-                <span>On sale only</span>
-                <svg
-                  class="w-3 h-3 ml-1 text-(--content-meta) group-hover:text-(--content-body)"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -212,12 +219,12 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
                   />
                 </svg>
               </button>
-            )}
-          </div>
+            </span>
+          )}
           <button
             type="button"
             data-clear-all-filters
-            class="text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-nowrap"
+            class="shrink-0 text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-nowrap"
           >
             Clear All
           </button>
@@ -225,6 +232,7 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
       )
     }
   </div>
+  <div id="applied-filters-live-region" aria-live="polite" aria-atomic="true" class="sr-only" />
 </div>
 
 <script>
@@ -234,72 +242,127 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
 
   // ── Pill rendering ──────────────────────────────────────────────────────────
 
-  const PILL_CLASS =
-    "inline-flex items-center px-2.5 py-1.5 text-sm border rounded-full bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 group";
+  const PILL_WRAP_CLASS =
+    "shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50";
 
-  const X_ICON = `<svg class="w-3 h-3 ml-1 text-(--content-meta) group-hover:text-(--content-body)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
-  const X_ICON_GREEN = `<svg class="w-3 h-3 ml-1 text-(--state-success-text)/70 group-hover:text-(--state-success-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
+  const REMOVE_BTN_CLASS =
+    "inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors";
 
-  function buildPills(
+  const REMOVE_BTN_CLASS_GREEN =
+    "inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--state-success-text)/70 hover:text-(--state-success-text) hover:bg-(--surface-tertiary) transition-colors";
+
+  const X_ICON = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
+
+  function buildPill(
+    label: string,
+    removeBtnClass: string,
+    ariaLabel: string,
+    configureBtn: (btn: HTMLButtonElement) => void,
+  ): HTMLElement {
+    const wrap = document.createElement("span");
+    wrap.className = PILL_WRAP_CLASS;
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = label;
+    wrap.appendChild(labelSpan);
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = removeBtnClass;
+    btn.setAttribute("aria-label", ariaLabel);
+    btn.title = ariaLabel;
+    btn.insertAdjacentHTML("beforeend", X_ICON);
+    configureBtn(btn);
+    wrap.appendChild(btn);
+
+    return wrap;
+  }
+
+  function appendPills(
+    row: HTMLElement,
     brands: string[],
     categories: string[],
     availability: boolean,
     categoryNames: Record<string, string>,
-    onSale: boolean = false,
-  ): HTMLElement {
-    const pillsDiv = document.createElement("div");
-    pillsDiv.className = "flex flex-wrap gap-2";
-
+    onSale: boolean,
+  ) {
     brands.forEach((brand) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.dataset.removeBrand = brand;
-      btn.className = PILL_CLASS;
-      btn.title = `Remove ${brand} filter`;
-      const brandSpan = document.createElement("span");
-      brandSpan.textContent = brand;
-      btn.appendChild(brandSpan);
-      btn.insertAdjacentHTML("beforeend", X_ICON);
-      pillsDiv.appendChild(btn);
+      row.appendChild(
+        buildPill(brand, REMOVE_BTN_CLASS, `Remove ${brand} filter`, (btn) => {
+          btn.dataset.removeBrand = brand;
+        }),
+      );
     });
 
     categories.forEach((slug) => {
       const name = categoryNames[slug] || slug;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.dataset.filterType = "categories";
-      btn.dataset.filterValue = slug;
-      btn.className = PILL_CLASS;
-      btn.title = `Remove ${name} filter`;
-      btn.setAttribute("aria-label", `Remove ${name} filter`);
-      const nameSpan = document.createElement("span");
-      nameSpan.textContent = name;
-      btn.appendChild(nameSpan);
-      btn.insertAdjacentHTML("beforeend", X_ICON);
-      pillsDiv.appendChild(btn);
+      row.appendChild(
+        buildPill(name, REMOVE_BTN_CLASS, `Remove ${name} filter`, (btn) => {
+          btn.dataset.filterType = "categories";
+          btn.dataset.filterValue = slug;
+        }),
+      );
     });
 
     if (availability) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.dataset.removeAvailability = "";
-      btn.className = PILL_CLASS;
-      btn.title = "Remove availability filter";
-      btn.innerHTML = `<span>In stock only</span>${X_ICON_GREEN}`;
-      pillsDiv.appendChild(btn);
+      row.appendChild(
+        buildPill("In stock only", REMOVE_BTN_CLASS_GREEN, "Remove in stock only filter", (btn) => {
+          btn.dataset.removeAvailability = "";
+        }),
+      );
     }
 
     if (onSale) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.dataset.removeOnSale = "";
-      btn.className = PILL_CLASS;
-      btn.title = "Remove on sale filter";
-      btn.innerHTML = `<span>On sale only</span>${X_ICON}`;
-      pillsDiv.appendChild(btn);
+      row.appendChild(
+        buildPill("On sale only", REMOVE_BTN_CLASS, "Remove on sale only filter", (btn) => {
+          btn.dataset.removeOnSale = "";
+        }),
+      );
     }
+  }
 
-    return pillsDiv;
+  // ── Focus + announcement bookkeeping ─────────────────────────────────────────
+  // Set right before a chip-driven filter change is dispatched (click handlers
+  // below), then consumed once at the tail of updateAppliedFilters. Stays null
+  // for filter changes that originate elsewhere (e.g. the desktop sidebar),
+  // so this component doesn't steal focus for changes it didn't cause.
+
+  let pendingFocusIndex: number | null = null;
+  let pendingRemovedLabel: string | null = null;
+
+  function getRemoveButtons(): HTMLElement[] {
+    const row = document.getElementById("applied-filters-row");
+    if (!row) return [];
+    return Array.from(
+      row.querySelectorAll<HTMLElement>(
+        "[data-remove-brand], [data-filter-type='categories'], [data-remove-availability], [data-remove-on-sale]"
+      )
+    );
+  }
+
+  function focusFallback(container: HTMLElement) {
+    // Last chip removed — the container is about to be hidden, so move focus
+    // to the page heading rather than an element that's leaving the a11y tree.
+    const heading = document.querySelector("h1") as HTMLElement | null;
+    if (heading) {
+      if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+      heading.focus();
+    } else {
+      container.focus();
+    }
+  }
+
+  function announceRemoval() {
+    if (!pendingRemovedLabel) return;
+    const region = document.getElementById("applied-filters-live-region");
+    if (region) {
+      region.textContent = "";
+      const label = pendingRemovedLabel;
+      window.setTimeout(() => {
+        region.textContent = `${label} filter removed`;
+      }, 50);
+    }
+    pendingRemovedLabel = null;
   }
 
   function updateAppliedFilters(
@@ -309,15 +372,18 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
     onSale: boolean = false,
   ) {
     const container = document.getElementById("applied-filters-container");
-    if (!container) return;
+    const row = document.getElementById("applied-filters-row");
+    if (!container || !row) return;
 
     const hasActive = brands.length > 0 || categories.length > 0 || availability || onSale;
 
     if (!hasActive) {
+      // Focus while still visible — a hidden/removed element can't take focus.
+      if (pendingFocusIndex !== null) focusFallback(container);
       container.classList.add("no-filters");
-      // Also clear the DOM so stale pills can't reappear
-      const flexRow = container.querySelector(".flex.flex-wrap.items-center.gap-3.my-2");
-      if (flexRow) flexRow.innerHTML = "";
+      row.innerHTML = "";
+      pendingFocusIndex = null;
+      announceRemoval();
       return;
     }
 
@@ -327,23 +393,29 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
       container.dataset.categoryNames || "{}"
     ) as Record<string, string>;
 
-    const flexRow = container.querySelector(
-      ".flex.flex-wrap.items-center.gap-3.my-2"
-    );
-    if (!flexRow) return;
-
-    flexRow.innerHTML = "";
-    flexRow.appendChild(buildPills(brands, categories, availability, categoryNames, onSale));
+    row.innerHTML = "";
+    appendPills(row, brands, categories, availability, categoryNames, onSale);
 
     const clearAllBtn = document.createElement("button");
     clearAllBtn.type = "button";
     clearAllBtn.dataset.clearAllFilters = "";
     clearAllBtn.className =
-      "text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-nowrap";
+      "shrink-0 text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-nowrap";
     clearAllBtn.textContent = "Clear All";
-    flexRow.appendChild(clearAllBtn);
+    row.appendChild(clearAllBtn);
 
     setupFilterHandlers();
+
+    if (pendingFocusIndex !== null) {
+      const buttons = getRemoveButtons();
+      if (buttons.length === 0) {
+        focusFallback(container);
+      } else {
+        buttons[Math.min(pendingFocusIndex, buttons.length - 1)]?.focus();
+      }
+      pendingFocusIndex = null;
+    }
+    announceRemoval();
   }
 
   // ── Filter state manipulation ────────────────────────────────────────────────
@@ -387,29 +459,47 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
   // ── Event handler setup ──────────────────────────────────────────────────────
 
   function setupFilterHandlers() {
-    document.querySelectorAll("[data-remove-brand]").forEach((btn) => {
+    document.querySelectorAll<HTMLElement>("[data-remove-brand]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
-        const brand = (e.currentTarget as HTMLElement).dataset.removeBrand;
-        if (brand) removeFilter("brand", brand);
+        const target = e.currentTarget as HTMLElement;
+        const brand = target.dataset.removeBrand;
+        if (brand) {
+          pendingFocusIndex = getRemoveButtons().indexOf(target);
+          pendingRemovedLabel = brand;
+          removeFilter("brand", brand);
+        }
       });
     });
 
-    document.querySelectorAll("[data-filter-type='categories']").forEach((btn) => {
+    document.querySelectorAll<HTMLElement>("[data-filter-type='categories']").forEach((btn) => {
       btn.addEventListener("click", (e) => {
-        const slug = (e.currentTarget as HTMLElement).dataset.filterValue;
-        if (slug) removeFilter("categories", slug);
+        const target = e.currentTarget as HTMLElement;
+        const slug = target.dataset.filterValue;
+        if (slug) {
+          pendingFocusIndex = getRemoveButtons().indexOf(target);
+          pendingRemovedLabel = target.getAttribute("aria-label")?.replace(/^Remove /, "").replace(/ filter$/, "") ?? slug;
+          removeFilter("categories", slug);
+        }
       });
     });
 
-    document.querySelector("[data-remove-availability]")?.addEventListener("click", () => {
+    document.querySelector<HTMLElement>("[data-remove-availability]")?.addEventListener("click", (e) => {
+      const target = e.currentTarget as HTMLElement;
+      pendingFocusIndex = getRemoveButtons().indexOf(target);
+      pendingRemovedLabel = "In stock only";
       removeFilter("availability");
     });
 
-    document.querySelector("[data-remove-on-sale]")?.addEventListener("click", () => {
+    document.querySelector<HTMLElement>("[data-remove-on-sale]")?.addEventListener("click", (e) => {
+      const target = e.currentTarget as HTMLElement;
+      pendingFocusIndex = getRemoveButtons().indexOf(target);
+      pendingRemovedLabel = "On sale only";
       removeFilter("onSale");
     });
 
     document.querySelector("[data-clear-all-filters]")?.addEventListener("click", () => {
+      pendingFocusIndex = 0;
+      pendingRemovedLabel = "All";
       dispatchFilterChange([], [], false, false);
     });
   }

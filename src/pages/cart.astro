@@ -672,10 +672,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                   "success",
                 );
               } catch {
-                showNotification(
-                  "Could not restore cart items",
-                  "error",
-                );
+                showNotification("Could not restore cart items", "error");
               }
             },
           },
@@ -790,10 +787,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
                           );
                         }
                       } catch {
-                        showNotification(
-                          "Could not restore item",
-                          "error",
-                        );
+                        showNotification("Could not restore item", "error");
                       }
                     },
                   },
@@ -814,36 +808,28 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
               const snapshot = { ...itemToRemove };
               cart.removeItem(itemKey);
               await updateDisplay();
-              showNotification(
-                `"${snapshot.title}" removed`,
-                "success",
-                6000,
-                {
-                  label: "Undo",
-                  onClick: async () => {
-                    try {
-                      const result = await restoreCartItem(snapshot);
-                      if (result.success) {
-                        await updateDisplay();
-                        showNotification(
-                          `"${snapshot.title}" restored`,
-                          "success",
-                        );
-                      } else {
-                        showNotification(
-                          result.message || "Could not restore item",
-                          "error",
-                        );
-                      }
-                    } catch {
+              showNotification(`"${snapshot.title}" removed`, "success", 6000, {
+                label: "Undo",
+                onClick: async () => {
+                  try {
+                    const result = await restoreCartItem(snapshot);
+                    if (result.success) {
+                      await updateDisplay();
                       showNotification(
-                        "Could not restore item",
+                        `"${snapshot.title}" restored`,
+                        "success",
+                      );
+                    } else {
+                      showNotification(
+                        result.message || "Could not restore item",
                         "error",
                       );
                     }
-                  },
+                  } catch {
+                    showNotification("Could not restore item", "error");
+                  }
                 },
-              );
+              });
             }
             break;
           }
@@ -1109,7 +1095,7 @@ import FulfillmentSelector from "@/components/FulfillmentSelector.astro";
 
   function handlePageLoad() {
     // Reset per-page-load state — View Transitions keeps module scope alive across
-    // navigations, so stale values from a previous visit would otherwise persist.
+    // navigations, so stale values from a previous visit would otherwise persist. cSpell:ignore giftcard navigations
     fulfillmentFormIsValid = false;
 
     attachEventListeners();
