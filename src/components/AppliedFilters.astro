@@ -1,7 +1,11 @@
 ---
 // src/components/AppliedFilters.astro
 import { fetchCategoryHierarchy } from "@/lib/square/categories";
-import type { FilterOptions, ProductFilters, CategoryFilterOption } from "@/lib/square/types";
+import type {
+  FilterOptions,
+  ProductFilters,
+  CategoryFilterOption,
+} from "@/lib/square/types";
 
 export interface Props {
   classes?: string;
@@ -10,16 +14,29 @@ export interface Props {
   categoryPath?: string;
 }
 
-const { classes, filterOptions, appliedFilters, categoryPath = "" } = Astro.props;
+const {
+  classes,
+  filterOptions,
+  appliedFilters,
+  categoryPath = "",
+} = Astro.props;
 
 // Parse current filters from URL
 const currentParams = new URLSearchParams(Astro.url.search);
-const currentBrands = appliedFilters?.brands || currentParams.getAll("brands") || [];
-const currentCategories = appliedFilters?.categories || currentParams.getAll("categories") || [];
-const currentAvailability = appliedFilters?.availability ?? (currentParams.get("availability") === "true");
-const currentOnSale = appliedFilters?.onSale ?? (currentParams.get("onSale") === "true");
+const currentBrands =
+  appliedFilters?.brands || currentParams.getAll("brands") || [];
+const currentCategories =
+  appliedFilters?.categories || currentParams.getAll("categories") || [];
+const currentAvailability =
+  appliedFilters?.availability ?? currentParams.get("availability") === "true";
+const currentOnSale =
+  appliedFilters?.onSale ?? currentParams.get("onSale") === "true";
 
-const hasActiveFilters = currentBrands.length > 0 || currentCategories.length > 0 || currentAvailability || currentOnSale;
+const hasActiveFilters =
+  currentBrands.length > 0 ||
+  currentCategories.length > 0 ||
+  currentAvailability ||
+  currentOnSale;
 
 // Build comprehensive slug→name and id→name maps for category pill display.
 // We always populate from filterOptions (fast, already in memory) so that
@@ -59,15 +76,24 @@ if (currentCategories.length > 0) {
   }
 }
 
-function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = []): string {
+function getCategoryName(
+  slugOrId: string,
+  categories: CategoryFilterOption[] = [],
+): string {
   // Check filterOptions first (fastest, already in memory)
   for (const cat of categories) {
     if (cat.slug === slugOrId || cat.id === slugOrId) return cat.name;
-    const sub = cat.subcategories.find((s) => s.slug === slugOrId || s.id === slugOrId);
+    const sub = cat.subcategories.find(
+      (s) => s.slug === slugOrId || s.id === slugOrId,
+    );
     if (sub) return sub.name;
   }
   // Fallback to hierarchy maps (handles slugs not present in filtered filterOptions)
-  return categorySlugNameMap.get(slugOrId) ?? categoryIdNameMap.get(slugOrId) ?? slugOrId;
+  return (
+    categorySlugNameMap.get(slugOrId) ??
+    categoryIdNameMap.get(slugOrId) ??
+    slugOrId
+  );
 }
 ---
 
@@ -135,15 +161,21 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
         <>
           {currentBrands.map((brand) => (
             <span class="shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50">
-              <span>{brand}</span>
+              <span class="relative z-10">{brand}</span>
               <button
                 type="button"
                 data-remove-brand={brand}
                 aria-label={`Remove ${brand} filter`}
                 title={`Remove ${brand} filter`}
-                class="inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors"
+                class="inline-flex items-center justify-center rounded-full p-2.5 -m-0.5 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors"
               >
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <svg
+                  class="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -155,19 +187,28 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
             </span>
           ))}
           {currentCategories.map((categoryId) => {
-            const name = getCategoryName(categoryId, filterOptions?.categories || []);
+            const name = getCategoryName(
+              categoryId,
+              filterOptions?.categories || [],
+            );
             return (
               <span class="shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50">
-                <span>{name}</span>
+                <span class="relative z-10">{name}</span>
                 <button
                   type="button"
                   data-filter-type="categories"
                   data-filter-value={categoryId}
                   aria-label={`Remove ${name} filter`}
                   title={`Remove ${name} filter`}
-                  class="inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors"
+                  class="inline-flex items-center justify-center rounded-full p-2.5 -m-0.5 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors"
                 >
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg
+                    class="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -181,15 +222,21 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
           })}
           {currentAvailability && (
             <span class="shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50">
-              <span>In stock only</span>
+              <span class="relative z-10">In stock only</span>
               <button
                 type="button"
                 data-remove-availability
                 aria-label="Remove in stock only filter"
                 title="Remove in stock only filter"
-                class="inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--state-success-text)/70 hover:text-(--state-success-text) hover:bg-(--surface-tertiary) transition-colors"
+                class="inline-flex items-center justify-center rounded-full p-2.5 -m-0.5 text-(--state-success-text)/70 hover:text-(--state-success-text) hover:bg-(--surface-tertiary) transition-colors"
               >
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <svg
+                  class="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -202,15 +249,21 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
           )}
           {currentOnSale && (
             <span class="shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50">
-              <span>On sale only</span>
+              <span class="relative z-10">On sale only</span>
               <button
                 type="button"
                 data-remove-on-sale
                 aria-label="Remove on sale only filter"
                 title="Remove on sale only filter"
-                class="inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors"
+                class="inline-flex items-center justify-center rounded-full p-2.5 -m-0.5 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors"
               >
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <svg
+                  class="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -232,7 +285,13 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
       )
     }
   </div>
-  <div id="applied-filters-live-region" aria-live="polite" aria-atomic="true" class="sr-only" />
+  <div
+    id="applied-filters-live-region"
+    aria-live="polite"
+    aria-atomic="true"
+    class="sr-only"
+  >
+  </div>
 </div>
 
 <script>
@@ -246,10 +305,10 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
     "shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50";
 
   const REMOVE_BTN_CLASS =
-    "inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors";
+    "inline-flex items-center justify-center rounded-full p-2.5 -m-0.5 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors";
 
   const REMOVE_BTN_CLASS_GREEN =
-    "inline-flex items-center justify-center rounded-full p-2.5 -m-1 text-(--state-success-text)/70 hover:text-(--state-success-text) hover:bg-(--surface-tertiary) transition-colors";
+    "inline-flex items-center justify-center rounded-full p-2.5 -m-0.5 text-(--state-success-text)/70 hover:text-(--state-success-text) hover:bg-(--surface-tertiary) transition-colors";
 
   const X_ICON = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
 
@@ -263,6 +322,7 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
     wrap.className = PILL_WRAP_CLASS;
 
     const labelSpan = document.createElement("span");
+    labelSpan.className = "relative z-10";
     labelSpan.textContent = label;
     wrap.appendChild(labelSpan);
 
@@ -306,17 +366,27 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
 
     if (availability) {
       row.appendChild(
-        buildPill("In stock only", REMOVE_BTN_CLASS_GREEN, "Remove in stock only filter", (btn) => {
-          btn.dataset.removeAvailability = "";
-        }),
+        buildPill(
+          "In stock only",
+          REMOVE_BTN_CLASS_GREEN,
+          "Remove in stock only filter",
+          (btn) => {
+            btn.dataset.removeAvailability = "";
+          },
+        ),
       );
     }
 
     if (onSale) {
       row.appendChild(
-        buildPill("On sale only", REMOVE_BTN_CLASS, "Remove on sale only filter", (btn) => {
-          btn.dataset.removeOnSale = "";
-        }),
+        buildPill(
+          "On sale only",
+          REMOVE_BTN_CLASS,
+          "Remove on sale only filter",
+          (btn) => {
+            btn.dataset.removeOnSale = "";
+          },
+        ),
       );
     }
   }
@@ -335,8 +405,8 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
     if (!row) return [];
     return Array.from(
       row.querySelectorAll<HTMLElement>(
-        "[data-remove-brand], [data-filter-type='categories'], [data-remove-availability], [data-remove-on-sale]"
-      )
+        "[data-remove-brand], [data-filter-type='categories'], [data-remove-availability], [data-remove-on-sale]",
+      ),
     );
   }
 
@@ -345,7 +415,8 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
     // to the page heading rather than an element that's leaving the a11y tree.
     const heading = document.querySelector("h1") as HTMLElement | null;
     if (heading) {
-      if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+      if (!heading.hasAttribute("tabindex"))
+        heading.setAttribute("tabindex", "-1");
       heading.focus();
     } else {
       container.focus();
@@ -375,7 +446,8 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
     const row = document.getElementById("applied-filters-row");
     if (!container || !row) return;
 
-    const hasActive = brands.length > 0 || categories.length > 0 || availability || onSale;
+    const hasActive =
+      brands.length > 0 || categories.length > 0 || availability || onSale;
 
     if (!hasActive) {
       // Focus while still visible — a hidden/removed element can't take focus.
@@ -390,7 +462,7 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
     container.classList.remove("no-filters");
 
     const categoryNames = JSON.parse(
-      container.dataset.categoryNames || "{}"
+      container.dataset.categoryNames || "{}",
     ) as Record<string, string>;
 
     row.innerHTML = "";
@@ -418,7 +490,7 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
     announceRemoval();
   }
 
-  // ── Filter state manipulation ────────────────────────────────────────────────
+  // ── Filter state manipulation cSpell:ignore filterchange ────────────────────────────────────────────────
 
   function dispatchFilterChange(
     brands: string[],
@@ -432,9 +504,15 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
     if (availability) params.set("availability", "true");
     if (onSale) params.set("onSale", "true");
     const qs = params.toString();
-    history.pushState({}, "", `${window.location.pathname}${qs ? "?" + qs : ""}`);
+    history.pushState(
+      {},
+      "",
+      `${window.location.pathname}${qs ? "?" + qs : ""}`,
+    );
     window.dispatchEvent(
-      new CustomEvent("filterchange", { detail: { brands, categories, availability, onSale } })
+      new CustomEvent("filterchange", {
+        detail: { brands, categories, availability, onSale },
+      }),
     );
   }
 
@@ -446,9 +524,19 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
     const sale = p.get("onSale") === "true";
 
     if (type === "brand" && value) {
-      dispatchFilterChange(brands.filter((b) => b !== value), cats, avail, sale);
+      dispatchFilterChange(
+        brands.filter((b) => b !== value),
+        cats,
+        avail,
+        sale,
+      );
     } else if (type === "categories" && value) {
-      dispatchFilterChange(brands, cats.filter((c) => c !== value), avail, sale);
+      dispatchFilterChange(
+        brands,
+        cats.filter((c) => c !== value),
+        avail,
+        sale,
+      );
     } else if (type === "availability") {
       dispatchFilterChange(brands, cats, false, sale);
     } else if (type === "onSale") {
@@ -459,49 +547,63 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
   // ── Event handler setup ──────────────────────────────────────────────────────
 
   function setupFilterHandlers() {
-    document.querySelectorAll<HTMLElement>("[data-remove-brand]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const target = e.currentTarget as HTMLElement;
-        const brand = target.dataset.removeBrand;
-        if (brand) {
-          pendingFocusIndex = getRemoveButtons().indexOf(target);
-          pendingRemovedLabel = brand;
-          removeFilter("brand", brand);
-        }
+    document
+      .querySelectorAll<HTMLElement>("[data-remove-brand]")
+      .forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const target = e.currentTarget as HTMLElement;
+          const brand = target.dataset.removeBrand;
+          if (brand) {
+            pendingFocusIndex = getRemoveButtons().indexOf(target);
+            pendingRemovedLabel = brand;
+            removeFilter("brand", brand);
+          }
+        });
       });
-    });
 
-    document.querySelectorAll<HTMLElement>("[data-filter-type='categories']").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const target = e.currentTarget as HTMLElement;
-        const slug = target.dataset.filterValue;
-        if (slug) {
-          pendingFocusIndex = getRemoveButtons().indexOf(target);
-          pendingRemovedLabel = target.getAttribute("aria-label")?.replace(/^Remove /, "").replace(/ filter$/, "") ?? slug;
-          removeFilter("categories", slug);
-        }
+    document
+      .querySelectorAll<HTMLElement>("[data-filter-type='categories']")
+      .forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const target = e.currentTarget as HTMLElement;
+          const slug = target.dataset.filterValue;
+          if (slug) {
+            pendingFocusIndex = getRemoveButtons().indexOf(target);
+            pendingRemovedLabel =
+              target
+                .getAttribute("aria-label")
+                ?.replace(/^Remove /, "")
+                .replace(/ filter$/, "") ?? slug;
+            removeFilter("categories", slug);
+          }
+        });
       });
-    });
 
-    document.querySelector<HTMLElement>("[data-remove-availability]")?.addEventListener("click", (e) => {
-      const target = e.currentTarget as HTMLElement;
-      pendingFocusIndex = getRemoveButtons().indexOf(target);
-      pendingRemovedLabel = "In stock only";
-      removeFilter("availability");
-    });
+    document
+      .querySelector<HTMLElement>("[data-remove-availability]")
+      ?.addEventListener("click", (e) => {
+        const target = e.currentTarget as HTMLElement;
+        pendingFocusIndex = getRemoveButtons().indexOf(target);
+        pendingRemovedLabel = "In stock only";
+        removeFilter("availability");
+      });
 
-    document.querySelector<HTMLElement>("[data-remove-on-sale]")?.addEventListener("click", (e) => {
-      const target = e.currentTarget as HTMLElement;
-      pendingFocusIndex = getRemoveButtons().indexOf(target);
-      pendingRemovedLabel = "On sale only";
-      removeFilter("onSale");
-    });
+    document
+      .querySelector<HTMLElement>("[data-remove-on-sale]")
+      ?.addEventListener("click", (e) => {
+        const target = e.currentTarget as HTMLElement;
+        pendingFocusIndex = getRemoveButtons().indexOf(target);
+        pendingRemovedLabel = "On sale only";
+        removeFilter("onSale");
+      });
 
-    document.querySelector("[data-clear-all-filters]")?.addEventListener("click", () => {
-      pendingFocusIndex = 0;
-      pendingRemovedLabel = "All";
-      dispatchFilterChange([], [], false, false);
-    });
+    document
+      .querySelector("[data-clear-all-filters]")
+      ?.addEventListener("click", () => {
+        pendingFocusIndex = 0;
+        pendingRemovedLabel = "All";
+        dispatchFilterChange([], [], false, false);
+      });
   }
 
   // ── Module-level listeners ───────────────────────────────────────────────────
@@ -513,7 +615,12 @@ function getCategoryName(slugOrId: string, categories: CategoryFilterOption[] = 
       availability: boolean;
       onSale?: boolean;
     }>;
-    updateAppliedFilters(evt.detail.brands, evt.detail.categories, evt.detail.availability, evt.detail.onSale ?? false);
+    updateAppliedFilters(
+      evt.detail.brands,
+      evt.detail.categories,
+      evt.detail.availability,
+      evt.detail.onSale ?? false,
+    );
   });
 
   document.addEventListener("astro:page-load", () => {
