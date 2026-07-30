@@ -69,12 +69,22 @@ const getSkeletonVariant = () => {
   }
   return "masonry";
 };
+
+const currentPath = Astro.url.pathname;
 ---
 
 {
   error && (
-    <div class="text-state-error-text bg-state-error-surface p-4 rounded">
-      {error}
+    <div class="text-state-error-text bg-state-error-surface p-4 rounded flex flex-col items-start gap-3">
+      <p>{error}</p>
+      <div class="flex flex-wrap gap-4">
+        <a href={currentPath} class="loading-retry-button">
+          Try again
+        </a>
+        <a href="/shop/all" class="underline font-semibold">
+          Browse the shop instead
+        </a>
+      </div>
     </div>
   )
 }
