@@ -1,7 +1,6 @@
 // /src/lib/product/breadcrumbs.ts
 
 import type { Product, Category } from "@/lib/square/types";
-import { fetchProductsByCategory } from "@/lib/square/categories";
 import { siteConfig } from "@/lib/site-config";
 
 /**
@@ -22,27 +21,20 @@ export interface BreadcrumbPath {
 }
 
 /**
- * Find which category a product belongs to by checking all categories
- * This is necessary because products don't store their category ID
- * Returns the most specific (deepest) category the product belongs to
+ * Find which category a product belongs to, using product.categories (Square
+ * category IDs already present on the product) instead of reverse-scanning
+ * every category's product list via the API.
+ * Returns the most specific (deepest) category the product belongs to.
  */
-async function findProductCategory(product: Product, categories: Category[]): Promise<Category | null> {
+function findProductCategory(product: Product, categories: Category[]): Category | null {
   let foundCategory: Category | null = null;
-  
-  // Check each category's products to find where this product belongs
+
   // Prefer subcategories (non-top-level) over top-level categories for specificity
-  for (const category of categories) {
-    try {
-      const categoryProducts = await fetchProductsByCategory(category.id, { limit: 200 });
-      if (categoryProducts.products.some(p => p.id === product.id)) {
-        // If we haven't found a category yet, or this is more specific (has a parent)
-        if (!foundCategory || (!foundCategory.parentCategoryId && category.parentCategoryId)) {
-          foundCategory = category;
-        }
-      }
-    } catch (err) {
-      // Continue checking other categories
-      continue;
+  for (const categoryId of product.categories ?? []) {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category) continue;
+    if (!foundCategory || (!foundCategory.parentCategoryId && category.parentCategoryId)) {
+      foundCategory = category;
     }
   }
   return foundCategory;
@@ -62,7 +54,7 @@ export async function generateBreadcrumbs(
   ];
 
   // Find which category this product belongs to (most specific)
-  const productCategory = await findProductCategory(product, categories);
+  const productCategory = findProductCategory(product, categories);
   
   if (productCategory) {
     // Build category hierarchy from root to current

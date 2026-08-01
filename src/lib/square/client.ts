@@ -456,6 +456,13 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         // Use default variation unit or first found unit
         const defaultUnit = productVariations[0]?.unit ?? "";
 
+        // Same extraction as fetchProducts' basic-info pass — needed so
+        // generateBreadcrumbs (which reads product.categories) works for
+        // products loaded via the single-item PDP path, not just bulk fetches.
+        const categoryIds = (item.itemData?.categories || [])
+          .map((c: any) => c.id)
+          .filter(Boolean);
+
         const product = {
           id: item.id,
           catalogObjectId: item.id,
@@ -472,6 +479,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
           unit: defaultUnit,
           availableAttributes: availableAttributes, // Add available attributes
           isGiftCard: isGiftCard || undefined, // Physical gift card flag
+          categories: categoryIds.length > 0 ? categoryIds : undefined,
         };
 
         // console.log(
