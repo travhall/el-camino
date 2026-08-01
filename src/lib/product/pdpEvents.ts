@@ -159,6 +159,10 @@ export class PDPEventManager {
     newButton.addEventListener("click", async () => {
       await this.handleAddToCart(newButton as HTMLButtonElement);
     });
+
+    // Marks the point at which the click listener is actually attached, so
+    // e2e tests can wait past hydration instead of racing SSR DOM presence.
+    (newButton as HTMLElement).dataset.addToCartReady = "true";
   }
 
   /**

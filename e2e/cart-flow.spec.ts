@@ -51,6 +51,14 @@ test.describe("Cart Operations", () => {
 
     // Wait for product detail page to load
     await page.waitForURL(/\/product\/.+/);
+    // Product page hydrates via a client-side <script> module (PDPController);
+    // the "Add to Cart" button exists in SSR HTML before its click listener is
+    // attached. Under load (parallel workers + on-demand Vite compilation),
+    // hydration can lag well behind DOM presence, so a bare click can silently
+    // no-op. Wait for the button's hydration-ready marker instead of guessing.
+    await page.waitForSelector(
+      '#add-to-cart-button[data-add-to-cart-ready="true"]'
+    );
     await page.waitForSelector('button:has-text("Add to Cart")');
 
     // Get product name for verification
@@ -83,6 +91,14 @@ test.describe("Cart Operations", () => {
     await firstProduct.click();
 
     await page.waitForURL(/\/product\/.+/);
+    // Product page hydrates via a client-side <script> module (PDPController);
+    // the "Add to Cart" button exists in SSR HTML before its click listener is
+    // attached. Under load (parallel workers + on-demand Vite compilation),
+    // hydration can lag well behind DOM presence, so a bare click can silently
+    // no-op. Wait for the button's hydration-ready marker instead of guessing.
+    await page.waitForSelector(
+      '#add-to-cart-button[data-add-to-cart-ready="true"]'
+    );
     await page.click('button:has-text("Add to Cart")');
 
     // Verify cart has 1 item
@@ -108,6 +124,14 @@ test.describe("Cart Operations", () => {
     await firstProduct.click();
 
     await page.waitForURL(/\/product\/.+/);
+    // Product page hydrates via a client-side <script> module (PDPController);
+    // the "Add to Cart" button exists in SSR HTML before its click listener is
+    // attached. Under load (parallel workers + on-demand Vite compilation),
+    // hydration can lag well behind DOM presence, so a bare click can silently
+    // no-op. Wait for the button's hydration-ready marker instead of guessing.
+    await page.waitForSelector(
+      '#add-to-cart-button[data-add-to-cart-ready="true"]'
+    );
     const productName = await getProductName(page);
 
     await page.click('button:has-text("Add to Cart")');
@@ -140,6 +164,14 @@ test.describe("Cart Operations", () => {
     await firstProduct.click();
 
     await page.waitForURL(/\/product\/.+/);
+    // Product page hydrates via a client-side <script> module (PDPController);
+    // the "Add to Cart" button exists in SSR HTML before its click listener is
+    // attached. Under load (parallel workers + on-demand Vite compilation),
+    // hydration can lag well behind DOM presence, so a bare click can silently
+    // no-op. Wait for the button's hydration-ready marker instead of guessing.
+    await page.waitForSelector(
+      '#add-to-cart-button[data-add-to-cart-ready="true"]'
+    );
 
     // Check if we can increase quantity (button not disabled)
     const increaseButton = page.locator('button:has-text("+")').first();
@@ -181,6 +213,14 @@ test.describe("Cart Operations", () => {
     await firstProduct.click();
 
     await page.waitForURL(/\/product\/.+/);
+    // Product page hydrates via a client-side <script> module (PDPController);
+    // the "Add to Cart" button exists in SSR HTML before its click listener is
+    // attached. Under load (parallel workers + on-demand Vite compilation),
+    // hydration can lag well behind DOM presence, so a bare click can silently
+    // no-op. Wait for the button's hydration-ready marker instead of guessing.
+    await page.waitForSelector(
+      '#add-to-cart-button[data-add-to-cart-ready="true"]'
+    );
     await page.click('button:has-text("Add to Cart")');
 
     // Verify cart has 1 item
@@ -212,6 +252,14 @@ test.describe("Cart Operations", () => {
     const firstProduct = page.locator('article[role="article"]').first();
     await firstProduct.click();
     await page.waitForURL(/\/product\/.+/);
+    // Product page hydrates via a client-side <script> module (PDPController);
+    // the "Add to Cart" button exists in SSR HTML before its click listener is
+    // attached. Under load (parallel workers + on-demand Vite compilation),
+    // hydration can lag well behind DOM presence, so a bare click can silently
+    // no-op. Wait for the button's hydration-ready marker instead of guessing.
+    await page.waitForSelector(
+      '#add-to-cart-button[data-add-to-cart-ready="true"]'
+    );
     await page.click('button:has-text("Add to Cart")');
 
     // Go back and add second product
@@ -219,6 +267,14 @@ test.describe("Cart Operations", () => {
     const secondProduct = page.locator('article[role="article"]').nth(1);
     await secondProduct.click();
     await page.waitForURL(/\/product\/.+/);
+    // Product page hydrates via a client-side <script> module (PDPController);
+    // the "Add to Cart" button exists in SSR HTML before its click listener is
+    // attached. Under load (parallel workers + on-demand Vite compilation),
+    // hydration can lag well behind DOM presence, so a bare click can silently
+    // no-op. Wait for the button's hydration-ready marker instead of guessing.
+    await page.waitForSelector(
+      '#add-to-cart-button[data-add-to-cart-ready="true"]'
+    );
     await page.click('button:has-text("Add to Cart")');
 
     // Verify cart has 2 items
@@ -245,6 +301,14 @@ test.describe("Cart Operations", () => {
     await firstProduct.click();
 
     await page.waitForURL(/\/product\/.+/);
+    // Product page hydrates via a client-side <script> module (PDPController);
+    // the "Add to Cart" button exists in SSR HTML before its click listener is
+    // attached. Under load (parallel workers + on-demand Vite compilation),
+    // hydration can lag well behind DOM presence, so a bare click can silently
+    // no-op. Wait for the button's hydration-ready marker instead of guessing.
+    await page.waitForSelector(
+      '#add-to-cart-button[data-add-to-cart-ready="true"]'
+    );
 
     // Get available quantity (scoped to #remaining-count — the quick-view
     // modal has its own #quick-view-remaining-count with the same text shape,
@@ -294,6 +358,14 @@ test.describe("Cart Navigation", () => {
     await firstProduct.click();
 
     await page.waitForURL(/\/product\/.+/);
+    // Product page hydrates via a client-side <script> module (PDPController);
+    // the "Add to Cart" button exists in SSR HTML before its click listener is
+    // attached. Under load (parallel workers + on-demand Vite compilation),
+    // hydration can lag well behind DOM presence, so a bare click can silently
+    // no-op. Wait for the button's hydration-ready marker instead of guessing.
+    await page.waitForSelector(
+      '#add-to-cart-button[data-add-to-cart-ready="true"]'
+    );
     await page.click('button:has-text("Add to Cart")');
 
     // Wait for mini-cart to open

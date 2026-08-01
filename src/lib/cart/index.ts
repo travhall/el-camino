@@ -562,8 +562,12 @@ class CartManager {
 
     if (item) {
       this.items.delete(id);
+      // Persist immediately — queueUpdate's setTimeout delay must not gate the
+      // localStorage write, or a navigation within that window (e.g. clicking
+      // a link right after removing an item) tears down the pending timer and
+      // the removal is silently lost, reappearing on the next page load.
+      this.saveCart();
       this.queueUpdate(() => {
-        this.saveCart();
         this.dispatchCartEvent("itemRemoved", { item });
         this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
       });
@@ -585,8 +589,10 @@ class CartManager {
     }
     item.quantity = quantity;
     this.items.set(id, item);
+    // Persist immediately — see removeItem() for why the save can't wait on
+    // queueUpdate's debounce.
+    this.saveCart();
     this.queueUpdate(() => {
-      this.saveCart();
       this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
     });
 
@@ -671,10 +677,12 @@ class CartManager {
 
   public clear(): void {
     this.items.clear();
+    // Persist immediately — see removeItem() for why the save can't wait on
+    // queueUpdate's debounce.
+    this.saveCart();
     this.queueUpdate(() => {
       this.dispatchCartEvent("cartCleared");
       this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
-      this.saveCart();
     });
   }
 
