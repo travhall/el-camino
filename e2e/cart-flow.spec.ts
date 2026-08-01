@@ -240,7 +240,9 @@ test.describe("Cart Operations", () => {
     // Verify cart badge removed or shows 0 (CartLayout hides the header cart
     // button on /cart itself, so check it on a page that renders the header)
     await page.goto("/");
-    await expect(page.locator("#cart-count")).toHaveClass(/\bhidden\b/);
+    await page.waitForFunction(() =>
+      document.querySelector("#cart-count")?.classList.contains("hidden")
+    );
   });
 
   test("should clear entire cart", async ({ page }) => {
@@ -396,8 +398,10 @@ test.describe("Cart Navigation", () => {
   });
 
   test("should open cart from header button", async ({ page }) => {
-    // Go to any page
-    await page.goto("/");
+    // beforeEach already navigated to "/" — re-navigating to the same URL
+    // is a documented Playwright+Firefox bug (goto is a no-op on Firefox
+    // when the URL is unchanged, leaving Playwright's navigation tracking
+    // stuck and hanging the next action): https://github.com/microsoft/playwright/issues/15781
 
     // Click cart button in header
     await page.getByRole("button", { name: "Shopping Cart" }).click();

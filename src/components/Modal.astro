@@ -491,17 +491,19 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
     document.addEventListener(EVENTS.SHOW_SECURE_CHECKOUT_MODAL, handleShowSecureCheckoutModal);
   }
 
-  // Initialize when DOM is ready
+  // Initialize on first load, then on every subsequent view-transition
+  // navigation. This script tag is a module and does NOT re-execute on
+  // swap, so listeners removed in `cleanup` below must be re-added here via
+  // astro:page-load rather than relying on the script re-running.
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initializeModalFunctions);
   } else {
     initializeModalFunctions();
   }
+  document.addEventListener("astro:page-load", initializeModalFunctions);
 
-  // Cleanup on page navigation. This script re-runs on every Astro
-  // view-transition navigation (it isn't transition:persist'd), so without
-  // removing these listeners here they'd pile up — one extra copy per
-  // navigation — firing each modal open multiple times per dispatch.
+  // Cleanup on page navigation — prevents duplicate listeners from piling
+  // up when astro:page-load re-registers them on the next navigation.
   const cleanup = () => {
     modalManager.closeModal();
     document.removeEventListener(EVENTS.SHOW_LOCATION_MODAL, handleShowLocationModal);
