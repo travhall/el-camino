@@ -23,6 +23,8 @@ const { category = "tops" } = Astro.props;
     const portalRoot = document.getElementById("portal-root");
     if (!portalRoot) return;
 
+    const triggerElement = document.activeElement;
+
     document.body.style.overflow = "hidden";
 
     const topsRows = [
@@ -125,11 +127,37 @@ const { category = "tops" } = Astro.props;
       setTimeout(() => {
         backdrop.remove();
         document.body.style.overflow = "unset";
+        triggerElement?.focus();
       }, 300);
     };
 
     const onKey = (e) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") {
+        close();
+        return;
+      }
+
+      if (e.key !== "Tab") return;
+
+      const focusable = Array.from(
+        modal.querySelectorAll(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
 
     closeBtn?.addEventListener("click", close);
