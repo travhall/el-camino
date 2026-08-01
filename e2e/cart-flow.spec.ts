@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 /**
  * Cart Flow E2E Tests
@@ -11,6 +11,21 @@ import { test, expect } from "@playwright/test";
  * - Remove from cart
  * - Cart page navigation
  */
+
+/**
+ * Product page h1 is `<h1>{brand span}{displayTitle}</h1>` with no
+ * separator between them, so a plain textContent() read concatenates
+ * "BrandDisplay Title" — strip the brand span's text off the front.
+ */
+async function getProductName(page: Page): Promise<string> {
+  const h1 = page.locator("h1");
+  const fullText = (await h1.textContent()) || "";
+  const brandSpan = h1.locator("span").first();
+  const brandText = (await brandSpan.count()) > 0
+    ? (await brandSpan.textContent()) || ""
+    : "";
+  return brandText ? fullText.replace(brandText, "").trim() : fullText.trim();
+}
 
 test.describe("Cart Operations", () => {
   test.beforeEach(async ({ page, context }) => {
@@ -39,24 +54,24 @@ test.describe("Cart Operations", () => {
     await page.waitForSelector('button:has-text("Add to Cart")');
 
     // Get product name for verification
-    const productName = await page.locator("h1").textContent();
+    const productName = await getProductName(page);
 
     // Add to cart
     await page.click('button:has-text("Add to Cart")');
 
     // Verify cart badge updated
     await expect(
-      page.locator('button:has-text("Shopping Cart")')
+      page.getByRole("button", { name: "Shopping Cart" })
     ).toContainText("1");
 
     // Verify mini-cart opened (cart count in heading)
-    await expect(page.locator("dialog[open] h2")).toContainText("Cart (1)");
+    await expect(page.locator("#mini-cart-title")).toContainText("Cart (1)");
 
     // Verify product in mini-cart
-    await expect(page.locator("dialog[open]")).toContainText(productName || "");
+    await expect(page.locator("#mini-cart-panel")).toContainText(productName || "");
 
     // Verify subtotal displayed
-    await expect(page.locator("dialog[open]")).toContainText("Subtotal:");
+    await expect(page.locator("#mini-cart-panel")).toContainText("Subtotal:");
   });
 
   test("should persist cart across page reload", async ({ page }) => {
@@ -72,7 +87,7 @@ test.describe("Cart Operations", () => {
 
     // Verify cart has 1 item
     await expect(
-      page.locator('button:has-text("Shopping Cart")')
+      page.getByRole("button", { name: "Shopping Cart" })
     ).toContainText("1");
 
     // Reload page
@@ -80,7 +95,7 @@ test.describe("Cart Operations", () => {
 
     // Verify cart persisted
     await expect(
-      page.locator('button:has-text("Shopping Cart")')
+      page.getByRole("button", { name: "Shopping Cart" })
     ).toContainText("1");
   });
 
@@ -93,7 +108,7 @@ test.describe("Cart Operations", () => {
     await firstProduct.click();
 
     await page.waitForURL(/\/product\/.+/);
-    const productName = await page.locator("h1").textContent();
+    const productName = await getProductName(page);
 
     await page.click('button:has-text("Add to Cart")');
 
@@ -109,10 +124,9 @@ test.describe("Cart Operations", () => {
     // Verify subtotal
     await expect(page.locator("main")).toContainText("Subtotal");
 
-    // Verify checkout button
-    await expect(
-      page.locator('button:has-text("Continue to Payment")')
-    ).toBeVisible();
+    // Verify checkout button (both desktop #checkout-button and the mobile
+    // sticky bar's #mobile-checkout-button share this text — scope to desktop)
+    await expect(page.locator("#checkout-button")).toBeVisible();
   });
 
   test("should update quantity from cart page", async ({ page }) => {
@@ -138,22 +152,22 @@ test.describe("Cart Operations", () => {
       // Add to cart
       await page.click('button:has-text("Add to Cart")');
 
+      // Verify cart badge shows 2 (header cart button is hidden on /cart itself)
+      await expect(
+        page.getByRole("button", { name: "Shopping Cart" })
+      ).toContainText("2");
+
       // Go to cart
       await page.goto("/cart");
 
       // Verify quantity is 2
-      const quantityInput = page.locator('input[type="spinbutton"]').first();
+      const quantityInput = page.getByRole("spinbutton").first();
       await expect(quantityInput).toHaveValue("2");
-
-      // Verify cart badge shows 2
-      await expect(
-        page.locator('button:has-text("Shopping Cart")')
-      ).toContainText("2");
     } else {
       // Product only has 1 available, add and verify
       await page.click('button:has-text("Add to Cart")');
       await expect(
-        page.locator('button:has-text("Shopping Cart")')
+        page.getByRole("button", { name: "Shopping Cart" })
       ).toContainText("1");
     }
   });
@@ -171,7 +185,7 @@ test.describe("Cart Operations", () => {
 
     // Verify cart has 1 item
     await expect(
-      page.locator('button:has-text("Shopping Cart")')
+      page.getByRole("button", { name: "Shopping Cart" })
     ).toContainText("1");
 
     // Go to cart page
@@ -183,10 +197,10 @@ test.describe("Cart Operations", () => {
     // Verify empty cart message
     await expect(page.locator("main")).toContainText("Your cart is empty");
 
-    // Verify cart badge removed or shows 0
-    const cartButton = page.locator('button:has-text("Shopping Cart")');
-    const badgeText = await cartButton.textContent();
-    expect(badgeText?.includes("1")).toBeFalsy();
+    // Verify cart badge removed or shows 0 (CartLayout hides the header cart
+    // button on /cart itself, so check it on a page that renders the header)
+    await page.goto("/");
+    await expect(page.locator("#cart-count")).toHaveClass(/\bhidden\b/);
   });
 
   test("should clear entire cart", async ({ page }) => {
@@ -209,7 +223,7 @@ test.describe("Cart Operations", () => {
 
     // Verify cart has 2 items
     await expect(
-      page.locator('button:has-text("Shopping Cart")')
+      page.getByRole("button", { name: "Shopping Cart" })
     ).toContainText("2");
 
     // Go to cart page
@@ -232,9 +246,11 @@ test.describe("Cart Operations", () => {
 
     await page.waitForURL(/\/product\/.+/);
 
-    // Get available quantity
+    // Get available quantity (scoped to #remaining-count — the quick-view
+    // modal has its own #quick-view-remaining-count with the same text shape,
+    // which made the old regex-text locator match two elements)
     const availabilityText = await page
-      .locator("text=/\\d+ available/")
+      .locator("#remaining-count")
       .textContent();
     const available = parseInt(availabilityText?.match(/\d+/)?.[0] || "0");
 
@@ -246,14 +262,15 @@ test.describe("Cart Operations", () => {
 
     // Verify inventory updated
     const newAvailability = await page
-      .locator("text=/\\d+ available/")
+      .locator("#remaining-count")
       .textContent();
     const newAvailable = parseInt(newAvailability?.match(/\d+/)?.[0] || "0");
 
     expect(newAvailable).toBe(available - 1);
 
     // Verify "in cart" message
-    await expect(page.locator("text=/\\d+ in cart/")).toBeVisible();
+    await expect(page.locator("#cart-quantity")).toBeVisible();
+    await expect(page.locator("#cart-quantity")).toContainText(/\d+ in cart/);
   });
 });
 
@@ -280,7 +297,7 @@ test.describe("Cart Navigation", () => {
     await page.click('button:has-text("Add to Cart")');
 
     // Wait for mini-cart to open
-    await page.waitForSelector('dialog[open] h2:has-text("Cart")');
+    await page.waitForSelector("#mini-cart-overlay:not(.hidden)");
 
     // Click View Full Cart (direct navigation as button may be outside viewport)
     await page.goto("/cart");
@@ -291,20 +308,16 @@ test.describe("Cart Navigation", () => {
   });
 
   test("should continue shopping from cart", async ({ page }) => {
-    // Add product and go to cart
-    await page.goto("/shop/all");
-    await page.waitForSelector('article[role="article"]');
-
-    const firstProduct = page.locator('article[role="article"]').first();
-    await firstProduct.click();
-
-    await page.waitForURL(/\/product\/.+/);
-    await page.click('button:has-text("Add to Cart")');
-
+    // "Continue Shopping" only renders in the empty-cart state (#empty-cart) —
+    // a non-empty cart has no such link, so hit /cart with an empty cart.
     await page.goto("/cart");
+    await page.waitForSelector("#empty-cart:not(.hidden)");
 
     // Click continue shopping
-    await page.click('a:has-text("Continue Shopping")');
+    await page
+      .locator("#empty-cart")
+      .getByRole("link", { name: "Continue Shopping" })
+      .click();
 
     // Verify back on shop page
     await expect(page).toHaveURL(/\/shop\/all/);
@@ -315,9 +328,9 @@ test.describe("Cart Navigation", () => {
     await page.goto("/");
 
     // Click cart button in header
-    await page.click('button:has-text("Shopping Cart")');
+    await page.getByRole("button", { name: "Shopping Cart" }).click();
 
     // Verify mini-cart opened
-    await expect(page.locator("dialog[open] h2")).toContainText("Cart");
+    await expect(page.locator("#mini-cart-title")).toContainText("Cart");
   });
 });

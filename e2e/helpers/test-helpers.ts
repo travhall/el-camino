@@ -34,7 +34,7 @@ export async function addFirstProductToCart(page: Page): Promise<string> {
   await page.click('button:has-text("Add to Cart")');
 
   // Wait for cart to update
-  await page.waitForSelector('button:has-text("Shopping Cart")');
+  await page.getByRole("button", { name: "Shopping Cart" }).waitFor();
 
   return productName;
 }
@@ -49,15 +49,14 @@ export async function addProductToCart(
   await page.goto(`/product/${productSlug}`);
   await page.waitForSelector('button:has-text("Add to Cart")');
   await page.click('button:has-text("Add to Cart")');
-  await page.waitForSelector('dialog[open] h2:has-text("Cart")');
+  await page.waitForSelector("#mini-cart-overlay:not(.hidden)");
 }
 
 /**
  * Get current cart count from badge
  */
 export async function getCartCount(page: Page): Promise<number> {
-  const cartButton = page.locator('button:has-text("Shopping Cart")');
-  const text = await cartButton.textContent();
+  const text = await page.locator("#cart-count").textContent();
   const match = text?.match(/\d+/);
   return match ? parseInt(match[0]) : 0;
 }
@@ -70,14 +69,12 @@ export async function verifyCartCount(
   expectedCount: number
 ): Promise<void> {
   if (expectedCount === 0) {
-    // Badge should not contain any number
-    const cartButton = page.locator('button:has-text("Shopping Cart")');
-    const text = await cartButton.textContent();
-    expect(text?.match(/\d+/)).toBeNull();
+    // Badge is present but visually hidden via the "hidden" class when count is 0
+    await expect(page.locator("#cart-count")).toHaveClass(/\bhidden\b/);
   } else {
-    await expect(
-      page.locator('button:has-text("Shopping Cart")')
-    ).toContainText(expectedCount.toString());
+    await expect(page.locator("#cart-count")).toContainText(
+      expectedCount.toString()
+    );
   }
 }
 
@@ -85,16 +82,16 @@ export async function verifyCartCount(
  * Open mini-cart from header
  */
 export async function openMiniCart(page: Page): Promise<void> {
-  await page.click('button:has-text("Shopping Cart")');
-  await page.waitForSelector('dialog[open] h2:has-text("Cart")');
+  await page.getByRole("button", { name: "Shopping Cart" }).click();
+  await page.waitForSelector("#mini-cart-overlay:not(.hidden)");
 }
 
 /**
  * Close mini-cart
  */
 export async function closeMiniCart(page: Page): Promise<void> {
-  await page.click('button:has-text("Close cart")');
-  await page.waitForSelector("dialog:not([open])");
+  await page.getByRole("button", { name: "Close cart" }).click();
+  await page.waitForSelector("#mini-cart-overlay.hidden");
 }
 
 /**
@@ -131,7 +128,7 @@ export async function verifyProductInCart(
   page: Page,
   productName: string
 ): Promise<void> {
-  await expect(page.locator("dialog[open]")).toContainText(productName);
+  await expect(page.locator("#mini-cart-panel")).toContainText(productName);
 }
 
 /**
