@@ -23,6 +23,7 @@ export class QuickViewController {
   private productData: any = null;
   private isProcessing: boolean = false;
   private uiManager!: PDPUIManager;
+  private triggerElement: HTMLElement | null = null;
 
   static getInstance(): QuickViewController {
     if (!QuickViewController.instance) {
@@ -53,6 +54,7 @@ export class QuickViewController {
     preferredVariationId?: string,
   ): Promise<void> {
     this.lastProductId = productId;
+    this.triggerElement = document.activeElement as HTMLElement | null;
     try {
       this.showLoading();
       this.openModal();
@@ -932,7 +934,16 @@ export class QuickViewController {
       panel.classList.add("-translate-x-full");
       document.body.style.overflow = "unset";
 
-      setTimeout(() => overlay.classList.add("hidden"), 300);
+      // Restoring focus in the same tick as setting `inert` can be overridden
+      // by the browser's own async blur-to-body handling for the now-inert
+      // subtree, so defer it until after that settles.
+      setTimeout(() => {
+        overlay.classList.add("hidden");
+        this.triggerElement?.focus();
+        this.triggerElement = null;
+      }, 300);
+    } else {
+      this.triggerElement = null;
     }
 
     this.resetState();
@@ -1074,13 +1085,36 @@ export class QuickViewController {
       true,
     );
 
-    // Escape key
+    // Escape closes the panel; Tab is trapped within it while open
     document.addEventListener("keydown", (e) => {
+      const panel = document.getElementById("quick-view-panel");
+      if (!panel || panel.classList.contains("-translate-x-full")) return;
+
       if (e.key === "Escape") {
-        const panel = document.getElementById("quick-view-panel");
-        if (panel && !panel.classList.contains("-translate-x-full")) {
-          this.closeModal();
+        this.closeModal();
+        return;
+      }
+
+      if (e.key !== "Tab") return;
+
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetParent !== null);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
         }
+      } else if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
       }
     });
 

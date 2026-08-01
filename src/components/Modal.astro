@@ -105,6 +105,7 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
     activeModal: null as HTMLElement | null,
     isAnimating: false,
     _currentCleanup: null as (() => void) | null,
+    _triggerElement: null as HTMLElement | null,
 
     // Shared open helper: shows the shell, animates it in, registers listeners.
     // panelClasses: full className string for the inner panel (controls width, height, layout).
@@ -123,6 +124,9 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
       const panel = document.getElementById("modal-panel") as HTMLElement;
       if (!backdrop || !panel) return;
 
+      // Remember what had focus so it can be restored when the modal closes
+      this._triggerElement = document.activeElement as HTMLElement | null;
+
       // Reset panel classes for this modal type
       panel.className = panelClasses;
       backdrop.setAttribute("aria-labelledby", ariaLabelledBy);
@@ -135,7 +139,36 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
       this.activeModal = backdrop;
 
       // Register listeners (returns cleanup fn)
-      this._currentCleanup = setupListeners(backdrop, panel);
+      const listenersCleanup = setupListeners(backdrop, panel);
+
+      // Generic Tab trap — keeps focus cycling within the panel regardless of
+      // how many focusable elements a given modal type renders.
+      const handleTabTrap = (e: KeyboardEvent) => {
+        if (e.key !== "Tab") return;
+        const focusable = Array.from(
+          panel.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      };
+      document.addEventListener("keydown", handleTabTrap);
+
+      this._currentCleanup = () => {
+        listenersCleanup();
+        document.removeEventListener("keydown", handleTabTrap);
+      };
 
       // Focus first interactive element
       const focusTarget = panel.querySelector(focusSelector) as HTMLElement;
@@ -187,10 +220,6 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
           const handleCancel = () => { this.closeModal(); };
           const handleKeydown = (e: KeyboardEvent) => {
             if (e.key === "Escape") { this.closeModal(); }
-            if (e.key === "Tab") {
-              e.preventDefault();
-              (document.activeElement === confirmButton ? cancelButton : confirmButton)?.focus();
-            }
           };
           const handleBackdropClick = (e: MouseEvent) => { if (e.target === backdrop) this.closeModal(); };
 
@@ -435,6 +464,8 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
           this.activeModal = null;
           this.isAnimating = false;
           document.body.style.overflow = "unset";
+          this._triggerElement?.focus();
+          this._triggerElement = null;
         }, 300);
       }
     },

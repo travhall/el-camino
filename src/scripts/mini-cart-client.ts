@@ -13,6 +13,11 @@ import { showNotification } from "@/lib/events";
   let undoBarTimeout: ReturnType<typeof setTimeout> | null = null;
   let pendingUndoItem: CartItem | null = null;
 
+  // Element to restore focus to on close. Module-level (not initMiniCart-local)
+  // because astro:page-load can re-fire and rebuild that closure while the
+  // cart is still open, which would otherwise silently drop this reference.
+  let miniCartTriggerElement: HTMLElement | null = null;
+
   function showUndoBar(item: CartItem): void {
     const bar = document.getElementById("mini-cart-undo-bar");
     const messageEl = document.getElementById("mini-cart-undo-message");
@@ -590,6 +595,7 @@ import { showNotification } from "@/lib/events";
 
     function openMiniCart() {
       if (overlay && panel && closeButton) {
+        miniCartTriggerElement = document.activeElement as HTMLElement | null;
         overlay.classList.remove("hidden");
         panel.removeAttribute("inert");
 
@@ -616,9 +622,14 @@ import { showNotification } from "@/lib/events";
         document.body.style.overflow = "unset";
         dismissUndoBar();
 
+        // Restoring focus in the same tick as setting `inert` can be overridden
+        // by the browser's own async blur-to-body handling for the now-inert
+        // subtree, so defer it until after that settles.
         setTimeout(() => {
           overlay.classList.add("hidden");
           panel.removeAttribute("inert");
+          miniCartTriggerElement?.focus();
+          miniCartTriggerElement = null;
         }, 300);
       }
     }
@@ -659,12 +670,33 @@ import { showNotification } from "@/lib/events";
     window.addEventListener("cartUpdated", updateMiniCartDisplay, { signal });
 
     document.addEventListener("keydown", (e) => {
-      if (
-        e.key === "Escape" &&
-        panel &&
-        !panel.classList.contains("translate-x-full")
-      ) {
+      if (!panel || panel.classList.contains("translate-x-full")) return;
+
+      if (e.key === "Escape") {
         closeMiniCart();
+        return;
+      }
+
+      if (e.key !== "Tab") return;
+
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetParent !== null);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
       }
     }, { signal });
   }

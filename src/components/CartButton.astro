@@ -65,6 +65,13 @@ const cartCount = cart.getItemCount();
     const cartButton = document.getElementById("cart-button");
     if (!cartButton) return;
 
+    // initCartButton re-runs on every astro:page-load with no element swap
+    // in between (cart-button persists across view transitions), so without
+    // this guard each re-run stacks another click listener — one click would
+    // dispatch openMiniCart multiple times.
+    if (cartButton.dataset.cartButtonInitialized === "true") return;
+    cartButton.dataset.cartButtonInitialized = "true";
+
     // CHANGE: Dispatch event instead of navigate
     cartButton.addEventListener("click", (e) => {
       e.preventDefault();
