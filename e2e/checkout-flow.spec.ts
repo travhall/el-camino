@@ -53,8 +53,11 @@ test.describe("Checkout Flow", () => {
     // 5. Click Done — validates form, collapses it, and enables the checkout button
     await page.click("#fulfillment-done-btn");
 
-    // 6. Intercept /api/create-checkout BEFORE triggering it — mock the Square
-    //    payment link creation so no real API call is made
+    // 6. Register waitForRequest FIRST, then route — both must be in place before
+    //    the click so neither misses the request under load
+    const checkoutRequestPromise = page.waitForRequest(
+      "**/api/create-checkout",
+    );
     await page.route("**/api/create-checkout", (route) => {
       route.fulfill({
         status: 200,
@@ -68,9 +71,6 @@ test.describe("Checkout Flow", () => {
         }),
       });
     });
-    const checkoutRequestPromise = page.waitForRequest(
-      "**/api/create-checkout",
-    );
 
     // 7. Wait for checkout button to be enabled, then click
     const checkoutBtn = page.locator("#checkout-button");
