@@ -20,9 +20,11 @@ import {
   generateFallbackContent,
 } from "@/lib/wordpress/types";
 
-const shopHours = await getShopHours();
-const contact = await getContactInfo();
-const social = await getSocialLinks();
+const [shopHours, contact, social] = await Promise.all([
+  getShopHours(),
+  getContactInfo(),
+  getSocialLinks(),
+]);
 
 // Fetch "Shop News" category posts, fall back to most recent posts if empty
 const shopNewsPosts = await getPostsByCategory("shop-news");
