@@ -1,4 +1,4 @@
-// src/lib/square/categoryUtils.ts - Category filtering and product count utilities
+// src/lib/square/categoryNav.ts - Category nav filtering and product-presence utilities
 
 import { squareClient, fetchProducts } from "./client";
 import { categoryCache, navigationCache } from "@/lib/cache/blobCache";
