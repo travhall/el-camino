@@ -37,6 +37,7 @@ class CartManager {
   private initialized: boolean;
   private updateQueue: Array<() => void>;
   private isProcessing: boolean;
+  private addItemInFlight: Set<string>;
 
   private constructor() {
     this.items = new Map();
@@ -44,6 +45,7 @@ class CartManager {
     this.initialized = false;
     this.updateQueue = [];
     this.isProcessing = false;
+    this.addItemInFlight = new Set();
 
     if (typeof window !== "undefined") {
       this.init();
@@ -421,9 +423,15 @@ class CartManager {
       this.init();
     }
 
-    // console.log(`Starting to add item ${item.title} (${item.variationId})`);
+    let itemKey: string | undefined;
 
     try {
+      itemKey = `${item.id}:${item.variationId}`;
+      if (this.addItemInFlight.has(itemKey)) {
+        return { success: false, message: "Add already in progress" };
+      }
+      this.addItemInFlight.add(itemKey);
+
       const requestedQuantity =
         item.quantity && item.quantity > 0 ? item.quantity : 1;
 
@@ -463,9 +471,6 @@ class CartManager {
           message: "This item is out of stock",
         };
       }
-
-      // Create a compound key using both product ID and variation ID
-      const itemKey = `${item.id}:${item.variationId}`;
 
       // Check if this specific variation is already in the cart
       const existingItem = this.items.get(itemKey);
@@ -551,6 +556,8 @@ class CartManager {
         success: false,
         message: `Error adding item to cart: ${errorMessage}`,
       };
+    } finally {
+      if (itemKey) this.addItemInFlight.delete(itemKey);
     }
   }
 
