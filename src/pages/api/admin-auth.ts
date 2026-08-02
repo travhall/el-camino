@@ -8,6 +8,14 @@ import {
 } from "@/lib/admin/auth";
 import { createRateLimiter, clientIp } from "@/lib/rateLimit";
 
+function safeRedirectDest(raw: string | null, fallback = "/admin"): string {
+  if (!raw) return fallback;
+  // Only allow site-relative paths: must start with / and not with //
+  // (// would be protocol-relative, treated as absolute by browsers)
+  if (raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  return fallback;
+}
+
 function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
   const bufB = Buffer.from(b);
@@ -40,12 +48,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   try {
     const formData = await request.formData();
     const submitted = (formData.get("password") as string) ?? "";
-    from = (formData.get("from") as string) || "/admin";
-
-    // Validate `from` to prevent open redirect
-    if (!from.startsWith("/admin")) {
-      from = "/admin";
-    }
+    from = safeRedirectDest(formData.get("from") as string | null);
 
     if (!safeCompare(submitted, adminPassword)) {
       return redirect(`/admin/login?from=${encodeURIComponent(from)}&error=1`);
