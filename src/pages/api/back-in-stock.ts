@@ -28,6 +28,8 @@ export const POST: APIRoute = async ({ request }) => {
     const productId = formData.get("product_id")?.toString().trim() ?? "";
     const variationId = formData.get("variation_id")?.toString().trim() ?? "";
     const productUrl = formData.get("product_url")?.toString().trim() ?? "";
+    // Sanitize: only accept https:// URLs to prevent javascript:/data: href injection
+    const safeProductUrl = productUrl.startsWith("https://") ? productUrl : "";
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return new Response(JSON.stringify({ error: "Invalid email address" }), {
@@ -52,7 +54,7 @@ export const POST: APIRoute = async ({ request }) => {
         productId,
         productTitle,
         variationId,
-        productUrl,
+        productUrl: safeProductUrl,
         submittedAt: new Date().toISOString(),
       });
     }

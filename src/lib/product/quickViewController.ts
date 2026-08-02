@@ -216,7 +216,7 @@ export class QuickViewController {
         return `<button
           type="button"
           class="quick-view-thumb shrink-0 w-14 h-14 border-2 overflow-hidden bg-(--surface-secondary) transition-all ${isActive ? "border-(--ui-button-border) opacity-100" : "border-(--border-secondary) opacity-60 hover:opacity-100 hover:border-(--border-primary)"}"
-          data-gallery-src="${src}"
+          data-gallery-src="${src.replace(/"/g, "&quot;")}"
           aria-label="View image ${i + 1}"
           aria-pressed="${isActive ? "true" : "false"}"
         >
