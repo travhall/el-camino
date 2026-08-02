@@ -54,6 +54,10 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
 - Test coverage thresholds in `vitest.config.ts` will fail the build if a
   change drops coverage below the configured minimums — run
   `pnpm test:coverage` before considering a non-trivial change done.
+- WordPress content routing: posts in the `shop-news` category appear on The
+  Shop page (`/the-shop`); posts with only `news` appear on the News page.
+  Posts tagged `event` are filterable on the News page. This is a WordPress
+  category convention — there is no code gate enforcing it.
 - `pnpm dev` runs `rm -rf .astro && sleep 1` before starting the dev server —
   this clears Astro's `.astro` cache directory and pauses briefly before
   Astro regenerates it. Both pieces were added incidentally in unrelated

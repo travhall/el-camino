@@ -7,6 +7,7 @@ import {
   EL_CAMINO_LOADER_DATA_URI,
 } from "@/lib/constants/assets";
 import { toNetlifyImageCDN } from "@/lib/image/enhanced-optimizer";
+import { createSlug } from "@/lib/square/slugUtils";
 import { Icon } from "astro-icon/components";
 
 interface Props {
@@ -60,15 +61,6 @@ for (const item of categoriesWithImages) {
   } catch (error) {
     console.error(`Error fetching images for category ${item.id}:`, error);
   }
-}
-
-// Create slug from category name for fallback images
-function createSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 // Update image URLs in categories using enhanced Square images or local fallbacks
