@@ -113,7 +113,7 @@ before starting, honor its STOP conditions, and update your row when done.
 | 089  | Add E2E test for complete checkout flow | P2 | M | LOW | — | test-coverage | DONE |
 | 090  | Fill small test gaps — batchInventory + quickViewController | P3 | S | LOW | — | test-coverage | TODO |
 | 091  | Delete unauthenticated debug catalog endpoint | P1 | S | LOW | — | architecture | DONE |
-| 092  | Replace suppressed errors and stray console calls | P2 | M | LOW | — | architecture | TODO |
+| 092  | Replace suppressed errors and stray console calls | P2 | M | LOW | — | architecture | DONE |
 | 093  | Remove duplicate createSlug in Sidebar.astro | P3 | S | LOW | — | architecture | DONE |
 | 094  | Clarify naming in Square category files | P3 | S | LOW | — | architecture | TODO |
 | 095  | Decompose client.ts into focused catalog/mapping modules | P3 | L | MED | 081, 085 | architecture | DONE |

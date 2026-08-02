@@ -12,7 +12,9 @@ export async function getPageVisible(blobKey: string): Promise<boolean> {
   try {
     const value = (await store().get(blobKey, { type: "json" })) as boolean | null;
     if (typeof value === "boolean") return value;
-  } catch {}
+  } catch (e) {
+    console.error("[pageVisibility] Failed to read page visibility from blob store, defaulting to visible:", e);
+  }
   return true;
 }
 

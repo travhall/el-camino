@@ -105,7 +105,9 @@ const { class: className = "" } = Astro.props;
       if (hoursEl) {
         try {
           hours = JSON.parse(hoursEl.textContent || "[]");
-        } catch {}
+        } catch {
+          // Malformed embedded JSON is non-fatal; hours stays empty and the badge stays hidden.
+        }
       }
 
       const todayEntry = hours.find((h) => h.day === todayName);

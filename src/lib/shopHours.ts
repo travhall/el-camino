@@ -102,7 +102,9 @@ export async function getShopHoursRaw(): Promise<ShopHoursEntry[]> {
       type: "json",
     })) as ShopHoursEntry[] | null;
     if (data && Array.isArray(data) && data.length === 7) return data;
-  } catch {}
+  } catch (e) {
+    console.error("[shopHours] Failed to read shop hours from blob store, using seed config:", e);
+  }
   return seedFromSiteConfig();
 }
 
