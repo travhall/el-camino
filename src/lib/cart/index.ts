@@ -38,6 +38,7 @@ class CartManager {
   private updateQueue: Array<() => void>;
   private isProcessing: boolean;
   private addItemInFlight: Set<string>;
+  private saleInfoGeneration = 0;
 
   private constructor() {
     this.items = new Map();
@@ -156,6 +157,7 @@ class CartManager {
       
       // Fetch sale info for all items after loading - dispatch event when complete
       if (this.items.size > 0) {
+        this.saleInfoGeneration++;
         this.fetchSaleInfoForCartItems();
       }
     } catch (error) {
@@ -169,6 +171,7 @@ class CartManager {
    */
   private async fetchSaleInfoForCartItems(): Promise<void> {
     if (this.items.size === 0) return;
+    const myGeneration = this.saleInfoGeneration; // capture before any yield
 
     try {
       const variationIds = Array.from(this.items.values()).map(
@@ -180,6 +183,7 @@ class CartManager {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ variationIds }),
       });
+      if (this.saleInfoGeneration !== myGeneration) return; // stale — bail
 
       if (!response.ok) {
         console.warn("Failed to fetch sale info:", response.status);
@@ -187,6 +191,7 @@ class CartManager {
       }
 
       const data = await response.json();
+      if (this.saleInfoGeneration !== myGeneration) return; // stale — bail
 
       if (data.success && data.saleInfo) {
         // Update cart items with sale info
@@ -202,6 +207,7 @@ class CartManager {
 
         // Save cart if any items were updated with sale info
         if (updated) {
+          if (this.saleInfoGeneration !== myGeneration) return; // final guard before saveCart
           this.saveCart();
           // Dispatch event to trigger UI refresh with sale pricing
           this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
