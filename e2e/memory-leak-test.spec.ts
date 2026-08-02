@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('ProductGrid Memory Leak Test', () => {
+  // All three tests use CDP (context.newCDPSession) which is Chromium-only.
+  test.beforeEach(({ browserName }) => {
+    test.skip(browserName !== 'chromium', 'CDP APIs (newCDPSession) are Chromium-only');
+  });
+
+  // 5-cycle navigation test does 10+ page loads — extend beyond the 30s default.
+  test.describe.configure({ timeout: 120_000 });
   test('should not leak memory during navigation and infinite scroll', async ({ page, context }) => {
     // Enable CDP session for memory metrics
     const client = await context.newCDPSession(page);

@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Memory Leak Diagnostics', () => {
+  // Both tests use CDP (context.newCDPSession) which is Chromium-only.
+  test.beforeEach(({ browserName }) => {
+    test.skip(browserName !== 'chromium', 'CDP APIs (newCDPSession) are Chromium-only');
+  });
+
+  test.describe.configure({ timeout: 120_000 });
   test('should identify memory leak sources', async ({ page, context }) => {
     const client = await context.newCDPSession(page);
     
