@@ -82,7 +82,7 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response("Missing event type", { status: 400 });
   }
 
-  console.log(`[Webhook/Square] Processing event: ${eventType}`);
+  console.info(`[Webhook/Square] Processing event: ${eventType}`);
 
   try {
     switch (eventType) {
@@ -104,7 +104,7 @@ export const POST: APIRoute = async ({ request }) => {
           await Promise.allSettled(
             variationIds.map((id) => inventoryCache.delete(id))
           );
-          console.log(
+          console.info(
             `[Webhook/Square] Inventory cache busted for ${variationIds.length} variation(s):`,
             variationIds
           );
@@ -135,7 +135,7 @@ export const POST: APIRoute = async ({ request }) => {
           filterCache.clear(),
         ]);
 
-        console.log(
+        console.info(
           `[Webhook/Square] Catalog caches busted for ${objectIds.length} object(s):`,
           objectIds
         );
@@ -147,7 +147,7 @@ export const POST: APIRoute = async ({ request }) => {
 
         // Only act on the final COMPLETED status — ignore PENDING, APPROVED, etc.
         if (payment?.status !== "COMPLETED") {
-          console.log(`[Webhook/Square] payment.updated status=${payment?.status} — skipping`);
+          console.info(`[Webhook/Square] payment.updated status=${payment?.status} — skipping`);
           break;
         }
 
@@ -158,7 +158,7 @@ export const POST: APIRoute = async ({ request }) => {
           break;
         }
 
-        console.log(`[Webhook/Square] payment.updated COMPLETED — orderId=${orderId}`);
+        console.info(`[Webhook/Square] payment.updated COMPLETED — orderId=${orderId}`);
 
         const contact = await getPendingOrder(orderId);
         if (!contact) {
@@ -170,7 +170,7 @@ export const POST: APIRoute = async ({ request }) => {
           );
           break;
         }
-        console.log(`[Webhook/Square] Found pending order for ${contact.email} (${contact.fulfillmentMethod})`);
+        console.info(`[Webhook/Square] Found pending order for ${contact.email} (${contact.fulfillmentMethod})`);
 
         // Fetch the full order for rich line-item details in the email.
         // If the fetch fails for any reason (bad credentials, network, etc.)
@@ -200,7 +200,7 @@ export const POST: APIRoute = async ({ request }) => {
         // Try 1: email sends only — blob-cleanup failure must NOT trigger a retry record
         try {
           await sendOrderConfirmation({ order, contact });
-          console.log(`[Webhook/Square] Confirmation email sent to ${contact.email}`);
+          console.info(`[Webhook/Square] Confirmation email sent to ${contact.email}`);
 
           // Only send secondary notifications if the primary succeeded
           if (contact.fulfillmentMethod === "pickup") {
@@ -209,7 +209,7 @@ export const POST: APIRoute = async ({ request }) => {
             await sendShippingOrderNotification({ order, contact });
           }
 
-          console.log(`[Webhook/Square] All emails sent for order: ${orderId}`);
+          console.info(`[Webhook/Square] All emails sent for order: ${orderId}`);
         } catch (emailErr) {
           console.error(`[Webhook/Square] Email delivery failed for order ${orderId}:`, emailErr);
           // Persist for admin retry — do NOT re-throw (would mask the 200 response)
@@ -237,7 +237,7 @@ export const POST: APIRoute = async ({ request }) => {
       default:
         // Acknowledge and ignore — Square may send event types we don't
         // subscribe to if the subscription is broadened later.
-        console.log(`[Webhook/Square] Unhandled event type: ${eventType}`);
+        console.info(`[Webhook/Square] Unhandled event type: ${eventType}`);
     }
   } catch (err) {
     console.error(

@@ -459,7 +459,7 @@ export const POST: APIRoute = async ({ request }) => {
       (linkResponse as any).relatedResources?.orders?.[0]?.id ??
       "";
 
-    console.log(`[create-checkout] orderId=${orderId || "(empty)"}, url=${linkResponse.paymentLink.url?.slice(0, 60)}`);
+    console.info(`[create-checkout] orderId=${orderId || "(empty)"}, url=${linkResponse.paymentLink.url?.slice(0, 60)}`);
 
     // Store contact info keyed by orderId so the webhook can send a confirmation email.
     // Must be awaited — Netlify functions stop executing once the response is sent,
