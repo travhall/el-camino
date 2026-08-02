@@ -172,7 +172,11 @@ test.describe('Memory Leak Diagnostics', () => {
       return {
         productCards: document.querySelectorAll('.product-card-wrapper').length,
         grids: document.querySelectorAll('#filterable-product-grid').length,
-        liveRegions: document.querySelectorAll('[aria-live="polite"]').length,
+        // Scope to ProductGrid's dynamically-appended live region only
+        // (identified by the -10000px left offset set in ProductGrid.astro).
+        // The home page has its own aria-live elements (OpenStatusBadge, Nav)
+        // that are not leaks and should not be counted here.
+        liveRegions: document.querySelectorAll('[aria-live="polite"][style*="-10000px"]').length,
         triggers: document.querySelectorAll('#infinite-scroll-trigger').length,
       };
     });
