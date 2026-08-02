@@ -1,132 +1,24 @@
 // /src/lib/square/client.ts
-import { SquareClient, SquareEnvironment } from "square-legacy";
+export { squareClient, validateEnvironment } from "./squareInstance";
+
 import type { Product } from "./types";
 import { batchGetImageUrls } from "./imageUtils";
 import { logApiError } from "./apiUtils";
 import { catalogRetryClient } from "./apiRetry";
 import { logError } from "./errorUtils";
 import { processSquareError } from "./serverErrorUtils";
-import { buildAvailableAttributes } from "./variationParser";
-import { createProductUrl } from "./slugUtils";
-import { requestDeduplicator } from "./requestDeduplication";
 import { fetchMeasurementUnits } from "./productUtils";
-import { extractBrandValue, extractIsGiftCard, extractSaleInfo } from "./catalogUtils";
+import { requestDeduplicator } from "./requestDeduplication";
+import { validateEnvironment } from "./squareInstance";
+import { fetchAllCatalogItems, fetchCatalogItemById } from "./catalogFetch";
+import {
+  collectBulkFetchIds,
+  mapCatalogItemsToProducts,
+  mapSingleCatalogItemToProduct,
+} from "./productMapper";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 import { productCache } from "@/lib/cache/blobCache";
 import { logger } from "@/lib/logger";
-
-// Validate at first use, not at import. Importing this module during prerender
-// (e.g. for the static 404 page) shouldn't crash the build when env is unset —
-// the actual API call will surface a clearer error if/when it runs.
-let envValidated = false;
-function validateEnvironment() {
-  if (envValidated) return;
-  const missingVars = [];
-  if (!process.env.SQUARE_ACCESS_TOKEN) missingVars.push("SQUARE_ACCESS_TOKEN");
-  if (!import.meta.env.PUBLIC_SQUARE_LOCATION_ID) missingVars.push("PUBLIC_SQUARE_LOCATION_ID");
-  if (missingVars.length > 0) {
-    throw new Error(`Missing required environment variables: ${missingVars.join(", ")}`);
-  }
-  envValidated = true;
-}
-
-export const squareClient = new SquareClient({
-  token: process.env.SQUARE_ACCESS_TOKEN ?? "",
-  environment:
-    import.meta.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
-      ? SquareEnvironment.Production
-      : SquareEnvironment.Sandbox,
-});
-
-/**
- * Generate human-readable SKU from product data
- * Creates content-creator friendly identifiers like "SPITFIRE-CLASSIC-SOCKS"
- */
-function generateHumanReadableSku(
-  title: string,
-  brand?: string,
-  variationName?: string
-): string {
-  // Use brand if available, otherwise extract from title
-  const brandPart = brand || extractBrandFromTitle(title);
-
-  // Clean and format the main product name
-  const titlePart = title
-    .replace(new RegExp(`^${brandPart}\\s*`, "i"), "") // Remove brand from start
-    .replace(/[^a-zA-Z0-9\s]/g, "") // Remove special chars
-    .split(" ")
-    .filter((word) => word.length > 0)
-    .map((word) => word.toUpperCase())
-    .slice(0, 3) // Limit to 3 words for readability
-    .join("-");
-
-  // Add variation details if present and meaningful
-  const variationPart =
-    variationName && variationName.trim() && variationName !== title
-      ? `-${variationName
-          .replace(/[^a-zA-Z0-9\s]/g, "")
-          .split(" ")
-          .slice(0, 2)
-          .join("-")
-          .toUpperCase()}`
-      : "";
-
-  return `${brandPart.toUpperCase()}-${titlePart}${variationPart}`;
-}
-
-/**
- * Extract likely brand name from product title
- */
-function extractBrandFromTitle(title: string): string {
-  // Common skate brands to detect
-  const knownBrands = [
-    "spitfire",
-    "thrasher",
-    "krooked",
-    "real",
-    "baker",
-    "toy machine",
-    "independent",
-    "thunder",
-    "ace",
-    "venture",
-    "bones",
-    "girl",
-    "chocolate",
-    "anti-hero",
-    "creature",
-    "santa cruz",
-    "powell peralta",
-    "element",
-    "plan b",
-    "flip",
-    "zero",
-    "mystery",
-    "blind",
-    "world industries",
-    "skeleton key",
-    "jacuzzi unlimited",
-    "sci-fi fantasy",
-    "bronze",
-    "slappy",
-    "huf",
-    "vans",
-    "nike sb",
-    "adidas",
-    "converse",
-  ];
-
-  const titleLower = title.toLowerCase();
-
-  for (const brand of knownBrands) {
-    if (titleLower.startsWith(brand.toLowerCase())) {
-      return brand.replace(/\s+/g, ""); // Remove spaces for SKU
-    }
-  }
-
-  // Fallback: use first word
-  return title.split(" ")[0] || "UNKNOWN";
-}
 
 export async function fetchProducts(): Promise<Product[]> {
   const cacheKey = "products:all";
@@ -135,176 +27,30 @@ export async function fetchProducts(): Promise<Product[]> {
   return productCache.getOrCompute(cacheKey, () =>
     requestDeduplicator.dedupe(cacheKey, () =>
       catalogRetryClient.executeWithRetry(async () => {
-      try {
+        try {
+          const allObjects = await fetchAllCatalogItems();
 
-        // Paginate through all catalog pages to avoid silent truncation above ~200 items
-        const allObjects: any[] = [];
-        let cursor: string | undefined = undefined;
-        let requestCount = 0;
-        const maxRequests = 20; // Safety limit
-
-        do {
-          requestCount++;
-          if (requestCount > maxRequests) {
-            console.warn(`[fetchProducts] Hit max requests limit (${maxRequests})`);
-            break;
+          if (!allObjects.length) {
+            logger.debug("No products found in catalog");
+            return [];
           }
-          const page = await squareClient.catalog.list({ types: "ITEM", cursor });
-          if (page.data?.length) {
-            allObjects.push(...page.data);
-          }
-          cursor = page.response.cursor;
-        } while (cursor);
 
-        if (!allObjects.length) {
-          logger.debug("No products found in catalog");
+          const { imageIds, measurementUnitIds } = collectBulkFetchIds(allObjects);
+
+          const [imageUrlMap, measurementUnitsMap] = await Promise.all([
+            imageIds.length > 0
+              ? batchGetImageUrls(imageIds)
+              : Promise.resolve({} as Record<string, string>),
+            measurementUnitIds.length > 0
+              ? fetchMeasurementUnits(measurementUnitIds)
+              : Promise.resolve({} as Record<string, string>),
+          ]);
+
+          return mapCatalogItemsToProducts(allObjects, imageUrlMap, measurementUnitsMap);
+        } catch (error) {
+          logApiError("fetchProducts", error);
           return [];
         }
-
-        // First, extract basic product info including brand from custom attributes
-        const productsWithBasicInfo = allObjects
-          .filter((item) => item.type === "ITEM")
-          .map((item) => {
-            const variation = item.itemData?.variations?.[0];
-            const priceMoney = variation?.itemVariationData?.priceMoney;
-
-            // Extract brand from custom attributes
-            const brandValue = extractBrandValue(item.customAttributeValues);
-            const isGiftCard = extractIsGiftCard(item.customAttributeValues);
-
-            return {
-              id: item.id,
-              catalogObjectId: item.id,
-              variationId: variation?.id || item.id,
-              title: item.itemData?.name || "",
-              description: item.itemData?.description || "",
-              imageId: item.itemData?.imageIds?.[0] || null,
-              measurementUnitId:
-                variation?.itemVariationData?.measurementUnitId || null,
-              price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
-              brand: brandValue,
-              isGiftCard: isGiftCard || undefined,
-              categoryIds: (item.itemData?.categories || []).map((c: any) => c.id).filter(Boolean),
-              reportingCategoryId: item.itemData?.reportingCategory?.id || null,
-            };
-          });
-
-        // Extract unique IDs for batch fetching
-        const productImageIds = productsWithBasicInfo
-          .map((p) => p.imageId)
-          .filter(Boolean) as string[];
-
-        // Also collect per-variation image IDs so variation images are available
-        // in the catalog fetch (same data already in allObjects, no extra API call)
-        const variationImageIds = allObjects
-          .filter((obj) => obj.type === "ITEM")
-          .flatMap((item) => item.itemData?.variations ?? [])
-          .flatMap((v: any) => v.itemVariationData?.imageIds ?? []) as string[];
-
-        // Merge and deduplicate so everything is resolved in one batch
-        const imageIds = [...new Set([...productImageIds, ...variationImageIds])];
-
-        const measurementUnitIds = productsWithBasicInfo
-          .map((p) => p.measurementUnitId)
-          .filter(Boolean) as string[];
-
-        // Batch fetch images and measurement units in parallel
-        const [imageUrlMap, measurementUnitsMap] = await Promise.all([
-          imageIds.length > 0
-            ? batchGetImageUrls(imageIds)
-            : Promise.resolve({} as Record<string, string>),
-          measurementUnitIds.length > 0
-            ? fetchMeasurementUnits(measurementUnitIds)
-            : Promise.resolve({} as Record<string, string>),
-        ]);
-
-        // Build an id-keyed Map so the inner .map() is O(1) per lookup, not O(n)
-        const allObjectsById = new Map(allObjects.map((obj) => [obj.id, obj]));
-
-        // Assemble final products with brand data, units, SKUs, and variations
-        const products = productsWithBasicInfo.map((p) => {
-          const item = allObjectsById.get(p.id); // O(1) instead of O(n)
-          const variations = item?.itemData?.variations || [];
-          const variation = variations[0];
-          const actualSku = variation?.itemVariationData?.sku || "";
-
-          // Generate human-readable SKU for content creators
-          const humanReadableSku = generateHumanReadableSku(
-            p.title,
-            p.brand,
-            variation?.itemVariationData?.name || undefined
-          );
-
-          // Build variations array with sale info and images, sorted by Square ordinal
-          const productVariations = variations
-            .slice()
-            .sort((a: any, b: any) => {
-              const ordA = a.itemVariationData?.ordinal ?? 0;
-              const ordB = b.itemVariationData?.ordinal ?? 0;
-              return ordA - ordB;
-            })
-            .map((v: any) => {
-            const variationPrice = v.itemVariationData?.priceMoney;
-            const regularPrice = variationPrice ? Number(variationPrice.amount) / 100 : 0;
-
-            // Extract sale info from variation custom attributes
-            const saleInfo = extractSaleInfo(v.customAttributeValues, regularPrice);
-
-            // Resolve variation-level images from the shared image URL map
-            const rawVariationImageIds: string[] = v.itemVariationData?.imageIds ?? [];
-            const variationImageUrls = rawVariationImageIds
-              .map((id: string) => imageUrlMap[id])
-              .filter((url): url is string => !!url && url !== EL_CAMINO_LOGO_DATA_URI);
-
-            return {
-              id: v.id,
-              variationId: v.id,
-              name: v.itemVariationData?.name || "",
-              price: regularPrice,
-              image: variationImageUrls[0],
-              images: variationImageUrls.length > 1 ? variationImageUrls : undefined,
-              saleInfo: saleInfo || undefined,
-            };
-          });
-
-          return {
-            id: p.id,
-            catalogObjectId: p.catalogObjectId,
-            variationId: p.variationId,
-            title: p.title,
-            description: p.description,
-            image:
-              p.imageId && imageUrlMap[p.imageId]
-                ? imageUrlMap[p.imageId]
-                : EL_CAMINO_LOGO_DATA_URI,
-            price: p.price,
-            url: createProductUrl({ title: p.title }),
-            brand: p.brand || undefined, // Only include if brand exists
-            unit: p.measurementUnitId
-              ? measurementUnitsMap[p.measurementUnitId] || undefined
-              : undefined, // NEW: Include unit
-            sku: actualSku || undefined, // Square's actual SKU if present
-            humanReadableSku: humanReadableSku, // Always generate for content creators
-            variations: productVariations.length > 0 ? productVariations : undefined,
-            categories: p.categoryIds?.length > 0 ? p.categoryIds : undefined,
-            reportingCategoryId: p.reportingCategoryId || undefined,
-            isGiftCard: p.isGiftCard || undefined,
-          };
-        });
-
-        // console.log(
-        //   `[fetchProducts] Fetched ${products.length} products, ${
-        //     products.filter((p) => p.brand).length
-        //   } with brands, ${products.filter((p) => p.unit).length} with units, ${
-        //     products.filter((p) => p.sku).length
-        //   } with SKUs, ${products.length} with human-readable SKUs`
-        // );
-
-        return products;
-      } catch (error) {
-        logApiError("fetchProducts", error);
-        return [];
-      }
       }, "fetchProducts")
     )
   );
@@ -312,7 +58,6 @@ export async function fetchProducts(): Promise<Product[]> {
 
 export async function fetchProduct(id: string): Promise<Product | null> {
   validateEnvironment();
-  // Check blob cache first — persists across cold starts (TTL: 1 hour)
   const cached = await productCache.get(id);
   if (cached) return cached;
 
@@ -321,12 +66,7 @@ export async function fetchProduct(id: string): Promise<Product | null> {
   return requestDeduplicator.dedupe(cacheKey, () =>
     catalogRetryClient.executeWithRetry(async () => {
       try {
-        // console.log(`[fetchProduct] Fetching product: ${id}`);
-
-        const catalogResult = await squareClient.catalog.object.get({
-          objectId: id,
-          includeRelatedObjects: true,
-        });
+        const catalogResult = await fetchCatalogItemById(id);
 
         if (!catalogResult.object || catalogResult.object.type !== "ITEM") return null;
 
@@ -335,183 +75,53 @@ export async function fetchProduct(id: string): Promise<Product | null> {
 
         if (!variations.length) return null;
 
-        // Use first variation as default. Like the sort comparator below,
-        // CatalogItem.variations is typed as the general CatalogObject union —
-        // every element is an item variation in practice, per Square's contract.
-        const defaultVariation = variations[0] as
-          | Extract<(typeof variations)[number], { type: "ITEM_VARIATION" }>
-          | undefined;
-        const defaultPriceMoney =
-          defaultVariation?.itemVariationData?.priceMoney;
-
-        if (!defaultVariation || !defaultPriceMoney) return null;
-
-        // Get all product-level images (not just the first one)
-        let imageUrl = EL_CAMINO_LOGO_DATA_URI;
         const allItemImageIds: string[] = item.itemData?.imageIds ?? [];
-        const allItemImagesPromise =
-          allItemImageIds.length > 0
-            ? batchGetImageUrls(allItemImageIds)
-            : Promise.resolve({} as Record<string, string>);
-
-        // Get ALL variation image IDs for batch fetching (not just the first per variation)
         const variationImageIds = variations.flatMap(
           (v: any) => v.itemVariationData?.imageIds ?? []
         );
-
-        // Get all measurement unit IDs for batch fetching
         const measurementUnitIds = variations
           .map((v: any) => v.itemVariationData?.measurementUnitId)
           .filter(Boolean) as string[];
 
-        // Fetch all variation images and measurement units in parallel
-        const variationImagePromise =
+        const [allItemImages, variationImages, unitsMap] = await Promise.all([
+          allItemImageIds.length > 0
+            ? batchGetImageUrls(allItemImageIds)
+            : Promise.resolve({} as Record<string, string>),
           variationImageIds.length > 0
             ? batchGetImageUrls(variationImageIds)
-            : Promise.resolve({} as Record<string, string>);
-
-        const measurementUnitsPromise =
+            : Promise.resolve({} as Record<string, string>),
           measurementUnitIds.length > 0
             ? fetchMeasurementUnits(measurementUnitIds)
-            : Promise.resolve({} as Record<string, string>);
+            : Promise.resolve({} as Record<string, string>),
+        ]);
 
-        // Wait for all promises to resolve (including all product-level images)
-        const [variationImages, unitsMap, allItemImages] =
-          await Promise.all([
-            variationImagePromise,
-            measurementUnitsPromise,
-            allItemImagesPromise,
-          ]);
-
-        // Derive the primary image from the same batch fetch instead of a
-        // second, redundant getImageUrl() call for the same image ID.
         const primaryImageId = allItemImageIds[0];
-        const mainImage = primaryImageId ? allItemImages[primaryImageId] : undefined;
-        if (mainImage) {
-          imageUrl = mainImage;
-        }
+        const imageUrl =
+          (primaryImageId && allItemImages[primaryImageId]) || EL_CAMINO_LOGO_DATA_URI;
 
-        // Build ordered array of all product-level image URLs (deduped, no placeholders)
         const allImageUrls: string[] = allItemImageIds
-          .map((id) => allItemImages[id])
+          .map((imgId) => allItemImages[imgId])
           .filter(
-            (url): url is string =>
-              !!url && url !== EL_CAMINO_LOGO_DATA_URI,
+            (url): url is string => !!url && url !== EL_CAMINO_LOGO_DATA_URI
           );
 
-        // Process all variations with their data including measurement units, sorted by ordinal
-        const productVariations = variations
-          .slice()
-          .sort((a, b) => {
-            // CatalogItem.variations is typed as the full CatalogObject union
-            // (not narrowed to the ITEM_VARIATION member) — every element is an
-            // item variation in practice, per Square's own contract for this field.
-            const ordA =
-              (a as Extract<typeof a, { type: "ITEM_VARIATION" }>).itemVariationData
-                ?.ordinal ?? 0;
-            const ordB =
-              (b as Extract<typeof b, { type: "ITEM_VARIATION" }>).itemVariationData
-                ?.ordinal ?? 0;
-            return ordA - ordB;
-          })
-          .map((v: any) => {
-          const priceMoney = v.itemVariationData?.priceMoney;
-          const regularPrice = priceMoney ? Number(priceMoney.amount) / 100 : 0;
+        const product = mapSingleCatalogItemToProduct(
+          item,
+          imageUrl,
+          allImageUrls,
+          variationImages,
+          unitsMap
+        );
+        if (!product) return null;
 
-          // Resolve all variation-level image URLs (variation can have multiple images)
-          const rawVariationImageIds: string[] = v.itemVariationData?.imageIds ?? [];
-          const variationImageUrls: string[] = rawVariationImageIds
-            .map((imgId: string) => variationImages[imgId as keyof typeof variationImages])
-            .filter((url): url is string => !!url && url !== EL_CAMINO_LOGO_DATA_URI);
-          const variationImageUrl = variationImageUrls[0];
-
-          // Get measurement unit from batched results
-          const unit = v.itemVariationData?.measurementUnitId
-            ? unitsMap[v.itemVariationData.measurementUnitId] || ""
-            : "";
-
-          // Extract sale information from variation custom attributes
-          const saleInfo = extractSaleInfo(
-            v.customAttributeValues,
-            regularPrice
-          );
-
-          return {
-            id: v.id,
-            variationId: v.id,
-            name: v.itemVariationData?.name || "",
-            price: regularPrice,
-            image: variationImageUrl,
-            images: variationImageUrls.length > 1 ? variationImageUrls : undefined,
-            unit: unit || undefined, // Only include unit if it exists
-            // Don't set attributes here - let createInitialSelectionState handle it
-            // to properly skip single variations
-            saleInfo: saleInfo || undefined, // Add sale info if present
-          };
-        });
-
-        // Build available attributes map
-        const availableAttributes = buildAvailableAttributes(productVariations);
-
-        // Extract brand using the same function as fetchProducts
-        const brandValue = extractBrandValue(item.customAttributeValues);
-        const isGiftCard = extractIsGiftCard(item.customAttributeValues);
-
-        // Use default variation unit or first found unit
-        const defaultUnit = productVariations[0]?.unit ?? "";
-
-        // Same extraction as fetchProducts' basic-info pass — needed so
-        // generateBreadcrumbs (which reads product.categories) works for
-        // products loaded via the single-item PDP path, not just bulk fetches.
-        const categoryIds = (item.itemData?.categories || [])
-          .map((c: any) => c.id)
-          .filter(Boolean);
-
-        const product = {
-          id: item.id,
-          catalogObjectId: item.id,
-          variationId: defaultVariation.id,
-          title: item.itemData?.name || "",
-          description: item.itemData?.description || "",
-          image: imageUrl,
-          images: allImageUrls.length > 0 ? allImageUrls : undefined,
-          price: Number(defaultPriceMoney.amount) / 100,
-          url: createProductUrl({ title: item.itemData?.name || "" }),
-          variations: productVariations,
-          selectedVariationId: defaultVariation.id,
-          brand: brandValue || undefined, // Only include if brand exists
-          unit: defaultUnit,
-          availableAttributes: availableAttributes, // Add available attributes
-          isGiftCard: isGiftCard || undefined, // Physical gift card flag
-          categories: categoryIds.length > 0 ? categoryIds : undefined,
-        };
-
-        // console.log(
-        //   `[fetchProduct] Successfully fetched product: ${product.title}`,
-        //   {
-        //     variations: productVariations.length,
-        //     hasUnit: !!product.unit,
-        //     unit: product.unit,
-        //     brand: product.brand,
-        //     measurementUnitIds: variations
-        //       .map((v) => v.itemVariationData?.measurementUnitId)
-        //       .filter(Boolean),
-        //   }
-        // );
-
-        // Populate blob cache for future requests (fire-and-forget, TTL: 1 hour)
         productCache.set(id, product).catch(() => {});
 
         return product;
       } catch (error) {
-        // Use our new error handling utilities
         const appError = processSquareError(error, `fetchProduct:${id}`);
         logError(appError);
-
-        // Always return null on error, never undefined
         return null;
       }
     }, "fetchProduct")
   );
 }
-
