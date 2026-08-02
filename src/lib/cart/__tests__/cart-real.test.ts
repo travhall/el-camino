@@ -1321,6 +1321,62 @@ describe('CartManager Real Implementation Tests', () => {
     });
   });
 
+  describe('fetchSaleInfoForCartItems — stale generation guard', () => {
+    it('does not apply sale info from stale navigation when a newer loadCart fires', async () => {
+      // 1. Pre-populate localStorage so loadCart has items to work with
+      const item = {
+        id: 'prod-race',
+        variationId: 'variation-a',
+        catalogObjectId: 'cat-race',
+        title: 'Race Product',
+        price: 5000,
+        quantity: 1,
+      };
+      mockLocalStorage['cart'] = JSON.stringify([item]);
+
+      // 2. Set up a fetch mock that can be resolved manually
+      let resolveFetch!: (v: Response) => void;
+      const delayedFetch = new Promise<Response>(res => { resolveFetch = res; });
+
+      // First call returns the delayed promise; subsequent calls return empty sale info
+      (global.fetch as any)
+        .mockImplementationOnce((url: string) => {
+          if (url.includes('/api/sale-info')) return delayedFetch;
+          return Promise.reject(new Error(`Unexpected: ${url}`));
+        })
+        .mockImplementation((url: string) => {
+          if (url.includes('/api/sale-info')) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ success: true, saleInfo: {} }),
+            });
+          }
+          return Promise.reject(new Error(`Unexpected: ${url}`));
+        });
+
+      // 3. First loadCart — triggers fetchSaleInfoForCartItems in background (generation=1)
+      cart.forceRefresh();
+      await Promise.resolve(); // let microtasks run so loadCart starts
+
+      // 4. Simulate navigation — second loadCart runs before first fetch resolves (generation=2)
+      cart.forceRefresh();
+      await Promise.resolve();
+
+      // 5. Now resolve the stale fetch with fake sale data (from generation=1)
+      resolveFetch(new Response(
+        JSON.stringify({ success: true, saleInfo: { 'variation-a': { salePrice: 1, originalPrice: 5000, discountPercent: 99 } } }),
+        { status: 200 }
+      ));
+      await new Promise(r => setTimeout(r, 200)); // drain microtask queue + async work
+
+      // 6. Verify stale sale data was NOT applied
+      const items = cart.getItems();
+      const raceItem = items.find((i: any) => i.variationId === 'variation-a');
+      // The stale generation-1 response must have been discarded
+      expect(raceItem?.saleInfo?.salePrice).not.toBe(1);
+    });
+  });
+
   describe('storage = null guard paths', () => {
     it('loadCart and saveCart degrade gracefully when storage is unavailable', async () => {
       const origStorage = (cart as any).storage;
