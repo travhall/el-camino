@@ -500,7 +500,7 @@ export const POST: APIRoute = async ({ request }) => {
     // SameSite=Lax allows the cookie to be sent on the top-level cross-site
     // navigation from Square back to our domain.
     const cookie = orderId
-      ? `square-pending-orderId=${orderId}; Path=/; Max-Age=3600; SameSite=Lax; HttpOnly${import.meta.env.PROD ? "; Secure" : ""}`
+      ? `square-pending-orderId=${encodeURIComponent(orderId)}; Path=/; Max-Age=3600; SameSite=Lax; HttpOnly${import.meta.env.PROD ? "; Secure" : ""}`
       : "";
 
     return new Response(
