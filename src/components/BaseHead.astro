@@ -1,7 +1,6 @@
 ---
 // src/components/BaseHead.astro
 import { ClientRouter } from "astro:transitions";
-import { SEOMetadata } from "astro-seo-metadata";
 import { siteConfig } from "@/lib/site-config";
 import SpeculationRules from "@/components/SpeculationRules.astro";
 import "@/styles/global.css";
@@ -130,19 +129,22 @@ const seoData = {
 <link rel="dns-prefetch" href="https://squarecdn.com" />
 <link rel="dns-prefetch" href="https://api.elcaminoskateshop.com" />
 
-<SEOMetadata
-    siteName={siteConfig.name}
-    title={title}
-    description={seoData.defaultDescription}
-    image={seoData.defaultImage}
-    favicon="/favicon.svg"
-    author={siteConfig.name}
-    copyright="ISC"
-    astroSitemap={true}
-    canonicalUrl={Astro.url.toString()}
-    type="website"
-    astroGenerator={true}
-/>
+<link rel="canonical" href={Astro.url.toString()} />
+<meta property="og:type" content="website" />
+<meta name="apple-mobile-web-app-title" content={siteConfig.name} />
+<meta property="og:site_name" content={siteConfig.name} />
+<title>{title}</title>
+<meta property="og:title" content={title} />
+<meta name="twitter:title" content={title} />
+<meta property="og:image:alt" content={seoData.defaultDescription} />
+<meta name="description" property="og:description" content={seoData.defaultDescription} />
+<meta name="twitter:description" content={seoData.defaultDescription} />
+<meta property="og:image" content={seoData.defaultImage} />
+<meta name="twitter:image:src" content={seoData.defaultImage} />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="author" content={siteConfig.name} />
+<meta name="copyright" content="ISC" />
+<link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
 
 <!-- Speculation Rules for Advanced Prefetching -->
 <SpeculationRules currentPath={currentPath} eager={isHighTrafficPage} />
