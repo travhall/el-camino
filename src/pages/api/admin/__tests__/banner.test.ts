@@ -13,6 +13,7 @@ vi.mock("@/lib/admin/auth", () => ({
 
 vi.mock("@/lib/announcementBanner", () => ({
   saveAnnouncementBanner: vi.fn(),
+  sanitizeLinkUrl: vi.fn((url: string) => url.trim()),
 }));
 
 import { POST } from "../banner";
@@ -53,6 +54,7 @@ describe("POST /api/admin/banner", () => {
       text: "Big sale!",
       active: true,
       expiresAt: "2026-12-31",
+      linkUrl: "",
     });
     expect(res.status).toBe(302);
     expect(res.headers.get("Location")).toContain("saved=1");

@@ -3,7 +3,7 @@
 
 import type { APIRoute } from "astro";
 import { isAdminAuthenticated, parseAdminFormData } from "@/lib/admin/auth";
-import { saveAnnouncementBanner, type AnnouncementBanner } from "@/lib/announcementBanner";
+import { saveAnnouncementBanner, sanitizeLinkUrl, type AnnouncementBanner } from "@/lib/announcementBanner";
 
 const REDIRECT_BASE = "/admin/notifications/banner";
 
@@ -20,7 +20,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const expiresRaw = ((body.get("expiresAt") as string) ?? "").trim();
   const expiresAt = /^\d{4}-\d{2}-\d{2}$/.test(expiresRaw) ? expiresRaw : null;
 
-  const banner: AnnouncementBanner = { text, active, expiresAt };
+  const linkUrl = sanitizeLinkUrl((body.get("linkUrl") as string) ?? "");
+
+  const banner: AnnouncementBanner = { text, active, expiresAt, linkUrl };
   await saveAnnouncementBanner(banner);
 
   return redirect(`${REDIRECT_BASE}?saved=1`);

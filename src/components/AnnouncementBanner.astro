@@ -33,6 +33,8 @@ const dismissKey = text ? `banner-dismissed:${text}` : "";
 // skip rendering entirely. No element in DOM, no CLS, no JS reveal needed.
 const dismissedCookie = Astro.cookies.get(COOKIE_NAME)?.value;
 const showBanner = !!text && dismissedCookie !== dismissKey;
+const linkUrl = banner.linkUrl ?? "";
+const isExternal = linkUrl.startsWith("https://");
 ---
 
 {showBanner && (
@@ -43,7 +45,15 @@ const showBanner = !!text && dismissedCookie !== dismissKey;
     data-cookie-name={COOKIE_NAME}
     class="w-full px-4 py-2.5 text-center font-medium bg-(--content-heading) text-(--surface-primary) relative"
   >
-    {text}
+    {linkUrl ? (
+      <a
+        href={linkUrl}
+        class="underline underline-offset-2 hover:opacity-80 transition-opacity"
+        {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      >
+        {text}
+      </a>
+    ) : text}
     <button
       id="dismiss-banner"
       aria-label="Dismiss announcement"
