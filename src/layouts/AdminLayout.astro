@@ -35,6 +35,8 @@ const {
 const adminTitle = `${title} - El Camino Admin`;
 const adminDescription =
   description || "El Camino Skate Shop administration tools";
+
+const nonce = Astro.locals.nonce;
 ---
 
 <!doctype html>
@@ -46,7 +48,7 @@ const adminDescription =
     <meta name="description" content={adminDescription} />
     <meta name="robots" content="noindex, nofollow" />
 
-    <script is:inline>
+    <script is:inline nonce={nonce}>
       (function () {
         const storedTheme = localStorage.getItem("theme");
         const systemPrefersDark = window.matchMedia(

@@ -23,6 +23,8 @@ declare global {
 
   namespace App {
     interface Locals {
+      /** Per-request CSP nonce. Set by middleware; add to every <script is:inline> and <style is:inline>. */
+      nonce: string;
       /**
        * Per-request memoization slot for getSiteContext(). Lets Layout,
        * Footer, and Nav share one parallel fetch of contact/social/hours

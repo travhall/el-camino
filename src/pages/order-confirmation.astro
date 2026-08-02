@@ -270,10 +270,12 @@ const shortId = orderDetails?.id
 // Get the title and content from the page
 const pageTitle = orderDetails?.id ? `Order ${shortId}` : "Order Confirmation";
 const fullTitle = `${pageTitle} | El Camino`;
+
+const nonce = Astro.locals.nonce;
 ---
 
 <Layout title={fullTitle}>
-  <script is:inline slot="head">
+  <script is:inline nonce={nonce} slot="head">
     // If orderId is missing from the URL (Square's legacy API doesn't always
     // append it), check sessionStorage for the one stored before the Square
     // hand-off. Runs in <head> to redirect before the page is painted.

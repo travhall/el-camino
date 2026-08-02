@@ -8,6 +8,8 @@ export interface Props {
 
 const { currentPath = "/", eager = false } = Astro.props;
 
+const nonce = Astro.locals.nonce;
+
 // Generate optimized, page-context-aware speculation rules
 function generateOptimizedRules(path: string, _isEager: boolean) {
   const rules: any = {
@@ -108,7 +110,12 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
 ---
 
 <!-- Enhanced Script with Progressive Prefetching -->
-<script is:inline define:vars={{ speculationRules, currentPath }}>
+<script type="application/json" id="speculation-rules-data" set:html={JSON.stringify({ speculationRules, currentPath })} />
+<script is:inline nonce={nonce}>
+  var _srData = JSON.parse(document.getElementById('speculation-rules-data').textContent);
+  var speculationRules = _srData.speculationRules;
+  var currentPath = _srData.currentPath;
+
   (function () {
     // Prevent duplicate insertion
     if (

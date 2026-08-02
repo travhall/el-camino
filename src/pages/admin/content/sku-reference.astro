@@ -42,6 +42,8 @@ const filterOptions = {
     { name: "$75+", min: 75, max: 999, count: skus.filter(s => s.price >= 75).length }
   ]
 };
+
+const nonce = Astro.locals.nonce;
 ---
 
 <AdminLayout 
@@ -479,7 +481,13 @@ const filterOptions = {
   </Fragment>
 </AdminLayout>
 
-<script define:vars={{ skus, filterOptions, categorized }}>
+<script type="application/json" id="sku-ref-data" set:html={JSON.stringify({ skus, filterOptions, categorized })} />
+<script is:inline nonce={nonce}>
+  var _skurd = JSON.parse(document.getElementById('sku-ref-data').textContent);
+  var skus = _skurd.skus;
+  var filterOptions = _skurd.filterOptions;
+  var categorized = _skurd.categorized;
+
   // Enhanced SKU Reference with improved UX and hierarchical categories
   let allSkus = skus.map(sku => ({
     ...sku,

@@ -30,9 +30,11 @@ const activeFilterCount =
   (currentDateRange ? 1 : 0);
 
 const hasActiveFilters = activeFilterCount > 0;
+
+const nonce = Astro.locals.nonce;
 ---
 
-<style is:inline>
+<style is:inline nonce={nonce}>
   /* Accordion animation using CSS grid-template-rows */
   .filter-section-content {
     display: grid;
@@ -393,8 +395,9 @@ const hasActiveFilters = activeFilterCount > 0;
 </div>
 
 <!-- Server-side data for JavaScript -->
-<script is:inline define:vars={{ filterOptions }}>
-  window.newsFilterOptions = filterOptions;
+<script type="application/json" id="news-filter-options" set:html={JSON.stringify(filterOptions)} />
+<script is:inline nonce={nonce}>
+  window.newsFilterOptions = JSON.parse(document.getElementById('news-filter-options').textContent);
 </script>
 
 <script>

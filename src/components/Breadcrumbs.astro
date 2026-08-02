@@ -8,6 +8,8 @@ interface Props {
 
 const { breadcrumbPath } = Astro.props;
 
+const nonce = Astro.locals.nonce;
+
 if (!breadcrumbPath || breadcrumbPath.items.length <= 1) {
   return null;
 }
@@ -63,6 +65,7 @@ if (!breadcrumbPath || breadcrumbPath.items.length <= 1) {
 
 <script
   is:inline
+  nonce={nonce}
   type="application/ld+json"
   set:html={JSON.stringify(breadcrumbPath.structuredData)}
 />

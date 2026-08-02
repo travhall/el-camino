@@ -107,11 +107,14 @@ const personStructuredData = {
   },
   sameAs: Object.values(socialLinks).filter(Boolean),
 };
+
+const nonce = Astro.locals.nonce;
 ---
 
 <div class="wp-team-member bg-(--surface-primary) overflow-hidden mb-6">
   <script
     is:inline
+    nonce={nonce}
     type="application/ld+json"
     set:html={JSON.stringify(personStructuredData)}
   />

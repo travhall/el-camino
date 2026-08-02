@@ -27,9 +27,11 @@ const currentAvailability = appliedFilters?.availability ?? (currentParams.get("
 const currentOnSale = appliedFilters?.onSale ?? (currentParams.get("onSale") === "true");
 
 const totalActiveFilters = currentBrands.length + currentCategories.length + (currentAvailability ? 1 : 0) + (currentOnSale ? 1 : 0);
+
+const nonce = Astro.locals.nonce;
 ---
 
-<style is:inline>
+<style is:inline nonce={nonce}>
   /* Accordion animation using CSS grid-template-rows */
   .filter-section-content {
     display: grid;

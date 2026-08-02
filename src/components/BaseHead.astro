@@ -18,13 +18,15 @@ interface Props {
 const { title, structuredData, orgSchema, currentPath, isHighTrafficPage } =
     Astro.props;
 
+const nonce = Astro.locals.nonce;
+
 const seoData = {
     ...siteConfig.seo,
 };
 ---
 
 <meta charset="UTF-8" />
-<script is:inline>
+<script is:inline nonce={nonce}>
     (function () {
         const storedTheme = localStorage.getItem("theme");
         const systemPrefersDark = window.matchMedia(
@@ -151,6 +153,7 @@ const seoData = {
 
 <script
     is:inline
+    nonce={nonce}
     type="application/ld+json"
     set:html={JSON.stringify(orgSchema)}
 />
@@ -158,6 +161,7 @@ const seoData = {
     structuredData && (
         <script
             is:inline
+            nonce={nonce}
             type="application/ld+json"
             set:html={JSON.stringify(structuredData)}
         />
@@ -167,17 +171,16 @@ const seoData = {
 <!-- Allow pages to inject custom head content -->
 <slot name="head" />
 
-<script
-    is:inline
-    define:vars={{ squareEnv: import.meta.env.PUBLIC_SQUARE_ENVIRONMENT }}
->
-    // Only load Square when needed (cart/product pages)
+<script>
+    // Only load Square when needed (cart/product pages).
+    // PUBLIC_ env vars are available in bundled scripts via import.meta.env.
     if (
         window.location.pathname.includes("/cart") ||
         window.location.pathname.includes("/product") ||
         window.location.pathname.includes("/category") ||
         window.location.pathname.includes("/shop")
     ) {
+        const squareEnv = import.meta.env.PUBLIC_SQUARE_ENVIRONMENT;
         window.loadSquareScript = function () {
             if (!window.squareLoaded && !window.Square) {
                 window.squareLoaded = true;
@@ -189,7 +192,7 @@ const seoData = {
                 script.async = true;
                 document.head.appendChild(script);
                 return new Promise((resolve) => {
-                    script.onload = resolve;
+                    script.onload = () => resolve();
                 });
             }
             return Promise.resolve();
@@ -200,7 +203,7 @@ const seoData = {
 <!-- Font cache warmer: re-load fonts into active memory after each View Transition.
      font-display:swap ensures they render when ready, but proactively warming
      the cache prevents a visible swap flash on the *next* navigation. -->
-<script is:inline>
+<script is:inline nonce={nonce}>
     document.addEventListener("astro:page-load", function () {
         if (document.fonts && document.fonts.load) {
             Promise.all([
@@ -216,7 +219,7 @@ const seoData = {
 </script>
 
 <!-- Clean news parameters when outside news section -->
-<script is:inline>
+<script is:inline nonce={nonce}>
     document.addEventListener("astro:page-load", function () {
         if (!window.location.pathname.startsWith("/news")) {
             const url = new URL(window.location);

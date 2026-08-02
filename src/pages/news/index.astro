@@ -172,12 +172,14 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
       priority: true,
     })
   : null;
+
+const nonce = Astro.locals.nonce;
 ---
 
 <Layout title="The Latest News | El Camino">
   <Fragment slot="head">
     {/* Restore session view preference before first paint to avoid flash */}
-    <script is:inline>
+    <script is:inline nonce={nonce}>
       (function () {
         try {
           if (!new URLSearchParams(window.location.search).has("view")) {
@@ -243,8 +245,9 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
       </>
     )}
     
-    <script define:vars={{ allPosts, searchIndex, filterOptions }}>
-      window.newsData = { allPosts, searchIndex, filterOptions };
+    <script type="application/json" id="news-data" set:html={JSON.stringify({ allPosts, searchIndex, filterOptions })} />
+    <script is:inline nonce={nonce}>
+      window.newsData = JSON.parse(document.getElementById('news-data').textContent);
     </script>
     {hasFilters && <meta name="robots" content="noindex, follow" />}
     <link

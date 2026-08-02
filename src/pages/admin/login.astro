@@ -28,6 +28,8 @@ if (secret) {
 
 const from = safeRedirectDest(Astro.url.searchParams.get("from"));
 const hasError = Astro.url.searchParams.has("error");
+
+const nonce = Astro.locals.nonce;
 ---
 
 <!doctype html>
@@ -39,7 +41,7 @@ const hasError = Astro.url.searchParams.has("error");
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
-    <script is:inline>
+    <script is:inline nonce={nonce}>
       (function () {
         const storedTheme = localStorage.getItem("theme");
         const systemPrefersDark = window.matchMedia(

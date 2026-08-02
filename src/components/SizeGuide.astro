@@ -7,6 +7,8 @@ interface Props {
   category?: "tops" | "bottoms";
 }
 const { category = "tops" } = Astro.props;
+
+const nonce = Astro.locals.nonce;
 ---
 
 <button
@@ -18,7 +20,10 @@ const { category = "tops" } = Astro.props;
   Size Guide
 </button>
 
-<script define:vars={{ category }}>
+<script type="application/json" id="size-guide-config" set:html={JSON.stringify({ category })} />
+<script is:inline nonce={nonce}>
+  var category = JSON.parse(document.getElementById('size-guide-config').textContent).category;
+
   function openSizeGuide() {
     const portalRoot = document.getElementById("portal-root");
     if (!portalRoot) return;

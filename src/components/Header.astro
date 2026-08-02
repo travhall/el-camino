@@ -15,13 +15,15 @@ interface Props {
 
 const { activeCategory, showCart = true } = Astro.props;
 
+const nonce = Astro.locals.nonce;
+
 // Device detection for conditional rendering
 const userAgent = Astro.request.headers.get("user-agent") || "";
 const deviceInfo = detectDeviceFromUA(userAgent);
 const isMobile = deviceInfo.isMobile;
 ---
 
-<script is:inline>
+<script is:inline nonce={nonce}>
   (function () {
     if (!sessionStorage.getItem("header-animated")) {
       document.documentElement.classList.add("header-first-load");
