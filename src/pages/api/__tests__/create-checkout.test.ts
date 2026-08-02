@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+vi.mock('@/lib/shopHours', () => ({
+  getShopHoursRaw: vi.fn(),
+}));
 vi.mock('@/lib/square/inventory', () => ({
   checkBulkInventory: vi.fn(),
 }));
@@ -27,13 +30,16 @@ vi.mock('@/lib/square/client', () => ({
   },
 }));
 
-import { POST } from '../create-checkout';
+import { POST, nextPickupTime, storeTimeOf } from '../create-checkout';
 import { checkBulkInventory } from '@/lib/square/inventory';
 import { getAuthoritativePricing } from '@/lib/square/pricing';
 import { squareClient } from '@/lib/square/client';
 import { checkoutRetryClient } from '@/lib/square/apiRetry';
+import { getShopHoursRaw } from '@/lib/shopHours';
 import type { CartItem } from '@/lib/cart/types';
+import type { ShopHoursEntry } from '@/lib/shopHours';
 
+const getShopHoursRawMock = getShopHoursRaw as unknown as ReturnType<typeof vi.fn>;
 const checkBulkInventoryMock = checkBulkInventory as unknown as ReturnType<typeof vi.fn>;
 const getAuthoritativePricingMock = getAuthoritativePricing as unknown as ReturnType<typeof vi.fn>;
 const createPaymentLinkMock = squareClient.checkout.paymentLinks.create as unknown as ReturnType<typeof vi.fn>;
@@ -86,6 +92,66 @@ beforeEach(() => {
 afterEach(() => {
   checkoutRetryClient.reset();
 });
+
+// ── Helpers for nextPickupTime tests ─────────────────────────────────────────
+
+/**
+ * Build a 7-entry ShopHoursEntry array (Mon–Sun) with a custom Saturday entry.
+ * All other days use the supplied defaultOpen/defaultClose.
+ */
+function buildMockHoursData(opts: {
+  defaultOpen: string;
+  defaultClose: string;
+  satOpen: string;
+  satClose: string;
+}): ShopHoursEntry[] {
+  // DAYS_OF_WEEK order: Mon(0) Tue(1) Wed(2) Thu(3) Fri(4) Sat(5) Sun(6)
+  const normal = (day: string): ShopHoursEntry => ({
+    day,
+    isOpen: true,
+    open: opts.defaultOpen,
+    close: opts.defaultClose,
+  });
+  return [
+    normal('Monday'),
+    normal('Tuesday'),
+    normal('Wednesday'),
+    normal('Thursday'),
+    normal('Friday'),
+    { day: 'Saturday', isOpen: true, open: opts.satOpen, close: opts.satClose },
+    normal('Sunday'),
+  ];
+}
+
+// ── nextPickupTime tests ──────────────────────────────────────────────────────
+
+describe('nextPickupTime', () => {
+  it('skips a pickup candidate that falls before store open on the next day', async () => {
+    // Scenario: Saturday closes at 23:00 CST, Sunday opens at 10:00 CST.
+    // The loop finds a candidate during Saturday hours (e.g. 22:00 CST) and
+    // computes pickupCandidate = candidate + 2h = 00:00 Sunday CST.
+    // BUG: 0 < 17 passes, returning midnight as a pickup slot.
+    // FIX: 0 >= 10 fails, so the loop keeps going until Sunday 10:00 CST.
+    const hoursData = buildMockHoursData({
+      defaultOpen: '10:00',
+      defaultClose: '17:00',
+      satOpen: '22:00',
+      satClose: '23:00',
+    });
+    getShopHoursRawMock.mockResolvedValue(hoursData);
+
+    // Jan 3 2026 is a Saturday. 2026-01-04T00:00:00Z = Saturday 18:00 CST.
+    // from + 2h = Saturday 20:00 CST — before Saturday's 22:00 open, so
+    // the fast path is skipped and the loop must find the correct slot.
+    const from = new Date('2026-01-04T00:00:00Z');
+    const result = await nextPickupTime(from);
+
+    const { hour } = storeTimeOf(result);
+    expect(hour).toBeGreaterThanOrEqual(10); // must be within open hours, not before store opens
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 describe('POST /api/create-checkout', () => {
   it('returns 400 when items is empty', async () => {
