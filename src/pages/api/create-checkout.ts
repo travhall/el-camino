@@ -483,16 +483,10 @@ export const POST: APIRoute = async ({ request }) => {
     // Bust the inventory caches for every variation in this order so the
     // product grid, PDP, and Quick View show accurate stock immediately after
     // purchase rather than serving stale cached values.
-    //
-    // Two caches must be cleared:
-    // 1. inventoryCache (BlobCache) — backs both checkItemInventory (PDP/QuickView)
-    //    AND batchInventoryService (ProductGrid), which read/write the same store.
-    // 2. productCache "all-catalog-items-v3" — used by fetchProductsByCategory / category pages
     const purchasedVariationIds = validItems.map((item) => item.variationId);
     await Promise.allSettled(
       purchasedVariationIds.map((id) => inventoryCache.delete(id))
     );
-    await productCache.delete("all-catalog-items-v3");
 
     // Set a server-readable cookie with the orderId so the confirmation page can
     // retrieve it without relying on Square appending it to the redirect URL

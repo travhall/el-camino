@@ -132,8 +132,9 @@ export async function fetchProducts(): Promise<Product[]> {
   const cacheKey = "products:all";
 
   validateEnvironment();
-  return requestDeduplicator.dedupe(cacheKey, () =>
-    catalogRetryClient.executeWithRetry(async () => {
+  return productCache.getOrCompute(cacheKey, () =>
+    requestDeduplicator.dedupe(cacheKey, () =>
+      catalogRetryClient.executeWithRetry(async () => {
       try {
 
         // Paginate through all catalog pages to avoid silent truncation above ~200 items
@@ -217,10 +218,12 @@ export async function fetchProducts(): Promise<Product[]> {
             : Promise.resolve({} as Record<string, string>),
         ]);
 
+        // Build an id-keyed Map so the inner .map() is O(1) per lookup, not O(n)
+        const allObjectsById = new Map(allObjects.map((obj) => [obj.id, obj]));
+
         // Assemble final products with brand data, units, SKUs, and variations
         const products = productsWithBasicInfo.map((p) => {
-          // Get the item data for variations
-          const item = allObjects.find((obj) => obj.id === p.id);
+          const item = allObjectsById.get(p.id); // O(1) instead of O(n)
           const variations = item?.itemData?.variations || [];
           const variation = variations[0];
           const actualSku = variation?.itemVariationData?.sku || "";
@@ -302,7 +305,8 @@ export async function fetchProducts(): Promise<Product[]> {
         logApiError("fetchProducts", error);
         return [];
       }
-    }, "fetchProducts")
+      }, "fetchProducts")
+    )
   );
 }
 
