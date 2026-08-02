@@ -40,7 +40,7 @@ function storeHoursForDay(
 /**
  * Return the day-of-week and hour-of-day for a UTC Date in the store timezone.
  */
-function storeTimeOf(date: Date): { jsDay: number; hour: number } {
+export function storeTimeOf(date: Date): { jsDay: number; hour: number } {
   const fmt = new Intl.DateTimeFormat("en-US", {
     timeZone: STORE_TIMEZONE,
     weekday: "short",
@@ -79,7 +79,7 @@ function roundUpTo15(date: Date): Date {
  * When ordering after close (or before open), the 2-hour window starts from
  * the next time the store opens — so open+2h rather than open.
  */
-async function nextPickupTime(from: Date): Promise<Date> {
+export async function nextPickupTime(from: Date): Promise<Date> {
   const hoursData = await getShopHoursRaw();
   const initialCandidate = roundUpTo15(
     new Date(from.getTime() + 2 * 60 * 60 * 1000),
@@ -106,7 +106,7 @@ async function nextPickupTime(from: Date): Promise<Date> {
       // day (or past midnight) — only return it if it's still within hours.
       const { jsDay: pickupDay, hour: pickupHour } = storeTimeOf(pickupCandidate);
       const pickupHours = storeHoursForDay(pickupDay, hoursData);
-      if (pickupHours && pickupHour < pickupHours.close) {
+      if (pickupHours && pickupHour >= pickupHours.open && pickupHour < pickupHours.close) {
         return pickupCandidate;
       }
       // Pickup window would exceed close — keep searching for the next slot.

@@ -88,8 +88,7 @@ import { showNotification } from "@/lib/events";
       let result: { success: boolean; message?: string };
       if (alreadyInCart) {
         // Item was re-added during the undo window — restore the snapshot quantity exactly
-        cartInstance.updateQuantity(key, itemToRestore.quantity);
-        result = { success: true };
+        result = await cartInstance.updateQuantity(key, itemToRestore.quantity);
       } else {
         result = await cartInstance.addItem(itemToRestore);
       }
