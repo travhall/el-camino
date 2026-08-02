@@ -6,6 +6,14 @@
 
 import { Icon } from "astro-icon/components";
 
+function safeRedirectDest(raw: string | null, fallback = "/admin"): string {
+  if (!raw) return fallback;
+  // Only allow site-relative paths: must start with / and not with //
+  // (// would be protocol-relative, treated as absolute by browsers)
+  if (raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  return fallback;
+}
+
 // Already authenticated? Send them to the destination.
 const secret = process.env.ADMIN_SECRET;
 
@@ -13,12 +21,12 @@ if (secret) {
   const { ADMIN_COOKIE_NAME, verifySessionToken } = await import("@/lib/admin/auth");
   const token = Astro.cookies.get(ADMIN_COOKIE_NAME)?.value;
   if (verifySessionToken(secret, token)) {
-    const dest = Astro.url.searchParams.get("from") || "/admin";
+    const dest = safeRedirectDest(Astro.url.searchParams.get("from"));
     return Astro.redirect(dest);
   }
 }
 
-const from = Astro.url.searchParams.get("from") || "/admin";
+const from = safeRedirectDest(Astro.url.searchParams.get("from"));
 const hasError = Astro.url.searchParams.has("error");
 ---
 
