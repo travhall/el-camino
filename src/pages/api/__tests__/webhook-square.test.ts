@@ -268,6 +268,32 @@ describe("POST /api/webhooks/square", () => {
     });
   });
 
+  // ── Blob cleanup failure path (Plan 075) ─────────────────────────────────
+  // When deletePendingOrder fails but emails all succeeded, storeFailedEmail
+  // must NOT be called — a blob-cleanup error is not an email failure and
+  // must not create a false duplicate-send record in the admin retry queue.
+
+  describe("payment.updated COMPLETED — blob cleanup fails after emails succeed", () => {
+    beforeEach(() => {
+      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup as any);
+      // Explicitly resolve email mocks (guard against implementation bleed from prior describe blocks)
+      vi.mocked(sendOrderConfirmation).mockResolvedValue(undefined);
+      vi.mocked(sendPickupNotification).mockResolvedValue(undefined);
+      vi.mocked(deletePendingOrder).mockRejectedValue(new Error("Blob unavailable"));
+    });
+
+    it("does not create a retry record when deletePendingOrder fails but emails succeeded", async () => {
+      const res = await POST(makeContext(paymentUpdatedCompleted));
+      expect(storeFailedEmail).not.toHaveBeenCalled();
+      expect(res.status).toBe(200);
+    });
+
+    it("still calls sendOrderConfirmation even when blob cleanup will fail", async () => {
+      await POST(makeContext(paymentUpdatedCompleted));
+      expect(sendOrderConfirmation).toHaveBeenCalledOnce();
+    });
+  });
+
   // ── Non-COMPLETED payment status ──────────────────────────────────────────
 
   describe("payment.updated with non-COMPLETED status", () => {

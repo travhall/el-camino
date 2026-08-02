@@ -197,6 +197,7 @@ export const POST: APIRoute = async ({ request }) => {
           } as unknown as import("square-legacy").Order;
         }
 
+        // Try 1: email sends only — blob-cleanup failure must NOT trigger a retry record
         try {
           await sendOrderConfirmation({ order, contact });
           console.log(`[Webhook/Square] Confirmation email sent to ${contact.email}`);
@@ -208,9 +209,6 @@ export const POST: APIRoute = async ({ request }) => {
             await sendShippingOrderNotification({ order, contact });
           }
 
-          // Delete blob — if Square retries, second delivery finds no contact and skips (idempotency)
-          await deletePendingOrder(orderId);
-
           console.log(`[Webhook/Square] All emails sent for order: ${orderId}`);
         } catch (emailErr) {
           console.error(`[Webhook/Square] Email delivery failed for order ${orderId}:`, emailErr);
@@ -219,6 +217,19 @@ export const POST: APIRoute = async ({ request }) => {
             console.error(`[Webhook/Square] Failed to store retry record:`, blobErr);
           });
           // Pending order blob intentionally NOT deleted — idempotency guard stays intact
+          break;
+        }
+
+        // Try 2: blob cleanup — independent of email success; non-fatal if it fails
+        // Only reached when all emails sent successfully (we didn't break above)
+        try {
+          await deletePendingOrder(orderId);
+        } catch (cleanupErr) {
+          // Blob cleanup failure is non-fatal — emails already sent; log and continue
+          console.warn(
+            `[Webhook/Square] Failed to delete pending order ${orderId}:`,
+            cleanupErr
+          );
         }
         break;
       }
