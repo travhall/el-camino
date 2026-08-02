@@ -30,7 +30,7 @@ export const onRequest = defineMiddleware(async ({ url, cookies, redirect, local
   const nonce = locals.nonce;
   response.headers.set(
     "Content-Security-Policy",
-    `default-src 'self'; img-src 'self' https: data: *.wordpress.com; script-src 'self' 'nonce-${nonce}' https://sandbox.web.squarecdn.com https://web.squarecdn.com; style-src 'self' 'nonce-${nonce}'; font-src 'self' https:; connect-src 'self' https: wss:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; object-src 'none'; base-uri 'self'; form-action 'self'`
+    `default-src 'self'; img-src 'self' https: data: *.wordpress.com; script-src 'self' 'nonce-${nonce}' https://sandbox.web.squarecdn.com https://web.squarecdn.com; style-src 'self' 'unsafe-inline'; font-src 'self' https:; connect-src 'self' https: wss:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; object-src 'none'; base-uri 'self'; form-action 'self'`
   );
 
   return response;
