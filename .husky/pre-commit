@@ -1,1 +1,6 @@
-pnpm check && pnpm test:run
+#!/bin/sh
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|astro|tsx)$')
+if [ -n "$STAGED" ]; then
+  pnpm check
+fi
+pnpm test:run
