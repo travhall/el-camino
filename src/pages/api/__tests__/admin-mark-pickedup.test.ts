@@ -110,3 +110,5 @@ describe('POST /api/admin/mark-pickedup', () => {
     expect(res.headers.get('Location')).toContain('error=update');
   });
 });
+
+// cSpell:ignore pickedup

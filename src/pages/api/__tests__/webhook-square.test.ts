@@ -94,7 +94,7 @@ const paymentUpdatedCompleted = {
   },
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────────── cSpell:ignore hmacsha
 
 function makeRequest(body: object): Request {
   return new Request(WEBHOOK_URL, {
