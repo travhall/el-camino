@@ -322,24 +322,15 @@ const productSchema = generateProductSchema(
 const ogData = generateOGData(product, selectedVariation, baseUrl);
 const twitterData = generateTwitterCardData(product, baseUrl);
 
-// Fetch related products (same brand first, then same category — capped at 8)
+// Fetch related products (same brand only — capped at 8; section hides itself if none)
 let relatedProducts: Product[] = [];
 try {
   const allProducts = allProductsCache ?? (await fetchProducts());
-  const sameBrand = product.brand
-    ? allProducts.filter(
-        (p) => p.id !== product.id && p.brand === product.brand
-      )
+  relatedProducts = product.brand
+    ? allProducts
+        .filter((p) => p.id !== product.id && p.brand === product.brand)
+        .slice(0, 8)
     : [];
-  const sameCategory = product.categories?.length
-    ? allProducts.filter(
-        (p) =>
-          p.id !== product.id &&
-          (!product.brand || p.brand !== product.brand) &&
-          p.categories?.some((c) => product.categories?.includes(c))
-      )
-    : [];
-  relatedProducts = [...sameBrand, ...sameCategory].slice(0, 8);
 } catch {
   // Non-critical — page renders fine without related products
 }
