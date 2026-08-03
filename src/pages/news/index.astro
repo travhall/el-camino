@@ -343,6 +343,8 @@ const nonce = Astro.locals.nonce;
 </Layout>
 
 <script>
+  import type { TransitionBeforeSwapEvent } from "astro:transitions/client";
+
   document.addEventListener("astro:page-load", () => {
     // CRITICAL: Only run on the news index page, not article or tag pages
     if (window.location.pathname !== '/news') {
@@ -417,9 +419,9 @@ const nonce = Astro.locals.nonce;
   });
 
   // CRITICAL: Clean URL parameters when leaving news section
-  document.addEventListener("astro:before-swap", (e: any) => {
-    const newUrl = e.detail?.to?.pathname || '';
-    
+  document.addEventListener("astro:before-swap", (e: TransitionBeforeSwapEvent) => {
+    const newUrl = e.to.pathname;
+
     // If we're leaving news section, clean up view parameters from forms
     if (window.location.pathname.startsWith('/news') && !newUrl.startsWith('/news')) {
       const forms = document.querySelectorAll('form');
