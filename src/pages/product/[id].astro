@@ -1,46 +1,46 @@
 ---
-import Layout from "@/layouts/Layout.astro";
-import Button from "@/components/Button.astro";
-import Modal from "@/components/Modal.astro";
-import RecentlyViewed from "@/components/RecentlyViewed.astro";
-import RelatedProducts from "@/components/RelatedProducts.astro";
-import SizeGuide from "@/components/SizeGuide.astro";
-import BackInStock from "@/components/BackInStock.astro";
-import Breadcrumbs from "@/components/Breadcrumbs.astro";
-import { fetchProduct, fetchProducts } from "@/lib/square/client";
-import { MoneyUtils } from "@/lib/square/money";
-import { checkBulkInventory } from "@/lib/square/inventory";
+import Layout from '@/layouts/Layout.astro';
+import Button from '@/components/Button.astro';
+import Modal from '@/components/Modal.astro';
+import RecentlyViewed from '@/components/RecentlyViewed.astro';
+import RelatedProducts from '@/components/RelatedProducts.astro';
+import SizeGuide from '@/components/SizeGuide.astro';
+import BackInStock from '@/components/BackInStock.astro';
+import Breadcrumbs from '@/components/Breadcrumbs.astro';
+import { fetchProduct, fetchProducts } from '@/lib/square/client';
+import { MoneyUtils } from '@/lib/square/money';
+import { checkBulkInventory } from '@/lib/square/inventory';
 import {
   createInitialSelectionState,
   getAttributeDisplayName,
-} from "@/lib/square/variationParser";
-import type { Product } from "@/lib/square/types";
+} from '@/lib/square/variationParser';
+import type { Product } from '@/lib/square/types';
 import {
   extractIdFromSlug,
   getVariationFromVariantParam,
   createSEOTitle,
   createSlugMapping,
-} from "@/lib/square/slugUtils";
-import { slugResolver } from "@/lib/square/slugResolver";
+} from '@/lib/square/slugUtils';
+import { slugResolver } from '@/lib/square/slugResolver';
 import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
-} from "@/lib/constants/assets";
+} from '@/lib/constants/assets';
 import {
   generateProductSchema,
   generateOGData,
   generateTwitterCardData,
-} from "@/lib/product/structuredData";
-import { generateBreadcrumbs } from "@/lib/product/breadcrumbs";
-import { fetchCategories } from "@/lib/square/categories";
-import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
+} from '@/lib/product/structuredData';
+import { generateBreadcrumbs } from '@/lib/product/breadcrumbs';
+import { fetchCategories } from '@/lib/square/categories';
+import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
 
 // Get the slug or ID from URL params
 const { id: slugOrId } = Astro.params;
-const variantParam = Astro.url.searchParams.get("variant");
+const variantParam = Astro.url.searchParams.get('variant');
 
 if (!slugOrId) {
-  return Astro.redirect("/404");
+  return Astro.redirect('/404');
 }
 
 // Check if this looks like a Square ID (uppercase alphanumeric, 24+ chars)
@@ -76,7 +76,7 @@ if (looksLikeSquareId) {
       console.error(`[PDP] Failed to resolve slug: ${slugOrId}`);
     }
   } catch (error) {
-    console.error("[PDP] Error resolving slug:", error);
+    console.error('[PDP] Error resolving slug:', error);
     // Last-resort fallback: full catalog fetch
     try {
       allProductsCache = await fetchProducts();
@@ -93,7 +93,7 @@ if (looksLikeSquareId) {
 
 if (!product) {
   console.error(`Product not found for: ${slugOrId}`);
-  return Astro.redirect("/404");
+  return Astro.redirect('/404');
 }
 
 // console.log(
@@ -123,7 +123,7 @@ if (variantParam && product.variations) {
 }
 
 if (!product) {
-  return Astro.redirect("/404");
+  return Astro.redirect('/404');
 }
 
 // Detect gift card via custom attribute set in Square Dashboard.
@@ -140,7 +140,7 @@ let variations = product.variations || [];
 if (!isGiftCard && variations.length > 0) {
   try {
     const inventoryMap = await checkBulkInventory(
-      variations.map((v) => v.variationId),
+      variations.map((v) => v.variationId)
     );
 
     variations = variations.map((v) => ({
@@ -162,7 +162,7 @@ if (!isGiftCard && variations.length > 0) {
     }
   } catch (err) {
     console.error(
-      `Inventory check failed: ${err instanceof Error ? err.message : String(err)}`,
+      `Inventory check failed: ${err instanceof Error ? err.message : String(err)}`
     );
     // Fail safe: mark out-of-stock so we never oversell on API failure.
     variations = variations.map((v) => ({
@@ -208,7 +208,7 @@ if (!isGiftCard && variations.length > 0) {
     ];
   } catch (err) {
     console.error(
-      `Inventory check failed for single variation: ${err instanceof Error ? err.message : String(err)}`,
+      `Inventory check failed for single variation: ${err instanceof Error ? err.message : String(err)}`
     );
     // Fail safe: mark out-of-stock so we never oversell on API failure.
     variations = [
@@ -236,10 +236,10 @@ const selectionState = createInitialSelectionState(variations);
 // parsed, so we can reliably find the color key and map product-level images onto
 // the variations that lack a variation-level image.
 // Mutates in place so all downstream references (selectionState, selectedVariation,
-// the serialized hidden input) all see the updated image values.
+// the serialized hidden input) all see the updated image values. cSpell:ignore colour
 if (product.images && product.images.length > 1) {
   const colorKey = Object.keys(variations[0]?.attributes ?? {}).find(
-    (k) => k.toLowerCase() === "color" || k.toLowerCase() === "colour",
+    (k) => k.toLowerCase() === 'color' || k.toLowerCase() === 'colour'
   );
 
   if (colorKey) {
@@ -256,7 +256,7 @@ if (product.images && product.images.length > 1) {
       for (const v of variations) {
         if (v.image) continue; // Variation-level image always wins
         const colorValue = v.attributes?.[colorKey];
-        const idx = colorOrder.indexOf(colorValue ?? "");
+        const idx = colorOrder.indexOf(colorValue ?? '');
         if (idx >= 0 && product.images[idx]) {
           v.image = product.images[idx];
         }
@@ -291,7 +291,7 @@ const isOnSale = !!saleInfo && selectedVariationInStock;
 const formattedPrice = saleInfo
   ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.salePrice))
   : MoneyUtils.format(
-      MoneyUtils.fromFloat(selectedVariation?.price || product.price),
+      MoneyUtils.fromFloat(selectedVariation?.price || product.price)
     );
 
 const formattedOriginalPrice = saleInfo
@@ -310,14 +310,14 @@ try {
   const categories = await categoriesPromise;
   breadcrumbPath = await generateBreadcrumbs(product, categories, baseUrl);
 } catch (err) {
-  console.error("Failed to generate breadcrumbs:", err);
+  console.error('Failed to generate breadcrumbs:', err);
   // Non-critical, continue without breadcrumbs
 }
 
 const productSchema = generateProductSchema(
   product,
   selectedVariation,
-  baseUrl,
+  baseUrl
 );
 const ogData = generateOGData(product, selectedVariation, baseUrl);
 const twitterData = generateTwitterCardData(product, baseUrl);
@@ -328,7 +328,7 @@ try {
   const allProducts = allProductsCache ?? (await fetchProducts());
   const sameBrand = product.brand
     ? allProducts.filter(
-        (p) => p.id !== product.id && p.brand === product.brand,
+        (p) => p.id !== product.id && p.brand === product.brand
       )
     : [];
   const sameCategory = product.categories?.length
@@ -336,7 +336,7 @@ try {
         (p) =>
           p.id !== product.id &&
           (!product.brand || p.brand !== product.brand) &&
-          p.categories?.some((c) => product.categories?.includes(c)),
+          p.categories?.some((c) => product.categories?.includes(c))
       )
     : [];
   relatedProducts = [...sameBrand, ...sameCategory].slice(0, 8);
@@ -350,24 +350,24 @@ const pageTitle = product.title;
 // Strip brand prefix from the display title so the H1 doesn't read "Brand Brand Product"
 const displayTitle =
   product.brand &&
-  product.title.toLowerCase().startsWith(product.brand.toLowerCase() + " ")
+  product.title.toLowerCase().startsWith(product.brand.toLowerCase() + ' ')
     ? product.title.slice(product.brand.length + 1)
     : product.title;
 const selectedVariationForSEO =
   variantParam && product.variations
     ? product.variations.find(
-        (v) => v.variationId === product.selectedVariationId,
+        (v) => v.variationId === product.selectedVariationId
       )
     : undefined;
 const fullTitle = createSEOTitle(product, selectedVariationForSEO);
-const unitDisplay = selectedVariation?.unit || product.unit || "";
+const unitDisplay = selectedVariation?.unit || product.unit || '';
 
 // Extract active category from breadcrumbs for navigation highlighting
-let activeCategory = "";
+let activeCategory = '';
 if (breadcrumbPath && breadcrumbPath.items.length > 1) {
   // Find the first category in breadcrumbs (after Home)
   const categoryItem = breadcrumbPath.items.find(
-    (item, index) => index > 0 && item.url.startsWith("/category/"),
+    (item, index) => index > 0 && item.url.startsWith('/category/')
   );
   if (categoryItem) {
     // Extract the category slug from the URL
@@ -379,24 +379,24 @@ if (breadcrumbPath && breadcrumbPath.items.length > 1) {
 }
 
 // Determine if a size guide should be shown (apparel only)
-type SizeGuideCategory = "tops" | "bottoms" | null;
+type SizeGuideCategory = 'tops' | 'bottoms' | null;
 let sizeGuideCategory: SizeGuideCategory = null;
 if (breadcrumbPath) {
   const slugs = breadcrumbPath.items.map((i) => i.url);
-  if (slugs.some((s) => s.includes("bottoms") || s.includes("pants"))) {
-    sizeGuideCategory = "bottoms";
+  if (slugs.some((s) => s.includes('bottoms') || s.includes('pants'))) {
+    sizeGuideCategory = 'bottoms';
   } else if (
     slugs.some(
       (s) =>
-        s.includes("tees") ||
-        s.includes("tops") ||
-        s.includes("apparel") ||
-        s.includes("hoodies") ||
-        s.includes("sweatshirts") ||
-        s.includes("jackets"),
+        s.includes('tees') ||
+        s.includes('tops') ||
+        s.includes('apparel') ||
+        s.includes('hoodies') ||
+        s.includes('sweatshirts') ||
+        s.includes('jackets')
     )
   ) {
-    sizeGuideCategory = "tops";
+    sizeGuideCategory = 'tops';
   }
 }
 
@@ -413,21 +413,21 @@ const imageSet = product.image
 // Set response caching headers for performance optimization
 // Browser: Cache for 1 minute, then revalidate
 Astro.response.headers.set(
-  "Cache-Control",
-  "public, max-age=60, must-revalidate",
+  'Cache-Control',
+  'public, max-age=60, must-revalidate'
 );
 
 // Netlify CDN: Serve fresh for 5 minutes, then serve stale for 1 hour while revalidating
 // durable directive shares cache globally across all edge nodes
 Astro.response.headers.set(
-  "Netlify-CDN-Cache-Control",
-  "public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable", //cSpell:ignore maxage
+  'Netlify-CDN-Cache-Control',
+  'public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable' //cSpell:ignore maxage
 );
 
 // Add cache tag for per-product invalidation via webhooks
 Astro.response.headers.set(
-  "Netlify-Cache-Tag",
-  `product-${product.id},products`,
+  'Netlify-Cache-Tag',
+  `product-${product.id},products`
 );
 ---
 
@@ -473,16 +473,16 @@ Astro.response.headers.set(
         as="image"
         imagesrcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
           product.image,
-          imageSet.avif ? "avif" : imageSet.webp ? "webp" : "jpeg",
-          { width: 800, height: 800, quality: 85 },
+          imageSet.avif ? 'avif' : imageSet.webp ? 'webp' : 'jpeg',
+          { width: 800, height: 800, quality: 85 }
         )}
         imagesizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
         type={
           imageSet.avif
-            ? "image/avif"
+            ? 'image/avif'
             : imageSet.webp
-              ? "image/webp"
-              : "image/jpeg"
+              ? 'image/webp'
+              : 'image/jpeg'
         }
         fetchpriority="high"
         slot="head"
@@ -523,12 +523,12 @@ Astro.response.headers.set(
                     type="image/avif"
                     srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
                       product.image,
-                      "avif",
+                      'avif',
                       {
                         width: 800,
                         height: 800,
                         quality: 85,
-                      },
+                      }
                     )}
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
                   />
@@ -540,12 +540,12 @@ Astro.response.headers.set(
                     type="image/webp"
                     srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
                       product.image,
-                      "webp",
+                      'webp',
                       {
                         width: 800,
                         height: 800,
                         quality: 85,
-                      },
+                      }
                     )}
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
                   />
@@ -557,17 +557,17 @@ Astro.response.headers.set(
                   src={imageSet.jpeg}
                   srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
                     product.image,
-                    "jpeg",
+                    'jpeg',
                     {
                       width: 800,
                       height: 800,
                       quality: 85,
-                    },
+                    }
                   )}
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
                   alt={product.title}
                   class="w-full h-full object-cover transition-opacity duration-300 opacity-0"
-                  data-in-stock={selectedVariationInStock ? "true" : "false"}
+                  data-in-stock={selectedVariationInStock ? 'true' : 'false'}
                   width="800"
                   height="800"
                   loading="eager"
@@ -580,7 +580,7 @@ Astro.response.headers.set(
                   data-shimmer-error-remove="opacity-0"
                   data-shimmer-error-add="opacity-100"
                   role="img"
-                  aria-label={product.title || "Product image"}
+                  aria-label={product.title || 'Product image'}
                 />
               </picture>
             ) : (
@@ -588,12 +588,12 @@ Astro.response.headers.set(
                 id="product-image"
                 src={EL_CAMINO_LOGO_DATA_URI}
                 alt={product.title}
-                class={`w-full h-full object-contain opacity-100 ${!selectedVariationInStock ? "opacity-75" : ""}`}
+                class={`w-full h-full object-contain opacity-100 ${!selectedVariationInStock ? 'opacity-75' : ''}`}
                 width="800"
                 height="800"
                 loading="eager"
                 role="img"
-                aria-label={product.title || "Product image"}
+                aria-label={product.title || 'Product image'}
               />
             )
           }
@@ -622,10 +622,10 @@ Astro.response.headers.set(
         <div
           id="gallery-thumbnails"
           class:list={[
-            "flex gap-2 overflow-x-auto pb-1",
+            'flex gap-2 overflow-x-auto pb-1',
             !selectedVariation?.images || selectedVariation.images.length <= 1
-              ? "hidden"
-              : "",
+              ? 'hidden'
+              : '',
           ]}
           role="group"
           aria-label="Product images"
@@ -637,20 +637,20 @@ Astro.response.headers.set(
                 <button
                   type="button"
                   class:list={[
-                    "gallery-thumb shrink-0 w-16 h-16 border-2 overflow-hidden bg-(--surface-secondary) transition-all",
+                    'gallery-thumb shrink-0 w-16 h-16 border-2 overflow-hidden bg-(--surface-secondary) transition-all',
                     i === 0
-                      ? "border-(--ui-button-border) opacity-100"
-                      : "border-(--border-secondary) opacity-60 hover:opacity-100 hover:border-(--border-primary)",
+                      ? 'border-(--ui-button-border) opacity-100'
+                      : 'border-(--border-secondary) opacity-60 hover:opacity-100 hover:border-(--border-primary)',
                   ]}
                   data-gallery-src={imgUrl}
                   aria-label={`View image ${i + 1}`}
-                  aria-pressed={i === 0 ? "true" : "false"}
+                  aria-pressed={i === 0 ? 'true' : 'false'}
                 >
                   <img
                     src={imgUrl}
                     alt={`${product.title} — image ${i + 1}`}
                     class="w-full h-full object-cover"
-                    loading={i < 3 ? "eager" : "lazy"}
+                    loading={i < 3 ? 'eager' : 'lazy'}
                     width="64"
                     height="64"
                   />
@@ -687,11 +687,11 @@ Astro.response.headers.set(
           <div
             id="original-price-display"
             class:list={[
-              "text-lg text-(--content-meta) line-through",
-              !isOnSale || !formattedOriginalPrice ? "hidden" : "",
+              'text-lg text-(--content-meta) line-through',
+              !isOnSale || !formattedOriginalPrice ? 'hidden' : '',
             ]}
           >
-            {formattedOriginalPrice || ""}
+            {formattedOriginalPrice || ''}
           </div>
           {/* Sale/Regular price */}
           <p
@@ -730,7 +730,7 @@ Astro.response.headers.set(
                     >
                       {displayName}
                     </span>
-                    {sizeGuideCategory && attributeType === "size" && (
+                    {sizeGuideCategory && attributeType === 'size' && (
                       <SizeGuide category={sizeGuideCategory} />
                     )}
                   </div>
@@ -766,14 +766,14 @@ Astro.response.headers.set(
                               data-attribute-type={attributeType}
                               data-attribute-value={value}
                               class:list={[
-                                "px-2.5 py-1.5 rounded-sm attribute-button cursor-pointer relative",
+                                'px-2.5 py-1.5 rounded-sm attribute-button cursor-pointer relative',
                                 isSelected
-                                  ? "border border-(--ui-variant-selected-border) bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text)"
-                                  : "border border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text)",
+                                  ? 'border border-(--ui-variant-selected-border) bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text)'
+                                  : 'border border-(--ui-input-border)/50 bg-(--ui-input-surface) text-(--ui-input-text)',
                                 !isAvailable &&
-                                  "text-(--content-meta) line-through opacity-60",
+                                  'text-(--content-meta) line-through opacity-60',
                               ]}
-                              aria-pressed={isSelected ? "true" : "false"}
+                              aria-pressed={isSelected ? 'true' : 'false'}
                               aria-label={
                                 !isAvailable
                                   ? `${value} — out of stock`
@@ -802,7 +802,7 @@ Astro.response.headers.set(
                 <div class="mt-6">
                   <div class="flex items-center mb-1">
                     <span class="text-sm font-medium">{displayName}</span>
-                    {sizeGuideCategory && attributeType === "size" && (
+                    {sizeGuideCategory && attributeType === 'size' && (
                       <SizeGuide category={sizeGuideCategory} />
                     )}
                   </div>
@@ -861,15 +861,15 @@ Astro.response.headers.set(
                     data-price={variation.price}
                     data-name={variation.name}
                     data-quantity={variation.quantity}
-                    data-in-stock={variation.inStock ? "true" : "false"}
-                    data-image={variation.image || ""}
-                    data-unit={variation.unit || ""}
+                    data-in-stock={variation.inStock ? 'true' : 'false'}
+                    data-image={variation.image || ''}
+                    data-unit={variation.unit || ''}
                     class:list={[
-                      "px-4 py-2 border rounded-sm cursor-pointer",
+                      'px-4 py-2 border rounded-sm cursor-pointer',
                       variation.variationId === defaultVariationId
-                        ? "bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)"
-                        : "bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50",
-                      !variation.inStock && "opacity-60 line-through",
+                        ? 'bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)'
+                        : 'bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50',
+                      !variation.inStock && 'opacity-60 line-through',
                     ]}
                   >
                     {variation.name}
@@ -889,8 +889,8 @@ Astro.response.headers.set(
                   id="quantity-stepper"
                   class:list={[
                     !isGiftCard && selectedVariationQuantity <= 1
-                      ? "hidden"
-                      : "",
+                      ? 'hidden'
+                      : '',
                   ]}
                 >
                   <label
@@ -970,14 +970,14 @@ Astro.response.headers.set(
               price: selectedVariation?.price || product.price,
               image: product.image,
               unit: unitDisplay,
-              variationName: selectedVariation?.name || "",
+              variationName: selectedVariation?.name || '',
               saleInfo: selectedVariation?.saleInfo || undefined,
               isGiftCard: isGiftCard || undefined,
             })}
             id="add-to-cart-button"
             disabled={!selectedVariationInStock}
           >
-            {selectedVariationInStock ? "Add to Cart" : "Sold Out"}
+            {selectedVariationInStock ? 'Add to Cart' : 'Sold Out'}
           </Button>
         </div>
 
@@ -1090,7 +1090,7 @@ Astro.response.headers.set(
         <RelatedProducts
           products={relatedProducts}
           title={
-            product.brand ? `More from ${product.brand}` : "You Might Also Like"
+            product.brand ? `More from ${product.brand}` : 'You Might Also Like'
           }
         />
       </div>
@@ -1106,11 +1106,15 @@ Astro.response.headers.set(
 </Layout>
 
 <script>
-  import { PDPController } from "@/lib/product/pdpController";
-  import { processClientError, logError } from "@/lib/square/errorUtils";
-  import { recentlyViewed } from "@/lib/product/recentlyViewed";
-  import type { Product } from "@/lib/square/types";
-  import { showPolicyModal, showSecureCheckoutModal, showLocationModal } from "@/lib/events";
+  import { PDPController } from '@/lib/product/pdpController';
+  import { processClientError, logError } from '@/lib/square/errorUtils';
+  import { recentlyViewed } from '@/lib/product/recentlyViewed';
+  import type { Product } from '@/lib/square/types';
+  import {
+    showPolicyModal,
+    showSecureCheckoutModal,
+    showLocationModal,
+  } from '@/lib/events';
 
   let pdpController: PDPController | null = null;
 
@@ -1119,7 +1123,7 @@ Astro.response.headers.set(
    */
   function initializePDP(): boolean {
     const dataInput = document.getElementById(
-      "variation-data",
+      'variation-data'
     ) as HTMLInputElement;
     if (!dataInput?.value) return false;
 
@@ -1134,11 +1138,11 @@ Astro.response.headers.set(
 
       // Check if we have the minimum required elements for PDP controller
       const hasAttributeButtons =
-        document.querySelectorAll(".attribute-button").length > 0;
+        document.querySelectorAll('.attribute-button').length > 0;
       const hasVariationButtons =
-        document.querySelectorAll("[data-variation-id]").length > 0;
+        document.querySelectorAll('[data-variation-id]').length > 0;
       const hasQuantityControls =
-        document.getElementById("quantity-input") !== null;
+        document.getElementById('quantity-input') !== null;
 
       // Only initialize PDP controller if we have interactive elements that need it
       if (hasAttributeButtons || hasVariationButtons || hasQuantityControls) {
@@ -1148,62 +1152,62 @@ Astro.response.headers.set(
         return true; // No interactive elements, not an error
       }
     } catch (error) {
-      const appError = processClientError(error, "initializePDP");
+      const appError = processClientError(error, 'initializePDP');
       logError(appError);
       return true; // Don't fail the whole page for this
     }
   }
 
   function setupGallery(): void {
-    const container = document.getElementById("gallery-thumbnails");
+    const container = document.getElementById('gallery-thumbnails');
     if (!container) return;
 
     // Use event delegation so this handler works even after JS rebuilds the thumbs
     if (container.dataset.galleryReady) return; // only attach once per page load
-    container.dataset.galleryReady = "true";
+    container.dataset.galleryReady = 'true';
 
-    container.addEventListener("click", (e) => {
+    container.addEventListener('click', (e) => {
       const thumb = (e.target as Element).closest<HTMLButtonElement>(
-        ".gallery-thumb",
+        '.gallery-thumb'
       );
       if (!thumb) return;
 
       const src = thumb.dataset.gallerySrc;
       const mainImage = document.getElementById(
-        "product-image",
+        'product-image'
       ) as HTMLImageElement | null;
       if (!src || !mainImage) return;
 
       // Update active thumb styles
       container
-        .querySelectorAll<HTMLButtonElement>(".gallery-thumb")
+        .querySelectorAll<HTMLButtonElement>('.gallery-thumb')
         .forEach((t) => {
-          t.classList.remove("border-(--ui-button-border)", "opacity-100");
-          t.classList.add("border-(--border-secondary)", "opacity-60");
-          t.setAttribute("aria-pressed", "false");
+          t.classList.remove('border-(--ui-button-border)', 'opacity-100');
+          t.classList.add('border-(--border-secondary)', 'opacity-60');
+          t.setAttribute('aria-pressed', 'false');
         });
-      thumb.classList.add("border-(--ui-button-border)", "opacity-100");
-      thumb.classList.remove("border-(--border-secondary)", "opacity-60");
-      thumb.setAttribute("aria-pressed", "true");
+      thumb.classList.add('border-(--ui-button-border)', 'opacity-100');
+      thumb.classList.remove('border-(--border-secondary)', 'opacity-60');
+      thumb.setAttribute('aria-pressed', 'true');
 
       // Cross fade the main image
-      mainImage.classList.remove("opacity-100");
-      mainImage.classList.add("opacity-0");
+      mainImage.classList.remove('opacity-100');
+      mainImage.classList.add('opacity-0');
       // Clear srcset so <picture> source tags don't override the new src
-      mainImage.removeAttribute("srcset");
+      mainImage.removeAttribute('srcset');
       mainImage.src = src;
       // Handle cached images where onload won't fire
       if (mainImage.complete && mainImage.naturalWidth > 0) {
-        mainImage.classList.remove("opacity-0");
-        mainImage.classList.add("opacity-100");
+        mainImage.classList.remove('opacity-0');
+        mainImage.classList.add('opacity-100');
       } else {
         mainImage.onload = () => {
-          mainImage.classList.remove("opacity-0");
-          mainImage.classList.add("opacity-100");
+          mainImage.classList.remove('opacity-0');
+          mainImage.classList.add('opacity-100');
         };
         mainImage.onerror = () => {
-          mainImage.classList.remove("opacity-0");
-          mainImage.classList.add("opacity-100");
+          mainImage.classList.remove('opacity-0');
+          mainImage.classList.add('opacity-100');
         };
       }
     });
@@ -1211,27 +1215,27 @@ Astro.response.headers.set(
 
   function setupPolicyTriggers(): void {
     // Easy returns → return policy modal
-    const returnsTrigger = document.getElementById("easy-returns-trigger");
+    const returnsTrigger = document.getElementById('easy-returns-trigger');
     if (
       returnsTrigger &&
-      returnsTrigger.getAttribute("data-modal-initialized") !== "true"
+      returnsTrigger.getAttribute('data-modal-initialized') !== 'true'
     ) {
-      returnsTrigger.setAttribute("data-modal-initialized", "true");
-      returnsTrigger.addEventListener("click", (e) => {
+      returnsTrigger.setAttribute('data-modal-initialized', 'true');
+      returnsTrigger.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        showPolicyModal("return-policy");
+        showPolicyModal('return-policy');
       });
     }
 
     // Secure checkout → security assurance modal
-    const secureTrigger = document.getElementById("secure-checkout-trigger");
+    const secureTrigger = document.getElementById('secure-checkout-trigger');
     if (
       secureTrigger &&
-      secureTrigger.getAttribute("data-modal-initialized") !== "true"
+      secureTrigger.getAttribute('data-modal-initialized') !== 'true'
     ) {
-      secureTrigger.setAttribute("data-modal-initialized", "true");
-      secureTrigger.addEventListener("click", (e) => {
+      secureTrigger.setAttribute('data-modal-initialized', 'true');
+      secureTrigger.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         showSecureCheckoutModal();
@@ -1240,13 +1244,13 @@ Astro.response.headers.set(
   }
 
   function setupLocationModal(): void {
-    const triggerIds = ["location-hours-link", "local-pickup-trigger"];
+    const triggerIds = ['location-hours-link', 'local-pickup-trigger'];
     triggerIds.forEach((triggerId) => {
       const trigger = document.getElementById(triggerId);
       if (!trigger) return;
-      if (trigger.getAttribute("data-modal-initialized") === "true") return;
-      trigger.setAttribute("data-modal-initialized", "true");
-      trigger.addEventListener("click", (e) => {
+      if (trigger.getAttribute('data-modal-initialized') === 'true') return;
+      trigger.setAttribute('data-modal-initialized', 'true');
+      trigger.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         showLocationModal();
@@ -1255,23 +1259,23 @@ Astro.response.headers.set(
   }
 
   function initializePage() {
-    const variationDataElement = document.getElementById("variation-data");
+    const variationDataElement = document.getElementById('variation-data');
     const isProductPage = variationDataElement !== null;
 
     if (isProductPage) {
       // Track recently viewed product
       try {
-        const productButton = document.getElementById("add-to-cart-button");
+        const productButton = document.getElementById('add-to-cart-button');
         if (productButton) {
-          const productDataStr = productButton.getAttribute("data-product");
+          const productDataStr = productButton.getAttribute('data-product');
           if (productDataStr) {
             const productData = JSON.parse(productDataStr);
             const productImage =
-              (document.getElementById("product-image") as HTMLImageElement)
-                ?.src || "";
+              (document.getElementById('product-image') as HTMLImageElement)
+                ?.src || '';
             const productBrand =
               document
-                .querySelector(".product-info h1 span.uppercase")
+                .querySelector('.product-info h1 span.uppercase')
                 ?.textContent?.trim() || undefined;
 
             const product: Product = {
@@ -1291,11 +1295,11 @@ Astro.response.headers.set(
           }
         }
       } catch (error) {
-        console.error("Failed to track recently viewed:", error);
+        console.error('Failed to track recently viewed:', error);
       }
 
       if (!initializePDP()) {
-        console.error("Failed to initialize PDP controller");
+        console.error('Failed to initialize PDP controller');
       }
 
       setupLocationModal();
@@ -1305,19 +1309,19 @@ Astro.response.headers.set(
   }
 
   // Run on DOM ready
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initializePage);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePage);
   } else {
     initializePage();
   }
 
   // Also handle view transitions when re-enabled
-  document.addEventListener("astro:page-load", initializePage);
+  document.addEventListener('astro:page-load', initializePage);
 
   /**
    * ✅ ASTRO VIEW TRANSITIONS: Clean up on navigation
    */
-  document.addEventListener("astro:after-swap", () => {
+  document.addEventListener('astro:after-swap', () => {
     pdpController?.cleanup();
     pdpController = null;
   });

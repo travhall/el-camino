@@ -1,20 +1,22 @@
-import { squareClient, fetchProducts } from "./client";
+import { squareClient, fetchProducts } from './client';
 import type {
   Category,
   CategoryHierarchy,
   PaginatedProducts,
   Product,
   ProductLoadingOptions,
-} from "./types";
-import { categoryCache, productCache } from "@/lib/cache/blobCache";
-import { handleError } from "./errorUtils";
-import { processSquareError } from "./serverErrorUtils";
-import { createSlug } from "@/lib/square/slugUtils";
+} from './types';
+import { categoryCache, productCache } from '@/lib/cache/blobCache';
+import { handleError } from './errorUtils';
+import { processSquareError } from './serverErrorUtils';
+import { createSlug } from '@/lib/square/slugUtils';
 
 export async function fetchCategories(): Promise<Category[]> {
-  return categoryCache.getOrCompute("all-categories", async () => {
+  return categoryCache.getOrCompute('all-categories', async () => {
     try {
-      const categoryPage = await squareClient.catalog.list({ types: "CATEGORY" });
+      const categoryPage = await squareClient.catalog.list({
+        types: 'CATEGORY',
+      });
 
       if (!categoryPage.data?.length) {
         return [];
@@ -23,8 +25,8 @@ export async function fetchCategories(): Promise<Category[]> {
       const rawObjects = categoryPage.data;
       const categories = rawObjects
         .filter(
-          (item): item is Extract<typeof item, { type: "CATEGORY" }> =>
-            item.type === "CATEGORY"
+          (item): item is Extract<typeof item, { type: 'CATEGORY' }> =>
+            item.type === 'CATEGORY'
         )
         .map((item) => {
           // Extract ordinal from parentCategory (BigInt)
@@ -44,8 +46,7 @@ export async function fetchCategories(): Promise<Category[]> {
           // but defensively probed for in case a raw/legacy response shape
           // ever leaks through unconverted.
           const rawCategoryData = item.categoryData as
-            | (typeof item.categoryData & { root_category?: string })
-            | undefined;
+            (typeof item.categoryData & { root_category?: string }) | undefined;
           if (!rootCategoryId && rawCategoryData?.root_category) {
             rootCategoryId = rawCategoryData.root_category;
           }
@@ -61,8 +62,8 @@ export async function fetchCategories(): Promise<Category[]> {
 
           const category = {
             id: item.id,
-            name: item.categoryData?.name || "",
-            slug: createSlug(item.categoryData?.name || ""),
+            name: item.categoryData?.name || '',
+            slug: createSlug(item.categoryData?.name || ''),
             isTopLevel: item.categoryData?.isTopLevel || false,
             parentCategoryId: item.categoryData?.parentCategory?.id,
             rootCategoryId: rootCategoryId,
@@ -74,14 +75,14 @@ export async function fetchCategories(): Promise<Category[]> {
 
       return categories;
     } catch (error) {
-      const appError = processSquareError(error, "fetchCategories");
+      const appError = processSquareError(error, 'fetchCategories');
       return handleError<Category[]>(appError, []);
     }
   });
 }
 
 export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
-  return categoryCache.getOrCompute("hierarchy", async () => {
+  return categoryCache.getOrCompute('hierarchy', async () => {
     try {
       const allCategories = await fetchCategories();
       if (!allCategories.length) return [];
@@ -127,7 +128,7 @@ export async function fetchCategoryHierarchy(): Promise<CategoryHierarchy[]> {
 
       return hierarchy;
     } catch (error) {
-      const appError = processSquareError(error, "fetchCategoryHierarchy");
+      const appError = processSquareError(error, 'fetchCategoryHierarchy');
       return handleError<CategoryHierarchy[]>(appError, []);
     }
   });
@@ -172,10 +173,9 @@ function productMatchesCategory(
 
 export async function fetchProductsByCategory(
   categoryId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for call-site API compatibility; see NOTE below on why it's not used
   options?: ProductLoadingOptions
 ): Promise<PaginatedProducts> {
-  const { limit = 24, cursor } = options || {};
-
   // NOTE: We don't use cursor-based pagination with this approach
   // Instead we fetch all items and paginate in-memory
   // This avoids the buggy searchCatalogItems(categoryIds) endpoint
@@ -194,8 +194,8 @@ export async function fetchProductsByCategory(
 
     // Sort products alphabetically by brand (case-insensitive), unbranded fall to end
     products.sort((a, b) => {
-      const brandA = a.brand?.toLowerCase() ?? "\uffff";
-      const brandB = b.brand?.toLowerCase() ?? "\uffff";
+      const brandA = a.brand?.toLowerCase() ?? '\uffff';
+      const brandB = b.brand?.toLowerCase() ?? '\uffff';
       return brandA.localeCompare(brandB);
     });
     return {
@@ -219,4 +219,3 @@ export function clearCategoryCache(): void {
   categoryCache.clear();
   productCache.clear();
 }
-

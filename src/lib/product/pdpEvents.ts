@@ -1,11 +1,12 @@
 // src/lib/product/pdpEvents.ts
-import { cart } from "@/lib/cart";
-import { PDPUIManager } from "./pdpUI";
-import { processClientError, logError } from "@/lib/square/errorUtils";
-import { showNotification, showLocationModal } from "@/lib/events";
+import { cart } from '@/lib/cart';
+import { PDPUIManager } from './pdpUI';
+import { processClientError, logError } from '@/lib/square/errorUtils';
+import { showNotification, showLocationModal } from '@/lib/events';
+import type { ProductVariation } from '@/lib/square/types';
 
 export interface ProductPageData {
-  variations: any[];
+  variations: ProductVariation[];
   availableAttributes: Record<string, string[]>;
   selectedVariationId: string;
   productId: string;
@@ -34,9 +35,9 @@ export class PDPEventManager {
   }
 
   private setupAttributeButtons(): void {
-    const attributeButtons = document.querySelectorAll(".attribute-button");
+    const attributeButtons = document.querySelectorAll('.attribute-button');
     attributeButtons.forEach((button) => {
-      button.addEventListener("click", (e) => {
+      button.addEventListener('click', (e) => {
         const btn = e.currentTarget as HTMLButtonElement;
         if (btn.disabled) return;
 
@@ -52,13 +53,13 @@ export class PDPEventManager {
 
   private setupQuantityControls(): void {
     const quantityInput = document.getElementById(
-      "quantity-input"
+      'quantity-input'
     ) as HTMLInputElement;
     const decreaseButton = document.getElementById(
-      "decrease-quantity"
+      'decrease-quantity'
     ) as HTMLButtonElement;
     const increaseButton = document.getElementById(
-      "increase-quantity"
+      'increase-quantity'
     ) as HTMLButtonElement;
 
     if (!quantityInput || !decreaseButton || !increaseButton) return;
@@ -72,7 +73,7 @@ export class PDPEventManager {
     increaseButton.parentNode?.replaceChild(newIncreaseBtn, increaseButton);
     quantityInput.parentNode?.replaceChild(newQuantityInput, quantityInput);
 
-    newIncreaseBtn.addEventListener("click", () => {
+    newIncreaseBtn.addEventListener('click', () => {
       const currentValue = parseInt(newQuantityInput.value, 10) || 0;
       const maxValue = parseInt(newQuantityInput.max, 10) || 0;
 
@@ -86,7 +87,7 @@ export class PDPEventManager {
       }
     });
 
-    newDecreaseBtn.addEventListener("click", () => {
+    newDecreaseBtn.addEventListener('click', () => {
       const currentValue = parseInt(newQuantityInput.value, 10) || 0;
       if (currentValue > 1) {
         newQuantityInput.value = String(currentValue - 1);
@@ -98,7 +99,7 @@ export class PDPEventManager {
       }
     });
 
-    newQuantityInput.addEventListener("change", () => {
+    newQuantityInput.addEventListener('change', () => {
       let value = parseInt(newQuantityInput.value, 10);
       const max = parseInt(newQuantityInput.max, 10) || 0;
 
@@ -127,9 +128,9 @@ export class PDPEventManager {
   }
 
   private setupFallbackVariationButtons(): void {
-    const variationButtons = document.querySelectorAll("[data-variation-id]");
+    const variationButtons = document.querySelectorAll('[data-variation-id]');
     variationButtons.forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener('click', () => {
         const btn = button as HTMLButtonElement;
         if (btn.disabled) return;
 
@@ -146,7 +147,7 @@ export class PDPEventManager {
   }
 
   private setupAddToCartHandler(): void {
-    const button = document.getElementById("add-to-cart-button");
+    const button = document.getElementById('add-to-cart-button');
     if (!button) return;
 
     // Clone button to remove existing listeners
@@ -156,13 +157,13 @@ export class PDPEventManager {
     // Refresh UI manager elements since we replaced the button
     this.uiManager.refreshElements();
 
-    newButton.addEventListener("click", async () => {
+    newButton.addEventListener('click', async () => {
       await this.handleAddToCart(newButton as HTMLButtonElement);
     });
 
     // Marks the point at which the click listener is actually attached, so
     // e2e tests can wait past hydration instead of racing SSR DOM presence.
-    (newButton as HTMLElement).dataset.addToCartReady = "true";
+    (newButton as HTMLElement).dataset.addToCartReady = 'true';
   }
 
   /**
@@ -178,13 +179,13 @@ export class PDPEventManager {
 
     try {
       const productData = button.dataset.product;
-      if (!productData) throw new Error("No product data found");
+      if (!productData) throw new Error('No product data found');
 
       const product = JSON.parse(productData);
       const quantity = this.uiManager.getQuantityValue();
 
       if (isNaN(quantity) || quantity < 1) {
-        showNotification("Please enter a valid quantity", "error");
+        showNotification('Please enter a valid quantity', 'error');
         return;
       }
 
@@ -202,7 +203,7 @@ export class PDPEventManager {
           quantity
         )
       ) {
-        showNotification("Cannot add that quantity to cart", "error");
+        showNotification('Cannot add that quantity to cart', 'error');
         return;
       }
 
@@ -212,27 +213,24 @@ export class PDPEventManager {
       if (result.success) {
         showNotification(
           result.message || `Added ${quantity} to cart`,
-          "success",
+          'success',
           3000,
-          { label: "View Cart", href: "/cart" }
+          { label: 'View Cart', href: '/cart' }
         );
         this.uiManager.resetQuantityToOne();
         this.callbacks.onCartUpdate();
 
         // Open MiniCart to show the item was added (desktop only)
         if (window.innerWidth >= 1024) {
-          window.dispatchEvent(new CustomEvent("openMiniCart"));
+          window.dispatchEvent(new CustomEvent('openMiniCart'));
         }
       } else {
-        showNotification(
-          result.message || "Failed to add to cart",
-          "error"
-        );
+        showNotification(result.message || 'Failed to add to cart', 'error');
       }
     } catch (error) {
-      const appError = processClientError(error, "addToCart");
+      const appError = processClientError(error, 'addToCart');
       logError(appError);
-      showNotification("Failed to add to cart", "error");
+      showNotification('Failed to add to cart', 'error');
     } finally {
       this.isProcessing = false;
       // Clear loading state first, then re-apply availability state.
@@ -252,17 +250,17 @@ export class PDPEventManager {
   private setButtonLoading(button: HTMLButtonElement, loading: boolean): void {
     if (loading) {
       // Enable loading state - Button component will handle spinner and text
-      button.setAttribute("data-loading", "true");
+      button.setAttribute('data-loading', 'true');
       button.disabled = true;
 
       // Find the button content and replace with spinner + loading text
       const loadingText =
-        button.getAttribute("data-loading-text") || "Adding to Cart...";
+        button.getAttribute('data-loading-text') || 'Adding to Cart...';
       const originalContent = button.innerHTML;
 
       // Store original content for restoration
-      if (!button.hasAttribute("data-original-content")) {
-        button.setAttribute("data-original-content", originalContent);
+      if (!button.hasAttribute('data-original-content')) {
+        button.setAttribute('data-original-content', originalContent);
       }
 
       // Set loading content with spinner (matching Button.astro structure)
@@ -295,13 +293,13 @@ export class PDPEventManager {
       // no manual class additions needed
     } else {
       // Remove loading state — data-loading removal drops back to disabled:opacity-50 or enabled
-      button.removeAttribute("data-loading");
+      button.removeAttribute('data-loading');
 
       // Restore original content
-      const originalContent = button.getAttribute("data-original-content");
+      const originalContent = button.getAttribute('data-original-content');
       if (originalContent) {
         button.innerHTML = originalContent;
-        button.removeAttribute("data-original-content");
+        button.removeAttribute('data-original-content');
       }
 
       // Don't set disabled here — onCartUpdate() called in finally re-applies correct state
@@ -309,7 +307,7 @@ export class PDPEventManager {
   }
 
   private setupCartEventListeners(): void {
-    window.addEventListener("cartUpdated", () => {
+    window.addEventListener('cartUpdated', () => {
       this.callbacks.onCartUpdate();
     });
   }
@@ -317,19 +315,19 @@ export class PDPEventManager {
   private setupLocationModal(): void {
     // Wire up any element with data-modal-initialized not yet set that triggers location modal
     const triggers = [
-      document.getElementById("location-hours-link"),
-      document.getElementById("local-pickup-trigger"),
+      document.getElementById('location-hours-link'),
+      document.getElementById('local-pickup-trigger'),
     ].filter(Boolean) as HTMLElement[];
 
     triggers.forEach((trigger) => {
-      if (trigger.getAttribute("data-modal-initialized") === "true") return;
+      if (trigger.getAttribute('data-modal-initialized') === 'true') return;
 
       // Clone to remove any stale listeners
       const newTrigger = trigger.cloneNode(true) as HTMLElement;
       trigger.parentNode?.replaceChild(newTrigger, trigger);
-      newTrigger.setAttribute("data-modal-initialized", "true");
+      newTrigger.setAttribute('data-modal-initialized', 'true');
 
-      newTrigger.addEventListener("click", (e) => {
+      newTrigger.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         showLocationModal();
@@ -343,9 +341,9 @@ export class PDPEventManager {
 
     // Clean up any loading states
     const addToCartButton = document.getElementById(
-      "add-to-cart-button"
+      'add-to-cart-button'
     ) as HTMLButtonElement;
-    if (addToCartButton && addToCartButton.hasAttribute("data-loading")) {
+    if (addToCartButton && addToCartButton.hasAttribute('data-loading')) {
       this.setButtonLoading(addToCartButton, false);
     }
   }

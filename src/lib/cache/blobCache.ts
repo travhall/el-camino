@@ -3,8 +3,8 @@
  * Netlify Blobs-based cache for sharing state across serverless functions
  * Replaces in-memory cache to solve function-per-route memory isolation
  */
-import { getStore } from "@netlify/blobs";
-import { logger } from "@/lib/logger";
+import { getStore } from '@netlify/blobs';
+import { logger } from '@/lib/logger';
 
 interface CacheEntry<T> {
   value: T;
@@ -31,15 +31,15 @@ export class BlobCache<T> {
    * @param ttlSeconds TTL in seconds (default: 60)
    * @param storeName Netlify Blobs store name (default: 'square-cache')
    */
-  constructor(name: string, ttlSeconds = 60, storeName = "square-cache") {
+  constructor(name: string, ttlSeconds = 60, storeName = 'square-cache') {
     // CACHE VERSION: Increment this to invalidate all caches after env changes
-    const CACHE_VERSION = "v3-prod"; // Changed to force fresh Production cache
+    const CACHE_VERSION = 'v3-prod'; // Changed to force fresh Production cache
     this.name = `${CACHE_VERSION}:${name}`;
     this.ttl = ttlSeconds * 1000; // Convert to ms
     this.storeName = storeName;
 
     // Check if we're in a browser environment (client-side)
-    const isBrowser = typeof window !== "undefined";
+    const isBrowser = typeof window !== 'undefined';
 
     if (isBrowser) {
       // Always disable in browser - environment variables not available client-side
@@ -51,8 +51,8 @@ export class BlobCache<T> {
 
     // Simple development detection - disable blobs in development
     this.isDevelopment =
-      process.env.NODE_ENV === "development" ||
-      process.env.ASTRO_NODE_ENV === "development";
+      process.env.NODE_ENV === 'development' ||
+      process.env.ASTRO_NODE_ENV === 'development';
 
     if (this.isDevelopment) {
       logger.info(
@@ -117,8 +117,8 @@ export class BlobCache<T> {
 
     try {
       const cached = await store.get(cacheKey, {
-        consistency: "eventual",
-        type: "text",
+        consistency: 'eventual',
+        type: 'text',
       });
 
       if (!cached) {
@@ -285,10 +285,10 @@ export class BlobCache<T> {
     return {
       name: this.name,
       ttl: this.ttl,
-      type: "netlify-blobs",
+      type: 'netlify-blobs',
       // Blobs doesn't provide size/count metrics easily
-      size: "N/A",
-      count: "N/A",
+      size: 'N/A',
+      count: 'N/A',
     };
   }
 
@@ -320,8 +320,8 @@ export class BlobCache<T> {
     if (store) {
       try {
         const cached = await store.get(cacheKey, {
-          consistency: "eventual",
-          type: "text",
+          consistency: 'eventual',
+          type: 'text',
         });
 
         if (cached) {
@@ -392,18 +392,23 @@ export class BlobCache<T> {
  * These replace the in-memory caches to fix function-per-route isolation
  */
 // UPDATED: Longer TTLs since catalog data changes infrequently
-export const inventoryCache = new BlobCache<number>("inventory", 900);   // 15 min
-export const categoryCache = new BlobCache<any>("category", 1800);       // 30 min (was 1 hr)
-export const productCache = new BlobCache<any>("product", 900);          // 15 min (was 1 hr) — matches inventory TTL so deleted/changed products surface quickly
-export const imageCache = new BlobCache<string>("image", 3600);          // 1 hr (image URLs are stable)
-export const wordpressCache = new BlobCache<any>("wordpress", 300);      // 5 min
-export const filterCache = new BlobCache<any>("filter", 900);            // 15 min
-export const navigationCache = new BlobCache<any>("navigation", 1800);   // 30 min (was 1 hr)
-export const slugCache = new BlobCache<Record<string, string>>(          // 30 min (was 1 hr)
-  "slug-map",
-  1800
-);
+export const inventoryCache = new BlobCache<number>('inventory', 900); // 15 min
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- stores multiple unrelated shapes under one instance (all-categories, hierarchy, has-products, etc.)
+export const categoryCache = new BlobCache<any>('category', 1800); // 30 min (was 1 hr)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- stores multiple unrelated shapes (single products, id maps)
+export const productCache = new BlobCache<any>('product', 900); // 15 min (was 1 hr) — matches inventory TTL so deleted/changed products surface quickly
+export const imageCache = new BlobCache<string>('image', 3600); // 1 hr (image URLs are stable)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- stores multiple unrelated WordPress response shapes
+export const wordpressCache = new BlobCache<any>('wordpress', 300); // 5 min
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- stores multiple unrelated filter-result shapes
+export const filterCache = new BlobCache<any>('filter', 900); // 15 min
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- stores multiple unrelated navigation shapes
+export const navigationCache = new BlobCache<any>('navigation', 1800); // 30 min (was 1 hr)
+export const slugCache = new BlobCache<
+  Record<string, string>
+> // 30 min (was 1 hr)
+('slug-map', 1800);
 export const measurementUnitCache = new BlobCache<Record<string, string>>(
-  "measurement-unit-data",
-  3600  // 1 hour — measurement units rarely change
+  'measurement-unit-data',
+  3600 // 1 hour — measurement units rarely change
 );

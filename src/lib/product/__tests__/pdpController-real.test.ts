@@ -16,10 +16,10 @@ vi.mock('@/lib/cart', () => ({
       total: 10,
       inCart: 0,
       remaining: 10,
-      canAdd: true
+      canAdd: true,
     })),
-    canAddToCart: vi.fn(() => true)
-  }
+    canAddToCart: vi.fn(() => true),
+  },
 }));
 
 vi.mock('../pdpUI', () => ({
@@ -29,7 +29,7 @@ vi.mock('../pdpUI', () => ({
     updateProductImage = vi.fn();
     updateButtonProductData = vi.fn();
     updateAttributeButtonStates = vi.fn();
-  }
+  },
 }));
 
 vi.mock('../pdpEvents', () => ({
@@ -41,7 +41,7 @@ vi.mock('../pdpEvents', () => ({
     constructor(_ui: any, _data: any, handlers: any) {
       this.handlers = handlers;
     }
-  }
+  },
 }));
 
 describe('PDPController Real Implementation Tests', () => {
@@ -61,9 +61,9 @@ describe('PDPController Real Implementation Tests', () => {
     // Mock window.history
     Object.defineProperty(window, 'history', {
       value: {
-        replaceState: vi.fn()
+        replaceState: vi.fn(),
       },
-      writable: true
+      writable: true,
     });
 
     // Setup product data
@@ -72,6 +72,7 @@ describe('PDPController Real Implementation Tests', () => {
       selectedVariationId: 'var-1',
       variations: [
         {
+          id: 'var-1',
           variationId: 'var-1',
           name: 'Small, Red',
           price: 2500,
@@ -79,9 +80,10 @@ describe('PDPController Real Implementation Tests', () => {
           inStock: true,
           attributes: { Size: 'Small', Color: 'Red' },
           image: 'small-red.jpg',
-          unit: 'UNIT'
+          unit: 'UNIT',
         },
         {
+          id: 'var-2',
           variationId: 'var-2',
           name: 'Large, Red',
           price: 3000,
@@ -89,9 +91,10 @@ describe('PDPController Real Implementation Tests', () => {
           inStock: true,
           attributes: { Size: 'Large', Color: 'Red' },
           image: 'large-red.jpg',
-          unit: 'UNIT'
+          unit: 'UNIT',
         },
         {
+          id: 'var-3',
           variationId: 'var-3',
           name: 'Small, Blue',
           price: 2500,
@@ -99,13 +102,13 @@ describe('PDPController Real Implementation Tests', () => {
           inStock: false,
           attributes: { Size: 'Small', Color: 'Blue' },
           image: 'small-blue.jpg',
-          unit: 'UNIT'
-        }
+          unit: 'UNIT',
+        },
       ],
       availableAttributes: {
         Size: ['Small', 'Large'],
-        Color: ['Red', 'Blue']
-      }
+        Color: ['Red', 'Blue'],
+      },
     };
   });
 
@@ -232,7 +235,9 @@ describe('PDPController Real Implementation Tests', () => {
         onVariationSelection('var-2');
       }
 
-      expect(uiManager.updateProductImage).toHaveBeenCalledWith('large-red.jpg');
+      expect(uiManager.updateProductImage).toHaveBeenCalledWith(
+        'large-red.jpg'
+      );
     });
 
     it('should update button product data', () => {
@@ -273,14 +278,18 @@ describe('PDPController Real Implementation Tests', () => {
         state: ProductAvailabilityState.AVAILABLE,
         totalInventory: 10,
         inCart: 8,
-        remaining: 2
+        remaining: 2,
       });
 
       controller = new PDPController(mockProductData);
       const uiManager = (controller as any).uiManager;
 
-      const availabilityCall = uiManager.updateAvailabilityDisplay.mock.calls[0];
-      expect(availabilityCall[0]).toHaveProperty('state', ProductAvailabilityState.AVAILABLE);
+      const availabilityCall =
+        uiManager.updateAvailabilityDisplay.mock.calls[0];
+      expect(availabilityCall[0]).toHaveProperty(
+        'state',
+        ProductAvailabilityState.AVAILABLE
+      );
       expect(availabilityCall[0]).toHaveProperty('remaining', 2);
     });
   });
@@ -333,7 +342,10 @@ describe('PDPController Real Implementation Tests', () => {
         onVariationSelection('var-2');
       }
 
-      expect(uiManager.updatePriceDisplay).toHaveBeenCalledWith(3000, expect.any(Object));
+      expect(uiManager.updatePriceDisplay).toHaveBeenCalledWith(
+        3000,
+        expect.any(Object)
+      );
     });
   });
 
@@ -396,9 +408,9 @@ describe('PDPController Real Implementation Tests', () => {
   describe('Sale Price Support', () => {
     it('should pass sale info to UI manager', () => {
       mockProductData.variations[0].saleInfo = {
-        isOnSale: true,
         salePrice: 2000,
-        discountPercent: 20
+        originalPrice: 2500,
+        discountPercent: 20,
       };
 
       controller = new PDPController(mockProductData);
@@ -406,7 +418,7 @@ describe('PDPController Real Implementation Tests', () => {
 
       const priceCall = uiManager.updatePriceDisplay.mock.calls[0];
       expect(priceCall[1]).toHaveProperty('saleInfo');
-      expect(priceCall[1].saleInfo.isOnSale).toBe(true);
+      expect(priceCall[1].saleInfo.discountPercent).toBe(20);
     });
   });
 
@@ -483,23 +495,36 @@ describe('PDPController Real Implementation Tests', () => {
       const onVariationSelection = eventManager.handlers?.onVariationSelection;
 
       // Get initial call counts
-      const initialAvailCalls = uiManager.updateAvailabilityDisplay.mock.calls.length;
+      const initialAvailCalls =
+        uiManager.updateAvailabilityDisplay.mock.calls.length;
       const initialPriceCalls = uiManager.updatePriceDisplay.mock.calls.length;
       const initialImageCalls = uiManager.updateProductImage.mock.calls.length;
-      const initialButtonCalls = uiManager.updateButtonProductData.mock.calls.length;
-      const initialAttrCalls = uiManager.updateAttributeButtonStates.mock.calls.length;
+      const initialButtonCalls =
+        uiManager.updateButtonProductData.mock.calls.length;
+      const initialAttrCalls =
+        uiManager.updateAttributeButtonStates.mock.calls.length;
 
       if (onVariationSelection) {
         onVariationSelection('var-2');
       }
 
       // All UI methods should be called (at least once more than initial, or at least once total)
-      expect(uiManager.updateAvailabilityDisplay.mock.calls.length).toBeGreaterThan(initialAvailCalls);
-      expect(uiManager.updatePriceDisplay.mock.calls.length).toBeGreaterThan(initialPriceCalls);
-      expect(uiManager.updateProductImage.mock.calls.length).toBeGreaterThan(initialImageCalls);
-      expect(uiManager.updateButtonProductData.mock.calls.length).toBeGreaterThan(initialButtonCalls);
+      expect(
+        uiManager.updateAvailabilityDisplay.mock.calls.length
+      ).toBeGreaterThan(initialAvailCalls);
+      expect(uiManager.updatePriceDisplay.mock.calls.length).toBeGreaterThan(
+        initialPriceCalls
+      );
+      expect(uiManager.updateProductImage.mock.calls.length).toBeGreaterThan(
+        initialImageCalls
+      );
+      expect(
+        uiManager.updateButtonProductData.mock.calls.length
+      ).toBeGreaterThan(initialButtonCalls);
       // updateAttributeButtonStates might only be called once during init, so just check it was called
-      expect(uiManager.updateAttributeButtonStates.mock.calls.length).toBeGreaterThanOrEqual(1);
+      expect(
+        uiManager.updateAttributeButtonStates.mock.calls.length
+      ).toBeGreaterThanOrEqual(1);
     });
   });
 });

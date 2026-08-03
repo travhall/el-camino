@@ -1,5 +1,52 @@
 // src/lib/wordpress/types.ts
 
+// Raw shapes returned by the WordPress.com REST API (v1.1), before
+// processPost/processPage normalize them into WordPressPost/WordPressPage.
+// WordPress.com (unlike self-hosted wp-json) returns categories/tags as an
+// object keyed by name rather than an array, and title/excerpt/content as
+// plain strings rather than { rendered }.
+export interface WordPressComRawTerm {
+  name?: string;
+  slug?: string;
+  description?: string;
+}
+
+export interface WordPressComRawAuthor {
+  name?: string;
+  login?: string;
+  avatar_URL?: string;
+  description?: string;
+  URL?: string;
+}
+
+export interface WordPressComRawPost {
+  ID?: number;
+  date?: string;
+  modified?: string;
+  slug?: string;
+  title?: string;
+  excerpt?: string;
+  content?: string;
+  featured_image?: string;
+  author?: WordPressComRawAuthor;
+  categories?: Record<string, WordPressComRawTerm>;
+  tags?: Record<string, WordPressComRawTerm>;
+}
+
+export interface WordPressComRawPage {
+  ID?: number;
+  date?: string;
+  slug?: string;
+  title?: string;
+  content?: string;
+  featured_image?: string;
+  author?: WordPressComRawAuthor;
+}
+
+export interface WordPressComPostsResponse {
+  posts?: WordPressComRawPost[];
+}
+
 export interface WordPressPost {
   id: number;
   date: string;
@@ -31,8 +78,8 @@ export interface WordPressPage {
 }
 
 export interface WordPressEmbedded {
-  "wp:featuredmedia"?: [WordPressFeaturedMedia];
-  "wp:term"?: [WordPressTerm[]]; // FIXED: Array containing one array of terms
+  'wp:featuredmedia'?: [WordPressFeaturedMedia];
+  'wp:term'?: [WordPressTerm[]]; // FIXED: Array containing one array of terms
   author?: [WordPressAuthor];
 }
 
@@ -63,9 +110,9 @@ export interface WordPressTerm {
 export interface WordPressAuthor {
   name: string;
   avatar_urls: {
-    "24"?: string;
-    "48"?: string;
-    "96"?: string;
+    '24'?: string;
+    '48'?: string;
+    '96'?: string;
   };
   description?: string;
   url?: string;
@@ -101,19 +148,19 @@ export interface ProcessedWordPressPost {
 }
 
 export interface ArticleStructuredData {
-  "@context": "https://schema.org";
-  "@type": "Article";
+  '@context': 'https://schema.org';
+  '@type': 'Article';
   headline: string;
   image?: string;
   author: {
-    "@type": "Person";
+    '@type': 'Person';
     name: string;
   };
   publisher: {
-    "@type": "Organization";
+    '@type': 'Organization';
     name: string;
     logo: {
-      "@type": "ImageObject";
+      '@type': 'ImageObject';
       url: string;
     };
   };
@@ -131,8 +178,8 @@ export interface ArticleStructuredData {
 export function isValidWordPressPost(post: any): post is WordPressPost {
   return (
     post &&
-    typeof post.id === "number" &&
-    typeof post.slug === "string" &&
+    typeof post.id === 'number' &&
+    typeof post.slug === 'string' &&
     post.title?.rendered &&
     post.excerpt?.rendered !== undefined &&
     post.content?.rendered !== undefined
@@ -142,8 +189,8 @@ export function isValidWordPressPost(post: any): post is WordPressPost {
 export function isValidWordPressPage(page: any): page is WordPressPage {
   return (
     page &&
-    typeof page.id === "number" &&
-    typeof page.slug === "string" &&
+    typeof page.id === 'number' &&
+    typeof page.slug === 'string' &&
     page.title?.rendered &&
     page.content?.rendered !== undefined
   );
@@ -161,16 +208,16 @@ export function getPrimaryCategory(
   }
 
   // Find first category that isn't Featured or the default El Camino
-  const displayCategory = categories.find(
-    (cat) => {
-      const slug = cat.slug.toLowerCase();
-      const name = cat.name.toLowerCase();
-      return slug !== "featured" && 
-             name !== "featured" && 
-             slug !== "el-camino" && 
-             name !== "el camino";
-    }
-  );
+  const displayCategory = categories.find((cat) => {
+    const slug = cat.slug.toLowerCase();
+    const name = cat.name.toLowerCase();
+    return (
+      slug !== 'featured' &&
+      name !== 'featured' &&
+      slug !== 'el-camino' &&
+      name !== 'el camino'
+    );
+  });
 
   // Return the category or null (null triggers "El Camino" fallback)
   return displayCategory || null;
@@ -194,11 +241,11 @@ export function extractEmbeddedData(
 
   try {
     // Extract all terms
-    const allTerms = post._embedded["wp:term"]?.[0] || [];
+    const allTerms = post._embedded['wp:term']?.[0] || [];
 
     // Separate categories and tags
-    const categories = allTerms.filter((term) => term.taxonomy === "category");
-    const tags = allTerms.filter((term) => term.taxonomy === "post_tag");
+    const categories = allTerms.filter((term) => term.taxonomy === 'category');
+    const tags = allTerms.filter((term) => term.taxonomy === 'post_tag');
 
     // Get primary category (prefer non-Featured categories)
     const primaryCategory = getPrimaryCategory(categories);
@@ -206,12 +253,12 @@ export function extractEmbeddedData(
     return {
       category: primaryCategory,
       categories: categories,
-      featuredMedia: post._embedded["wp:featuredmedia"]?.[0] || null,
+      featuredMedia: post._embedded['wp:featuredmedia']?.[0] || null,
       author: post._embedded.author?.[0] || null,
       tags: tags,
     };
   } catch (error) {
-    console.warn("Error extracting embedded data:", error);
+    console.warn('Error extracting embedded data:', error);
     return {
       category: null,
       categories: [],
@@ -228,7 +275,7 @@ export function extractEmbeddedData(
 export function isFeaturedPost(post: WordPressPost): boolean {
   const embeddedData = extractEmbeddedData(post);
   return embeddedData.categories.some(
-    (cat) => cat.name.toLowerCase() === "featured"
+    (cat) => cat.name.toLowerCase() === 'featured'
   );
 }
 
@@ -240,7 +287,7 @@ export function getDisplayCategory(post: WordPressPost): string {
   const embeddedData = extractEmbeddedData(post);
 
   if (!embeddedData.category) {
-    return "El Camino";
+    return 'El Camino';
   }
 
   return embeddedData.category.name;
@@ -253,7 +300,7 @@ export function getDisplayCategory(post: WordPressPost): string {
 const sanitizedContentCache = new Map<string, string>();
 
 export function sanitizeHtmlContent(html: string): string {
-  if (!html || typeof html !== "string") return "";
+  if (!html || typeof html !== 'string') return '';
 
   // Check cache first
   if (sanitizedContentCache.has(html)) {
@@ -262,15 +309,21 @@ export function sanitizeHtmlContent(html: string): string {
 
   // Optimized single-pass regex replacement
   const sanitized = html
-    .replace(/<[^>]*>/g, "")
+    .replace(/<[^>]*>/g, '')
     .replace(/&(?:amp|lt|gt|quot|#039);/g, (match) => {
       switch (match) {
-        case '&amp;': return '&';
-        case '&lt;': return '<';
-        case '&gt;': return '>';
-        case '&quot;': return '"';
-        case '&#039;': return "'";
-        default: return match;
+        case '&amp;':
+          return '&';
+        case '&lt;':
+          return '<';
+        case '&gt;':
+          return '>';
+        case '&quot;':
+          return '"';
+        case '&#039;':
+          return "'";
+        default:
+          return match;
       }
     })
     .trim();
@@ -287,12 +340,12 @@ export function generateFallbackContent(
   post: WordPressPost
 ): WordPressFallbackContent {
   const cleanTitle =
-    sanitizeHtmlContent(post.title.rendered) || "Untitled Article";
+    sanitizeHtmlContent(post.title.rendered) || 'Untitled Article';
   const cleanExcerpt = sanitizeHtmlContent(post.excerpt.rendered);
 
   return {
     title: cleanTitle,
-    excerpt: cleanExcerpt || "Read this interesting article from El Camino.",
+    excerpt: cleanExcerpt || 'Read this interesting article from El Camino.',
     imageAlt: `Featured image for: ${cleanTitle}`,
   };
 }
@@ -317,19 +370,19 @@ export function generateStructuredData(
       : undefined;
 
   return {
-    "@context": "https://schema.org",
-    "@type": "Article",
+    '@context': 'https://schema.org',
+    '@type': 'Article',
     headline: fallbackContent.title,
     image: embeddedData.featuredMedia?.source_url,
     author: {
-      "@type": "Person",
-      name: embeddedData.author?.name || "El Camino",
+      '@type': 'Person',
+      name: embeddedData.author?.name || 'El Camino',
     },
     publisher: {
-      "@type": "Organization",
-      name: "El Camino Skate Shop",
+      '@type': 'Organization',
+      name: 'El Camino Skate Shop',
       logo: {
-        "@type": "ImageObject",
+        '@type': 'ImageObject',
         url: `${siteUrl}/logo.png`,
       },
     },
@@ -364,17 +417,17 @@ export function estimateReadingTime(content: string): {
 export function generateSlugFromTitle(title: string): string {
   return sanitizeHtmlContent(title)
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 /**
  * Check if post/page has valid featured image
  */
 export function hasFeaturedImage(post: WordPressPost | WordPressPage): boolean {
-  return !!post._embedded?.["wp:featuredmedia"]?.[0]?.source_url;
+  return !!post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
 }
 
 /**
@@ -384,7 +437,7 @@ export function getFeaturedImageUrl(
   post: WordPressPost | WordPressPage,
   fallback?: string
 ): string | null {
-  const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url;
+  const imageUrl = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
   return imageUrl || fallback || null;
 }
 
@@ -396,19 +449,19 @@ export function getAuthorAvatar(author: WordPressAuthor | null): {
   initials: string;
 } {
   if (!author) {
-    return { url: null, initials: "EC" }; // El Camino fallback
+    return { url: null, initials: 'EC' }; // El Camino fallback
   }
 
   const avatarUrl =
-    author.avatar_urls?.["96"] || author.avatar_urls?.["48"] || null;
+    author.avatar_urls?.['96'] || author.avatar_urls?.['48'] || null;
   const initials = author.name
     ? author.name
-        .split(" ")
+        .split(' ')
         .map((part) => part.charAt(0))
         .slice(0, 2)
-        .join("")
+        .join('')
         .toUpperCase()
-    : "EC";
+    : 'EC';
 
   return { url: avatarUrl, initials };
 }
@@ -430,37 +483,37 @@ export function formatPublishDate(dateString: string): {
 
     let relative: string;
     if (diffInDays === 0) {
-      relative = "Today";
+      relative = 'Today';
     } else if (diffInDays === 1) {
-      relative = "Yesterday";
+      relative = 'Yesterday';
     } else if (diffInDays < 7) {
       relative = `${diffInDays} days ago`;
     } else if (diffInDays < 30) {
       const weeks = Math.floor(diffInDays / 7);
-      relative = `${weeks} week${weeks > 1 ? "s" : ""} ago`;
+      relative = `${weeks} week${weeks > 1 ? 's' : ''} ago`;
     } else {
-      relative = date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+      relative = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       });
     }
 
     return {
       iso: date.toISOString(),
-      display: date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+      display: date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       }),
       relative,
     };
-  } catch (error) {
+  } catch {
     const fallbackDate = new Date().toISOString();
     return {
       iso: fallbackDate,
-      display: "Date unavailable",
-      relative: "Recently",
+      display: 'Date unavailable',
+      relative: 'Recently',
     };
   }
 }
@@ -474,7 +527,7 @@ export interface NewsFilterOptions {
 
 export interface NewsFilterState {
   search: string;
-  sort: "newest" | "oldest" | "alphabetical" | "alphabetical-desc";
+  sort: 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc';
   categories: string[];
   tags: string[];
   authors: string[];
@@ -514,7 +567,7 @@ export function buildSearchIndex(posts: WordPressPost[]): NewsSearchIndex {
         sanitizeHtmlContent(post.excerpt.rendered),
         sanitizeHtmlContent(post.content.rendered),
       ]
-        .join(" ")
+        .join(' ')
         .toLowerCase(),
     })),
   };
@@ -539,7 +592,7 @@ export function buildFilterOptions(
     if (embeddedData.author) {
       const authorSlug = embeddedData.author.name
         .toLowerCase()
-        .replace(/\s+/g, "-");
+        .replace(/\s+/g, '-');
       const existing = authorCounts.get(authorSlug);
       if (existing) {
         existing.count++;
@@ -561,18 +614,18 @@ export function buildFilterOptions(
 
   const dateRanges = [
     {
-      name: "Past week",
-      value: "week",
+      name: 'Past week',
+      value: 'week',
       count: posts.filter((post) => new Date(post.date) >= oneWeekAgo).length,
     },
     {
-      name: "Past month",
-      value: "month",
+      name: 'Past month',
+      value: 'month',
       count: posts.filter((post) => new Date(post.date) >= oneMonthAgo).length,
     },
     {
-      name: "Past year",
-      value: "year",
+      name: 'Past year',
+      value: 'year',
       count: posts.filter((post) => new Date(post.date) >= oneYearAgo).length,
     },
   ].filter((range) => range.count > 0);

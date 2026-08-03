@@ -10,6 +10,7 @@ interface ImportMetaEnv {
   readonly PUBLIC_SQUARE_ENVIRONMENT?: string; // "production" | "sandbox" — defaults to sandbox if unset
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- merges with the built-in global ImportMeta via declaration merging
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
@@ -32,8 +33,8 @@ declare global {
        *
        * Treat as opaque — read via `getSiteContext(Astro.locals)`.
        */
-      siteContext?: import("@/lib/siteContext").SiteContext;
-      siteContextPromise?: Promise<import("@/lib/siteContext").SiteContext>;
+      siteContext?: import('@/lib/siteContext').SiteContext;
+      siteContextPromise?: Promise<import('@/lib/siteContext').SiteContext>;
     }
   }
 }

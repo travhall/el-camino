@@ -3,10 +3,10 @@
 // productUtils.ts, and categories.ts. Kept dependency-free of squareClient so
 // this file can be imported by both sides of the client.ts/productUtils.ts
 // pair without recreating a circular import.
-import type { SaleInfo, SquareCatalogCustomAttributes } from "./types";
+import type { SaleInfo, SquareCatalogCustomAttributes } from './types';
 
-export const jsonStringifyReplacer = (_key: string, value: any) => {
-  if (typeof value === "bigint") {
+export const jsonStringifyReplacer = (_key: string, value: unknown) => {
+  if (typeof value === 'bigint') {
     return value.toString();
   }
   return value;
@@ -27,11 +27,11 @@ export function extractSaleInfo(
   // Look for sale_price attribute
   const salePriceAttr = Object.values(customAttributeValues).find(
     (attr) =>
-      attr?.name?.toLowerCase() === "sale price" ||
-      attr?.key?.toLowerCase() === "sale_price"
+      attr?.name?.toLowerCase() === 'sale price' ||
+      attr?.key?.toLowerCase() === 'sale_price'
   );
 
-  if (!salePriceAttr || salePriceAttr.type !== "NUMBER") return null;
+  if (!salePriceAttr || salePriceAttr.type !== 'NUMBER') return null;
 
   // Parse sale price (Square stores as string)
   const salePrice = salePriceAttr.numberValue
@@ -48,12 +48,12 @@ export function extractSaleInfo(
   // Optional: Extract sale end date
   const saleEndDateAttr = Object.values(customAttributeValues).find(
     (attr) =>
-      attr?.name?.toLowerCase() === "sale end date" ||
-      attr?.key?.toLowerCase() === "sale_end_date"
+      attr?.name?.toLowerCase() === 'sale end date' ||
+      attr?.key?.toLowerCase() === 'sale_end_date'
   );
 
   const saleEndDate =
-    saleEndDateAttr?.type === "STRING" && saleEndDateAttr.stringValue
+    saleEndDateAttr?.type === 'STRING' && saleEndDateAttr.stringValue
       ? saleEndDateAttr.stringValue
       : undefined;
 
@@ -73,29 +73,29 @@ export function extractSaleInfo(
 export function extractBrandValue(
   customAttributeValues: SquareCatalogCustomAttributes | null | undefined
 ): string {
-  if (!customAttributeValues) return "";
+  if (!customAttributeValues) return '';
 
   const brandAttribute = Object.values(customAttributeValues).find(
     (attr) =>
-      attr?.name?.toLowerCase() === "brand" ||
-      attr?.key?.toLowerCase() === "brand"
+      attr?.name?.toLowerCase() === 'brand' ||
+      attr?.key?.toLowerCase() === 'brand'
   );
 
   if (
     brandAttribute &&
-    brandAttribute.type === "STRING" &&
+    brandAttribute.type === 'STRING' &&
     brandAttribute.stringValue
   ) {
     return brandAttribute.stringValue;
   }
 
-  return "";
+  return '';
 }
 
 /**
  * Detect physical gift cards via item-level custom attribute.
  * Tyler sets isGiftCard: true in Square Dashboard → Custom attributes.
- * Keyed by name or key to survive any Square attribute definition rename.
+ * Keyed by name or key to survive any Square attribute definition rename. cSpell:ignore isgiftcard
  */
 export function extractIsGiftCard(
   customAttributeValues: SquareCatalogCustomAttributes | null | undefined
@@ -104,19 +104,19 @@ export function extractIsGiftCard(
 
   const attr = Object.values(customAttributeValues).find(
     (a) =>
-      a?.name?.toLowerCase() === "isgiftcard" ||
-      a?.key?.toLowerCase() === "isgiftcard"
+      a?.name?.toLowerCase() === 'isgiftcard' ||
+      a?.key?.toLowerCase() === 'isgiftcard'
   );
 
   if (!attr) return false;
 
   // Boolean type
-  if (attr.type === "BOOLEAN") return attr.booleanValue === true;
+  if (attr.type === 'BOOLEAN') return attr.booleanValue === true;
 
   // String fallback: "true", "yes", "1"
-  if (attr.type === "STRING") {
-    return ["true", "yes", "1"].includes(
-      (attr.stringValue ?? "").toLowerCase()
+  if (attr.type === 'STRING') {
+    return ['true', 'yes', '1'].includes(
+      (attr.stringValue ?? '').toLowerCase()
     );
   }
 

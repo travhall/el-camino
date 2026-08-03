@@ -1,18 +1,25 @@
 // src/lib/wordpress/api.ts
-import type { WordPressPage, WordPressPost, WordPressTerm } from "./types";
-import { extractEmbeddedData } from "./types";
+import type {
+  WordPressComPostsResponse,
+  WordPressComRawPage,
+  WordPressComRawPost,
+  WordPressPage,
+  WordPressPost,
+  WordPressTerm,
+} from './types';
+import { extractEmbeddedData } from './types';
 import {
   createError,
   handleError,
   ErrorType,
   logError,
-} from "@/lib/square/errorUtils";
-import type { AppError } from "@/lib/square/errorUtils";
-import { wordpressCache } from "@/lib/cache/blobCache";
+} from '@/lib/square/errorUtils';
+import type { AppError } from '@/lib/square/errorUtils';
+import { wordpressCache } from '@/lib/cache/blobCache';
 
 // Configuration
 const WP_URL =
-  "https://public-api.wordpress.com/rest/v1.1/sites/elcaminoskateshop.wordpress.com";
+  'https://public-api.wordpress.com/rest/v1.1/sites/elcaminoskateshop.wordpress.com';
 
 /**
  * Process WordPress API errors into standardized format
@@ -20,12 +27,12 @@ const WP_URL =
 function processWordPressError(error: unknown, source: string): AppError {
   if (error instanceof Error) {
     if (
-      error.message.includes("404") ||
-      error.message.includes("status: 404")
+      error.message.includes('404') ||
+      error.message.includes('status: 404')
     ) {
       return createError(
         ErrorType.DATA_NOT_FOUND,
-        "WordPress content not found",
+        'WordPress content not found',
         {
           source,
           originalError: error,
@@ -34,22 +41,22 @@ function processWordPressError(error: unknown, source: string): AppError {
     }
 
     if (
-      error.message.includes("timeout") ||
-      error.message.includes("ETIMEDOUT")
+      error.message.includes('timeout') ||
+      error.message.includes('ETIMEDOUT')
     ) {
-      return createError(ErrorType.TIMEOUT_ERROR, "WordPress API timeout", {
+      return createError(ErrorType.TIMEOUT_ERROR, 'WordPress API timeout', {
         source,
         originalError: error,
       });
     }
 
     if (
-      error.message.includes("network") ||
-      error.message.includes("ENOTFOUND")
+      error.message.includes('network') ||
+      error.message.includes('ENOTFOUND')
     ) {
       return createError(
         ErrorType.NETWORK_ERROR,
-        "WordPress API network error",
+        'WordPress API network error',
         {
           source,
           originalError: error,
@@ -57,21 +64,21 @@ function processWordPressError(error: unknown, source: string): AppError {
       );
     }
 
-    if (error.message.includes("429")) {
-      return createError(ErrorType.API_RATE_LIMIT, "WordPress API rate limit", {
+    if (error.message.includes('429')) {
+      return createError(ErrorType.API_RATE_LIMIT, 'WordPress API rate limit', {
         source,
         originalError: error,
       });
     }
 
     if (
-      error.message.includes("500") ||
-      error.message.includes("502") ||
-      error.message.includes("503")
+      error.message.includes('500') ||
+      error.message.includes('502') ||
+      error.message.includes('503')
     ) {
       return createError(
         ErrorType.API_UNAVAILABLE,
-        "WordPress API unavailable",
+        'WordPress API unavailable',
         {
           source,
           originalError: error,
@@ -85,7 +92,7 @@ function processWordPressError(error: unknown, source: string): AppError {
     });
   }
 
-  return createError(ErrorType.UNKNOWN, "Unknown WordPress API error", {
+  return createError(ErrorType.UNKNOWN, 'Unknown WordPress API error', {
     source,
     originalError: error,
   });
@@ -101,7 +108,7 @@ async function fetchWithCache<T>(
   return wordpressCache.getOrCompute(cacheKey, async () => {
     try {
       const response = await fetch(`${WP_URL}${endpoint}`, {
-        headers: { Accept: "application/json" },
+        headers: { Accept: 'application/json' },
       });
 
       if (!response.ok) {
@@ -122,34 +129,36 @@ async function fetchWithCache<T>(
 /**
  * Process WordPress post data with error handling - UPDATED to handle ALL categories and tags
  */
-function processPost(post: any): WordPressPost {
+function processPost(post: WordPressComRawPost): WordPressPost {
   try {
     // Extract ALL categories (WordPress.com returns categories as object with names as keys)
     let extractedCategories: WordPressTerm[] = [];
-    if (post.categories && typeof post.categories === "object") {
-      const categoryNames = Object.keys(post.categories);
+    if (post.categories && typeof post.categories === 'object') {
+      const categories = post.categories;
+      const categoryNames = Object.keys(categories);
       extractedCategories = categoryNames.map((categoryName) => {
-        const categoryData = post.categories[categoryName];
+        const categoryData = categories[categoryName];
         return {
           name: categoryData.name || categoryName,
-          slug: categoryData.slug || "",
-          taxonomy: "category",
-          description: categoryData.description || "",
+          slug: categoryData.slug || '',
+          taxonomy: 'category',
+          description: categoryData.description || '',
         };
       });
     }
 
     // Extract ALL tags (WordPress.com returns tags as object with names as keys)
     let extractedTags: WordPressTerm[] = [];
-    if (post.tags && typeof post.tags === "object") {
-      const tagNames = Object.keys(post.tags);
+    if (post.tags && typeof post.tags === 'object') {
+      const tags = post.tags;
+      const tagNames = Object.keys(tags);
       extractedTags = tagNames.map((tagName) => {
-        const tagData = post.tags[tagName];
+        const tagData = tags[tagName];
         return {
           name: tagData.name || tagName,
-          slug: tagData.slug || tagName.toLowerCase().replace(/\s+/g, "-"),
-          taxonomy: "post_tag",
-          description: tagData.description || "",
+          slug: tagData.slug || tagName.toLowerCase().replace(/\s+/g, '-'),
+          taxonomy: 'post_tag',
+          description: tagData.description || '',
         };
       });
     }
@@ -158,18 +167,18 @@ function processPost(post: any): WordPressPost {
       id: post.ID || 0,
       date: post.date || new Date().toISOString(),
       modified: post.modified || post.date || new Date().toISOString(),
-      slug: post.slug || "",
-      title: { rendered: post.title || "Untitled" },
-      excerpt: { rendered: post.excerpt || "" },
-      content: { rendered: post.content || "" },
+      slug: post.slug || '',
+      title: { rendered: post.title || 'Untitled' },
+      excerpt: { rendered: post.excerpt || '' },
+      content: { rendered: post.content || '' },
       _embedded: {
         // Featured media
         ...(post.featured_image
           ? {
-              "wp:featuredmedia": [
+              'wp:featuredmedia': [
                 {
                   source_url: post.featured_image,
-                  alt_text: post.title || "Featured image",
+                  alt_text: post.title || 'Featured image',
                 },
               ],
             }
@@ -180,9 +189,7 @@ function processPost(post: any): WordPressPost {
         // Structure: "wp:term": [ [term1, term2, term3] ]
         ...(extractedCategories.length > 0 || extractedTags.length > 0
           ? {
-              "wp:term": [
-                [...extractedCategories, ...extractedTags],
-              ],
+              'wp:term': [[...extractedCategories, ...extractedTags]],
             }
           : {}),
 
@@ -191,14 +198,14 @@ function processPost(post: any): WordPressPost {
           ? {
               author: [
                 {
-                  name: post.author.name || post.author.login || "Anonymous",
+                  name: post.author.name || post.author.login || 'Anonymous',
                   avatar_urls: {
-                    "96": post.author.avatar_URL || "",
-                    "48": post.author.avatar_URL || "",
-                    "24": post.author.avatar_URL || "",
+                    '96': post.author.avatar_URL || '',
+                    '48': post.author.avatar_URL || '',
+                    '24': post.author.avatar_URL || '',
                   },
-                  description: post.author.description || "",
-                  url: post.author.URL || "",
+                  description: post.author.description || '',
+                  url: post.author.URL || '',
                 },
               ],
             }
@@ -208,7 +215,7 @@ function processPost(post: any): WordPressPost {
   } catch (error) {
     const appError = processWordPressError(
       error,
-      `processPost:${post?.ID || "unknown"}`
+      `processPost:${post?.ID || 'unknown'}`
     );
     logError(appError);
 
@@ -217,10 +224,10 @@ function processPost(post: any): WordPressPost {
       id: post?.ID || 0,
       date: new Date().toISOString(),
       modified: new Date().toISOString(),
-      slug: post?.slug || "untitled",
-      title: { rendered: "Content temporarily unavailable" },
-      excerpt: { rendered: "Please try again later." },
-      content: { rendered: "" },
+      slug: post?.slug || 'untitled',
+      title: { rendered: 'Content temporarily unavailable' },
+      excerpt: { rendered: 'Please try again later.' },
+      content: { rendered: '' },
     };
   }
 }
@@ -228,22 +235,22 @@ function processPost(post: any): WordPressPost {
 /**
  * Process WordPress page data with error handling
  */
-function processPage(page: any): WordPressPage {
+function processPage(page: WordPressComRawPage): WordPressPage {
   try {
     return {
       id: page.ID || 0,
       date: page.date || new Date().toISOString(),
-      slug: page.slug || "",
-      title: { rendered: page.title || "Untitled" },
-      content: { rendered: page.content || "" },
+      slug: page.slug || '',
+      title: { rendered: page.title || 'Untitled' },
+      content: { rendered: page.content || '' },
       _embedded: {
         // Featured media
         ...(page.featured_image
           ? {
-              "wp:featuredmedia": [
+              'wp:featuredmedia': [
                 {
                   source_url: page.featured_image,
-                  alt_text: page.title || "Featured image",
+                  alt_text: page.title || 'Featured image',
                 },
               ],
             }
@@ -254,14 +261,14 @@ function processPage(page: any): WordPressPage {
           ? {
               author: [
                 {
-                  name: page.author.name || page.author.login || "Anonymous",
+                  name: page.author.name || page.author.login || 'Anonymous',
                   avatar_urls: {
-                    "96": page.author.avatar_URL || "",
-                    "48": page.author.avatar_URL || "",
-                    "24": page.author.avatar_URL || "",
+                    '96': page.author.avatar_URL || '',
+                    '48': page.author.avatar_URL || '',
+                    '24': page.author.avatar_URL || '',
                   },
-                  description: page.author.description || "",
-                  url: page.author.URL || "",
+                  description: page.author.description || '',
+                  url: page.author.URL || '',
                 },
               ],
             }
@@ -271,7 +278,7 @@ function processPage(page: any): WordPressPage {
   } catch (error) {
     const appError = processWordPressError(
       error,
-      `processPage:${page?.ID || "unknown"}`
+      `processPage:${page?.ID || 'unknown'}`
     );
     logError(appError);
 
@@ -279,9 +286,9 @@ function processPage(page: any): WordPressPage {
     return {
       id: page?.ID || 0,
       date: new Date().toISOString(),
-      slug: page?.slug || "untitled",
-      title: { rendered: "Page temporarily unavailable" },
-      content: { rendered: "Please try again later." },
+      slug: page?.slug || 'untitled',
+      title: { rendered: 'Page temporarily unavailable' },
+      content: { rendered: 'Please try again later.' },
     };
   }
 }
@@ -295,9 +302,9 @@ function processPage(page: any): WordPressPage {
  */
 export async function getPosts(): Promise<WordPressPost[]> {
   try {
-    const data = await fetchWithCache<any>(
-      "/posts?fields=ID,title,date,excerpt,content,slug,featured_image,author,categories,tags",
-      "all_posts"
+    const data = await fetchWithCache<WordPressComPostsResponse>(
+      '/posts?fields=ID,title,date,excerpt,content,slug,featured_image,author,categories,tags',
+      'all_posts'
     );
 
     if (!data?.posts || !Array.isArray(data.posts)) {
@@ -306,9 +313,9 @@ export async function getPosts(): Promise<WordPressPost[]> {
 
     return data.posts
       .map(processPost)
-      .filter((post: any): post is WordPressPost => post.id > 0);
+      .filter((post): post is WordPressPost => post.id > 0);
   } catch (error) {
-    const appError = processWordPressError(error, "getPosts");
+    const appError = processWordPressError(error, 'getPosts');
     return handleError<WordPressPost[]>(appError, []);
   }
 }
@@ -323,7 +330,7 @@ export async function getPost(slug: string): Promise<WordPressPost | null> {
 
   try {
     const cacheKey = `post_${slug}`;
-    const post = await fetchWithCache<any>(
+    const post = await fetchWithCache<WordPressComRawPost>(
       `/posts/slug:${slug}?fields=ID,title,date,modified,excerpt,content,slug,featured_image,author,categories,tags`,
       cacheKey
     );
@@ -344,9 +351,9 @@ export async function getPost(slug: string): Promise<WordPressPost | null> {
  */
 export async function getPages(): Promise<WordPressPage[]> {
   try {
-    const data = await fetchWithCache<any>(
-      "/posts?type=page&fields=ID,title,date,content,slug,featured_image",
-      "all_pages"
+    const data = await fetchWithCache<WordPressComPostsResponse>(
+      '/posts?type=page&fields=ID,title,date,content,slug,featured_image',
+      'all_pages'
     );
 
     if (!data?.posts || !Array.isArray(data.posts)) {
@@ -355,9 +362,9 @@ export async function getPages(): Promise<WordPressPage[]> {
 
     return data.posts
       .map(processPage)
-      .filter((page: any): page is WordPressPage => page.id > 0);
+      .filter((page): page is WordPressPage => page.id > 0);
   } catch (error) {
-    const appError = processWordPressError(error, "getPages");
+    const appError = processWordPressError(error, 'getPages');
     return handleError<WordPressPage[]>(appError, []);
   }
 }
@@ -375,7 +382,7 @@ export async function getPage(slug: string): Promise<WordPressPage | null> {
 
     // Try direct fetch first
     try {
-      const page = await fetchWithCache<any>(
+      const page = await fetchWithCache<WordPressComRawPage>(
         `/posts/slug:${slug}?type=page&fields=ID,title,date,content,slug,featured_image`,
         cacheKey
       );
@@ -383,7 +390,7 @@ export async function getPage(slug: string): Promise<WordPressPage | null> {
       if (page) {
         return processPage(page);
       }
-    } catch (directFetchError) {
+    } catch {
       console.warn(
         `Direct page fetch failed for "${slug}", trying fallback...`
       );
@@ -405,21 +412,21 @@ export async function getPage(slug: string): Promise<WordPressPage | null> {
  */
 export async function getLegalPages(): Promise<WordPressPage[]> {
   const legalSlugs = [
-    "privacy-policy",
-    "return-policy",
-    "shipping-policy",
-    "terms-and-conditions",
+    'privacy-policy',
+    'return-policy',
+    'shipping-policy',
+    'terms-and-conditions',
   ];
 
   try {
-    const cacheKey = "legal_pages";
+    const cacheKey = 'legal_pages';
 
     return wordpressCache.getOrCompute(cacheKey, async () => {
       const allPages = await getPages();
       return allPages.filter((page) => legalSlugs.includes(page.slug));
     });
   } catch (error) {
-    const appError = processWordPressError(error, "getLegalPages");
+    const appError = processWordPressError(error, 'getLegalPages');
     return handleError<WordPressPage[]>(appError, []);
   }
 }
@@ -437,10 +444,10 @@ export async function getPostsByTag(tagSlug: string): Promise<WordPressPost[]> {
 
     return allPosts.filter((post) => {
       const embeddedData = post._embedded;
-      if (!embeddedData?.["wp:term"]?.[0]) return false;
+      if (!embeddedData?.['wp:term']?.[0]) return false;
 
-      return embeddedData["wp:term"][0].some(
-        (term) => term.taxonomy === "post_tag" && term.slug === tagSlug
+      return embeddedData['wp:term'][0].some(
+        (term) => term.taxonomy === 'post_tag' && term.slug === tagSlug
       );
     });
   } catch (error) {
@@ -456,7 +463,7 @@ export async function getAllTags(): Promise<
   Array<{ name: string; slug: string; count: number }>
 > {
   try {
-    const cacheKey = "all_tags";
+    const cacheKey = 'all_tags';
 
     return wordpressCache.getOrCompute(cacheKey, async () => {
       const allPosts = await getPosts();
@@ -467,9 +474,9 @@ export async function getAllTags(): Promise<
 
       allPosts.forEach((post) => {
         const embeddedData = post._embedded;
-        if (embeddedData?.["wp:term"]?.[0]) {
-          embeddedData["wp:term"][0]
-            .filter((term) => term.taxonomy === "post_tag")
+        if (embeddedData?.['wp:term']?.[0]) {
+          embeddedData['wp:term'][0]
+            .filter((term) => term.taxonomy === 'post_tag')
             .forEach((tag) => {
               const existing = tagCounts.get(tag.slug);
               if (existing) {
@@ -488,7 +495,7 @@ export async function getAllTags(): Promise<
       return Array.from(tagCounts.values()).sort((a, b) => b.count - a.count);
     });
   } catch (error) {
-    const appError = processWordPressError(error, "getAllTags");
+    const appError = processWordPressError(error, 'getAllTags');
     return handleError<Array<{ name: string; slug: string; count: number }>>(
       appError,
       []
@@ -503,7 +510,7 @@ export async function getAllCategories(): Promise<
   Array<{ name: string; slug: string; count: number }>
 > {
   try {
-    const cacheKey = "all_categories";
+    const cacheKey = 'all_categories';
 
     return wordpressCache.getOrCompute(cacheKey, async () => {
       const allPosts = await getPosts();
@@ -529,11 +536,11 @@ export async function getAllCategories(): Promise<
       });
 
       return Array.from(categoryCounts.values())
-        .filter((cat) => cat.slug !== "featured") // Exclude featured from filters
+        .filter((cat) => cat.slug !== 'featured') // Exclude featured from filters
         .sort((a, b) => b.count - a.count);
     });
   } catch (error) {
-    const appError = processWordPressError(error, "getAllCategories");
+    const appError = processWordPressError(error, 'getAllCategories');
     return handleError<Array<{ name: string; slug: string; count: number }>>(
       appError,
       []
@@ -569,14 +576,14 @@ export function isFeaturedPost(post: WordPressPost): boolean {
   const embeddedData = extractEmbeddedData(post);
 
   // Check if post has featured category
-  if (embeddedData.category?.slug === "featured") {
+  if (embeddedData.category?.slug === 'featured') {
     return true;
   }
 
   // Also check in all terms in case featured is not the primary category
-  if (post._embedded?.["wp:term"]?.[0]) {
-    return post._embedded["wp:term"][0].some(
-      (term) => term.taxonomy === "category" && term.slug === "featured"
+  if (post._embedded?.['wp:term']?.[0]) {
+    return post._embedded['wp:term'][0].some(
+      (term) => term.taxonomy === 'category' && term.slug === 'featured'
     );
   }
 
@@ -591,7 +598,7 @@ export async function getFeaturedPost(): Promise<WordPressPost | null> {
     const allPosts = await getPosts();
     return allPosts.find(isFeaturedPost) || null;
   } catch (error) {
-    const appError = processWordPressError(error, "getFeaturedPost");
+    const appError = processWordPressError(error, 'getFeaturedPost');
     return handleError<WordPressPost | null>(appError, null);
   }
 }
@@ -617,7 +624,7 @@ export async function getNewsPagePosts(): Promise<{
       allPosts, // For filtering - includes featured post
     };
   } catch (error) {
-    const appError = processWordPressError(error, "getNewsPagePosts");
+    const appError = processWordPressError(error, 'getNewsPagePosts');
     return handleError<{
       featuredPost: WordPressPost | null;
       regularPosts: WordPressPost[];

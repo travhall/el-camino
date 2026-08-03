@@ -7,20 +7,30 @@
 // instead of importing them. If either slug function changes in
 // src/lib/square/slugUtils.ts or categories.ts, update the copies below too.
 
-import { SquareClient, SquareEnvironment } from "square-legacy";
+import { SquareClient, SquareEnvironment } from 'square-legacy';
+import type { CatalogObject } from 'square-legacy';
 
-const SITE = "https://elcaminoskateshop.com"; // must match astro.config.mjs `site` exactly
+interface WPTag {
+  slug?: string;
+}
+
+interface WPPost {
+  slug?: string;
+  tags?: Record<string, WPTag>;
+}
+
+const SITE = 'https://elcaminoskateshop.com'; // must match astro.config.mjs `site` exactly
 
 const WP_BASE =
-  "https://public-api.wordpress.com/rest/v1.1/sites/elcaminoskateshop.wordpress.com";
+  'https://public-api.wordpress.com/rest/v1.1/sites/elcaminoskateshop.wordpress.com';
 
 const squareEnv =
-  process.env.PUBLIC_SQUARE_ENVIRONMENT === "production"
+  process.env.PUBLIC_SQUARE_ENVIRONMENT === 'production'
     ? SquareEnvironment.Production
     : SquareEnvironment.Sandbox; // defaults to sandbox if env var is absent
 
 const client = new SquareClient({
-  token: process.env.SQUARE_ACCESS_TOKEN ?? "",
+  token: process.env.SQUARE_ACCESS_TOKEN ?? '',
   environment: squareEnv,
 });
 
@@ -28,10 +38,10 @@ const client = new SquareClient({
 function createProductSlug(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
     .substring(0, 50);
 }
 
@@ -40,33 +50,40 @@ function createProductSlug(title: string): string {
 function createCategorySlug(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 async function fetchAllProductPages(): Promise<string[]> {
   const pages: string[] = [];
   let cursor: string | undefined;
   do {
-    const page = await client.catalog.list({ types: "ITEM", cursor });
+    const page = await client.catalog.list({ types: 'ITEM', cursor });
     for (const item of page.data ?? []) {
-      const title = (item as any).itemData?.name;
+      const title = item.type === 'ITEM' ? item.itemData?.name : undefined;
       if (title) pages.push(`${SITE}/product/${createProductSlug(title)}`);
     }
-    cursor = (page.response as any).cursor;
+    cursor = (page.response as unknown as { cursor?: string }).cursor;
   } while (cursor);
   return pages;
 }
 
 async function fetchAllCategoryPages(): Promise<string[]> {
-  const page = await client.catalog.list({ types: "CATEGORY" });
-  const raw = (page.data ?? []).filter((item: any) => item.type === "CATEGORY");
+  const page = await client.catalog.list({ types: 'CATEGORY' });
+  const raw = (page.data ?? []).filter(
+    (item): item is CatalogObject.Category => item.type === 'CATEGORY'
+  );
 
-  type Cat = { id: string; slug: string; isTopLevel: boolean; parentId?: string };
-  const categories: Cat[] = raw.map((item: any) => ({
-    id: item.id,
-    slug: createCategorySlug(item.categoryData?.name || ""),
+  type Cat = {
+    id: string;
+    slug: string;
+    isTopLevel: boolean;
+    parentId?: string;
+  };
+  const categories: Cat[] = raw.map((item) => ({
+    id: item.id ?? '',
+    slug: createCategorySlug(item.categoryData?.name || ''),
     isTopLevel: item.categoryData?.isTopLevel || false,
     parentId: item.categoryData?.parentCategory?.id,
   }));
@@ -96,19 +113,19 @@ async function fetchAllNewsPages(): Promise<string[]> {
 
   while (true) {
     const url = `${WP_BASE}/posts?fields=slug,tags&type=post&status=publish&number=${number}&offset=${offset}`;
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
     if (!res.ok) break;
 
     const data = await res.json();
-    const posts: any[] = data.posts ?? [];
+    const posts: WPPost[] = data.posts ?? [];
     if (posts.length === 0) break;
 
     for (const post of posts) {
       if (post.slug) pages.push(`${SITE}/news/${post.slug}`);
 
       // Tags come back as an object keyed by tag name, each with a .slug field.
-      if (post.tags && typeof post.tags === "object") {
-        for (const tagData of Object.values(post.tags) as any[]) {
+      if (post.tags && typeof post.tags === 'object') {
+        for (const tagData of Object.values(post.tags)) {
           if (tagData.slug) tagSlugs.add(tagData.slug);
         }
       }

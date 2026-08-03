@@ -11,12 +11,13 @@
 //   - checkout fails CONSERVATIVE (unknown → 0 → block the sale; never oversell)
 //   - display fails OPTIMISTIC   (unknown → keep the product visible; never hide
 //     stock over a transient hiccup)
-import { squareClient } from "./client";
-import { catalogRetryClient } from "./apiRetry";
-import { logError } from "./errorUtils";
-import { processSquareError } from "./serverErrorUtils";
-import { requestDeduplicator } from "./requestDeduplication";
-import { inventoryCache } from "@/lib/cache/blobCache";
+import { squareClient } from './client';
+import { catalogRetryClient } from './apiRetry';
+import { logError } from './errorUtils';
+import { processSquareError } from './serverErrorUtils';
+import { requestDeduplicator } from './requestDeduplication';
+import { inventoryCache } from '@/lib/cache/blobCache';
+import type { InventoryCount } from 'square-legacy';
 
 // Square's batchGetCounts accepts up to 1000 IDs, but smaller chunks keep each
 // request fast and limit blast radius when one call fails.
@@ -36,8 +37,8 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 /** Parse the IN_STOCK quantity from a Square counts array (string → number). */
-function inStockQty(counts: any[]): number {
-  const c = counts.find((x: any) => x.state === "IN_STOCK");
+function inStockQty(counts: InventoryCount[]): number {
+  const c = counts.find((x) => x.state === 'IN_STOCK');
   return c?.quantity ? parseInt(c.quantity, 10) : 0;
 }
 
@@ -60,10 +61,10 @@ async function fetchChunk(
         squareClient.inventory.batchGetCounts({
           catalogObjectIds: ids,
           locationIds: [locationId],
-          states: ["IN_STOCK"], // only in-stock quantities matter
+          states: ['IN_STOCK'], // only in-stock quantities matter
           limit: 100,
         }),
-      "fetchInventoryCounts:batchGetCounts"
+      'fetchInventoryCounts:batchGetCounts'
     );
 
     const data = page.data || [];
@@ -72,7 +73,7 @@ async function fetchChunk(
       if (!id) continue;
       // We request IN_STOCK only, but guard defensively against any other state
       // slipping through so a non-IN_STOCK row never sets a quantity.
-      if (count.state && count.state !== "IN_STOCK") continue;
+      if (count.state && count.state !== 'IN_STOCK') continue;
       counts[id] = count.quantity ? parseInt(count.quantity, 10) : 0;
     }
     // IDs absent from an IN_STOCK response are genuinely out of stock / untracked.
@@ -83,7 +84,9 @@ async function fetchChunk(
     await Promise.all(
       ids.map(async (id) => {
         try {
-          const page = await squareClient.inventory.get({ catalogObjectId: id });
+          const page = await squareClient.inventory.get({
+            catalogObjectId: id,
+          });
           counts[id] = inStockQty(page.data || []);
         } catch {
           failed.add(id);
@@ -93,7 +96,7 @@ async function fetchChunk(
     // Log once if the whole chunk was unresolved (signals a real outage rather
     // than a one-off bad ID).
     if (failed.size === ids.length) {
-      logError(processSquareError(batchErr, "fetchInventoryCounts"));
+      logError(processSquareError(batchErr, 'fetchInventoryCounts'));
     }
     return { counts, failed };
   }
@@ -110,7 +113,7 @@ export async function fetchInventoryCounts(
   const unique = [...new Set(variationIds.filter(Boolean))];
   if (unique.length === 0) return { counts: {}, failed: new Set() };
 
-  const cacheKey = `inv-counts:${[...unique].sort().join(",")}`;
+  const cacheKey = `inv-counts:${[...unique].sort().join(',')}`;
   return requestDeduplicator.dedupe(cacheKey, async () => {
     const counts: Record<string, number> = {};
     const uncached: string[] = [];

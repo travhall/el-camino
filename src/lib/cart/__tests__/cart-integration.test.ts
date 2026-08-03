@@ -10,11 +10,11 @@ import type { CartItem, CartState } from '../types';
 const mockSquareAPI = {
   retrieveCatalogObject: vi.fn(),
   batchRetrieveInventoryCounts: vi.fn(),
-  createOrder: vi.fn()
+  createOrder: vi.fn(),
 };
 
 vi.mock('../../square/client', () => ({
-  getSquareClient: () => mockSquareAPI
+  getSquareClient: () => mockSquareAPI,
 }));
 
 describe('Cart Integration - Critical Business Logic', () => {
@@ -25,7 +25,7 @@ describe('Cart Integration - Critical Business Logic', () => {
     mockCartState = {
       items: [],
       total: 0,
-      itemCount: 0
+      itemCount: 0,
     };
   });
 
@@ -44,7 +44,7 @@ describe('Cart Integration - Critical Business Logic', () => {
         quantity: 1,
         catalogVersion: 123,
         name: 'Test Product',
-        price: 1000
+        price: 1000,
       };
 
       // Test should handle graceful degradation
@@ -54,7 +54,7 @@ describe('Cart Integration - Critical Business Logic', () => {
         mockCartState.items.push(cartItem);
         mockCartState.itemCount = 1;
       }).not.toThrow();
-      
+
       expect(mockCartState.itemCount).toBe(1);
     });
 
@@ -67,13 +67,13 @@ describe('Cart Integration - Critical Business Logic', () => {
         quantity: 999,
         catalogVersion: 123,
         name: 'Test Product',
-        price: 1000
+        price: 1000,
       };
 
       // Should enforce reasonable quantity limits
       const maxQuantity = 100;
       const adjustedQuantity = Math.min(cartItem.quantity, maxQuantity);
-      
+
       expect(adjustedQuantity).toBe(maxQuantity);
     });
 
@@ -86,7 +86,7 @@ describe('Cart Integration - Critical Business Logic', () => {
         quantity: 2,
         catalogVersion: 123,
         name: 'Test Product',
-        price: 1000
+        price: 1000,
       };
 
       // Add first item
@@ -95,9 +95,9 @@ describe('Cart Integration - Critical Business Logic', () => {
 
       // Add same variation again - should update quantity
       const existingIndex = mockCartState.items.findIndex(
-        item => item.variationId === baseItem.variationId
+        (item) => item.variationId === baseItem.variationId
       );
-      
+
       if (existingIndex >= 0) {
         mockCartState.items[existingIndex].quantity += 1;
         mockCartState.itemCount += 1;
@@ -120,7 +120,7 @@ describe('Cart Integration - Critical Business Logic', () => {
           quantity: 2,
           catalogVersion: 123,
           name: 'Product 1',
-          price: 1000
+          price: 1000,
         },
         {
           id: 'item-5',
@@ -130,20 +130,21 @@ describe('Cart Integration - Critical Business Logic', () => {
           quantity: 1,
           catalogVersion: 123,
           name: 'Product 2',
-          price: 2000
-        }
+          price: 2000,
+        },
       ];
       mockCartState.itemCount = 3;
     });
 
     it('removes specific variation completely', () => {
       const targetVariationId = 'variation-1';
-      
+
       mockCartState.items = mockCartState.items.filter(
-        item => item.variationId !== targetVariationId
+        (item) => item.variationId !== targetVariationId
       );
       mockCartState.itemCount = mockCartState.items.reduce(
-        (sum, item) => sum + item.quantity, 0
+        (sum, item) => sum + item.quantity,
+        0
       );
 
       expect(mockCartState.items).toHaveLength(1);
@@ -154,11 +155,11 @@ describe('Cart Integration - Critical Business Logic', () => {
     it('decreases quantity without full removal', () => {
       const targetVariationId = 'variation-1';
       const decreaseBy = 1;
-      
+
       const targetItem = mockCartState.items.find(
-        item => item.variationId === targetVariationId
+        (item) => item.variationId === targetVariationId
       );
-      
+
       if (targetItem && targetItem.quantity > decreaseBy) {
         targetItem.quantity -= decreaseBy;
         mockCartState.itemCount -= decreaseBy;
@@ -172,12 +173,12 @@ describe('Cart Integration - Critical Business Logic', () => {
     it('handles removal of non-existent item gracefully', () => {
       const initialItemCount = mockCartState.itemCount;
       const nonExistentId = 'non-existent-variation';
-      
+
       const initialLength = mockCartState.items.length;
       mockCartState.items = mockCartState.items.filter(
-        item => item.variationId !== nonExistentId
+        (item) => item.variationId !== nonExistentId
       );
-      
+
       expect(mockCartState.items).toHaveLength(initialLength);
       expect(mockCartState.itemCount).toBe(initialItemCount);
     });
@@ -194,8 +195,8 @@ describe('Cart Integration - Critical Business Logic', () => {
           quantity: 2,
           catalogVersion: 123,
           name: 'Product 1',
-          price: 1000
-        }
+          price: 1000,
+        },
       ];
       mockCartState.itemCount = 2;
     });
@@ -203,11 +204,11 @@ describe('Cart Integration - Critical Business Logic', () => {
     it('updates item quantity', () => {
       const targetVariationId = 'variation-1';
       const newQuantity = 5;
-      
+
       const targetItem = mockCartState.items.find(
-        item => item.variationId === targetVariationId
+        (item) => item.variationId === targetVariationId
       );
-      
+
       if (targetItem) {
         const quantityDiff = newQuantity - targetItem.quantity;
         targetItem.quantity = newQuantity;
@@ -221,10 +222,10 @@ describe('Cart Integration - Critical Business Logic', () => {
     it('removes item when quantity set to zero', () => {
       const targetVariationId = 'variation-1';
       const newQuantity = 0;
-      
+
       if (newQuantity === 0) {
         mockCartState.items = mockCartState.items.filter(
-          item => item.variationId !== targetVariationId
+          (item) => item.variationId !== targetVariationId
         );
         mockCartState.itemCount = 0;
       }
@@ -236,17 +237,15 @@ describe('Cart Integration - Critical Business Logic', () => {
 
   describe('Error Recovery Scenarios', () => {
     it('handles network failures during cart operations', async () => {
-      mockSquareAPI.createOrder.mockRejectedValue(
-        new Error('NETWORK_ERROR')
-      );
+      mockSquareAPI.createOrder.mockRejectedValue(new Error('NETWORK_ERROR'));
 
       // Cart should maintain state even if order creation fails
       const cartBackup = { ...mockCartState };
-      
+
       try {
         // Simulate order creation attempt
         await mockSquareAPI.createOrder();
-      } catch (error) {
+      } catch {
         // Cart state should remain intact for retry
         expect(mockCartState).toEqual(cartBackup);
       }
@@ -255,19 +254,38 @@ describe('Cart Integration - Critical Business Logic', () => {
     it('validates cart state consistency', () => {
       // Intentionally corrupt cart state
       mockCartState.items = [
-        { id: 'item-7', catalogObjectId: 'catalog-7', variationId: 'v1', title: 'P1', quantity: 2, catalogVersion: 123, name: 'P1', price: 1000 },
-        { id: 'item-8', catalogObjectId: 'catalog-8', variationId: 'v2', title: 'P2', quantity: 3, catalogVersion: 123, name: 'P2', price: 2000 }
+        {
+          id: 'item-7',
+          catalogObjectId: 'catalog-7',
+          variationId: 'v1',
+          title: 'P1',
+          quantity: 2,
+          catalogVersion: 123,
+          name: 'P1',
+          price: 1000,
+        },
+        {
+          id: 'item-8',
+          catalogObjectId: 'catalog-8',
+          variationId: 'v2',
+          title: 'P2',
+          quantity: 3,
+          catalogVersion: 123,
+          name: 'P2',
+          price: 2000,
+        },
       ];
       mockCartState.itemCount = 10; // Incorrect count
 
       // Validation should detect and fix inconsistency
       const calculatedCount = mockCartState.items.reduce(
-        (sum, item) => sum + item.quantity, 0
+        (sum, item) => sum + item.quantity,
+        0
       );
-      
+
       expect(calculatedCount).toBe(5);
       expect(calculatedCount).not.toBe(mockCartState.itemCount);
-      
+
       // Auto-correction
       mockCartState.itemCount = calculatedCount;
       expect(mockCartState.itemCount).toBe(5);
@@ -278,15 +296,21 @@ describe('Cart Integration - Critical Business Logic', () => {
     it('maintains cart state across page reloads', () => {
       const testCart = {
         items: [
-          { variationId: 'v1', quantity: 1, catalogVersion: 123, name: 'P1', price: 1000 }
+          {
+            variationId: 'v1',
+            quantity: 1,
+            catalogVersion: 123,
+            name: 'P1',
+            price: 1000,
+          },
         ],
-        itemCount: 1
+        itemCount: 1,
       };
 
       // Simulate localStorage persistence
       const cartJson = JSON.stringify(testCart);
       const restoredCart = JSON.parse(cartJson);
-      
+
       expect(restoredCart.items).toHaveLength(1);
       expect(restoredCart.itemCount).toBe(1);
       expect(restoredCart.items[0].variationId).toBe('v1');
@@ -294,36 +318,36 @@ describe('Cart Integration - Critical Business Logic', () => {
 
     it('handles corrupted cart data gracefully', () => {
       const corruptedData = '{"items": [{"invalid": "data"}]}';
-      
+
       let restoredCart;
       try {
         const parsed = JSON.parse(corruptedData);
-        
+
         // Validate structure and sanitize items
         if (!parsed.items || !Array.isArray(parsed.items)) {
           throw new Error('Invalid cart structure');
         }
-        
+
         // Filter out invalid items (must have variationId, quantity, etc.)
-        const validItems = parsed.items.filter((item: any) => 
-          item && 
-          typeof item === 'object' &&
-          typeof item.variationId === 'string' &&
-          typeof item.quantity === 'number' &&
-          item.quantity > 0 &&
-          typeof item.name === 'string'
+        const validItems = parsed.items.filter(
+          (item: any) =>
+            item &&
+            typeof item === 'object' &&
+            typeof item.variationId === 'string' &&
+            typeof item.quantity === 'number' &&
+            item.quantity > 0 &&
+            typeof item.name === 'string'
         );
-        
+
         restoredCart = {
           items: validItems,
-          itemCount: validItems.length
+          itemCount: validItems.length,
         };
-        
-      } catch (error) {
+      } catch {
         // Fallback to empty cart
         restoredCart = { items: [], itemCount: 0 };
       }
-      
+
       expect(restoredCart.items).toEqual([]);
       expect(restoredCart.itemCount).toBe(0);
     });

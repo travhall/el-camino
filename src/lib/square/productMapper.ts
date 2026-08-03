@@ -1,8 +1,24 @@
+import type { CatalogObject } from "square-legacy";
 import type { Product } from "./types";
 import { extractBrandValue, extractIsGiftCard, extractSaleInfo } from "./catalogUtils";
 import { buildAvailableAttributes } from "./variationParser";
 import { createProductUrl } from "./slugUtils";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+
+type CatalogItemVariation = CatalogObject.ItemVariation;
+
+function isItemVariation(obj: CatalogObject): obj is CatalogItemVariation {
+  return obj.type === "ITEM_VARIATION";
+}
+
+function sortByOrdinal(
+  a: CatalogItemVariation,
+  b: CatalogItemVariation
+): number {
+  const ordA = a.itemVariationData?.ordinal ?? 0;
+  const ordB = b.itemVariationData?.ordinal ?? 0;
+  return ordA - ordB;
+}
 
 function extractBrandFromTitle(title: string): string {
   const knownBrands = [
@@ -87,11 +103,13 @@ export function generateHumanReadableSku(
  * batch-fetching before mapping. Mirrors the existing fetchProducts behavior:
  * only the first variation's measurementUnitId is collected per item.
  */
-export function collectBulkFetchIds(allObjects: any[]): {
+export function collectBulkFetchIds(allObjects: CatalogObject[]): {
   imageIds: string[];
   measurementUnitIds: string[];
 } {
-  const items = allObjects.filter((obj) => obj.type === "ITEM");
+  const items = allObjects.filter(
+    (obj): obj is CatalogObject.Item => obj.type === "ITEM"
+  );
 
   const productImageIds = items
     .map((item) => item.itemData?.imageIds?.[0])
@@ -99,26 +117,36 @@ export function collectBulkFetchIds(allObjects: any[]): {
 
   const variationImageIds = items
     .flatMap((item) => item.itemData?.variations ?? [])
-    .flatMap((v: any) => v.itemVariationData?.imageIds ?? []) as string[];
+    .filter(isItemVariation)
+    .flatMap((v) => v.itemVariationData?.imageIds ?? []);
 
   const imageIds = [...new Set([...productImageIds, ...variationImageIds])];
 
   const measurementUnitIds = items
-    .map((item) => item.itemData?.variations?.[0]?.itemVariationData?.measurementUnitId)
+    .map((item) => {
+      const first = item.itemData?.variations?.[0];
+      return first && isItemVariation(first)
+        ? first.itemVariationData?.measurementUnitId
+        : undefined;
+    })
     .filter(Boolean) as string[];
 
   return { imageIds, measurementUnitIds };
 }
 
 export function mapCatalogItemsToProducts(
-  allObjects: any[],
+  allObjects: CatalogObject[],
   imageUrlMap: Record<string, string>,
   measurementUnitsMap: Record<string, string>
 ): Product[] {
   const productsWithBasicInfo = allObjects
-    .filter((item) => item.type === "ITEM")
+    .filter((obj): obj is CatalogObject.Item => obj.type === "ITEM")
     .map((item) => {
-      const variation = item.itemData?.variations?.[0];
+      const firstVariationRaw = item.itemData?.variations?.[0];
+      const variation =
+        firstVariationRaw && isItemVariation(firstVariationRaw)
+          ? firstVariationRaw
+          : undefined;
       const priceMoney = variation?.itemVariationData?.priceMoney;
       const brandValue = extractBrandValue(item.customAttributeValues);
       const isGiftCard = extractIsGiftCard(item.customAttributeValues);
@@ -134,7 +162,9 @@ export function mapCatalogItemsToProducts(
         price: priceMoney ? Number(priceMoney.amount) / 100 : 0,
         brand: brandValue,
         isGiftCard: isGiftCard || undefined,
-        categoryIds: (item.itemData?.categories || []).map((c: any) => c.id).filter(Boolean),
+        categoryIds: (item.itemData?.categories || [])
+          .map((c) => c.id)
+          .filter((id): id is string => Boolean(id)),
         reportingCategoryId: item.itemData?.reportingCategory?.id || null,
       };
     });
@@ -144,7 +174,9 @@ export function mapCatalogItemsToProducts(
 
   return productsWithBasicInfo.map((p) => {
     const item = allObjectsById.get(p.id);
-    const variations = item?.itemData?.variations || [];
+    const variations = (
+      item?.type === "ITEM" ? item.itemData?.variations : undefined
+    )?.filter(isItemVariation) ?? [];
     const variation = variations[0];
     const actualSku = variation?.itemVariationData?.sku || "";
 
@@ -156,12 +188,8 @@ export function mapCatalogItemsToProducts(
 
     const productVariations = variations
       .slice()
-      .sort((a: any, b: any) => {
-        const ordA = a.itemVariationData?.ordinal ?? 0;
-        const ordB = b.itemVariationData?.ordinal ?? 0;
-        return ordA - ordB;
-      })
-      .map((v: any) => {
+      .sort(sortByOrdinal)
+      .map((v) => {
         const variationPrice = v.itemVariationData?.priceMoney;
         const regularPrice = variationPrice ? Number(variationPrice.amount) / 100 : 0;
         const saleInfo = extractSaleInfo(v.customAttributeValues, regularPrice);
@@ -208,33 +236,23 @@ export function mapCatalogItemsToProducts(
 }
 
 export function mapSingleCatalogItemToProduct(
-  item: any,
+  item: CatalogObject.Item,
   imageUrl: string,
   allImageUrls: string[],
   variationImages: Record<string, string>,
   unitsMap: Record<string, string>
 ): Product | null {
-  const variations = item.itemData?.variations || [];
+  const variations = (item.itemData?.variations || []).filter(isItemVariation);
 
-  const defaultVariation = variations[0] as
-    | Extract<(typeof variations)[number], { type: "ITEM_VARIATION" }>
-    | undefined;
+  const defaultVariation = variations[0];
   const defaultPriceMoney = defaultVariation?.itemVariationData?.priceMoney;
 
   if (!defaultVariation || !defaultPriceMoney) return null;
 
   const productVariations = variations
     .slice()
-    .sort((a: any, b: any) => {
-      const ordA =
-        (a as Extract<typeof a, { type: "ITEM_VARIATION" }>).itemVariationData
-          ?.ordinal ?? 0;
-      const ordB =
-        (b as Extract<typeof b, { type: "ITEM_VARIATION" }>).itemVariationData
-          ?.ordinal ?? 0;
-      return ordA - ordB;
-    })
-    .map((v: any) => {
+    .sort(sortByOrdinal)
+    .map((v) => {
       const priceMoney = v.itemVariationData?.priceMoney;
       const regularPrice = priceMoney ? Number(priceMoney.amount) / 100 : 0;
 
@@ -267,8 +285,8 @@ export function mapSingleCatalogItemToProduct(
   const isGiftCard = extractIsGiftCard(item.customAttributeValues);
   const defaultUnit = productVariations[0]?.unit ?? "";
   const categoryIds = (item.itemData?.categories || [])
-    .map((c: any) => c.id)
-    .filter(Boolean);
+    .map((c) => c.id)
+    .filter((id): id is string => Boolean(id));
 
   return {
     id: item.id,

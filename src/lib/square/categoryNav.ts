@@ -1,12 +1,12 @@
 // src/lib/square/categoryNav.ts - Category nav filtering and product-presence utilities
 
-import { squareClient, fetchProducts } from "./client";
-import { categoryCache, navigationCache } from "@/lib/cache/blobCache";
-import type { Category, CategoryHierarchy } from "./types";
-import { handleError } from "./errorUtils";
-import { processSquareError } from "./serverErrorUtils";
-import { requestDeduplicator } from "./requestDeduplication";
-import { catalogRetryClient } from "./apiRetry";
+import { squareClient, fetchProducts } from './client';
+import { categoryCache, navigationCache } from '@/lib/cache/blobCache';
+import type { CategoryHierarchy } from './types';
+import { handleError } from './errorUtils';
+import { processSquareError } from './serverErrorUtils';
+import { requestDeduplicator } from './requestDeduplication';
+import { catalogRetryClient } from './apiRetry';
 
 /**
  * Check if a category has any products (regardless of stock status)
@@ -54,7 +54,7 @@ export async function categoryHasProducts(
 export async function batchCheckCategoriesHaveProducts(
   categoryIds: string[]
 ): Promise<Record<string, boolean>> {
-  const cacheKey = `batch-category-check:${categoryIds.sort().join(",")}`;
+  const cacheKey = `batch-category-check:${categoryIds.sort().join(',')}`;
 
   return requestDeduplicator.dedupe(cacheKey, async () => {
     const result: Record<string, boolean> = {};
@@ -106,7 +106,7 @@ export async function batchCheckCategoriesHaveProducts(
       } catch (error) {
         const appError = processSquareError(
           error,
-          "batchCheckCategoriesHaveProducts"
+          'batchCheckCategoriesHaveProducts'
         );
         handleError(appError, null);
 
@@ -183,10 +183,10 @@ export async function fetchCategoryHierarchyWithProducts(): Promise<
   CategoryHierarchy[]
 > {
   // Use navigation cache for longer TTL and faster subsequent renders
-  return navigationCache.getOrCompute("hierarchy-with-products", async () => {
+  return navigationCache.getOrCompute('hierarchy-with-products', async () => {
     try {
       // Import here to avoid circular dependency
-      const { fetchCategoryHierarchy } = await import("./categories");
+      const { fetchCategoryHierarchy } = await import('./categories');
 
       // Get full hierarchy first
       const fullHierarchy = await fetchCategoryHierarchy();
@@ -197,9 +197,8 @@ export async function fetchCategoryHierarchyWithProducts(): Promise<
       }
 
       // Filter to only categories with products
-      const filteredHierarchy = await filterCategoryHierarchyWithProducts(
-        fullHierarchy
-      );
+      const filteredHierarchy =
+        await filterCategoryHierarchyWithProducts(fullHierarchy);
 
       // Sort by Square's ordinal system (maintained from original fetch)
       // The original hierarchy is already sorted by ordinals, so we preserve that order
@@ -214,7 +213,7 @@ export async function fetchCategoryHierarchyWithProducts(): Promise<
     } catch (error) {
       const appError = processSquareError(
         error,
-        "fetchCategoryHierarchyWithProducts"
+        'fetchCategoryHierarchyWithProducts'
       );
       return handleError<CategoryHierarchy[]>(appError, []);
     }
@@ -259,9 +258,10 @@ export async function getCategoriesForSidebar(): Promise<
     });
 
     // Remove rawOrder from final result
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to strip it from the returned object
     return categoriesWithImages.map(({ rawOrder, ...item }) => item);
   } catch (error) {
-    const appError = processSquareError(error, "getCategoriesForSidebar");
+    const appError = processSquareError(error, 'getCategoriesForSidebar');
     return handleError<
       Array<{
         category: string;

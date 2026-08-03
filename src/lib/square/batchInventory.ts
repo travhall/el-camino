@@ -7,8 +7,8 @@
 // returned with `error: true` and `isOutOfStock: false`, so callers keep the
 // product visible rather than hiding it over a transient API hiccup. (Checkout
 // uses checkBulkInventory(), which applies the opposite, conservative policy.)
-import { fetchInventoryCounts } from "./inventoryCore";
-import type { InventoryStatus } from "./types";
+import { fetchInventoryCounts } from './inventoryCore';
+import type { InventoryStatus } from './types';
 
 function statusFromQuantity(quantity: number): InventoryStatus {
   return {
@@ -30,7 +30,7 @@ export class BatchInventoryService {
     const map = new Map<string, InventoryStatus>();
     if (variationIds.length === 0) return map;
 
-    const { counts, failed } = await fetchInventoryCounts(variationIds);
+    const { counts } = await fetchInventoryCounts(variationIds);
 
     for (const id of new Set(variationIds)) {
       if (id in counts) {

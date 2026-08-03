@@ -1,200 +1,211 @@
-import type { CartItem } from "@/lib/cart/types";
-import { showNotification } from "@/lib/events";
-  import { createSlug } from "@/lib/square/slugUtils";
-  import {
-    EL_CAMINO_LOGO_DATA_URI,
-    EL_CAMINO_LOADER_DATA_URI,
-  } from "@/lib/constants/assets";
-  import { cart as cartInstance } from "@/lib/cart";
+import type { CartItem } from '@/lib/cart/types';
+import { showNotification } from '@/lib/events';
+import { createSlug } from '@/lib/square/slugUtils';
+import {
+  EL_CAMINO_LOGO_DATA_URI,
+  EL_CAMINO_LOADER_DATA_URI,
+} from '@/lib/constants/assets';
+import { cart as cartInstance } from '@/lib/cart';
 
-  let inventoryData: Record<string, number> = {};
+let inventoryData: Record<string, number> = {};
 
-  // Undo bar state
-  let undoBarTimeout: ReturnType<typeof setTimeout> | null = null;
-  let pendingUndoItem: CartItem | null = null;
+// Undo bar state
+let undoBarTimeout: ReturnType<typeof setTimeout> | null = null;
+let pendingUndoItem: CartItem | null = null;
 
-  // Element to restore focus to on close. Module-level (not initMiniCart-local)
-  // because astro:page-load can re-fire and rebuild that closure while the
-  // cart is still open, which would otherwise silently drop this reference.
-  let miniCartTriggerElement: HTMLElement | null = null;
+// Element to restore focus to on close. Module-level (not initMiniCart-local)
+// because astro:page-load can re-fire and rebuild that closure while the
+// cart is still open, which would otherwise silently drop this reference.
+let miniCartTriggerElement: HTMLElement | null = null;
 
-  function showUndoBar(item: CartItem): void {
-    const bar = document.getElementById("mini-cart-undo-bar");
-    const messageEl = document.getElementById("mini-cart-undo-message");
-    const progressEl = document.getElementById(
-      "mini-cart-undo-progress",
-    ) as HTMLElement | null;
+// Aborts the previous items-list click listener before adding a new one on
+// each re-render. Previously this reset was done via cloneNode+replaceChild,
+// but cloneNode copies onload/onerror as inert attribute strings without
+// recompiling them into live handlers — product images would load
+// successfully (network 200, naturalWidth set) yet never fire onload, so
+// the loading placeholder never got removed.
+let itemsListAbortController: AbortController | null = null;
 
-    if (!bar || !messageEl) return;
+function showUndoBar(item: CartItem): void {
+  const bar = document.getElementById('mini-cart-undo-bar');
+  const messageEl = document.getElementById('mini-cart-undo-message');
+  const progressEl = document.getElementById(
+    'mini-cart-undo-progress'
+  ) as HTMLElement | null;
 
-    // Cancel any running undo timer
-    if (undoBarTimeout) {
-      clearTimeout(undoBarTimeout);
-      undoBarTimeout = null;
-    }
+  if (!bar || !messageEl) return;
 
-    pendingUndoItem = item;
-    messageEl.textContent = `"${item.title}" removed`;
-
-    // Show with fade-in
-    bar.classList.remove("hidden");
-    bar.classList.add("flex");
-    requestAnimationFrame(() => {
-      bar.classList.remove("opacity-0");
-    });
-
-    // Animate the timer progress bar over 6s
-    if (progressEl) {
-      progressEl.style.transition = "none";
-      progressEl.style.width = "100%";
-      progressEl.offsetWidth; // force reflow so the reset paints before transition starts
-      progressEl.style.transition = "width 6000ms linear";
-      progressEl.style.width = "0%";
-    }
-
-    undoBarTimeout = setTimeout(dismissUndoBar, 6000);
+  // Cancel any running undo timer
+  if (undoBarTimeout) {
+    clearTimeout(undoBarTimeout);
+    undoBarTimeout = null;
   }
 
-  function dismissUndoBar(): void {
-    const bar = document.getElementById("mini-cart-undo-bar");
-    if (!bar) return;
+  pendingUndoItem = item;
+  messageEl.textContent = `"${item.title}" removed`;
 
-    bar.classList.add("opacity-0");
-    setTimeout(() => {
-      bar.classList.add("hidden");
-      bar.classList.remove("flex");
-    }, 200);
+  // Show with fade-in
+  bar.classList.remove('hidden');
+  bar.classList.add('flex');
+  requestAnimationFrame(() => {
+    bar.classList.remove('opacity-0');
+  });
 
-    pendingUndoItem = null;
-    if (undoBarTimeout) {
-      clearTimeout(undoBarTimeout);
-      undoBarTimeout = null;
-    }
+  // Animate the timer progress bar over 6s
+  if (progressEl) {
+    progressEl.style.transition = 'none';
+    progressEl.style.width = '100%';
+    progressEl.offsetWidth; // force reflow so the reset paints before transition starts
+    progressEl.style.transition = 'width 6000ms linear';
+    progressEl.style.width = '0%';
   }
 
-  async function handleUndoRemove(): Promise<void> {
-    if (!pendingUndoItem) return;
+  undoBarTimeout = setTimeout(dismissUndoBar, 6000);
+}
 
-    const itemToRestore = { ...pendingUndoItem };
-    dismissUndoBar();
+function dismissUndoBar(): void {
+  const bar = document.getElementById('mini-cart-undo-bar');
+  if (!bar) return;
 
-    try {
-      const cartInstance = await loadCart();
-      const key = `${itemToRestore.id}:${itemToRestore.variationId}`;
-      const alreadyInCart = cartInstance
-        .getItems()
-        .some((i: CartItem) => `${i.id}:${i.variationId}` === key);
+  bar.classList.add('opacity-0');
+  setTimeout(() => {
+    bar.classList.add('hidden');
+    bar.classList.remove('flex');
+  }, 200);
 
-      let result: { success: boolean; message?: string };
-      if (alreadyInCart) {
-        // Item was re-added during the undo window — restore the snapshot quantity exactly
-        result = await cartInstance.updateQuantity(key, itemToRestore.quantity);
-      } else {
-        result = await cartInstance.addItem(itemToRestore);
-      }
-
-      if (result.success) {
-        await updateMiniCartDisplay();
-        showNotification(`"${itemToRestore.title}" restored`, "success");
-      } else {
-        showNotification(
-          result.message || "Could not restore item",
-          "error",
-        );
-      }
-    } catch {
-      showNotification("Could not restore item", "error");
-    }
+  pendingUndoItem = null;
+  if (undoBarTimeout) {
+    clearTimeout(undoBarTimeout);
+    undoBarTimeout = null;
   }
+}
 
-  /** Escape HTML special characters to prevent XSS in innerHTML templates */
-  function sanitize(str: string): string {
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#x27;");
-  }
+async function handleUndoRemove(): Promise<void> {
+  if (!pendingUndoItem) return;
 
-  async function loadCart() {
-    return cartInstance;
-  }
+  const itemToRestore = { ...pendingUndoItem };
+  dismissUndoBar();
 
-  // Route any external image URL through Netlify Image CDN for compression,
-  // format negotiation (AVIF/WebP), and edge caching — covers squarecdn.com,
-  // s3.amazonaws.com, and any other Square storage backend.
-  // Cart thumbnails: 100×100 is sufficient; CDN handles retina via format negotiation.
-  function optimizeCartImage(src: string): string {
-    if (!src || src.startsWith("/") || src.startsWith("data:")) return src;
-    const p = new URLSearchParams({ url: src, w: "100", h: "100", fit: "cover", q: "80" });
-    return `/.netlify/images?${p.toString()}`;
-  }
+  try {
+    const cartInstance = await loadCart();
+    const key = `${itemToRestore.id}:${itemToRestore.variationId}`;
+    const alreadyInCart = cartInstance
+      .getItems()
+      .some((i: CartItem) => `${i.id}:${i.variationId}` === key);
 
-  function formatPrice(price: number): string {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(price);
-  }
-
-  const FREE_SHIPPING_THRESHOLD = 75; // $75.00
-
-  function updateShippingTracker(total: number): void {
-    const tracker = document.getElementById("mini-cart-shipping-tracker");
-    const earned = document.getElementById("mini-cart-shipping-earned");
-    const remaining = document.getElementById("mini-cart-shipping-remaining");
-    const progress = document.getElementById(
-      "mini-cart-shipping-progress",
-    ) as HTMLElement | null;
-
-    if (!tracker || !earned) return;
-
-    if (total >= FREE_SHIPPING_THRESHOLD) {
-      tracker.classList.add("hidden");
-      earned.classList.remove("hidden");
+    let result: { success: boolean; message?: string };
+    if (alreadyInCart) {
+      // Item was re-added during the undo window — restore the snapshot quantity exactly
+      result = await cartInstance.updateQuantity(key, itemToRestore.quantity);
     } else {
-      tracker.classList.remove("hidden");
-      earned.classList.add("hidden");
-      if (remaining)
-        remaining.textContent = formatPrice(FREE_SHIPPING_THRESHOLD - total);
-      if (progress) {
-        progress.style.width = `${Math.min((total / FREE_SHIPPING_THRESHOLD) * 100, 100)}%`;
-      }
+      result = await cartInstance.addItem(itemToRestore);
+    }
+
+    if (result.success) {
+      await updateMiniCartDisplay();
+      showNotification(`"${itemToRestore.title}" restored`, 'success');
+    } else {
+      showNotification(result.message || 'Could not restore item', 'error');
+    }
+  } catch {
+    showNotification('Could not restore item', 'error');
+  }
+}
+
+/** Escape HTML special characters to prevent XSS in innerHTML templates */
+function sanitize(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+async function loadCart() {
+  return cartInstance;
+}
+
+// Route any external image URL through Netlify Image CDN for compression,
+// format negotiation (AVIF/WebP), and edge caching — covers squarecdn.com,
+// s3.amazonaws.com, and any other Square storage backend.
+// Cart thumbnails: 100×100 is sufficient; CDN handles retina via format negotiation.
+function optimizeCartImage(src: string): string {
+  if (!src || src.startsWith('/') || src.startsWith('data:')) return src;
+  const p = new URLSearchParams({
+    url: src,
+    w: '100',
+    h: '100',
+    fit: 'cover',
+    q: '80',
+  });
+  return `/.netlify/images?${p.toString()}`;
+}
+
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(price);
+}
+
+const FREE_SHIPPING_THRESHOLD = 75; // $75.00
+
+function updateShippingTracker(total: number): void {
+  const tracker = document.getElementById('mini-cart-shipping-tracker');
+  const earned = document.getElementById('mini-cart-shipping-earned');
+  const remaining = document.getElementById('mini-cart-shipping-remaining');
+  const progress = document.getElementById(
+    'mini-cart-shipping-progress'
+  ) as HTMLElement | null;
+
+  if (!tracker || !earned) return;
+
+  if (total >= FREE_SHIPPING_THRESHOLD) {
+    tracker.classList.add('hidden');
+    earned.classList.remove('hidden');
+  } else {
+    tracker.classList.remove('hidden');
+    earned.classList.add('hidden');
+    if (remaining)
+      remaining.textContent = formatPrice(FREE_SHIPPING_THRESHOLD - total);
+    if (progress) {
+      progress.style.width = `${Math.min((total / FREE_SHIPPING_THRESHOLD) * 100, 100)}%`;
     }
   }
+}
 
-  function renderCartItem(item: CartItem): string {
-    const itemKey = `${item.id}:${item.variationId}`;
-    const inventory = inventoryData[item.variationId] || 999;
-    const maxQuantity = Math.min(inventory, 99);
+function renderCartItem(item: CartItem): string {
+  const itemKey = `${item.id}:${item.variationId}`;
+  const inventory = inventoryData[item.variationId] || 999;
+  const maxQuantity = Math.min(inventory, 99);
 
-    // Sanitize all user-controlled strings before inserting into innerHTML
-    const safeItemKey = sanitize(itemKey);
-    const safeTitle = sanitize(item.title);
-    const safeVariationName = item.variationName
-      ? sanitize(item.variationName)
-      : "";
+  // Sanitize all user-controlled strings before inserting into innerHTML
+  const safeItemKey = sanitize(itemKey);
+  const safeTitle = sanitize(item.title);
+  const safeVariationName = item.variationName
+    ? sanitize(item.variationName)
+    : '';
 
-    // Generate proper slug from product title
-    const productSlug = createSlug(item.title);
-    const productUrl = `/product/${productSlug}`;
-    const safeProductUrl = sanitize(productUrl);
+  // Generate proper slug from product title
+  const productSlug = createSlug(item.title);
+  const productUrl = `/product/${productSlug}`;
+  const safeProductUrl = sanitize(productUrl);
 
-    // Optimize cart image using client-side optimization
-    const optimizedImageSrc = item.image ? optimizeCartImage(item.image) : null;
-    const safeImageSrc = optimizedImageSrc ? sanitize(optimizedImageSrc) : null;
+  // Optimize cart image using client-side optimization
+  const optimizedImageSrc = item.image ? optimizeCartImage(item.image) : null;
+  const safeImageSrc = optimizedImageSrc ? sanitize(optimizedImageSrc) : null;
 
-    // Hoist saleInfo so both the image badge and pricing block can reference it
-    const saleInfo = (item as any).saleInfo as { salePrice: number; originalPrice: number; discountPercent?: number } | undefined;
-    const saleLabel = saleInfo
-      ? `${saleInfo.discountPercent ?? Math.round((1 - saleInfo.salePrice / saleInfo.originalPrice) * 100)}% Off`
-      : null;
+  // Hoist saleInfo so both the image badge and pricing block can reference it
+  const saleInfo = item.saleInfo;
+  const saleLabel = saleInfo
+    ? `${saleInfo.discountPercent ?? Math.round((1 - saleInfo.salePrice / saleInfo.originalPrice) * 100)}% Off`
+    : null;
 
-    return `
+  return `
     <div class="flex gap-3 p-3 bg-(--surface-secondary)" data-item-key="${safeItemKey}">
       <div class="relative w-16 h-16">
-        ${saleLabel ? `<div class="absolute top-0 left-0 z-10 bg-state-success-surface text-state-success-text px-1 py-px text-[9px] font-bold leading-tight rounded-br-sm">${saleLabel}</div>` : ""}
+        ${saleLabel ? `<div class="absolute top-0 left-0 z-10 bg-state-success-surface text-state-success-text px-1 py-px text-[9px] font-bold leading-tight rounded-br-sm">${saleLabel}</div>` : ''}
         ${
           safeImageSrc
             ? `
@@ -216,8 +227,8 @@ import { showNotification } from "@/lib/events";
             alt="${safeTitle}"
             class="absolute inset-0 w-full h-full object-cover rounded-sm bg-(--surface-secondary) opacity-0 transition-opacity duration-300"
             loading="eager"
-            onload="this.style.opacity='0.9'; document.getElementById('mini-cart-placeholder-${safeItemKey}')?.remove();"
-            onerror="this.src='${EL_CAMINO_LOGO_DATA_URI}'; this.style.opacity='1'; document.getElementById('mini-cart-placeholder-${safeItemKey}')?.remove();"
+            data-cart-image
+            data-item-key="${safeItemKey}"
           />
         `
             : `
@@ -247,7 +258,7 @@ import { showNotification } from "@/lib/events";
             ? `
           <p class="text-xs text-(--content-meta) mt-1">${safeVariationName}</p>
         `
-            : ""
+            : ''
         }
 
         ${(() => {
@@ -282,11 +293,11 @@ import { showNotification } from "@/lib/events";
           <div class="flex items-center">
             <button
               class="w-7 h-7 flex items-center justify-center border-2 rounded-sm transition-all ease-in-out duration-300 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) text-(--content-body) bg-(--surface-secondary) border-(--border-primary) hover:bg-(--surface-primary) ${
-                item.quantity <= 1 ? "opacity-50 cursor-not-allowed" : ""
+                item.quantity <= 1 ? 'opacity-50 cursor-not-allowed' : ''
               }"
               data-action="decrease"
               data-item-key="${safeItemKey}"
-              ${item.quantity <= 1 ? "disabled" : ""}
+              ${item.quantity <= 1 ? 'disabled' : ''}
               aria-label="Decrease quantity"
             >
               <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -299,12 +310,12 @@ import { showNotification } from "@/lib/events";
             <button
               class="w-7 h-7 flex items-center justify-center border-2 rounded-sm transition-all ease-in-out duration-300 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) text-(--content-body) bg-(--surface-secondary) border-(--border-primary) hover:bg-(--surface-primary) ${
                 item.quantity >= maxQuantity
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
               }"
               data-action="increase"
               data-item-key="${safeItemKey}"
-              ${item.quantity >= maxQuantity ? "disabled" : ""}
+              ${item.quantity >= maxQuantity ? 'disabled' : ''}
               aria-label="Increase quantity"
             >
               <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -316,161 +327,205 @@ import { showNotification } from "@/lib/events";
       </div>
     </div>
   `;
+}
+
+// CSP's script-src has no 'unsafe-inline', which silently blocks inline
+// onload/onerror HTML attributes (they never fire — no CSP report either,
+// browsers just skip compiling them). Handlers must be attached via
+// addEventListener from this external script instead.
+function attachCartImageHandlers(container: HTMLElement): void {
+  container
+    .querySelectorAll<HTMLImageElement>('img[data-cart-image]')
+    .forEach((img) => {
+      const key = img.dataset.itemKey;
+      const removePlaceholder = () => {
+        if (key) {
+          document.getElementById(`mini-cart-placeholder-${key}`)?.remove();
+        }
+      };
+
+      if (img.complete && img.naturalWidth > 0) {
+        img.style.opacity = '0.9';
+        removePlaceholder();
+        return;
+      }
+
+      img.addEventListener(
+        'load',
+        () => {
+          img.style.opacity = '0.9';
+          removePlaceholder();
+        },
+        { once: true }
+      );
+      img.addEventListener(
+        'error',
+        () => {
+          img.src = EL_CAMINO_LOGO_DATA_URI;
+          img.style.opacity = '1';
+          removePlaceholder();
+        },
+        { once: true }
+      );
+    });
+}
+
+async function loadInventoryData(items: CartItem[]): Promise<void> {
+  if (items.length === 0) return;
+
+  try {
+    const variationIds = items.map((item) => item.variationId);
+    const response = await fetch('/api/cart-inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ variationIds }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      inventoryData = data.inventory || {};
+    }
+  } catch (error) {
+    console.warn('Failed to load inventory data:', error);
+  }
+}
+
+async function updateMiniCartItemQuantity(itemKey: string): Promise<void> {
+  const cartInstance = await loadCart();
+  const items = cartInstance.getItems();
+  const item = items.find(
+    (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+  );
+
+  if (!item) {
+    // Item was removed, do full update
+    await updateMiniCartDisplay();
+    return;
   }
 
-  async function loadInventoryData(items: CartItem[]): Promise<void> {
-    if (items.length === 0) return;
+  const inventory = inventoryData[item.variationId] || 999;
+  const total = cartInstance.getTotal();
+  const count = cartInstance.getItemCount();
 
-    try {
-      const variationIds = items.map((item) => item.variationId);
-      const response = await fetch("/api/cart-inventory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ variationIds }),
-      });
+  // Update cart count
+  const countEl = document.getElementById('mini-cart-count');
+  if (countEl) {
+    countEl.textContent = count.toString();
+  }
 
-      if (response.ok) {
-        const data = await response.json();
-        inventoryData = data.inventory || {};
-      }
-    } catch (error) {
-      console.warn("Failed to load inventory data:", error);
+  // Update item quantity display
+  const itemContainer = document
+    .querySelector(`[data-item-key="${itemKey}"]`)
+    ?.closest('.p-3') as HTMLElement;
+  if (itemContainer) {
+    const quantitySpan = itemContainer.querySelector('.w-10.text-center');
+    if (quantitySpan) {
+      quantitySpan.textContent = item.quantity.toString();
+    }
+
+    // Update button states
+    const decreaseBtn = itemContainer.querySelector(
+      '[data-action="decrease"]'
+    ) as HTMLButtonElement;
+    const increaseBtn = itemContainer.querySelector(
+      '[data-action="increase"]'
+    ) as HTMLButtonElement;
+
+    if (decreaseBtn) {
+      decreaseBtn.disabled = item.quantity <= 1;
+      decreaseBtn.classList.toggle('opacity-50', item.quantity <= 1);
+    }
+
+    if (increaseBtn) {
+      const maxQuantity = Math.min(inventory, 99);
+      const canIncrement = item.quantity < maxQuantity;
+      increaseBtn.disabled = !canIncrement;
+      increaseBtn.classList.toggle('opacity-50', !canIncrement);
     }
   }
 
-  async function updateMiniCartItemQuantity(itemKey: string): Promise<void> {
+  // Update cart total
+  const totalEl = document.getElementById('mini-cart-total');
+  if (totalEl) {
+    totalEl.textContent = formatPrice(total);
+  }
+  updateShippingTracker(total);
+}
+
+async function updateMiniCartDisplay(): Promise<void> {
+  const loadingEl = document.getElementById('mini-cart-loading');
+  const emptyEl = document.getElementById('mini-cart-empty');
+  const itemsEl = document.getElementById('mini-cart-items');
+  const footerEl = document.getElementById('mini-cart-footer');
+  const countEl = document.getElementById('mini-cart-count');
+  const totalEl = document.getElementById('mini-cart-total');
+  const itemsListEl = document.getElementById('items-list');
+
+  if (
+    !loadingEl ||
+    !emptyEl ||
+    !itemsEl ||
+    !footerEl ||
+    !countEl ||
+    !totalEl ||
+    !itemsListEl
+  ) {
+    console.error('Mini cart elements not found');
+    return;
+  }
+
+  try {
     const cartInstance = await loadCart();
     const items = cartInstance.getItems();
-    const item = items.find(
-      (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
-    );
-
-    if (!item) {
-      // Item was removed, do full update
-      await updateMiniCartDisplay();
-      return;
-    }
-
-    const inventory = inventoryData[item.variationId] || 999;
     const total = cartInstance.getTotal();
     const count = cartInstance.getItemCount();
 
-    // Update cart count
-    const countEl = document.getElementById("mini-cart-count");
-    if (countEl) {
-      countEl.textContent = count.toString();
-    }
+    await loadInventoryData(items);
 
-    // Update item quantity display
-    const itemContainer = document
-      .querySelector(`[data-item-key="${itemKey}"]`)
-      ?.closest(".p-3") as HTMLElement;
-    if (itemContainer) {
-      const quantitySpan = itemContainer.querySelector(".w-10.text-center");
-      if (quantitySpan) {
-        quantitySpan.textContent = item.quantity.toString();
-      }
+    countEl.textContent = count.toString();
+    loadingEl.classList.add('hidden');
 
-      // Update button states
-      const decreaseBtn = itemContainer.querySelector(
-        '[data-action="decrease"]',
-      ) as HTMLButtonElement;
-      const increaseBtn = itemContainer.querySelector(
-        '[data-action="increase"]',
-      ) as HTMLButtonElement;
+    if (items.length === 0) {
+      emptyEl.classList.remove('hidden');
+      itemsEl.classList.add('hidden');
+      footerEl.classList.add('hidden');
+    } else {
+      emptyEl.classList.add('hidden');
+      itemsEl.classList.remove('hidden');
+      footerEl.classList.remove('hidden');
 
-      if (decreaseBtn) {
-        decreaseBtn.disabled = item.quantity <= 1;
-        decreaseBtn.classList.toggle("opacity-50", item.quantity <= 1);
-      }
-
-      if (increaseBtn) {
-        const maxQuantity = Math.min(inventory, 99);
-        const canIncrement = item.quantity < maxQuantity;
-        increaseBtn.disabled = !canIncrement;
-        increaseBtn.classList.toggle("opacity-50", !canIncrement);
-      }
-    }
-
-    // Update cart total
-    const totalEl = document.getElementById("mini-cart-total");
-    if (totalEl) {
+      itemsListEl.innerHTML = items.map(renderCartItem).join('');
       totalEl.textContent = formatPrice(total);
+      updateShippingTracker(total);
+
+      attachCartImageHandlers(itemsListEl);
+      setupQuantityControls();
     }
-    updateShippingTracker(total);
+  } catch (error) {
+    console.error('Error updating mini cart display:', error);
+    loadingEl.classList.add('hidden');
+    emptyEl.classList.remove('hidden');
   }
+}
 
-  async function updateMiniCartDisplay(): Promise<void> {
-    const loadingEl = document.getElementById("mini-cart-loading");
-    const emptyEl = document.getElementById("mini-cart-empty");
-    const itemsEl = document.getElementById("mini-cart-items");
-    const footerEl = document.getElementById("mini-cart-footer");
-    const countEl = document.getElementById("mini-cart-count");
-    const totalEl = document.getElementById("mini-cart-total");
-    const itemsListEl = document.getElementById("items-list");
+function setupQuantityControls(): void {
+  const itemsListEl = document.getElementById('items-list');
+  if (!itemsListEl) return;
 
-    if (
-      !loadingEl ||
-      !emptyEl ||
-      !itemsEl ||
-      !footerEl ||
-      !countEl ||
-      !totalEl ||
-      !itemsListEl
-    ) {
-      console.error("Mini cart elements not found");
-      return;
-    }
-
-    try {
-      const cartInstance = await loadCart();
-      const items = cartInstance.getItems();
-      const total = cartInstance.getTotal();
-      const count = cartInstance.getItemCount();
-
-      await loadInventoryData(items);
-
-      countEl.textContent = count.toString();
-      loadingEl.classList.add("hidden");
-
-      if (items.length === 0) {
-        emptyEl.classList.remove("hidden");
-        itemsEl.classList.add("hidden");
-        footerEl.classList.add("hidden");
-      } else {
-        emptyEl.classList.add("hidden");
-        itemsEl.classList.remove("hidden");
-        footerEl.classList.remove("hidden");
-
-        itemsListEl.innerHTML = items.map(renderCartItem).join("");
-        totalEl.textContent = formatPrice(total);
-        updateShippingTracker(total);
-
-        setupQuantityControls();
-      }
-    } catch (error) {
-      console.error("Error updating mini cart display:", error);
-      loadingEl.classList.add("hidden");
-      emptyEl.classList.remove("hidden");
-    }
+  // Remove the previous render's listener before attaching a new one
+  if (itemsListAbortController) {
+    itemsListAbortController.abort();
   }
+  itemsListAbortController = new AbortController();
+  const { signal } = itemsListAbortController;
 
-  function setupQuantityControls(): void {
-    const itemsListEl = document.getElementById("items-list");
-    if (!itemsListEl) return;
-
-    // Remove existing listeners to prevent conflicts
-    const newItemsList = itemsListEl.cloneNode(true) as HTMLElement;
-    const parent = itemsListEl.parentNode;
-    if (parent) {
-      parent.replaceChild(newItemsList, itemsListEl);
-    }
-
-    // Add event listener for both quantity controls AND product links
-    newItemsList.addEventListener("click", async (e) => {
+  // Add event listener for both quantity controls AND product links
+  itemsListEl.addEventListener(
+    'click',
+    async (e) => {
       // Handle product links
       const productLink = (e.target as HTMLElement).closest(
-        "a.product-link",
+        'a.product-link'
       ) as HTMLAnchorElement;
       if (productLink) {
         // Don't prevent default - let link work naturally
@@ -481,7 +536,7 @@ import { showNotification } from "@/lib/events";
 
       // Handle quantity control buttons (existing logic)
       const button = (e.target as HTMLElement).closest(
-        "button[data-action]",
+        'button[data-action]'
       ) as HTMLButtonElement;
       if (!button || button.disabled) return;
 
@@ -496,10 +551,10 @@ import { showNotification } from "@/lib/events";
         const cartInstance = await loadCart();
 
         switch (action) {
-          case "increase":
+          case 'increase':
             const items = cartInstance.getItems();
             const item = items.find(
-              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
             );
             if (item) {
               const newQty = item.quantity + 1;
@@ -509,15 +564,15 @@ import { showNotification } from "@/lib/events";
                 await cartInstance.updateQuantity(itemKey, newQty);
                 await updateMiniCartItemQuantity(itemKey);
               } else {
-                showNotification(`Only ${inventory} available`, "error");
+                showNotification(`Only ${inventory} available`, 'error');
               }
             }
             break;
 
-          case "decrease": {
+          case 'decrease': {
             const currentItems = cartInstance.getItems();
             const currentItem = currentItems.find(
-              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
             );
             if (currentItem) {
               if (currentItem.quantity === 1) {
@@ -527,7 +582,7 @@ import { showNotification } from "@/lib/events";
               } else {
                 await cartInstance.updateQuantity(
                   itemKey,
-                  currentItem.quantity - 1,
+                  currentItem.quantity - 1
                 );
                 await updateMiniCartItemQuantity(itemKey);
               }
@@ -535,10 +590,10 @@ import { showNotification } from "@/lib/events";
             break;
           }
 
-          case "remove": {
+          case 'remove': {
             const allItems = cartInstance.getItems();
             const itemToRemove = allItems.find(
-              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey,
+              (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
             );
             if (itemToRemove) {
               cartInstance.removeItem(itemKey);
@@ -549,139 +604,142 @@ import { showNotification } from "@/lib/events";
           }
         }
       } catch (error) {
-        console.error("Error handling quantity action:", error);
-        showNotification("Error updating cart", "error");
+        console.error('Error handling quantity action:', error);
+        showNotification('Error updating cart', 'error');
       }
-    });
+    },
+    { signal }
+  );
 
-    // Make closeMiniCart function accessible to this scope
-    function closeMiniCart() {
-      const overlay = document.getElementById("mini-cart-overlay");
-      const panel = document.getElementById("mini-cart-panel");
+  // Make closeMiniCart function accessible to this scope
+  function closeMiniCart() {
+    const overlay = document.getElementById('mini-cart-overlay');
+    const panel = document.getElementById('mini-cart-panel');
 
-      if (overlay && panel) {
-        panel.setAttribute("inert", "");
-        overlay.classList.add("opacity-0");
-        panel.classList.add("translate-x-full");
-        document.body.style.overflow = "unset";
-        dismissUndoBar();
+    if (overlay && panel) {
+      panel.setAttribute('inert', '');
+      overlay.classList.add('opacity-0');
+      panel.classList.add('translate-x-full');
+      document.body.style.overflow = 'unset';
+      dismissUndoBar();
 
-        setTimeout(() => {
-          overlay.classList.add("hidden");
-          panel.removeAttribute("inert");
-        }, 300);
-      }
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        panel.removeAttribute('inert');
+      }, 300);
+    }
+  }
+}
+
+function initMiniCart(signal: AbortSignal) {
+  const overlay = document.getElementById('mini-cart-overlay');
+  const panel = document.getElementById('mini-cart-panel');
+  const closeButton = document.getElementById('close-mini-cart');
+  const continueShoppingButton = document.getElementById('continue-shopping');
+  const continueShoppingFooterButton = document.getElementById(
+    'continue-shopping-footer'
+  );
+  const checkoutButton = document.getElementById('mini-cart-checkout');
+  const undoBtn = document.getElementById('mini-cart-undo-btn');
+  const undoDismissBtn = document.getElementById('mini-cart-undo-dismiss');
+
+  // Early return if essential elements missing
+  if (!overlay || !panel || !closeButton) {
+    console.error('Mini cart elements not found');
+    return;
+  }
+
+  function openMiniCart() {
+    if (overlay && panel && closeButton) {
+      miniCartTriggerElement = document.activeElement as HTMLElement | null;
+      overlay.classList.remove('hidden');
+      panel.removeAttribute('inert');
+
+      // Prevent page scrolling when MiniCart is open
+      document.body.style.overflow = 'hidden';
+
+      requestAnimationFrame(() => {
+        overlay.classList.remove('opacity-0');
+        panel.classList.remove('translate-x-full');
+      });
+
+      closeButton.focus();
+      updateMiniCartDisplay();
     }
   }
 
-  function initMiniCart(signal: AbortSignal) {
-    const overlay = document.getElementById("mini-cart-overlay");
-    const panel = document.getElementById("mini-cart-panel");
-    const closeButton = document.getElementById("close-mini-cart");
-    const continueShoppingButton = document.getElementById("continue-shopping");
-    const continueShoppingFooterButton = document.getElementById(
-      "continue-shopping-footer",
-    );
-    const checkoutButton = document.getElementById("mini-cart-checkout");
-    const undoBtn = document.getElementById("mini-cart-undo-btn");
-    const undoDismissBtn = document.getElementById("mini-cart-undo-dismiss");
+  function closeMiniCart() {
+    if (overlay && panel) {
+      panel.setAttribute('inert', '');
+      overlay.classList.add('opacity-0');
+      panel.classList.add('translate-x-full');
 
-    // Early return if essential elements missing
-    if (!overlay || !panel || !closeButton) {
-      console.error("Mini cart elements not found");
-      return;
+      // Restore page scrolling when MiniCart is closed
+      document.body.style.overflow = 'unset';
+      dismissUndoBar();
+
+      // Restoring focus in the same tick as setting `inert` can be overridden
+      // by the browser's own async blur-to-body handling for the now-inert
+      // subtree, so defer it until after that settles.
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        panel.removeAttribute('inert');
+        miniCartTriggerElement?.focus();
+        miniCartTriggerElement = null;
+      }, 300);
     }
+  }
 
-    function openMiniCart() {
-      if (overlay && panel && closeButton) {
-        miniCartTriggerElement = document.activeElement as HTMLElement | null;
-        overlay.classList.remove("hidden");
-        panel.removeAttribute("inert");
+  if (undoBtn) undoBtn.addEventListener('click', handleUndoRemove);
+  if (undoDismissBtn) undoDismissBtn.addEventListener('click', dismissUndoBar);
 
-        // Prevent page scrolling when MiniCart is open
-        document.body.style.overflow = "hidden";
+  closeButton.addEventListener('click', closeMiniCart);
+  overlay.addEventListener('click', closeMiniCart);
 
-        requestAnimationFrame(() => {
-          overlay.classList.remove("opacity-0");
-          panel.classList.remove("translate-x-full");
-        });
+  // Continue shopping buttons close the mini cart
+  if (continueShoppingButton) {
+    continueShoppingButton.addEventListener('click', closeMiniCart);
+  }
 
-        closeButton.focus();
-        updateMiniCartDisplay();
+  if (continueShoppingFooterButton) {
+    continueShoppingFooterButton.addEventListener('click', closeMiniCart);
+  }
+
+  // Checkout button navigates to cart page
+  if (checkoutButton) {
+    checkoutButton.addEventListener('click', async () => {
+      const cartInstance = await loadCart();
+      const items = cartInstance.getItems();
+
+      if (items.length === 0) {
+        showNotification('Your cart is empty', 'error');
+        return;
       }
-    }
 
-    function closeMiniCart() {
-      if (overlay && panel) {
-        panel.setAttribute("inert", "");
-        overlay.classList.add("opacity-0");
-        panel.classList.add("translate-x-full");
+      // Navigate to cart page (which is now the checkout page)
+      window.location.href = '/cart';
+    });
+  }
 
-        // Restore page scrolling when MiniCart is closed
-        document.body.style.overflow = "unset";
-        dismissUndoBar();
+  window.addEventListener('openMiniCart', openMiniCart, { signal });
+  window.addEventListener('cartUpdated', updateMiniCartDisplay, { signal });
 
-        // Restoring focus in the same tick as setting `inert` can be overridden
-        // by the browser's own async blur-to-body handling for the now-inert
-        // subtree, so defer it until after that settles.
-        setTimeout(() => {
-          overlay.classList.add("hidden");
-          panel.removeAttribute("inert");
-          miniCartTriggerElement?.focus();
-          miniCartTriggerElement = null;
-        }, 300);
-      }
-    }
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      if (!panel || panel.classList.contains('translate-x-full')) return;
 
-    if (undoBtn) undoBtn.addEventListener("click", handleUndoRemove);
-    if (undoDismissBtn)
-      undoDismissBtn.addEventListener("click", dismissUndoBar);
-
-    closeButton.addEventListener("click", closeMiniCart);
-    overlay.addEventListener("click", closeMiniCart);
-
-    // Continue shopping buttons close the mini cart
-    if (continueShoppingButton) {
-      continueShoppingButton.addEventListener("click", closeMiniCart);
-    }
-
-    if (continueShoppingFooterButton) {
-      continueShoppingFooterButton.addEventListener("click", closeMiniCart);
-    }
-
-    // Checkout button navigates to cart page
-    if (checkoutButton) {
-      checkoutButton.addEventListener("click", async () => {
-        const cartInstance = await loadCart();
-        const items = cartInstance.getItems();
-
-        if (items.length === 0) {
-          showNotification("Your cart is empty", "error");
-          return;
-        }
-
-        // Navigate to cart page (which is now the checkout page)
-        window.location.href = "/cart";
-      });
-    }
-
-    window.addEventListener("openMiniCart", openMiniCart, { signal });
-    window.addEventListener("cartUpdated", updateMiniCartDisplay, { signal });
-
-    document.addEventListener("keydown", (e) => {
-      if (!panel || panel.classList.contains("translate-x-full")) return;
-
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         closeMiniCart();
         return;
       }
 
-      if (e.key !== "Tab") return;
+      if (e.key !== 'Tab') return;
 
       const focusable = Array.from(
         panel.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
       ).filter((el) => el.offsetParent !== null);
       if (focusable.length === 0) return;
 
@@ -697,23 +755,25 @@ import { showNotification } from "@/lib/events";
         e.preventDefault();
         first.focus();
       }
-    }, { signal });
+    },
+    { signal }
+  );
+}
+
+// AbortController ensures all window/document listeners from the previous
+// initMiniCart call are torn down before re-registering on each navigation.
+// Without this, every astro:page-load stacks a new openMiniCart listener on
+// window, causing stale no-op handlers to absorb clicks before the live one fires.
+let miniCartAbortController: AbortController | null = null;
+
+function initMiniCartWithCleanup() {
+  if (miniCartAbortController) {
+    miniCartAbortController.abort();
   }
+  miniCartAbortController = new AbortController();
+  initMiniCart(miniCartAbortController.signal);
+}
 
-  // AbortController ensures all window/document listeners from the previous
-  // initMiniCart call are torn down before re-registering on each navigation.
-  // Without this, every astro:page-load stacks a new openMiniCart listener on
-  // window, causing stale no-op handlers to absorb clicks before the live one fires.
-  let miniCartAbortController: AbortController | null = null;
-
-  function initMiniCartWithCleanup() {
-    if (miniCartAbortController) {
-      miniCartAbortController.abort();
-    }
-    miniCartAbortController = new AbortController();
-    initMiniCart(miniCartAbortController.signal);
-  }
-
-  // astro:page-load fires on first load (ClientRouter active) and every navigation.
-  // No need for a separate DOMContentLoaded/immediate-init path.
-  document.addEventListener("astro:page-load", initMiniCartWithCleanup);
+// astro:page-load fires on first load (ClientRouter active) and every navigation.
+// No need for a separate DOMContentLoaded/immediate-init path.
+document.addEventListener('astro:page-load', initMiniCartWithCleanup);

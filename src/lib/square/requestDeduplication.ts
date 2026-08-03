@@ -1,10 +1,10 @@
 // src/lib/square/requestDeduplication.ts
 class RequestDeduplicator {
-  private inflight = new Map<string, Promise<any>>();
+  private inflight = new Map<string, Promise<unknown>>();
 
   async dedupe<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
     if (this.inflight.has(key)) {
-      return this.inflight.get(key)!;
+      return this.inflight.get(key)! as Promise<T>;
     }
 
     const promise = fetcher().finally(() => {

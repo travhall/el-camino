@@ -1,26 +1,30 @@
 // src/lib/cart/index.ts - COMPLETE FIXED VERSION
-import type { CartItem, CartEvent, CartState } from "./types";
-import type { ProductAvailabilityInfo } from "../square/types";
-import { ProductAvailabilityState, getAvailabilityInfo } from "../square/types";
+import type { CartItem, CartEvent, CartState } from './types';
+import type { ProductAvailabilityInfo } from '../square/types';
+import { ProductAvailabilityState, getAvailabilityInfo } from '../square/types';
 
 // Fetch bulk inventory via API endpoint — keeps Square credentials server-side only
-async function fetchBulkInventory(variationIds: string[]): Promise<Record<string, number>> {
+async function fetchBulkInventory(
+  variationIds: string[]
+): Promise<Record<string, number>> {
   if (variationIds.length === 0) return {};
   try {
-    const params = new URLSearchParams({ variationIds: variationIds.join(",") });
+    const params = new URLSearchParams({
+      variationIds: variationIds.join(','),
+    });
     const res = await fetch(`/api/batch-inventory?${params}`);
     if (!res.ok) throw new Error(`Inventory API error: ${res.status}`);
     const data = await res.json();
     return data.success ? (data.stockLevels as Record<string, number>) : {};
   } catch (err) {
-    console.error("[Cart] Failed to fetch bulk inventory:", err);
+    console.error('[Cart] Failed to fetch bulk inventory:', err);
     return {};
   }
 }
 
-const CART_STORAGE_KEY = "cart";
-const VIEW_TRANSITION_EVENT = "astro:after-swap";
-const PAGE_LOAD_EVENT = "astro:page-load";
+const CART_STORAGE_KEY = 'cart';
+const VIEW_TRANSITION_EVENT = 'astro:after-swap';
+const PAGE_LOAD_EVENT = 'astro:page-load';
 const DOM_READY_DELAY = 50;
 
 // ❌ REMOVED: Frontend Square client - this was causing CORS errors
@@ -42,13 +46,13 @@ class CartManager {
 
   private constructor() {
     this.items = new Map();
-    this.storage = typeof window !== "undefined" ? window.localStorage : null;
+    this.storage = typeof window !== 'undefined' ? window.localStorage : null;
     this.initialized = false;
     this.updateQueue = [];
     this.isProcessing = false;
     this.addItemInFlight = new Set();
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       this.init();
       this.setupEventHandlers();
     }
@@ -66,7 +70,7 @@ class CartManager {
     this.loadCart();
     this.initialized = true;
     this.queueUpdate(() =>
-      this.dispatchCartEvent("cartUpdated", { cartState: this.getState() })
+      this.dispatchCartEvent('cartUpdated', { cartState: this.getState() })
     );
   }
 
@@ -87,7 +91,7 @@ class CartManager {
         try {
           update();
         } catch (error) {
-          console.error("Error processing update:", error);
+          console.error('Error processing update:', error);
         }
       }
     }
@@ -96,12 +100,12 @@ class CartManager {
   }
 
   private setupEventHandlers(): void {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
 
     const handleStateUpdate = () => {
       this.queueUpdate(() => {
         this.loadCart();
-        this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+        this.dispatchCartEvent('cartUpdated', { cartState: this.getState() });
       });
     };
 
@@ -119,7 +123,7 @@ class CartManager {
 
   private loadCart(): void {
     if (!this.storage) {
-      console.error("Storage not available");
+      console.error('Storage not available');
       return;
     }
 
@@ -150,18 +154,18 @@ class CartManager {
           }
         });
       } else {
-        console.warn("Saved cart is not an array:", items);
+        console.warn('Saved cart is not an array:', items);
       }
 
       // console.log(`Cart now has ${this.items.size} items after loading`);
-      
+
       // Fetch sale info for all items after loading - dispatch event when complete
       if (this.items.size > 0) {
         this.saleInfoGeneration++;
         this.fetchSaleInfoForCartItems();
       }
     } catch (error) {
-      console.error("Error loading cart:", error);
+      console.error('Error loading cart:', error);
       this.items.clear();
     }
   }
@@ -178,15 +182,15 @@ class CartManager {
         (item) => item.variationId
       );
 
-      const response = await fetch("/api/sale-info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/sale-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ variationIds }),
       });
       if (this.saleInfoGeneration !== myGeneration) return; // stale — bail
 
       if (!response.ok) {
-        console.warn("Failed to fetch sale info:", response.status);
+        console.warn('Failed to fetch sale info:', response.status);
         return;
       }
 
@@ -210,17 +214,17 @@ class CartManager {
           if (this.saleInfoGeneration !== myGeneration) return; // final guard before saveCart
           this.saveCart();
           // Dispatch event to trigger UI refresh with sale pricing
-          this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+          this.dispatchCartEvent('cartUpdated', { cartState: this.getState() });
         }
       }
     } catch (error) {
-      console.warn("Error fetching sale info for cart items:", error);
+      console.warn('Error fetching sale info for cart items:', error);
     }
   }
 
   private saveCart(): void {
     if (!this.storage) {
-      console.error("Storage not available");
+      console.error('Storage not available');
       return;
     }
 
@@ -241,16 +245,9 @@ class CartManager {
       const serialized = JSON.stringify(itemsToSave);
       this.storage.setItem(CART_STORAGE_KEY, serialized);
 
-      // Verify data was saved correctly
-      const savedData = this.storage.getItem(CART_STORAGE_KEY);
-      const parsedData = savedData ? JSON.parse(savedData) : [];
-      // console.log(
-      //   `Verification: saved ${parsedData.length} items to localStorage`
-      // );
-
       // Note: callers are responsible for dispatching cartUpdated after saveCart()
     } catch (error) {
-      console.error("Error saving cart:", error);
+      console.error('Error saving cart:', error);
 
       // Fallback - try saving without extra data if the serialization failed
       try {
@@ -267,16 +264,16 @@ class CartManager {
         this.storage.setItem(CART_STORAGE_KEY, JSON.stringify(simpleItems));
         // console.log("Saved cart with simplified data");
       } catch (fallbackError) {
-        console.error("Critical error saving cart:", fallbackError);
+        console.error('Critical error saving cart:', fallbackError);
       }
     }
   }
 
   private dispatchCartEvent(
-    type: CartEvent["type"],
-    detail?: CartEvent["detail"]
+    type: CartEvent['type'],
+    detail?: CartEvent['detail']
   ): void {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
 
     const event = new CustomEvent(type, {
       detail,
@@ -434,7 +431,7 @@ class CartManager {
     try {
       itemKey = `${item.id}:${item.variationId}`;
       if (this.addItemInFlight.has(itemKey)) {
-        return { success: false, message: "Add already in progress" };
+        return { success: false, message: 'Add already in progress' };
       }
       this.addItemInFlight.add(itemKey);
 
@@ -449,24 +446,29 @@ class CartManager {
         isGiftCard
           ? Promise.resolve(99) // Gift cards: treat as always in stock
           : fetch(`/api/check-inventory?variationId=${item.variationId}`)
-              .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-              .then((data) => data.success ? (data.quantity || 0) : 0),
-        fetch("/api/sale-info", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+              .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+              .then((data) => (data.success ? data.quantity || 0 : 0)),
+        fetch('/api/sale-info', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ variationIds: [item.variationId] }),
         })
-          .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-          .then((data) => data.success ? data.saleInfo?.[item.variationId] ?? null : null),
+          .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+          .then((data) =>
+            data.success ? (data.saleInfo?.[item.variationId] ?? null) : null
+          ),
       ]);
 
       const availableQuantity =
-        inventoryResult.status === "fulfilled" ? inventoryResult.value : 999;
+        inventoryResult.status === 'fulfilled' ? inventoryResult.value : 999;
       const fetchedSaleInfo =
-        saleInfoResult.status === "fulfilled" ? saleInfoResult.value : null;
+        saleInfoResult.status === 'fulfilled' ? saleInfoResult.value : null;
 
-      if (inventoryResult.status === "rejected") {
-        console.warn("Inventory check failed, proceeding with add:", inventoryResult.reason);
+      if (inventoryResult.status === 'rejected') {
+        console.warn(
+          'Inventory check failed, proceeding with add:',
+          inventoryResult.reason
+        );
       }
 
       // Only block completely out of stock items
@@ -474,7 +476,7 @@ class CartManager {
         // console.log(`Item is out of stock`);
         return {
           success: false,
-          message: "This item is out of stock",
+          message: 'This item is out of stock',
         };
       }
 
@@ -519,8 +521,8 @@ class CartManager {
         }
 
         this.saveCart();
-        this.dispatchCartEvent("itemAdded", { item });
-        this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+        this.dispatchCartEvent('itemAdded', { item });
+        this.dispatchCartEvent('cartUpdated', { cartState: this.getState() });
 
         return {
           success: true,
@@ -544,14 +546,14 @@ class CartManager {
       }
 
       this.saveCart();
-      this.dispatchCartEvent("itemAdded", { item });
-      this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+      this.dispatchCartEvent('itemAdded', { item });
+      this.dispatchCartEvent('cartUpdated', { cartState: this.getState() });
 
       return {
         success: true,
         message:
           requestedQuantity === 1
-            ? "Added to cart"
+            ? 'Added to cart'
             : `Added ${requestedQuantity} to cart`,
       };
     } catch (error) {
@@ -581,8 +583,8 @@ class CartManager {
       // the removal is silently lost, reappearing on the next page load.
       this.saveCart();
       this.queueUpdate(() => {
-        this.dispatchCartEvent("itemRemoved", { item });
-        this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+        this.dispatchCartEvent('itemRemoved', { item });
+        this.dispatchCartEvent('cartUpdated', { cartState: this.getState() });
       });
     }
   }
@@ -593,7 +595,7 @@ class CartManager {
   ): Promise<{ success: boolean; message?: string }> {
     const item = this.items.get(id);
     if (!item) {
-      return { success: false, message: "Item not found in cart" };
+      return { success: false, message: 'Item not found in cart' };
     }
 
     if (quantity <= 0) {
@@ -606,7 +608,7 @@ class CartManager {
     // queueUpdate's debounce.
     this.saveCart();
     this.queueUpdate(() => {
-      this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+      this.dispatchCartEvent('cartUpdated', { cartState: this.getState() });
     });
 
     return { success: true };
@@ -659,20 +661,20 @@ class CartManager {
 
       if (cartUpdated) {
         this.saveCart();
-        this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+        this.dispatchCartEvent('cartUpdated', { cartState: this.getState() });
       }
 
       // Generate message
-      let message = "";
+      let message = '';
       if (removedItems.length > 0) {
         message += `Removed out-of-stock item${
-          removedItems.length > 1 ? "s" : ""
-        }: ${removedItems.join(", ")}. `;
+          removedItems.length > 1 ? 's' : ''
+        }: ${removedItems.join(', ')}. `;
       }
       if (adjustedItems.length > 0) {
         message += `Adjusted quantities for: ${adjustedItems
           .map((i) => `${i.name} (${i.oldQty} → ${i.newQty})`)
-          .join(", ")}. `;
+          .join(', ')}. `;
       }
 
       return {
@@ -680,10 +682,10 @@ class CartManager {
         message: message.length > 0 ? message : undefined,
       };
     } catch (error) {
-      console.error("Error validating cart:", error);
+      console.error('Error validating cart:', error);
       return {
         success: false,
-        message: "Failed to validate cart",
+        message: 'Failed to validate cart',
       };
     }
   }
@@ -694,15 +696,15 @@ class CartManager {
     // queueUpdate's debounce.
     this.saveCart();
     this.queueUpdate(() => {
-      this.dispatchCartEvent("cartCleared");
-      this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+      this.dispatchCartEvent('cartCleared');
+      this.dispatchCartEvent('cartUpdated', { cartState: this.getState() });
     });
   }
 
   public forceRefresh(): void {
     this.queueUpdate(() => {
       this.loadCart();
-      this.dispatchCartEvent("cartUpdated", { cartState: this.getState() });
+      this.dispatchCartEvent('cartUpdated', { cartState: this.getState() });
     });
   }
 }

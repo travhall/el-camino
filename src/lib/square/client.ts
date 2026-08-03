@@ -1,27 +1,27 @@
 // /src/lib/square/client.ts
-export { squareClient, validateEnvironment } from "./squareInstance";
+export { squareClient, validateEnvironment } from './squareInstance';
 
-import type { Product } from "./types";
-import { batchGetImageUrls } from "./imageUtils";
-import { logApiError } from "./apiUtils";
-import { catalogRetryClient } from "./apiRetry";
-import { logError } from "./errorUtils";
-import { processSquareError } from "./serverErrorUtils";
-import { fetchMeasurementUnits } from "./productUtils";
-import { requestDeduplicator } from "./requestDeduplication";
-import { validateEnvironment } from "./squareInstance";
-import { fetchAllCatalogItems, fetchCatalogItemById } from "./catalogFetch";
+import type { Product } from './types';
+import { batchGetImageUrls } from './imageUtils';
+import { logApiError } from './apiUtils';
+import { catalogRetryClient } from './apiRetry';
+import { logError } from './errorUtils';
+import { processSquareError } from './serverErrorUtils';
+import { fetchMeasurementUnits } from './productUtils';
+import { requestDeduplicator } from './requestDeduplication';
+import { validateEnvironment } from './squareInstance';
+import { fetchAllCatalogItems, fetchCatalogItemById } from './catalogFetch';
 import {
   collectBulkFetchIds,
   mapCatalogItemsToProducts,
   mapSingleCatalogItemToProduct,
-} from "./productMapper";
-import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
-import { productCache } from "@/lib/cache/blobCache";
-import { logger } from "@/lib/logger";
+} from './productMapper';
+import { EL_CAMINO_LOGO_DATA_URI } from '@/lib/constants/assets';
+import { productCache } from '@/lib/cache/blobCache';
+import { logger } from '@/lib/logger';
 
 export async function fetchProducts(): Promise<Product[]> {
-  const cacheKey = "products:all";
+  const cacheKey = 'products:all';
 
   validateEnvironment();
   return productCache.getOrCompute(cacheKey, () =>
@@ -31,11 +31,12 @@ export async function fetchProducts(): Promise<Product[]> {
           const allObjects = await fetchAllCatalogItems();
 
           if (!allObjects.length) {
-            logger.debug("No products found in catalog");
+            logger.debug('No products found in catalog');
             return [];
           }
 
-          const { imageIds, measurementUnitIds } = collectBulkFetchIds(allObjects);
+          const { imageIds, measurementUnitIds } =
+            collectBulkFetchIds(allObjects);
 
           const [imageUrlMap, measurementUnitsMap] = await Promise.all([
             imageIds.length > 0
@@ -46,12 +47,16 @@ export async function fetchProducts(): Promise<Product[]> {
               : Promise.resolve({} as Record<string, string>),
           ]);
 
-          return mapCatalogItemsToProducts(allObjects, imageUrlMap, measurementUnitsMap);
+          return mapCatalogItemsToProducts(
+            allObjects,
+            imageUrlMap,
+            measurementUnitsMap
+          );
         } catch (error) {
-          logApiError("fetchProducts", error);
+          logApiError('fetchProducts', error);
           return [];
         }
-      }, "fetchProducts")
+      }, 'fetchProducts')
     )
   );
 }
@@ -68,7 +73,8 @@ export async function fetchProduct(id: string): Promise<Product | null> {
       try {
         const catalogResult = await fetchCatalogItemById(id);
 
-        if (!catalogResult.object || catalogResult.object.type !== "ITEM") return null;
+        if (!catalogResult.object || catalogResult.object.type !== 'ITEM')
+          return null;
 
         const item = catalogResult.object;
         const variations = item.itemData?.variations || [];
@@ -76,11 +82,17 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         if (!variations.length) return null;
 
         const allItemImageIds: string[] = item.itemData?.imageIds ?? [];
-        const variationImageIds = variations.flatMap(
-          (v: any) => v.itemVariationData?.imageIds ?? []
+        const variationImageIds = variations.flatMap((v) =>
+          v.type === 'ITEM_VARIATION'
+            ? (v.itemVariationData?.imageIds ?? [])
+            : []
         );
         const measurementUnitIds = variations
-          .map((v: any) => v.itemVariationData?.measurementUnitId)
+          .map((v) =>
+            v.type === 'ITEM_VARIATION'
+              ? v.itemVariationData?.measurementUnitId
+              : undefined
+          )
           .filter(Boolean) as string[];
 
         const [allItemImages, variationImages, unitsMap] = await Promise.all([
@@ -97,7 +109,8 @@ export async function fetchProduct(id: string): Promise<Product | null> {
 
         const primaryImageId = allItemImageIds[0];
         const imageUrl =
-          (primaryImageId && allItemImages[primaryImageId]) || EL_CAMINO_LOGO_DATA_URI;
+          (primaryImageId && allItemImages[primaryImageId]) ||
+          EL_CAMINO_LOGO_DATA_URI;
 
         const allImageUrls: string[] = allItemImageIds
           .map((imgId) => allItemImages[imgId])
@@ -122,6 +135,6 @@ export async function fetchProduct(id: string): Promise<Product | null> {
         logError(appError);
         return null;
       }
-    }, "fetchProduct")
+    }, 'fetchProduct')
   );
 }

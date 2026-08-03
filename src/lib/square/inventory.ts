@@ -1,9 +1,9 @@
 // src/lib/square/inventory.ts
-import { squareClient } from "./client";
-import type { Product, ProductVariation } from "./types";
-import { inventoryCache } from "@/lib/cache/blobCache";
-import { logError, handleError } from "./errorUtils";
-import { processSquareError } from "./serverErrorUtils";
+import { squareClient } from './client';
+import type { Product, ProductVariation } from './types';
+import { inventoryCache } from '@/lib/cache/blobCache';
+import { logError, handleError } from './errorUtils';
+import { processSquareError } from './serverErrorUtils';
 import { requestDeduplicator } from './requestDeduplication';
 import { fetchInventoryCounts } from './inventoryCore';
 
@@ -14,7 +14,7 @@ import { fetchInventoryCounts } from './inventoryCore';
  */
 export async function checkItemInventory(variationId: string): Promise<number> {
   const cacheKey = `inventory:${variationId}`;
-  
+
   return requestDeduplicator.dedupe(cacheKey, () =>
     inventoryCache.getOrCompute(variationId, async () => {
       try {
@@ -26,7 +26,7 @@ export async function checkItemInventory(variationId: string): Promise<number> {
 
         // Get the counts and find IN_STOCK state
         const counts = inventoryPage.data || [];
-        const inStockCount = counts.find((count: any) => count.state === "IN_STOCK");
+        const inStockCount = counts.find((count) => count.state === 'IN_STOCK');
 
         // Parse quantity as number (Square returns string)
         const quantity = inStockCount?.quantity
@@ -139,4 +139,3 @@ export async function getProductStockStatus(product: Product): Promise<{
 
   return result;
 }
-

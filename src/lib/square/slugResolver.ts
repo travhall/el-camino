@@ -1,8 +1,8 @@
 // src/lib/square/slugResolver.ts
-import { squareClient } from "./client";
-import { createSlug } from "./slugUtils";
-import { slugCache } from "../cache/blobCache";
-import { logger } from "@/lib/logger";
+import { squareClient } from './client';
+import { createSlug } from './slugUtils';
+import { slugCache } from '../cache/blobCache';
+import { logger } from '@/lib/logger';
 
 /**
  * Lightweight slug-to-ID resolver
@@ -10,7 +10,7 @@ import { logger } from "@/lib/logger";
  * Now uses BlobCache for serverless persistence
  */
 class SlugResolver {
-  private CACHE_KEY = "slug-to-id-map";
+  private CACHE_KEY = 'slug-to-id-map';
   private initializing = false;
   private initPromise: Promise<Record<string, string>> | null = null;
 
@@ -50,18 +50,18 @@ class SlugResolver {
    * Only fetches minimal data needed for slug generation
    */
   private async buildSlugMap(): Promise<Record<string, string>> {
-    logger.debug("[SlugResolver] Building slug map from Square API...");
+    logger.debug('[SlugResolver] Building slug map from Square API...');
     const startTime = Date.now();
 
     try {
       // Fetch only ITEM objects with minimal data
-      const response = await squareClient.catalog.list({ types: "ITEM" });
+      const response = await squareClient.catalog.list({ types: 'ITEM' });
 
       const map: Record<string, string> = {};
 
       for (const item of response.data ?? []) {
-        if (item.type === "ITEM" && (item as any).itemData?.name) {
-          const slug = createSlug((item as any).itemData.name);
+        if (item.type === 'ITEM' && item.itemData?.name) {
+          const slug = createSlug(item.itemData.name);
           map[slug] = item.id;
         }
       }
@@ -76,7 +76,7 @@ class SlugResolver {
 
       return map;
     } catch (error) {
-      console.error("[SlugResolver] Failed to build slug map:", error);
+      console.error('[SlugResolver] Failed to build slug map:', error);
       // Return empty map on error - fallback will handle it
       return {};
     }
@@ -86,7 +86,7 @@ class SlugResolver {
    * Manually refresh the slug map (e.g., after webhook)
    */
   async refresh(): Promise<void> {
-    logger.debug("[SlugResolver] Refreshing slug map...");
+    logger.debug('[SlugResolver] Refreshing slug map...');
     await slugCache.delete(this.CACHE_KEY);
     await this.buildSlugMap();
   }

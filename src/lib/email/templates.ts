@@ -12,11 +12,11 @@
 //   honey-cream-200 → #e8ddc4  (divider / border)
 //   fig-leaf-500    → #4d7a2e  (CTA button / accent)
 //   fig-leaf-600    → #3a5e22  (CTA hover — used for border)
+// cSpell:ignore Segoe cellspacing middot
 
-import type { Order } from "square-legacy";
-import type { PendingOrderContact } from "./pendingOrders";
-import { siteConfig } from "@/lib/site-config";
-
+import type { Order } from 'square-legacy';
+import type { PendingOrderContact } from './pendingOrders';
+import { siteConfig } from '@/lib/site-config';
 
 interface TemplatePayload {
   order: Order;
@@ -26,9 +26,11 @@ interface TemplatePayload {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-export function formatMoney(amount: bigint | number | undefined | null): string {
-  if (amount == null) return "$0.00";
-  const cents = typeof amount === "bigint" ? Number(amount) : amount;
+export function formatMoney(
+  amount: bigint | number | undefined | null
+): string {
+  if (amount == null) return '$0.00';
+  const cents = typeof amount === 'bigint' ? Number(amount) : amount;
   return `$${(cents / 100).toFixed(2)}`;
 }
 
@@ -43,25 +45,25 @@ export function shortOrderId(orderId: string): string {
  */
 export function formatPickupTime(isoString: string): string {
   const date = new Date(isoString);
-  return date.toLocaleString("en-US", {
-    timeZone: "America/Chicago",
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
+  return date.toLocaleString('en-US', {
+    timeZone: 'America/Chicago',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
   });
 }
 
 export function escHtml(str: string | null | undefined): string {
-  if (!str) return "";
+  if (!str) return '';
   return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ─── Shared layout wrappers ───────────────────────────────────────────────────
@@ -192,21 +194,21 @@ function lineItemsTable(order: Order): string {
 
   const rows = items
     .map((item) => {
-      const qty = item.quantity ?? "1";
-      const name = item.name ?? "Item";
+      const qty = item.quantity ?? '1';
+      const name = item.name ?? 'Item';
       const total = formatMoney(item.totalMoney?.amount);
       return `
         <tr>
           <td style="padding:10px 0;font-size:14px;color:#2b2215;vertical-align:top;">
             ${name}
-            ${Number(qty) > 1 ? `<span style="color:#4f3d22;font-size:13px;"> &times; ${qty}</span>` : ""}
+            ${Number(qty) > 1 ? `<span style="color:#4f3d22;font-size:13px;"> &times; ${qty}</span>` : ''}
           </td>
           <td style="padding:10px 0;font-size:14px;color:#2b2215;text-align:right;vertical-align:top;white-space:nowrap;">
             ${total}
           </td>
         </tr>`;
     })
-    .join("");
+    .join('');
 
   const total = formatMoney(order.totalMoney?.amount);
 
@@ -228,10 +230,10 @@ function lineItemsTable(order: Order): string {
 export function buildOrderConfirmationHtml({
   order,
   contact,
-  hoursLine = "See website for hours",
+  hoursLine = 'See website for hours',
 }: TemplatePayload): string {
-  const orderId = order.id ?? "";
-  const isPickup = contact.fulfillmentMethod === "pickup";
+  const orderId = order.id ?? '';
+  const isPickup = contact.fulfillmentMethod === 'pickup';
 
   const fulfillmentSection = isPickup
     ? pickupDetailsSection(order, hoursLine)
@@ -247,7 +249,7 @@ export function buildOrderConfirmationHtml({
         Order Confirmed
       </h1>
       <p style="margin:0 0 20px;font-size:15px;color:#4f3d22;">
-        Thanks, ${escHtml(contact.name.split(" ")[0])}! We've got your order.
+        Thanks, ${escHtml(contact.name.split(' ')[0])}! We've got your order.
       </p>
       <p style="margin:0 0 24px;font-size:13px;color:#6b6256;">
         Order reference: <strong style="color:#2b2215;">#${shortOrderId(orderId)}</strong>
@@ -291,7 +293,7 @@ function shippingDetailsSection(
   order: Order,
   contact: PendingOrderContact
 ): string {
-  const fulfillment = order.fulfillments?.find((f) => f.type === "SHIPMENT");
+  const fulfillment = order.fulfillments?.find((f) => f.type === 'SHIPMENT');
   const recipient = fulfillment?.shipmentDetails?.recipient;
   const address = recipient?.address;
 
@@ -303,7 +305,7 @@ function shippingDetailsSection(
       : null,
   ]
     .filter(Boolean)
-    .join("<br>");
+    .join('<br>');
 
   return `
   <tr>
@@ -313,7 +315,7 @@ function shippingDetailsSection(
       </p>
       <p style="margin:0;font-size:14px;color:#2b2215;line-height:1.6;">
         <strong>${escHtml(contact.name)}</strong><br>
-        ${addressLines || "Address on file"}
+        ${addressLines || 'Address on file'}
       </p>
       <p style="margin:12px 0 0;font-size:13px;color:#4f3d22;">
         We'll email you when your order ships.
@@ -323,7 +325,7 @@ function shippingDetailsSection(
 }
 
 function pickupDetailsSection(order: Order, hoursLine: string): string {
-  const fulfillment = order.fulfillments?.find((f) => f.type === "PICKUP");
+  const fulfillment = order.fulfillments?.find((f) => f.type === 'PICKUP');
   const pickupAt = fulfillment?.pickupDetails?.pickupAt;
 
   let readyText = "We'll reach out when your order is ready.";
@@ -355,7 +357,7 @@ export interface BackInStockPayload {
   productName: string;
   productUrl: string;
   variationName?: string; // e.g. "Size 10" or "Navy / Large"
-  price?: number;         // cents
+  price?: number; // cents
 }
 
 export function buildBackInStockHtml({
@@ -365,7 +367,7 @@ export function buildBackInStockHtml({
   variationName,
   price,
 }: BackInStockPayload): string {
-  const firstName = escHtml(customerName.split(" ")[0]);
+  const firstName = escHtml(customerName.split(' ')[0]);
   const displayName = variationName
     ? `${escHtml(productName)} — ${escHtml(variationName)}`
     : escHtml(productName);
@@ -401,9 +403,10 @@ export function buildBackInStockHtml({
             <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#2b2215;">
               ${displayName}
             </p>
-            ${priceStr
-              ? `<p style="margin:0 0 16px;font-size:15px;color:#4d7a2e;font-weight:600;">${priceStr}</p>`
-              : `<p style="margin:0 0 16px;"></p>`
+            ${
+              priceStr
+                ? `<p style="margin:0 0 16px;font-size:15px;color:#4d7a2e;font-weight:600;">${priceStr}</p>`
+                : `<p style="margin:0 0 16px;"></p>`
             }
             <a href="${escHtml(productUrl)}"
                style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:10px 24px;border-radius:6px;border:2px solid #3a5e22;">
@@ -429,8 +432,8 @@ export function buildShippingOrderNotificationHtml({
   order,
   contact,
 }: TemplatePayload): string {
-  const orderId = order.id ?? "";
-  const fulfillment = order.fulfillments?.find((f) => f.type === "SHIPMENT");
+  const orderId = order.id ?? '';
+  const fulfillment = order.fulfillments?.find((f) => f.type === 'SHIPMENT');
   const recipient = fulfillment?.shipmentDetails?.recipient;
   const address = recipient?.address;
   const total = formatMoney(order.totalMoney?.amount);
@@ -443,7 +446,7 @@ export function buildShippingOrderNotificationHtml({
       : null,
   ]
     .filter(Boolean)
-    .join("<br>");
+    .join('<br>');
 
   const content = `
   ${emailHeader()}
@@ -497,7 +500,7 @@ export function buildShippingOrderNotificationHtml({
       </p>
       <p style="margin:0;font-size:14px;color:#2b2215;line-height:1.7;">
         <strong>${escHtml(contact.name)}</strong><br>
-        ${addressLines || "Address not captured"}
+        ${addressLines || 'Address not captured'}
       </p>
     </td>
   </tr>
@@ -537,7 +540,7 @@ export function buildShippingOrderNotificationHtml({
 // ─── Customer Shipping Confirmation ───────────────────────────────────────────
 
 export interface ShippingConfirmationPayload {
-  order: import("square-legacy").Order;
+  order: import('square-legacy').Order;
   contact: PendingOrderContact;
   trackingNumber?: string;
   carrier?: string; // "USPS" | "UPS" | "FedEx" | "Other"
@@ -545,11 +548,11 @@ export interface ShippingConfirmationPayload {
 
 function trackingUrl(carrier: string, tracking: string): string | null {
   switch (carrier.toUpperCase()) {
-    case "USPS":
+    case 'USPS':
       return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${tracking}`;
-    case "UPS":
+    case 'UPS':
       return `https://www.ups.com/track?tracknum=${tracking}`;
-    case "FEDEX":
+    case 'FEDEX':
       return `https://www.fedex.com/fedextrack/?trknbr=${tracking}`;
     default:
       return null;
@@ -562,8 +565,8 @@ export function buildShippingConfirmationHtml({
   trackingNumber,
   carrier,
 }: ShippingConfirmationPayload): string {
-  const orderId = order.id ?? "";
-  const firstName = escHtml(contact.name.split(" ")[0]);
+  const orderId = order.id ?? '';
+  const firstName = escHtml(contact.name.split(' ')[0]);
   const hasTracking = !!trackingNumber;
   const trackLink =
     hasTracking && carrier ? trackingUrl(carrier, trackingNumber!) : null;
@@ -577,20 +580,22 @@ export function buildShippingConfirmationHtml({
         Tracking
       </p>
       <div style="background-color:#f5edda;border-radius:6px;padding:16px 20px;">
-        ${carrier ? `<p style="margin:0 0 4px;font-size:13px;color:#4f3d22;">${carrier}</p>` : ""}
-        <p style="margin:0 0 ${trackLink ? "16px" : "0"};font-size:15px;font-weight:700;color:#2b2215;font-family:monospace;letter-spacing:0.04em;">
+        ${carrier ? `<p style="margin:0 0 4px;font-size:13px;color:#4f3d22;">${carrier}</p>` : ''}
+        <p style="margin:0 0 ${trackLink ? '16px' : '0'};font-size:15px;font-weight:700;color:#2b2215;font-family:monospace;letter-spacing:0.04em;">
           ${trackingNumber}
         </p>
-        ${trackLink
-          ? `<a href="${trackLink}"
+        ${
+          trackLink
+            ? `<a href="${trackLink}"
                style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;padding:8px 20px;border-radius:6px;border:2px solid #3a5e22;">
                Track Package
              </a>`
-          : ""}
+            : ''
+        }
       </div>
     </td>
   </tr>`
-    : "";
+    : '';
 
   const content = `
   ${emailHeader()}
@@ -648,9 +653,9 @@ export function buildPickupNotificationHtml({
   order,
   contact,
 }: TemplatePayload): string {
-  const orderId = order.id ?? "";
-  const fulfillment = order.fulfillments?.find((f) => f.type === "PICKUP");
-  const notes = fulfillment?.pickupDetails?.note ?? "";
+  const orderId = order.id ?? '';
+  const fulfillment = order.fulfillments?.find((f) => f.type === 'PICKUP');
+  const notes = fulfillment?.pickupDetails?.note ?? '';
   const total = formatMoney(order.totalMoney?.amount);
 
   // Extract customer notes from the pickup note field (appended by create-checkout)
@@ -696,11 +701,13 @@ export function buildPickupNotificationHtml({
           <td style="font-size:14px;color:#2b2215;font-family:monospace;">#${shortOrderId(orderId)}</td>
         </tr>
       </table>
-      ${customerNotes
-        ? `<div style="margin-top:12px;padding:10px 14px;background-color:#f5edda;border-left:3px solid #4d7a2e;border-radius:0 4px 4px 0;">
+      ${
+        customerNotes
+          ? `<div style="margin-top:12px;padding:10px 14px;background-color:#f5edda;border-left:3px solid #4d7a2e;border-radius:0 4px 4px 0;">
              <p style="margin:0;font-size:13px;color:#2b2215;"><strong>Customer note:</strong> ${escHtml(customerNotes)}</p>
            </div>`
-        : ""}
+          : ''
+      }
     </td>
   </tr>
 
@@ -751,9 +758,9 @@ export function buildPickupReminderHtml({
   orderId,
   items,
   pickupAt,
-  hoursLine = "See website for hours",
+  hoursLine = 'See website for hours',
 }: PickupReminderPayload): string {
-  const firstName = escHtml(customerName.split(" ")[0]);
+  const firstName = escHtml(customerName.split(' ')[0]);
   const shortId = orderId.slice(-8).toUpperCase();
 
   const itemRows = items
@@ -762,17 +769,17 @@ export function buildPickupReminderHtml({
       <tr>
         <td style="padding:8px 0;font-size:14px;color:#2b2215;vertical-align:top;">
           ${item.name}
-          ${Number(item.qty) > 1 ? `<span style="color:#4f3d22;font-size:13px;"> &times; ${item.qty}</span>` : ""}
+          ${Number(item.qty) > 1 ? `<span style="color:#4f3d22;font-size:13px;"> &times; ${item.qty}</span>` : ''}
         </td>
-      </tr>`,
+      </tr>`
     )
-    .join("");
+    .join('');
 
   const pickupTimeNote = pickupAt
     ? `<p style="margin:0 0 8px;font-size:13px;color:#4f3d22;">
         This order was expected for pickup by approximately <strong>${pickupAt}</strong>. Stop by when you can — we'll hold it for you.
        </p>`
-    : "";
+    : '';
 
   const content = `
   ${emailHeader()}
@@ -887,7 +894,7 @@ export function buildBisAdminNotificationHtml({
               Total waiting
             </p>
             <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#2b2215;">
-              ${totalSubscribers} ${totalSubscribers === 1 ? "person" : "people"}
+              ${totalSubscribers} ${totalSubscribers === 1 ? 'person' : 'people'}
             </p>
             <a href="${adminUrl}"
                style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:10px 24px;border-radius:6px;border:2px solid #3a5e22;">

@@ -1,8 +1,8 @@
 // src/lib/square/categoryLookup.ts - Optimized category lookup utilities
 
-import { categoryCache } from "@/lib/cache/blobCache";
-import { requestDeduplicator } from "./requestDeduplication";
-import type { Category, CategoryHierarchy } from "./types";
+import { categoryCache } from '@/lib/cache/blobCache';
+import { requestDeduplicator } from './requestDeduplication';
+import type { Category, CategoryHierarchy } from './types';
 
 /**
  * Invalidate category-related cache entries
@@ -11,11 +11,11 @@ import type { Category, CategoryHierarchy } from "./types";
 async function invalidateCategoryCache(slug?: string): Promise<void> {
   if (slug) {
     const cacheKey = `category-by-slug:${slug}`;
-    await (categoryCache as any).delete?.(cacheKey);
+    await categoryCache.delete(cacheKey);
   }
   // Clear the main navigation cache to force fresh fetch
-  await (categoryCache as any).delete?.("nav-hierarchy");
-  await (categoryCache as any).delete?.("hierarchy-with-products");
+  await categoryCache.delete('nav-hierarchy');
+  await categoryCache.delete('hierarchy-with-products');
 }
 
 /**
@@ -33,7 +33,7 @@ export async function getCategoryBySlug(
   return requestDeduplicator.dedupe(cacheKey, () =>
     categoryCache.getOrCompute(cacheKey, async () => {
       // Import here to avoid circular dependency
-      const { fetchCategoryHierarchy } = await import("./categories");
+      const { fetchCategoryHierarchy } = await import('./categories');
       const hierarchy = await fetchCategoryHierarchy();
 
       // console.log(`[CategoryLookup] Searching for slug: "${slug}"`);
@@ -74,7 +74,7 @@ export async function getCategoryWithSubcategories(
   const cacheKey = `category-hierarchy:${categoryId}`;
 
   return categoryCache.getOrCompute(cacheKey, async () => {
-    const { fetchCategoryHierarchy } = await import("./categories");
+    const { fetchCategoryHierarchy } = await import('./categories');
     const hierarchy = await fetchCategoryHierarchy();
 
     // Find in top-level hierarchy
@@ -108,7 +108,7 @@ export async function resolveCategoryPath(slugPath: string): Promise<{
   parentCategory: Category | null;
   subcategories: Category[];
 }> {
-  const slugParts = slugPath.split("/");
+  const slugParts = slugPath.split('/');
 
   // Single slug (top-level category)
   if (slugParts.length === 1) {
@@ -187,7 +187,7 @@ export async function resolveCategoryPathWithRetry(
     attempt++;
     // console.log(`[CategoryLookup] 🔄 Retry ${attempt}/${maxRetries} for "${slugPath}" - invalidating cache`);
 
-    const slugParts = slugPath.split("/");
+    const slugParts = slugPath.split('/');
     await Promise.all(slugParts.map((slug) => invalidateCategoryCache(slug)));
 
     // Brief delay to allow cache propagation

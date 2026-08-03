@@ -1,10 +1,11 @@
+import type { CatalogObject } from "square-legacy";
 import { squareClient } from "./squareInstance";
 import { logger } from "@/lib/logger";
 
 const MAX_CATALOG_PAGES = 20;
 
-export async function fetchAllCatalogItems(): Promise<any[]> {
-  const allObjects: any[] = [];
+export async function fetchAllCatalogItems(): Promise<CatalogObject[]> {
+  const allObjects: CatalogObject[] = [];
   let cursor: string | undefined = undefined;
   let requestCount = 0;
 

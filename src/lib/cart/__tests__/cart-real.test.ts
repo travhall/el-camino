@@ -8,15 +8,14 @@ import type { CartItem } from '../types';
 
 // Mock dependencies before importing cart
 vi.mock('../../square/inventory', () => ({
-  checkBulkInventory: vi.fn()
+  checkBulkInventory: vi.fn(),
 }));
 
 // Mock fetch for inventory API calls
 global.fetch = vi.fn();
 
 describe('CartManager Real Implementation Tests', () => {
-  let CartManager: any;
-  let cart: any;
+  let cart: (typeof import('../index'))['cart'];
   let mockLocalStorage: { [key: string]: string };
 
   beforeEach(async () => {
@@ -36,9 +35,9 @@ describe('CartManager Real Implementation Tests', () => {
         },
         clear: () => {
           mockLocalStorage = {};
-        }
+        },
       },
-      writable: true
+      writable: true,
     });
 
     // Mock successful inventory check by default
@@ -46,13 +45,13 @@ describe('CartManager Real Implementation Tests', () => {
       if (url.includes('/api/check-inventory')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ success: true, quantity: 10 })
+          json: () => Promise.resolve({ success: true, quantity: 10 }),
         });
       }
       if (url.includes('/api/sale-info')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ success: true, saleInfo: {} })
+          json: () => Promise.resolve({ success: true, saleInfo: {} }),
         });
       }
       return Promise.reject(new Error('Unexpected fetch call'));
@@ -66,7 +65,7 @@ describe('CartManager Real Implementation Tests', () => {
     cart.clear();
 
     // Wait for initialization
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   });
 
   afterEach(() => {
@@ -84,7 +83,7 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 1,
         variationName: 'Small',
         image: 'test.jpg',
-        unit: 'UNIT'
+        unit: 'UNIT',
       };
 
       const result = await cart.addItem(item);
@@ -103,7 +102,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Product 1',
         price: 2500,
         quantity: 2,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       const item2: CartItem = {
@@ -113,7 +112,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Product 2',
         price: 1500,
         quantity: 1,
-        variationName: 'Medium'
+        variationName: 'Medium',
       };
 
       await cart.addItem(item1);
@@ -131,7 +130,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Test Product',
         price: 2500,
         quantity: 1,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       await cart.addItem(item);
@@ -152,7 +151,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Test Product',
         price: 2500,
         quantity: 1,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       await cart.addItem(item);
@@ -162,7 +161,7 @@ describe('CartManager Real Implementation Tests', () => {
       cart.removeItem(itemKey);
 
       // Wait for async removal
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(cart.getItems()).toHaveLength(0);
     });
@@ -175,7 +174,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Product 1',
         price: 2500,
         quantity: 1,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       const item2: CartItem = {
@@ -185,14 +184,14 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Product 2',
         price: 1500,
         quantity: 1,
-        variationName: 'Medium'
+        variationName: 'Medium',
       };
 
       await cart.addItem(item1);
       await cart.addItem(item2);
 
       cart.clear();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(cart.getItems()).toHaveLength(0);
       expect(cart.getItemCount()).toBe(0);
@@ -206,7 +205,7 @@ describe('CartManager Real Implementation Tests', () => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ success: true, quantity: 0 })
+            json: () => Promise.resolve({ success: true, quantity: 0 }),
           });
         }
         return Promise.reject(new Error('Unexpected fetch'));
@@ -219,7 +218,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Out of Stock Product',
         price: 2500,
         quantity: 1,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       const result = await cart.addItem(item);
@@ -234,13 +233,13 @@ describe('CartManager Real Implementation Tests', () => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ success: true, quantity: 3 })
+            json: () => Promise.resolve({ success: true, quantity: 3 }),
           });
         }
         if (url.includes('/api/sale-info')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ success: true, saleInfo: {} })
+            json: () => Promise.resolve({ success: true, saleInfo: {} }),
           });
         }
         return Promise.reject(new Error('Unexpected fetch'));
@@ -253,7 +252,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Limited Stock Product',
         price: 2500,
         quantity: 5, // Requesting more than available
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       const result = await cart.addItem(item);
@@ -268,7 +267,7 @@ describe('CartManager Real Implementation Tests', () => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: false,
-            status: 500
+            status: 500,
           });
         }
         return Promise.reject(new Error('Unexpected fetch'));
@@ -281,7 +280,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Test Product',
         price: 2500,
         quantity: 1,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       // Should still allow add when inventory check fails (graceful degradation)
@@ -299,13 +298,13 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Test Product',
         price: 2500,
         quantity: 1,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       await cart.addItem(item);
 
       // Wait for save
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const savedData = mockLocalStorage['cart'];
       expect(savedData).toBeDefined();
@@ -323,7 +322,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Persisted Product',
         price: 2500,
         quantity: 2,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       // Manually set localStorage
@@ -334,7 +333,7 @@ describe('CartManager Real Implementation Tests', () => {
       const freshCart = cartModule.cart;
       freshCart.forceRefresh();
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(freshCart.getItems()).toHaveLength(1);
       expect(freshCart.getItems()[0].title).toBe('Persisted Product');
@@ -348,7 +347,7 @@ describe('CartManager Real Implementation Tests', () => {
       const freshCart = cartModule.cart;
       freshCart.forceRefresh();
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Should not crash, should start with empty cart
       expect(freshCart.getItems()).toHaveLength(0);
@@ -364,7 +363,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Test Product',
         price: 2500,
         quantity: 1,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       await cart.addItem(item);
@@ -384,7 +383,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Test Product',
         price: 2500,
         quantity: 1,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       const item2: CartItem = {
@@ -394,7 +393,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Test Product',
         price: 3000,
         quantity: 1,
-        variationName: 'Large'
+        variationName: 'Large',
       };
 
       await cart.addItem(item1);
@@ -413,7 +412,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Test Product',
         price: 2500,
         quantity: 3,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       await cart.addItem(item);
@@ -424,7 +423,11 @@ describe('CartManager Real Implementation Tests', () => {
 
     it('should calculate remaining quantity correctly', () => {
       const totalAvailable = 10;
-      const remaining = cart.getRemainingQuantity('prod-1', 'var-1', totalAvailable);
+      const remaining = cart.getRemainingQuantity(
+        'prod-1',
+        'var-1',
+        totalAvailable
+      );
 
       expect(remaining).toBe(10); // Nothing in cart yet
     });
@@ -456,8 +459,8 @@ describe('CartManager Real Implementation Tests', () => {
         saleInfo: {
           salePrice: 2000,
           originalPrice: 2500,
-          discountPercent: 20
-        }
+          discountPercent: 20,
+        },
       };
 
       await cart.addItem(item);
@@ -474,7 +477,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Regular Product',
         price: 2500,
         quantity: 2,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       await cart.addItem(item);
@@ -493,7 +496,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Test Product',
         price: 2500,
         quantity: 2,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       await cart.addItem(item);
@@ -516,14 +519,14 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Test Product',
         price: 2500,
         quantity: 2,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       await cart.addItem(item);
       const itemKey = `${item.id}:${item.variationId}`;
 
       await cart.updateQuantity(itemKey, 0);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(cart.getItems()).toHaveLength(0);
     });
@@ -539,9 +542,9 @@ describe('CartManager Real Implementation Tests', () => {
             throw new Error('QuotaExceededError');
           },
           removeItem: () => {},
-          clear: () => {}
+          clear: () => {},
         },
-        writable: true
+        writable: true,
       });
 
       const item: CartItem = {
@@ -551,7 +554,7 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'Test Product',
         price: 2500,
         quantity: 1,
-        variationName: 'Small'
+        variationName: 'Small',
       };
 
       // Should not throw even if save fails
@@ -566,7 +569,7 @@ describe('CartManager Real Implementation Tests', () => {
     });
   });
 
-  // ── Additional coverage: gift cards, addItem edge cases, validateCart ──────
+  // ── Additional coverage: gift cards, addItem edge cases, validateCart cSpell:ignore behaviour nosale nosuccess nostorage noqty nocatalog ──────
 
   describe('Gift card behaviour', () => {
     it('adds a gift card without calling the inventory API', async () => {
@@ -771,7 +774,9 @@ describe('CartManager Real Implementation Tests', () => {
       const result = await cart.addItem(item);
       expect(result.success).toBe(true);
       // saleInfo should remain undefined / null since the fetch failed
-      const cartItem = cart.getItems().find((i: any) => i.variationId === 'var-nosale');
+      const cartItem = cart
+        .getItems()
+        .find((i: any) => i.variationId === 'var-nosale');
       expect(cartItem).toBeDefined();
       expect(cartItem?.saleInfo).toBeFalsy();
     });
@@ -781,7 +786,7 @@ describe('CartManager Real Implementation Tests', () => {
     beforeEach(async () => {
       // Ensure we start with a clean cart for these tests
       cart.clear();
-      await new Promise(r => setTimeout(r, 60));
+      await new Promise((r) => setTimeout(r, 60));
     });
 
     it('returns success immediately when the cart is empty', async () => {
@@ -804,10 +809,11 @@ describe('CartManager Real Implementation Tests', () => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              success: true,
-              stockLevels: { 'var-v': 10 },
-            }),
+            json: () =>
+              Promise.resolve({
+                success: true,
+                stockLevels: { 'var-v': 10 },
+              }),
           });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
@@ -833,10 +839,11 @@ describe('CartManager Real Implementation Tests', () => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              success: true,
-              stockLevels: { 'var-oos': 0 },
-            }),
+            json: () =>
+              Promise.resolve({
+                success: true,
+                stockLevels: { 'var-oos': 0 },
+              }),
           });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
@@ -863,10 +870,11 @@ describe('CartManager Real Implementation Tests', () => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              success: true,
-              stockLevels: { 'var-adj': 3 },
-            }),
+            json: () =>
+              Promise.resolve({
+                success: true,
+                stockLevels: { 'var-adj': 3 },
+              }),
           });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
@@ -881,19 +889,41 @@ describe('CartManager Real Implementation Tests', () => {
 
     it('handles multiple items with mixed stock states in one pass', async () => {
       await Promise.all([
-        cart.addItem({ id: 'p1', variationId: 'v1', catalogObjectId: 'c1', title: 'OOS Item', price: 100, quantity: 1 }),
-        cart.addItem({ id: 'p2', variationId: 'v2', catalogObjectId: 'c2', title: 'Adj Item', price: 200, quantity: 5 }),
-        cart.addItem({ id: 'p3', variationId: 'v3', catalogObjectId: 'c3', title: 'OK Item',  price: 300, quantity: 1 }),
+        cart.addItem({
+          id: 'p1',
+          variationId: 'v1',
+          catalogObjectId: 'c1',
+          title: 'OOS Item',
+          price: 100,
+          quantity: 1,
+        }),
+        cart.addItem({
+          id: 'p2',
+          variationId: 'v2',
+          catalogObjectId: 'c2',
+          title: 'Adj Item',
+          price: 200,
+          quantity: 5,
+        }),
+        cart.addItem({
+          id: 'p3',
+          variationId: 'v3',
+          catalogObjectId: 'c3',
+          title: 'OK Item',
+          price: 300,
+          quantity: 1,
+        }),
       ]);
 
       (global.fetch as any).mockImplementation((url: string) => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              success: true,
-              stockLevels: { v1: 0, v2: 2, v3: 10 },
-            }),
+            json: () =>
+              Promise.resolve({
+                success: true,
+                stockLevels: { v1: 0, v2: 2, v3: 10 },
+              }),
           });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
@@ -995,16 +1025,21 @@ describe('CartManager Real Implementation Tests', () => {
       // Pre-load the item directly into localStorage so loadCart picks it up
       mockLocalStorage['cart'] = JSON.stringify([item]);
 
-      const saleInfo = { salePrice: 2000, originalPrice: 3000, discountPercent: 33 };
+      const saleInfo = {
+        salePrice: 2000,
+        originalPrice: 3000,
+        discountPercent: 33,
+      };
 
       (global.fetch as any).mockImplementation((url: string) => {
         if (url.includes('/api/sale-info')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              success: true,
-              saleInfo: { 'var-sale': saleInfo },
-            }),
+            json: () =>
+              Promise.resolve({
+                success: true,
+                saleInfo: { 'var-sale': saleInfo },
+              }),
           });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
@@ -1012,9 +1047,11 @@ describe('CartManager Real Implementation Tests', () => {
 
       cart.forceRefresh();
       // Allow loadCart + fetchSaleInfoForCartItems to complete
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
 
-      const loaded = cart.getItems().find((i: any) => i.variationId === 'var-sale');
+      const loaded = cart
+        .getItems()
+        .find((i: any) => i.variationId === 'var-sale');
       expect(loaded).toBeDefined();
       expect(loaded?.saleInfo?.salePrice).toBe(2000);
       // Total should use sale price
@@ -1040,9 +1077,11 @@ describe('CartManager Real Implementation Tests', () => {
       });
 
       cart.forceRefresh();
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
 
-      const loaded = cart.getItems().find((i: any) => i.variationId === 'var-nok');
+      const loaded = cart
+        .getItems()
+        .find((i: any) => i.variationId === 'var-nok');
       expect(loaded).toBeDefined();
       expect(loaded?.saleInfo).toBeFalsy();
     });
@@ -1069,9 +1108,11 @@ describe('CartManager Real Implementation Tests', () => {
       });
 
       cart.forceRefresh();
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
 
-      const loaded = cart.getItems().find((i: any) => i.variationId === 'var-nosuccess');
+      const loaded = cart
+        .getItems()
+        .find((i: any) => i.variationId === 'var-nosuccess');
       expect(loaded).toBeDefined();
       expect(loaded?.saleInfo).toBeFalsy();
     });
@@ -1092,19 +1133,28 @@ describe('CartManager Real Implementation Tests', () => {
           return Promise.resolve({
             ok: true,
             // saleInfo map exists but doesn't contain 'var-nomatch'
-            json: () => Promise.resolve({
-              success: true,
-              saleInfo: { 'var-other': { salePrice: 100, originalPrice: 200, discountPercent: 50 } },
-            }),
+            json: () =>
+              Promise.resolve({
+                success: true,
+                saleInfo: {
+                  'var-other': {
+                    salePrice: 100,
+                    originalPrice: 200,
+                    discountPercent: 50,
+                  },
+                },
+              }),
           });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
       });
 
       cart.forceRefresh();
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
 
-      const loaded = cart.getItems().find((i: any) => i.variationId === 'var-nomatch');
+      const loaded = cart
+        .getItems()
+        .find((i: any) => i.variationId === 'var-nomatch');
       expect(loaded).toBeDefined();
       expect(loaded?.saleInfo).toBeFalsy();
       // Price should be unchanged
@@ -1130,10 +1180,12 @@ describe('CartManager Real Implementation Tests', () => {
       });
 
       cart.forceRefresh();
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
 
       // Item should still be in cart; fetch error was swallowed
-      const loaded = cart.getItems().find((i: any) => i.variationId === 'var-reject');
+      const loaded = cart
+        .getItems()
+        .find((i: any) => i.variationId === 'var-reject');
       expect(loaded).toBeDefined();
       expect(loaded?.saleInfo).toBeFalsy();
     });
@@ -1145,7 +1197,7 @@ describe('CartManager Real Implementation Tests', () => {
       mockLocalStorage['cart'] = JSON.stringify({ corrupted: true });
 
       cart.forceRefresh();
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
 
       // Should not crash; cart should be empty
       expect(cart.getItems()).toHaveLength(0);
@@ -1181,7 +1233,7 @@ describe('CartManager Real Implementation Tests', () => {
       });
 
       cart.forceRefresh();
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
 
       const items = cart.getItems();
       expect(items).toHaveLength(1);
@@ -1203,7 +1255,7 @@ describe('CartManager Real Implementation Tests', () => {
 
       // Remove a key that doesn't exist — should be a no-op
       cart.removeItem('nonexistent:key');
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 100));
 
       expect(cart.getItems()).toHaveLength(1);
     });
@@ -1222,15 +1274,20 @@ describe('CartManager Real Implementation Tests', () => {
       // Make this.items.get throw so the for-loop inside validateCart's try throws
       // and hits its outer catch block.
       await cart.addItem({
-        id: 'prod-vc', variationId: 'var-vc', catalogObjectId: 'cat-vc',
-        title: 'Validate Item', price: 100, quantity: 1,
+        id: 'prod-vc',
+        variationId: 'var-vc',
+        catalogObjectId: 'cat-vc',
+        title: 'Validate Item',
+        price: 100,
+        quantity: 1,
       });
 
       (global.fetch as any).mockImplementation((url: string) => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ success: true, stockLevels: { 'var-vc': 10 } }),
+            json: () =>
+              Promise.resolve({ success: true, stockLevels: { 'var-vc': 10 } }),
           });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
@@ -1240,7 +1297,9 @@ describe('CartManager Real Implementation Tests', () => {
       // Replace items with a proxy whose forEach throws mid-iteration
       (cart as any).items = {
         size: 1,
-        values: () => { throw new Error('broken iterator'); },
+        values: () => {
+          throw new Error('broken iterator');
+        },
         get: origItems.get.bind(origItems),
         set: origItems.set.bind(origItems),
         delete: origItems.delete.bind(origItems),
@@ -1266,19 +1325,27 @@ describe('CartManager Real Implementation Tests', () => {
       // and returns early — both updates are still queued and both execute when
       // the first run's setTimeout resolves.
       await cart.addItem({
-        id: 'pc-1', variationId: 'vc-1', catalogObjectId: 'cc-1',
-        title: 'Concurrent A', price: 100, quantity: 1,
+        id: 'pc-1',
+        variationId: 'vc-1',
+        catalogObjectId: 'cc-1',
+        title: 'Concurrent A',
+        price: 100,
+        quantity: 1,
       });
       await cart.addItem({
-        id: 'pc-2', variationId: 'vc-2', catalogObjectId: 'cc-2',
-        title: 'Concurrent B', price: 200, quantity: 1,
+        id: 'pc-2',
+        variationId: 'vc-2',
+        catalogObjectId: 'cc-2',
+        title: 'Concurrent B',
+        price: 200,
+        quantity: 1,
       });
 
       // Synchronous back-to-back removals — second hits isProcessing=true guard
       cart.removeItem('pc-1:vc-1');
       cart.removeItem('pc-2:vc-2');
 
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
 
       expect(cart.getItems()).toHaveLength(0);
     });
@@ -1302,7 +1369,9 @@ describe('CartManager Real Implementation Tests', () => {
 
       const storage = (cart as any).storage;
       const origSetItem = storage.setItem;
-      storage.setItem = () => { throw new Error('QuotaExceededError'); };
+      storage.setItem = () => {
+        throw new Error('QuotaExceededError');
+      };
 
       try {
         const result = await cart.addItem({
@@ -1336,7 +1405,9 @@ describe('CartManager Real Implementation Tests', () => {
 
       // 2. Set up a fetch mock that can be resolved manually
       let resolveFetch!: (v: Response) => void;
-      const delayedFetch = new Promise<Response>(res => { resolveFetch = res; });
+      const delayedFetch = new Promise<Response>((res) => {
+        resolveFetch = res;
+      });
 
       // First call returns the delayed promise; subsequent calls return empty sale info
       (global.fetch as any)
@@ -1363,11 +1434,22 @@ describe('CartManager Real Implementation Tests', () => {
       await Promise.resolve();
 
       // 5. Now resolve the stale fetch with fake sale data (from generation=1)
-      resolveFetch(new Response(
-        JSON.stringify({ success: true, saleInfo: { 'variation-a': { salePrice: 1, originalPrice: 5000, discountPercent: 99 } } }),
-        { status: 200 }
-      ));
-      await new Promise(r => setTimeout(r, 200)); // drain microtask queue + async work
+      resolveFetch(
+        new Response(
+          JSON.stringify({
+            success: true,
+            saleInfo: {
+              'variation-a': {
+                salePrice: 1,
+                originalPrice: 5000,
+                discountPercent: 99,
+              },
+            },
+          }),
+          { status: 200 }
+        )
+      );
+      await new Promise((r) => setTimeout(r, 200)); // drain microtask queue + async work
 
       // 6. Verify stale sale data was NOT applied
       const items = cart.getItems();
@@ -1388,16 +1470,22 @@ describe('CartManager Real Implementation Tests', () => {
 
         // forceRefresh → loadCart → !this.storage → early return (no crash)
         cart.forceRefresh();
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 100));
 
         // addItem eventually calls saveCart → !this.storage → early return (no crash)
         // Use a pre-existing fetch mock so inventory succeeds
         (global.fetch as any).mockImplementation((url: string) => {
           if (url.includes('/api/check-inventory')) {
-            return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, quantity: 5 }) });
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ success: true, quantity: 5 }),
+            });
           }
           if (url.includes('/api/sale-info')) {
-            return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, saleInfo: {} }) });
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ success: true, saleInfo: {} }),
+            });
           }
           return Promise.reject(new Error(`Unexpected: ${url}`));
         });
@@ -1492,10 +1580,11 @@ describe('CartManager Real Implementation Tests', () => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              success: true,
-              stockLevels: { 'var-multi-1': 0, 'var-multi-2': 0 },
-            }),
+            json: () =>
+              Promise.resolve({
+                success: true,
+                stockLevels: { 'var-multi-1': 0, 'var-multi-2': 0 },
+              }),
           });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
@@ -1509,10 +1598,16 @@ describe('CartManager Real Implementation Tests', () => {
     it('defaults quantity to 1 when addItem is called without a positive quantity', async () => {
       (global.fetch as any).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, quantity: 10 }) });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true, quantity: 10 }),
+          });
         }
         if (url.includes('/api/sale-info')) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, saleInfo: {} }) });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true, saleInfo: {} }),
+          });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
       });
@@ -1527,17 +1622,25 @@ describe('CartManager Real Implementation Tests', () => {
       });
 
       expect(result.success).toBe(true);
-      const item = cart.getItems().find((i: any) => i.variationId === 'var-noqty');
+      const item = cart
+        .getItems()
+        .find((i: any) => i.variationId === 'var-noqty');
       expect(item?.quantity).toBe(1);
     });
 
     it('treats check-inventory success: false the same as zero stock', async () => {
       (global.fetch as any).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: false }) });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: false }),
+          });
         }
         if (url.includes('/api/sale-info')) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, saleInfo: {} }) });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true, saleInfo: {} }),
+          });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
       });
@@ -1560,10 +1663,16 @@ describe('CartManager Real Implementation Tests', () => {
     it('treats sale-info success: false the same as no sale info', async () => {
       (global.fetch as any).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, quantity: 10 }) });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true, quantity: 10 }),
+          });
         }
         if (url.includes('/api/sale-info')) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: false }) });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: false }),
+          });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
       });
@@ -1578,17 +1687,25 @@ describe('CartManager Real Implementation Tests', () => {
       });
 
       expect(result.success).toBe(true);
-      const item = cart.getItems().find((i: any) => i.variationId === 'var-sale-unsuccessful');
+      const item = cart
+        .getItems()
+        .find((i: any) => i.variationId === 'var-sale-unsuccessful');
       expect(item?.saleInfo).toBeFalsy();
     });
 
     it('falls back to item.id when catalogObjectId is not provided on a new item', async () => {
       (global.fetch as any).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, quantity: 10 }) });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true, quantity: 10 }),
+          });
         }
         if (url.includes('/api/sale-info')) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, saleInfo: {} }) });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true, saleInfo: {} }),
+          });
         }
         return Promise.reject(new Error(`Unexpected: ${url}`));
       });
@@ -1603,7 +1720,9 @@ describe('CartManager Real Implementation Tests', () => {
       } as any);
 
       expect(result.success).toBe(true);
-      const item = cart.getItems().find((i: any) => i.variationId === 'var-nocatalog');
+      const item = cart
+        .getItems()
+        .find((i: any) => i.variationId === 'var-nocatalog');
       expect(item?.catalogObjectId).toBe('prod-nocatalog');
     });
   });

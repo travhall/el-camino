@@ -3,7 +3,7 @@
 import type {
   TransitionBeforeSwapEvent,
   TransitionBeforePreparationEvent,
-} from "astro:transitions/client";
+} from 'astro:transitions/client';
 
 // Grid configuration for different grid types
 export interface GridConfig {
@@ -14,14 +14,14 @@ export interface GridConfig {
 
 export const GRID_CONFIGS = {
   product: {
-    gridId: "filterable-product-grid",
-    cardSelector: ".product-card-wrapper",
-    readyEventName: "productGridReady",
+    gridId: 'filterable-product-grid',
+    cardSelector: '.product-card-wrapper',
+    readyEventName: 'productGridReady',
   } as GridConfig,
   article: {
-    gridId: "filterable-article-grid",
-    cardSelector: ".article-card-wrapper",
-    readyEventName: "articleGridReady",
+    gridId: 'filterable-article-grid',
+    cardSelector: '.article-card-wrapper',
+    readyEventName: 'articleGridReady',
   } as GridConfig,
 } as const;
 
@@ -29,10 +29,10 @@ export class FilterCoordinator {
   // Shared timing constants — all used by FilterCoordinator for AppliedFilters coordination.
   // Grid card animation timing (duration, stagger) lives in ProductGrid.astro CSS custom properties.
   static readonly TIMING = {
-    gridExit: 150,               // Grid card exit duration (ms) — matches CSS transition-duration override on .opacity-0
-    appliedFiltersExit: 200,     // AppliedFilters fade-out duration (ms)
+    gridExit: 150, // Grid card exit duration (ms) — matches CSS transition-duration override on .opacity-0
+    appliedFiltersExit: 200, // AppliedFilters fade-out duration (ms)
     appliedFiltersEntrance: 200, // AppliedFilters fade-in duration (ms)
-    appliedFiltersDelay: 50,     // Delay before AppliedFilters fades in after page load (ms) — reduced to sync with grid card entrance
+    appliedFiltersDelay: 50, // Delay before AppliedFilters fades in after page load (ms) — reduced to sync with grid card entrance
   };
 
   // Shared state management
@@ -43,9 +43,9 @@ export class FilterCoordinator {
 
   // Session storage keys - consistent kebab-case naming
   private static readonly STORAGE_KEYS = {
-    filteringInProgress: "filtering-in-progress",
-    appliedFiltersShown: "applied-filters-shown",
-    filterMenuExpanded: "filter-menu-expanded",
+    filteringInProgress: 'filtering-in-progress',
+    appliedFiltersShown: 'applied-filters-shown',
+    filterMenuExpanded: 'filter-menu-expanded',
   };
 
   static getInstance(): FilterCoordinator {
@@ -103,15 +103,15 @@ export class FilterCoordinator {
       ? !FilterCoordinator.urlHasFilters(targetUrl)
       : false;
     const currentlyHasFilters =
-      sessionStorage.getItem(this.STORAGE_KEYS.appliedFiltersShown) === "true";
+      sessionStorage.getItem(this.STORAGE_KEYS.appliedFiltersShown) === 'true';
     const needsAppliedFiltersExit = willHaveNoFilters && currentlyHasFilters;
 
     // Animate out AppliedFilters if needed (product grid only)
     if (needsAppliedFiltersExit && config === GRID_CONFIGS.product) {
-      const container = document.getElementById("applied-filters-container");
+      const container = document.getElementById('applied-filters-container');
       if (container) {
         container.style.transition = `opacity ${FilterCoordinator.TIMING.appliedFiltersExit}ms ease`;
-        container.style.opacity = "0";
+        container.style.opacity = '0';
       }
     }
 
@@ -127,12 +127,12 @@ export class FilterCoordinator {
         // Apply exit animation to all visible cards
         visibleCards.forEach((card) => {
           // Force immediate exit animation by overriding CSS delays
-          card.style.setProperty("--card-stagger-delay", "0ms");
-          card.style.setProperty("--animation-order", "0");
-          card.style.setProperty("transition-delay", "0s, 0s");
+          card.style.setProperty('--card-stagger-delay', '0ms');
+          card.style.setProperty('--animation-order', '0');
+          card.style.setProperty('transition-delay', '0s, 0s');
 
-          card.classList.remove("opacity-100");
-          card.classList.add("opacity-0");
+          card.classList.remove('opacity-100');
+          card.classList.add('opacity-0');
         });
 
         // Always wait for the exit animation to finish before navigating.
@@ -198,7 +198,7 @@ export class FilterCoordinator {
    */
   static cleanupAnimationState(): void {
     sessionStorage.removeItem(this.STORAGE_KEYS.filteringInProgress);
-    document.body.classList.remove("filtering-in-progress");
+    document.body.classList.remove('filtering-in-progress');
     this.isAnimating = false;
 
     // Clear all pending timeouts
@@ -216,7 +216,7 @@ export class FilterCoordinator {
     // DO NOT reset isInitialized — FilterCoordinator's event listeners are registered
     // once for the module lifetime and must not accumulate on each navigation.
     // Resetting here caused a new setupEventListeners() call on every astro:page-load,
-    // leading to n+1 duplicate listeners after n filter navigations.
+    // leading to n+1 duplicate listeners after n filter navigations. cspell:ignore navigations
     this.currentInstance = null;
     // appliedFiltersShown is intentionally NOT cleared here
     // It's managed by coordinateAppliedFiltersEntrance based on URL state
@@ -227,13 +227,13 @@ export class FilterCoordinator {
    */
   static setFilteringState(isActive: boolean): void {
     if (isActive) {
-      sessionStorage.setItem(this.STORAGE_KEYS.filteringInProgress, "true");
-      document.body.classList.add("filtering-in-progress");
+      sessionStorage.setItem(this.STORAGE_KEYS.filteringInProgress, 'true');
+      document.body.classList.add('filtering-in-progress');
     } else {
       // Only clear the filtering state, NOT the animation timeouts
       // The timeouts are for AppliedFilters entrance animations which need to complete
       sessionStorage.removeItem(this.STORAGE_KEYS.filteringInProgress);
-      document.body.classList.remove("filtering-in-progress");
+      document.body.classList.remove('filtering-in-progress');
       this.isAnimating = false;
     }
   }
@@ -242,30 +242,30 @@ export class FilterCoordinator {
 
   private setupEventListeners(): void {
     // Unified page load handler - coordinates entrance animations and clears filtering state
-    document.addEventListener("astro:page-load", () => {
+    document.addEventListener('astro:page-load', () => {
       FilterCoordinator.coordinateEntrance();
       FilterCoordinator.setFilteringState(false);
 
       // Measure the sticky header and expose its height as a CSS variable so the
       // filter sidebar can use `top: var(--header-height)` for precise sticky positioning.
-      const header = document.querySelector<HTMLElement>("header");
+      const header = document.querySelector<HTMLElement>('header');
       if (header) {
         document.documentElement.style.setProperty(
-          "--header-height",
+          '--header-height',
           `${header.getBoundingClientRect().height}px`
         );
       }
     });
 
     // Unified cleanup handler - runs before page swap
-    document.addEventListener("astro:before-swap", (e) => {
+    document.addEventListener('astro:before-swap', (e) => {
       // Backup: Only fade AppliedFilters when removing all filters (not on filter changes)
-      const nextUrl = (e as TransitionBeforeSwapEvent).to?.toString() ?? "";
+      const nextUrl = (e as TransitionBeforeSwapEvent).to?.toString() ?? '';
       if (nextUrl && !FilterCoordinator.urlHasFilters(nextUrl)) {
-        const container = document.getElementById("applied-filters-container");
-        if (container && !container.classList.contains("no-filters")) {
-          container.style.transition = "opacity 100ms ease";
-          container.style.opacity = "0";
+        const container = document.getElementById('applied-filters-container');
+        if (container && !container.classList.contains('no-filters')) {
+          container.style.transition = 'opacity 100ms ease';
+          container.style.opacity = '0';
         }
       }
 
@@ -273,14 +273,15 @@ export class FilterCoordinator {
     });
 
     // Early navigation preparation handler - runs before view transition preparation
-    document.addEventListener("astro:before-preparation", (e) => {
+    document.addEventListener('astro:before-preparation', (e) => {
       // Only fade AppliedFilters when removing all filters — not on filter changes
-      const nextUrl = (e as TransitionBeforePreparationEvent).to?.toString() ?? "";
+      const nextUrl =
+        (e as TransitionBeforePreparationEvent).to?.toString() ?? '';
       if (nextUrl && !FilterCoordinator.urlHasFilters(nextUrl)) {
-        const container = document.getElementById("applied-filters-container");
-        if (container && !container.classList.contains("no-filters")) {
+        const container = document.getElementById('applied-filters-container');
+        if (container && !container.classList.contains('no-filters')) {
           container.style.transition = `opacity ${FilterCoordinator.TIMING.appliedFiltersExit}ms ease`;
-          container.style.opacity = "0";
+          container.style.opacity = '0';
         }
       }
     });
@@ -288,7 +289,7 @@ export class FilterCoordinator {
     // Page visibility handler - clear stale animation state after extended idle (5+ min).
     // Listeners are already registered; only state cleanup is needed, not re-initialization.
     let hiddenTime = 0;
-    document.addEventListener("visibilitychange", () => {
+    document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         hiddenTime = Date.now();
       } else {
@@ -302,7 +303,7 @@ export class FilterCoordinator {
 
     // Handle page show event (fired when navigating back via browser history)
     // Listeners are already registered; only state cleanup is needed. cSpell:ignore bfcache
-    window.addEventListener("pageshow", (event) => {
+    window.addEventListener('pageshow', (event) => {
       if (event.persisted) {
         // bfcache restore: clear any stale filtering/animation state
         FilterCoordinator.cleanupAnimationState();
@@ -315,8 +316,8 @@ export class FilterCoordinator {
     if (!grid) return;
 
     // Ensure grid is visible for animations
-    grid.style.visibility = "visible";
-    grid.style.opacity = "1";
+    grid.style.visibility = 'visible';
+    grid.style.opacity = '1';
 
     // Trigger grid's entrance animation system
     const event = new CustomEvent(config.readyEventName, {
@@ -328,80 +329,84 @@ export class FilterCoordinator {
   }
 
   private coordinateAppliedFiltersEntrance(): void {
-    const container = document.getElementById("applied-filters-container");
+    const container = document.getElementById('applied-filters-container');
     if (!container) return;
 
     // Check if we have active filters NOW
     const urlParams = new URLSearchParams(window.location.search);
-    const currentBrands = urlParams.getAll("brands") || [];
-    const currentCategories = urlParams.getAll("categories") || [];
-    const currentAvailability = urlParams.get("availability") === "true";
-    const currentOnSale = urlParams.get("onSale") === "true";
-    const hasFilters = currentBrands.length > 0 || currentCategories.length > 0 || currentAvailability || currentOnSale;
+    const currentBrands = urlParams.getAll('brands') || [];
+    const currentCategories = urlParams.getAll('categories') || [];
+    const currentAvailability = urlParams.get('availability') === 'true';
+    const currentOnSale = urlParams.get('onSale') === 'true';
+    const hasFilters =
+      currentBrands.length > 0 ||
+      currentCategories.length > 0 ||
+      currentAvailability ||
+      currentOnSale;
 
     // Check what the filter state was BEFORE this navigation
     const previousFilterState = sessionStorage.getItem(
       FilterCoordinator.STORAGE_KEYS.appliedFiltersShown
     );
-    const hadFiltersBefore = previousFilterState === "true";
-    const hadNoFiltersBefore = previousFilterState === "false";
+    const hadFiltersBefore = previousFilterState === 'true';
+    const hadNoFiltersBefore = previousFilterState === 'false';
 
     if (!hasFilters) {
       // No filters - just hide (exit animation already handled in coordinateExit)
-      container.classList.add("no-filters");
-      container.style.transition = "";
-      container.style.visibility = "";
-      container.style.opacity = "";
+      container.classList.add('no-filters');
+      container.style.transition = '';
+      container.style.visibility = '';
+      container.style.opacity = '';
 
       sessionStorage.setItem(
         FilterCoordinator.STORAGE_KEYS.appliedFiltersShown,
-        "false"
+        'false'
       );
       return;
     }
 
     // We have filters now
-    container.classList.remove("no-filters");
+    container.classList.remove('no-filters');
 
     // Only animate if transitioning FROM no filters TO has filters
     if (!hadFiltersBefore || hadNoFiltersBefore) {
       // First time showing filters (or returning from no filters state) - animate
-      container.style.visibility = "hidden";
-      container.style.opacity = "0";
+      container.style.visibility = 'hidden';
+      container.style.opacity = '0';
 
       // Delay before starting fade-in animation
       const timeoutId1 = setTimeout(() => {
         container.style.transition = `opacity ${FilterCoordinator.TIMING.appliedFiltersEntrance}ms ease, visibility 0s`;
-        container.style.visibility = "visible";
-        container.style.opacity = "1";
+        container.style.visibility = 'visible';
+        container.style.opacity = '1';
 
         sessionStorage.setItem(
           FilterCoordinator.STORAGE_KEYS.appliedFiltersShown,
-          "true"
+          'true'
         );
       }, FilterCoordinator.TIMING.appliedFiltersDelay);
       FilterCoordinator.timeoutIds.push(timeoutId1);
 
       // Clean up transition after animation completes
       const timeoutId2 = setTimeout(() => {
-        container.style.transition = "";
+        container.style.transition = '';
       }, FilterCoordinator.TIMING.appliedFiltersDelay + FilterCoordinator.TIMING.appliedFiltersEntrance);
       FilterCoordinator.timeoutIds.push(timeoutId2);
     } else {
       // Already had filters - just update content instantly
-      container.style.transition = "none";
-      container.style.visibility = "visible";
-      container.style.opacity = "1";
+      container.style.transition = 'none';
+      container.style.visibility = 'visible';
+      container.style.opacity = '1';
 
       void container.offsetHeight;
 
       requestAnimationFrame(() => {
-        container.style.transition = "";
+        container.style.transition = '';
       });
 
       sessionStorage.setItem(
         FilterCoordinator.STORAGE_KEYS.appliedFiltersShown,
-        "true"
+        'true'
       );
     }
   }
@@ -427,9 +432,14 @@ export class FilterCoordinator {
   private static urlHasFilters(url: string): boolean {
     try {
       const u = new URL(url, location.href);
-      return u.searchParams.has("brands") || u.searchParams.has("categories") || u.searchParams.get("availability") === "true" || u.searchParams.get("onSale") === "true";
+      return (
+        u.searchParams.has('brands') ||
+        u.searchParams.has('categories') ||
+        u.searchParams.get('availability') === 'true' ||
+        u.searchParams.get('onSale') === 'true'
+      );
     } catch {
-      return url.includes("?");
+      return url.includes('?');
     }
   }
 }

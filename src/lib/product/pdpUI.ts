@@ -7,8 +7,9 @@ import {
   isQuantityInputDisabled,
   ProductAvailabilityState,
   type ProductAvailabilityInfo,
-} from "@/lib/square/types";
-import { MoneyUtils } from "@/lib/square/money";
+  type SaleInfo,
+} from '@/lib/square/types';
+import { MoneyUtils } from '@/lib/square/money';
 
 export interface ElementIds {
   priceDisplay?: string;
@@ -50,23 +51,23 @@ export class PDPUIManager {
 
   private cacheElements(customIds?: ElementIds): void {
     const ids = {
-      priceDisplay: customIds?.priceDisplay || "price-display",
+      priceDisplay: customIds?.priceDisplay || 'price-display',
       originalPriceDisplay:
-        customIds?.originalPriceDisplay || "original-price-display",
-      unitDisplay: customIds?.unitDisplay || "unit-display",
-      quantityInput: customIds?.quantityInput || "quantity-input",
-      addToCartButton: customIds?.addToCartButton || "add-to-cart-button",
-      decreaseButton: customIds?.decreaseButton || "decrease-quantity",
-      increaseButton: customIds?.increaseButton || "increase-quantity",
-      productImage: customIds?.productImage || "product-image",
-      imageContainer: customIds?.imageContainer || "product-image-container",
-      remainingCount: customIds?.remainingCount || "remaining-count",
-      cartQuantity: customIds?.cartQuantity || "cart-quantity",
-      inventoryStatus: customIds?.inventoryStatus || "inventory-status",
+        customIds?.originalPriceDisplay || 'original-price-display',
+      unitDisplay: customIds?.unitDisplay || 'unit-display',
+      quantityInput: customIds?.quantityInput || 'quantity-input',
+      addToCartButton: customIds?.addToCartButton || 'add-to-cart-button',
+      decreaseButton: customIds?.decreaseButton || 'decrease-quantity',
+      increaseButton: customIds?.increaseButton || 'increase-quantity',
+      productImage: customIds?.productImage || 'product-image',
+      imageContainer: customIds?.imageContainer || 'product-image-container',
+      remainingCount: customIds?.remainingCount || 'remaining-count',
+      cartQuantity: customIds?.cartQuantity || 'cart-quantity',
+      inventoryStatus: customIds?.inventoryStatus || 'inventory-status',
     };
 
     const productImage = document.getElementById(
-      ids.productImage,
+      ids.productImage
     ) as HTMLImageElement;
     const imageContainer = document.getElementById(ids.imageContainer);
 
@@ -98,8 +99,8 @@ export class PDPUIManager {
 
   updateAvailabilityDisplay(
     info: ProductAvailabilityInfo,
-    saleInfo?: any,
-    isGiftCard?: boolean,
+    saleInfo?: SaleInfo,
+    isGiftCard?: boolean
   ): void {
     this.updateQuantityControls(info, isGiftCard);
     this.updateAddToCartButton(info);
@@ -109,7 +110,7 @@ export class PDPUIManager {
 
   updateQuantityControls(
     info: ProductAvailabilityInfo,
-    isGiftCard?: boolean,
+    isGiftCard?: boolean
   ): void {
     // Re-cache elements in case they were cloned/replaced
     this.cacheElements(this.elementIds); // Use stored IDs
@@ -134,12 +135,12 @@ export class PDPUIManager {
     }
 
     // Show stepper: always for gift cards, otherwise only when >1 unit available
-    const stepper = document.getElementById("quantity-stepper");
+    const stepper = document.getElementById('quantity-stepper');
     if (stepper) {
       const showStepper =
         isGiftCard ||
         (info.state === ProductAvailabilityState.AVAILABLE && effectiveMax > 1);
-      stepper.classList.toggle("hidden", !showStepper);
+      stepper.classList.toggle('hidden', !showStepper);
     }
   }
 
@@ -152,50 +153,50 @@ export class PDPUIManager {
     addToCartButton.disabled = isButtonDisabled(info.state);
   }
 
-  updateImageOverlay(info: ProductAvailabilityInfo, saleInfo?: any): void {
+  updateImageOverlay(info: ProductAvailabilityInfo, saleInfo?: SaleInfo): void {
     const { imageContainer, productImage } = this.elements;
 
     if (!imageContainer) return;
 
-    const existingOverlay = imageContainer.querySelector("[data-overlay]");
+    const existingOverlay = imageContainer.querySelector('[data-overlay]');
     if (existingOverlay) existingOverlay.remove();
 
     if (info.state === ProductAvailabilityState.OUT_OF_STOCK) {
-      const overlay = document.createElement("div");
-      overlay.setAttribute("data-overlay", "stock");
+      const overlay = document.createElement('div');
+      overlay.setAttribute('data-overlay', 'stock');
       overlay.className =
-        "absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-base font-bold rounded-br-sm";
+        'absolute top-0 left-0 bg-state-error-surface text-state-error-text px-3 py-2 text-base font-bold rounded-br-sm';
       overlay.textContent = getButtonText(info.state);
       imageContainer.appendChild(overlay);
 
-      if (productImage) productImage.classList.add("opacity-75");
+      if (productImage) productImage.classList.add('opacity-75');
     } else if (saleInfo) {
       const discountPercent = saleInfo.discountPercent;
-      const overlay = document.createElement("div");
-      overlay.setAttribute("data-overlay", "sale");
+      const overlay = document.createElement('div');
+      overlay.setAttribute('data-overlay', 'sale');
       overlay.className =
-        "absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-base font-bold rounded-br-sm";
+        'absolute top-0 left-0 bg-state-success-surface text-state-success-text px-3 py-2 text-base font-bold rounded-br-sm';
       overlay.textContent = `${discountPercent}% Off`;
       imageContainer.appendChild(overlay);
 
-      if (productImage) productImage.classList.remove("opacity-75");
+      if (productImage) productImage.classList.remove('opacity-75');
     } else {
-      if (productImage) productImage.classList.remove("opacity-75");
+      if (productImage) productImage.classList.remove('opacity-75');
     }
   }
 
   updateInventoryDisplay(
     info: ProductAvailabilityInfo,
-    isGiftCard?: boolean,
+    isGiftCard?: boolean
   ): void {
     const { remainingCount, cartQuantity, inventoryStatus } = this.elements;
 
     if (remainingCount) {
       if (isGiftCard) {
         // Gift cards have no meaningful stock count — hide entirely
-        remainingCount.classList.add("hidden");
+        remainingCount.classList.add('hidden');
       } else {
-        remainingCount.classList.remove("hidden");
+        remainingCount.classList.remove('hidden');
         remainingCount.textContent = `${info.remaining} available`;
       }
     }
@@ -203,9 +204,9 @@ export class PDPUIManager {
     if (cartQuantity) {
       if (info.inCart > 0) {
         cartQuantity.textContent = `( ${info.inCart} in cart )`;
-        cartQuantity.classList.remove("hidden");
+        cartQuantity.classList.remove('hidden');
       } else {
-        cartQuantity.classList.add("hidden");
+        cartQuantity.classList.add('hidden');
       }
     }
 
@@ -217,14 +218,14 @@ export class PDPUIManager {
           </p>
         `;
       } else {
-        inventoryStatus.innerHTML = "";
+        inventoryStatus.innerHTML = '';
       }
     }
   }
 
   updatePriceDisplay(
     price: number,
-    options?: { unit?: string; saleInfo?: any },
+    options?: { unit?: string; saleInfo?: SaleInfo }
   ): void {
     const { priceDisplay, originalPriceDisplay, unitDisplay } = this.elements;
     if (!priceDisplay) return;
@@ -236,13 +237,13 @@ export class PDPUIManager {
       // Show original price with strikethrough
       if (originalPriceDisplay) {
         originalPriceDisplay.textContent = MoneyUtils.format(
-          MoneyUtils.fromFloat(saleInfo.originalPrice),
+          MoneyUtils.fromFloat(saleInfo.originalPrice)
         );
-        originalPriceDisplay.classList.remove("hidden");
+        originalPriceDisplay.classList.remove('hidden');
       }
       // Show sale price
       priceDisplay.textContent = MoneyUtils.format(
-        MoneyUtils.fromFloat(saleInfo.salePrice),
+        MoneyUtils.fromFloat(saleInfo.salePrice)
       );
     } else {
       // Regular price display
@@ -251,7 +252,7 @@ export class PDPUIManager {
 
       // Hide original price if shown
       if (originalPriceDisplay) {
-        originalPriceDisplay.classList.add("hidden");
+        originalPriceDisplay.classList.add('hidden');
       }
     }
 
@@ -265,9 +266,9 @@ export class PDPUIManager {
     // Handle unit display
     if (unit && unitDisplay) {
       unitDisplay.textContent = unit;
-      unitDisplay.classList.remove("hidden");
+      unitDisplay.classList.remove('hidden');
     } else if (unitDisplay) {
-      unitDisplay.classList.add("hidden");
+      unitDisplay.classList.add('hidden');
     }
   }
 
@@ -279,24 +280,24 @@ export class PDPUIManager {
     productImage.src = imageUrl;
 
     // Update srcset if present (Netlify Image CDN)
-    if (productImage.hasAttribute("srcset")) {
+    if (productImage.hasAttribute('srcset')) {
       const sizes = [320, 640, 768, 1024];
       const srcsetParts = sizes.map((size) => {
         const params = new URLSearchParams({
           url: imageUrl,
           w: size.toString(),
-          q: "85",
-          fit: "cover",
+          q: '85',
+          fit: 'cover',
           h: size.toString(),
         });
         return `/.netlify/images?${params.toString()} ${size}w`;
       });
 
-      productImage.setAttribute("srcset", srcsetParts.join(", "));
+      productImage.setAttribute('srcset', srcsetParts.join(', '));
     }
   }
 
-  updateButtonProductData(productData: any): void {
+  updateButtonProductData(productData: unknown): void {
     const { addToCartButton } = this.elements;
     if (addToCartButton) {
       addToCartButton.dataset.product = JSON.stringify(productData);
@@ -306,11 +307,11 @@ export class PDPUIManager {
   updateAttributeButtonStates(
     availableAttributes: Record<string, string[]>,
     selectedAttributes: Record<string, string>,
-    canAddToCartFn: (attributeType: string, value: string) => boolean,
+    canAddToCartFn: (attributeType: string, value: string) => boolean
   ): void {
     Object.keys(availableAttributes).forEach((attributeType) => {
       const buttons = document.querySelectorAll(
-        `[data-attribute-type="${attributeType}"]`,
+        `[data-attribute-type="${attributeType}"]`
       );
 
       buttons.forEach((button) => {
@@ -325,49 +326,49 @@ export class PDPUIManager {
         // select them and see the back-in-stock form (mirrors QuickView behavior)
         if (!isAvailable) {
           btn.classList.add(
-            "text-(--content-meta)",
-            "line-through",
-            "opacity-60",
+            'text-(--content-meta)',
+            'line-through',
+            'opacity-60'
           );
-          btn.classList.remove("opacity-100");
-          btn.setAttribute("aria-label", `${value} — out of stock`);
+          btn.classList.remove('opacity-100');
+          btn.setAttribute('aria-label', `${value} — out of stock`);
         } else {
           btn.classList.remove(
-            "text-(--content-meta)",
-            "line-through",
-            "opacity-60",
+            'text-(--content-meta)',
+            'line-through',
+            'opacity-60'
           );
           // Remove aria-label on available buttons — aria-pressed conveys selection state,
           // and WCAG 2.5.3 requires the accessible name to match visible text.
-          btn.removeAttribute("aria-label");
+          btn.removeAttribute('aria-label');
         }
 
         // Update selected state — use dedicated variant-selected token
         // (visually distinct from the primary CTA button)
         if (isSelected) {
           btn.classList.remove(
-            "bg-(--ui-input-surface)",
-            "text-(--ui-input-text)",
-            "border-(--ui-input-border)/50",
+            'bg-(--ui-input-surface)',
+            'text-(--ui-input-text)',
+            'border-(--ui-input-border)/50'
           );
           btn.classList.add(
-            "bg-(--ui-variant-selected-surface)",
-            "text-(--ui-variant-selected-text)",
-            "border-(--ui-variant-selected-border)",
+            'bg-(--ui-variant-selected-surface)',
+            'text-(--ui-variant-selected-text)',
+            'border-(--ui-variant-selected-border)'
           );
-          btn.setAttribute("aria-pressed", "true");
+          btn.setAttribute('aria-pressed', 'true');
         } else {
           btn.classList.remove(
-            "bg-(--ui-variant-selected-surface)",
-            "text-(--ui-variant-selected-text)",
-            "border-(--ui-variant-selected-border)",
+            'bg-(--ui-variant-selected-surface)',
+            'text-(--ui-variant-selected-text)',
+            'border-(--ui-variant-selected-border)'
           );
           btn.classList.add(
-            "bg-(--ui-input-surface)",
-            "text-(--ui-input-text)",
-            "border-(--ui-input-border)/50",
+            'bg-(--ui-input-surface)',
+            'text-(--ui-input-text)',
+            'border-(--ui-input-border)/50'
           );
-          btn.setAttribute("aria-pressed", "false");
+          btn.setAttribute('aria-pressed', 'false');
         }
       });
     });
@@ -375,7 +376,7 @@ export class PDPUIManager {
 
   updateVariationButtonStates(
     variationButtons: NodeListOf<Element>,
-    selectedVariationId: string,
+    selectedVariationId: string
   ): void {
     variationButtons.forEach((button) => {
       const btn = button as HTMLButtonElement;
@@ -383,25 +384,25 @@ export class PDPUIManager {
 
       if (variationId === selectedVariationId) {
         btn.classList.add(
-          "bg-(--ui-variant-selected-surface)",
-          "text-(--ui-variant-selected-text)",
-          "border-(--ui-variant-selected-border)",
+          'bg-(--ui-variant-selected-surface)',
+          'text-(--ui-variant-selected-text)',
+          'border-(--ui-variant-selected-border)'
         );
         btn.classList.remove(
-          "bg-(--ui-input-surface)",
-          "text-(--ui-input-text)",
-          "border-(--ui-input-border)/50",
+          'bg-(--ui-input-surface)',
+          'text-(--ui-input-text)',
+          'border-(--ui-input-border)/50'
         );
       } else {
         btn.classList.remove(
-          "bg-(--ui-variant-selected-surface)",
-          "text-(--ui-variant-selected-text)",
-          "border-(--ui-variant-selected-border)",
+          'bg-(--ui-variant-selected-surface)',
+          'text-(--ui-variant-selected-text)',
+          'border-(--ui-variant-selected-border)'
         );
         btn.classList.add(
-          "bg-(--ui-input-surface)",
-          "text-(--ui-input-text)",
-          "border-(--ui-input-border)/50",
+          'bg-(--ui-input-surface)',
+          'text-(--ui-input-text)',
+          'border-(--ui-input-border)/50'
         );
       }
     });
@@ -413,16 +414,16 @@ export class PDPUIManager {
    * @param images - Array of image URLs for the variation (undefined = hide gallery)
    */
   updateGalleryThumbnails(images?: string[]): void {
-    const container = document.getElementById("gallery-thumbnails");
+    const container = document.getElementById('gallery-thumbnails');
 
     if (!images || images.length <= 1) {
-      if (container) container.classList.add("hidden");
+      if (container) container.classList.add('hidden');
       return;
     }
 
     if (!container) return;
 
-    container.classList.remove("hidden");
+    container.classList.remove('hidden');
 
     container.innerHTML = images
       .map(
@@ -431,28 +432,28 @@ export class PDPUIManager {
         type="button"
         class="gallery-thumb shrink-0 w-16 h-16 border-2 overflow-hidden bg-(--surface-secondary) transition-all ${
           i === 0
-            ? "border-(--ui-button-border) opacity-100"
-            : "border-(--border-secondary) opacity-60 hover:opacity-100 hover:border-(--border-primary)"
+            ? 'border-(--ui-button-border) opacity-100'
+            : 'border-(--border-secondary) opacity-60 hover:opacity-100 hover:border-(--border-primary)'
         }"
-        data-gallery-src="${imgUrl.replace(/"/g, "&quot;")}"
+        data-gallery-src="${imgUrl.replace(/"/g, '&quot;')}"
         aria-label="View image ${i + 1}"
-        aria-pressed="${i === 0 ? "true" : "false"}"
+        aria-pressed="${i === 0 ? 'true' : 'false'}"
       >
         <img
-          src="${imgUrl.replace(/"/g, "&quot;")}"
+          src="${imgUrl.replace(/"/g, '&quot;')}"
           alt="Product image ${i + 1}"
           class="w-full h-full object-cover"
-          loading="${i < 3 ? "eager" : "lazy"}"
+          loading="${i < 3 ? 'eager' : 'lazy'}"
           width="64"
           height="64"
         />
-      </button>`,
+      </button>`
       )
-      .join("");
+      .join('');
 
     // Update the main image to the first variation image
     const mainImage = document.getElementById(
-      "product-image",
+      'product-image'
     ) as HTMLImageElement | null;
     if (mainImage && images[0]) {
       mainImage.src = images[0];
@@ -462,7 +463,7 @@ export class PDPUIManager {
   resetQuantityToOne(): void {
     const { quantityInput } = this.elements;
     if (quantityInput) {
-      quantityInput.value = "1";
+      quantityInput.value = '1';
     }
   }
 

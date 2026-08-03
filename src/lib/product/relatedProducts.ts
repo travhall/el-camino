@@ -1,6 +1,6 @@
 // /src/lib/product/relatedProducts.ts
 
-import type { Product } from "@/lib/square/types";
+import type { Product } from '@/lib/square/types';
 
 /**
  * Configuration for related products algorithm
@@ -15,25 +15,26 @@ export interface RelatedProductsConfig {
  */
 export interface RelatedProductsResult {
   products: Product[];
-  matchType: 'brand-category' | 'category-only' | 'brand-only' | 'complementary';
+  matchType:
+    'brand-category' | 'category-only' | 'brand-only' | 'complementary';
   confidence: 'high' | 'medium' | 'low';
 }
 
 /**
  * Complementary category mapping for skateboard products
- * Maps primary categories to related categories that complete a setup
+ * Maps primary categories to related categories that complete a setup cSpell:ignore griptape
  */
 const COMPLEMENTARY_CATEGORIES: Record<string, string[]> = {
-  'decks': ['trucks', 'wheels', 'bearings', 'hardware', 'grip-tape', 'griptape'],
-  'trucks': ['decks', 'wheels', 'bearings', 'hardware'],
-  'wheels': ['trucks', 'bearings', 'bearings-spacers'],
-  'bearings': ['decks', 'trucks', 'wheels'],
-  'hardware': ['decks', 'trucks'],
+  decks: ['trucks', 'wheels', 'bearings', 'hardware', 'grip-tape', 'griptape'],
+  trucks: ['decks', 'wheels', 'bearings', 'hardware'],
+  wheels: ['trucks', 'bearings', 'bearings-spacers'],
+  bearings: ['decks', 'trucks', 'wheels'],
+  hardware: ['decks', 'trucks'],
   'grip-tape': ['decks'],
-  'griptape': ['decks'],
-  'apparel': ['footwear', 'accessories'],
-  'footwear': ['apparel', 'accessories', 'insoles'],
-  'accessories': ['apparel', 'footwear'],
+  griptape: ['decks'],
+  apparel: ['footwear', 'accessories'],
+  footwear: ['apparel', 'accessories', 'insoles'],
+  accessories: ['apparel', 'footwear'],
 };
 
 /**
@@ -51,21 +52,31 @@ function scoreProduct(
   sourceCategorySlug?: string
 ): number {
   let score = 0;
-  
-  const sameBrand = sourceProduct.brand && 
-    candidateProduct.brand && 
+
+  const sameBrand =
+    sourceProduct.brand &&
+    candidateProduct.brand &&
     sourceProduct.brand.toLowerCase() === candidateProduct.brand.toLowerCase();
-  
+
   // Extract category slug from URL (e.g., /category/decks/product-slug)
-  const candidateCategoryMatch = candidateProduct.url.match(/\/category\/([^\/]+)/);
-  const candidateCategorySlug = candidateCategoryMatch ? candidateCategoryMatch[1] : undefined;
-  
-  const sameCategory = sourceCategorySlug && candidateCategorySlug &&
+  const candidateCategoryMatch =
+    candidateProduct.url.match(/\/category\/([^\/]+)/);
+  const candidateCategorySlug = candidateCategoryMatch
+    ? candidateCategoryMatch[1]
+    : undefined;
+
+  const sameCategory =
+    sourceCategorySlug &&
+    candidateCategorySlug &&
     sourceCategorySlug === candidateCategorySlug;
-  
-  const isComplementary = sourceCategorySlug && candidateCategorySlug &&
-    COMPLEMENTARY_CATEGORIES[sourceCategorySlug]?.includes(candidateCategorySlug);
-  
+
+  const isComplementary =
+    sourceCategorySlug &&
+    candidateCategorySlug &&
+    COMPLEMENTARY_CATEGORIES[sourceCategorySlug]?.includes(
+      candidateCategorySlug
+    );
+
   // Calculate score
   if (sameBrand && isComplementary) {
     score = 100;
@@ -78,7 +89,7 @@ function scoreProduct(
   } else if (sameBrand) {
     score = 20;
   }
-  
+
   return score;
 }
 
@@ -96,36 +107,38 @@ export async function getRelatedProducts(
 ): Promise<RelatedProductsResult> {
   // Extract source category from URL
   const sourceCategoryMatch = sourceProduct.url.match(/\/category\/([^\/]+)/);
-  const sourceCategorySlug = sourceCategoryMatch ? sourceCategoryMatch[1] : undefined;
-  
+  const sourceCategorySlug = sourceCategoryMatch
+    ? sourceCategoryMatch[1]
+    : undefined;
+
   // Score and filter products
   const scoredProducts = allProducts
-    .filter(p => {
+    .filter((p) => {
       // Exclude the source product
       if (p.id === sourceProduct.id) return false;
-      
+
       // Optionally exclude out of stock products
-      if (config.excludeOutOfStock && !p.variations?.some(v => v.inStock)) {
+      if (config.excludeOutOfStock && !p.variations?.some((v) => v.inStock)) {
         return false;
       }
-      
+
       return true;
     })
-    .map(product => ({
+    .map((product) => ({
       product,
-      score: scoreProduct(sourceProduct, product, sourceCategorySlug)
+      score: scoreProduct(sourceProduct, product, sourceCategorySlug),
     }))
     .filter(({ score }) => score > 0) // Only keep products with a relationship
     .sort((a, b) => b.score - a.score) // Sort by score descending
     .slice(0, config.maxResults); // Limit results
-  
+
   // Determine match type and confidence
   let matchType: RelatedProductsResult['matchType'] = 'complementary';
   let confidence: RelatedProductsResult['confidence'] = 'low';
-  
+
   if (scoredProducts.length > 0) {
     const topScore = scoredProducts[0].score;
-    
+
     if (topScore === 100) {
       matchType = 'brand-category';
       confidence = 'high';
@@ -143,11 +156,11 @@ export async function getRelatedProducts(
       confidence = 'low';
     }
   }
-  
+
   return {
     products: scoredProducts.map(({ product }) => product),
     matchType,
-    confidence
+    confidence,
   };
 }
 

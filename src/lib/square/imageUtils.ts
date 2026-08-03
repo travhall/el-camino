@@ -1,6 +1,6 @@
 // src/lib/square/imageUtils.ts
-import { squareClient } from "./client";
-import { imageCache } from "@/lib/cache/blobCache";
+import { squareClient } from './client';
+import { imageCache } from '@/lib/cache/blobCache';
 
 /**
  * Get image URL with caching
@@ -16,8 +16,8 @@ export async function getImageUrl(imageId: string): Promise<string | null> {
 
   try {
     const result = await squareClient.catalog.object.get({ objectId: imageId });
-    if ((result as any).object?.type === "IMAGE") {
-      const url = (result as any).object.imageData?.url || null;
+    if (result.object?.type === 'IMAGE') {
+      const url = result.object.imageData?.url || null;
       if (url) {
         // Cache the URL (now async)
         await imageCache.set(imageId, url);
@@ -26,7 +26,7 @@ export async function getImageUrl(imageId: string): Promise<string | null> {
     }
     return null;
   } catch (error) {
-    console.error("Error fetching image:", error);
+    console.error('Error fetching image:', error);
     return null;
   }
 }
@@ -46,7 +46,7 @@ export async function batchGetImageUrls(
   const cacheChecks = await Promise.all(
     uniqueIds.map(async (id) => ({
       id,
-      cached: await imageCache.get(id)
+      cached: await imageCache.get(id),
     }))
   );
 

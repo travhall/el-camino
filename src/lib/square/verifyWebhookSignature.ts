@@ -8,12 +8,12 @@
 // The signature header value is:
 //   base64( HMAC-SHA256( signatureKey, notificationUrl + rawRequestBody ) )
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export interface VerifyArgs {
   /** Raw request body bytes, exactly as Square sent them. */
   requestBody: string;
-  /** Value of the `x-square-hmacsha256-signature` header. */
+  /** Value of the `x-square-hmacsha256-signature` header. cSpell:ignore hmacsha */
   signatureHeader: string;
   /** Webhook subscription's signing key from the Square dashboard. */
   signatureKey: string;
@@ -25,9 +25,9 @@ export function verifySquareWebhookSignature(args: VerifyArgs): boolean {
   const { requestBody, signatureHeader, signatureKey, notificationUrl } = args;
   if (!signatureHeader || !signatureKey) return false;
 
-  const expected = createHmac("sha256", signatureKey)
+  const expected = createHmac('sha256', signatureKey)
     .update(notificationUrl + requestBody)
-    .digest("base64");
+    .digest('base64');
 
   // timingSafeEqual requires equal-length buffers. Reject mismatched lengths
   // explicitly rather than letting the comparison throw.

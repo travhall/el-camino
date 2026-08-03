@@ -6,19 +6,21 @@ import type {
   BrandOption,
   CategoryFilterOption,
   CategoryFilterSubOption,
-} from "./types";
-import { createFilterSlug } from "./types";
-import { getProductStockStatus } from "./inventory"; // Import individual inventory checking (fallback)
-import { batchInventoryService } from "./batchInventory"; // Import batch inventory service
-import { filterCache } from "@/lib/cache/blobCache"; // Import filter cache
-import { fetchCategoryHierarchy } from "./categories";
-import { logger } from "@/lib/logger";
+} from './types';
+import { createFilterSlug } from './types';
+import { getProductStockStatus } from './inventory'; // Import individual inventory checking (fallback)
+import { batchInventoryService } from './batchInventory'; // Import batch inventory service
+import { filterCache } from '@/lib/cache/blobCache'; // Import filter cache
+import { fetchCategoryHierarchy } from './categories';
+import { logger } from '@/lib/logger';
 
 /**
  * Extract filter options from product array
  * Follows existing patterns from categories.ts
  */
-export async function extractFilterOptions(products: Product[]): Promise<FilterOptions> {
+export async function extractFilterOptions(
+  products: Product[]
+): Promise<FilterOptions> {
   const brandCounts = new Map<string, number>();
 
   // Count brands, following existing data processing patterns
@@ -85,7 +87,7 @@ export async function extractFilterOptions(products: Product[]): Promise<FilterO
       })
       .filter((c) => c.count > 0 || c.subcategories.length > 0);
   } catch (error) {
-    console.warn("[filterUtils] Could not fetch category hierarchy:", error);
+    console.warn('[filterUtils] Could not fetch category hierarchy:', error);
     // Graceful degradation — return brands only
   }
 
@@ -115,14 +117,16 @@ export async function filterProducts(
     filteredProducts = filteredProducts.filter((product) => {
       if (!product.categories?.length) return false;
       // Product matches if it belongs to ANY of the selected category IDs
-      return filters.categories.some((catId) => product.categories!.includes(catId));
+      return filters.categories.some((catId) =>
+        product.categories!.includes(catId)
+      );
     });
   }
 
   // On-sale filtering — synchronous, no API call needed
   if (filters.onSale === true) {
-    filteredProducts = filteredProducts.filter((product) =>
-      product.variations?.some((v) => v.saleInfo) ?? false
+    filteredProducts = filteredProducts.filter(
+      (product) => product.variations?.some((v) => v.saleInfo) ?? false
     );
   }
 
@@ -170,7 +174,7 @@ export async function filterProducts(
       );
     } catch (error) {
       console.warn(
-        "[FilterBatch] Batch inventory failed, falling back to individual checks:",
+        '[FilterBatch] Batch inventory failed, falling back to individual checks:',
         error
       );
 
@@ -183,7 +187,7 @@ export async function filterProducts(
               product,
               isInStock: !stockStatus.isOutOfStock,
             };
-          } catch (error) {
+          } catch {
             // If individual check fails, assume in stock to avoid hiding products unnecessarily
             return {
               product,
@@ -214,18 +218,12 @@ export async function filterProductsWithCache(
   categoryId?: string
 ): Promise<Product[]> {
   // Create deterministic cache key based on products, filters, and category
-  const productFingerprint = `${products.length}-${products[0]?.id || ""}-${products[products.length - 1]?.id || ""}`;
-  const filterKey = `${categoryId || "all"}-${JSON.stringify(filters)}-${productFingerprint}`;
+  const productFingerprint = `${products.length}-${products[0]?.id || ''}-${products[products.length - 1]?.id || ''}`;
+  const filterKey = `${categoryId || 'all'}-${JSON.stringify(filters)}-${productFingerprint}`;
 
   return filterCache.getOrCompute(filterKey, async () => {
-    const startTime = performance.now();
-
     // Use the optimized filterProducts function (now with batch inventory)
-    const result = await filterProducts(products, filters);
-
-    const duration = performance.now() - startTime;
-
-    return result;
+    return filterProducts(products, filters);
   });
 }
 
@@ -236,13 +234,13 @@ export function parseFiltersFromURL(
   searchParams: URLSearchParams
 ): ProductFilters {
   // Use getAll() to handle multiple brand parameters: ?brands=A&brands=B
-  const brands = searchParams.getAll("brands").filter(Boolean);
+  const brands = searchParams.getAll('brands').filter(Boolean);
 
   // Category IDs
-  const categories = searchParams.getAll("categories").filter(Boolean);
+  const categories = searchParams.getAll('categories').filter(Boolean);
 
-  const availability = searchParams.get("availability") === "true";
-  const onSale = searchParams.get("onSale") === "true";
+  const availability = searchParams.get('availability') === 'true';
+  const onSale = searchParams.get('onSale') === 'true';
 
   return {
     brands,
@@ -261,20 +259,20 @@ export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
   // Use append() to create multiple parameters: ?brands=A&brands=B
   if (filters.brands.length > 0) {
     filters.brands.forEach((brand) => {
-      params.append("brands", brand);
+      params.append('brands', brand);
     });
   }
 
   if (filters.categories.length > 0) {
-    filters.categories.forEach((id) => params.append("categories", id));
+    filters.categories.forEach((id) => params.append('categories', id));
   }
 
   if (filters.availability === true) {
-    params.set("availability", "true");
+    params.set('availability', 'true');
   }
 
   if (filters.onSale === true) {
-    params.set("onSale", "true");
+    params.set('onSale', 'true');
   }
 
   return params;
@@ -283,9 +281,9 @@ export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
 export function updateURLWithFilters(filters: ProductFilters): void {
   const params = filtersToURLParams(filters);
   const newURL = `${window.location.pathname}${
-    params.toString() ? "?" + params.toString() : ""
+    params.toString() ? '?' + params.toString() : ''
   }`;
-  window.history.pushState({}, "", newURL);
+  window.history.pushState({}, '', newURL);
 }
 
 /**

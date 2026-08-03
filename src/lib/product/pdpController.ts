@@ -1,19 +1,20 @@
 // src/lib/product/pdpController.ts
-import { cart } from "@/lib/cart";
-import { findVariationByAttributes } from "@/lib/square/variationParser";
-import { createVariantSlug } from "@/lib/square/slugUtils";
+import { cart } from '@/lib/cart';
+import { findVariationByAttributes } from '@/lib/square/variationParser';
+import { createVariantSlug } from '@/lib/square/slugUtils';
 import {
   processClientError,
   logError,
   createError,
   ErrorType,
-} from "@/lib/square/errorUtils";
-import { PDPUIManager } from "./pdpUI";
-import { PDPEventManager, type ProductPageData } from "./pdpEvents";
+} from '@/lib/square/errorUtils';
+import type { ProductVariation } from '@/lib/square/types';
+import { PDPUIManager } from './pdpUI';
+import { PDPEventManager, type ProductPageData } from './pdpEvents';
 
 export class PDPController {
   private selectedAttributes: Record<string, string> = {};
-  private currentVariation: any = null;
+  private currentVariation: ProductVariation | null = null;
   private uiManager: PDPUIManager;
   private eventManager: PDPEventManager;
   private isInitialLoad: boolean = true; // Track if this is initial page load
@@ -31,9 +32,10 @@ export class PDPController {
 
   private initialize(): void {
     // Find initial variation and set attributes
-    this.currentVariation = this.productData.variations.find(
-      (v) => v.variationId === this.productData.selectedVariationId
-    );
+    this.currentVariation =
+      this.productData.variations.find(
+        (v) => v.variationId === this.productData.selectedVariationId
+      ) ?? null;
 
     if (this.currentVariation?.attributes) {
       this.selectedAttributes = { ...this.currentVariation.attributes };
@@ -64,27 +66,30 @@ export class PDPController {
         this.showOutOfStockState();
       }
     } catch (error) {
-      const appError = processClientError(error, "updateCurrentVariation");
+      const appError = processClientError(error, 'updateCurrentVariation');
       logError(appError);
     }
   }
 
-  private updateProductUI(variation: any): void {
+  private updateProductUI(variation: ProductVariation): void {
     if (!variation) return;
 
     this.currentVariation = variation;
     this.updateVariantUrl(variation);
-    
+
     const availabilityInfo = cart.getProductAvailability(
       this.productData.productId,
       variation.variationId,
       variation.quantity || 0
     );
 
-    this.uiManager.updateAvailabilityDisplay(availabilityInfo, variation.saleInfo);
+    this.uiManager.updateAvailabilityDisplay(
+      availabilityInfo,
+      variation.saleInfo
+    );
     this.uiManager.updatePriceDisplay(variation.price, {
       unit: variation.unit,
-      saleInfo: variation.saleInfo
+      saleInfo: variation.saleInfo,
     });
 
     if (variation.image) {
@@ -106,9 +111,9 @@ export class PDPController {
     this.updateButtonProductData(variation);
   }
 
-  private updateButtonProductData(variation: any): void {
+  private updateButtonProductData(variation: ProductVariation): void {
     const button = document.getElementById(
-      "add-to-cart-button"
+      'add-to-cart-button'
     ) as HTMLButtonElement;
     if (!button?.dataset.product) return;
 
@@ -124,9 +129,9 @@ export class PDPController {
     } catch (error) {
       const appError = createError(
         ErrorType.DATA_PARSING,
-        "Failed to update button product data",
+        'Failed to update button product data',
         {
-          source: "updateButtonProductData",
+          source: 'updateButtonProductData',
           originalError: error,
         }
       );
@@ -134,66 +139,80 @@ export class PDPController {
     }
   }
 
-  private updateVariantUrl(selectedVariation: any): void {
+  private updateVariantUrl(selectedVariation: ProductVariation): void {
     // Update URL for variant tracking without creating history entries
-    const baseUrl = window.location.pathname.split("?")[0];
+    const baseUrl = window.location.pathname.split('?')[0];
     if (selectedVariation.name) {
       const variantSlug = createVariantSlug(selectedVariation.name);
       const newUrl = `${baseUrl}?variant=${variantSlug}`;
       // Use replaceState to update URL without adding history entry
-      window.history.replaceState({}, "", newUrl);
+      window.history.replaceState({}, '', newUrl);
     }
   }
 
   private showOutOfStockState(): void {
     if (!this.currentVariation) return;
 
-    this.uiManager.updatePriceDisplay(
-      this.currentVariation.price,
-      this.currentVariation.unit
-    );
+    this.uiManager.updatePriceDisplay(this.currentVariation.price, {
+      unit: this.currentVariation.unit,
+      saleInfo: this.currentVariation.saleInfo,
+    });
 
     const outOfStockInfo = cart.getProductAvailability(
       this.productData.productId,
-      "out-of-stock",
+      'out-of-stock',
       0
     );
-    this.uiManager.updateAvailabilityDisplay(outOfStockInfo, this.currentVariation.saleInfo);
+    this.uiManager.updateAvailabilityDisplay(
+      outOfStockInfo,
+      this.currentVariation.saleInfo
+    );
     this.updateBisSection(this.currentVariation, false);
   }
 
-  private updateBisSection(variation: any, inStock: boolean): void {
-    const bisSection = document.getElementById("back-in-stock-section");
+  private updateBisSection(
+    variation: ProductVariation,
+    inStock: boolean
+  ): void {
+    const bisSection = document.getElementById('back-in-stock-section');
     if (!bisSection) return;
 
     if (!inStock) {
       // Read the base title stored on the element so we don't need it in productData
-      const productTitle = bisSection.dataset.productTitle ?? "";
+      const productTitle = bisSection.dataset.productTitle ?? '';
       const label = variation.name
         ? `${productTitle} — ${variation.name}`
         : productTitle;
 
       // Update hidden fields for the newly selected OOS variant
-      const variationIdInput = document.getElementById("bis-variation-id") as HTMLInputElement | null;
-      const productTitleInput = document.getElementById("bis-product-title") as HTMLInputElement | null;
+      const variationIdInput = document.getElementById(
+        'bis-variation-id'
+      ) as HTMLInputElement | null;
+      const productTitleInput = document.getElementById(
+        'bis-product-title'
+      ) as HTMLInputElement | null;
       if (variationIdInput) variationIdInput.value = variation.variationId;
       if (productTitleInput) productTitleInput.value = label;
 
       // Update the inline product name span in the description
-      const labelEl = document.getElementById("bis-label-product");
+      const labelEl = document.getElementById('bis-label-product');
       if (labelEl) labelEl.textContent = label;
 
       // Reset form state (in case user previously submitted for a different variant)
-      const form = document.getElementById("back-in-stock-form") as HTMLFormElement | null;
-      const emailInput = document.getElementById("bis-email") as HTMLInputElement | null;
-      if (form) form.classList.remove("hidden");
-      if (emailInput) emailInput.value = "";
-      document.getElementById("bis-success")?.classList.add("hidden");
-      document.getElementById("bis-error")?.classList.add("hidden");
+      const form = document.getElementById(
+        'back-in-stock-form'
+      ) as HTMLFormElement | null;
+      const emailInput = document.getElementById(
+        'bis-email'
+      ) as HTMLInputElement | null;
+      if (form) form.classList.remove('hidden');
+      if (emailInput) emailInput.value = '';
+      document.getElementById('bis-success')?.classList.add('hidden');
+      document.getElementById('bis-error')?.classList.add('hidden');
 
-      bisSection.classList.remove("hidden");
+      bisSection.classList.remove('hidden');
     } else {
-      bisSection.classList.add("hidden");
+      bisSection.classList.add('hidden');
     }
   }
 
@@ -223,7 +242,10 @@ export class PDPController {
       this.currentVariation.quantity || 0
     );
 
-    this.uiManager.updateAvailabilityDisplay(availabilityInfo, this.currentVariation.saleInfo);
+    this.uiManager.updateAvailabilityDisplay(
+      availabilityInfo,
+      this.currentVariation.saleInfo
+    );
     this.updateAttributeButtonStates();
   }
 
@@ -243,11 +265,11 @@ export class PDPController {
 
         return Boolean(
           matchingVariation?.inStock &&
-            cart.canAddToCart(
-              this.productData.productId,
-              matchingVariation.variationId,
-              matchingVariation.quantity || 0
-            )
+          cart.canAddToCart(
+            this.productData.productId,
+            matchingVariation.variationId,
+            matchingVariation.quantity || 0
+          )
         );
       }
     );

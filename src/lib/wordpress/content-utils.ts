@@ -13,22 +13,28 @@
  *   - javascript: / vbscript: / data:text/html URIs in href/src/etc.
  *
  * We do NOT remove iframes here — the pipeline relies on iframe embeds
- * (YouTube, Calendly, etc.) and reduces YouTube to a facade downstream.
+ * (YouTube, Calendly, etc.) and reduces YouTube to a facade downstream. cSpell:ignore xlink formaction videoid soundcloud
  */
 export function stripUnsafeHtml(html: string): string {
   if (!html) return html;
   return (
     html
       // Drop <script>...</script> and standalone <script ... />
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "")
-      .replace(/<script\b[^>]*\/?>/gi, "")
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
+      .replace(/<script\b[^>]*\/?>/gi, '')
       // Drop inline event handler attributes: on*="..." | on*='...' | on*=value
-      .replace(/\s+on[a-z]+\s*=\s*"(?:[^"]*)"/gi, "")
-      .replace(/\s+on[a-z]+\s*=\s*'(?:[^']*)'/gi, "")
-      .replace(/\s+on[a-z]+\s*=\s*[^\s>]+/gi, "")
+      .replace(/\s+on[a-z]+\s*=\s*"(?:[^"]*)"/gi, '')
+      .replace(/\s+on[a-z]+\s*=\s*'(?:[^']*)'/gi, '')
+      .replace(/\s+on[a-z]+\s*=\s*[^\s>]+/gi, '')
       // Neutralize javascript:/vbscript:/data:(html|javascript) URIs in any attribute
-      .replace(/(href|src|xlink:href|formaction|action|poster)\s*=\s*"\s*(?:(?:javascript|vbscript):|data:(?:text\/html|application\/javascript))[^"]*"/gi, '$1="#"')
-      .replace(/(href|src|xlink:href|formaction|action|poster)\s*=\s*'\s*(?:(?:javascript|vbscript):|data:(?:text\/html|application\/javascript))[^']*'/gi, "$1='#'")
+      .replace(
+        /(href|src|xlink:href|formaction|action|poster)\s*=\s*"\s*(?:(?:javascript|vbscript):|data:(?:text\/html|application\/javascript))[^"]*"/gi,
+        '$1="#"'
+      )
+      .replace(
+        /(href|src|xlink:href|formaction|action|poster)\s*=\s*'\s*(?:(?:javascript|vbscript):|data:(?:text\/html|application\/javascript))[^']*'/gi,
+        "$1='#'"
+      )
   );
 }
 
@@ -36,23 +42,23 @@ export function stripUnsafeHtml(html: string): string {
  * Clean and sanitize WordPress content for display
  */
 export function sanitizeWordPressContent(content: string): string {
-  if (!content) return "";
+  if (!content) return '';
 
   // Remove WordPress's automatic p tags around images
   return (
     content
-      .replace(/<p>(\s*<img[^>]*>\s*)<\/p>/gi, "$1")
-      .replace(/<p>(\s*<figure[^>]*>[\s\S]*?<\/figure>\s*)<\/p>/gi, "$1")
-      .replace(/<p>(\s*<iframe[^>]*>[\s\S]*?<\/iframe>\s*)<\/p>/gi, "$1")
+      .replace(/<p>(\s*<img[^>]*>\s*)<\/p>/gi, '$1')
+      .replace(/<p>(\s*<figure[^>]*>[\s\S]*?<\/figure>\s*)<\/p>/gi, '$1')
+      .replace(/<p>(\s*<iframe[^>]*>[\s\S]*?<\/iframe>\s*)<\/p>/gi, '$1')
       // Fix WordPress's sometimes broken figure captions
-      .replace(/<figcaption class="wp-element-caption">/gi, "<figcaption>")
+      .replace(/<figcaption class="wp-element-caption">/gi, '<figcaption>')
       // Ensure proper spacing around blocks
       .replace(
         /(<\/figure>|<\/blockquote>|<\/div>)(\s*)(<h[1-6])/gi,
-        "$1\n\n$3"
+        '$1\n\n$3'
       )
       // Clean up extra whitespace
-      .replace(/\n\s*\n\s*\n/g, "\n\n")
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
       .trim()
   );
 }
@@ -69,7 +75,7 @@ export function optimizeWordPressImage(
     crop?: boolean;
   } = {}
 ): string {
-  if (!url || !url.includes("wordpress.com")) {
+  if (!url || !url.includes('wordpress.com')) {
     return url;
   }
 
@@ -77,24 +83,24 @@ export function optimizeWordPressImage(
   const params = new URLSearchParams(urlObj.search);
 
   if (options.width) {
-    params.set("w", options.width.toString());
+    params.set('w', options.width.toString());
   }
 
   if (options.height) {
-    params.set("h", options.height.toString());
+    params.set('h', options.height.toString());
   }
 
   if (options.quality) {
-    params.set("quality", options.quality.toString());
+    params.set('quality', options.quality.toString());
   }
 
   if (options.crop) {
-    params.set("crop", "1");
+    params.set('crop', '1');
   }
 
   // Default optimization
-  if (!params.has("quality")) {
-    params.set("quality", "85");
+  if (!params.has('quality')) {
+    params.set('quality', '85');
   }
 
   urlObj.search = params.toString();
@@ -108,8 +114,8 @@ export function generateWordPressSrcSet(
   url: string,
   baseWidth: number = 800
 ): string {
-  if (!url || !url.includes("wordpress.com")) {
-    return "";
+  if (!url || !url.includes('wordpress.com')) {
+    return '';
   }
 
   const sizes = [
@@ -122,7 +128,7 @@ export function generateWordPressSrcSet(
 
   return sizes
     .map((width) => `${optimizeWordPressImage(url, { width })} ${width}w`)
-    .join(", ");
+    .join(', ');
 }
 
 /**
@@ -144,8 +150,11 @@ export function processRawWordPressHTML(
 ): string {
   if (!html) return html;
 
-  const { defaultWidth = 800, defaultHeight = 600, isAboveFold = false } =
-    options;
+  const {
+    defaultWidth = 800,
+    defaultHeight = 600,
+    isAboveFold = false,
+  } = options;
 
   let processed = html;
 
@@ -196,8 +205,8 @@ export function processRawWordPressHTML(
         /<iframe([^>]*)>/gi,
         (_iMatch: string, attrs: string) => {
           const cleaned = attrs
-            .replace(/\s*width=["']?\d+["']?/gi, "")
-            .replace(/\s*height=["']?\d+["']?/gi, "");
+            .replace(/\s*width=["']?\d+["']?/gi, '')
+            .replace(/\s*height=["']?\d+["']?/gi, '');
           return `<iframe${cleaned}>`;
         }
       );
@@ -212,35 +221,38 @@ export function processRawWordPressHTML(
   // WCAG 4.1.2 / Lighthouse frame-title: every iframe must have a descriptive title
   // for screen readers. WordPress post content may contain raw iframes (e.g. from
   // shortcodes or classic editor embeds) that were never processed by WPEmbed.astro.
-  processed = processed.replace(/<iframe([^>]*)>/gi, (_match, attrs: string) => {
-    // Already has a title — leave it alone
-    if (/\btitle\s*=/i.test(attrs)) {
-      return `<iframe${attrs}>`;
+  processed = processed.replace(
+    /<iframe([^>]*)>/gi,
+    (_match, attrs: string) => {
+      // Already has a title — leave it alone
+      if (/\btitle\s*=/i.test(attrs)) {
+        return `<iframe${attrs}>`;
+      }
+
+      // Derive a meaningful title from the src URL when possible
+      const srcMatch = attrs.match(/src=["']([^"']+)["']/i);
+      const src = srcMatch ? srcMatch[1] : '';
+
+      let title = 'Embedded content';
+      if (src.includes('youtube.com') || src.includes('youtu.be')) {
+        title = 'YouTube video player';
+      } else if (src.includes('vimeo.com')) {
+        title = 'Vimeo video player';
+      } else if (src.includes('spotify.com')) {
+        title = 'Spotify player';
+      } else if (src.includes('soundcloud.com')) {
+        title = 'SoundCloud player';
+      } else if (src.includes('google.com/maps')) {
+        title = 'Google Maps';
+      } else if (src.includes('twitter.com') || src.includes('x.com')) {
+        title = 'Twitter / X post';
+      } else if (src.includes('instagram.com')) {
+        title = 'Instagram post';
+      }
+
+      return `<iframe${attrs} title="${title}">`;
     }
-
-    // Derive a meaningful title from the src URL when possible
-    const srcMatch = attrs.match(/src=["']([^"']+)["']/i);
-    const src = srcMatch ? srcMatch[1] : "";
-
-    let title = "Embedded content";
-    if (src.includes("youtube.com") || src.includes("youtu.be")) {
-      title = "YouTube video player";
-    } else if (src.includes("vimeo.com")) {
-      title = "Vimeo video player";
-    } else if (src.includes("spotify.com")) {
-      title = "Spotify player";
-    } else if (src.includes("soundcloud.com")) {
-      title = "SoundCloud player";
-    } else if (src.includes("google.com/maps")) {
-      title = "Google Maps";
-    } else if (src.includes("twitter.com") || src.includes("x.com")) {
-      title = "Twitter / X post";
-    } else if (src.includes("instagram.com")) {
-      title = "Instagram post";
-    }
-
-    return `<iframe${attrs} title="${title}">`;
-  });
+  );
 
   // Step 4: Process <img> tags — inject dimensions and CDN routing.
   processed = processed.replace(/<img([^>]*)>/gi, (_match, attrs: string) => {
@@ -264,20 +276,20 @@ export function processRawWordPressHTML(
     // Route WordPress images through Netlify Image CDN.
     if (
       src &&
-      (src.includes("wordpress.com") || src.includes("wp.com")) &&
-      !src.startsWith("/.netlify/images")
+      (src.includes('wordpress.com') || src.includes('wp.com')) &&
+      !src.startsWith('/.netlify/images')
     ) {
       const cdnUrl = buildNetlifyImageCDNUrl(src, imgWidth);
       newAttrs = newAttrs.replace(src, cdnUrl);
     }
 
     // Lazy load below-fold images.
-    if (!isAboveFold && !attrs.includes("loading=")) {
+    if (!isAboveFold && !attrs.includes('loading=')) {
       newAttrs += ' loading="lazy"';
     }
 
     // Async decoding reduces main-thread blocking.
-    if (!attrs.includes("decoding=")) {
+    if (!attrs.includes('decoding=')) {
       newAttrs += ' decoding="async"';
     }
 
@@ -301,7 +313,7 @@ function buildNetlifyImageCDNUrl(src: string, width: number): string {
     const params = new URLSearchParams({
       url: src,
       w: Math.min(width, 1200).toString(),
-      q: "75",
+      q: '75',
     });
     return `/.netlify/images?${params.toString()}`;
   } catch {
