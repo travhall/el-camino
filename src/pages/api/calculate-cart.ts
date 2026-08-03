@@ -1,46 +1,48 @@
 // src/pages/api/calculate-cart.ts
-import type { APIRoute } from "astro";
-import type { CartItem } from "@/lib/cart/types";
-import { squareClient } from "@/lib/square/client";
-import { checkoutRetryClient } from "@/lib/square/apiRetry";
-import { calculateShippingRate } from "@/lib/config/shipping";
-import { getAuthoritativePricing } from "@/lib/square/pricing";
-import { createRateLimiter, clientIp } from "@/lib/rateLimit";
+import type { APIRoute } from 'astro';
+import type { CartItem } from '@/lib/cart/types';
+import { squareClient } from '@/lib/square/client';
+import { checkoutRetryClient } from '@/lib/square/apiRetry';
+import { calculateShippingRate } from '@/lib/config/shipping';
+import { getAuthoritativePricing } from '@/lib/square/pricing';
+import { createRateLimiter, clientIp } from '@/lib/rateLimit';
+import type { OrderLineItem } from 'square-legacy';
 
 const calculateLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 30 });
 const MAX_CART_ITEMS = 50;
 
 interface CalculateRequest {
   items: CartItem[];
-  fulfillmentMethod: "shipping" | "pickup";
+  fulfillmentMethod: 'shipping' | 'pickup';
 }
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     if (calculateLimiter.check(clientIp(request))) {
       return new Response(
-        JSON.stringify({ success: false, error: "Too many requests" }),
-        { status: 429, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: 'Too many requests' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const { items, fulfillmentMethod } = (await request.json()) as CalculateRequest;
+    const { items, fulfillmentMethod } =
+      (await request.json()) as CalculateRequest;
 
     if (items?.length > MAX_CART_ITEMS) {
       return new Response(
-        JSON.stringify({ success: false, error: "Cart too large" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: 'Cart too large' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     if (!items?.length) {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           success: false,
           subtotal: 0,
           shipping: 0,
           tax: 0,
-          total: 0
+          total: 0,
         }),
         { status: 200 }
       );
@@ -59,30 +61,31 @@ export const POST: APIRoute = async ({ request }) => {
     // to the catalog regular price (item.price) when no trusted entry exists
     // (e.g. variable-price gift cards).
     const subtotal = items.reduce((sum, item) => {
-      const effectivePrice = pricing[item.variationId]?.effectivePrice ?? item.price;
+      const effectivePrice =
+        pricing[item.variationId]?.effectivePrice ?? item.price;
       return sum + effectivePrice * item.quantity;
     }, 0);
 
     // Calculate shipping
     let shippingCost = 0;
-    if (fulfillmentMethod === "shipping") {
+    if (fulfillmentMethod === 'shipping') {
       shippingCost = calculateShippingRate(subtotal);
     }
 
     // Build line items - apply a sale price ONLY when the Square catalog
     // confirms an active sale for this variation.
     const lineItems = items.map((item) => {
-      const lineItem: any = {
+      const lineItem: OrderLineItem = {
         quantity: String(item.quantity),
         catalogObjectId: item.variationId,
-        itemType: "ITEM" as const,
+        itemType: 'ITEM' as const,
       };
 
       const salePrice = pricing[item.variationId]?.salePrice;
       if (salePrice) {
         lineItem.basePriceMoney = {
           amount: BigInt(Math.round(salePrice * 100)),
-          currency: "USD",
+          currency: 'USD',
         };
       }
 
@@ -92,14 +95,14 @@ export const POST: APIRoute = async ({ request }) => {
     // Add shipping as line item if applicable
     if (shippingCost > 0) {
       lineItems.push({
-        quantity: "1",
-        itemType: "ITEM" as const,
-        name: "Shipping",
+        quantity: '1',
+        itemType: 'ITEM' as const,
+        name: 'Shipping',
         basePriceMoney: {
           amount: BigInt(Math.round(shippingCost * 100)),
-          currency: "USD",
+          currency: 'USD',
         },
-      } as any);
+      });
     }
 
     // Call Square CalculateOrder to get real tax
@@ -114,14 +117,14 @@ export const POST: APIRoute = async ({ request }) => {
             },
           },
         }),
-      "calculate-cart:orders.calculate",
+      'calculate-cart:orders.calculate',
       { maxRetries: 2, baseDelay: 500 }
     );
 
     const order = calculateResponse.order;
-    
+
     if (!order) {
-      throw new Error("Calculate order failed");
+      throw new Error('Calculate order failed');
     }
 
     // Extract calculated values
@@ -137,15 +140,15 @@ export const POST: APIRoute = async ({ request }) => {
         total: totalAmount,
       }),
       {
-        headers: { "Content-Type": "application/json" },
-      },
+        headers: { 'Content-Type': 'application/json' },
+      }
     );
   } catch (error) {
-    console.error("Calculate cart error:", error);
+    console.error('Calculate cart error:', error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Unable to calculate cart total. Please try again.",
+        error: 'Unable to calculate cart total. Please try again.',
       }),
       { status: 500 }
     );

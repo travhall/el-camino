@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import type { CartItem } from '../types';
 
 // Mock dependencies before importing cart
@@ -13,6 +14,13 @@ vi.mock('../../square/inventory', () => ({
 
 // Mock fetch for inventory API calls
 global.fetch = vi.fn();
+
+// CartManager keeps `items`/`storage` private; these tests reach past that
+// encapsulation to exercise internal error paths directly.
+type CartInternals = {
+  items: Map<string, CartItem>;
+  storage: Storage | null;
+};
 
 describe('CartManager Real Implementation Tests', () => {
   let cart: (typeof import('../index'))['cart'];
@@ -41,7 +49,7 @@ describe('CartManager Real Implementation Tests', () => {
     });
 
     // Mock successful inventory check by default
-    (global.fetch as any).mockImplementation((url: string) => {
+    (global.fetch as Mock).mockImplementation((url: string) => {
       if (url.includes('/api/check-inventory')) {
         return Promise.resolve({
           ok: true,
@@ -201,7 +209,7 @@ describe('CartManager Real Implementation Tests', () => {
 
   describe('Inventory Integration', () => {
     it('should handle out of stock items', async () => {
-      (global.fetch as any).mockImplementationOnce((url: string) => {
+      (global.fetch as Mock).mockImplementationOnce((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -229,7 +237,7 @@ describe('CartManager Real Implementation Tests', () => {
     });
 
     it('should limit quantity to available stock', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -263,7 +271,7 @@ describe('CartManager Real Implementation Tests', () => {
     });
 
     it('should handle inventory API failures gracefully', async () => {
-      (global.fetch as any).mockImplementationOnce((url: string) => {
+      (global.fetch as Mock).mockImplementationOnce((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: false,
@@ -578,7 +586,7 @@ describe('CartManager Real Implementation Tests', () => {
         json: () => Promise.resolve({ success: true, quantity: 99 }),
       });
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) return inventoryFetch(url);
         if (url.includes('/api/sale-info')) {
           return Promise.resolve({
@@ -604,14 +612,14 @@ describe('CartManager Real Implementation Tests', () => {
       expect(result.success).toBe(true);
       // Inventory API must NOT be called for gift cards
       expect(inventoryFetch).not.toHaveBeenCalled();
-      expect(cart.getItems().some((i: any) => i.isGiftCard)).toBe(true);
+      expect(cart.getItems().some((i) => i.isGiftCard)).toBe(true);
     });
   });
 
   describe('addItem — quantity edge cases', () => {
     it('caps quantity at available stock when item is not yet in cart', async () => {
       // Requesting 10, only 3 available, nothing in cart already
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -657,7 +665,7 @@ describe('CartManager Real Implementation Tests', () => {
       expect(cart.getItems()[0].quantity).toBe(3);
 
       // Now add 4 more, but only 5 total available (3 already in cart + 2 remaining)
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -683,7 +691,7 @@ describe('CartManager Real Implementation Tests', () => {
 
     it('rejects add when the item is already at the maximum available quantity', async () => {
       // Put 5 in cart against a 5-unit stock
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -721,7 +729,7 @@ describe('CartManager Real Implementation Tests', () => {
 
   describe('addItem — fetch failure resilience', () => {
     it('proceeds with add when the inventory fetch returns a non-ok response', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({ ok: false, status: 503 });
         }
@@ -749,7 +757,7 @@ describe('CartManager Real Implementation Tests', () => {
     });
 
     it('adds item without sale info when the sale-info fetch fails', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -776,7 +784,7 @@ describe('CartManager Real Implementation Tests', () => {
       // saleInfo should remain undefined / null since the fetch failed
       const cartItem = cart
         .getItems()
-        .find((i: any) => i.variationId === 'var-nosale');
+        .find((i) => i.variationId === 'var-nosale');
       expect(cartItem).toBeDefined();
       expect(cartItem?.saleInfo).toBeFalsy();
     });
@@ -805,7 +813,7 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 2,
       });
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -835,7 +843,7 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 1,
       });
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -866,7 +874,7 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 8,
       });
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -915,7 +923,7 @@ describe('CartManager Real Implementation Tests', () => {
         }),
       ]);
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -934,7 +942,7 @@ describe('CartManager Real Implementation Tests', () => {
       expect(result.message).toContain('OOS Item');
       expect(result.message).toContain('Adj Item');
       expect(cart.getItems()).toHaveLength(2);
-      const adjItem = cart.getItems().find((i: any) => i.variationId === 'v2');
+      const adjItem = cart.getItems().find((i) => i.variationId === 'v2');
       expect(adjItem?.quantity).toBe(2);
     });
 
@@ -951,7 +959,7 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 1,
       });
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.reject(new Error('Network timeout'));
         }
@@ -980,7 +988,7 @@ describe('CartManager Real Implementation Tests', () => {
   describe('canAddToCart — ALL_IN_CART state', () => {
     it('returns false when all available stock is already in the cart', async () => {
       // Add 5 items against 5 available
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -1031,7 +1039,7 @@ describe('CartManager Real Implementation Tests', () => {
         discountPercent: 33,
       };
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/sale-info')) {
           return Promise.resolve({
             ok: true,
@@ -1049,9 +1057,7 @@ describe('CartManager Real Implementation Tests', () => {
       // Allow loadCart + fetchSaleInfoForCartItems to complete
       await new Promise((r) => setTimeout(r, 200));
 
-      const loaded = cart
-        .getItems()
-        .find((i: any) => i.variationId === 'var-sale');
+      const loaded = cart.getItems().find((i) => i.variationId === 'var-sale');
       expect(loaded).toBeDefined();
       expect(loaded?.saleInfo?.salePrice).toBe(2000);
       // Total should use sale price
@@ -1069,7 +1075,7 @@ describe('CartManager Real Implementation Tests', () => {
       };
       mockLocalStorage['cart'] = JSON.stringify([item]);
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/sale-info')) {
           return Promise.resolve({ ok: false, status: 503 });
         }
@@ -1079,9 +1085,7 @@ describe('CartManager Real Implementation Tests', () => {
       cart.forceRefresh();
       await new Promise((r) => setTimeout(r, 200));
 
-      const loaded = cart
-        .getItems()
-        .find((i: any) => i.variationId === 'var-nok');
+      const loaded = cart.getItems().find((i) => i.variationId === 'var-nok');
       expect(loaded).toBeDefined();
       expect(loaded?.saleInfo).toBeFalsy();
     });
@@ -1097,7 +1101,7 @@ describe('CartManager Real Implementation Tests', () => {
       };
       mockLocalStorage['cart'] = JSON.stringify([item]);
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/sale-info')) {
           return Promise.resolve({
             ok: true,
@@ -1112,7 +1116,7 @@ describe('CartManager Real Implementation Tests', () => {
 
       const loaded = cart
         .getItems()
-        .find((i: any) => i.variationId === 'var-nosuccess');
+        .find((i) => i.variationId === 'var-nosuccess');
       expect(loaded).toBeDefined();
       expect(loaded?.saleInfo).toBeFalsy();
     });
@@ -1128,7 +1132,7 @@ describe('CartManager Real Implementation Tests', () => {
       };
       mockLocalStorage['cart'] = JSON.stringify([item]);
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/sale-info')) {
           return Promise.resolve({
             ok: true,
@@ -1154,7 +1158,7 @@ describe('CartManager Real Implementation Tests', () => {
 
       const loaded = cart
         .getItems()
-        .find((i: any) => i.variationId === 'var-nomatch');
+        .find((i) => i.variationId === 'var-nomatch');
       expect(loaded).toBeDefined();
       expect(loaded?.saleInfo).toBeFalsy();
       // Price should be unchanged
@@ -1172,7 +1176,7 @@ describe('CartManager Real Implementation Tests', () => {
       };
       mockLocalStorage['cart'] = JSON.stringify([item]);
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/sale-info')) {
           return Promise.reject(new Error('Network error'));
         }
@@ -1185,7 +1189,7 @@ describe('CartManager Real Implementation Tests', () => {
       // Item should still be in cart; fetch error was swallowed
       const loaded = cart
         .getItems()
-        .find((i: any) => i.variationId === 'var-reject');
+        .find((i) => i.variationId === 'var-reject');
       expect(loaded).toBeDefined();
       expect(loaded?.saleInfo).toBeFalsy();
     });
@@ -1222,7 +1226,7 @@ describe('CartManager Real Implementation Tests', () => {
       };
       mockLocalStorage['cart'] = JSON.stringify([zeroQtyItem, validItem]);
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/sale-info')) {
           return Promise.resolve({
             ok: true,
@@ -1265,7 +1269,7 @@ describe('CartManager Real Implementation Tests', () => {
     it('addItem returns failure when item is null/undefined (outer catch)', async () => {
       // Passing null causes item.quantity access to throw inside the try block,
       // hitting the outer catch that returns { success: false, message: ... }
-      const result = await cart.addItem(null as any);
+      const result = await cart.addItem(null as unknown as CartItem);
       expect(result.success).toBe(false);
       expect(result.message).toMatch(/error/i);
     });
@@ -1282,7 +1286,7 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 1,
       });
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -1293,9 +1297,9 @@ describe('CartManager Real Implementation Tests', () => {
         return Promise.reject(new Error(`Unexpected: ${url}`));
       });
 
-      const origItems = (cart as any).items;
+      const origItems = (cart as unknown as CartInternals).items;
       // Replace items with a proxy whose forEach throws mid-iteration
-      (cart as any).items = {
+      (cart as unknown as CartInternals).items = {
         size: 1,
         values: () => {
           throw new Error('broken iterator');
@@ -1305,14 +1309,14 @@ describe('CartManager Real Implementation Tests', () => {
         delete: origItems.delete.bind(origItems),
         clear: origItems.clear.bind(origItems),
         entries: origItems.entries.bind(origItems),
-      };
+      } as unknown as Map<string, CartItem>;
 
       try {
         const result = await cart.validateCart();
         expect(result.success).toBe(false);
         expect(result.message).toContain('Failed to validate');
       } finally {
-        (cart as any).items = origItems;
+        (cart as unknown as CartInternals).items = origItems;
       }
     });
   });
@@ -1367,7 +1371,7 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 1,
       });
 
-      const storage = (cart as any).storage;
+      const storage = (cart as unknown as CartInternals).storage as Storage;
       const origSetItem = storage.setItem;
       storage.setItem = () => {
         throw new Error('QuotaExceededError');
@@ -1410,7 +1414,7 @@ describe('CartManager Real Implementation Tests', () => {
       });
 
       // First call returns the delayed promise; subsequent calls return empty sale info
-      (global.fetch as any)
+      (global.fetch as Mock)
         .mockImplementationOnce((url: string) => {
           if (url.includes('/api/sale-info')) return delayedFetch;
           return Promise.reject(new Error(`Unexpected: ${url}`));
@@ -1453,7 +1457,7 @@ describe('CartManager Real Implementation Tests', () => {
 
       // 6. Verify stale sale data was NOT applied
       const items = cart.getItems();
-      const raceItem = items.find((i: any) => i.variationId === 'variation-a');
+      const raceItem = items.find((i) => i.variationId === 'variation-a');
       // The stale generation-1 response must have been discarded
       expect(raceItem?.saleInfo?.salePrice).not.toBe(1);
     });
@@ -1461,12 +1465,12 @@ describe('CartManager Real Implementation Tests', () => {
 
   describe('storage = null guard paths', () => {
     it('loadCart and saveCart degrade gracefully when storage is unavailable', async () => {
-      const origStorage = (cart as any).storage;
+      const origStorage = (cart as unknown as CartInternals).storage;
 
       try {
         // Nulling storage triggers the !this.storage early-return in both
         // loadCart (via forceRefresh) and saveCart (via addItem → save).
-        (cart as any).storage = null;
+        (cart as unknown as CartInternals).storage = null;
 
         // forceRefresh → loadCart → !this.storage → early return (no crash)
         cart.forceRefresh();
@@ -1474,7 +1478,7 @@ describe('CartManager Real Implementation Tests', () => {
 
         // addItem eventually calls saveCart → !this.storage → early return (no crash)
         // Use a pre-existing fetch mock so inventory succeeds
-        (global.fetch as any).mockImplementation((url: string) => {
+        (global.fetch as Mock).mockImplementation((url: string) => {
           if (url.includes('/api/check-inventory')) {
             return Promise.resolve({
               ok: true,
@@ -1503,7 +1507,7 @@ describe('CartManager Real Implementation Tests', () => {
         // but saveCart silently fails because storage is null
         expect(result.success).toBe(true);
       } finally {
-        (cart as any).storage = origStorage;
+        (cart as unknown as CartInternals).storage = origStorage;
       }
     });
   });
@@ -1519,7 +1523,7 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 1,
       });
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({ ok: false, status: 503 });
         }
@@ -1542,7 +1546,7 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 1,
       });
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -1576,7 +1580,7 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 1,
       });
 
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/batch-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -1596,7 +1600,7 @@ describe('CartManager Real Implementation Tests', () => {
     });
 
     it('defaults quantity to 1 when addItem is called without a positive quantity', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -1622,14 +1626,12 @@ describe('CartManager Real Implementation Tests', () => {
       });
 
       expect(result.success).toBe(true);
-      const item = cart
-        .getItems()
-        .find((i: any) => i.variationId === 'var-noqty');
+      const item = cart.getItems().find((i) => i.variationId === 'var-noqty');
       expect(item?.quantity).toBe(1);
     });
 
     it('treats check-inventory success: false the same as zero stock', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -1661,7 +1663,7 @@ describe('CartManager Real Implementation Tests', () => {
     });
 
     it('treats sale-info success: false the same as no sale info', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -1689,12 +1691,12 @@ describe('CartManager Real Implementation Tests', () => {
       expect(result.success).toBe(true);
       const item = cart
         .getItems()
-        .find((i: any) => i.variationId === 'var-sale-unsuccessful');
+        .find((i) => i.variationId === 'var-sale-unsuccessful');
       expect(item?.saleInfo).toBeFalsy();
     });
 
     it('falls back to item.id when catalogObjectId is not provided on a new item', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({
             ok: true,
@@ -1717,12 +1719,12 @@ describe('CartManager Real Implementation Tests', () => {
         title: 'No Catalog Object Id',
         price: 450,
         quantity: 1,
-      } as any);
+      });
 
       expect(result.success).toBe(true);
       const item = cart
         .getItems()
-        .find((i: any) => i.variationId === 'var-nocatalog');
+        .find((i) => i.variationId === 'var-nocatalog');
       expect(item?.catalogObjectId).toBe('prod-nocatalog');
     });
   });

@@ -17,9 +17,9 @@
 // (ngrok / Cloudflare Tunnel) to test locally, or use Square's
 // "Send test event" feature in the Developer Dashboard against production.
 
-import type { APIRoute } from "astro";
-import { squareClient } from "@/lib/square/client";
-import { verifySquareWebhookSignature } from "@/lib/square/verifyWebhookSignature";
+import type { APIRoute } from 'astro';
+import { squareClient } from '@/lib/square/client';
+import { verifySquareWebhookSignature } from '@/lib/square/verifyWebhookSignature';
 import {
   inventoryCache,
   productCache,
@@ -27,33 +27,58 @@ import {
   navigationCache,
   slugCache,
   filterCache,
-} from "@/lib/cache/blobCache";
-import { getPendingOrder, deletePendingOrder } from "@/lib/email/pendingOrders";
-import { storeFailedEmail } from "@/lib/email/failedEmails";
+} from '@/lib/cache/blobCache';
+import { getPendingOrder, deletePendingOrder } from '@/lib/email/pendingOrders';
+import { storeFailedEmail } from '@/lib/email/failedEmails';
 import {
   sendOrderConfirmation,
   sendPickupNotification,
   sendShippingOrderNotification,
-} from "@/lib/email/sender";
+} from '@/lib/email/sender';
+
+// Square does not publish TS types for webhook event bodies in the SDK — this
+// captures only the fields this handler actually reads from the raw JSON payload.
+interface SquareWebhookInventoryCount {
+  catalog_object_type?: string;
+  catalog_object_id?: string;
+}
+
+interface SquareWebhookEvent {
+  type?: string;
+  data?: {
+    object?: {
+      inventory_counts?: SquareWebhookInventoryCount[];
+      catalog_version?: { updated_object_ids?: string[] };
+      payment?: {
+        status?: string;
+        order_id?: string;
+        total_money?: { amount?: number; currency?: string };
+      };
+    };
+  };
+}
 
 export const POST: APIRoute = async ({ request }) => {
   // Read raw body as text — must not be pre-parsed; signature verification
   // requires the exact bytes Square sent.
   const rawBody = await request.text();
   const signatureHeader =
-    request.headers.get("x-square-hmacsha256-signature") ?? "";
+    request.headers.get('x-square-hmacsha256-signature') ?? '';
   const signatureKey = import.meta.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
 
   if (!signatureKey) {
     console.error(
-      "[Webhook/Square] SQUARE_WEBHOOK_SIGNATURE_KEY env var is not set"
+      '[Webhook/Square] SQUARE_WEBHOOK_SIGNATURE_KEY env var is not set'
     );
     // Return 200 so Square doesn't retry — this is a config error, not a
     // transient failure.
-    return new Response(JSON.stringify({ received: false, reason: "not configured" }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ received: false, reason: 'not configured' }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 
   // Square sends the full notification URL as the base for the HMAC.
@@ -66,35 +91,35 @@ export const POST: APIRoute = async ({ request }) => {
   });
 
   if (!isValid) {
-    console.warn("[Webhook/Square] Signature verification failed — rejecting");
-    return new Response("Unauthorized", { status: 403 });
+    console.warn('[Webhook/Square] Signature verification failed — rejecting');
+    return new Response('Unauthorized', { status: 403 });
   }
 
-  let event: any;
+  let event: SquareWebhookEvent;
   try {
     event = JSON.parse(rawBody);
   } catch {
-    return new Response("Invalid JSON", { status: 400 });
+    return new Response('Invalid JSON', { status: 400 });
   }
 
   const eventType = event?.type as string | undefined;
   if (!eventType) {
-    return new Response("Missing event type", { status: 400 });
+    return new Response('Missing event type', { status: 400 });
   }
 
   console.info(`[Webhook/Square] Processing event: ${eventType}`);
 
   try {
     switch (eventType) {
-      case "inventory.count.updated": {
+      case 'inventory.count.updated': {
         // Extract variation IDs from the counts array.
         // Square only includes counts for ITEM_VARIATION objects; we filter
         // defensively in case the payload ever includes other object types.
-        const counts: any[] =
+        const counts: SquareWebhookInventoryCount[] =
           event.data?.object?.inventory_counts ?? [];
 
         const variationIds = counts
-          .filter((c) => c.catalog_object_type === "ITEM_VARIATION")
+          .filter((c) => c.catalog_object_type === 'ITEM_VARIATION')
           .map((c) => c.catalog_object_id as string)
           .filter(Boolean);
 
@@ -112,7 +137,7 @@ export const POST: APIRoute = async ({ request }) => {
         break;
       }
 
-      case "catalog.version.updated": {
+      case 'catalog.version.updated': {
         // Any catalog change (product edit, delete, price change, new item)
         // may affect product data, navigation, categories, and slugs.
         const objectIds: string[] =
@@ -142,23 +167,29 @@ export const POST: APIRoute = async ({ request }) => {
         break;
       }
 
-      case "payment.updated": {
+      case 'payment.updated': {
         const payment = event.data?.object?.payment;
 
         // Only act on the final COMPLETED status — ignore PENDING, APPROVED, etc.
-        if (payment?.status !== "COMPLETED") {
-          console.info(`[Webhook/Square] payment.updated status=${payment?.status} — skipping`);
+        if (payment?.status !== 'COMPLETED') {
+          console.info(
+            `[Webhook/Square] payment.updated status=${payment?.status} — skipping`
+          );
           break;
         }
 
         const orderId = payment?.order_id as string | undefined;
 
         if (!orderId) {
-          console.error("[Webhook/Square] No orderId in payment.completed payload");
+          console.error(
+            '[Webhook/Square] No orderId in payment.completed payload'
+          );
           break;
         }
 
-        console.info(`[Webhook/Square] payment.updated COMPLETED — orderId=${orderId}`);
+        console.info(
+          `[Webhook/Square] payment.updated COMPLETED — orderId=${orderId}`
+        );
 
         const contact = await getPendingOrder(orderId);
         if (!contact) {
@@ -170,16 +201,18 @@ export const POST: APIRoute = async ({ request }) => {
           );
           break;
         }
-        console.info(`[Webhook/Square] Found pending order for ${contact.email} (${contact.fulfillmentMethod})`);
+        console.info(
+          `[Webhook/Square] Found pending order for ${contact.email} (${contact.fulfillmentMethod})`
+        );
 
         // Fetch the full order for rich line-item details in the email.
         // If the fetch fails for any reason (bad credentials, network, etc.)
         // fall back to a minimal order built from the payment payload so the
         // confirmation email is never blocked by a Square API failure.
-        let order: import("square-legacy").Order;
+        let order: import('square-legacy').Order;
         try {
           const orderResult = await squareClient.orders.get({ orderId });
-          if (!orderResult.order) throw new Error("Order not returned by API");
+          if (!orderResult.order) throw new Error('Order not returned by API');
           order = orderResult.order;
         } catch (fetchErr) {
           console.warn(
@@ -191,31 +224,46 @@ export const POST: APIRoute = async ({ request }) => {
           order = {
             id: orderId,
             totalMoney: payment?.total_money
-              ? { amount: payment.total_money.amount, currency: payment.total_money.currency }
+              ? {
+                  amount: payment.total_money.amount,
+                  currency: payment.total_money.currency,
+                }
               : undefined,
             lineItems: [],
-          } as unknown as import("square-legacy").Order;
+          } as unknown as import('square-legacy').Order;
         }
 
         // Try 1: email sends only — blob-cleanup failure must NOT trigger a retry record
         try {
           await sendOrderConfirmation({ order, contact });
-          console.info(`[Webhook/Square] Confirmation email sent to ${contact.email}`);
+          console.info(
+            `[Webhook/Square] Confirmation email sent to ${contact.email}`
+          );
 
           // Only send secondary notifications if the primary succeeded
-          if (contact.fulfillmentMethod === "pickup") {
+          if (contact.fulfillmentMethod === 'pickup') {
             await sendPickupNotification({ order, contact });
-          } else if (contact.fulfillmentMethod === "shipping") {
+          } else if (contact.fulfillmentMethod === 'shipping') {
             await sendShippingOrderNotification({ order, contact });
           }
 
-          console.info(`[Webhook/Square] All emails sent for order: ${orderId}`);
+          console.info(
+            `[Webhook/Square] All emails sent for order: ${orderId}`
+          );
         } catch (emailErr) {
-          console.error(`[Webhook/Square] Email delivery failed for order ${orderId}:`, emailErr);
+          console.error(
+            `[Webhook/Square] Email delivery failed for order ${orderId}:`,
+            emailErr
+          );
           // Persist for admin retry — do NOT re-throw (would mask the 200 response)
-          await storeFailedEmail(orderId, order, contact, emailErr).catch((blobErr) => {
-            console.error(`[Webhook/Square] Failed to store retry record:`, blobErr);
-          });
+          await storeFailedEmail(orderId, order, contact, emailErr).catch(
+            (blobErr) => {
+              console.error(
+                `[Webhook/Square] Failed to store retry record:`,
+                blobErr
+              );
+            }
+          );
           // Pending order blob intentionally NOT deleted — idempotency guard stays intact
           break;
         }
@@ -240,16 +288,13 @@ export const POST: APIRoute = async ({ request }) => {
         console.info(`[Webhook/Square] Unhandled event type: ${eventType}`);
     }
   } catch (err) {
-    console.error(
-      `[Webhook/Square] Error handling event "${eventType}":`,
-      err
-    );
+    console.error(`[Webhook/Square] Error handling event "${eventType}":`, err);
     // Still return 200: Square treats non-2xx as a delivery failure and
     // retries with exponential backoff, which would flood the endpoint.
   }
 
   return new Response(JSON.stringify({ received: true }), {
     status: 200,
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
   });
 };

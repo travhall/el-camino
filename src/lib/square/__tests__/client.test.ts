@@ -31,21 +31,21 @@ const {
   mockLogError,
   mockProcessSquareError,
 } = vi.hoisted(() => ({
-  mockCatalogList:              vi.fn(),
-  mockCatalogObjectGet:         vi.fn(),
+  mockCatalogList: vi.fn(),
+  mockCatalogObjectGet: vi.fn(),
   mockProductCacheGetOrCompute: vi.fn(),
-  mockProductCacheGet:          vi.fn(),
-  mockProductCacheSet:          vi.fn(),
-  mockBatchGetImageUrls:        vi.fn(),
-  mockFetchMeasurementUnits:    vi.fn(),
-  mockCreateProductUrl:         vi.fn(),
-  mockExtractBrandValue:        vi.fn(),
-  mockExtractIsGiftCard:        vi.fn(),
-  mockExtractSaleInfo:          vi.fn(),
+  mockProductCacheGet: vi.fn(),
+  mockProductCacheSet: vi.fn(),
+  mockBatchGetImageUrls: vi.fn(),
+  mockFetchMeasurementUnits: vi.fn(),
+  mockCreateProductUrl: vi.fn(),
+  mockExtractBrandValue: vi.fn(),
+  mockExtractIsGiftCard: vi.fn(),
+  mockExtractSaleInfo: vi.fn(),
   mockBuildAvailableAttributes: vi.fn(),
-  mockLogApiError:              vi.fn(),
-  mockLogError:                 vi.fn(),
-  mockProcessSquareError:       vi.fn(),
+  mockLogApiError: vi.fn(),
+  mockLogError: vi.fn(),
+  mockProcessSquareError: vi.fn(),
 }));
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
@@ -61,15 +61,15 @@ vi.mock('square-legacy', () => ({
   }),
   SquareEnvironment: {
     Production: 'production',
-    Sandbox:    'sandbox',
+    Sandbox: 'sandbox',
   },
 }));
 
 vi.mock('@/lib/cache/blobCache', () => ({
   productCache: {
     getOrCompute: mockProductCacheGetOrCompute,
-    get:          mockProductCacheGet,
-    set:          mockProductCacheSet,
+    get: mockProductCacheGet,
+    set: mockProductCacheSet,
   },
 }));
 
@@ -83,7 +83,7 @@ vi.mock('../requestDeduplication', () => ({
 // Retry client passes through transparently.
 vi.mock('../apiRetry', () => ({
   catalogRetryClient: {
-    executeWithRetry: vi.fn((_fn: () => unknown, _tag: string) => _fn()),
+    executeWithRetry: vi.fn((_fn: () => unknown) => _fn()),
   },
 }));
 
@@ -102,7 +102,7 @@ vi.mock('../slugUtils', () => ({
 vi.mock('../catalogUtils', () => ({
   extractBrandValue: mockExtractBrandValue,
   extractIsGiftCard: mockExtractIsGiftCard,
-  extractSaleInfo:   mockExtractSaleInfo,
+  extractSaleInfo: mockExtractSaleInfo,
 }));
 
 vi.mock('../variationParser', () => ({
@@ -129,8 +129,8 @@ vi.mock('@/lib/logger', () => ({
   logger: {
     debug: vi.fn(),
     error: vi.fn(),
-    warn:  vi.fn(),
-    info:  vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
@@ -170,7 +170,7 @@ function makeCatalogItem(overrides: Record<string, unknown> = {}) {
 /** Make productCache.getOrCompute simulate a cache miss (calls compute fn). */
 function useCacheMiss() {
   mockProductCacheGetOrCompute.mockImplementation(
-    (_key: string, fn: () => unknown) => fn(),
+    (_key: string, fn: () => unknown) => fn()
   );
 }
 
@@ -180,7 +180,8 @@ describe('fetchProducts', () => {
   beforeAll(() => {
     // Satisfy validateEnvironment() before the first call
     process.env.SQUARE_ACCESS_TOKEN = 'test-token';
-    (import.meta.env as Record<string, unknown>).PUBLIC_SQUARE_LOCATION_ID = 'test-loc';
+    (import.meta.env as Record<string, unknown>).PUBLIC_SQUARE_LOCATION_ID =
+      'test-loc';
   });
 
   beforeEach(() => {
@@ -197,7 +198,10 @@ describe('fetchProducts', () => {
   });
 
   it('returns an empty array when catalog returns no objects', async () => {
-    mockCatalogList.mockResolvedValue({ data: [], response: { cursor: undefined } });
+    mockCatalogList.mockResolvedValue({
+      data: [],
+      response: { cursor: undefined },
+    });
 
     const products = await fetchProducts();
 
@@ -207,17 +211,20 @@ describe('fetchProducts', () => {
 
   it('maps a catalog ITEM to the Product shape', async () => {
     const item = makeCatalogItem();
-    mockCatalogList.mockResolvedValue({ data: [item], response: { cursor: undefined } });
+    mockCatalogList.mockResolvedValue({
+      data: [item],
+      response: { cursor: undefined },
+    });
 
     const products = await fetchProducts();
 
     expect(products).toHaveLength(1);
     expect(products[0]).toMatchObject({
-      id:          'item-1',
-      title:       'Test Deck',
-      price:       50,          // 5000 cents / 100
+      id: 'item-1',
+      title: 'Test Deck',
+      price: 50, // 5000 cents / 100
       variationId: 'var-1',
-      url:         '/products/test-deck',
+      url: '/products/test-deck',
     });
   });
 
@@ -246,7 +253,10 @@ describe('fetchProducts', () => {
 
     mockCatalogList
       .mockResolvedValueOnce({ data: [item1], response: { cursor: 'page-2' } })
-      .mockResolvedValueOnce({ data: [item2], response: { cursor: undefined } });
+      .mockResolvedValueOnce({
+        data: [item2],
+        response: { cursor: undefined },
+      });
 
     const products = await fetchProducts();
 
@@ -254,12 +264,14 @@ describe('fetchProducts', () => {
     expect(mockCatalogList).toHaveBeenCalledTimes(2);
     expect(mockCatalogList).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ cursor: 'page-2' }),
+      expect.objectContaining({ cursor: 'page-2' })
     );
   });
 
   it('returns cached result from productCache without calling Square', async () => {
-    const cachedProducts = [{ id: 'cached-1', title: 'Cached Deck', price: 30 }];
+    const cachedProducts = [
+      { id: 'cached-1', title: 'Cached Deck', price: 30 },
+    ];
     // Simulate cache hit: getOrCompute returns the cached value without running compute
     mockProductCacheGetOrCompute.mockResolvedValue(cachedProducts);
 
@@ -272,8 +284,13 @@ describe('fetchProducts', () => {
 
   it('includes image URL when batchGetImageUrls resolves it', async () => {
     const item = makeCatalogItem();
-    mockCatalogList.mockResolvedValue({ data: [item], response: { cursor: undefined } });
-    mockBatchGetImageUrls.mockResolvedValue({ 'img-1': 'https://cdn.example.com/img-1.jpg' });
+    mockCatalogList.mockResolvedValue({
+      data: [item],
+      response: { cursor: undefined },
+    });
+    mockBatchGetImageUrls.mockResolvedValue({
+      'img-1': 'https://cdn.example.com/img-1.jpg',
+    });
 
     const products = await fetchProducts();
 
@@ -286,7 +303,8 @@ describe('fetchProducts', () => {
 describe('fetchProduct', () => {
   beforeAll(() => {
     process.env.SQUARE_ACCESS_TOKEN = 'test-token';
-    (import.meta.env as Record<string, unknown>).PUBLIC_SQUARE_LOCATION_ID = 'test-loc';
+    (import.meta.env as Record<string, unknown>).PUBLIC_SQUARE_LOCATION_ID =
+      'test-loc';
   });
 
   beforeEach(() => {
@@ -369,11 +387,11 @@ describe('fetchProduct', () => {
 
     expect(product).not.toBeNull();
     expect(product).toMatchObject({
-      id:          'item-1',
-      title:       'Test Deck',
-      price:       50,
+      id: 'item-1',
+      title: 'Test Deck',
+      price: 50,
       variationId: 'var-1',
-      url:         '/products/test-deck',
+      url: '/products/test-deck',
     });
   });
 

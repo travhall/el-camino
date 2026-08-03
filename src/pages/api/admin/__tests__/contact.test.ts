@@ -21,16 +21,18 @@ import { saveContactInfo } from "@/lib/contactInfo";
 
 const URL_BASE = "https://example.com/api/admin/contact";
 
-function makeContext(fields: Record<string, string>): any {
+type Context = Parameters<typeof POST>[0];
+
+function makeContext(fields: Record<string, string>): Context {
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) formData.set(key, value);
   const request = new Request(URL_BASE, { method: "POST", body: formData });
   return {
     request,
-    cookies: {} as any,
+    cookies: {},
     redirect: (url: string) =>
       new Response(null, { status: 302, headers: { Location: url } }),
-  };
+  } as unknown as Context;
 }
 
 const validFields = {

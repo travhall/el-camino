@@ -11,21 +11,33 @@ const mockSquareClient = {
   catalogApi: {
     searchCatalogObjects: vi.fn(),
     retrieveCatalogObject: vi.fn(),
-    batchRetrieveCatalogObjects: vi.fn()
+    batchRetrieveCatalogObjects: vi.fn(),
   },
   inventoryApi: {
     batchRetrieveInventoryCounts: vi.fn(),
-    retrieveInventoryCount: vi.fn()
+    retrieveInventoryCount: vi.fn(),
   },
   ordersApi: {
     createOrder: vi.fn(),
-    retrieveOrder: vi.fn()
-  }
+    retrieveOrder: vi.fn(),
+  },
 };
 
 vi.mock('../client', () => ({
-  getSquareClient: () => mockSquareClient
+  getSquareClient: () => mockSquareClient,
 }));
+
+// Shape of the rejected-value fixtures used in the "Error Response Structure"
+// tests below — mirrors Square's REST error envelope, not the SDK's thrown
+// error class, so it's asserted against directly rather than via a real type.
+interface MockSquareApiError {
+  errors: Array<{
+    category: string;
+    code: string;
+    detail?: string;
+    field?: string;
+  }>;
+}
 
 describe('Square API Contract Tests', () => {
   beforeEach(() => {
@@ -51,25 +63,27 @@ describe('Square API Contract Tests', () => {
                       name: 'Small',
                       priceMoney: {
                         amount: BigInt(2500),
-                        currency: 'USD'
+                        currency: 'USD',
                       },
-                      itemId: 'item-1'
-                    }
-                  }
-                ]
-              }
-            }
+                      itemId: 'item-1',
+                    },
+                  },
+                ],
+              },
+            },
           ],
-          cursor: 'next-page-cursor'
-        }
+          cursor: 'next-page-cursor',
+        },
       };
 
-      mockSquareClient.catalogApi.searchCatalogObjects.mockResolvedValue(mockResponse);
+      mockSquareClient.catalogApi.searchCatalogObjects.mockResolvedValue(
+        mockResponse
+      );
 
       const { searchCatalogObjects } = mockSquareClient.catalogApi;
       const response = await searchCatalogObjects({
         objectTypes: ['ITEM'],
-        includeRelatedObjects: true
+        includeRelatedObjects: true,
       });
 
       // Validate response structure
@@ -83,7 +97,9 @@ describe('Square API Contract Tests', () => {
       const variation = response.result.objects[0].itemData.variations[0];
       expect(variation.type).toBe('ITEM_VARIATION');
       expect(variation.itemVariationData.priceMoney).toBeDefined();
-      expect(typeof variation.itemVariationData.priceMoney.amount).toBe('bigint');
+      expect(typeof variation.itemVariationData.priceMoney.amount).toBe(
+        'bigint'
+      );
     });
 
     it('should handle retrieveCatalogObject response', async () => {
@@ -95,22 +111,24 @@ describe('Square API Contract Tests', () => {
             itemData: {
               name: 'Test Product',
               categoryId: 'cat-1',
-              variations: []
-            }
+              variations: [],
+            },
           },
           relatedObjects: [
             {
               type: 'CATEGORY',
               id: 'cat-1',
               categoryData: {
-                name: 'Skateboards'
-              }
-            }
-          ]
-        }
+                name: 'Skateboards',
+              },
+            },
+          ],
+        },
       };
 
-      mockSquareClient.catalogApi.retrieveCatalogObject.mockResolvedValue(mockResponse);
+      mockSquareClient.catalogApi.retrieveCatalogObject.mockResolvedValue(
+        mockResponse
+      );
 
       const response = await mockSquareClient.catalogApi.retrieveCatalogObject(
         'item-1',
@@ -133,9 +151,9 @@ describe('Square API Contract Tests', () => {
                 name: 'Small, Red',
                 priceMoney: {
                   amount: BigInt(2500),
-                  currency: 'USD'
-                }
-              }
+                  currency: 'USD',
+                },
+              },
             },
             {
               type: 'ITEM_VARIATION',
@@ -144,24 +162,31 @@ describe('Square API Contract Tests', () => {
                 name: 'Large, Blue',
                 priceMoney: {
                   amount: BigInt(3000),
-                  currency: 'USD'
-                }
-              }
-            }
-          ]
-        }
+                  currency: 'USD',
+                },
+              },
+            },
+          ],
+        },
       };
 
-      mockSquareClient.catalogApi.batchRetrieveCatalogObjects.mockResolvedValue(mockResponse);
+      mockSquareClient.catalogApi.batchRetrieveCatalogObjects.mockResolvedValue(
+        mockResponse
+      );
 
-      const response = await mockSquareClient.catalogApi.batchRetrieveCatalogObjects({
-        objectIds: ['var-1', 'var-2'],
-        includeRelatedObjects: true
-      });
+      const response =
+        await mockSquareClient.catalogApi.batchRetrieveCatalogObjects({
+          objectIds: ['var-1', 'var-2'],
+          includeRelatedObjects: true,
+        });
 
       expect(response.result.objects).toBeDefined();
       expect(response.result.objects).toHaveLength(2);
-      expect(response.result.objects.every((obj: any) => obj.type === 'ITEM_VARIATION')).toBe(true);
+      expect(
+        response.result.objects.every(
+          (obj: { type: string }) => obj.type === 'ITEM_VARIATION'
+        )
+      ).toBe(true);
     });
   });
 
@@ -174,25 +199,28 @@ describe('Square API Contract Tests', () => {
               catalogObjectId: 'var-1',
               locationId: 'loc-1',
               state: 'IN_STOCK',
-              quantity: '10'
+              quantity: '10',
             },
             {
               catalogObjectId: 'var-2',
               locationId: 'loc-1',
               state: 'IN_STOCK',
-              quantity: '5'
-            }
+              quantity: '5',
+            },
           ],
-          cursor: undefined
-        }
+          cursor: undefined,
+        },
       };
 
-      mockSquareClient.inventoryApi.batchRetrieveInventoryCounts.mockResolvedValue(mockResponse);
+      mockSquareClient.inventoryApi.batchRetrieveInventoryCounts.mockResolvedValue(
+        mockResponse
+      );
 
-      const response = await mockSquareClient.inventoryApi.batchRetrieveInventoryCounts({
-        catalogObjectIds: ['var-1', 'var-2'],
-        locationIds: ['loc-1']
-      });
+      const response =
+        await mockSquareClient.inventoryApi.batchRetrieveInventoryCounts({
+          catalogObjectIds: ['var-1', 'var-2'],
+          locationIds: ['loc-1'],
+        });
 
       expect(response.result.counts).toBeDefined();
       expect(Array.isArray(response.result.counts)).toBe(true);
@@ -209,18 +237,21 @@ describe('Square API Contract Tests', () => {
               catalogObjectId: 'var-1',
               locationId: 'loc-1',
               state: 'IN_STOCK',
-              quantity: '0'
-            }
-          ]
-        }
+              quantity: '0',
+            },
+          ],
+        },
       };
 
-      mockSquareClient.inventoryApi.batchRetrieveInventoryCounts.mockResolvedValue(mockResponse);
+      mockSquareClient.inventoryApi.batchRetrieveInventoryCounts.mockResolvedValue(
+        mockResponse
+      );
 
-      const response = await mockSquareClient.inventoryApi.batchRetrieveInventoryCounts({
-        catalogObjectIds: ['var-1'],
-        locationIds: ['loc-1']
-      });
+      const response =
+        await mockSquareClient.inventoryApi.batchRetrieveInventoryCounts({
+          catalogObjectIds: ['var-1'],
+          locationIds: ['loc-1'],
+        });
 
       expect(response.result.counts[0].quantity).toBe('0');
     });
@@ -228,16 +259,19 @@ describe('Square API Contract Tests', () => {
     it('should handle missing inventory counts', async () => {
       const mockResponse = {
         result: {
-          counts: []
-        }
+          counts: [],
+        },
       };
 
-      mockSquareClient.inventoryApi.batchRetrieveInventoryCounts.mockResolvedValue(mockResponse);
+      mockSquareClient.inventoryApi.batchRetrieveInventoryCounts.mockResolvedValue(
+        mockResponse
+      );
 
-      const response = await mockSquareClient.inventoryApi.batchRetrieveInventoryCounts({
-        catalogObjectIds: ['non-existent'],
-        locationIds: ['loc-1']
-      });
+      const response =
+        await mockSquareClient.inventoryApi.batchRetrieveInventoryCounts({
+          catalogObjectIds: ['non-existent'],
+          locationIds: ['loc-1'],
+        });
 
       expect(response.result.counts).toEqual([]);
     });
@@ -249,33 +283,40 @@ describe('Square API Contract Tests', () => {
             {
               catalogObjectId: 'var-1',
               state: 'IN_STOCK',
-              quantity: '5'
+              quantity: '5',
             },
             {
               catalogObjectId: 'var-2',
               state: 'SOLD',
-              quantity: '0'
+              quantity: '0',
             },
             {
               catalogObjectId: 'var-3',
               state: 'WASTE',
-              quantity: '0'
-            }
-          ]
-        }
+              quantity: '0',
+            },
+          ],
+        },
       };
 
-      mockSquareClient.inventoryApi.batchRetrieveInventoryCounts.mockResolvedValue(mockResponse);
+      mockSquareClient.inventoryApi.batchRetrieveInventoryCounts.mockResolvedValue(
+        mockResponse
+      );
 
-      const response = await mockSquareClient.inventoryApi.batchRetrieveInventoryCounts({
-        catalogObjectIds: ['var-1', 'var-2', 'var-3'],
-        locationIds: ['loc-1']
-      });
+      const response =
+        await mockSquareClient.inventoryApi.batchRetrieveInventoryCounts({
+          catalogObjectIds: ['var-1', 'var-2', 'var-3'],
+          locationIds: ['loc-1'],
+        });
 
-      const inStockCount = response.result.counts.find((c: any) => c.state === 'IN_STOCK');
+      const inStockCount = response.result.counts.find(
+        (c: { state: string; quantity: string }) => c.state === 'IN_STOCK'
+      );
       expect(inStockCount?.quantity).toBe('5');
 
-      const soldCount = response.result.counts.find((c: any) => c.state === 'SOLD');
+      const soldCount = response.result.counts.find(
+        (c: { state: string }) => c.state === 'SOLD'
+      );
       expect(soldCount).toBeDefined();
     });
   });
@@ -296,22 +337,22 @@ describe('Square API Contract Tests', () => {
                 variationName: 'Small',
                 basePriceMoney: {
                   amount: BigInt(2500),
-                  currency: 'USD'
+                  currency: 'USD',
                 },
                 grossSalesMoney: {
                   amount: BigInt(5000),
-                  currency: 'USD'
-                }
-              }
+                  currency: 'USD',
+                },
+              },
             ],
             totalMoney: {
               amount: BigInt(5000),
-              currency: 'USD'
+              currency: 'USD',
             },
             state: 'OPEN',
-            createdAt: '2024-01-01T00:00:00Z'
-          }
-        }
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        },
       };
 
       mockSquareClient.ordersApi.createOrder.mockResolvedValue(mockResponse);
@@ -322,10 +363,10 @@ describe('Square API Contract Tests', () => {
           lineItems: [
             {
               quantity: '2',
-              catalogObjectId: 'var-1'
-            }
-          ]
-        }
+              catalogObjectId: 'var-1',
+            },
+          ],
+        },
       });
 
       expect(response.result.order).toBeDefined();
@@ -345,21 +386,22 @@ describe('Square API Contract Tests', () => {
                 id: 'tender-1',
                 type: 'CARD',
                 cardDetails: {
-                  status: 'CAPTURED'
+                  status: 'CAPTURED',
                 },
                 amountMoney: {
                   amount: BigInt(5000),
-                  currency: 'USD'
-                }
-              }
-            ]
-          }
-        }
+                  currency: 'USD',
+                },
+              },
+            ],
+          },
+        },
       };
 
       mockSquareClient.ordersApi.retrieveOrder.mockResolvedValue(mockResponse);
 
-      const response = await mockSquareClient.ordersApi.retrieveOrder('order-123');
+      const response =
+        await mockSquareClient.ordersApi.retrieveOrder('order-123');
 
       expect(response.result.order.state).toBe('COMPLETED');
       expect(response.result.order.tenders).toBeDefined();
@@ -375,21 +417,24 @@ describe('Square API Contract Tests', () => {
             category: 'INVALID_REQUEST_ERROR',
             code: 'MISSING_REQUIRED_PARAMETER',
             detail: 'Missing required parameter: locationId',
-            field: 'locationId'
-          }
-        ]
+            field: 'locationId',
+          },
+        ],
       };
 
-      mockSquareClient.catalogApi.searchCatalogObjects.mockRejectedValue(mockError);
+      mockSquareClient.catalogApi.searchCatalogObjects.mockRejectedValue(
+        mockError
+      );
 
       try {
         await mockSquareClient.catalogApi.searchCatalogObjects({});
         expect.fail('Should have thrown error');
-      } catch (error: any) {
-        expect(error.errors).toBeDefined();
-        expect(Array.isArray(error.errors)).toBe(true);
-        expect(error.errors[0].category).toBe('INVALID_REQUEST_ERROR');
-        expect(error.errors[0].code).toBe('MISSING_REQUIRED_PARAMETER');
+      } catch (error) {
+        const squareError = error as MockSquareApiError;
+        expect(squareError.errors).toBeDefined();
+        expect(Array.isArray(squareError.errors)).toBe(true);
+        expect(squareError.errors[0].category).toBe('INVALID_REQUEST_ERROR');
+        expect(squareError.errors[0].code).toBe('MISSING_REQUIRED_PARAMETER');
       }
     });
 
@@ -409,20 +454,23 @@ describe('Square API Contract Tests', () => {
           {
             category: 'RATE_LIMIT_ERROR',
             code: 'RATE_LIMITED',
-            detail: 'Too many requests'
-          }
-        ]
+            detail: 'Too many requests',
+          },
+        ],
       };
 
-      mockSquareClient.inventoryApi.batchRetrieveInventoryCounts.mockRejectedValue(mockError);
+      mockSquareClient.inventoryApi.batchRetrieveInventoryCounts.mockRejectedValue(
+        mockError
+      );
 
       try {
         await mockSquareClient.inventoryApi.batchRetrieveInventoryCounts({
-          catalogObjectIds: ['var-1']
+          catalogObjectIds: ['var-1'],
         });
         expect.fail('Should have thrown error');
-      } catch (error: any) {
-        expect(error.errors[0].category).toBe('RATE_LIMIT_ERROR');
+      } catch (error) {
+        const squareError = error as MockSquareApiError;
+        expect(squareError.errors[0].category).toBe('RATE_LIMIT_ERROR');
       }
     });
 
@@ -432,18 +480,21 @@ describe('Square API Contract Tests', () => {
           {
             category: 'AUTHENTICATION_ERROR',
             code: 'UNAUTHORIZED',
-            detail: 'Invalid access token'
-          }
-        ]
+            detail: 'Invalid access token',
+          },
+        ],
       };
 
-      mockSquareClient.catalogApi.searchCatalogObjects.mockRejectedValue(mockError);
+      mockSquareClient.catalogApi.searchCatalogObjects.mockRejectedValue(
+        mockError
+      );
 
       try {
         await mockSquareClient.catalogApi.searchCatalogObjects({});
         expect.fail('Should have thrown error');
-      } catch (error: any) {
-        expect(error.errors[0].category).toBe('AUTHENTICATION_ERROR');
+      } catch (error) {
+        const squareError = error as MockSquareApiError;
+        expect(squareError.errors[0].category).toBe('AUTHENTICATION_ERROR');
       }
     });
   });
@@ -489,15 +540,15 @@ describe('Square API Contract Tests', () => {
       const mockResponse1 = {
         result: {
           objects: [{ id: 'item-1' }],
-          cursor: 'next-cursor'
-        }
+          cursor: 'next-cursor',
+        },
       };
 
       const mockResponse2 = {
         result: {
           objects: [{ id: 'item-2' }],
-          cursor: undefined
-        }
+          cursor: undefined,
+        },
       };
 
       mockSquareClient.catalogApi.searchCatalogObjects
@@ -506,7 +557,7 @@ describe('Square API Contract Tests', () => {
 
       // First page
       const response1 = await mockSquareClient.catalogApi.searchCatalogObjects({
-        objectTypes: ['ITEM']
+        objectTypes: ['ITEM'],
       });
 
       expect(response1.result.cursor).toBe('next-cursor');
@@ -514,7 +565,7 @@ describe('Square API Contract Tests', () => {
       // Second page
       const response2 = await mockSquareClient.catalogApi.searchCatalogObjects({
         objectTypes: ['ITEM'],
-        cursor: response1.result.cursor
+        cursor: response1.result.cursor,
       });
 
       expect(response2.result.cursor).toBeUndefined();
@@ -524,13 +575,17 @@ describe('Square API Contract Tests', () => {
       const mockResponse = {
         result: {
           objects: undefined,
-          cursor: undefined
-        }
+          cursor: undefined,
+        },
       };
 
-      mockSquareClient.catalogApi.searchCatalogObjects.mockResolvedValue(mockResponse);
+      mockSquareClient.catalogApi.searchCatalogObjects.mockResolvedValue(
+        mockResponse
+      );
 
-      const response = await mockSquareClient.catalogApi.searchCatalogObjects({});
+      const response = await mockSquareClient.catalogApi.searchCatalogObjects(
+        {}
+      );
 
       expect(response.result.objects).toBeUndefined();
       expect(response.result.cursor).toBeUndefined();
@@ -545,28 +600,35 @@ describe('Square API Contract Tests', () => {
             type: 'ITEM',
             id: 'item-1',
             customAttributeValues: {
-              'brand': {
+              brand: {
                 name: 'Brand',
                 stringValue: 'Spitfire',
-                type: 'STRING'
+                type: 'STRING',
               },
-              'featured': {
+              featured: {
                 name: 'Featured',
                 booleanValue: true,
-                type: 'BOOLEAN'
-              }
-            }
-          }
-        }
+                type: 'BOOLEAN',
+              },
+            },
+          },
+        },
       };
 
-      mockSquareClient.catalogApi.retrieveCatalogObject.mockResolvedValue(mockResponse);
+      mockSquareClient.catalogApi.retrieveCatalogObject.mockResolvedValue(
+        mockResponse
+      );
 
-      const response = await mockSquareClient.catalogApi.retrieveCatalogObject('item-1');
+      const response =
+        await mockSquareClient.catalogApi.retrieveCatalogObject('item-1');
 
       expect(response.result.object.customAttributeValues).toBeDefined();
-      expect(response.result.object.customAttributeValues['brand'].stringValue).toBe('Spitfire');
-      expect(response.result.object.customAttributeValues['featured'].booleanValue).toBe(true);
+      expect(
+        response.result.object.customAttributeValues['brand'].stringValue
+      ).toBe('Spitfire');
+      expect(
+        response.result.object.customAttributeValues['featured'].booleanValue
+      ).toBe(true);
     });
 
     it('should handle missing custom attributes', async () => {
@@ -575,14 +637,17 @@ describe('Square API Contract Tests', () => {
           object: {
             type: 'ITEM',
             id: 'item-1',
-            customAttributeValues: undefined
-          }
-        }
+            customAttributeValues: undefined,
+          },
+        },
       };
 
-      mockSquareClient.catalogApi.retrieveCatalogObject.mockResolvedValue(mockResponse);
+      mockSquareClient.catalogApi.retrieveCatalogObject.mockResolvedValue(
+        mockResponse
+      );
 
-      const response = await mockSquareClient.catalogApi.retrieveCatalogObject('item-1');
+      const response =
+        await mockSquareClient.catalogApi.retrieveCatalogObject('item-1');
 
       expect(response.result.object.customAttributeValues).toBeUndefined();
     });
@@ -592,7 +657,7 @@ describe('Square API Contract Tests', () => {
     it('should handle money objects consistently', () => {
       const moneyObject = {
         amount: BigInt(2500),
-        currency: 'USD'
+        currency: 'USD',
       };
 
       expect(moneyObject.amount).toBe(BigInt(2500));
@@ -604,13 +669,13 @@ describe('Square API Contract Tests', () => {
 
       // Convert to dollars
       const dollars = cents / 100;
-      expect(dollars).toBe(25.00);
+      expect(dollars).toBe(25.0);
     });
 
     it('should handle zero amounts', () => {
       const zeroMoney = {
         amount: BigInt(0),
-        currency: 'USD'
+        currency: 'USD',
       };
 
       expect(Number(zeroMoney.amount)).toBe(0);
@@ -619,7 +684,7 @@ describe('Square API Contract Tests', () => {
     it('should handle large amounts', () => {
       const largeMoney = {
         amount: BigInt(999999999),
-        currency: 'USD'
+        currency: 'USD',
       };
 
       const dollars = Number(largeMoney.amount) / 100;
@@ -637,15 +702,18 @@ describe('Square API Contract Tests', () => {
             imageData: {
               name: 'Product Image',
               url: 'https://square-catalog.com/images/image-1.jpg',
-              caption: 'Main product image'
-            }
-          }
-        }
+              caption: 'Main product image',
+            },
+          },
+        },
       };
 
-      mockSquareClient.catalogApi.retrieveCatalogObject.mockResolvedValue(mockResponse);
+      mockSquareClient.catalogApi.retrieveCatalogObject.mockResolvedValue(
+        mockResponse
+      );
 
-      const response = await mockSquareClient.catalogApi.retrieveCatalogObject('img-1');
+      const response =
+        await mockSquareClient.catalogApi.retrieveCatalogObject('img-1');
 
       expect(response.result.object.imageData.url).toBeDefined();
       expect(response.result.object.imageData.url).toContain('https://');
@@ -655,21 +723,21 @@ describe('Square API Contract Tests', () => {
   describe('Variation Name Parsing', () => {
     it('should handle standard variation names', () => {
       const variationName = 'Small, Red, Cotton';
-      const parts = variationName.split(',').map(p => p.trim());
+      const parts = variationName.split(',').map((p) => p.trim());
 
       expect(parts).toEqual(['Small', 'Red', 'Cotton']);
     });
 
     it('should handle single attribute variations', () => {
       const variationName = 'Small';
-      const parts = variationName.split(',').map(p => p.trim());
+      const parts = variationName.split(',').map((p) => p.trim());
 
       expect(parts).toEqual(['Small']);
     });
 
     it('should handle variations with extra spaces', () => {
       const variationName = 'Small,  Red,   Cotton';
-      const parts = variationName.split(',').map(p => p.trim());
+      const parts = variationName.split(',').map((p) => p.trim());
 
       expect(parts).toEqual(['Small', 'Red', 'Cotton']);
     });

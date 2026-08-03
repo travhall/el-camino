@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { Order } from 'square-legacy';
 import {
   escHtml,
   formatMoney,
@@ -119,7 +120,7 @@ function makePickupOrder(overrides?: Record<string, unknown>) {
     ],
     fulfillments: [{ type: 'PICKUP', pickupDetails: {} }],
     ...overrides,
-  } as any;
+  } as unknown as Order;
 }
 
 function makeShippingOrder(overrides?: Record<string, unknown>) {
@@ -145,7 +146,7 @@ function makeShippingOrder(overrides?: Record<string, unknown>) {
       },
     ],
     ...overrides,
-  } as any;
+  } as unknown as Order;
 }
 
 const pickupContact = {

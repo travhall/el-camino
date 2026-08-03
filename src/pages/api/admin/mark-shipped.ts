@@ -9,29 +9,31 @@
 // intermediate state. The version is re-fetched before every step because
 // Square increments it on each successful update.
 
-import type { APIRoute } from "astro";
-import { isAdminAuthenticated, parseAdminFormData } from "@/lib/admin/auth";
-import { squareClient } from "@/lib/square/client";
-import { sendShippingConfirmation } from "@/lib/email/sender";
-import type { PendingOrderContact } from "@/lib/email/pendingOrders";
+import type { APIRoute } from 'astro';
+import { isAdminAuthenticated, parseAdminFormData } from '@/lib/admin/auth';
+import { squareClient } from '@/lib/square/client';
+import { sendShippingConfirmation } from '@/lib/email/sender';
+import type { PendingOrderContact } from '@/lib/email/pendingOrders';
+import type { Fulfillment, SquareError } from 'square-legacy';
 
-const SHIPMENT_STATES = ["PROPOSED", "RESERVED", "COMPLETED"] as const;
+const SHIPMENT_STATES = ['PROPOSED', 'RESERVED', 'COMPLETED'] as const;
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   // ── Auth check ────────────────────────────────────────────────────────────
   if (!isAdminAuthenticated(request, cookies)) {
-    return redirect("/admin/login?from=/admin/orders");
+    return redirect('/admin/login?from=/admin/orders');
   }
 
   // ── Parse form body ───────────────────────────────────────────────────────
   const body = await parseAdminFormData(request);
-  if (!body) return new Response("Invalid form data", { status: 400 });
+  if (!body) return new Response('Invalid form data', { status: 400 });
 
-  const orderId = (body.get("orderId") as string)?.trim();
-  const trackingNumber = (body.get("trackingNumber") as string)?.trim() || undefined;
-  const carrier = (body.get("carrier") as string)?.trim() || undefined;
+  const orderId = (body.get('orderId') as string)?.trim();
+  const trackingNumber =
+    (body.get('trackingNumber') as string)?.trim() || undefined;
+  const carrier = (body.get('carrier') as string)?.trim() || undefined;
 
-  if (!orderId) return new Response("Missing orderId", { status: 400 });
+  if (!orderId) return new Response('Missing orderId', { status: 400 });
 
   // ── Fetch the live order — get fulfillmentUid, current state, customer info ─
   let fulfillmentUid: string;
@@ -39,59 +41,68 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   let locationId: string;
   let customerEmail: string;
   let customerName: string;
-  let order: import("square-legacy").Order;
+  let order: import('square-legacy').Order;
 
   try {
     const orderResult = await squareClient.orders.get({ orderId });
-    if (!orderResult.order) throw new Error("Order not returned");
+    if (!orderResult.order) throw new Error('Order not returned');
     order = orderResult.order;
 
     locationId = order.locationId ?? import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
 
     const fulfillment = order.fulfillments?.find(
-      (f: any) => f.type === "SHIPMENT" && f.state !== "COMPLETED" && f.state !== "CANCELED"
+      (f: Fulfillment) =>
+        f.type === 'SHIPMENT' &&
+        f.state !== 'COMPLETED' &&
+        f.state !== 'CANCELED'
     );
-    if (!fulfillment?.uid) throw new Error("No active SHIPMENT fulfillment found");
+    if (!fulfillment?.uid)
+      throw new Error('No active SHIPMENT fulfillment found');
 
     fulfillmentUid = fulfillment.uid;
-    currentState = fulfillment.state ?? "PROPOSED";
+    currentState = fulfillment.state ?? 'PROPOSED';
 
     const recipient = fulfillment.shipmentDetails?.recipient;
     if (!recipient?.emailAddress || !recipient?.displayName) {
-      throw new Error("No customer email on shipment recipient");
+      throw new Error('No customer email on shipment recipient');
     }
     customerEmail = recipient.emailAddress;
     customerName = recipient.displayName;
   } catch (err) {
     console.error(`[mark-shipped] Failed to retrieve order ${orderId}:`, err);
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("No customer email")) {
-      return redirect("/admin/orders/shipping?error=no-email");
+    if (msg.includes('No customer email')) {
+      return redirect('/admin/orders/shipping?error=no-email');
     }
-    return redirect("/admin/orders/shipping?error=fetch");
+    return redirect('/admin/orders/shipping?error=fetch');
   }
 
   const contact: PendingOrderContact = {
     email: customerEmail,
     name: customerName,
-    fulfillmentMethod: "shipping",
+    fulfillmentMethod: 'shipping',
   };
 
   // ── Walk the state machine to COMPLETED ───────────────────────────────────
   // Square requires sequential transitions — skipping states is rejected.
-  const currentIdx = SHIPMENT_STATES.indexOf(currentState as typeof SHIPMENT_STATES[number]);
-  const targetIdx = SHIPMENT_STATES.indexOf("COMPLETED");
-  const steps = SHIPMENT_STATES.slice(Math.max(currentIdx + 1, 0), targetIdx + 1);
+  const currentIdx = SHIPMENT_STATES.indexOf(
+    currentState as (typeof SHIPMENT_STATES)[number]
+  );
+  const targetIdx = SHIPMENT_STATES.indexOf('COMPLETED');
+  const steps = SHIPMENT_STATES.slice(
+    Math.max(currentIdx + 1, 0),
+    targetIdx + 1
+  );
 
   try {
     for (const targetState of steps) {
       // Re-fetch the version before each step — it increments on every update.
       const refreshed = await squareClient.orders.get({ orderId });
-      if (!refreshed.order) throw new Error("Order not found on refresh");
+      if (!refreshed.order) throw new Error('Order not found on refresh');
 
       // Only attach tracking/carrier on the final COMPLETED transition.
       const shipmentDetails =
-        targetState === "COMPLETED" && (trackingNumber || carrier)
+        targetState === 'COMPLETED' && (trackingNumber || carrier)
           ? {
               ...(trackingNumber ? { trackingNumber } : {}),
               ...(carrier ? { carrier } : {}),
@@ -116,23 +127,33 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       });
     }
   } catch (err) {
-    const squareErrors = (err as any)?.errors;
-    const detail = squareErrors?.[0]?.detail
-      ?? squareErrors?.[0]?.code
-      ?? (err as Error)?.message
-      ?? "unknown";
-    console.error(`[mark-shipped] Square update failed for ${orderId}:`, JSON.stringify(err, null, 2));
-    return redirect(`/admin/orders/shipping?error=update&detail=${encodeURIComponent(detail)}`);
+    const squareErrors = (err as SquareError)?.errors;
+    const detail =
+      squareErrors?.[0]?.detail ??
+      squareErrors?.[0]?.code ??
+      (err as Error)?.message ??
+      'unknown';
+    console.error(
+      `[mark-shipped] Square update failed for ${orderId}:`,
+      JSON.stringify(err, null, 2)
+    );
+    return redirect(
+      `/admin/orders/shipping?error=update&detail=${encodeURIComponent(detail)}`
+    );
   }
 
   // ── Send shipping confirmation to customer ────────────────────────────────
   try {
     await sendShippingConfirmation({ order, contact, trackingNumber, carrier });
-    console.info(`[mark-shipped] Shipping confirmation sent for order ${orderId}`);
+    console.info(
+      `[mark-shipped] Shipping confirmation sent for order ${orderId}`
+    );
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error(`[mark-shipped] Failed to send shipping confirmation:`, err);
-    return redirect(`/admin/orders/shipping?error=email&detail=${encodeURIComponent(detail)}`);
+    return redirect(
+      `/admin/orders/shipping?error=email&detail=${encodeURIComponent(detail)}`
+    );
   }
 
   return redirect(`/admin/orders/shipping?shipped=1&shippedId=${orderId}`);

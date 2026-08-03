@@ -241,7 +241,7 @@ export async function getCategoriesForSidebar(): Promise<
       url: `/category/${item.category.slug}`,
       src: `/images/category-${item.category.slug}.png`, // Will be enhanced by existing image logic
       id: item.category.id,
-      rawOrder: (item.category as any).rawOrder || 999, // For sorting fallback
+      rawOrder: item.category.rawOrder || 999, // For sorting fallback
     }));
 
     // Sort by Square's ordinal order, fallback to alphabetical

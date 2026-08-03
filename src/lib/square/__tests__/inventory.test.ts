@@ -22,20 +22,20 @@ const {
   mockHandleError,
   mockLogError,
 } = vi.hoisted(() => ({
-  mockRetrieveInventoryCount:   vi.fn(),
-  mockBatchRetrieveInventory:   vi.fn(),
-  mockCacheGet:                 vi.fn(),
-  mockCacheSet:                 vi.fn(),
-  mockCacheGetOrCompute:        vi.fn(),
-  mockProcessSquareError:       vi.fn(),
-  mockHandleError:              vi.fn(),
-  mockLogError:                 vi.fn(),
+  mockRetrieveInventoryCount: vi.fn(),
+  mockBatchRetrieveInventory: vi.fn(),
+  mockCacheGet: vi.fn(),
+  mockCacheSet: vi.fn(),
+  mockCacheGetOrCompute: vi.fn(),
+  mockProcessSquareError: vi.fn(),
+  mockHandleError: vi.fn(),
+  mockLogError: vi.fn(),
 }));
 
 vi.mock('../client', () => ({
   squareClient: {
     inventory: {
-      get:            mockRetrieveInventoryCount,
+      get: mockRetrieveInventoryCount,
       batchGetCounts: mockBatchRetrieveInventory,
     },
   },
@@ -43,8 +43,8 @@ vi.mock('../client', () => ({
 
 vi.mock('@/lib/cache/blobCache', () => ({
   inventoryCache: {
-    get:          mockCacheGet,
-    set:          mockCacheSet,
+    get: mockCacheGet,
+    set: mockCacheSet,
     getOrCompute: mockCacheGetOrCompute,
   },
 }));
@@ -61,7 +61,7 @@ vi.mock('../serverErrorUtils', () => ({
 }));
 
 vi.mock('../errorUtils', () => ({
-  logError:    mockLogError,
+  logError: mockLogError,
   handleError: mockHandleError,
 }));
 
@@ -77,12 +77,15 @@ import {
 // shared inventory core, which guards the batch call with it. Reset between
 // tests so failures from one test don't leave the circuit open for the next.
 import { catalogRetryClient } from '../apiRetry';
+import type { Product, ProductVariation } from '../types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Make getOrCompute always run the compute function (cache miss). */
 function useCacheMiss() {
-  mockCacheGetOrCompute.mockImplementation((_key: string, fn: () => unknown) => fn());
+  mockCacheGetOrCompute.mockImplementation((_key: string, fn: () => unknown) =>
+    fn()
+  );
 }
 
 /** Make getOrCompute return a pre-cached value without calling compute. */
@@ -91,7 +94,11 @@ function useCacheHit(value: number) {
 }
 
 /** Build a minimal Square count object. */
-function makeCount(catalogObjectId: string, quantity: string, state = 'IN_STOCK') {
+function makeCount(
+  catalogObjectId: string,
+  quantity: string,
+  state = 'IN_STOCK'
+) {
   return { catalogObjectId, quantity, state };
 }
 
@@ -104,7 +111,9 @@ describe('checkItemInventory', () => {
     mockRetrieveInventoryCount.mockResolvedValue({ data: [] });
     // Default error-path helpers
     mockProcessSquareError.mockReturnValue({ message: 'sq-error' });
-    mockHandleError.mockImplementation((_err: unknown, defaultVal: unknown) => defaultVal);
+    mockHandleError.mockImplementation(
+      (_err: unknown, defaultVal: unknown) => defaultVal
+    );
   });
 
   it('returns the IN_STOCK quantity when Square has stock', async () => {
@@ -116,7 +125,9 @@ describe('checkItemInventory', () => {
     const qty = await checkItemInventory('var-1');
 
     expect(qty).toBe(7);
-    expect(mockRetrieveInventoryCount).toHaveBeenCalledWith(expect.objectContaining({ catalogObjectId: 'var-1' }));
+    expect(mockRetrieveInventoryCount).toHaveBeenCalledWith(
+      expect.objectContaining({ catalogObjectId: 'var-1' })
+    );
   });
 
   it('returns 0 when counts array is empty', async () => {
@@ -233,10 +244,7 @@ describe('checkBulkInventory', () => {
 
   it('uses the batch API path for multiple uncached IDs', async () => {
     mockBatchRetrieveInventory.mockResolvedValue({
-      data: [
-        makeCount('var-1', '2'),
-        makeCount('var-2', '8'),
-      ],
+      data: [makeCount('var-1', '2'), makeCount('var-2', '8')],
     });
 
     const result = await checkBulkInventory(['var-1', 'var-2']);
@@ -279,7 +287,9 @@ describe('checkBulkInventory', () => {
 
   it('falls back to individual lookups when the batch call fails', async () => {
     mockBatchRetrieveInventory.mockRejectedValue(new Error('batch timeout'));
-    mockRetrieveInventoryCount.mockResolvedValue({ data: [makeCount('x', '5')] });
+    mockRetrieveInventoryCount.mockResolvedValue({
+      data: [makeCount('x', '5')],
+    });
 
     const result = await checkBulkInventory(['var-1', 'var-2']);
     // Individual fallback resolved both IDs
@@ -321,10 +331,12 @@ describe('getProductStockStatus', () => {
     mockLogError.mockReturnValue(undefined);
   });
 
-  function makeProduct(overrides: Partial<{
-    variationId: string;
-    variations: { variationId: string }[];
-  }> = {}) {
+  function makeProduct(
+    overrides: Partial<{
+      variationId: string;
+      variations: Partial<ProductVariation>[];
+    }> = {}
+  ): Product {
     return {
       id: 'prod-1',
       catalogObjectId: 'prod-1',
@@ -334,7 +346,7 @@ describe('getProductStockStatus', () => {
       price: 0,
       url: '/product/test',
       ...overrides,
-    } as any;
+    } as unknown as Product;
   }
 
   it('returns not-out-of-stock when all variations are in stock', async () => {
@@ -342,9 +354,11 @@ describe('getProductStockStatus', () => {
       data: [makeCount('var-1', '5'), makeCount('var-2', '3')],
     });
 
-    const status = await getProductStockStatus(makeProduct({
-      variations: [{ variationId: 'var-1' }, { variationId: 'var-2' }],
-    }));
+    const status = await getProductStockStatus(
+      makeProduct({
+        variations: [{ variationId: 'var-1' }, { variationId: 'var-2' }],
+      })
+    );
 
     expect(status.isOutOfStock).toBe(false);
     expect(status.hasLimitedOptions).toBe(false);
@@ -353,9 +367,11 @@ describe('getProductStockStatus', () => {
   it('returns isOutOfStock when all variations are at zero', async () => {
     mockBatchRetrieveInventory.mockResolvedValue({ data: [] });
 
-    const status = await getProductStockStatus(makeProduct({
-      variations: [{ variationId: 'var-1' }, { variationId: 'var-2' }],
-    }));
+    const status = await getProductStockStatus(
+      makeProduct({
+        variations: [{ variationId: 'var-1' }, { variationId: 'var-2' }],
+      })
+    );
 
     expect(status.isOutOfStock).toBe(true);
     expect(status.hasLimitedOptions).toBe(false);
@@ -367,9 +383,11 @@ describe('getProductStockStatus', () => {
       data: [makeCount('var-1', '4')],
     });
 
-    const status = await getProductStockStatus(makeProduct({
-      variations: [{ variationId: 'var-1' }, { variationId: 'var-2' }],
-    }));
+    const status = await getProductStockStatus(
+      makeProduct({
+        variations: [{ variationId: 'var-1' }, { variationId: 'var-2' }],
+      })
+    );
 
     expect(status.isOutOfStock).toBe(false);
     expect(status.hasLimitedOptions).toBe(true);
@@ -377,29 +395,39 @@ describe('getProductStockStatus', () => {
 
   it('handles a single-variation product that is in stock', async () => {
     useCacheMiss();
-    mockCacheGetOrCompute.mockImplementation((_k: string, fn: () => unknown) => fn());
+    mockCacheGetOrCompute.mockImplementation((_k: string, fn: () => unknown) =>
+      fn()
+    );
     mockRetrieveInventoryCount.mockResolvedValue({
       data: [makeCount('var-1', '2')],
     });
 
-    const status = await getProductStockStatus(makeProduct({ variationId: 'var-1' }));
+    const status = await getProductStockStatus(
+      makeProduct({ variationId: 'var-1' })
+    );
     expect(status.isOutOfStock).toBe(false);
   });
 
   it('handles a single-variation product that is out of stock', async () => {
     useCacheMiss();
-    mockCacheGetOrCompute.mockImplementation((_k: string, fn: () => unknown) => fn());
+    mockCacheGetOrCompute.mockImplementation((_k: string, fn: () => unknown) =>
+      fn()
+    );
     mockRetrieveInventoryCount.mockResolvedValue({ data: [] });
 
-    const status = await getProductStockStatus(makeProduct({ variationId: 'var-1' }));
+    const status = await getProductStockStatus(
+      makeProduct({ variationId: 'var-1' })
+    );
     expect(status.isOutOfStock).toBe(true);
   });
 
   it('returns default (in-stock) when the product has no variations and no variationId', async () => {
-    const status = await getProductStockStatus(makeProduct({
-      variations: [],
-      variationId: '',
-    }));
+    const status = await getProductStockStatus(
+      makeProduct({
+        variations: [],
+        variationId: '',
+      })
+    );
     expect(status.isOutOfStock).toBe(false);
     expect(status.hasLimitedOptions).toBe(false);
   });
@@ -411,12 +439,13 @@ describe('getProductStockStatus', () => {
     mockBatchRetrieveInventory.mockRejectedValue(new Error('api error'));
     mockRetrieveInventoryCount.mockRejectedValue(new Error('individual error'));
 
-    const status = await getProductStockStatus(makeProduct({
-      variations: [{ variationId: 'var-1' }, { variationId: 'var-2' }],
-    }));
+    const status = await getProductStockStatus(
+      makeProduct({
+        variations: [{ variationId: 'var-1' }, { variationId: 'var-2' }],
+      })
+    );
 
     expect(status.isOutOfStock).toBe(true);
     expect(mockProcessSquareError).toHaveBeenCalled();
   });
 });
-

@@ -320,13 +320,19 @@ const contact = await getContactInfo();
 <script>
   import { QuickViewController } from "@/lib/product/quickViewController";
 
+  declare global {
+    interface Window {
+      openQuickView?: (productId: string, variationId?: string) => void;
+    }
+  }
+
   // Initialize Quick View
   function initQuickView(): void {
     const controller = QuickViewController.getInstance();
     controller.setupEventHandlers();
 
     // Global function for product cards
-    (window as any).openQuickView = (
+    window.openQuickView = (
       productId: string,
       preferredVariationId?: string,
     ) => {

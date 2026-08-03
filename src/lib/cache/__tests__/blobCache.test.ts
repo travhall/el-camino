@@ -3,22 +3,53 @@
  * Tests Netlify Blobs integration, TTL expiration, and fallback cache
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BlobCache } from '../blobCache';
 
 // Mock Netlify Blobs
 const mockBlobStore = {
   get: vi.fn(),
   set: vi.fn(),
-  delete: vi.fn()
+  delete: vi.fn(),
 };
 
 vi.mock('@netlify/blobs', () => ({
-  getStore: vi.fn(() => mockBlobStore)
+  getStore: vi.fn(() => mockBlobStore),
 }));
 
+// BlobCache's `fallbackCache` in-memory Map is private — these tests reach
+// into it directly to exercise expiry/cleanup behavior that isn't otherwise
+// observable from the public API. `CacheEntry` isn't exported by blobCache.ts,
+// so this mirrors just the shape these tests read/write.
+interface FallbackEntry {
+  value: unknown;
+  timestamp: number;
+  ttl: number;
+}
+
+function getFallbackCache(
+  instance: BlobCache<unknown>
+): Map<string, FallbackEntry> {
+  return (instance as unknown as { fallbackCache: Map<string, FallbackEntry> })
+    .fallbackCache;
+}
+
+function getCleanupIntervalId(
+  instance: BlobCache<unknown>
+): ReturnType<typeof setInterval> | null {
+  return (
+    instance as unknown as {
+      cleanupIntervalId: ReturnType<typeof setInterval> | null;
+    }
+  ).cleanupIntervalId;
+}
+
+// `window` isn't declared on Node's `global` type; these tests stub/remove it
+// to simulate a browser environment for BlobCache's constructor guard.
+type GlobalWithWindow = Omit<typeof global, 'window'> & { window?: unknown };
+
 describe('BlobCache', () => {
-  let cache: BlobCache<any>;
+  let cache: BlobCache<unknown>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,7 +61,7 @@ describe('BlobCache', () => {
       const cachedEntry = {
         value: 'test-value',
         timestamp: Date.now(),
-        ttl: 60000
+        ttl: 60000,
       };
 
       mockBlobStore.get.mockResolvedValue(JSON.stringify(cachedEntry));
@@ -45,7 +76,7 @@ describe('BlobCache', () => {
       const expiredEntry = {
         value: 'test-value',
         timestamp: Date.now() - 120000, // 2 minutes ago
-        ttl: 60000 // 1 minute TTL
+        ttl: 60000, // 1 minute TTL
       };
 
       mockBlobStore.get.mockResolvedValue(JSON.stringify(expiredEntry));
@@ -82,7 +113,7 @@ describe('BlobCache', () => {
       const cachedEntry = {
         value: 'test-value',
         timestamp: Date.now(),
-        ttl: 60000
+        ttl: 60000,
       };
 
       mockBlobStore.get.mockResolvedValue(JSON.stringify(cachedEntry));
@@ -114,7 +145,7 @@ describe('BlobCache', () => {
       const cachedEntry = {
         value: 'cached-value',
         timestamp: Date.now(),
-        ttl: 60000
+        ttl: 60000,
       };
 
       mockBlobStore.get.mockResolvedValue(JSON.stringify(cachedEntry));
@@ -142,7 +173,7 @@ describe('BlobCache', () => {
       const expiredEntry = {
         value: 'old-value',
         timestamp: Date.now() - 120000,
-        ttl: 60000
+        ttl: 60000,
       };
 
       mockBlobStore.get.mockResolvedValue(JSON.stringify(expiredEntry));
@@ -171,9 +202,9 @@ describe('BlobCache', () => {
 
       const compute = vi.fn().mockRejectedValue(new Error('Compute failed'));
 
-      await expect(
-        cache.getOrCompute('test-key', compute)
-      ).rejects.toThrow('Compute failed');
+      await expect(cache.getOrCompute('test-key', compute)).rejects.toThrow(
+        'Compute failed'
+      );
     });
 
     it('should use fallback cache for subsequent requests', async () => {
@@ -215,13 +246,13 @@ describe('BlobCache', () => {
     });
 
     it('should cleanup expired fallback entries', () => {
-      const fallbackCache = (cache as any).fallbackCache;
+      const fallbackCache = getFallbackCache(cache);
 
       // Add expired entry
       const expiredEntry = {
         value: 'old-value',
         timestamp: Date.now() - 120000,
-        ttl: 60000
+        ttl: 60000,
       };
       fallbackCache.set('expired-key', expiredEntry);
 
@@ -229,7 +260,7 @@ describe('BlobCache', () => {
       const validEntry = {
         value: 'valid-value',
         timestamp: Date.now(),
-        ttl: 60000
+        ttl: 60000,
       };
       fallbackCache.set('valid-key', validEntry);
 
@@ -241,13 +272,13 @@ describe('BlobCache', () => {
     });
 
     it('should remove expired entries from fallback during getOrCompute', async () => {
-      const fallbackCache = (cache as any).fallbackCache;
+      const fallbackCache = getFallbackCache(cache);
 
       // Add expired entry to fallback
       const expiredEntry = {
         value: 'old-value',
         timestamp: Date.now() - 120000,
-        ttl: 60000
+        ttl: 60000,
       };
       fallbackCache.set('test-cache:test-key', expiredEntry);
 
@@ -300,16 +331,16 @@ describe('BlobCache', () => {
       const originalWindow = global.window;
 
       // Simulate browser environment
-      (global as any).window = {};
+      (global as GlobalWithWindow).window = {};
 
       const browserCache = new BlobCache('browser-cache', 60);
       // Constructor returns early in browser, so the cleanup interval
       // (and its potential leak) is never set up.
-      expect((browserCache as any).cleanupIntervalId).toBeNull();
+      expect(getCleanupIntervalId(browserCache)).toBeNull();
 
       // Restore
       if (originalWindow === undefined) {
-        delete (global as any).window;
+        delete (global as GlobalWithWindow).window;
       } else {
         global.window = originalWindow;
       }
@@ -368,7 +399,7 @@ describe('BlobCache', () => {
       const recentEntry = {
         value: 'test-value',
         timestamp: Date.now() - 2000, // 2 seconds ago
-        ttl: 1000 // 1 second TTL
+        ttl: 1000, // 1 second TTL
       };
 
       mockBlobStore.get.mockResolvedValue(JSON.stringify(recentEntry));
@@ -458,7 +489,7 @@ describe('BlobCache', () => {
       let computeCount = 0;
       const compute = vi.fn().mockImplementation(async () => {
         computeCount++;
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         return `value-${computeCount}`;
       });
 
@@ -466,14 +497,16 @@ describe('BlobCache', () => {
       const promises = [
         cache.getOrCompute('test-key', compute),
         cache.getOrCompute('test-key', compute),
-        cache.getOrCompute('test-key', compute)
+        cache.getOrCompute('test-key', compute),
       ];
 
       const results = await Promise.all(promises);
 
       // All should have computed (no deduplication in this implementation)
       expect(compute).toHaveBeenCalled();
-      expect(results.every(r => r.startsWith('value-'))).toBe(true);
+      expect(
+        results.every((r) => typeof r === 'string' && r.startsWith('value-'))
+      ).toBe(true);
     });
   });
 
@@ -486,8 +519,8 @@ describe('BlobCache', () => {
         name: 'Test',
         nested: {
           array: [1, 2, 3],
-          boolean: true
-        }
+          boolean: true,
+        },
       };
 
       await cache.set('complex-key', complexObject);
@@ -502,14 +535,14 @@ describe('BlobCache', () => {
       const complexObject = {
         id: 1,
         nested: {
-          value: 'test'
-        }
+          value: 'test',
+        },
       };
 
       const cachedEntry = {
         value: complexObject,
         timestamp: Date.now(),
-        ttl: 60000
+        ttl: 60000,
       };
 
       mockBlobStore.get.mockResolvedValue(JSON.stringify(cachedEntry));

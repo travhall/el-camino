@@ -345,10 +345,6 @@ const nonce = Astro.locals.nonce;
 
 <script type="application/json" id="event-ref-data" set:html={JSON.stringify({ allProducts, eventTemplates })} />
 <script is:inline nonce={nonce}>
-  var _erd = JSON.parse(document.getElementById('event-ref-data').textContent);
-  var allProducts = _erd.allProducts;
-  var eventTemplates = _erd.eventTemplates;
-
   let selectedProducts = new Set();
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -516,8 +512,7 @@ const nonce = Astro.locals.nonce;
     try {
       await navigator.clipboard.writeText(code);
       showToast('WordPress code copied!');
-    } catch (err) {
-      // console.error('Failed to copy:', err);
+    } catch {
       showToast('Copy failed - please select and copy manually', 'error');
     }
   }

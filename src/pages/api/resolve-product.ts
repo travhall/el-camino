@@ -1,23 +1,22 @@
 // src/pages/api/resolve-product.ts
-import type { APIRoute } from "astro";
-import { slugResolver } from "@/lib/square/slugResolver";
-import { fetchProducts } from "@/lib/square/client";
-import { createSlugMapping } from "@/lib/square/slugUtils";
+import type { APIRoute } from 'astro';
+import { slugResolver } from '@/lib/square/slugResolver';
+import { fetchProducts } from '@/lib/square/client';
+import { createSlugMapping } from '@/lib/square/slugUtils';
 
 export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
-  const slug = url.searchParams.get("slug");
+  const slug = url.searchParams.get('slug');
 
   if (!slug) {
-    return new Response(JSON.stringify({ error: "Missing slug parameter" }), {
+    return new Response(JSON.stringify({ error: 'Missing slug parameter' }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 
   try {
     // console.log(`[resolve-product] Resolving slug: ${slug}`);
-    const startTime = Date.now();
 
     // Try fast path: lightweight slug resolver
     let productId = await slugResolver.resolve(slug);
@@ -30,45 +29,44 @@ export const GET: APIRoute = async ({ request }) => {
       productId = slugMapping.get(slug) || null;
     }
 
-    const duration = Date.now() - startTime;
-    // console.log(`[resolve-product] Resolved in ${duration}ms`);
+    // console.log(`[resolve-product] Resolved`);
 
     if (!productId) {
-      return new Response(JSON.stringify({ error: "Product not found" }), {
+      return new Response(JSON.stringify({ error: 'Product not found' }), {
         status: 404,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
     // Return the product ID
     const response = new Response(JSON.stringify({ id: productId }), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     // Set cache headers for edge caching
     // Browser: Don't cache slug resolution responses
     response.headers.set(
-      "Cache-Control",
-      "no-cache, no-store, must-revalidate"
+      'Cache-Control',
+      'no-cache, no-store, must-revalidate'
     );
 
     // Netlify CDN: Cache at edge for 1 hour, serve stale for 24 hours while revalidating
     // durable directive shares cache globally across all edge nodes
     response.headers.set(
-      "Netlify-CDN-Cache-Control",
-      "public, max-age=0, s-maxage=3600, stale-while-revalidate=300, durable"
+      'Netlify-CDN-Cache-Control',
+      'public, max-age=0, s-maxage=3600, stale-while-revalidate=300, durable'
     );
 
     // Add cache tag for invalidation via webhooks
-    response.headers.set("Netlify-Cache-Tag", "product-slugs,products");
+    response.headers.set('Netlify-Cache-Tag', 'product-slugs,products');
 
     return response;
-  } catch (error) {
+  } catch {
     // console.error("[resolve-product] Error resolving product slug:", error);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 };

@@ -8,7 +8,7 @@ import { vi } from 'vitest';
 vi.mock('astro:env/server', () => ({
   SQUARE_ACCESS_TOKEN: 'test-token',
   SQUARE_APPLICATION_ID: 'test-app-id',
-  SQUARE_ENVIRONMENT: 'sandbox'
+  SQUARE_ENVIRONMENT: 'sandbox',
 }));
 
 // Mock global performance if not available
@@ -18,8 +18,8 @@ if (typeof performance === 'undefined') {
     mark: () => {},
     measure: () => {},
     getEntriesByType: () => [],
-    getEntriesByName: () => []
-  } as any;
+    getEntriesByName: () => [],
+  } as unknown as Performance;
 }
 
 // Setup DOM globals for happy-dom

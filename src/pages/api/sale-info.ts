@@ -1,7 +1,8 @@
-import type { APIRoute } from "astro";
-import { squareClient } from "@/lib/square/client";
-import { extractSaleInfo } from "@/lib/square/catalogUtils";
-import type { SaleInfo } from "@/lib/square/types";
+import type { APIRoute } from 'astro';
+import { squareClient } from '@/lib/square/client';
+import { extractSaleInfo } from '@/lib/square/catalogUtils';
+import type { SaleInfo } from '@/lib/square/types';
+import type { CatalogObject } from 'square-legacy';
 
 const MAX_VARIATION_IDS = 50;
 
@@ -13,36 +14,35 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Invalid variation IDs array",
+          error: 'Invalid variation IDs array',
         }),
         {
           status: 400,
-          headers: { "Content-Type": "application/json" },
+          headers: { 'Content-Type': 'application/json' },
         }
       );
     }
 
     if (variationIds.length > MAX_VARIATION_IDS) {
       return new Response(
-        JSON.stringify({ success: false, error: "Too many variation IDs" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: 'Too many variation IDs' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const batchResult =
-      await squareClient.catalog.batchGet({
-        objectIds: variationIds,
-        includeRelatedObjects: false,
-      });
+    const batchResult = await squareClient.catalog.batchGet({
+      objectIds: variationIds,
+      includeRelatedObjects: false,
+    });
 
     const saleInfo: Record<string, SaleInfo | null> = {};
 
     for (const variationId of variationIds) {
       const catalogObject = batchResult.objects?.find(
-        (obj: any) => obj.id === variationId
+        (obj: CatalogObject) => obj.id === variationId
       );
 
-      if (!catalogObject || catalogObject.type !== "ITEM_VARIATION") {
+      if (!catalogObject || catalogObject.type !== 'ITEM_VARIATION') {
         saleInfo[variationId] = null;
         continue;
       }
@@ -66,23 +66,25 @@ export const POST: APIRoute = async ({ request }) => {
       {
         status: 200,
         headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=120, s-maxage=300, stale-while-revalidate=1800",
-          "Netlify-CDN-Cache-Control": "public, s-maxage=300, stale-while-revalidate=1800",
-          "Netlify-Cache-Tag": "sale-info,products",
+          'Content-Type': 'application/json',
+          'Cache-Control':
+            'public, max-age=120, s-maxage=300, stale-while-revalidate=1800',
+          'Netlify-CDN-Cache-Control':
+            'public, s-maxage=300, stale-while-revalidate=1800',
+          'Netlify-Cache-Tag': 'sale-info,products',
         },
       }
     );
   } catch (error) {
-    console.error("Error fetching sale info:", error);
+    console.error('Error fetching sale info:', error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Failed to fetch sale info",
+        error: 'Failed to fetch sale info',
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       }
     );
   }

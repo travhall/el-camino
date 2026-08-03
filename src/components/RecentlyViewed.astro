@@ -38,7 +38,9 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
 
 <script>
   import { recentlyViewed } from "@/lib/product/recentlyViewed";
+  import type { RecentlyViewedItem } from "@/lib/product/recentlyViewed";
   import { MoneyUtils } from "@/lib/square/money";
+  import type { SaleInfo } from "@/lib/square/types";
 
   // Route any external image URL through Netlify Image CDN for compression,
   // format negotiation (AVIF/WebP), and edge caching — covers squarecdn.com,
@@ -165,7 +167,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
   }
 
   async function fetchInventoryForItems(
-    items: any[],
+    items: RecentlyViewedItem[],
   ): Promise<Record<string, boolean>> {
     // Gift cards have no inventory tracking in Square — always in stock
     const giftCardIds = items
@@ -207,8 +209,8 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
   }
 
   async function fetchSaleInfoForItems(
-    items: any[],
-  ): Promise<Record<string, any>> {
+    items: RecentlyViewedItem[],
+  ): Promise<Record<string, SaleInfo>> {
     try {
       const variationIds = items.map((item) => item.variationId);
       const response = await fetch("/api/sale-info", {

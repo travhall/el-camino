@@ -1,21 +1,21 @@
 // src/pages/api/check-inventory.ts
-import type { APIRoute } from "astro";
-import { checkItemInventory } from "@/lib/square/inventory";
+import type { APIRoute } from 'astro';
+import { checkItemInventory } from '@/lib/square/inventory';
 
-export const GET: APIRoute = async ({ request, url }) => {
+export const GET: APIRoute = async ({ url }) => {
   try {
     // Get variation ID from query parameter
-    const variationId = url.searchParams.get("variationId");
+    const variationId = url.searchParams.get('variationId');
 
     if (!variationId) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Missing variationId parameter",
+          error: 'Missing variationId parameter',
         }),
         {
           status: 400,
-          headers: { "Content-Type": "application/json" },
+          headers: { 'Content-Type': 'application/json' },
         }
       );
     }
@@ -32,22 +32,22 @@ export const GET: APIRoute = async ({ request, url }) => {
       }),
       {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       }
     );
   } catch (error) {
     // Log full error server-side only — never expose stack traces to clients
-    console.error("[API] Error checking inventory:", error);
+    console.error('[API] Error checking inventory:', error);
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Failed to check inventory",
+        error: 'Failed to check inventory',
         timestamp: new Date().toISOString(),
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       }
     );
   }

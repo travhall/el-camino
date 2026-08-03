@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock all external dependencies BEFORE importing the handler
-vi.mock("@/lib/square/verifyWebhookSignature", () => ({
+vi.mock('@/lib/square/verifyWebhookSignature', () => ({
   verifySquareWebhookSignature: vi.fn().mockReturnValue(true),
 }));
 
-vi.mock("@/lib/square/client", () => ({
+vi.mock('@/lib/square/client', () => ({
   squareClient: {
     orders: {
       get: vi.fn(),
@@ -13,7 +13,7 @@ vi.mock("@/lib/square/client", () => ({
   },
 }));
 
-vi.mock("@/lib/cache/blobCache", () => ({
+vi.mock('@/lib/cache/blobCache', () => ({
   inventoryCache: { delete: vi.fn(), clear: vi.fn() },
   productCache: { delete: vi.fn(), clear: vi.fn() },
   categoryCache: { delete: vi.fn(), clear: vi.fn() },
@@ -22,65 +22,73 @@ vi.mock("@/lib/cache/blobCache", () => ({
   filterCache: { delete: vi.fn(), clear: vi.fn() },
 }));
 
-vi.mock("@/lib/email/pendingOrders", () => ({
+vi.mock('@/lib/email/pendingOrders', () => ({
   getPendingOrder: vi.fn(),
   deletePendingOrder: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/lib/email/sender", () => ({
+vi.mock('@/lib/email/sender', () => ({
   sendOrderConfirmation: vi.fn().mockResolvedValue(undefined),
   sendPickupNotification: vi.fn().mockResolvedValue(undefined),
   sendShippingOrderNotification: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/lib/email/failedEmails", () => ({
+vi.mock('@/lib/email/failedEmails', () => ({
   storeFailedEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Import handler AFTER mocks
-import { POST } from "../webhooks/square";
-import { verifySquareWebhookSignature } from "@/lib/square/verifyWebhookSignature";
-import { squareClient } from "@/lib/square/client";
-import { getPendingOrder, deletePendingOrder } from "@/lib/email/pendingOrders";
+import { POST } from '../webhooks/square';
+import { verifySquareWebhookSignature } from '@/lib/square/verifyWebhookSignature';
+import { squareClient } from '@/lib/square/client';
+import { getPendingOrder, deletePendingOrder } from '@/lib/email/pendingOrders';
 import {
   sendOrderConfirmation,
   sendPickupNotification,
   sendShippingOrderNotification,
-} from "@/lib/email/sender";
-import { storeFailedEmail } from "@/lib/email/failedEmails";
+} from '@/lib/email/sender';
+import { storeFailedEmail } from '@/lib/email/failedEmails';
+import type { PendingOrderContact } from '@/lib/email/pendingOrders';
+import type { GetOrderResponse } from 'square-legacy';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-const WEBHOOK_URL = "https://example.com/api/webhooks/square";
+const WEBHOOK_URL = 'https://example.com/api/webhooks/square';
 
-const mockContactPickup = {
-  name: "Test User",
-  email: "customer@example.com",
-  fulfillmentMethod: "pickup",
-  phone: "",
-  notes: "",
+const mockContactPickup: PendingOrderContact & {
+  phone: string;
+  notes: string;
+} = {
+  name: 'Test User',
+  email: 'customer@example.com',
+  fulfillmentMethod: 'pickup',
+  phone: '',
+  notes: '',
 };
 
-const mockContactShipping = {
+const mockContactShipping: PendingOrderContact & {
+  phone: string;
+  notes: string;
+} = {
   ...mockContactPickup,
-  fulfillmentMethod: "shipping",
+  fulfillmentMethod: 'shipping',
 };
 
 const mockOrder = {
-  id: "ORDER123456789012",
-  totalMoney: { amount: 1999n, currency: "USD" },
+  id: 'ORDER123456789012',
+  totalMoney: { amount: 1999n, currency: 'USD' },
   lineItems: [],
 };
 
 const paymentUpdatedCompleted = {
-  type: "payment.updated",
+  type: 'payment.updated',
   data: {
     object: {
       payment: {
-        id: "PAY_001",
-        order_id: "ORDER123456789012",
-        status: "COMPLETED",
-        total_money: { amount: 1999, currency: "USD" },
+        id: 'PAY_001',
+        order_id: 'ORDER123456789012',
+        status: 'COMPLETED',
+        total_money: { amount: 1999, currency: 'USD' },
       },
     },
   },
@@ -90,39 +98,43 @@ const paymentUpdatedCompleted = {
 
 function makeRequest(body: object): Request {
   return new Request(WEBHOOK_URL, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      "x-square-hmacsha256-signature": "valid-sig",
+      'Content-Type': 'application/json',
+      'x-square-hmacsha256-signature': 'valid-sig',
     },
     body: JSON.stringify(body),
   });
 }
 
-function makeContext(body: object): any {
-  return { request: makeRequest(body) };
+function makeContext(body: object): Parameters<typeof POST>[0] {
+  return { request: makeRequest(body) } as unknown as Parameters<
+    typeof POST
+  >[0];
 }
 
 // ── Test suite ─────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.stubEnv("SQUARE_WEBHOOK_SIGNATURE_KEY", "test-secret");
+  vi.stubEnv('SQUARE_WEBHOOK_SIGNATURE_KEY', 'test-secret');
   // Default: signature is valid
   vi.mocked(verifySquareWebhookSignature).mockReturnValue(true);
   // Default: orders.get succeeds
-  vi.mocked(squareClient.orders.get).mockResolvedValue({ order: mockOrder } as any);
+  vi.mocked(squareClient.orders.get).mockResolvedValue({
+    order: mockOrder,
+  } as unknown as GetOrderResponse);
   // Default: no pending order (idempotency)
   vi.mocked(getPendingOrder).mockResolvedValue(null);
   vi.mocked(deletePendingOrder).mockResolvedValue(undefined);
 });
 
-describe("POST /api/webhooks/square", () => {
+describe('POST /api/webhooks/square', () => {
   // ── Env / config guard ────────────────────────────────────────────────────
 
-  describe("env var guard", () => {
-    it("returns 200 with received:false when SQUARE_WEBHOOK_SIGNATURE_KEY is missing", async () => {
-      vi.stubEnv("SQUARE_WEBHOOK_SIGNATURE_KEY", "");
+  describe('env var guard', () => {
+    it('returns 200 with received:false when SQUARE_WEBHOOK_SIGNATURE_KEY is missing', async () => {
+      vi.stubEnv('SQUARE_WEBHOOK_SIGNATURE_KEY', '');
       const res = await POST(makeContext(paymentUpdatedCompleted));
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -132,8 +144,8 @@ describe("POST /api/webhooks/square", () => {
 
   // ── Signature verification ────────────────────────────────────────────────
 
-  describe("signature verification", () => {
-    it("returns 403 when signature is invalid", async () => {
+  describe('signature verification', () => {
+    it('returns 403 when signature is invalid', async () => {
       vi.mocked(verifySquareWebhookSignature).mockReturnValue(false);
       const res = await POST(makeContext(paymentUpdatedCompleted));
       expect(res.status).toBe(403);
@@ -142,23 +154,23 @@ describe("POST /api/webhooks/square", () => {
 
   // ── payment.updated / COMPLETED — happy path (pickup) ────────────────────
 
-  describe("payment.updated COMPLETED — pickup", () => {
+  describe('payment.updated COMPLETED — pickup', () => {
     beforeEach(() => {
-      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup as any);
+      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup);
     });
 
-    it("returns 200", async () => {
+    it('returns 200', async () => {
       const res = await POST(makeContext(paymentUpdatedCompleted));
       expect(res.status).toBe(200);
     });
 
-    it("returns received:true in body", async () => {
+    it('returns received:true in body', async () => {
       const res = await POST(makeContext(paymentUpdatedCompleted));
       const body = await res.json();
       expect(body.received).toBe(true);
     });
 
-    it("calls sendOrderConfirmation with the order and contact", async () => {
+    it('calls sendOrderConfirmation with the order and contact', async () => {
       await POST(makeContext(paymentUpdatedCompleted));
       expect(sendOrderConfirmation).toHaveBeenCalledOnce();
       expect(sendOrderConfirmation).toHaveBeenCalledWith(
@@ -166,35 +178,35 @@ describe("POST /api/webhooks/square", () => {
       );
     });
 
-    it("calls sendPickupNotification for pickup fulfillment", async () => {
+    it('calls sendPickupNotification for pickup fulfillment', async () => {
       await POST(makeContext(paymentUpdatedCompleted));
       expect(sendPickupNotification).toHaveBeenCalledOnce();
     });
 
-    it("does NOT call sendShippingOrderNotification for pickup", async () => {
+    it('does NOT call sendShippingOrderNotification for pickup', async () => {
       await POST(makeContext(paymentUpdatedCompleted));
       expect(sendShippingOrderNotification).not.toHaveBeenCalled();
     });
 
-    it("calls deletePendingOrder to guard against duplicate delivery", async () => {
+    it('calls deletePendingOrder to guard against duplicate delivery', async () => {
       await POST(makeContext(paymentUpdatedCompleted));
-      expect(deletePendingOrder).toHaveBeenCalledWith("ORDER123456789012");
+      expect(deletePendingOrder).toHaveBeenCalledWith('ORDER123456789012');
     });
   });
 
   // ── payment.updated / COMPLETED — happy path (shipping) ──────────────────
 
-  describe("payment.updated COMPLETED — shipping", () => {
+  describe('payment.updated COMPLETED — shipping', () => {
     beforeEach(() => {
-      vi.mocked(getPendingOrder).mockResolvedValue(mockContactShipping as any);
+      vi.mocked(getPendingOrder).mockResolvedValue(mockContactShipping);
     });
 
-    it("calls sendShippingOrderNotification for shipping fulfillment", async () => {
+    it('calls sendShippingOrderNotification for shipping fulfillment', async () => {
       await POST(makeContext(paymentUpdatedCompleted));
       expect(sendShippingOrderNotification).toHaveBeenCalledOnce();
     });
 
-    it("does NOT call sendPickupNotification for shipping", async () => {
+    it('does NOT call sendPickupNotification for shipping', async () => {
       await POST(makeContext(paymentUpdatedCompleted));
       expect(sendPickupNotification).not.toHaveBeenCalled();
     });
@@ -202,8 +214,8 @@ describe("POST /api/webhooks/square", () => {
 
   // ── Idempotency guard ─────────────────────────────────────────────────────
 
-  describe("payment.updated COMPLETED — no pending order (idempotency)", () => {
-    it("skips email sending and returns 200 when no pending order is found", async () => {
+  describe('payment.updated COMPLETED — no pending order (idempotency)', () => {
+    it('skips email sending and returns 200 when no pending order is found', async () => {
       vi.mocked(getPendingOrder).mockResolvedValue(null);
       const res = await POST(makeContext(paymentUpdatedCompleted));
       expect(res.status).toBe(200);
@@ -214,23 +226,23 @@ describe("POST /api/webhooks/square", () => {
 
   // ── orders.get fallback path ──────────────────────────────────────────────
 
-  describe("payment.updated COMPLETED — Square orders.get fails (fallback)", () => {
+  describe('payment.updated COMPLETED — Square orders.get fails (fallback)', () => {
     beforeEach(() => {
-      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup as any);
+      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup);
       vi.mocked(squareClient.orders.get).mockRejectedValue(
-        new Error("Square API unavailable")
+        new Error('Square API unavailable')
       );
     });
 
-    it("still calls sendOrderConfirmation using payment-payload fallback order", async () => {
+    it('still calls sendOrderConfirmation using payment-payload fallback order', async () => {
       const res = await POST(makeContext(paymentUpdatedCompleted));
       expect(res.status).toBe(200);
       expect(sendOrderConfirmation).toHaveBeenCalledOnce();
     });
 
-    it("still deletes the pending order blob after fallback-path email send", async () => {
+    it('still deletes the pending order blob after fallback-path email send', async () => {
       await POST(makeContext(paymentUpdatedCompleted));
-      expect(deletePendingOrder).toHaveBeenCalledWith("ORDER123456789012");
+      expect(deletePendingOrder).toHaveBeenCalledWith('ORDER123456789012');
     });
   });
 
@@ -238,30 +250,30 @@ describe("POST /api/webhooks/square", () => {
   // Plan 038: on email failure the handler calls storeFailedEmail() instead
   // of re-throwing, so Square still gets 200 and the blob stays intact for retry.
 
-  describe("payment.updated COMPLETED — email delivery fails", () => {
+  describe('payment.updated COMPLETED — email delivery fails', () => {
     beforeEach(() => {
-      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup as any);
+      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup);
       vi.mocked(sendOrderConfirmation).mockRejectedValue(
-        new Error("Resend API error")
+        new Error('Resend API error')
       );
     });
 
-    it("returns 200 even when sendOrderConfirmation throws", async () => {
+    it('returns 200 even when sendOrderConfirmation throws', async () => {
       const res = await POST(makeContext(paymentUpdatedCompleted));
       expect(res.status).toBe(200);
     });
 
-    it("calls storeFailedEmail to persist the failure for admin retry", async () => {
+    it('calls storeFailedEmail to persist the failure for admin retry', async () => {
       await POST(makeContext(paymentUpdatedCompleted));
       expect(storeFailedEmail).toHaveBeenCalledWith(
-        "ORDER123456789012",
+        'ORDER123456789012',
         expect.anything(),
         mockContactPickup,
         expect.any(Error)
       );
     });
 
-    it("does NOT call deletePendingOrder when email sending fails", async () => {
+    it('does NOT call deletePendingOrder when email sending fails', async () => {
       // Idempotency blob stays intact so the order can be retried from admin UI.
       await POST(makeContext(paymentUpdatedCompleted));
       expect(deletePendingOrder).not.toHaveBeenCalled();
@@ -273,22 +285,24 @@ describe("POST /api/webhooks/square", () => {
   // must NOT be called — a blob-cleanup error is not an email failure and
   // must not create a false duplicate-send record in the admin retry queue.
 
-  describe("payment.updated COMPLETED — blob cleanup fails after emails succeed", () => {
+  describe('payment.updated COMPLETED — blob cleanup fails after emails succeed', () => {
     beforeEach(() => {
-      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup as any);
+      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup);
       // Explicitly resolve email mocks (guard against implementation bleed from prior describe blocks)
       vi.mocked(sendOrderConfirmation).mockResolvedValue(undefined);
       vi.mocked(sendPickupNotification).mockResolvedValue(undefined);
-      vi.mocked(deletePendingOrder).mockRejectedValue(new Error("Blob unavailable"));
+      vi.mocked(deletePendingOrder).mockRejectedValue(
+        new Error('Blob unavailable')
+      );
     });
 
-    it("does not create a retry record when deletePendingOrder fails but emails succeeded", async () => {
+    it('does not create a retry record when deletePendingOrder fails but emails succeeded', async () => {
       const res = await POST(makeContext(paymentUpdatedCompleted));
       expect(storeFailedEmail).not.toHaveBeenCalled();
       expect(res.status).toBe(200);
     });
 
-    it("still calls sendOrderConfirmation even when blob cleanup will fail", async () => {
+    it('still calls sendOrderConfirmation even when blob cleanup will fail', async () => {
       await POST(makeContext(paymentUpdatedCompleted));
       expect(sendOrderConfirmation).toHaveBeenCalledOnce();
     });
@@ -296,18 +310,18 @@ describe("POST /api/webhooks/square", () => {
 
   // ── Non-COMPLETED payment status ──────────────────────────────────────────
 
-  describe("payment.updated with non-COMPLETED status", () => {
-    it("ignores PENDING payments and returns 200 without sending emails", async () => {
-      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup as any);
+  describe('payment.updated with non-COMPLETED status', () => {
+    it('ignores PENDING payments and returns 200 without sending emails', async () => {
+      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup);
       const pendingEvent = {
-        type: "payment.updated",
+        type: 'payment.updated',
         data: {
           object: {
             payment: {
-              id: "PAY_002",
-              order_id: "ORDER123456789012",
-              status: "PENDING",
-              total_money: { amount: 1999, currency: "USD" },
+              id: 'PAY_002',
+              order_id: 'ORDER123456789012',
+              status: 'PENDING',
+              total_money: { amount: 1999, currency: 'USD' },
             },
           },
         },
@@ -320,9 +334,9 @@ describe("POST /api/webhooks/square", () => {
 
   // ── Unhandled event types ─────────────────────────────────────────────────
 
-  describe("unhandled event types", () => {
-    it("returns 200 for an unknown event type without sending any emails", async () => {
-      const res = await POST(makeContext({ type: "unknown.event", data: {} }));
+  describe('unhandled event types', () => {
+    it('returns 200 for an unknown event type without sending any emails', async () => {
+      const res = await POST(makeContext({ type: 'unknown.event', data: {} }));
       expect(res.status).toBe(200);
       expect(sendOrderConfirmation).not.toHaveBeenCalled();
     });

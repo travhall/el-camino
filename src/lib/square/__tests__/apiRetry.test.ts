@@ -3,12 +3,20 @@
  * Tests exponential backoff, jitter, timeout, and circuit breaker pattern
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  vi,
+  type Mock,
+} from 'vitest';
 import { ApiRetryClient, CircuitState } from '../apiRetry';
 
 describe('ApiRetryClient', () => {
   let client: ApiRetryClient;
-  let mockOperation: any;
+  let mockOperation: Mock<() => Promise<string>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -40,10 +48,7 @@ describe('ApiRetryClient', () => {
         .mockRejectedValueOnce(new Error('Temporary failure'))
         .mockResolvedValueOnce('success');
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation'
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation');
 
       // Fast-forward through the delay
       await vi.runAllTimersAsync();
@@ -57,16 +62,14 @@ describe('ApiRetryClient', () => {
     it('should fail after max retries', async () => {
       mockOperation.mockRejectedValue(new Error('Persistent failure'));
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        { maxRetries: 2 }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        maxRetries: 2,
+      });
 
       // Run timers and catch rejection simultaneously
-      const [result] = await Promise.all([
+      await Promise.all([
         expect(promise).rejects.toThrow('failed after 3 attempts'),
-        vi.runAllTimersAsync()
+        vi.runAllTimersAsync(),
       ]);
 
       expect(mockOperation).toHaveBeenCalledTimes(3); // Initial + 2 retries
@@ -75,16 +78,14 @@ describe('ApiRetryClient', () => {
     it('should not retry on final attempt', async () => {
       mockOperation.mockRejectedValue(new Error('Failure'));
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        { maxRetries: 0 }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        maxRetries: 0,
+      });
 
       // Run timers and catch rejection simultaneously
       await Promise.all([
         expect(promise).rejects.toThrow(),
-        vi.runAllTimersAsync()
+        vi.runAllTimersAsync(),
       ]);
 
       expect(mockOperation).toHaveBeenCalledTimes(1); // No retries
@@ -95,16 +96,12 @@ describe('ApiRetryClient', () => {
     it('should increase delay exponentially', async () => {
       mockOperation.mockRejectedValue(new Error('Failure'));
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        {
-          maxRetries: 3,
-          baseDelay: 100,
-          maxDelay: 10000,
-          jitterRange: 0 // No jitter for predictable testing
-        }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        maxRetries: 3,
+        baseDelay: 100,
+        maxDelay: 10000,
+        jitterRange: 0, // No jitter for predictable testing
+      });
 
       // Add error handler to prevent unhandled rejection
       promise.catch(() => {});
@@ -129,16 +126,12 @@ describe('ApiRetryClient', () => {
     it('should cap delay at maxDelay', async () => {
       mockOperation.mockRejectedValue(new Error('Failure'));
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        {
-          maxRetries: 10,
-          baseDelay: 100,
-          maxDelay: 500,
-          jitterRange: 0
-        }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        maxRetries: 10,
+        baseDelay: 100,
+        maxDelay: 500,
+        jitterRange: 0,
+      });
 
       // Add error handler to prevent unhandled rejection
       promise.catch(() => {});
@@ -171,14 +164,14 @@ describe('ApiRetryClient', () => {
           {
             maxRetries: 1,
             baseDelay: 100,
-            jitterRange: 0.1 // 10% jitter
+            jitterRange: 0.1, // 10% jitter
           }
         );
 
         // Run timers and catch rejection simultaneously
         await Promise.all([
           expect(promise).rejects.toThrow(),
-          vi.runAllTimersAsync()
+          vi.runAllTimersAsync(),
         ]);
 
         const endTime = Date.now();
@@ -194,15 +187,12 @@ describe('ApiRetryClient', () => {
   describe('Timeout Handling', () => {
     it('should timeout long-running operations', async () => {
       // Create a promise that never resolves
-      mockOperation.mockImplementation(
-        () => new Promise(() => {})
-      );
+      mockOperation.mockImplementation(() => new Promise(() => {}));
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        { timeoutMs: 1000, maxRetries: 0 }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        timeoutMs: 1000,
+        maxRetries: 0,
+      });
 
       // Run all timers to completion
       const timeoutPromise = vi.runAllTimersAsync();
@@ -210,20 +200,19 @@ describe('ApiRetryClient', () => {
       // Await both the timers and the promise rejection
       await Promise.all([
         timeoutPromise,
-        expect(promise).rejects.toThrow('timed out after 1000ms')
+        expect(promise).rejects.toThrow('timed out after 1000ms'),
       ]);
-    })
+    });
 
     it('should succeed if operation completes before timeout', async () => {
       mockOperation.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve('success'), 500))
+        () =>
+          new Promise((resolve) => setTimeout(() => resolve('success'), 500))
       );
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        { timeoutMs: 1000 }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        timeoutMs: 1000,
+      });
 
       await vi.advanceTimersByTimeAsync(500);
 
@@ -246,7 +235,7 @@ describe('ApiRetryClient', () => {
         // Run timers and catch rejection simultaneously
         await Promise.all([
           expect(promise).rejects.toThrow(),
-          vi.runAllTimersAsync()
+          vi.runAllTimersAsync(),
         ]);
       }
 
@@ -268,7 +257,7 @@ describe('ApiRetryClient', () => {
         // Run timers and catch rejection simultaneously
         await Promise.all([
           expect(promise).rejects.toThrow(),
-          vi.runAllTimersAsync()
+          vi.runAllTimersAsync(),
         ]);
       }
 
@@ -296,7 +285,7 @@ describe('ApiRetryClient', () => {
         // Run timers and catch rejection simultaneously
         await Promise.all([
           expect(promise).rejects.toThrow(),
-          vi.runAllTimersAsync()
+          vi.runAllTimersAsync(),
         ]);
       }
 
@@ -331,7 +320,7 @@ describe('ApiRetryClient', () => {
         // Run timers and catch rejection simultaneously
         await Promise.all([
           expect(promise).rejects.toThrow(),
-          vi.runAllTimersAsync()
+          vi.runAllTimersAsync(),
         ]);
       }
 
@@ -363,7 +352,7 @@ describe('ApiRetryClient', () => {
         // Run timers and catch rejection simultaneously
         await Promise.all([
           expect(promise).rejects.toThrow(),
-          vi.runAllTimersAsync()
+          vi.runAllTimersAsync(),
         ]);
       }
 
@@ -374,15 +363,13 @@ describe('ApiRetryClient', () => {
       mockOperation.mockRejectedValue(new Error('Still failing'));
 
       // Failure in half-open should increase failure count
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        { maxRetries: 0 }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        maxRetries: 0,
+      });
       // Run timers and catch rejection simultaneously
       await Promise.all([
         expect(promise).rejects.toThrow(),
-        vi.runAllTimersAsync()
+        vi.runAllTimersAsync(),
       ]);
 
       const status = client.getStatus();
@@ -403,15 +390,13 @@ describe('ApiRetryClient', () => {
     it('should track failure count', async () => {
       mockOperation.mockRejectedValue(new Error('Failure'));
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        { maxRetries: 0 }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        maxRetries: 0,
+      });
       // Run timers and catch rejection simultaneously
       await Promise.all([
         expect(promise).rejects.toThrow(),
-        vi.runAllTimersAsync()
+        vi.runAllTimersAsync(),
       ]);
 
       const status = client.getStatus();
@@ -431,7 +416,7 @@ describe('ApiRetryClient', () => {
         // Run timers and catch rejection simultaneously
         await Promise.all([
           expect(promise).rejects.toThrow(),
-          vi.runAllTimersAsync()
+          vi.runAllTimersAsync(),
         ]);
       }
 
@@ -452,15 +437,13 @@ describe('ApiRetryClient', () => {
 
       const beforeTime = Date.now();
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        { maxRetries: 0 }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        maxRetries: 0,
+      });
       // Run timers and catch rejection simultaneously
       await Promise.all([
         expect(promise).rejects.toThrow(),
-        vi.runAllTimersAsync()
+        vi.runAllTimersAsync(),
       ]);
 
       const status = client.getStatus();
@@ -482,7 +465,7 @@ describe('ApiRetryClient', () => {
         // Run timers and catch rejection simultaneously
         await Promise.all([
           expect(promise).rejects.toThrow(),
-          vi.runAllTimersAsync()
+          vi.runAllTimersAsync(),
         ]);
       }
 
@@ -505,17 +488,13 @@ describe('ApiRetryClient', () => {
         .mockRejectedValueOnce(new Error('Fail 2'))
         .mockResolvedValueOnce('success');
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        {
-          maxRetries: 5,
-          baseDelay: 50,
-          maxDelay: 1000,
-          jitterRange: 0,
-          timeoutMs: 5000
-        }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        maxRetries: 5,
+        baseDelay: 50,
+        maxDelay: 1000,
+        jitterRange: 0,
+        timeoutMs: 5000,
+      });
 
       await vi.runAllTimersAsync();
 
@@ -530,16 +509,14 @@ describe('ApiRetryClient', () => {
       const customError = new Error('Custom error message');
       mockOperation.mockRejectedValue(customError);
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        { maxRetries: 0 }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        maxRetries: 0,
+      });
 
       // Run timers and catch rejection simultaneously
       await Promise.all([
         expect(promise).rejects.toThrow('Custom error message'),
-        vi.runAllTimersAsync()
+        vi.runAllTimersAsync(),
       ]);
     });
 
@@ -555,23 +532,21 @@ describe('ApiRetryClient', () => {
       // Run timers and catch rejection simultaneously
       await Promise.all([
         expect(promise).rejects.toThrow('my-custom-operation'),
-        vi.runAllTimersAsync()
+        vi.runAllTimersAsync(),
       ]);
     });
 
     it('should handle non-Error rejections', async () => {
       mockOperation.mockRejectedValue('string error');
 
-      const promise = client.executeWithRetry(
-        mockOperation,
-        'test-operation',
-        { maxRetries: 0 }
-      );
+      const promise = client.executeWithRetry(mockOperation, 'test-operation', {
+        maxRetries: 0,
+      });
 
       // Run timers and catch rejection simultaneously
       await Promise.all([
         expect(promise).rejects.toThrow('string error'),
-        vi.runAllTimersAsync()
+        vi.runAllTimersAsync(),
       ]);
     });
   });
@@ -600,7 +575,7 @@ describe('ApiRetryClient', () => {
         // Run timers and catch rejection simultaneously
         await Promise.all([
           expect(promise).rejects.toThrow(),
-          vi.runAllTimersAsync()
+          vi.runAllTimersAsync(),
         ]);
       }
 

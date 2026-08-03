@@ -192,7 +192,7 @@ const nonce = Astro.locals.nonce;
               );
             }
           }
-        } catch (e) {
+        } catch {
           // localStorage can throw in sandboxed/private-browsing contexts; skip redirect silently.
         }
       })();
@@ -407,8 +407,8 @@ const nonce = Astro.locals.nonce;
 
     // Analytics tracking
     const trackViewChange = (view: string) => {
-      if (typeof window !== "undefined" && (window as any).gtag) {
-        (window as any).gtag("event", "news_view_change", {
+      if (typeof window !== "undefined" && window.gtag) {
+        window.gtag("event", "news_view_change", {
           view_type: view,
           page_path: window.location.pathname,
         });

@@ -403,6 +403,7 @@ const nonce = Astro.locals.nonce;
 <script>
   import { FilterCoordinator, GRID_CONFIGS } from "@/lib/filterCoordinator";
   import { navigate } from "astro:transitions/client";
+  import type { NewsFilterOptions } from "@/lib/wordpress/types";
 
   // Section state keys in sessionStorage
   const SECTION_KEYS: Record<string, string> = {
@@ -453,9 +454,11 @@ const nonce = Astro.locals.nonce;
     }
 
     private storeTagCountsFromServerData(): void {
-      const filterOptions = (window as any).newsFilterOptions;
+      const filterOptions = (
+        window as unknown as { newsFilterOptions?: NewsFilterOptions }
+      ).newsFilterOptions;
       if (filterOptions?.tags) {
-        filterOptions.tags.forEach((tag: any) => {
+        filterOptions.tags.forEach((tag) => {
           this.tagCounts.set(tag.slug, tag.count);
         });
       }
@@ -632,18 +635,18 @@ const nonce = Astro.locals.nonce;
       if (isApplied) {
         if (isPending) {
           this.pendingTags.delete(`remove-${tagSlug}`);
-          this.updateTagButton(button, "applied", tagSlug);
+          this.updateTagButton(button, "applied");
         } else {
           this.pendingTags.add(`remove-${tagSlug}`);
-          this.updateTagButton(button, "pending-remove", tagSlug);
+          this.updateTagButton(button, "pending-remove");
         }
       } else {
         if (isPending) {
           this.pendingTags.delete(`add-${tagSlug}`);
-          this.updateTagButton(button, "unselected", tagSlug);
+          this.updateTagButton(button, "unselected");
         } else {
           this.pendingTags.add(`add-${tagSlug}`);
-          this.updateTagButton(button, "pending-add", tagSlug);
+          this.updateTagButton(button, "pending-add");
         }
       }
 
@@ -655,16 +658,16 @@ const nonce = Astro.locals.nonce;
 
       if (isApplied) {
         this.removeTag(tagSlug);
-        this.updateTagButton(button, "unselected", tagSlug);
+        this.updateTagButton(button, "unselected");
       } else {
         this.addTag(tagSlug);
-        this.updateTagButton(button, "applied", tagSlug);
+        this.updateTagButton(button, "applied");
       }
 
       this.debouncedSubmit();
     }
 
-    private updateTagButton(button: HTMLButtonElement, state: string, _tagSlug: string): void {
+    private updateTagButton(button: HTMLButtonElement, state: string): void {
       switch (state) {
         case "unselected":
           button.dataset.pending = "false";
@@ -759,7 +762,7 @@ const nonce = Astro.locals.nonce;
         this.pendingTags.clear();
         this.updateApplyButton();
         document.querySelectorAll<HTMLButtonElement>(".tag-filter-button").forEach((btn) => {
-          this.updateTagButton(btn, "unselected", btn.dataset.tagChip!);
+          this.updateTagButton(btn, "unselected");
         });
         if (!this.isMobile) this.debouncedSubmit();
       }, { signal });

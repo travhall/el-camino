@@ -193,6 +193,12 @@ const imageClasses = cropImages
 </div>
 
 <script>
+  declare global {
+    interface Window {
+      reinitializeGalleries?: () => void;
+    }
+  }
+
   function initializeGalleryLightbox() {
     const galleries = document.querySelectorAll('.wp-gallery');
 
@@ -252,8 +258,8 @@ const imageClasses = cropImages
         currentImageIndex = index;
 
         // Analytics
-        if (typeof window !== 'undefined' && (window as any).gtag) {
-          (window as any).gtag('event', 'gallery_image_view', {
+        if (typeof window !== 'undefined' && window.gtag) {
+          window.gtag('event', 'gallery_image_view', {
             gallery_id: galleryId,
             image_index: index,
             total_images: images.length
@@ -364,6 +370,6 @@ const imageClasses = cropImages
 
   // Debug function
   if (typeof window !== 'undefined') {
-    (window as any).reinitializeGalleries = initializeGalleryLightbox;
+    window.reinitializeGalleries = initializeGalleryLightbox;
   }
 </script>

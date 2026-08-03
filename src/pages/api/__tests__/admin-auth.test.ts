@@ -6,7 +6,11 @@ import { ADMIN_COOKIE_NAME } from '@/lib/admin/auth';
 // (Origin) per the Fetch spec, even though real request objects in Astro/Node
 // carry them. Build a minimal Request-shaped object instead so the header
 // actually reaches `request.headers.get('origin')`.
-function makeRequest(formData?: Record<string, string>, origin?: string, ip?: string): Request {
+function makeRequest(
+  formData?: Record<string, string>,
+  origin?: string,
+  ip?: string
+): Request {
   const headers = new Headers();
   if (origin) headers.append('origin', origin);
   if (ip) headers.append('x-forwarded-for', ip);
@@ -32,16 +36,27 @@ function nextIp(): string {
   return `10.0.0.${ipCounter}`;
 }
 
-function makeContext(opts: { formData?: Record<string, string>; origin?: string; ip?: string }) {
+function makeContext(opts: {
+  formData?: Record<string, string>;
+  origin?: string;
+  ip?: string;
+}) {
   const request = makeRequest(opts.formData, opts.origin, opts.ip ?? nextIp());
   const cookieStore = new Map<string, { value: string }>();
   const cookies = {
-    set: (name: string, value: string, _opts: unknown) => cookieStore.set(name, { value }),
+    set: (name: string, value: string) => cookieStore.set(name, { value }),
     get: (name: string) => cookieStore.get(name),
   };
   const redirect = (location: string) =>
     new Response(null, { status: 302, headers: { Location: location } });
-  return { request, cookies, redirect, _cookieStore: cookieStore } as any;
+  return {
+    request,
+    cookies,
+    redirect,
+    _cookieStore: cookieStore,
+  } as unknown as Parameters<typeof POST>[0] & {
+    _cookieStore: typeof cookieStore;
+  };
 }
 
 const ORIGIN = 'https://example.com';
@@ -77,13 +92,19 @@ describe('POST /api/admin-auth', () => {
   });
 
   it('returns 403 for a bad origin', async () => {
-    const ctx = makeContext({ formData: { password: 'correct-password' }, origin: 'https://evil.com' });
+    const ctx = makeContext({
+      formData: { password: 'correct-password' },
+      origin: 'https://evil.com',
+    });
     const res = await POST(ctx);
     expect(res.status).toBe(403);
   });
 
   it('redirects to login with error=1 on wrong password', async () => {
-    const ctx = makeContext({ formData: { password: 'wrong' }, origin: ORIGIN });
+    const ctx = makeContext({
+      formData: { password: 'wrong' },
+      origin: ORIGIN,
+    });
     const res = await POST(ctx);
     expect(res.status).toBe(302);
     expect(res.headers.get('Location')).toContain('/admin/login');
@@ -114,7 +135,11 @@ describe('POST /api/admin-auth', () => {
     const ip = '203.0.113.99';
     let lastRes: Response | undefined;
     for (let i = 0; i < 9; i++) {
-      const ctx = makeContext({ formData: { password: 'wrong' }, origin: ORIGIN, ip });
+      const ctx = makeContext({
+        formData: { password: 'wrong' },
+        origin: ORIGIN,
+        ip,
+      });
       lastRes = await POST(ctx);
     }
     expect(lastRes!.status).toBe(429);

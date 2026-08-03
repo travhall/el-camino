@@ -175,24 +175,26 @@ export interface ArticleStructuredData {
 /**
  * Type guards for safe data extraction
  */
-export function isValidWordPressPost(post: any): post is WordPressPost {
-  return (
-    post &&
-    typeof post.id === 'number' &&
-    typeof post.slug === 'string' &&
-    post.title?.rendered &&
-    post.excerpt?.rendered !== undefined &&
-    post.content?.rendered !== undefined
+export function isValidWordPressPost(post: unknown): post is WordPressPost {
+  const p = post as Partial<WordPressPost> | null | undefined;
+  return !!(
+    p &&
+    typeof p.id === 'number' &&
+    typeof p.slug === 'string' &&
+    p.title?.rendered &&
+    p.excerpt?.rendered !== undefined &&
+    p.content?.rendered !== undefined
   );
 }
 
-export function isValidWordPressPage(page: any): page is WordPressPage {
-  return (
-    page &&
-    typeof page.id === 'number' &&
-    typeof page.slug === 'string' &&
-    page.title?.rendered &&
-    page.content?.rendered !== undefined
+export function isValidWordPressPage(page: unknown): page is WordPressPage {
+  const p = page as Partial<WordPressPage> | null | undefined;
+  return !!(
+    p &&
+    typeof p.id === 'number' &&
+    typeof p.slug === 'string' &&
+    p.title?.rendered &&
+    p.content?.rendered !== undefined
   );
 }
 

@@ -254,7 +254,7 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
     showLocationModal: function () {
       if (this.activeModal || this.isAnimating) return;
 
-      const config =
+      const config: SiteConfig | null =
         clientSiteConfig ||
         (() => {
           const el = document.querySelector("[data-site-config]");
@@ -279,7 +279,7 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
         weekday: "long",
       }).format(new Date());
       const hoursHTML = config.hours
-        .map((hour: any) => {
+        .map((hour) => {
           const isToday = hour.day === todayName;
           const dayColor = isToday
             ? "text-(--content-emphasis) font-semibold"
@@ -300,7 +300,7 @@ const serializedSiteConfig = JSON.stringify(liveConfig);
 
       const socialHTML = config.social?.length
         ? `<div class="flex gap-3 mt-1">${config.social
-            .map((s: any) => {
+            .map((s) => {
               const label =
                 s.platform.charAt(0).toUpperCase() + s.platform.slice(1);
               const icon =

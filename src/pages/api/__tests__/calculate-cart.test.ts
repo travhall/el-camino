@@ -20,8 +20,15 @@ import { squareClient } from '@/lib/square/client';
 import { checkoutRetryClient } from '@/lib/square/apiRetry';
 import type { CartItem } from '@/lib/cart/types';
 
-const getAuthoritativePricingMock = getAuthoritativePricing as unknown as ReturnType<typeof vi.fn>;
-const calculateOrderMock = squareClient.orders.calculate as unknown as ReturnType<typeof vi.fn>;
+const getAuthoritativePricingMock =
+  getAuthoritativePricing as unknown as ReturnType<typeof vi.fn>;
+const calculateOrderMock = squareClient.orders
+  .calculate as unknown as ReturnType<typeof vi.fn>;
+
+type LineItemLike = {
+  catalogObjectId?: string;
+  basePriceMoney?: { amount?: bigint };
+};
 
 function makeRequest(body: unknown): Request {
   return new Request('https://example.com/api/calculate-cart', {
@@ -63,7 +70,7 @@ describe('POST /api/calculate-cart', () => {
   it('returns zeroed totals when items is empty', async () => {
     const res = await POST({
       request: makeRequest({ items: [], fulfillmentMethod: 'shipping' }),
-    } as any);
+    } as unknown as Parameters<typeof POST>[0]);
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.success).toBe(false);
@@ -76,7 +83,7 @@ describe('POST /api/calculate-cart', () => {
         items: [makeItem()],
         fulfillmentMethod: 'shipping',
       }),
-    } as any);
+    } as unknown as Parameters<typeof POST>[0]);
 
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -109,7 +116,7 @@ describe('POST /api/calculate-cart', () => {
           items: [makeItem()],
           fulfillmentMethod: 'shipping',
         }),
-      } as any);
+      } as unknown as Parameters<typeof POST>[0]);
 
       await vi.runAllTimersAsync();
       const res = await promise;
@@ -122,14 +129,16 @@ describe('POST /api/calculate-cart', () => {
     });
 
     it('returns a 500 error when orders.calculate fails on every retry attempt', async () => {
-      calculateOrderMock.mockRejectedValue(new Error('Persistent Square outage'));
+      calculateOrderMock.mockRejectedValue(
+        new Error('Persistent Square outage')
+      );
 
       const promise = POST({
         request: makeRequest({
           items: [makeItem()],
           fulfillmentMethod: 'shipping',
         }),
-      } as any);
+      } as unknown as Parameters<typeof POST>[0]);
 
       await vi.runAllTimersAsync();
       const res = await promise;
@@ -137,7 +146,9 @@ describe('POST /api/calculate-cart', () => {
       expect(res.status).toBe(500);
       const json = await res.json();
       expect(json.success).toBe(false);
-      expect(json.error).toBe('Unable to calculate cart total. Please try again.');
+      expect(json.error).toBe(
+        'Unable to calculate cart total. Please try again.'
+      );
       // maxRetries: 2 → 1 initial attempt + 2 retries = 3 calls total
       expect(calculateOrderMock).toHaveBeenCalledTimes(3);
     });
@@ -155,13 +166,13 @@ describe('POST /api/calculate-cart', () => {
           variationId: 'var-1',
           price: 10,
           quantity: 2,
-          saleInfo: { salePrice: 1, originalPrice: 10 } as any,
+          saleInfo: { salePrice: 1, originalPrice: 10, discountPercent: 90 },
         }),
       ];
 
       const res = await POST({
         request: makeRequest({ items, fulfillmentMethod: 'pickup' }),
-      } as any);
+      } as unknown as Parameters<typeof POST>[0]);
 
       expect(res.status).toBe(200);
       const json = await res.json();
@@ -173,7 +184,7 @@ describe('POST /api/calculate-cart', () => {
       // override — Square applies its own catalog price.
       const calculateArgs = calculateOrderMock.mock.calls[0][0];
       const lineItem = calculateArgs.order.lineItems.find(
-        (li: any) => li.catalogObjectId === 'var-1'
+        (li: LineItemLike) => li.catalogObjectId === 'var-1'
       );
       expect(lineItem.basePriceMoney).toBeUndefined();
     });
@@ -182,11 +193,13 @@ describe('POST /api/calculate-cart', () => {
       getAuthoritativePricingMock.mockResolvedValue({
         'var-1': { regularPrice: 10, salePrice: 7, effectivePrice: 7 },
       });
-      const items = [makeItem({ variationId: 'var-1', price: 10, quantity: 3 })];
+      const items = [
+        makeItem({ variationId: 'var-1', price: 10, quantity: 3 }),
+      ];
 
       const res = await POST({
         request: makeRequest({ items, fulfillmentMethod: 'pickup' }),
-      } as any);
+      } as unknown as Parameters<typeof POST>[0]);
 
       expect(res.status).toBe(200);
       const json = await res.json();
@@ -196,7 +209,7 @@ describe('POST /api/calculate-cart', () => {
 
       const calculateArgs = calculateOrderMock.mock.calls[0][0];
       const lineItem = calculateArgs.order.lineItems.find(
-        (li: any) => li.catalogObjectId === 'var-1'
+        (li: LineItemLike) => li.catalogObjectId === 'var-1'
       );
       expect(lineItem.basePriceMoney.amount).toBe(BigInt(700));
     });
@@ -204,11 +217,18 @@ describe('POST /api/calculate-cart', () => {
     it('falls back to item.price for gift cards, which have no catalog-fixed price', async () => {
       // getAuthoritativePricing is only called for non-gift-card variation IDs.
       getAuthoritativePricingMock.mockResolvedValue({});
-      const items = [makeItem({ variationId: 'gc-1', isGiftCard: true, price: 25, quantity: 1 })];
+      const items = [
+        makeItem({
+          variationId: 'gc-1',
+          isGiftCard: true,
+          price: 25,
+          quantity: 1,
+        }),
+      ];
 
       const res = await POST({
         request: makeRequest({ items, fulfillmentMethod: 'pickup' }),
-      } as any);
+      } as unknown as Parameters<typeof POST>[0]);
 
       expect(res.status).toBe(200);
       const json = await res.json();

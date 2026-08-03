@@ -1,23 +1,34 @@
 // src/pages/api/create-checkout.ts
-import type { APIRoute } from "astro";
-import type { CartItem } from "@/lib/cart/types";
-import { squareClient } from "@/lib/square/client";
-import { checkoutRetryClient } from "@/lib/square/apiRetry";
-import { checkBulkInventory } from "@/lib/square/inventory";
-import { getAuthoritativePricing, type AuthoritativePrice } from "@/lib/square/pricing";
-import { calculateShippingRate, getPickupLocation } from "@/lib/config/shipping";
-import { siteConfig } from "@/lib/site-config";
-import { inventoryCache, productCache } from "@/lib/cache/blobCache";
-import { storePendingOrder } from "@/lib/email/pendingOrders";
-import { getShopHoursRaw } from "@/lib/shopHours";
-import type { ShopHoursEntry } from "@/lib/shopHours";
-import { createRateLimiter, clientIp } from "@/lib/rateLimit";
+import type { APIRoute } from 'astro';
+import type { CartItem } from '@/lib/cart/types';
+import { squareClient } from '@/lib/square/client';
+import { checkoutRetryClient } from '@/lib/square/apiRetry';
+import { checkBulkInventory } from '@/lib/square/inventory';
+import {
+  getAuthoritativePricing,
+  type AuthoritativePrice,
+} from '@/lib/square/pricing';
+import {
+  calculateShippingRate,
+  getPickupLocation,
+} from '@/lib/config/shipping';
+import { siteConfig } from '@/lib/site-config';
+import { inventoryCache } from '@/lib/cache/blobCache';
+import {
+  SquareError,
+  type Fulfillment,
+  type OrderLineItem,
+} from 'square-legacy';
+import { storePendingOrder } from '@/lib/email/pendingOrders';
+import { getShopHoursRaw } from '@/lib/shopHours';
+import type { ShopHoursEntry } from '@/lib/shopHours';
+import { createRateLimiter, clientIp } from '@/lib/rateLimit';
 
 // 10 checkout attempts per 5 min per IP — generous for real users, blocks scripts
 const checkoutLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
 
 // Store timezone for business hours calculations
-const STORE_TIMEZONE = "America/Chicago";
+const STORE_TIMEZONE = 'America/Chicago';
 
 /**
  * Return open/close hours (as 0–23 integers) for a JS day-of-week (0=Sun…6=Sat)
@@ -26,13 +37,13 @@ const STORE_TIMEZONE = "America/Chicago";
  */
 function storeHoursForDay(
   jsDay: number,
-  hoursData: ShopHoursEntry[],
+  hoursData: ShopHoursEntry[]
 ): { open: number; close: number } | null {
   const idx = (jsDay + 6) % 7;
   const entry = hoursData[idx];
   if (!entry?.isOpen || !entry.open || !entry.close) return null;
-  const [oh, om] = entry.open.split(":").map(Number);
-  const [ch, cm] = entry.close.split(":").map(Number);
+  const [oh, om] = entry.open.split(':').map(Number);
+  const [ch, cm] = entry.close.split(':').map(Number);
   // Convert to fractional hours for simple comparison
   return { open: oh + om / 60, close: ch + cm / 60 };
 }
@@ -41,19 +52,25 @@ function storeHoursForDay(
  * Return the day-of-week and hour-of-day for a UTC Date in the store timezone.
  */
 export function storeTimeOf(date: Date): { jsDay: number; hour: number } {
-  const fmt = new Intl.DateTimeFormat("en-US", {
+  const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone: STORE_TIMEZONE,
-    weekday: "short",
-    hour: "numeric",
-    minute: "numeric",
+    weekday: 'short',
+    hour: 'numeric',
+    minute: 'numeric',
     hour12: false,
   });
   const parts = fmt.formatToParts(date);
-  const wd = parts.find((p) => p.type === "weekday")?.value ?? "Sun";
-  const hr = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
-  const mn = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+  const wd = parts.find((p) => p.type === 'weekday')?.value ?? 'Sun';
+  const hr = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10);
+  const mn = parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0', 10);
   const dayMap: Record<string, number> = {
-    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
   };
   // Fractional hour (e.g. 6:30 PM -> 18.5) to match storeHoursForDay's format
   return { jsDay: dayMap[wd] ?? 0, hour: hr + mn / 60 };
@@ -82,7 +99,7 @@ function roundUpTo15(date: Date): Date {
 export async function nextPickupTime(from: Date): Promise<Date> {
   const hoursData = await getShopHoursRaw();
   const initialCandidate = roundUpTo15(
-    new Date(from.getTime() + 2 * 60 * 60 * 1000),
+    new Date(from.getTime() + 2 * 60 * 60 * 1000)
   );
 
   // Fast path: order+2h already falls within business hours
@@ -100,13 +117,18 @@ export async function nextPickupTime(from: Date): Promise<Date> {
     const hours = storeHoursForDay(jsDay, hoursData);
     if (hours && hour >= hours.open && hour < hours.close) {
       const pickupCandidate = roundUpTo15(
-        new Date(candidate.getTime() + 2 * 60 * 60 * 1000),
+        new Date(candidate.getTime() + 2 * 60 * 60 * 1000)
       );
       // The +2h window can itself cross closing time on a short operating
       // day (or past midnight) — only return it if it's still within hours.
-      const { jsDay: pickupDay, hour: pickupHour } = storeTimeOf(pickupCandidate);
+      const { jsDay: pickupDay, hour: pickupHour } =
+        storeTimeOf(pickupCandidate);
       const pickupHours = storeHoursForDay(pickupDay, hoursData);
-      if (pickupHours && pickupHour >= pickupHours.open && pickupHour < pickupHours.close) {
+      if (
+        pickupHours &&
+        pickupHour >= pickupHours.open &&
+        pickupHour < pickupHours.close
+      ) {
         return pickupCandidate;
       }
       // Pickup window would exceed close — keep searching for the next slot.
@@ -125,17 +147,17 @@ function normalizePhoneE164(phone: string): string {
   const cleaned = phone.trim();
 
   // Already in E.164 — strip any internal non-digit chars after the +
-  if (cleaned.startsWith("+")) {
-    return "+" + cleaned.slice(1).replace(/\D/g, "");
+  if (cleaned.startsWith('+')) {
+    return '+' + cleaned.slice(1).replace(/\D/g, '');
   }
 
-  const digits = cleaned.replace(/\D/g, "");
+  const digits = cleaned.replace(/\D/g, '');
 
   // US 10-digit number
   if (digits.length === 10) return `+1${digits}`;
 
   // US 11-digit number starting with country code 1
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
 
   // Fallback: prefix with + and hope for the best
   return `+${digits}`;
@@ -162,23 +184,26 @@ interface PickupContact {
 
 export const POST: APIRoute = async ({ request }) => {
   if (checkoutLimiter.check(clientIp(request))) {
-    return new Response(JSON.stringify({ error: "Too many requests. Please try again shortly." }), {
-      status: 429,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: 'Too many requests. Please try again shortly.' }),
+      {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 
   try {
     const body = await request.json();
     const {
       items,
-      fulfillmentMethod = "shipping",
+      fulfillmentMethod = 'shipping',
       shippingAddress,
       pickupContact,
       checkoutKey,
     } = body as {
       items: CartItem[];
-      fulfillmentMethod?: "shipping" | "pickup";
+      fulfillmentMethod?: 'shipping' | 'pickup';
       shippingAddress?: ShippingAddress;
       pickupContact?: PickupContact;
       checkoutKey?: string;
@@ -188,22 +213,22 @@ export const POST: APIRoute = async ({ request }) => {
     const idempotencyKey = checkoutKey ?? crypto.randomUUID();
 
     if (!items?.length) {
-      return new Response(JSON.stringify({ error: "No items provided" }), {
+      return new Response(JSON.stringify({ error: 'No items provided' }), {
         status: 400,
       });
     }
 
     // Validate fulfillment details
-    if (fulfillmentMethod === "shipping" && !shippingAddress) {
+    if (fulfillmentMethod === 'shipping' && !shippingAddress) {
       return new Response(
-        JSON.stringify({ error: "Shipping address required" }),
+        JSON.stringify({ error: 'Shipping address required' }),
         { status: 400 }
       );
     }
 
-    if (fulfillmentMethod === "pickup" && !pickupContact) {
+    if (fulfillmentMethod === 'pickup' && !pickupContact) {
       return new Response(
-        JSON.stringify({ error: "Pick up contact required" }),
+        JSON.stringify({ error: 'Pick up contact required' }),
         { status: 400 }
       );
     }
@@ -231,7 +256,8 @@ export const POST: APIRoute = async ({ request }) => {
     // Filter out out-of-stock items and adjust quantities
     const validItems: CartItem[] = [...giftCardItems]; // gift cards always valid
     const removedItems: string[] = [];
-    const adjustedItems: { name: string; oldQty: number; newQty: number }[] = [];
+    const adjustedItems: { name: string; oldQty: number; newQty: number }[] =
+      [];
 
     for (const item of nonGiftCardItems) {
       const availableQuantity = inventoryLevels[item.variationId] || 0;
@@ -256,7 +282,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (validItems.length === 0) {
       return new Response(
         JSON.stringify({
-          error: "All items are out of stock",
+          error: 'All items are out of stock',
           removedItems,
           adjustedItems,
         }),
@@ -265,16 +291,16 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Generate stock message
-    let stockMessage = "";
+    let stockMessage = '';
     if (removedItems.length > 0) {
       stockMessage += `Removed out-of-stock item${
-        removedItems.length > 1 ? "s" : ""
-      }: ${removedItems.join(", ")}. `;
+        removedItems.length > 1 ? 's' : ''
+      }: ${removedItems.join(', ')}. `;
     }
     if (adjustedItems.length > 0) {
       stockMessage += `Adjusted quantities for: ${adjustedItems
         .map((i) => `${i.name} (${i.oldQty} → ${i.newQty})`)
-        .join(", ")}. `;
+        .join(', ')}. `;
     }
 
     // ── Server-authoritative pricing ──────────────────────────────────────────
@@ -288,22 +314,23 @@ export const POST: APIRoute = async ({ request }) => {
     // falling back to the catalog regular price (item.price) when no trusted
     // entry exists (e.g. variable-price gift cards).
     const subtotal = validItems.reduce((sum, item) => {
-      const effectivePrice = pricing[item.variationId]?.effectivePrice ?? item.price;
+      const effectivePrice =
+        pricing[item.variationId]?.effectivePrice ?? item.price;
       return sum + effectivePrice * item.quantity;
     }, 0);
 
     // Calculate shipping cost (only for shipping orders)
     let shippingRate = 0;
-    if (fulfillmentMethod === "shipping") {
+    if (fulfillmentMethod === 'shipping') {
       shippingRate = calculateShippingRate(subtotal);
     }
 
     // Build line items array
     const lineItems = validItems.map((item) => {
-      const lineItem: any = {
+      const lineItem: OrderLineItem = {
         quantity: String(item.quantity),
         catalogObjectId: item.variationId,
-        itemType: "ITEM" as const,
+        itemType: 'ITEM' as const,
       };
 
       // Apply a sale price ONLY when the Square catalog confirms an active sale
@@ -314,7 +341,7 @@ export const POST: APIRoute = async ({ request }) => {
       if (salePrice) {
         lineItem.basePriceMoney = {
           amount: BigInt(Math.round(salePrice * 100)), // Convert to cents
-          currency: "USD",
+          currency: 'USD',
         };
       }
 
@@ -322,34 +349,34 @@ export const POST: APIRoute = async ({ request }) => {
     });
 
     // Add shipping as a custom line item if shipping is selected
-    if (fulfillmentMethod === "shipping" && shippingRate > 0) {
+    if (fulfillmentMethod === 'shipping' && shippingRate > 0) {
       lineItems.push({
-        quantity: "1",
-        itemType: "ITEM" as const,
-        name: "Shipping",
+        quantity: '1',
+        itemType: 'ITEM' as const,
+        name: 'Shipping',
         basePriceMoney: {
           amount: BigInt(Math.round(shippingRate * 100)), // Convert to cents
-          currency: "USD",
+          currency: 'USD',
         },
-      } as any); // Type assertion needed for custom line item
+      });
     }
 
     // Build fulfillment details
-    let fulfillments: any[] = [];
+    let fulfillments: Fulfillment[] = [];
 
-    if (fulfillmentMethod === "shipping" && shippingAddress) {
+    if (fulfillmentMethod === 'shipping' && shippingAddress) {
       // Calculate expected ship date (2 business days from now)
       const shipDate = new Date();
       shipDate.setDate(shipDate.getDate() + 2);
-      
+
       // Build shipment note — stores delivery instructions so the admin page can surface them
       const shipmentNote = shippingAddress.instructions?.trim()
         ? `Delivery Instructions: ${shippingAddress.instructions.trim()}`
         : undefined;
 
       fulfillments.push({
-        type: "SHIPMENT",
-        state: "PROPOSED",
+        type: 'SHIPMENT',
+        state: 'PROPOSED',
         shipmentDetails: {
           recipient: {
             displayName: shippingAddress.name,
@@ -361,14 +388,14 @@ export const POST: APIRoute = async ({ request }) => {
               locality: shippingAddress.city,
               administrativeDistrictLevel1: shippingAddress.state,
               postalCode: shippingAddress.zip,
-              country: "US",
+              country: 'US',
             },
           },
           expectedShippedAt: shipDate.toISOString(),
           shippingNote: shipmentNote,
         },
       });
-    } else if (fulfillmentMethod === "pickup" && pickupContact) {
+    } else if (fulfillmentMethod === 'pickup' && pickupContact) {
       // Fetch live pickup location and calculate ready time concurrently
       const [pickupLocation, pickupTime] = await Promise.all([
         getPickupLocation(),
@@ -382,8 +409,8 @@ export const POST: APIRoute = async ({ request }) => {
       }
 
       fulfillments.push({
-        type: "PICKUP",
-        state: "PROPOSED",
+        type: 'PICKUP',
+        state: 'PROPOSED',
         pickupDetails: {
           recipient: {
             displayName: pickupContact.name,
@@ -403,10 +430,12 @@ export const POST: APIRoute = async ({ request }) => {
     // Square's hosted checkout page — this is our source of truth for the
     // orderId on the confirmation page, since Square's legacy checkout API
     // does not reliably append orderId to the redirect URL.
-    const confirmationUrl = new URL("/order-confirmation", request.url);
-    confirmationUrl.searchParams.set("fulfillmentMethod", fulfillmentMethod);
+    const confirmationUrl = new URL('/order-confirmation', request.url);
+    confirmationUrl.searchParams.set('fulfillmentMethod', fulfillmentMethod);
 
-    let linkResponse: Awaited<ReturnType<typeof squareClient.checkout.paymentLinks.create>>;
+    let linkResponse: Awaited<
+      ReturnType<typeof squareClient.checkout.paymentLinks.create>
+    >;
     try {
       linkResponse = await checkoutRetryClient.executeWithRetry(
         () =>
@@ -432,34 +461,37 @@ export const POST: APIRoute = async ({ request }) => {
                 cashAppPay: true,
                 afterpayClearpay: true,
               },
-              customFields: [
-                { title: "Order Notes" },
-              ],
+              customFields: [{ title: 'Order Notes' }],
             },
           }),
-        "create-checkout:paymentLinks.create",
+        'create-checkout:paymentLinks.create',
         { maxRetries: 2, baseDelay: 500 }
       );
     } catch (linkError) {
-      const e = linkError as any;
-      console.error("[create-checkout] checkout.paymentLinks.create FAILED");
-      console.error("  statusCode:", e?.statusCode);
-      console.error("  errors:", JSON.stringify(e?.errors ?? e?.message, null, 2));
+      const e = linkError as SquareError;
+      console.error('[create-checkout] checkout.paymentLinks.create FAILED');
+      console.error('  statusCode:', e?.statusCode);
+      console.error(
+        '  errors:',
+        JSON.stringify(e?.errors ?? e?.message, null, 2)
+      );
       throw linkError;
     }
 
     if (!linkResponse.paymentLink?.url) {
-      throw new Error("Failed to create payment link");
+      throw new Error('Failed to create payment link');
     }
 
     // v44 SDK: orderId lives on paymentLink.orderId; fall back to the first
     // order in relatedResources (which v44 always populates) if orderId is absent.
     const orderId =
       linkResponse.paymentLink.orderId ??
-      (linkResponse as any).relatedResources?.orders?.[0]?.id ??
-      "";
+      linkResponse.relatedResources?.orders?.[0]?.id ??
+      '';
 
-    console.info(`[create-checkout] orderId=${orderId || "(empty)"}, url=${linkResponse.paymentLink.url?.slice(0, 60)}`);
+    console.info(
+      `[create-checkout] orderId=${orderId || '(empty)'}, url=${linkResponse.paymentLink.url?.slice(0, 60)}`
+    );
 
     // Store contact info keyed by orderId so the webhook can send a confirmation email.
     // Must be awaited — Netlify functions stop executing once the response is sent,
@@ -467,11 +499,11 @@ export const POST: APIRoute = async ({ request }) => {
     // Wrapped in try/catch so a blob failure never blocks the checkout redirect.
     if (orderId) {
       const contactEmail =
-        fulfillmentMethod === "shipping"
+        fulfillmentMethod === 'shipping'
           ? shippingAddress?.email
           : pickupContact?.email;
       const contactName =
-        fulfillmentMethod === "shipping"
+        fulfillmentMethod === 'shipping'
           ? shippingAddress?.name
           : pickupContact?.name;
 
@@ -479,11 +511,14 @@ export const POST: APIRoute = async ({ request }) => {
         try {
           await storePendingOrder(orderId, {
             email: contactEmail,
-            name: contactName ?? "Customer",
+            name: contactName ?? 'Customer',
             fulfillmentMethod,
           });
         } catch (err) {
-          console.error("[create-checkout] Failed to store pending order:", err);
+          console.error(
+            '[create-checkout] Failed to store pending order:',
+            err
+          );
         }
       }
     }
@@ -502,8 +537,8 @@ export const POST: APIRoute = async ({ request }) => {
     // SameSite=Lax allows the cookie to be sent on the top-level cross-site
     // navigation from Square back to our domain.
     const cookie = orderId
-      ? `square-pending-orderId=${encodeURIComponent(orderId)}; Path=/; Max-Age=3600; SameSite=Lax; HttpOnly${import.meta.env.PROD ? "; Secure" : ""}`
-      : "";
+      ? `square-pending-orderId=${encodeURIComponent(orderId)}; Path=/; Max-Age=3600; SameSite=Lax; HttpOnly${import.meta.env.PROD ? '; Secure' : ''}`
+      : '';
 
     return new Response(
       JSON.stringify({
@@ -511,31 +546,31 @@ export const POST: APIRoute = async ({ request }) => {
         checkoutUrl: linkResponse.paymentLink?.url,
         orderId,
         fulfillmentMethod,
-        shippingCost: fulfillmentMethod === "shipping" ? shippingRate : 0,
+        shippingCost: fulfillmentMethod === 'shipping' ? shippingRate : 0,
         stockMessage: stockMessage || undefined,
         cartUpdated: removedItems.length > 0 || adjustedItems.length > 0,
       }),
-      cookie ? { headers: { "Set-Cookie": cookie } } : undefined
+      cookie ? { headers: { 'Set-Cookie': cookie } } : undefined
     );
   } catch (error) {
-    console.error("Checkout error:", error);
+    console.error('Checkout error:', error);
 
     // Log Square's detailed error array when available (ApiError from square/legacy)
-    const apiErr = error as any;
+    const apiErr = error as SquareError;
     if (apiErr?.errors) {
       console.error(
-        "Square API errors:",
+        'Square API errors:',
         JSON.stringify(apiErr.errors, null, 2)
       );
     }
     if (apiErr?.statusCode) {
-      console.error("Square status code:", apiErr.statusCode);
+      console.error('Square status code:', apiErr.statusCode);
     }
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Checkout creation failed. Please try again.",
+        error: 'Checkout creation failed. Please try again.',
       }),
       { status: 500 }
     );

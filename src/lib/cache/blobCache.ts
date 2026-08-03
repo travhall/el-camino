@@ -315,7 +315,6 @@ export class BlobCache<T> {
 
     // Try blob cache
     const store = this.getStore();
-    let cachedValue: T | undefined = undefined;
 
     if (store) {
       try {

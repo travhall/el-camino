@@ -404,7 +404,12 @@ const pageDescription =
 </AdminLayout>
 
 <script>
-  // @ts-ignore
+  declare global {
+    interface Window {
+      copyURL: (btn: HTMLButtonElement, url: string) => void;
+    }
+  }
+
   window.copyURL = function (btn: HTMLButtonElement, url: string) {
     navigator.clipboard.writeText(url).then(() => {
       btn.textContent = "Copied!";
@@ -418,7 +423,7 @@ const pageDescription =
 
   // Wire up copy buttons without inline onclick handlers
   document.querySelectorAll<HTMLButtonElement>(".copy-btn[data-url]").forEach(btn => {
-    btn.addEventListener("click", () => (window as any).copyURL(btn, btn.dataset.url!));
+    btn.addEventListener("click", () => window.copyURL(btn, btn.dataset.url!));
   });
 
   type CruxOk = {

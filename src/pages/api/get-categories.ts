@@ -1,41 +1,41 @@
 // src/pages/api/get-categories.ts
-import type { APIRoute } from "astro";
-import { squareClient } from "@/lib/square/client";
-import { jsonStringifyReplacer } from "@/lib/square/catalogUtils";
-import type { CatalogObject } from "square-legacy";
+import type { APIRoute } from 'astro';
+import { squareClient } from '@/lib/square/client';
+import { jsonStringifyReplacer } from '@/lib/square/catalogUtils';
+import type { CatalogObject } from 'square-legacy';
 
 export const GET: APIRoute = async ({ request }) => {
   const startTime = Date.now();
-  
+
   try {
     // Check if request includes cache headers to determine if this might be cached
     const cacheControl = request.headers.get('cache-control');
-    const ifNoneMatch = request.headers.get('if-none-match');
-    const wasCached = cacheControl?.includes('max-age') && !cacheControl?.includes('no-cache');
-    
+    const wasCached =
+      cacheControl?.includes('max-age') && !cacheControl?.includes('no-cache');
+
     // console.log("Fetching Square categories...");
 
     // Fetch all categories
-    const categoryPage = await squareClient.catalog.list({ types: "CATEGORY" });
+    const categoryPage = await squareClient.catalog.list({ types: 'CATEGORY' });
     const categoryResponse = { result: { objects: categoryPage.data } };
 
     if (!categoryResponse.result?.objects?.length) {
       const responseTime = Date.now() - startTime;
-      
+
       return new Response(
         JSON.stringify(
           {
             success: false,
-            error: "No categories found",
+            error: 'No categories found',
             categories: [],
-            _meta: { responseTime, cached: false }
+            _meta: { responseTime, cached: false },
           },
           jsonStringifyReplacer
         ),
         {
           status: 200,
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
         }
       );
@@ -43,30 +43,30 @@ export const GET: APIRoute = async ({ request }) => {
 
     // Process categories
     const categories = categoryResponse.result.objects
-      .filter((obj: CatalogObject) => obj.type === "CATEGORY")
-      .map((obj: CatalogObject) => ({
+      .filter((obj): obj is CatalogObject.Category => obj.type === 'CATEGORY')
+      .map((obj) => ({
         id: obj.id,
         type: obj.type,
         version: obj.version,
-        name: (obj as any).categoryData?.name,
-        categoryData: (obj as any).categoryData,
+        name: obj.categoryData?.name,
+        categoryData: obj.categoryData,
       }));
 
     // Fetch some items to examine category relationships
-    const itemPage = await squareClient.catalog.list({ types: "ITEM" });
+    const itemPage = await squareClient.catalog.list({ types: 'ITEM' });
     const itemResponse = { result: { objects: itemPage.data } };
 
     // Process item-category relationships
     const itemCategories =
       itemResponse.result?.objects
         ?.slice(0, 10) // Limit to 10 items
-        .filter((obj: CatalogObject) => obj.type === "ITEM")
-        .map((obj: CatalogObject) => ({
+        .filter((obj): obj is CatalogObject.Item => obj.type === 'ITEM')
+        .map((obj) => ({
           itemId: obj.id,
-          itemName: (obj as any).itemData?.name,
-          categoryId: (obj as any).itemData?.categoryId,
-          categories: (obj as any).itemData?.categories,
-          itemData: (obj as any).itemData,
+          itemName: obj.itemData?.name,
+          categoryId: obj.itemData?.categoryId,
+          categories: obj.itemData?.categories,
+          itemData: obj.itemData,
         })) || [];
 
     const responseTime = Date.now() - startTime;
@@ -77,7 +77,7 @@ export const GET: APIRoute = async ({ request }) => {
           success: true,
           categories,
           itemCategories,
-          _meta: { responseTime, cached: wasCached }
+          _meta: { responseTime, cached: wasCached },
         },
         jsonStringifyReplacer,
         2
@@ -85,17 +85,19 @@ export const GET: APIRoute = async ({ request }) => {
       {
         status: 200,
         headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=120, s-maxage=300, stale-while-revalidate=600",
-          "Netlify-CDN-Cache-Control": "public, s-maxage=300, stale-while-revalidate=1800",
-          "Vary": "Accept-Encoding",
-          "X-Response-Time": responseTime.toString()
+          'Content-Type': 'application/json',
+          'Cache-Control':
+            'public, max-age=120, s-maxage=300, stale-while-revalidate=600',
+          'Netlify-CDN-Cache-Control':
+            'public, s-maxage=300, stale-while-revalidate=1800',
+          Vary: 'Accept-Encoding',
+          'X-Response-Time': responseTime.toString(),
         },
       }
     );
   } catch (error) {
     const responseTime = Date.now() - startTime;
-    console.error("Error fetching categories:", error);
+    console.error('Error fetching categories:', error);
     return new Response(
       JSON.stringify(
         {
@@ -103,16 +105,16 @@ export const GET: APIRoute = async ({ request }) => {
           error:
             error instanceof Error
               ? error.message
-              : "Failed to fetch categories",
-          _meta: { responseTime, cached: false }
+              : 'Failed to fetch categories',
+          _meta: { responseTime, cached: false },
         },
         jsonStringifyReplacer
       ),
       {
         status: 500,
-        headers: { 
-          "Content-Type": "application/json",
-          "X-Response-Time": responseTime.toString()
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Response-Time': responseTime.toString(),
         },
       }
     );

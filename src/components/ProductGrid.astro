@@ -484,39 +484,6 @@ const displayProducts = hideSoldOut
       // Button mode for testing
     }
 
-    // Adaptive batch size calculation based on viewport
-    function calculateAdaptiveBatchSize() {
-      const viewportHeight = window.innerHeight;
-      const viewportWidth = window.innerWidth;
-      const minCardHeight = 280; // From CSS min-height
-      const cardsPerRow = getCardsPerRowCurrent();
-
-      // Calculate how many rows fit in viewport
-      const visibleRows = Math.ceil(viewportHeight / minCardHeight);
-
-      // Buffer: 1.5x viewport for smooth scrolling
-      const bufferRows = Math.ceil(visibleRows * 1.5);
-      const totalRows = visibleRows + bufferRows;
-
-      // Calculate total items
-      let batchSize = totalRows * cardsPerRow;
-
-      // Apply device-specific constraints
-      if (viewportWidth < 768) {
-        // Mobile: CRITICAL LCP FIX - Reduce to 4 products for faster initial paint
-        // This prevents network congestion and improves LCP from 11.3s to ~4.5s
-        batchSize = 4;
-      } else if (viewportWidth < 1440) {
-        // Desktop: balanced approach
-        batchSize = Math.max(Math.min(batchSize, 36), 18);
-      } else {
-        // Ultra-wide/4K: ensure scrollability cSpell:ignore scrollability
-        batchSize = Math.max(Math.min(batchSize, 60), 30);
-      }
-
-      return batchSize;
-    }
-
     const cardsPerRow = getCardsPerRowCurrent();
 
     // visibleCount must match what SSR showed (initialCardsToShow=16) so JS never

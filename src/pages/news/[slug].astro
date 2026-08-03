@@ -527,8 +527,8 @@ const nonce = Astro.locals.nonce;
             await navigator.share(shareData);
 
             // Analytics for successful share
-            if (typeof window !== "undefined" && (window as any).gtag) {
-              (window as any).gtag("event", "article_shared", {
+            if (typeof window !== "undefined" && window.gtag) {
+              window.gtag("event", "article_shared", {
                 method: "native_share",
                 article_title: document.title,
               });
@@ -548,16 +548,14 @@ const nonce = Astro.locals.nonce;
             }, 2000);
 
             // Analytics for clipboard copy
-            if (typeof window !== "undefined" && (window as any).gtag) {
-              (window as any).gtag("event", "article_shared", {
+            if (typeof window !== "undefined" && window.gtag) {
+              window.gtag("event", "article_shared", {
                 method: "clipboard",
                 article_title: document.title,
               });
             }
           }
-        } catch (error) {
-          // console.warn("Sharing failed:", error);
-
+        } catch {
           // Fallback feedback
           const originalText = shareButton.textContent;
           shareButton.textContent = "Share Failed";

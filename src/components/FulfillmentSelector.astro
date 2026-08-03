@@ -673,19 +673,6 @@ const progressPct = Math.min(
       sessionStorage.setItem("fulfillment-form", JSON.stringify(data));
     }
 
-    function checkFormValidity(method: "shipping" | "pickup"): boolean {
-      const form = method === "shipping" ? shippingForm : pickupForm;
-      const requiredFields = form?.querySelectorAll<
-        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-      >("[required]");
-      if (!requiredFields || requiredFields.length === 0) return false;
-      let allValid = true;
-      requiredFields.forEach((field) => {
-        if (!field.validity.valid) allValid = false;
-      });
-      return allValid;
-    }
-
     function notifyValidity() {
       const checkedRadio = selector?.querySelector<HTMLInputElement>(
         'input[name="fulfillment"]:checked',
@@ -900,9 +887,6 @@ const progressPct = Math.min(
 
           initFloatSelects(selector as Element);
 
-          const requiredFields = form?.querySelectorAll<
-            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-          >("[required]");
           // Only collapse to chip if the user had previously clicked Confirm
           const wasConfirmed = data._confirmed === "true";
           if (wasConfirmed) collapseForm(method);

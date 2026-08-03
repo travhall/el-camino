@@ -39,10 +39,18 @@ import { getShopHoursRaw } from '@/lib/shopHours';
 import type { CartItem } from '@/lib/cart/types';
 import type { ShopHoursEntry } from '@/lib/shopHours';
 
-const getShopHoursRawMock = getShopHoursRaw as unknown as ReturnType<typeof vi.fn>;
-const checkBulkInventoryMock = checkBulkInventory as unknown as ReturnType<typeof vi.fn>;
-const getAuthoritativePricingMock = getAuthoritativePricing as unknown as ReturnType<typeof vi.fn>;
-const createPaymentLinkMock = squareClient.checkout.paymentLinks.create as unknown as ReturnType<typeof vi.fn>;
+const getShopHoursRawMock = getShopHoursRaw as unknown as ReturnType<
+  typeof vi.fn
+>;
+const checkBulkInventoryMock = checkBulkInventory as unknown as ReturnType<
+  typeof vi.fn
+>;
+const getAuthoritativePricingMock =
+  getAuthoritativePricing as unknown as ReturnType<typeof vi.fn>;
+const createPaymentLinkMock = squareClient.checkout.paymentLinks
+  .create as unknown as ReturnType<typeof vi.fn>;
+
+type LineItemLike = { catalogObjectId?: string; quantity?: string };
 
 let ipCounter = 0;
 function nextIp(): string {
@@ -85,7 +93,10 @@ beforeEach(() => {
   checkoutRetryClient.reset();
   getAuthoritativePricingMock.mockResolvedValue({});
   createPaymentLinkMock.mockResolvedValue({
-    paymentLink: { url: 'https://square.link/checkout/abc', orderId: 'order-123' },
+    paymentLink: {
+      url: 'https://square.link/checkout/abc',
+      orderId: 'order-123',
+    },
   });
 });
 
@@ -155,7 +166,9 @@ describe('nextPickupTime', () => {
 
 describe('POST /api/create-checkout', () => {
   it('returns 400 when items is empty', async () => {
-    const res = await POST({ request: makeRequest({ items: [], shippingAddress: SHIPPING_ADDRESS }) } as any);
+    const res = await POST({
+      request: makeRequest({ items: [], shippingAddress: SHIPPING_ADDRESS }),
+    } as unknown as Parameters<typeof POST>[0]);
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe('No items provided');
@@ -163,8 +176,11 @@ describe('POST /api/create-checkout', () => {
 
   it('returns 400 when shipping method has no shippingAddress', async () => {
     const res = await POST({
-      request: makeRequest({ items: [makeItem()], fulfillmentMethod: 'shipping' }),
-    } as any);
+      request: makeRequest({
+        items: [makeItem()],
+        fulfillmentMethod: 'shipping',
+      }),
+    } as unknown as Parameters<typeof POST>[0]);
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe('Shipping address required');
@@ -172,8 +188,11 @@ describe('POST /api/create-checkout', () => {
 
   it('returns 400 when pickup method has no pickupContact', async () => {
     const res = await POST({
-      request: makeRequest({ items: [makeItem()], fulfillmentMethod: 'pickup' }),
-    } as any);
+      request: makeRequest({
+        items: [makeItem()],
+        fulfillmentMethod: 'pickup',
+      }),
+    } as unknown as Parameters<typeof POST>[0]);
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe('Pick up contact required');
@@ -186,8 +205,12 @@ describe('POST /api/create-checkout', () => {
       makeItem({ variationId: 'var-2', title: 'Clamped Item', quantity: 10 }),
     ];
     const res = await POST({
-      request: makeRequest({ items, fulfillmentMethod: 'shipping', shippingAddress: SHIPPING_ADDRESS }),
-    } as any);
+      request: makeRequest({
+        items,
+        fulfillmentMethod: 'shipping',
+        shippingAddress: SHIPPING_ADDRESS,
+      }),
+    } as unknown as Parameters<typeof POST>[0]);
 
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -199,23 +222,37 @@ describe('POST /api/create-checkout', () => {
     // Confirm the order actually sent to Square only contains the clamped quantity
     const createArgs = createPaymentLinkMock.mock.calls[0][0];
     const lineItems = createArgs.order.lineItems;
-    expect(lineItems.find((li: any) => li.catalogObjectId === 'var-1')).toBeUndefined();
-    const clamped = lineItems.find((li: any) => li.catalogObjectId === 'var-2');
+    expect(
+      lineItems.find((li: LineItemLike) => li.catalogObjectId === 'var-1')
+    ).toBeUndefined();
+    const clamped = lineItems.find(
+      (li: LineItemLike) => li.catalogObjectId === 'var-2'
+    );
     expect(clamped.quantity).toBe('5');
   });
 
   it('lets gift card items bypass inventory checks entirely', async () => {
     checkBulkInventoryMock.mockResolvedValue({});
-    const items = [makeItem({ variationId: 'gc-1', isGiftCard: true, quantity: 1 })];
+    const items = [
+      makeItem({ variationId: 'gc-1', isGiftCard: true, quantity: 1 }),
+    ];
     const res = await POST({
-      request: makeRequest({ items, fulfillmentMethod: 'shipping', shippingAddress: SHIPPING_ADDRESS }),
-    } as any);
+      request: makeRequest({
+        items,
+        fulfillmentMethod: 'shipping',
+        shippingAddress: SHIPPING_ADDRESS,
+      }),
+    } as unknown as Parameters<typeof POST>[0]);
 
     expect(res.status).toBe(200);
     // checkBulkInventory should not even be called with the gift card's variationId
     expect(checkBulkInventoryMock).not.toHaveBeenCalledWith(['gc-1']);
     const createArgs = createPaymentLinkMock.mock.calls[0][0];
-    expect(createArgs.order.lineItems.some((li: any) => li.catalogObjectId === 'gc-1')).toBe(true);
+    expect(
+      createArgs.order.lineItems.some(
+        (li: LineItemLike) => li.catalogObjectId === 'gc-1'
+      )
+    ).toBe(true);
   });
 
   it('rate-limits after 10 requests from the same IP, returning 429 on the 11th', async () => {
@@ -225,10 +262,14 @@ describe('POST /api/create-checkout', () => {
     for (let i = 0; i < 11; i++) {
       lastRes = await POST({
         request: makeRequest(
-          { items: [makeItem()], fulfillmentMethod: 'shipping', shippingAddress: SHIPPING_ADDRESS },
+          {
+            items: [makeItem()],
+            fulfillmentMethod: 'shipping',
+            shippingAddress: SHIPPING_ADDRESS,
+          },
           ip
         ),
-      } as any);
+      } as unknown as Parameters<typeof POST>[0]);
     }
     expect(lastRes!.status).toBe(429);
   });
@@ -247,7 +288,10 @@ describe('POST /api/create-checkout', () => {
       createPaymentLinkMock
         .mockRejectedValueOnce(new Error('ECONNRESET'))
         .mockResolvedValueOnce({
-          paymentLink: { url: 'https://square.link/checkout/recovered', orderId: 'order-456' },
+          paymentLink: {
+            url: 'https://square.link/checkout/recovered',
+            orderId: 'order-456',
+          },
         });
 
       const promise = POST({
@@ -256,7 +300,7 @@ describe('POST /api/create-checkout', () => {
           fulfillmentMethod: 'shipping',
           shippingAddress: SHIPPING_ADDRESS,
         }),
-      } as any);
+      } as unknown as Parameters<typeof POST>[0]);
 
       await vi.runAllTimersAsync();
       const res = await promise;
@@ -270,7 +314,9 @@ describe('POST /api/create-checkout', () => {
 
     it('returns a 500 error when paymentLinks.create fails on every retry attempt', async () => {
       checkBulkInventoryMock.mockResolvedValue({ 'var-1': 5 });
-      createPaymentLinkMock.mockRejectedValue(new Error('Persistent Square outage'));
+      createPaymentLinkMock.mockRejectedValue(
+        new Error('Persistent Square outage')
+      );
 
       const promise = POST({
         request: makeRequest({
@@ -278,7 +324,7 @@ describe('POST /api/create-checkout', () => {
           fulfillmentMethod: 'shipping',
           shippingAddress: SHIPPING_ADDRESS,
         }),
-      } as any);
+      } as unknown as Parameters<typeof POST>[0]);
 
       await vi.runAllTimersAsync();
       const res = await promise;

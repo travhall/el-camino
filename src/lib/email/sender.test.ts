@@ -1,5 +1,7 @@
 // src/lib/email/sender.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Order } from 'square-legacy';
+import type { PendingOrderContact } from './pendingOrders';
 
 // Mock resend before any imports that use it.
 // sender.ts calls `new Resend(...)` inside getResend() on each send call,
@@ -48,7 +50,7 @@ const mockPickupOrder = {
   id: 'ORDER123456789012',
   totalMoney: { amount: 1999n, currency: 'USD' },
   lineItems: [],
-} as any;
+} as unknown as Order;
 
 const mockPickupContact = {
   name: 'Test User',
@@ -56,7 +58,7 @@ const mockPickupContact = {
   fulfillmentMethod: 'pickup' as const,
   phone: '',
   notes: '',
-} as any;
+} as unknown as PendingOrderContact;
 
 const mockShippingContact = {
   name: 'Test User',
@@ -64,7 +66,7 @@ const mockShippingContact = {
   fulfillmentMethod: 'shipping' as const,
   phone: '',
   notes: '',
-} as any;
+} as unknown as PendingOrderContact;
 
 describe('sendOrderConfirmation', () => {
   it('calls Resend emails.send with the correct recipient email', async () => {
@@ -188,7 +190,7 @@ const mockShippingOrder = {
       },
     },
   ],
-} as any;
+} as unknown as Order;
 
 describe('sendShippingOrderNotification', () => {
   it('sends to TYLER_EMAIL, not the customer', async () => {

@@ -605,7 +605,7 @@ const nonce = Astro.locals.nonce;
 
     // Layout buttons
     document.querySelectorAll('.layout-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => {
         document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentLayout = btn.dataset.layout;
@@ -1056,8 +1056,7 @@ const nonce = Astro.locals.nonce;
     try {
       await navigator.clipboard.writeText(text);
       return true;
-    } catch (err) {
-      // console.error('Failed to copy:', err);
+    } catch {
       return false;
     }
   }

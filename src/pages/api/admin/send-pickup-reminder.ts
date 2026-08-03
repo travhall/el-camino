@@ -4,18 +4,27 @@
 // Returns JSON so the calling button can show inline feedback without a page reload.
 // No Square state is mutated — this only sends an email.
 
-import type { APIRoute } from "astro";
-import { isAdminAuthenticated, parseAdminFormData, unauthorizedResponse } from "@/lib/admin/auth";
-import { squareClient } from "@/lib/square/client";
-import { sendPickupReminderEmail } from "@/lib/email/sender";
+import type { APIRoute } from 'astro';
+import {
+  isAdminAuthenticated,
+  parseAdminFormData,
+  unauthorizedResponse,
+} from '@/lib/admin/auth';
+import { squareClient } from '@/lib/square/client';
+import { sendPickupReminderEmail } from '@/lib/email/sender';
+import type { Fulfillment, OrderLineItem } from 'square-legacy';
 
-const STORE_TIMEZONE = "America/Chicago";
+const STORE_TIMEZONE = 'America/Chicago';
 
 function formatPickupAt(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    weekday: "short", month: "short", day: "numeric",
-    hour: "numeric", minute: "2-digit",
-    timeZone: STORE_TIMEZONE, timeZoneName: "short",
+  return new Date(iso).toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: STORE_TIMEZONE,
+    timeZoneName: 'short',
   });
 }
 
@@ -25,48 +34,72 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   const body = await parseAdminFormData(request);
-  if (!body) return new Response(JSON.stringify({ error: "invalid_body" }), { status: 400 });
-  const orderId = (body.get("orderId") as string)?.trim();
+  if (!body)
+    return new Response(JSON.stringify({ error: 'invalid_body' }), {
+      status: 400,
+    });
+  const orderId = (body.get('orderId') as string)?.trim();
 
   if (!orderId) {
-    return new Response(JSON.stringify({ error: "missing_order_id" }), { status: 400 });
+    return new Response(JSON.stringify({ error: 'missing_order_id' }), {
+      status: 400,
+    });
   }
 
   try {
     const orderResult = await squareClient.orders.get({ orderId });
     const order = orderResult.order;
-    if (!order) throw new Error("Order not returned");
+    if (!order) throw new Error('Order not returned');
 
     const fulfillment = order.fulfillments?.find(
-      (f: any) => f.type === "PICKUP" && f.state !== "COMPLETED" && f.state !== "CANCELED",
+      (f: Fulfillment) =>
+        f.type === 'PICKUP' && f.state !== 'COMPLETED' && f.state !== 'CANCELED'
     );
     if (!fulfillment) {
-      return new Response(JSON.stringify({ error: "no_active_pickup" }), { status: 422 });
+      return new Response(JSON.stringify({ error: 'no_active_pickup' }), {
+        status: 422,
+      });
     }
 
     const recipient = fulfillment.pickupDetails?.recipient;
     const email = recipient?.emailAddress;
     if (!email) {
-      console.error(`[send-pickup-reminder] No email on fulfillment recipient for order ${orderId}`);
-      return new Response(JSON.stringify({ error: "no_email" }), { status: 422 });
+      console.error(
+        `[send-pickup-reminder] No email on fulfillment recipient for order ${orderId}`
+      );
+      return new Response(JSON.stringify({ error: 'no_email' }), {
+        status: 422,
+      });
     }
 
-    const customerName = recipient.displayName ?? "Customer";
+    const customerName = recipient.displayName ?? 'Customer';
     const pickupAtIso = fulfillment.pickupDetails?.pickupAt;
     const pickupAt = pickupAtIso ? formatPickupAt(pickupAtIso) : undefined;
 
     const items = (order.lineItems ?? [])
-      .filter((li: any) => li.catalogObjectId)
-      .map((li: any) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
+      .filter((li: OrderLineItem) => li.catalogObjectId)
+      .map((li: OrderLineItem) => ({
+        name: li.name ?? 'Item',
+        qty: li.quantity ?? '1',
+      }));
 
-    await sendPickupReminderEmail({ to: email, customerName, orderId, items, pickupAt });
+    await sendPickupReminderEmail({
+      to: email,
+      customerName,
+      orderId,
+      items,
+      pickupAt,
+    });
 
     return new Response(JSON.stringify({ ok: true }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[send-pickup-reminder] Error:", message, err);
-    return new Response(JSON.stringify({ error: "send_failed", detail: message }), { status: 500 });
+    console.error('[send-pickup-reminder] Error:', message, err);
+    return new Response(
+      JSON.stringify({ error: 'send_failed', detail: message }),
+      { status: 500 }
+    );
   }
 };

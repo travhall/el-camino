@@ -6,7 +6,49 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PDPController } from '../pdpController';
 import type { ProductPageData } from '../pdpEvents';
-import { ProductAvailabilityState } from '@/lib/square/types';
+import {
+  ProductAvailabilityState,
+  type ProductVariation,
+} from '@/lib/square/types';
+import type { PDPUIManager } from '../pdpUI';
+
+// Handlers object passed into the (mocked) PDPEventManager constructor —
+// mirrors the callbacks shape PDPController wires up in pdpController.ts.
+interface PDPHandlers {
+  onAttributeSelection: (attributeType: string, value: string) => void;
+  onVariationSelection: (variationId: string) => void;
+  onCartUpdate: () => void;
+}
+
+// Shape of the mocked PDPUIManager/PDPEventManager instances, plus the
+// private PDPController fields the tests reach into for verification.
+interface MockedUIManager {
+  updateAvailabilityDisplay: ReturnType<typeof vi.fn>;
+  updatePriceDisplay: ReturnType<typeof vi.fn>;
+  updateProductImage: ReturnType<typeof vi.fn>;
+  updateButtonProductData: ReturnType<typeof vi.fn>;
+  updateAttributeButtonStates: ReturnType<typeof vi.fn>;
+}
+
+interface MockedEventManager {
+  setupAllEventHandlers: ReturnType<typeof vi.fn>;
+  cleanup: ReturnType<typeof vi.fn>;
+  handlers?: PDPHandlers;
+}
+
+interface ControllerInternals {
+  uiManager: MockedUIManager;
+  eventManager: MockedEventManager;
+  currentVariation: ProductVariation | null;
+  selectedAttributes: Record<string, string>;
+  isInitialLoad: boolean;
+}
+
+// PDPController keeps these fields private; the tests intentionally reach in
+// to assert on internal state and the mocked collaborators it drives.
+function internals(controller: PDPController): ControllerInternals {
+  return controller as unknown as ControllerInternals;
+}
 
 // Mock dependencies
 vi.mock('@/lib/cart', () => ({
@@ -36,9 +78,13 @@ vi.mock('../pdpEvents', () => ({
   PDPEventManager: class {
     setupAllEventHandlers = vi.fn();
     cleanup = vi.fn();
-    handlers: any;
+    handlers: PDPHandlers;
 
-    constructor(_ui: any, _data: any, handlers: any) {
+    constructor(
+      _ui: PDPUIManager,
+      _data: ProductPageData,
+      handlers: PDPHandlers
+    ) {
       this.handlers = handlers;
     }
   },
@@ -133,7 +179,7 @@ describe('PDPController Real Implementation Tests', () => {
       controller = new PDPController(mockProductData);
 
       // Simulate attribute selection
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onAttributeSelection = eventManager.handlers?.onAttributeSelection;
 
       if (onAttributeSelection) {
@@ -141,13 +187,13 @@ describe('PDPController Real Implementation Tests', () => {
       }
 
       // Should trigger variation update
-      expect((controller as any).selectedAttributes.Size).toBe('Large');
+      expect(internals(controller).selectedAttributes.Size).toBe('Large');
     });
 
     it('should find matching variation based on selected attributes', () => {
       controller = new PDPController(mockProductData);
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onAttributeSelection = eventManager.handlers?.onAttributeSelection;
 
       if (onAttributeSelection) {
@@ -156,14 +202,14 @@ describe('PDPController Real Implementation Tests', () => {
       }
 
       // Should match var-2 (Large, Red)
-      const currentVariation = (controller as any).currentVariation;
+      const currentVariation = internals(controller).currentVariation;
       expect(currentVariation?.variationId).toBe('var-2');
     });
 
     it('should handle selecting out of stock combination', () => {
       controller = new PDPController(mockProductData);
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onAttributeSelection = eventManager.handlers?.onAttributeSelection;
 
       if (onAttributeSelection) {
@@ -180,7 +226,7 @@ describe('PDPController Real Implementation Tests', () => {
     it('should update URL when variation changes', () => {
       controller = new PDPController(mockProductData);
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onAttributeSelection = eventManager.handlers?.onAttributeSelection;
 
       if (onAttributeSelection) {
@@ -194,7 +240,7 @@ describe('PDPController Real Implementation Tests', () => {
     it('should not create history entries on variation change', () => {
       controller = new PDPController(mockProductData);
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onAttributeSelection = eventManager.handlers?.onAttributeSelection;
 
       if (onAttributeSelection) {
@@ -202,7 +248,7 @@ describe('PDPController Real Implementation Tests', () => {
       }
 
       // Should use replaceState, not pushState
-      const calls = (window.history.replaceState as any).mock.calls;
+      const calls = vi.mocked(window.history.replaceState).mock.calls;
       expect(calls.length).toBeGreaterThan(0);
     });
   });
@@ -210,9 +256,9 @@ describe('PDPController Real Implementation Tests', () => {
   describe('UI Updates', () => {
     it('should update UI when variation changes', () => {
       controller = new PDPController(mockProductData);
-      const uiManager = (controller as any).uiManager;
+      const uiManager = internals(controller).uiManager;
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onAttributeSelection = eventManager.handlers?.onAttributeSelection;
 
       if (onAttributeSelection) {
@@ -226,9 +272,9 @@ describe('PDPController Real Implementation Tests', () => {
 
     it('should update product image when variation has image', () => {
       controller = new PDPController(mockProductData);
-      const uiManager = (controller as any).uiManager;
+      const uiManager = internals(controller).uiManager;
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onVariationSelection = eventManager.handlers?.onVariationSelection;
 
       if (onVariationSelection) {
@@ -242,9 +288,9 @@ describe('PDPController Real Implementation Tests', () => {
 
     it('should update button product data', () => {
       controller = new PDPController(mockProductData);
-      const uiManager = (controller as any).uiManager;
+      const uiManager = internals(controller).uiManager;
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onVariationSelection = eventManager.handlers?.onVariationSelection;
 
       if (onVariationSelection) {
@@ -258,9 +304,9 @@ describe('PDPController Real Implementation Tests', () => {
   describe('Cart Integration', () => {
     it('should update UI when cart changes', () => {
       controller = new PDPController(mockProductData);
-      const uiManager = (controller as any).uiManager;
+      const uiManager = internals(controller).uiManager;
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onCartUpdate = eventManager.handlers?.onCartUpdate;
 
       if (onCartUpdate) {
@@ -282,7 +328,7 @@ describe('PDPController Real Implementation Tests', () => {
       });
 
       controller = new PDPController(mockProductData);
-      const uiManager = (controller as any).uiManager;
+      const uiManager = internals(controller).uiManager;
 
       const availabilityCall =
         uiManager.updateAvailabilityDisplay.mock.calls[0];
@@ -297,7 +343,7 @@ describe('PDPController Real Implementation Tests', () => {
   describe('Attribute Button States', () => {
     it('should update button states based on availability', () => {
       controller = new PDPController(mockProductData);
-      const uiManager = (controller as any).uiManager;
+      const uiManager = internals(controller).uiManager;
 
       // Should call updateAttributeButtonStates
       expect(uiManager.updateAttributeButtonStates).toHaveBeenCalled();
@@ -305,7 +351,7 @@ describe('PDPController Real Implementation Tests', () => {
 
     it('should disable out of stock attribute combinations', () => {
       controller = new PDPController(mockProductData);
-      const uiManager = (controller as any).uiManager;
+      const uiManager = internals(controller).uiManager;
 
       const updateCall = uiManager.updateAttributeButtonStates.mock.calls[0];
       const availabilityChecker = updateCall[2];
@@ -320,22 +366,22 @@ describe('PDPController Real Implementation Tests', () => {
     it('should handle direct variation selection', () => {
       controller = new PDPController(mockProductData);
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onVariationSelection = eventManager.handlers?.onVariationSelection;
 
       if (onVariationSelection) {
         onVariationSelection('var-2');
       }
 
-      const currentVariation = (controller as any).currentVariation;
+      const currentVariation = internals(controller).currentVariation;
       expect(currentVariation?.variationId).toBe('var-2');
     });
 
     it('should update UI after variation selection', () => {
       controller = new PDPController(mockProductData);
-      const uiManager = (controller as any).uiManager;
+      const uiManager = internals(controller).uiManager;
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onVariationSelection = eventManager.handlers?.onVariationSelection;
 
       if (onVariationSelection) {
@@ -353,7 +399,7 @@ describe('PDPController Real Implementation Tests', () => {
     it('should handle missing variation gracefully', () => {
       controller = new PDPController(mockProductData);
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onVariationSelection = eventManager.handlers?.onVariationSelection;
 
       if (onVariationSelection) {
@@ -388,7 +434,7 @@ describe('PDPController Real Implementation Tests', () => {
   describe('Cleanup', () => {
     it('should cleanup event manager on cleanup', () => {
       controller = new PDPController(mockProductData);
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
 
       controller.cleanup();
 
@@ -400,8 +446,8 @@ describe('PDPController Real Implementation Tests', () => {
 
       controller.cleanup();
 
-      expect((controller as any).currentVariation).toBeNull();
-      expect((controller as any).selectedAttributes).toEqual({});
+      expect(internals(controller).currentVariation).toBeNull();
+      expect(internals(controller).selectedAttributes).toEqual({});
     });
   });
 
@@ -414,7 +460,7 @@ describe('PDPController Real Implementation Tests', () => {
       };
 
       controller = new PDPController(mockProductData);
-      const uiManager = (controller as any).uiManager;
+      const uiManager = internals(controller).uiManager;
 
       const priceCall = uiManager.updatePriceDisplay.mock.calls[0];
       expect(priceCall[1]).toHaveProperty('saleInfo');
@@ -426,38 +472,38 @@ describe('PDPController Real Implementation Tests', () => {
     it('should maintain consistent state during multiple attribute changes', () => {
       controller = new PDPController(mockProductData);
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onAttributeSelection = eventManager.handlers?.onAttributeSelection;
 
       if (onAttributeSelection) {
         // Change size
         onAttributeSelection('Size', 'Large');
-        expect((controller as any).selectedAttributes.Size).toBe('Large');
+        expect(internals(controller).selectedAttributes.Size).toBe('Large');
 
         // Change color
         onAttributeSelection('Color', 'Red');
-        expect((controller as any).selectedAttributes.Color).toBe('Red');
+        expect(internals(controller).selectedAttributes.Color).toBe('Red');
 
         // Change size again
         onAttributeSelection('Size', 'Small');
-        expect((controller as any).selectedAttributes.Size).toBe('Small');
+        expect(internals(controller).selectedAttributes.Size).toBe('Small');
 
         // Color should still be Red
-        expect((controller as any).selectedAttributes.Color).toBe('Red');
+        expect(internals(controller).selectedAttributes.Color).toBe('Red');
       }
     });
 
     it('should track initial load state', () => {
       controller = new PDPController(mockProductData);
 
-      expect((controller as any).isInitialLoad).toBe(true);
+      expect(internals(controller).isInitialLoad).toBe(true);
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onAttributeSelection = eventManager.handlers?.onAttributeSelection;
 
       if (onAttributeSelection) {
         onAttributeSelection('Size', 'Large');
-        expect((controller as any).isInitialLoad).toBe(false);
+        expect(internals(controller).isInitialLoad).toBe(false);
       }
     });
   });
@@ -465,9 +511,8 @@ describe('PDPController Real Implementation Tests', () => {
   describe('Complex Scenarios', () => {
     it('should handle switching between in-stock and out-of-stock variations', () => {
       controller = new PDPController(mockProductData);
-      const uiManager = (controller as any).uiManager;
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onAttributeSelection = eventManager.handlers?.onAttributeSelection;
 
       if (onAttributeSelection) {
@@ -475,23 +520,23 @@ describe('PDPController Real Implementation Tests', () => {
         onAttributeSelection('Size', 'Small');
         onAttributeSelection('Color', 'Red');
 
-        let currentVariation = (controller as any).currentVariation;
+        let currentVariation = internals(controller).currentVariation;
         expect(currentVariation?.inStock).toBe(true);
 
         // Switch to out-of-stock (Small, Blue)
         onAttributeSelection('Color', 'Blue');
 
         // Should still have a variation but marked as out of stock
-        currentVariation = (controller as any).currentVariation;
+        currentVariation = internals(controller).currentVariation;
         expect(currentVariation?.inStock).toBe(false);
       }
     });
 
     it('should update all UI components in sync', () => {
       controller = new PDPController(mockProductData);
-      const uiManager = (controller as any).uiManager;
+      const uiManager = internals(controller).uiManager;
 
-      const eventManager = (controller as any).eventManager;
+      const eventManager = internals(controller).eventManager;
       const onVariationSelection = eventManager.handlers?.onVariationSelection;
 
       // Get initial call counts
@@ -501,8 +546,6 @@ describe('PDPController Real Implementation Tests', () => {
       const initialImageCalls = uiManager.updateProductImage.mock.calls.length;
       const initialButtonCalls =
         uiManager.updateButtonProductData.mock.calls.length;
-      const initialAttrCalls =
-        uiManager.updateAttributeButtonStates.mock.calls.length;
 
       if (onVariationSelection) {
         onVariationSelection('var-2');

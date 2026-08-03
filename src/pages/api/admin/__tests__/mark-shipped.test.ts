@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock("@/lib/admin/auth", () => ({
+vi.mock('@/lib/admin/auth', () => ({
   isAdminAuthenticated: vi.fn().mockReturnValue(true),
   parseAdminFormData: vi.fn(async (request: Request) => {
     try {
@@ -11,7 +11,7 @@ vi.mock("@/lib/admin/auth", () => ({
   }),
 }));
 
-vi.mock("@/lib/square/client", () => ({
+vi.mock('@/lib/square/client', () => ({
   squareClient: {
     orders: {
       get: vi.fn(),
@@ -20,40 +20,50 @@ vi.mock("@/lib/square/client", () => ({
   },
 }));
 
-vi.mock("@/lib/email/sender", () => ({
+vi.mock('@/lib/email/sender', () => ({
   sendShippingConfirmation: vi.fn(),
 }));
 
-import { POST } from "../mark-shipped";
-import { isAdminAuthenticated } from "@/lib/admin/auth";
-import { squareClient } from "@/lib/square/client";
-import { sendShippingConfirmation } from "@/lib/email/sender";
+import { POST } from '../mark-shipped';
+import { isAdminAuthenticated } from '@/lib/admin/auth';
+import { squareClient } from '@/lib/square/client';
+import { sendShippingConfirmation } from '@/lib/email/sender';
 
-const URL_BASE = "https://example.com/api/admin/mark-shipped";
+const URL_BASE = 'https://example.com/api/admin/mark-shipped';
 
-function makeContext(fields: Record<string, string>): any {
+type Context = Parameters<typeof POST>[0];
+type GetOrderResult = Awaited<ReturnType<typeof squareClient.orders.get>>;
+type UpdateOrderResult = Awaited<ReturnType<typeof squareClient.orders.update>>;
+
+function makeContext(fields: Record<string, string>): Context {
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) formData.set(key, value);
-  const request = new Request(URL_BASE, { method: "POST", body: formData });
+  const request = new Request(URL_BASE, { method: 'POST', body: formData });
   return {
     request,
-    cookies: {} as any,
+    cookies: {},
     redirect: (url: string) =>
       new Response(null, { status: 302, headers: { Location: url } }),
-  };
+  } as unknown as Context;
 }
 
-const orderWithFulfillment = (state: string, overrides: Record<string, unknown> = {}) => ({
+const orderWithFulfillment = (
+  state: string,
+  overrides: Record<string, unknown> = {}
+) => ({
   order: {
-    locationId: "LOC1",
+    locationId: 'LOC1',
     version: 3,
     fulfillments: [
       {
-        uid: "fulfillment-1",
-        type: "SHIPMENT",
+        uid: 'fulfillment-1',
+        type: 'SHIPMENT',
         state,
         shipmentDetails: {
-          recipient: { emailAddress: "customer@example.com", displayName: "Test Customer" },
+          recipient: {
+            emailAddress: 'customer@example.com',
+            displayName: 'Test Customer',
+          },
         },
         ...overrides,
       },
@@ -66,90 +76,114 @@ beforeEach(() => {
   vi.mocked(isAdminAuthenticated).mockReturnValue(true);
 });
 
-describe("POST /api/admin/mark-shipped", () => {
-  it("redirects to login when not authenticated", async () => {
+describe('POST /api/admin/mark-shipped', () => {
+  it('redirects to login when not authenticated', async () => {
     vi.mocked(isAdminAuthenticated).mockReturnValue(false);
-    const res = await POST(makeContext({ orderId: "order-1" }));
+    const res = await POST(makeContext({ orderId: 'order-1' }));
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toContain("/admin/login");
+    expect(res.headers.get('Location')).toContain('/admin/login');
   });
 
-  it("returns 400 when orderId is missing", async () => {
+  it('returns 400 when orderId is missing', async () => {
     const res = await POST(makeContext({}));
     expect(res.status).toBe(400);
   });
 
-  it("redirects with a no-email error when the recipient has no email address", async () => {
+  it('redirects with a no-email error when the recipient has no email address', async () => {
     vi.mocked(squareClient.orders.get).mockResolvedValue(
-      orderWithFulfillment("PROPOSED", { shipmentDetails: {} }) as any,
+      orderWithFulfillment('PROPOSED', {
+        shipmentDetails: {},
+      }) as unknown as GetOrderResult
     );
-    const res = await POST(makeContext({ orderId: "order-1" }));
+    const res = await POST(makeContext({ orderId: 'order-1' }));
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toContain("error=no-email");
+    expect(res.headers.get('Location')).toContain('error=no-email');
   });
 
   it("redirects with a fetch error when the order can't be retrieved", async () => {
-    vi.mocked(squareClient.orders.get).mockRejectedValue(new Error("not found"));
-    const res = await POST(makeContext({ orderId: "order-1" }));
+    vi.mocked(squareClient.orders.get).mockRejectedValue(
+      new Error('not found')
+    );
+    const res = await POST(makeContext({ orderId: 'order-1' }));
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toContain("error=fetch");
+    expect(res.headers.get('Location')).toContain('error=fetch');
   });
 
-  it("walks PROPOSED -> RESERVED -> COMPLETED, attaches tracking only on the final step, sends confirmation, and redirects", async () => {
-    vi.mocked(squareClient.orders.get).mockResolvedValue(orderWithFulfillment("PROPOSED") as any);
-    vi.mocked(squareClient.orders.update).mockResolvedValue({} as any);
-    vi.mocked(sendShippingConfirmation).mockResolvedValue(undefined as any);
+  it('walks PROPOSED -> RESERVED -> COMPLETED, attaches tracking only on the final step, sends confirmation, and redirects', async () => {
+    vi.mocked(squareClient.orders.get).mockResolvedValue(
+      orderWithFulfillment('PROPOSED') as unknown as GetOrderResult
+    );
+    vi.mocked(squareClient.orders.update).mockResolvedValue(
+      {} as unknown as UpdateOrderResult
+    );
+    vi.mocked(sendShippingConfirmation).mockResolvedValue(undefined);
 
     const res = await POST(
-      makeContext({ orderId: "order-1", trackingNumber: "1Z999", carrier: "UPS" }),
+      makeContext({
+        orderId: 'order-1',
+        trackingNumber: '1Z999',
+        carrier: 'UPS',
+      })
     );
 
     expect(squareClient.orders.update).toHaveBeenCalledTimes(2);
     const calls = vi.mocked(squareClient.orders.update).mock.calls;
     const [firstCall] = calls[0]!;
     const [secondCall] = calls[1]!;
-    expect((firstCall as any).order.fulfillments[0].state).toBe("RESERVED");
-    expect((firstCall as any).order.fulfillments[0].shipmentDetails).toBeUndefined();
-    expect((secondCall as any).order.fulfillments[0].state).toBe("COMPLETED");
-    expect((secondCall as any).order.fulfillments[0].shipmentDetails).toEqual({
-      trackingNumber: "1Z999",
-      carrier: "UPS",
+    const firstFulfillment = firstCall.order!.fulfillments![0]!;
+    const secondFulfillment = secondCall.order!.fulfillments![0]!;
+    expect(firstFulfillment.state).toBe('RESERVED');
+    expect(firstFulfillment.shipmentDetails).toBeUndefined();
+    expect(secondFulfillment.state).toBe('COMPLETED');
+    expect(secondFulfillment.shipmentDetails).toEqual({
+      trackingNumber: '1Z999',
+      carrier: 'UPS',
     });
 
     expect(sendShippingConfirmation).toHaveBeenCalledWith(
       expect.objectContaining({
         contact: {
-          email: "customer@example.com",
-          name: "Test Customer",
-          fulfillmentMethod: "shipping",
+          email: 'customer@example.com',
+          name: 'Test Customer',
+          fulfillmentMethod: 'shipping',
         },
-        trackingNumber: "1Z999",
-        carrier: "UPS",
-      }),
+        trackingNumber: '1Z999',
+        carrier: 'UPS',
+      })
     );
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toContain("shipped=1");
+    expect(res.headers.get('Location')).toContain('shipped=1');
   });
 
-  it("redirects with an update error when Square rejects the state transition", async () => {
-    vi.mocked(squareClient.orders.get).mockResolvedValue(orderWithFulfillment("PROPOSED") as any);
-    vi.mocked(squareClient.orders.update).mockRejectedValue(new Error("Square update failed"));
+  it('redirects with an update error when Square rejects the state transition', async () => {
+    vi.mocked(squareClient.orders.get).mockResolvedValue(
+      orderWithFulfillment('PROPOSED') as unknown as GetOrderResult
+    );
+    vi.mocked(squareClient.orders.update).mockRejectedValue(
+      new Error('Square update failed')
+    );
 
-    const res = await POST(makeContext({ orderId: "order-1" }));
+    const res = await POST(makeContext({ orderId: 'order-1' }));
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toContain("error=update");
+    expect(res.headers.get('Location')).toContain('error=update');
   });
 
-  it("redirects with an email error when the Square update succeeds but the confirmation email fails", async () => {
+  it('redirects with an email error when the Square update succeeds but the confirmation email fails', async () => {
     // RESERVED has exactly one remaining step (-> COMPLETED); the fulfillment
     // lookup itself excludes already-COMPLETED orders, so that state can't be
     // used to reach the email-sending path with zero update() calls.
-    vi.mocked(squareClient.orders.get).mockResolvedValue(orderWithFulfillment("RESERVED") as any);
-    vi.mocked(squareClient.orders.update).mockResolvedValue({} as any);
-    vi.mocked(sendShippingConfirmation).mockRejectedValue(new Error("Resend down"));
+    vi.mocked(squareClient.orders.get).mockResolvedValue(
+      orderWithFulfillment('RESERVED') as unknown as GetOrderResult
+    );
+    vi.mocked(squareClient.orders.update).mockResolvedValue(
+      {} as unknown as UpdateOrderResult
+    );
+    vi.mocked(sendShippingConfirmation).mockRejectedValue(
+      new Error('Resend down')
+    );
 
-    const res = await POST(makeContext({ orderId: "order-1" }));
+    const res = await POST(makeContext({ orderId: 'order-1' }));
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toContain("error=email");
+    expect(res.headers.get('Location')).toContain('error=email');
   });
 });

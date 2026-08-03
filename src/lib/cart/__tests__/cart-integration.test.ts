@@ -330,13 +330,13 @@ describe('Cart Integration - Critical Business Logic', () => {
 
         // Filter out invalid items (must have variationId, quantity, etc.)
         const validItems = parsed.items.filter(
-          (item: any) =>
+          (item: unknown) =>
             item &&
             typeof item === 'object' &&
-            typeof item.variationId === 'string' &&
-            typeof item.quantity === 'number' &&
-            item.quantity > 0 &&
-            typeof item.name === 'string'
+            typeof (item as Record<string, unknown>).variationId === 'string' &&
+            typeof (item as Record<string, unknown>).quantity === 'number' &&
+            ((item as Record<string, unknown>).quantity as number) > 0 &&
+            typeof (item as Record<string, unknown>).name === 'string'
         );
 
         restoredCart = {

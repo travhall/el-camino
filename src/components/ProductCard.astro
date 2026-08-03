@@ -368,6 +368,12 @@ if (hasValidImage) {
 </style>
 
 <script>
+  declare global {
+    interface Window {
+      openQuickView?: (productId: string, variationId?: string) => void;
+    }
+  }
+
   document.addEventListener("astro:page-load", () => {
     // Attach click handlers to product card anchor elements.
     //
@@ -402,8 +408,8 @@ if (hasValidImage) {
             e.preventDefault();
             e.stopPropagation();
 
-            if (typeof (window as any).openQuickView === "function") {
-              (window as any).openQuickView(productId, variationId);
+            if (typeof window.openQuickView === "function") {
+              window.openQuickView(productId, variationId);
             }
           });
         }

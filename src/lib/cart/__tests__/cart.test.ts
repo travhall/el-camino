@@ -4,9 +4,18 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { Mock } from 'vitest';
+
+interface MockCart {
+  items: unknown[];
+  addItem: Mock;
+  updateQuantity: Mock;
+  removeItem: Mock;
+  clear: Mock;
+}
 
 describe('Cart Integration Critical Tests', () => {
-  let mockCart: any;
+  let mockCart: MockCart;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -15,7 +24,7 @@ describe('Cart Integration Critical Tests', () => {
       addItem: vi.fn(),
       updateQuantity: vi.fn(),
       removeItem: vi.fn(),
-      clear: vi.fn()
+      clear: vi.fn(),
     };
   });
 
@@ -55,10 +64,12 @@ describe('Cart Integration Critical Tests', () => {
       // Mock localStorage failure
       Object.defineProperty(window, 'localStorage', {
         value: {
-          setItem: vi.fn(() => { throw new Error('Storage full'); })
-        }
+          setItem: vi.fn(() => {
+            throw new Error('Storage full');
+          }),
+        },
       });
-      
+
       expect(() => mockCart.addItem({ id: 'var-1' })).not.toThrow();
     });
   });
@@ -66,12 +77,12 @@ describe('Cart Integration Critical Tests', () => {
   describe('Inventory validation', () => {
     it('prevents overselling', () => {
       const item = { id: 'var-1', quantity: 100 }; // Excessive quantity
-      mockCart.addItem.mockImplementation((item: any) => {
+      mockCart.addItem.mockImplementation((item: { quantity: number }) => {
         if (item.quantity > 10) {
           throw new Error('Insufficient inventory');
         }
       });
-      
+
       expect(() => mockCart.addItem(item)).toThrow();
     });
 

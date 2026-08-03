@@ -4,11 +4,17 @@
  * device info on window for quick access elsewhere.
  */
 
-import { getDeviceInfo } from '@/utils/device';
+import { getDeviceInfo, type DeviceInfo } from '@/utils/device';
+
+declare global {
+  interface Window {
+    __DEVICE_INFO__?: DeviceInfo;
+  }
+}
 
 if (typeof window !== 'undefined') {
   const deviceInfo = getDeviceInfo();
-  (window as any).__DEVICE_INFO__ = deviceInfo;
+  window.__DEVICE_INFO__ = deviceInfo;
 
   // Add device class to body for CSS targeting
   if (deviceInfo.isMobile) {
@@ -25,8 +31,12 @@ if (typeof window !== 'undefined') {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
       const updated = getDeviceInfo();
-      (window as any).__DEVICE_INFO__ = updated;
-      document.body.classList.remove('device-mobile', 'device-tablet', 'device-desktop');
+      window.__DEVICE_INFO__ = updated;
+      document.body.classList.remove(
+        'device-mobile',
+        'device-tablet',
+        'device-desktop'
+      );
       if (updated.isMobile) {
         document.body.classList.add('device-mobile');
       } else if (updated.isTablet) {

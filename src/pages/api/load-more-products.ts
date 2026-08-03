@@ -1,7 +1,7 @@
 // src/pages/api/load-more-products.ts - FINAL OPTIMIZED VERSION
-import type { APIRoute } from "astro";
-import { fetchProductsByCategory } from "@/lib/square/categories";
-import { batchInventoryService } from "@/lib/square/batchInventory";
+import type { APIRoute } from 'astro';
+import { fetchProductsByCategory } from '@/lib/square/categories';
+import { batchInventoryService } from '@/lib/square/batchInventory';
 
 export const prerender = false;
 
@@ -13,9 +13,9 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Category ID required",
+          error: 'Category ID required',
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -28,9 +28,10 @@ export const POST: APIRoute = async ({ request }) => {
     const variationIds = result.products
       .map((p) => p.variationId)
       .filter(Boolean);
-    const inventoryMap = variationIds.length > 0
-      ? await batchInventoryService.getBatchInventoryStatus(variationIds)
-      : new Map();
+    const inventoryMap =
+      variationIds.length > 0
+        ? await batchInventoryService.getBatchInventoryStatus(variationIds)
+        : new Map();
     const products = result.products.map((p) => ({
       ...p,
       inventoryStatus: inventoryMap.get(p.variationId) ?? {
@@ -49,19 +50,19 @@ export const POST: APIRoute = async ({ request }) => {
       }),
       {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       }
     );
-  } catch (error) {
+  } catch {
     // console.error("[API] Load more products error:", error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Failed to load products",
+        error: 'Failed to load products',
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       }
     );
   }

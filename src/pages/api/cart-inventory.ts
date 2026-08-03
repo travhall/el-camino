@@ -1,6 +1,6 @@
 // src/pages/api/cart-inventory.ts
-import type { APIRoute } from "astro";
-import { checkBulkInventory } from "@/lib/square/inventory";
+import type { APIRoute } from 'astro';
+import { checkBulkInventory } from '@/lib/square/inventory';
 
 const MAX_VARIATION_IDS = 50;
 
@@ -12,18 +12,18 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (!variationIds || !Array.isArray(variationIds)) {
       return new Response(
-        JSON.stringify({ error: "Invalid variationIds array required" }),
+        JSON.stringify({ error: 'Invalid variationIds array required' }),
         {
           status: 400,
-          headers: { "Content-Type": "application/json" },
+          headers: { 'Content-Type': 'application/json' },
         }
       );
     }
 
     if (variationIds.length > MAX_VARIATION_IDS) {
       return new Response(
-        JSON.stringify({ error: "Too many variation IDs", success: false }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ error: 'Too many variation IDs', success: false }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -37,20 +37,20 @@ export const POST: APIRoute = async ({ request }) => {
       }),
       {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       }
     );
-  } catch (error) {
+  } catch {
     // console.error('Cart inventory API error:', error);
 
     return new Response(
       JSON.stringify({
-        error: "Failed to fetch inventory data",
+        error: 'Failed to fetch inventory data',
         success: false,
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       }
     );
   }

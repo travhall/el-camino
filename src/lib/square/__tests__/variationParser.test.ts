@@ -3,15 +3,18 @@
  * Priority: High - Prevents silent failures with non-standard variation names
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { parseVariationName, VARIATION_CONFIG } from '../variationParser';
-import type { ProductVariation } from '../types';
 
 describe('VariationParser Critical Edge Cases', () => {
   describe('Position-based parsing fragility', () => {
     it('handles standard comma-separated format', () => {
       const result = parseVariationName('Large, Red, Cotton');
-      expect(result).toEqual({ size: 'Large', color: 'Red', material: 'Cotton' });
+      expect(result).toEqual({
+        size: 'Large',
+        color: 'Red',
+        material: 'Cotton',
+      });
     });
 
     it('handles non-standard variation names gracefully', () => {

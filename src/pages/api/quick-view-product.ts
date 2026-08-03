@@ -1,18 +1,18 @@
 // src/pages/api/quick-view-product.ts
-import type { APIRoute } from "astro";
-import { fetchProduct } from "@/lib/square/client";
-import { checkBulkInventory } from "@/lib/square/inventory";
-import { logError } from "@/lib/square/errorUtils";
-import { processSquareError } from "@/lib/square/serverErrorUtils";
+import type { APIRoute } from 'astro';
+import { fetchProduct } from '@/lib/square/client';
+import { checkBulkInventory } from '@/lib/square/inventory';
+import { logError } from '@/lib/square/errorUtils';
+import { processSquareError } from '@/lib/square/serverErrorUtils';
 
 export const GET: APIRoute = async ({ url }) => {
   try {
-    const productId = url.searchParams.get("id");
+    const productId = url.searchParams.get('id');
 
     if (!productId) {
-      return new Response(JSON.stringify({ error: "Product ID is required" }), {
+      return new Response(JSON.stringify({ error: 'Product ID is required' }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -20,9 +20,9 @@ export const GET: APIRoute = async ({ url }) => {
     const product = await fetchProduct(productId);
 
     if (!product) {
-      return new Response(JSON.stringify({ error: "Product not found" }), {
+      return new Response(JSON.stringify({ error: 'Product not found' }), {
         status: 404,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -47,7 +47,7 @@ export const GET: APIRoute = async ({ url }) => {
           inStock: (inventoryMap[v.variationId] || 0) > 0,
           quantity: inventoryMap[v.variationId] || 0,
         }));
-      } catch (error) {
+      } catch {
         // console.error("Inventory check failed:", error);
         // Default to in stock if inventory check fails
         product.variations = product.variations.map((v) => ({
@@ -74,31 +74,31 @@ export const GET: APIRoute = async ({ url }) => {
 
     return new Response(JSON.stringify(product), {
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         // No browser cache — inventory data must always be fresh.
         // The server-side BlobCache handles performance; we don't want
         // the browser serving a 60-second-old sold-out state.
-        "Cache-Control": "public, no-cache",
+        'Cache-Control': 'public, no-cache',
         // Netlify CDN: Fresh for 5 minutes, no stale serving.
         // stale-while-revalidate=0 ensures sold-out items are never served
         // from an expired edge cache entry with outdated inventory data.
-        "Netlify-CDN-Cache-Control":
-          "public, s-maxage=300, stale-while-revalidate=0",
+        'Netlify-CDN-Cache-Control':
+          'public, s-maxage=300, stale-while-revalidate=0',
         // Cache tag for invalidation
-        "Netlify-Cache-Tag": `product-${productId},products,quick-view`,
+        'Netlify-Cache-Tag': `product-${productId},products,quick-view`,
       },
     });
   } catch (error) {
-    const appError = processSquareError(error, "quick-view-product");
+    const appError = processSquareError(error, 'quick-view-product');
     logError(appError);
 
     return new Response(
       JSON.stringify({
-        error: "Failed to fetch product",
+        error: 'Failed to fetch product',
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       }
     );
   }
