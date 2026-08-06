@@ -5,6 +5,7 @@
 // after notifications are sent.
 
 import { getStore } from "@netlify/blobs";
+import { BlobCache } from "@/lib/cache/blobCache";
 
 export interface BisSubscription {
   email: string;
@@ -25,6 +26,7 @@ function key(productId: string, email: string) {
 
 export async function addSubscription(sub: BisSubscription): Promise<void> {
   await store().setJSON(key(sub.productId, sub.email), sub);
+  await summariesCache.delete(SUMMARIES_KEY);
 }
 
 export async function isAlreadySubscribed(
@@ -52,6 +54,7 @@ export async function removeSubscription(
   email: string
 ): Promise<void> {
   await store().delete(key(productId, email));
+  await summariesCache.delete(SUMMARIES_KEY);
 }
 
 export async function removeAllSubscriptionsForProduct(
@@ -64,6 +67,7 @@ export async function removeAllSubscriptionsForProduct(
     )
   ).filter((s): s is BisSubscription => s !== null);
   await Promise.all(blobs.map((b) => store().delete(b.key)));
+  await summariesCache.delete(SUMMARIES_KEY);
   return subs;
 }
 
@@ -75,35 +79,44 @@ export interface ProductSummary {
   subscribers: Array<{ email: string; submittedAt: string }>;
 }
 
+const summariesCache = new BlobCache<ProductSummary[]>(
+  "bis-summaries",
+  300, // 5 min — matches wordpressCache's TTL choice for a similar admin-facing aggregate
+  "back-in-stock-summaries-cache"
+);
+const SUMMARIES_KEY = "all";
+
 export async function getAllProductSummaries(): Promise<ProductSummary[]> {
-  const { blobs } = await store().list();
-  const map = new Map<string, ProductSummary>();
+  return summariesCache.getOrCompute(SUMMARIES_KEY, async () => {
+    const { blobs } = await store().list();
+    const map = new Map<string, ProductSummary>();
 
-  await Promise.all(
-    blobs.map(async (b) => {
-      const sub = (await store().get(b.key, {
-        type: "json",
-      })) as BisSubscription | null;
-      if (!sub) return;
-      if (!map.has(sub.productId)) {
-        map.set(sub.productId, {
-          productId: sub.productId,
-          productTitle: sub.productTitle,
-          productUrl: sub.productUrl,
-          count: 0,
-          subscribers: [],
-        });
-      }
-      const entry = map.get(sub.productId)!;
-      entry.count++;
-      entry.subscribers.push({ email: sub.email, submittedAt: sub.submittedAt });
-    })
-  );
+    await Promise.all(
+      blobs.map(async (b) => {
+        const sub = (await store().get(b.key, {
+          type: "json",
+        })) as BisSubscription | null;
+        if (!sub) return;
+        if (!map.has(sub.productId)) {
+          map.set(sub.productId, {
+            productId: sub.productId,
+            productTitle: sub.productTitle,
+            productUrl: sub.productUrl,
+            count: 0,
+            subscribers: [],
+          });
+        }
+        const entry = map.get(sub.productId)!;
+        entry.count++;
+        entry.subscribers.push({ email: sub.email, submittedAt: sub.submittedAt });
+      })
+    );
 
-  // Sort products by subscriber count descending; subscribers by signup date ascending
-  const summaries = [...map.values()].sort((a, b) => b.count - a.count);
-  summaries.forEach((s) =>
-    s.subscribers.sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))
-  );
-  return summaries;
+    // Sort products by subscriber count descending; subscribers by signup date ascending
+    const summaries = [...map.values()].sort((a, b) => b.count - a.count);
+    summaries.forEach((s) =>
+      s.subscribers.sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))
+    );
+    return summaries;
+  });
 }
