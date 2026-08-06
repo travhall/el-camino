@@ -479,7 +479,7 @@ export function buildShippingOrderNotificationHtml({
         <tr>
           <td style="font-size:14px;color:#4f3d22;padding-bottom:4px;">Email</td>
           <td style="font-size:14px;color:#2b2215;padding-bottom:4px;">
-            <a href="mailto:${contact.email}" style="color:#4d7a2e;text-decoration:none;">${escHtml(contact.email)}</a>
+            <a href="mailto:${escHtml(contact.email)}" style="color:#4d7a2e;text-decoration:none;">${escHtml(contact.email)}</a>
           </td>
         </tr>
         <tr>
@@ -693,7 +693,7 @@ export function buildPickupNotificationHtml({
         <tr>
           <td style="font-size:14px;color:#4f3d22;padding-bottom:4px;">Email</td>
           <td style="font-size:14px;color:#2b2215;padding-bottom:4px;">
-            <a href="mailto:${contact.email}" style="color:#4d7a2e;text-decoration:none;">${escHtml(contact.email)}</a>
+            <a href="mailto:${escHtml(contact.email)}" style="color:#4d7a2e;text-decoration:none;">${escHtml(contact.email)}</a>
           </td>
         </tr>
         <tr>

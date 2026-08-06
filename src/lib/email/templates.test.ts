@@ -487,6 +487,21 @@ describe('buildShippingOrderNotificationHtml', () => {
     });
     expect(result).toContain('$0.00');
   });
+
+  it('escapes HTML-special characters in the mailto href to prevent attribute injection', () => {
+    const maliciousContact = {
+      ...shippingContact,
+      email: 'x"><script>alert(1)</script>@example.com',
+    };
+    const result = buildShippingOrderNotificationHtml({
+      order: makeShippingOrder(),
+      contact: maliciousContact,
+    });
+    expect(result).toContain(
+      'href="mailto:x&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;@example.com"'
+    );
+    expect(result).not.toContain('href="mailto:x">');
+  });
 });
 
 // ─── buildShippingConfirmationHtml ────────────────────────────────────────────
@@ -657,6 +672,21 @@ describe('buildPickupNotificationHtml', () => {
       contact: pickupContact,
     });
     expect(result).toContain('$0.00');
+  });
+
+  it('escapes HTML-special characters in the mailto href to prevent attribute injection', () => {
+    const maliciousContact = {
+      ...pickupContact,
+      email: 'x"><script>alert(1)</script>@example.com',
+    };
+    const result = buildPickupNotificationHtml({
+      order: makePickupOrder(),
+      contact: maliciousContact,
+    });
+    expect(result).toContain(
+      'href="mailto:x&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;@example.com"'
+    );
+    expect(result).not.toContain('href="mailto:x">');
   });
 });
 
