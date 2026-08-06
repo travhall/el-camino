@@ -219,6 +219,14 @@ describe('ApiRetryClient', () => {
       const result = await promise;
       expect(result).toBe('success');
     });
+
+    it('clears the timeout timer after a successful call', async () => {
+      mockOperation.mockResolvedValue('success');
+
+      await client.executeWithRetry(mockOperation, 'test-operation');
+
+      expect(vi.getTimerCount()).toBe(0);
+    });
   });
 
   describe('Circuit Breaker', () => {
