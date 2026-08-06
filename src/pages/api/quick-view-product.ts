@@ -47,29 +47,14 @@ export const GET: APIRoute = async ({ url }) => {
           inStock: (inventoryMap[v.variationId] || 0) > 0,
           quantity: inventoryMap[v.variationId] || 0,
         }));
-      } catch {
-        // console.error("Inventory check failed:", error);
-        // Default to in stock if inventory check fails
+      } catch (error) {
+        logError(processSquareError(error, 'quick-view-product-inventory'));
         product.variations = product.variations.map((v) => ({
           ...v,
-          inStock: true,
-          quantity: 999,
+          inStock: false,
+          quantity: 0,
         }));
       }
-    } else {
-      // Single variation product (non-gift-card)
-      const quantity = inventoryMap[product.variationId] || 999;
-      product.variations = [
-        {
-          id: product.variationId,
-          variationId: product.variationId,
-          name: product.title,
-          price: product.price,
-          inStock: quantity > 0,
-          quantity: quantity,
-          attributes: {},
-        },
-      ];
     }
 
     return new Response(JSON.stringify(product), {
