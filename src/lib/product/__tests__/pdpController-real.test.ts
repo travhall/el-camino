@@ -41,7 +41,6 @@ interface ControllerInternals {
   eventManager: MockedEventManager;
   currentVariation: ProductVariation | null;
   selectedAttributes: Record<string, string>;
-  isInitialLoad: boolean;
 }
 
 // PDPController keeps these fields private; the tests intentionally reach in
@@ -490,20 +489,6 @@ describe('PDPController Real Implementation Tests', () => {
 
         // Color should still be Red
         expect(internals(controller).selectedAttributes.Color).toBe('Red');
-      }
-    });
-
-    it('should track initial load state', () => {
-      controller = new PDPController(mockProductData);
-
-      expect(internals(controller).isInitialLoad).toBe(true);
-
-      const eventManager = internals(controller).eventManager;
-      const onAttributeSelection = eventManager.handlers?.onAttributeSelection;
-
-      if (onAttributeSelection) {
-        onAttributeSelection('Size', 'Large');
-        expect(internals(controller).isInitialLoad).toBe(false);
       }
     });
   });

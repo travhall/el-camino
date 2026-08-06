@@ -17,7 +17,6 @@ export class PDPController {
   private currentVariation: ProductVariation | null = null;
   private uiManager: PDPUIManager;
   private eventManager: PDPEventManager;
-  private isInitialLoad: boolean = true; // Track if this is initial page load
 
   constructor(private productData: ProductPageData) {
     this.uiManager = new PDPUIManager();
@@ -218,7 +217,6 @@ export class PDPController {
 
   private handleAttributeSelection(attributeType: string, value: string): void {
     this.selectedAttributes[attributeType] = value;
-    this.isInitialLoad = false; // Ensure this is treated as user interaction
     this.updateCurrentVariation();
     this.updateAttributeButtonStates();
   }
@@ -228,7 +226,6 @@ export class PDPController {
       (v) => v.variationId === variationId
     );
     if (variation) {
-      this.isInitialLoad = false; // Ensure this is treated as user interaction
       this.updateProductUI(variation);
     }
   }
@@ -279,6 +276,5 @@ export class PDPController {
     this.eventManager.cleanup();
     this.currentVariation = null;
     this.selectedAttributes = {};
-    this.isInitialLoad = true; // Reset for next instance
   }
 }

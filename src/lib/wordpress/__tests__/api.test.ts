@@ -23,7 +23,7 @@ import {
 // Mock dependencies
 vi.mock('@/lib/cache/blobCache', () => ({
   wordpressCache: {
-    getOrCompute: vi.fn(<T>(key: string, compute: () => Promise<T>) =>
+    getOrCompute: vi.fn(<T>(_key: string, compute: () => Promise<T>) =>
       compute()
     ),
     clear: vi.fn(),

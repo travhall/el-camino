@@ -4,7 +4,6 @@ import ProductFilters from "@/components/ProductFilters.astro";
 import AppliedFilters from "@/components/AppliedFilters.astro";
 import ProductGrid from "@/components/ProductGrid.astro";
 import Layout from "@/layouts/Layout.astro";
-import { INITIAL_PAGE_SIZE, INFINITE_SCROLL_THRESHOLD } from "@/lib/constants/pagination";
 import { fetchProducts } from "@/lib/square/client";
 import {
   parseFiltersFromURL,
@@ -62,10 +61,7 @@ let slugToIdMap: Record<string, string> = {};
 try {
   // Fetch all products initially
   const allProductsFull = await fetchProducts();
-  
-  const totalProductCount = allProductsFull.length;
-  const needsPagination = totalProductCount > INFINITE_SCROLL_THRESHOLD;
-  
+
   // Sort alphabetically by brand (case-insensitive), unbranded fall to end
   allProductsFull.sort((a, b) => {
     const brandA = a.brand?.toLowerCase() ?? "\uFFFF";
