@@ -77,9 +77,6 @@ function validateWordPressIntegration() {
 
   // Test 4: Link Protection in WordPress Content
   console.log("4. Testing Link Protection...");
-  const _wordPressLinks = wordPressContent
-    ? wordPressContent.querySelectorAll("a")
-    : [];
   const businessComponentLinks = document.querySelectorAll(
     ".wp-product-showcase a, .blog-product-card a, .wp-event-block a"
   );

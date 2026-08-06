@@ -230,24 +230,6 @@ export class QuickViewController {
     container.classList.add('flex');
   }
 
-  // Sync the active thumbnail highlight when the main image changes
-  // (e.g. on variation switch).
-  private setActiveThumbnail(imageUrl: string): void {
-    const container = document.getElementById('quick-view-thumbnails');
-    if (!container) return;
-
-    container
-      .querySelectorAll<HTMLButtonElement>('.quick-view-thumb')
-      .forEach((t) => {
-        const isActive = t.dataset.gallerySrc === imageUrl;
-        t.classList.toggle('border-(--ui-button-border)', isActive);
-        t.classList.toggle('opacity-100', isActive);
-        t.classList.toggle('border-(--border-secondary)', !isActive);
-        t.classList.toggle('opacity-60', !isActive);
-        t.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-      });
-  }
-
   private renderProduct(product: Product): void {
     const image = document.getElementById(
       'quick-view-image'

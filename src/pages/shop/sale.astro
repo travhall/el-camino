@@ -4,7 +4,6 @@ import ProductFilters from "@/components/ProductFilters.astro";
 import AppliedFilters from "@/components/AppliedFilters.astro";
 import ProductGrid from "@/components/ProductGrid.astro";
 import Layout from "@/layouts/Layout.astro";
-import { INITIAL_PAGE_SIZE, INFINITE_SCROLL_THRESHOLD } from "@/lib/constants/pagination";
 import { fetchProducts } from "@/lib/square/client";
 import {
   parseFiltersFromURL,
@@ -116,9 +115,6 @@ try {
     // fail-open: if the whole inventory check throws, keep all products
   }
 
-  const totalProductCount = saleProducts.length;
-  const needsPagination = totalProductCount > INFINITE_SCROLL_THRESHOLD;
-
   // Always pass sale products to ProductGrid
   // ProductGrid handles progressive display via infinite scroll
   allProducts = saleProducts;
@@ -182,7 +178,6 @@ const structuredData = {
     // Get the sale price from the first variation with saleInfo
     const saleVariation = product.variations?.find(v => v.saleInfo);
     const salePrice = saleVariation?.saleInfo?.salePrice || product.price;
-    const originalPrice = saleVariation?.saleInfo?.originalPrice || product.price;
 
     return {
       "@type": "ListItem",

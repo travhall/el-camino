@@ -11,7 +11,6 @@ import { logger } from '@/lib/logger';
  */
 class SlugResolver {
   private CACHE_KEY = 'slug-to-id-map';
-  private initializing = false;
   private initPromise: Promise<Record<string, string>> | null = null;
 
   /**
