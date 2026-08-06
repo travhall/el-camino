@@ -460,7 +460,7 @@ class CartManager {
       ]);
 
       const availableQuantity =
-        inventoryResult.status === 'fulfilled' ? inventoryResult.value : 999;
+        inventoryResult.status === 'fulfilled' ? inventoryResult.value : 0;
       const fetchedSaleInfo =
         saleInfoResult.status === 'fulfilled' ? saleInfoResult.value : null;
 

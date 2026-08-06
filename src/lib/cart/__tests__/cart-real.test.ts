@@ -291,9 +291,10 @@ describe('CartManager Real Implementation Tests', () => {
         variationName: 'Small',
       };
 
-      // Should still allow add when inventory check fails (graceful degradation)
+      // Fail closed: an inventory check failure must not allow the add.
       const result = await cart.addItem(item);
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('out of stock');
     });
   });
 
@@ -728,7 +729,7 @@ describe('CartManager Real Implementation Tests', () => {
   });
 
   describe('addItem — fetch failure resilience', () => {
-    it('proceeds with add when the inventory fetch returns a non-ok response', async () => {
+    it('fails closed (blocks the add) when the inventory fetch returns a non-ok response', async () => {
       (global.fetch as Mock).mockImplementation((url: string) => {
         if (url.includes('/api/check-inventory')) {
           return Promise.resolve({ ok: false, status: 503 });
@@ -751,9 +752,12 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 1,
       };
 
-      // Graceful degradation: still adds (uses 999 fallback)
+      // Fail closed: an inventory-check failure must not be treated as
+      // in-stock (previously fell back to 999, letting the add succeed).
       const result = await cart.addItem(item);
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('out of stock');
+      expect(cart.getItems()).toHaveLength(0);
     });
 
     it('adds item without sale info when the sale-info fetch fails', async () => {
