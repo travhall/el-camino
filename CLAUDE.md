@@ -23,8 +23,9 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
   `src/lib/square/inventory.ts`)
 - `pnpm test:e2e` — Playwright e2e tests (separate from vitest)
 - `pnpm build` — production build (`astro check && astro build`)
-- No lint/format script exists yet — there is no ESLint or Prettier config in
-  this repo as of this writing.
+- `pnpm lint` — ESLint (flat config in `eslint.config.mjs`, covers
+  `.ts`/`.tsx`/`.astro`)
+- `pnpm format` / `pnpm format:check` — Prettier
 
 ## Key directories
 
@@ -64,3 +65,6 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
   feature commits with no explanatory message, so the original motivating bug
   isn't recorded — treat it as a deliberate cache-freshness safeguard rather
   than dead cruft, but confirm with the maintainer before removing it.
+- `.husky/pre-commit` runs `pnpm check` and `pnpm lint` on staged
+  `.ts`/`.tsx`/`.astro` files, then runs `pnpm test:run` unconditionally on
+  every commit.
