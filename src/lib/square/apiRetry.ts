@@ -84,17 +84,17 @@ export class ApiRetryClient {
       try {
         // Add timeout wrapper
         const result = await this.withTimeout(operation(), config.timeoutMs);
-        
+
         // Success - record for circuit breaker
         this.recordSuccess();
         return result;
-        
+
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        
+
         // Record failure for circuit breaker
         this.recordFailure();
-        
+
         // Don't retry on final attempt
         if (attempt === config.maxRetries) {
           break;
@@ -102,11 +102,11 @@ export class ApiRetryClient {
 
         // Calculate delay with exponential backoff and jitter
         const delay = this.calculateDelay(attempt, config);
-        
+
         if (import.meta.env.DEV) {
           console.warn(`[ApiRetry] ${context} attempt ${attempt + 1} failed, retrying in ${delay}ms:`, lastError.message);
         }
-        
+
         await this.sleep(delay);
       }
     }
@@ -183,7 +183,7 @@ export class ApiRetryClient {
 
     // Add jitter to prevent thundering herd
     const jitter = exponentialDelay * config.jitterRange * (Math.random() - 0.5);
-    
+
     return Math.max(0, exponentialDelay + jitter);
   }
 
@@ -191,12 +191,13 @@ export class ApiRetryClient {
    * Add timeout to any promise
    */
   private withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-    return Promise.race([
-      promise,
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs);
-      })
-    ]);
+    let timeoutHandle: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+      clearTimeout(timeoutHandle);
+    });
   }
 
   /**
