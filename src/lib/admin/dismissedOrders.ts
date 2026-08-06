@@ -11,14 +11,19 @@ import { BlobCache } from "@/lib/cache/blobCache";
 
 const NINETY_DAYS = 60 * 60 * 24 * 90;
 
-const store = new BlobCache<true>(
+const store = new BlobCache<string[]>(
   "admin-dismissed-orders",
   NINETY_DAYS,
   "dismissed"
 );
 
+const DISMISSED_KEY = "all";
+
 export async function dismissOrder(orderId: string): Promise<void> {
-  await store.set(orderId, true);
+  const current = (await store.get(DISMISSED_KEY)) ?? [];
+  if (!current.includes(orderId)) {
+    await store.set(DISMISSED_KEY, [...current, orderId]);
+  }
 }
 
 /** Returns a copy of `orders` with any dismissed entries removed. */
@@ -26,10 +31,6 @@ export async function filterDismissed<T extends { orderId: string }>(
   orders: T[]
 ): Promise<T[]> {
   if (orders.length === 0) return [];
-  const checks = await Promise.all(
-    orders.map((o) =>
-      store.get(o.orderId).then((v) => ({ order: o, keep: v !== true }))
-    )
-  );
-  return checks.filter((c) => c.keep).map((c) => c.order);
+  const dismissed = new Set((await store.get(DISMISSED_KEY)) ?? []);
+  return orders.filter((o) => !dismissed.has(o.orderId));
 }
