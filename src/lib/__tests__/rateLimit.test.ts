@@ -39,6 +39,22 @@ describe("createRateLimiter", () => {
 
       expect(limiter.check("5.5.5.5")).toBe(false); // window elapsed, fresh bucket
     });
+
+    it("evicts stale buckets via the periodic sweep, not just on next check", () => {
+      vi.useFakeTimers();
+      const limiter = createRateLimiter({ windowMs: 1000, max: 1 });
+
+      limiter.check("6.6.6.6");
+      expect(limiter.check("6.6.6.6")).toBe(true); // limited within the window
+
+      // Advance past the window and the 5-minute sweep cadence so the
+      // periodic sweep (not lazy eviction on check()) prunes the entry.
+      vi.advanceTimersByTime(5 * 60_000 + 1000);
+
+      // A fresh check after the sweep should behave as if the key was never
+      // seen: count resets to 1, not limited.
+      expect(limiter.check("6.6.6.6")).toBe(false);
+    });
   });
 });
 

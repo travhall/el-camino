@@ -16,11 +16,28 @@ interface Limiter {
 
 export function createRateLimiter(opts: { windowMs: number; max: number }): Limiter {
   const buckets = new Map<string, Bucket>();
+
+  const sweep = () => {
+    const now = Date.now();
+    for (const [key, entry] of buckets) {
+      if (now - entry.firstAt > opts.windowMs) {
+        buckets.delete(key);
+      }
+    }
+  };
+  const sweepInterval = setInterval(sweep, 5 * 60_000);
+  // Unref so this timer doesn't keep the process alive on its own
+  // (Node-specific; matches this codebase's serverless-function runtime).
+  if (typeof sweepInterval.unref === "function") {
+    sweepInterval.unref();
+  }
+
   return {
     check(key: string): boolean {
       const now = Date.now();
       const entry = buckets.get(key);
       if (!entry || now - entry.firstAt > opts.windowMs) {
+        buckets.delete(key);
         buckets.set(key, { count: 1, firstAt: now });
         return false;
       }
