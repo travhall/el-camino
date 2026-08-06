@@ -2,7 +2,7 @@
 
 A modern e-commerce platform built with Astro and Square integration, featuring dynamic product catalogs, cart management, and seamless checkout experiences.
 
-![Astro](https://img.shields.io/badge/Astro-7.1.3-orange?logo=astro&logoColor=white)
+![Astro](https://img.shields.io/badge/Astro-7.2.0-orange?logo=astro&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0.3-blue?logo=typescript&logoColor=white)
 ![Square](https://img.shields.io/badge/Square-44.1.0-success?logo=square&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3.0-blue?logo=tailwind-css&logoColor=white)
@@ -77,6 +77,13 @@ pnpm dev
 
 # Run type checking
 pnpm check
+
+# Lint (ESLint)
+pnpm lint
+
+# Format / check formatting (Prettier)
+pnpm format
+pnpm format:check
 
 # Build for production
 pnpm build
@@ -363,7 +370,7 @@ pnpm preview-local
 - **Publish Directory**: `dist`
 - **Node Version**: 20.x
 - **Package Manager**: pnpm 10.33.0
-- **Adapter**: @astrojs/netlify v8.1.2 with SSR
+- **Adapter**: @astrojs/netlify v8.2.0 with SSR
 - **Image CDN**: Enabled with AVIF/WebP conversion
 - **Caching**: Netlify Blobs for distributed state management
 
@@ -404,7 +411,7 @@ Recent comprehensive performance optimization strategy implementation:
 
 - **Build Time**: ~3 seconds
 - **TypeScript Compilation**: 0 compiler errors (does not mean zero `any`/`unknown` usage)
-- **Codebase Size**: ~48,894 lines of code across 169 files
+- **Codebase Size**: ~64,515 lines of code across 282 files
 - **Test Coverage**: 80% threshold with Vitest
 - **API Response Times**: Optimized with Netlify Blobs caching
 - **Bundle Size**: Optimized with code splitting and lazy loading
@@ -452,7 +459,7 @@ Recent comprehensive performance optimization strategy implementation:
 
 ### Core Framework
 
-- **Astro 7.1.3** - Modern web framework with SSR
+- **Astro 7.2.0** - Modern web framework with SSR
 - **TypeScript 6.0.3** - Type safety and developer experience
 - **Tailwind CSS 4.3.0** - Utility-first CSS framework v4
 
@@ -467,7 +474,7 @@ Recent comprehensive performance optimization strategy implementation:
 
 ### Performance & Optimization
 
-- **@astrojs/netlify 8.1.2** - Deployment adapter with SSR
+- **@astrojs/netlify 8.2.0** - Deployment adapter with SSR
 - **@astrojs/sitemap** - SEO sitemap generation with dynamic product/category/news pages
 - **astro-icon** - Optimized icon system
 - **sharp** - Image processing and optimization
@@ -477,7 +484,10 @@ Recent comprehensive performance optimization strategy implementation:
 - **@astrojs/node** - Local development adapter (preview mode)
 - **Vitest** - Unit testing framework with 80% coverage threshold
 - **Playwright** - E2E testing across browsers
-- **Husky** - Pre-commit hooks (`pnpm check && pnpm test:run`)
+- **ESLint** - Linting (`pnpm lint`)
+- **Prettier** - Code formatting (`pnpm format` / `pnpm format:check`)
+- **Husky** - Pre-commit hooks (runs `pnpm check` and `pnpm lint` on staged
+  files, then `pnpm test:run`)
 - **pnpm 10.33.0** - Fast, disk space efficient package manager
 
 ## 📈 Roadmap
