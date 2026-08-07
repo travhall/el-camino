@@ -115,6 +115,7 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
   var _srData = JSON.parse(document.getElementById('speculation-rules-data').textContent);
   var speculationRules = _srData.speculationRules;
   var currentPath = _srData.currentPath;
+  var _nonce = document.currentScript && document.currentScript.nonce;
 
   (function () {
     // Prevent duplicate insertion
@@ -128,6 +129,7 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
 
     // Insert base speculation rules
     const speculationScript = document.createElement("script");
+    speculationScript.nonce = _nonce;
     speculationScript.type = "speculationrules";
     speculationScript.setAttribute("data-astro-speculation", "true");
     speculationScript.textContent = JSON.stringify(speculationRules);
@@ -142,11 +144,14 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
     if (supportsSpeculationRules) {
       // console.log("[Speculation Rules] ✅ Smart prefetching enabled");
 
-      // 🎯 PROGRESSIVE PREFETCHING FOR CATEGORY PAGES
-      // Only on category/shop pages where products are loaded progressively
-      if (currentPath.startsWith("/category/") || currentPath === "/shop/all") {
-        initializeProgressivePrefetch();
-      }
+      // NOTE: Per-URL progressive prefetching (scroll-triggered dynamic
+      // script[type=speculationrules] creation) was removed here. Chromium
+      // does not honor CSP nonce/'inline-speculation-rules' authorization
+      // for speculationrules scripts inserted outside the initiating
+      // script's synchronous execution (confirmed via live testing), so
+      // any script created later via setTimeout/scroll handlers is always
+      // blocked regardless of a correct nonce. The base speculation rules
+      // above (inserted synchronously) are unaffected and still work.
 
       // Track effectiveness
       if ("PerformanceObserver" in window) {
@@ -167,75 +172,6 @@ const speculationRules = generateOptimizedRules(currentPath, eager);
     } else {
       // console.log("[Speculation Rules] Not supported, using fallback prefetch");
       initializeFallbackPrefetch();
-    }
-
-    // 🎯 Progressive Prefetching System
-    function initializeProgressivePrefetch() {
-      let prefetchedUrls = new Set();
-      let scrollTimeout;
-
-      // console.log("[Progressive Prefetch] 📊 Initializing for category page");
-
-      // Debounced prefetch on scroll to prevent thrashing
-      function scheduleProgressivePrefetch() {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-          prefetchVisibleProducts();
-        }, 150); // Debounce scroll events
-      }
-
-      // Prefetch products that are currently visible or about to be
-      function prefetchVisibleProducts() {
-        const productCards = document.querySelectorAll(
-          '.product-card:not([style*="display: none"])'
-        );
-        const viewportHeight = window.innerHeight;
-
-        productCards.forEach((card) => {
-          const link = card.querySelector('a[href^="/product/"]');
-          if (!link || prefetchedUrls.has(link.href)) return;
-
-          const rect = card.getBoundingClientRect();
-          // Prefetch if visible or within 1 viewport height below
-          if (rect.top < viewportHeight * 2) {
-            addToPrefetchList(link.href);
-          }
-        });
-      }
-
-      // Add URL to dynamic prefetch list
-      function addToPrefetchList(url) {
-        if (prefetchedUrls.has(url)) return;
-
-        prefetchedUrls.add(url);
-
-        // Use Speculation Rules API dynamically
-        const dynamicScript = document.createElement("script");
-        dynamicScript.type = "speculationrules";
-        dynamicScript.setAttribute("data-dynamic-prefetch", "true");
-        dynamicScript.textContent = JSON.stringify({
-          prefetch: [
-            {
-              source: "list",
-              urls: [url],
-              eagerness: "moderate",
-            },
-          ],
-        });
-
-        document.head.appendChild(dynamicScript);
-        // console.log(`[Progressive Prefetch] 🔥 Added: ${url}`);
-      }
-
-      // Initial prefetch of visible products
-      setTimeout(() => {
-        prefetchVisibleProducts();
-      }, 500);
-
-      // Continue prefetching as user scrolls
-      window.addEventListener("scroll", scheduleProgressivePrefetch, {
-        passive: true,
-      });
     }
 
     // Fallback prefetch for browsers without Speculation Rules support

@@ -104,6 +104,14 @@ export default defineConfig({
       sourcemap: process.env.NODE_ENV !== "production",
       minify: true,
       cssMinify: true,
+      // 0 disables Vite's "inline small chunks as base64/inline" optimization.
+      // Astro's script-hoisting plugin uses this same limit to decide whether
+      // a self-contained <script> chunk gets inlined into the page HTML
+      // instead of hoisted to an external file (see
+      // astro/dist/core/build/plugins/plugin-scripts.js -> shouldInlineAsset).
+      // Inlined scripts have no nonce and get blocked by our nonce-based CSP
+      // (src/middleware.ts), so this must stay 0.
+      assetsInlineLimit: 0,
       rollupOptions: {
         output: {
           // REMOVED manualChunks: Let Vite optimally split chunks
