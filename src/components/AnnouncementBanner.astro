@@ -35,6 +35,8 @@ const dismissedCookie = Astro.cookies.get(COOKIE_NAME)?.value;
 const showBanner = !!text && dismissedCookie !== dismissKey;
 const linkUrl = banner.linkUrl ?? "";
 const isExternal = linkUrl.startsWith("https://");
+
+const nonce = Astro.locals.nonce;
 ---
 
 {showBanner && (
@@ -78,7 +80,7 @@ const isExternal = linkUrl.startsWith("https://");
   </div>
 )}
 
-<script>
+<script is:inline nonce={nonce}>
   function setupBanner() {
     const banner = document.getElementById("announcement-banner");
     if (!banner) return;
