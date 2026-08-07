@@ -57,7 +57,19 @@ const getContainerClasses = () => {
     }
   }
   // Original masonry layout for home page
-  return "article-grid grid justify-center md:grid-cols-6 3xl:grid-cols-8 md:auto-rows-auto md:auto-rows-[12vw] lg:auto-rows-[10vw] xl:auto-rows-[9vw] 3xl:auto-rows-[9.5vw] w-full gap-1 p-1 pb-0";
+  // grid-cols-1 (mobile base): without an explicit column track, the single
+  // implicit column defaults to content-based (fit-content) sizing instead of
+  // stretching to the container. That column width is shared by every
+  // col-span-full card, so it's intrinsically sized by whichever card's
+  // content has the largest max-content contribution — before the featured
+  // (LCP) image finishes decoding, that's small; once the image's real
+  // natural width becomes available, the column snaps to full width,
+  // shifting every card sharing it (CLS 0.407). grid-cols-1 uses `1fr`,
+  // which always takes 100% of available space regardless of content,
+  // eliminating the race. Confirmed via trace: shift fires ~7ms after the
+  // featured image's network responseEnd, ~590ms after fonts are already
+  // ready (ruling out font-swap). See plans/123-fix-homepage-masonry-cls.md.
+  return "article-grid grid grid-cols-1 justify-center md:grid-cols-6 3xl:grid-cols-8 md:auto-rows-auto md:auto-rows-[12vw] lg:auto-rows-[10vw] xl:auto-rows-[9vw] 3xl:auto-rows-[9.5vw] w-full gap-1 p-1 pb-0";
 };
 
 // Get skeleton variant for loading states
