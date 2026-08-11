@@ -48,7 +48,7 @@ const BTN_CLASS =
     saved === "override" && (
       <div
         role="status"
-        class="status-banner mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-800"
+        class="status-banner mb-4 px-4 py-3 bg-(--status-success-bg) border border-(--status-success-border) rounded-sm text-sm text-(--status-success-text)"
       >
         Override saved.
       </div>
@@ -58,7 +58,7 @@ const BTN_CLASS =
     saved === "holiday" && (
       <div
         role="status"
-        class="status-banner mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-800"
+        class="status-banner mb-4 px-4 py-3 bg-(--status-success-bg) border border-(--status-success-border) rounded-sm text-sm text-(--status-success-text)"
       >
         Holiday added.
       </div>
@@ -68,7 +68,7 @@ const BTN_CLASS =
     removed === "holiday" && (
       <div
         role="status"
-        class="status-banner mb-4 px-4 py-3 bg-slate-50 border border-slate-200 rounded-sm text-sm text-slate-700"
+        class="status-banner mb-4 px-4 py-3 bg-(--status-neutral-bg) border border-(--status-neutral-border) rounded-sm text-sm text-(--status-neutral-text)"
       >
         Holiday removed.
       </div>
@@ -78,7 +78,7 @@ const BTN_CLASS =
     error === "missing-label" && (
       <div
         role="alert"
-        class="status-banner mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700"
+        class="status-banner mb-4 px-4 py-3 bg-(--status-danger-bg) border border-(--status-danger-border) rounded-sm text-sm text-(--status-danger-text)"
       >
         Please enter a holiday name.
       </div>
@@ -88,7 +88,7 @@ const BTN_CLASS =
     error === "invalid-date" && (
       <div
         role="alert"
-        class="status-banner mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700"
+        class="status-banner mb-4 px-4 py-3 bg-(--status-danger-bg) border border-(--status-danger-border) rounded-sm text-sm text-(--status-danger-text)"
       >
         Please enter a valid date.
       </div>
@@ -139,7 +139,7 @@ const BTN_CLASS =
 
     <!-- ── Status Override ───────────────────────────────────────────────────── -->
     <div
-      class="border border-(--border-primary) border-l-4 border-l-violet-500 rounded-sm overflow-hidden"
+      class="border border-(--border-primary) border-l-4 border-l-(--status-highlight-strong) rounded-sm overflow-hidden"
     >
       <!-- Header -->
       <div
@@ -157,7 +157,7 @@ const BTN_CLASS =
       <div class="px-4 py-5">
         {
           overrideExpired && (
-            <div class="mb-5 px-3 py-2 bg-amber-50 border border-amber-200 rounded-sm text-sm text-amber-800">
+            <div class="mb-5 px-3 py-2 bg-(--status-warning-bg) border border-(--status-warning-border) rounded-sm text-sm text-(--status-warning-text)">
               Previous override expired — currently following schedule.
             </div>
           )
@@ -212,7 +212,7 @@ const BTN_CLASS =
                   checked={formMode === "open"}
                 />
                 <span
-                  class="block py-2.5 px-3 text-sm font-medium text-green-700 peer-checked:bg-green-600 peer-checked:text-white peer-checked:font-semibold transition-colors"
+                  class="block py-2.5 px-3 text-sm font-medium text-(--status-success-strong) peer-checked:bg-(--color-state-success-surface) peer-checked:text-(--color-state-success-text) peer-checked:font-semibold transition-colors"
                 >
                   Force Open
                 </span>
@@ -231,7 +231,7 @@ const BTN_CLASS =
                   checked={formMode === "closed"}
                 />
                 <span
-                  class="block py-2.5 px-3 text-sm font-medium text-red-700 peer-checked:bg-red-600 peer-checked:text-white peer-checked:font-semibold transition-colors"
+                  class="block py-2.5 px-3 text-sm font-medium text-(--status-danger-strong) peer-checked:bg-(--color-state-error-surface) peer-checked:text-(--color-state-error-text) peer-checked:font-semibold transition-colors"
                 >
                   Force Closed
                 </span>
@@ -268,7 +268,7 @@ const BTN_CLASS =
 
     <!-- ── Holiday Closures ──────────────────────────────────────────────────── -->
     <div
-      class="border border-(--border-primary) border-l-4 border-l-amber-500 rounded-sm overflow-hidden"
+      class="border border-(--border-primary) border-l-4 border-l-(--status-warning-strong) rounded-sm overflow-hidden"
     >
       <!-- Header -->
       <div
@@ -279,7 +279,7 @@ const BTN_CLASS =
         </p>
         {
           config.holidays.length > 0 && (
-            <span class="shrink-0 inline-flex items-center text-sm font-semibold text-amber-800 bg-amber-100 border border-amber-200 rounded-full px-3 py-0.5">
+            <span class="shrink-0 inline-flex items-center text-sm font-semibold text-(--status-warning-text) bg-(--status-warning-bg) border border-(--status-warning-border) rounded-full px-3 py-0.5">
               {config.holidays.length}{" "}
               {config.holidays.length === 1 ? "holiday" : "holidays"}
             </span>
@@ -322,8 +322,8 @@ const BTN_CLASS =
               class:list={[
                 "shrink-0 text-xs font-medium px-2 py-0.5 rounded-full border",
                 h.recurring
-                  ? "text-violet-700 bg-violet-50 border-violet-200"
-                  : "text-sky-700 bg-sky-50 border-sky-200",
+                  ? "text-(--status-highlight-text) bg-(--status-highlight-bg) border-(--status-highlight-border)"
+                  : "text-(--status-info-text) bg-(--status-info-bg) border-(--status-info-border)",
               ]}
             >
               {h.recurring ? "Annual" : "One-time"}
@@ -333,7 +333,7 @@ const BTN_CLASS =
               <input type="hidden" name="id" value={h.id} />
               <button
                 type="submit"
-                class="font-sans font-medium transition-all ease-in-out duration-200 border border-dashed rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-slate-400 border-slate-300 hover:text-red-600 hover:border-red-300 hover:bg-red-50 focus-visible:ring-red-300 text-xs py-1 px-2.5 whitespace-nowrap"
+                class="font-sans font-medium transition-all ease-in-out duration-200 border border-dashed rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--content-meta) border-(--border-primary) hover:text-(--status-danger-strong) hover:border-(--status-danger-border) hover:bg-(--status-danger-bg) focus-visible:ring-(--status-danger-border) text-xs py-1 px-2.5 whitespace-nowrap"
                 aria-label={`Remove ${h.label}`}
               >
                 Remove
