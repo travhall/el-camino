@@ -3,6 +3,8 @@
 // Admin UI for editing the regular weekly business hours schedule.
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
+import AccentCard from "@/components/admin/AccentCard.astro";
+import AccentCardHeader from "@/components/admin/AccentCardHeader.astro";
 import { getShopHoursRaw, DAYS_OF_WEEK, formatTime } from "@/lib/shopHours";
 
 const saved = Astro.url.searchParams.has("saved");
@@ -27,14 +29,11 @@ const BTN_CLASS =
     </div>
   )}
 
-  <div class="border border-(--border-primary) border-l-4 border-l-(--status-highlight-strong) rounded-sm overflow-hidden">
-    <!-- Header -->
-    <div class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)">
-      <p class="text-base font-semibold text-(--content-heading)">Weekly Schedule</p>
-      <p class="text-sm text-(--content-meta)">
-        Changes take effect immediately — no rebuild required.
-      </p>
-    </div>
+  <AccentCard tone="highlight">
+    <AccentCardHeader
+      title="Weekly Schedule"
+      subtitle="Changes take effect immediately — no rebuild required."
+    />
 
     <!-- Form -->
     <form method="POST" action="/api/admin/hours" class="divide-y divide-(--border-primary)">
@@ -107,7 +106,7 @@ const BTN_CLASS =
         <button type="submit" class={BTN_CLASS}>Save Hours</button>
       </div>
     </form>
-  </div>
+  </AccentCard>
 </AdminLayout>
 
 <script>

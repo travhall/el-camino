@@ -3,6 +3,8 @@
 // Admin UI for managing social media links.
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
+import AccentCard from "@/components/admin/AccentCard.astro";
+import AccentCardHeader from "@/components/admin/AccentCardHeader.astro";
 import { getSocialLinks, KNOWN_PLATFORMS } from "@/lib/socialLinks";
 
 const saved = Astro.url.searchParams.has("saved");
@@ -38,11 +40,8 @@ const REMOVE_CLASS =
   )}
 
   <!-- Current links -->
-  <div class="border border-(--border-primary) border-l-4 border-l-(--status-highlight-strong) rounded-sm overflow-hidden mb-6">
-    <div class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)">
-      <p class="text-base font-semibold text-(--content-heading)">Active Profiles</p>
-      <p class="text-sm text-(--content-meta)">Edit a URL or remove a profile.</p>
-    </div>
+  <AccentCard tone="highlight" class="mb-6">
+    <AccentCardHeader title="Active Profiles" subtitle="Edit a URL or remove a profile." />
 
     {links.length === 0 ? (
       <p class="px-4 py-6 text-sm text-(--content-meta)">No social links configured yet.</p>
@@ -82,13 +81,11 @@ const REMOVE_CLASS =
         ))}
       </div>
     )}
-  </div>
+  </AccentCard>
 
   <!-- Add new link -->
-  <div class="border border-(--border-primary) border-l-4 border-l-(--status-highlight-strong) rounded-sm overflow-hidden">
-    <div class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)">
-      <p class="text-base font-semibold text-(--content-heading)">Add a Profile</p>
-    </div>
+  <AccentCard tone="highlight">
+    <AccentCardHeader title="Add a Profile" />
 
     <form method="POST" action="/api/admin/social" class="flex flex-wrap items-end gap-4 px-4 py-4">
       <input type="hidden" name="action" value="add" />
@@ -131,7 +128,7 @@ const REMOVE_CLASS =
 
       <button type="submit" class={BTN_CLASS}>Add Profile</button>
     </form>
-  </div>
+  </AccentCard>
 </AdminLayout>
 
 <script>

@@ -3,6 +3,8 @@
 // Admin UI for the site-wide announcement banner.
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
+import AccentCard from "@/components/admin/AccentCard.astro";
+import AccentCardHeader from "@/components/admin/AccentCardHeader.astro";
 import { getAnnouncementBanner } from "@/lib/announcementBanner";
 
 const saved = Astro.url.searchParams.has("saved");
@@ -24,16 +26,11 @@ const BTN_CLASS =
     </div>
   )}
 
-  <form
-    method="POST"
-    action="/api/admin/banner"
-    class="border border-(--border-primary) border-l-4 border-l-(--status-highlight-strong) rounded-sm overflow-hidden"
-  >
-    <!-- Header -->
-    <div class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)">
-      <p class="text-base font-semibold text-(--content-heading)">Banner Settings</p>
-      <p class="text-sm text-(--content-meta)">Displayed above the navigation on every page while active.</p>
-    </div>
+  <AccentCard as="form" tone="highlight" method="POST" action="/api/admin/banner">
+    <AccentCardHeader
+      title="Banner Settings"
+      subtitle="Displayed above the navigation on every page while active."
+    />
 
     <div class="divide-y divide-(--border-primary)">
       <!-- Active toggle -->
@@ -109,7 +106,7 @@ const BTN_CLASS =
       </p>
       <button type="submit" class={BTN_CLASS}>Save Banner</button>
     </div>
-  </form>
+  </AccentCard>
 
   <!-- Preview -->
   {banner.text && (
