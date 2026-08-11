@@ -1,0 +1,20 @@
+---
+// src/components/admin/AccentCardHeader.astro
+// Title/subtitle header bar for the AccentCard panel pattern (settings
+// forms, override panels). The default slot renders between the title and
+// subtitle for cases that need a badge or extra inline element there.
+interface Props {
+  title: string;
+  subtitle?: string;
+}
+
+const { title, subtitle } = Astro.props;
+---
+
+<div
+  class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)"
+>
+  <p class="text-base font-semibold text-(--content-heading)">{title}</p>
+  <slot />
+  {subtitle && <p class="text-sm text-(--content-meta)">{subtitle}</p>}
+</div>

@@ -3,6 +3,8 @@
 // Admin UI for managing the shop open-status badge override.
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
+import AccentCard from "@/components/admin/AccentCard.astro";
+import AccentCardHeader from "@/components/admin/AccentCardHeader.astro";
 import {
   getShopStatusConfig,
   resolveShopStatus,
@@ -138,20 +140,11 @@ const BTN_CLASS =
     </div>
 
     <!-- ── Status Override ───────────────────────────────────────────────────── -->
-    <div
-      class="border border-(--border-primary) border-l-4 border-l-(--status-highlight-strong) rounded-sm overflow-hidden"
-    >
-      <!-- Header -->
-      <div
-        class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)"
-      >
-        <p class="text-base font-semibold text-(--content-heading)">
-          Status Override
-        </p>
-        <p class="text-sm text-(--content-meta)">
-          Overrides the regular schedule for all customers.
-        </p>
-      </div>
+    <AccentCard tone="highlight">
+      <AccentCardHeader
+        title="Status Override"
+        subtitle="Overrides the regular schedule for all customers."
+      />
 
       <!-- Body -->
       <div class="px-4 py-5">
@@ -264,19 +257,14 @@ const BTN_CLASS =
           <button type="submit" class={BTN_CLASS}>Save Override</button>
         </form>
       </div>
-    </div>
+    </AccentCard>
 
     <!-- ── Holiday Closures ──────────────────────────────────────────────────── -->
-    <div
-      class="border border-(--border-primary) border-l-4 border-l-(--status-warning-strong) rounded-sm overflow-hidden"
-    >
-      <!-- Header -->
-      <div
-        class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)"
+    <AccentCard tone="warning">
+      <AccentCardHeader
+        title="Holiday Closures"
+        subtitle="Automatically shows Closed on these dates regardless of schedule."
       >
-        <p class="text-base font-semibold text-(--content-heading)">
-          Holiday Closures
-        </p>
         {
           config.holidays.length > 0 && (
             <span class="shrink-0 inline-flex items-center text-sm font-semibold text-(--status-warning-text) bg-(--status-warning-bg) border border-(--status-warning-border) rounded-full px-3 py-0.5">
@@ -285,10 +273,7 @@ const BTN_CLASS =
             </span>
           )
         }
-        <p class="text-sm text-(--content-meta)">
-          Automatically shows Closed on these dates regardless of schedule.
-        </p>
-      </div>
+      </AccentCardHeader>
 
       <!-- Holiday list -->
       {
@@ -452,7 +437,7 @@ const BTN_CLASS =
           <button type="submit" class={BTN_CLASS}>Add Holiday</button>
         </form>
       </div>
-    </div>
+    </AccentCard>
   </div>
 </AdminLayout>
 

@@ -1,5 +1,6 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
+import AccentCard from "@/components/admin/AccentCard.astro";
 import { getAllProductSummaries } from "@/lib/backInStock";
 
 const params = Astro.url.searchParams;
@@ -61,8 +62,9 @@ try {
       </p>
 
       {summaries.map((product) => (
-        <div
-          class="bis-card border border-(--border-primary) border-l-4 border-l-(--status-warning-strong) rounded-sm overflow-hidden"
+        <AccentCard
+          tone="warning"
+          class="bis-card"
           data-product-id={product.productId}
         >
           <!-- Header -->
@@ -113,7 +115,7 @@ try {
               Discontinue
             </button>
           </div>
-        </div>
+        </AccentCard>
       ))}
     </div>
   )}

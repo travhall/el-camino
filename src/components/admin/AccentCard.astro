@@ -1,0 +1,47 @@
+---
+// src/components/admin/AccentCard.astro
+// Shared outer treatment for admin status/callout cards: a neutral border,
+// rounded corners, and a tone-colored top accent rule. Replaces the ad hoc
+// `border-l-4 border-l-{color}` pattern that was copy-pasted across admin
+// pages.
+import type { HTMLAttributes } from "astro/types";
+
+export type AccentTone =
+  | "info"
+  | "success"
+  | "warning"
+  | "danger"
+  | "highlight"
+  | "neutral";
+
+type DivProps = HTMLAttributes<"div"> & { as?: "div" };
+type AnchorProps = HTMLAttributes<"a"> & { as: "a" };
+type FormProps = HTMLAttributes<"form"> & { as: "form" };
+
+type Props = (DivProps | AnchorProps | FormProps) & {
+  tone: AccentTone;
+};
+
+const { as = "div", tone, class: className, ...rest } = Astro.props;
+const Element = as;
+
+const TONE_BORDER: Record<AccentTone, string> = {
+  info: "border-t-(--status-info-strong)",
+  success: "border-t-(--status-success-strong)",
+  warning: "border-t-(--status-warning-strong)",
+  danger: "border-t-(--status-danger-strong)",
+  highlight: "border-t-(--status-highlight-strong)",
+  neutral: "border-t-(--status-neutral-strong)",
+};
+---
+
+<Element
+  class:list={[
+    "border border-(--border-primary) border-t-4 rounded-sm overflow-hidden",
+    TONE_BORDER[tone],
+    className,
+  ]}
+  {...rest}
+>
+  <slot />
+</Element>

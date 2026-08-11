@@ -3,6 +3,8 @@
 // Admin UI for editing shop contact information.
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
+import AccentCard from "@/components/admin/AccentCard.astro";
+import AccentCardHeader from "@/components/admin/AccentCardHeader.astro";
 import { getContactInfo } from "@/lib/contactInfo";
 
 const saved = Astro.url.searchParams.has("saved");
@@ -29,20 +31,8 @@ const BTN_CLASS =
     )
   }
 
-  <form
-    method="POST"
-    action="/api/admin/contact"
-    class="border border-(--border-primary) border-l-4 border-l-(--status-highlight-strong) rounded-sm overflow-hidden"
-  >
-    <!-- Header -->
-    <div
-      class="flex flex-wrap items-center gap-3 px-4 py-3 bg-(--surface-secondary) border-b border-(--border-primary)"
-    >
-      <p class="text-base font-semibold text-(--content-heading)">
-        Shop Details
-      </p>
-      <p class="text-sm text-(--content-meta)">Displayed in the site footer.</p>
-    </div>
+  <AccentCard as="form" tone="highlight" method="POST" action="/api/admin/contact">
+    <AccentCardHeader title="Shop Details" subtitle="Displayed in the site footer." />
 
     <!-- Fields -->
     <div class="divide-y divide-(--border-primary)">
@@ -172,7 +162,7 @@ const BTN_CLASS =
     >
       <button type="submit" class={BTN_CLASS}>Save Contact Info</button>
     </div>
-  </form>
+  </AccentCard>
 </AdminLayout>
 
 <script>

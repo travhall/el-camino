@@ -1,5 +1,6 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
+import AccentCard from "@/components/admin/AccentCard.astro";
 import OrdersSubNav from "@/components/admin/OrdersSubNav.astro";
 import { squareClient } from "@/lib/square/client";
 import { filterDismissed } from "@/lib/admin/dismissedOrders";
@@ -159,7 +160,9 @@ const count = orders.length;
       <!-- Orders list -->
       <div id="orders-list" class="space-y-2">
         {orders.map((order) => (
-          <div class="order-row border border-(--border-primary) border-l-4 border-l-(--status-success-strong) rounded-sm overflow-hidden"
+          <AccentCard
+               tone="success"
+               class="order-row"
                data-customer={order.customerName.toLowerCase()}
                data-order-id={order.shortId.toLowerCase()}
                data-items={order.items.map(i => i.name).join(" ").toLowerCase()}
@@ -229,7 +232,7 @@ const count = orders.length;
                 Send Reminder
               </button>
             </div>
-          </div>
+          </AccentCard>
         ))}
       </div>
 
