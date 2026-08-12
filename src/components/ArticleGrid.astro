@@ -30,7 +30,7 @@ const displayPosts = showSidebar ? posts.slice(0, 6) : posts;
 const skeletonCount = showSidebar ? 6 : 12;
 
 // Determine card variant based on layout mode
-const getCardVariant = (_index: number) => {
+const getCardVariant = () => {
   if (filterable) {
     return view; // "grid" or "list"
   }
@@ -128,13 +128,13 @@ const currentPath = Astro.url.pathname;
                 class="article-card-wrapper opacity-0 w-full max-w-full"
                 role="article"
                 data-initial-index={index}
-                data-variant={getCardVariant(index)}
+                data-variant={getCardVariant()}
               >
                 <ArticleCard
                   post={post}
                   featured={false}
                   priority={shouldPrioritize(index)}
-                  variant={getCardVariant(index)}
+                  variant={getCardVariant()}
                 />
               </div>
             );
@@ -145,9 +145,9 @@ const currentPath = Astro.url.pathname;
                 post={post}
                 featured={index === 0}
                 priority={shouldPrioritize(index)}
-                variant={getCardVariant(index)}
+                variant={getCardVariant()}
                 data-initial-index={index}
-                data-variant={getCardVariant(index)}
+                data-variant={getCardVariant()}
                 style={`--animation-order: ${index};`}
               />
             );
