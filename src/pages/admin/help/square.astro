@@ -1,0 +1,78 @@
+---
+// src/pages/admin/help/square.astro
+// In-app reference: managing products in Square as it affects the site.
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AccentCard from "@/components/admin/AccentCard.astro";
+import AccentCardHeader from "@/components/admin/AccentCardHeader.astro";
+
+const CODE =
+  "bg-(--surface-tertiary) text-(--content-heading) px-1.5 py-0.5 rounded font-mono text-xs";
+---
+
+<AdminLayout
+  title="Managing Products in Square"
+  description="Custom attributes, SKU codes, and categories."
+>
+  <p class="text-(--content-body) mb-6 max-w-2xl">
+    Square is where products actually live — the site reads from it directly,
+    live, on every page load. Nothing about the website needs editing when a
+    product changes; it just needs to be right in Square.
+  </p>
+
+  <div class="space-y-4">
+    <AccentCard tone="neutral">
+      <AccentCardHeader title="The basics" subtitle="Square Dashboard → Items" />
+      <ul class="px-4 py-4 space-y-1.5 text-sm text-(--content-body) list-disc list-inside">
+        <li><strong class="text-(--content-heading)">Name, description, price</strong> — standard Square item fields</li>
+        <li><strong class="text-(--content-heading)">Images</strong> — first image becomes the primary photo everywhere on the site</li>
+        <li><strong class="text-(--content-heading)">Variations</strong> (size, color) — each gets its own price and inventory count</li>
+        <li><strong class="text-(--content-heading)">Inventory tracking</strong> — turn on per-variation so stock and out-of-stock states show correctly</li>
+      </ul>
+    </AccentCard>
+
+    <AccentCard tone="highlight">
+      <AccentCardHeader title="Custom attributes" subtitle="Names must match exactly" />
+      <div class="px-4 py-4">
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-(--border-primary)">
+            <tr>
+              <td class="py-2 pr-3 whitespace-nowrap"><strong class="text-(--content-heading)">Brand</strong><br /><span class="text-xs text-(--content-meta) font-mono">item-level, text</span></td>
+              <td class="py-2 text-(--content-body)">Powers the Brand filter and SKU codes. Leave blank and the site guesses from the title instead.</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-3 whitespace-nowrap"><strong class="text-(--content-heading)">isGiftCard</strong><br /><span class="text-xs text-(--content-meta) font-mono">item-level</span></td>
+              <td class="py-2 text-(--content-body)">Set true for physical gift cards — always-in-stock, no inventory tracking needed.</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-3 whitespace-nowrap"><strong class="text-(--content-heading)">Sale Price</strong><br /><span class="text-xs text-(--content-meta) font-mono">variation-level, number</span></td>
+              <td class="py-2 text-(--content-body)">Below regular price shows a sale badge. Must be less than regular price or it's silently ignored.</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-3 whitespace-nowrap"><strong class="text-(--content-heading)">Sale End Date</strong><br /><span class="text-xs text-(--content-meta) font-mono">variation-level, optional</span></td>
+              <td class="py-2 text-(--content-body)">Informational only — doesn't auto-expire the sale. Still remove Sale Price manually when it ends.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="mt-3 text-sm text-(--content-meta)"><strong class="text-(--content-heading)">To remove a sale</strong>, delete the Sale Price attribute entirely rather than raising it back up.</p>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="success">
+      <AccentCardHeader title="How the SKU code is generated" subtitle="Automatic — nothing to set" />
+      <div class="px-4 py-4 space-y-2 text-sm text-(--content-body)">
+        <p>Built automatically from the <strong class="text-(--content-heading)">Brand</strong> attribute and the first few words of the product title:</p>
+        <div class="bg-(--surface-tertiary) rounded-sm p-3 font-mono text-xs">
+          Brand: Spitfire + Title: "Spitfire Classic Socks" → <span class={CODE}>SPITFIRE-CLASSIC-SOCKS</span>
+        </div>
+        <p>Keep titles clean and put the brand name first (or set the Brand attribute) for a clean, obvious code. No way to override it directly — the fix is always a clearer title.</p>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="neutral">
+      <AccentCardHeader title="Categories" subtitle="Square Dashboard → Items → Categories" />
+      <div class="px-4 py-4 text-sm text-(--content-body)">
+        <p>The site's category and shop pages mirror Square's category structure directly, including subcategories. Uncategorized products still show in SKU Reference but won't appear on any category page.</p>
+      </div>
+    </AccentCard>
+  </div>
+</AdminLayout>

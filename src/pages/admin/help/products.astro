@@ -1,0 +1,136 @@
+---
+// src/pages/admin/help/products.astro
+// In-app reference: featuring live products in a WordPress article via
+// SKU Reference / the Showcase Builder.
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AccentCard from "@/components/admin/AccentCard.astro";
+import AccentCardHeader from "@/components/admin/AccentCardHeader.astro";
+
+const CODE =
+  "bg-(--surface-tertiary) text-(--content-heading) px-1.5 py-0.5 rounded font-mono text-sm";
+---
+
+<AdminLayout
+  title="Featuring Products"
+  description="How to pull live products into a WordPress article."
+>
+  <p class="text-(--content-body) mb-6 max-w-2xl">
+    How to pull real, live products from the shop into a News or Shop-News
+    post — with current prices and stock, no copy-pasting product details by
+    hand.
+  </p>
+
+  <div class="space-y-4">
+    <AccentCard tone="highlight">
+      <AccentCardHeader title="1. Open SKU Reference" />
+      <div class="px-4 py-4 space-y-2 text-sm text-(--content-body)">
+        <p>
+          Go to <strong class="text-(--content-heading)"
+            >Content &rarr; SKU Reference</strong
+          > in the left nav. This page lists every product currently in the
+          shop — generated fresh from live inventory, so anything shown is
+          really in stock and priced correctly.
+        </p>
+        <p class="text-(--content-meta)">
+          It's read-only — you can't edit a product from here. To change a
+          price or description, that happens in Square.
+        </p>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="highlight">
+      <AccentCardHeader title="2. Find your products" />
+      <div class="px-4 py-4 space-y-2 text-sm text-(--content-body)">
+        <p>
+          Search by name/brand/SKU, filter by Category/Brand/Price Range, and
+          sort — all combinable. Every row shows the product's
+          <strong class="text-(--content-heading)">SKU code</strong>, e.g.
+          <code class={CODE}>SPITFIRE-CLASSIC-SOCKS</code>. You don't type it
+          — the next step handles that.
+        </p>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="highlight">
+      <AccentCardHeader title="3. Build the showcase" />
+      <div class="px-4 py-4 space-y-2 text-sm text-(--content-body)">
+        <p>
+          Check the box on each product to feature, then click <strong
+            class="text-(--content-heading)">Build Showcase</strong
+          > (top right, shows a running count). A panel slides in — fill in
+          Title, optional Description, and Layout (Grid, Carousel, or List).
+          Grid also lets you choose 2–4 columns.
+        </p>
+        <p>
+          Click <strong class="text-(--content-heading)"
+            >Generate WordPress Code</strong
+          >, then <strong class="text-(--content-heading)">Copy</strong>.
+        </p>
+        <p class="text-(--content-meta)">
+          Not sure what the code looks like? Click <strong>Examples</strong> next
+          to Build Showcase for three ready-made snippets you can copy and edit
+          by hand.
+        </p>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="highlight">
+      <AccentCardHeader title="4. Paste into WordPress" />
+      <div class="px-4 py-4 space-y-3 text-sm text-(--content-body)">
+        <p>
+          Add a block → search <strong class="text-(--content-heading)"
+            >"Custom HTML"</strong
+          > → paste the copied code → preview. Products render as live cards
+          pulling current price/stock every page load — you never edit this
+          block again for that.
+        </p>
+        <pre
+          class="bg-(--surface-tertiary) rounded-sm p-3 text-xs font-mono overflow-x-auto text-(--content-body)"><code>&lt;div class="wp-block-product-showcase"&gt;
+&lt;!-- data-product-skus="SPITFIRE-CLASSIC-SOCKS,THRASHER-THORNS-HOODY-MEDIUM-BLACK" --&gt;
+&lt;!-- data-title="Staff Picks" --&gt;
+&lt;!-- data-layout="grid" --&gt;
+&lt;!-- data-columns="2" --&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="neutral">
+      <AccentCardHeader title="Quick reference" subtitle="Attributes" />
+      <div class="px-4 py-4">
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-(--border-primary)">
+            <tr>
+              <td class="py-2 pr-3 font-mono text-xs text-(--content-heading) whitespace-nowrap">data-product-skus</td>
+              <td class="py-2 text-(--content-body)">Required. Comma-separated SKU codes, no spaces.</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-3 font-mono text-xs text-(--content-heading) whitespace-nowrap">data-title</td>
+              <td class="py-2 text-(--content-body)">Optional heading above the products.</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-3 font-mono text-xs text-(--content-heading) whitespace-nowrap">data-description</td>
+              <td class="py-2 text-(--content-body)">Optional line under the title.</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-3 font-mono text-xs text-(--content-heading) whitespace-nowrap">data-layout</td>
+              <td class="py-2 text-(--content-body)">grid (default), carousel, or list.</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-3 font-mono text-xs text-(--content-heading) whitespace-nowrap">data-columns</td>
+              <td class="py-2 text-(--content-body)">1–6. Grid layout only.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="warning">
+      <AccentCardHeader title="Troubleshooting" />
+      <ul class="px-4 py-4 space-y-2 text-sm text-(--content-body) list-disc list-inside">
+        <li><strong class="text-(--content-heading)">Product missing?</strong> Check SKU spelling exactly (case-sensitive), no stray spaces around commas, or it may have been discontinued in Square.</li>
+        <li><strong class="text-(--content-heading)">Block shows nothing?</strong> Make sure it's a Custom HTML block, not Paragraph/Text, and both div tags are present.</li>
+        <li><strong class="text-(--content-heading)">Price/stock wrong?</strong> This pulls live from Square — check the product there first.</li>
+      </ul>
+    </AccentCard>
+  </div>
+</AdminLayout>

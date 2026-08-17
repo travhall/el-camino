@@ -1,0 +1,67 @@
+---
+// src/pages/admin/help/orders.astro
+// In-app reference: fulfilling shipping and pickup orders.
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AccentCard from "@/components/admin/AccentCard.astro";
+import AccentCardHeader from "@/components/admin/AccentCardHeader.astro";
+---
+
+<AdminLayout
+  title="Fulfilling Orders"
+  description="Reference for the Orders section: shipping, pick ups, and archive."
+>
+  <p class="text-(--content-body) mb-6 max-w-2xl">
+    The Orders section is a live queue straight from Square — every action
+    here updates the real order and can email the customer. There's nothing
+    to "save," it just works as you go.
+  </p>
+
+  <div class="space-y-4">
+    <AccentCard tone="info">
+      <AccentCardHeader title="Orders → Shipping" />
+      <div class="px-4 py-4 space-y-2 text-sm text-(--content-body)">
+        <p>Lists every order waiting to ship, oldest first, with customer, address, items, total, and delivery instructions.</p>
+        <ul class="list-disc list-inside space-y-1">
+          <li>Enter the <strong class="text-(--content-heading)">tracking number</strong> (optional, recommended — the customer's confirmation email includes it)</li>
+          <li>Pick the <strong class="text-(--content-heading)">carrier</strong> — or paste tracking first: USPS/UPS/FedEx numbers auto-fill it</li>
+          <li>Click <strong class="text-(--content-heading)">Mark as Shipped</strong></li>
+        </ul>
+        <p>Square marks the order fulfilled and the customer gets a shipping confirmation email automatically. Click any email or order # to copy it.</p>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="info">
+      <AccentCardHeader title="Orders → Pick Ups" />
+      <div class="px-4 py-4 space-y-2 text-sm text-(--content-body)">
+        <p>Same layout, for in-store pickup. Shows "Ready by" if the customer picked a time.</p>
+        <ul class="list-disc list-inside space-y-1">
+          <li><strong class="text-(--content-heading)">Mark as Picked Up</strong> — removes it from the list</li>
+          <li><strong class="text-(--content-heading)">Send Reminder</strong> — emails the customer it's ready; doesn't remove it from the list, and you can send it more than once</li>
+        </ul>
+        <p class="text-(--content-meta)">Send Reminder happens instantly, no reload — briefly shows Sending…, then Sent!, or Failed with the reason.</p>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="neutral">
+      <AccentCardHeader title="Orders → Archive" />
+      <div class="px-4 py-4 text-sm text-(--content-body)">
+        <p>Read-only history of the last 50 completed orders, shipped and picked up together, labeled. Filter by type, search, or sort by date and total.</p>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="warning">
+      <AccentCardHeader title="If something goes wrong" />
+      <div class="px-4 py-4">
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-(--border-primary)">
+            <tr><td class="py-2 pr-3 font-semibold text-(--content-heading) whitespace-nowrap">Square rejected</td><td class="py-2 text-(--content-body)">Order state changed since page load. Refresh and retry.</td></tr>
+            <tr><td class="py-2 pr-3 font-semibold text-(--content-heading) whitespace-nowrap">Email failed</td><td class="py-2 text-(--content-body)">Square updated, order is really shipped/picked-up, but the email didn't send — worth a manual follow-up, check Resend's logs.</td></tr>
+            <tr><td class="py-2 pr-3 font-semibold text-(--content-heading) whitespace-nowrap">No email</td><td class="py-2 text-(--content-body)">No email on file in Square for this order — check Square directly.</td></tr>
+            <tr><td class="py-2 pr-3 font-semibold text-(--content-heading) whitespace-nowrap">Couldn't load</td><td class="py-2 text-(--content-body)">Refresh; if it keeps happening, call Travis.</td></tr>
+          </tbody>
+        </table>
+        <p class="mt-3 text-sm text-(--content-meta)"><strong class="text-(--content-heading)">When in doubt, check Square directly</strong> — it's always the source of truth.</p>
+      </div>
+    </AccentCard>
+  </div>
+</AdminLayout>

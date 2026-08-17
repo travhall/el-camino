@@ -1,0 +1,57 @@
+---
+// src/pages/admin/help/notifications.astro
+// In-app reference: back-in-stock emails, the open/closed override, and the
+// site-wide banner.
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AccentCard from "@/components/admin/AccentCard.astro";
+import AccentCardHeader from "@/components/admin/AccentCardHeader.astro";
+---
+
+<AdminLayout
+  title="Site Notifications"
+  description="Reference for Back in Stock, Shop Status, and the Banner."
+>
+  <p class="text-(--content-body) mb-6 max-w-2xl">
+    Three tools that talk to customers directly: emailing back-in-stock
+    subscribers, overriding the open/closed badge, and the site-wide
+    announcement banner.
+  </p>
+
+  <div class="space-y-4">
+    <AccentCard tone="success">
+      <AccentCardHeader title="Notifications → Back in Stock" />
+      <div class="px-4 py-4 space-y-2 text-sm text-(--content-body)">
+        <p>Every product a customer has asked to be notified about — grouped together, with a running list of who's waiting.</p>
+        <ul class="list-disc list-inside space-y-1">
+          <li><strong class="text-(--content-heading)">Send Notifications</strong> — emails everyone on that product's list that it's back, then clears the list. Use once you've actually restocked in Square.</li>
+          <li><strong class="text-(--content-heading)">Discontinue</strong> — clears the list <em>without</em> emailing anyone. Use if the product is never coming back.</li>
+        </ul>
+        <p class="text-(--content-meta)">Discontinue has a 6-second Undo toast — after it closes, the subscriber list is gone for good. Click any subscriber's email to copy it.</p>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="highlight">
+      <AccentCardHeader title="Notifications → Shop Status" />
+      <div class="px-4 py-4 space-y-2 text-sm text-(--content-body)">
+        <p>Controls the open/closed badge customers see site-wide. By default it follows your regular posted hours automatically — this page is only for <em>overriding</em> that.</p>
+        <p><strong class="text-(--content-heading)">Status Override:</strong> Follow Schedule, Force Open, or Force Closed, plus an optional date it reverts automatically. Leave blank to keep indefinitely.</p>
+        <p class="text-(--content-meta)">This affects the whole site immediately for every visitor — there's no preview-before-publish step.</p>
+        <p><strong class="text-(--content-heading)">Holiday Closures:</strong> separate from the override — automatically shows Closed on set dates. Specific date for a one-time closure, or Recurring annually as <code class="bg-(--surface-tertiary) px-1.5 py-0.5 rounded font-mono text-xs">MM-DD</code> (e.g. <code class="bg-(--surface-tertiary) px-1.5 py-0.5 rounded font-mono text-xs">12-25</code>).</p>
+      </div>
+    </AccentCard>
+
+    <AccentCard tone="neutral">
+      <AccentCardHeader title="Notifications → Banner" />
+      <div class="px-4 py-4">
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-(--border-primary)">
+            <tr><td class="py-2 pr-3 font-semibold text-(--content-heading) whitespace-nowrap">Active</td><td class="py-2 text-(--content-body)">On/off switch — keeps saved text when off.</td></tr>
+            <tr><td class="py-2 pr-3 font-semibold text-(--content-heading) whitespace-nowrap">Message</td><td class="py-2 text-(--content-body)">Up to 200 characters, plain text only.</td></tr>
+            <tr><td class="py-2 pr-3 font-semibold text-(--content-heading) whitespace-nowrap">Link URL</td><td class="py-2 text-(--content-body)">Optional — makes the whole banner clickable.</td></tr>
+            <tr><td class="py-2 pr-3 font-semibold text-(--content-heading) whitespace-nowrap">Expires on</td><td class="py-2 text-(--content-body)">Optional — banner auto-hides on this date.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </AccentCard>
+  </div>
+</AdminLayout>
