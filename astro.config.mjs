@@ -49,10 +49,6 @@ export default defineConfig({
     enabled: false,
   },
 
-  experimental: {
-    clientPrerender: true, // Enable Speculation Rules API support (already enabled)
-  },
-
   image: {
     service: { 
       entrypoint: "astro/assets/services/sharp",
