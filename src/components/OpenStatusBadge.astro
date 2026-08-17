@@ -161,11 +161,9 @@ const { class: className = "" } = Astro.props;
     });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", updateOpenStatusBadges);
-  } else {
-    updateOpenStatusBadges();
-  }
-
+  // This event fires on both the initial page load and every subsequent
+  // client-side navigation (this site uses Astro's ClientRouter — see
+  // BaseHead.astro), so a single listener here covers both cases without
+  // a redundant immediate/pre-ready call.
   document.addEventListener("astro:page-load", updateOpenStatusBadges);
 </script>
