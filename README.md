@@ -53,20 +53,52 @@ cd el-camino
 
 # Install dependencies
 pnpm install
-
-# Configure environment
-cp .env.example .env
 ```
 
 ### Environment Setup
 
-Create `.env` file with Square credentials:
+There is no `.env.example` — create a `.env` file yourself with the variables
+below. `PUBLIC_*` vars are exposed to the client; the rest are server-only.
+
+Required:
 
 ```env
+# Square
 SQUARE_ACCESS_TOKEN=your_square_access_token
-PUBLIC_SQUARE_APP_ID=your_square_app_id
 PUBLIC_SQUARE_LOCATION_ID=your_square_location_id
 SQUARE_WEBHOOK_SIGNATURE_KEY=your_webhook_signature_key
+
+# Email (Resend)
+RESEND_API_KEY=your_resend_api_key
+EMAIL_FROM=noreply@yourdomain.com
+TYLER_EMAIL=owner-notifications@yourdomain.com
+
+# Admin (/admin/*)
+ADMIN_PASSWORD=your_admin_password
+ADMIN_SECRET=a_long_random_string_for_hmac_signing
+```
+
+Optional — feature-specific:
+
+```env
+PUBLIC_SQUARE_ENVIRONMENT=sandbox        # or "production"; affects Square env indicator
+PUBLIC_WORDPRESS_API_URL=                # defaults to https://api.elcaminoskateshop.com/wp-json/wp/v2
+CRUX_API_KEY=                            # Core Web Vitals dashboard (Chrome UX Report API)
+WARMUP_SECRET=                           # auth header for the /api/warmup cron endpoint
+ASTRO_NODE_ENV=                          # set to "development" to bypass Blobs cache locally
+```
+
+Optional — Square retry/circuit-breaker tuning (sane defaults if unset):
+
+```env
+SQUARE_MAX_RETRIES=3
+SQUARE_BASE_DELAY=500
+SQUARE_MAX_DELAY=5000
+SQUARE_JITTER_RANGE=0.1
+SQUARE_TIMEOUT_MS=10000
+SQUARE_CIRCUIT_THRESHOLD=5
+SQUARE_RECOVERY_TIMEOUT=30000
+SQUARE_MONITOR_WINDOW=60000
 ```
 
 ### Development
