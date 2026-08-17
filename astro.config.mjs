@@ -39,10 +39,13 @@ export default defineConfig({
         binaryMediaTypes: ["image/*", "font/*", "application/pdf"],
       }),
 
-  // ENHANCED: Prefetch configuration for navigation performance
+  // Prefetch on hover/focus intent rather than viewport visibility — the
+  // site's nav links are always in the viewport on initial load, so
+  // "viewport" strategy was firing full-page SSR prefetches immediately on
+  // page open, competing with critical-path resources for bandwidth.
   prefetch: {
     prefetchAll: false, // Selective prefetching for performance
-    defaultStrategy: "viewport", // Prefetch when visible in viewport - better for mobile
+    defaultStrategy: "hover",
   },
 
   devToolbar: {
