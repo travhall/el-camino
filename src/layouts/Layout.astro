@@ -27,10 +27,6 @@ const isDesktop = deviceInfo.isDesktop;
 // of cascading serially through each child component.
 const siteCtx = await getSiteContext(Astro.locals);
 const orgSchema = siteCtx.structured;
-
-// Get current path for context-aware prefetching
-const currentPath = Astro.url.pathname;
-const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
 ---
 
 <!doctype html>
@@ -39,8 +35,6 @@ const isHighTrafficPage = ["/", "/the-shop", "/news"].includes(currentPath);
     title={title}
     structuredData={structuredData}
     orgSchema={orgSchema}
-    currentPath={currentPath}
-    isHighTrafficPage={isHighTrafficPage}
   />
   <slot name="head" />
 
