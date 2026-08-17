@@ -2,7 +2,6 @@
 // src/components/BaseHead.astro
 import { ClientRouter } from "astro:transitions";
 import { siteConfig } from "@/lib/site-config";
-import SpeculationRules from "@/components/SpeculationRules.astro";
 import "@/styles/global.css";
 
 interface Props {
@@ -11,12 +10,9 @@ interface Props {
     structuredData?: object;
     /** Org-level schema from getStructuredData() — caller's responsibility */
     orgSchema: object;
-    currentPath: string;
-    isHighTrafficPage: boolean;
 }
 
-const { title, structuredData, orgSchema, currentPath, isHighTrafficPage } =
-    Astro.props;
+const { title, structuredData, orgSchema } = Astro.props;
 
 const nonce = Astro.locals.nonce;
 
@@ -147,9 +143,6 @@ const seoData = {
 <meta name="author" content={siteConfig.name} />
 <meta name="copyright" content="ISC" />
 <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
-
-<!-- Speculation Rules for Advanced Prefetching -->
-<SpeculationRules currentPath={currentPath} eager={isHighTrafficPage} />
 
 <script
     is:inline
