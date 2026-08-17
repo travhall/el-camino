@@ -18,9 +18,13 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
   considering a change done
 - `pnpm test:run` — unit tests (vitest)
 - `pnpm test:coverage` — unit tests with coverage; thresholds are enforced
-  repo-wide in `vitest.config.ts` (80% global, higher per-file minimums for
-  `src/lib/cart/index.ts`, `src/lib/square/apiRetry.ts`,
-  `src/lib/square/inventory.ts`)
+  repo-wide in `vitest.config.ts` (50%/45%/55%/50% statements/branches/
+  functions/lines global — baselined just under real coverage as of
+  2026-08-16 after fixing a schema bug that had silently disabled the
+  originally-intended 80% gate; ratchet up as coverage improves, don't
+  restore 80% without first getting real coverage there), higher per-file
+  minimums for `src/lib/cart/index.ts`, `src/lib/square/apiRetry.ts`,
+  `src/lib/square/inventory.ts`
 - `pnpm test:e2e` — Playwright e2e tests (separate from vitest)
 - `pnpm build` — production build (`astro check && astro build`)
 - `pnpm lint` — ESLint (flat config in `eslint.config.mjs`, covers
