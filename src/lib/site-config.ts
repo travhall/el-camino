@@ -1,9 +1,5 @@
 // src/lib/site-config.ts
-export interface SocialLink {
-  platform: string;
-  url: string;
-  icon: string;
-}
+import type { SocialLink } from "@/lib/socialLinks";
 
 export interface BusinessHours {
   day: string;
@@ -91,11 +87,6 @@ export const siteConfig: SiteConfig = {
     defaultImage: "/default-og-image.jpg",
   },
 };
-
-// Utility functions
-export function getSEODefaults() {
-  return siteConfig.seo;
-}
 
 export const apiConfig = {
   wordpress: {

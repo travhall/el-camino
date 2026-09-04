@@ -16,7 +16,6 @@ export enum ErrorType {
 
   // Authentication Errors
   AUTH_ERROR = "auth_error",
-  PERMISSION_ERROR = "permission_error",
 
   // Client Errors
   NETWORK_ERROR = "network_error",
