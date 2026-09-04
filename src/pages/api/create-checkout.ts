@@ -8,179 +8,21 @@ import {
   getAuthoritativePricing,
   type AuthoritativePrice,
 } from '@/lib/square/pricing';
-import {
-  calculateShippingRate,
-  getPickupLocation,
-} from '@/lib/config/shipping';
+import { calculateShippingRate } from '@/lib/config/shipping';
 import { siteConfig } from '@/lib/site-config';
 import { inventoryCache } from '@/lib/cache/blobCache';
-import {
-  SquareError,
-  type Fulfillment,
-  type OrderLineItem,
-} from 'square-legacy';
+import { SquareError, type Fulfillment } from 'square-legacy';
 import { storePendingOrder } from '@/lib/email/pendingOrders';
-import { getShopHoursRaw } from '@/lib/shopHours';
-import type { ShopHoursEntry } from '@/lib/shopHours';
 import { createRateLimiter, clientIp } from '@/lib/rateLimit';
+import {
+  buildShippingFulfillment,
+  buildPickupFulfillment,
+} from '@/lib/checkout/fulfillmentBuilders';
+import { buildLineItems } from '@/lib/checkout/lineItems';
+import type { ShippingAddress, PickupContact } from '@/lib/checkout/types';
 
 // 10 checkout attempts per 5 min per IP — generous for real users, blocks scripts
 const checkoutLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
-
-// Store timezone for business hours calculations
-const STORE_TIMEZONE = 'America/Chicago';
-
-/**
- * Return open/close hours (as 0–23 integers) for a JS day-of-week (0=Sun…6=Sat)
- * from the live admin-managed hours, or null if the store is closed that day.
- * DAYS_OF_WEEK in shopHours is Mon(0)…Sun(6), so we convert with (jsDay + 6) % 7.
- */
-function storeHoursForDay(
-  jsDay: number,
-  hoursData: ShopHoursEntry[]
-): { open: number; close: number } | null {
-  const idx = (jsDay + 6) % 7;
-  const entry = hoursData[idx];
-  if (!entry?.isOpen || !entry.open || !entry.close) return null;
-  const [oh, om] = entry.open.split(':').map(Number);
-  const [ch, cm] = entry.close.split(':').map(Number);
-  // Convert to fractional hours for simple comparison
-  return { open: oh + om / 60, close: ch + cm / 60 };
-}
-
-/**
- * Return the day-of-week and hour-of-day for a UTC Date in the store timezone.
- */
-export function storeTimeOf(date: Date): { jsDay: number; hour: number } {
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: STORE_TIMEZONE,
-    weekday: 'short',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: false,
-  });
-  const parts = fmt.formatToParts(date);
-  const wd = parts.find((p) => p.type === 'weekday')?.value ?? 'Sun';
-  const hr = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10);
-  const mn = parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0', 10);
-  const dayMap: Record<string, number> = {
-    Sun: 0,
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
-  };
-  // Fractional hour (e.g. 6:30 PM -> 18.5) to match storeHoursForDay's format
-  return { jsDay: dayMap[wd] ?? 0, hour: hr + mn / 60 };
-}
-
-/**
- * Round a Date up to the next 15-minute boundary.
- * e.g. 2:07 PM → 2:15 PM, 2:00 PM → 2:00 PM (already on boundary)
- */
-function roundUpTo15(date: Date): Date {
-  const ms = date.getTime();
-  const interval = 15 * 60 * 1000;
-  const remainder = ms % interval;
-  return remainder === 0 ? new Date(ms) : new Date(ms + (interval - remainder));
-}
-
-/**
- * Return the earliest time that is:
- *   (a) at least 2 hours from `from`, rounded up to the next 15-minute mark, AND
- *   (b) during store business hours (from the live admin-managed schedule).
- *
- * When ordering during store hours, the window starts from the order time.
- * When ordering after close (or before open), the 2-hour window starts from
- * the next time the store opens — so open+2h rather than open.
- */
-export async function nextPickupTime(from: Date): Promise<Date> {
-  const hoursData = await getShopHoursRaw();
-  const initialCandidate = roundUpTo15(
-    new Date(from.getTime() + 2 * 60 * 60 * 1000)
-  );
-
-  // Fast path: order+2h already falls within business hours
-  const { jsDay: iDay, hour: iHour } = storeTimeOf(initialCandidate);
-  const iHours = storeHoursForDay(iDay, hoursData);
-  if (iHours && iHour >= iHours.open && iHour < iHours.close) {
-    return initialCandidate;
-  }
-
-  // After-hours path: find the next time the store opens, then give a full
-  // 2-hour window from that open time (e.g. opens 11 AM → ready at 1 PM).
-  let candidate = initialCandidate;
-  for (let i = 0; i < 7 * 24 * 4; i++) {
-    const { jsDay, hour } = storeTimeOf(candidate);
-    const hours = storeHoursForDay(jsDay, hoursData);
-    if (hours && hour >= hours.open && hour < hours.close) {
-      const pickupCandidate = roundUpTo15(
-        new Date(candidate.getTime() + 2 * 60 * 60 * 1000)
-      );
-      // The +2h window can itself cross closing time on a short operating
-      // day (or past midnight) — only return it if it's still within hours.
-      const { jsDay: pickupDay, hour: pickupHour } =
-        storeTimeOf(pickupCandidate);
-      const pickupHours = storeHoursForDay(pickupDay, hoursData);
-      if (
-        pickupHours &&
-        pickupHour >= pickupHours.open &&
-        pickupHour < pickupHours.close
-      ) {
-        return pickupCandidate;
-      }
-      // Pickup window would exceed close — keep searching for the next slot.
-    }
-    candidate = new Date(candidate.getTime() + 15 * 60 * 1000);
-  }
-
-  return candidate; // fallback — should never reach here
-}
-
-/**
- * Normalize a phone number to E.164 format required by Square API.
- * Handles US formats: (555) 555-5555, 555-555-5555, 5555555555, +15555555555
- */
-function normalizePhoneE164(phone: string): string {
-  const cleaned = phone.trim();
-
-  // Already in E.164 — strip any internal non-digit chars after the +
-  if (cleaned.startsWith('+')) {
-    return '+' + cleaned.slice(1).replace(/\D/g, '');
-  }
-
-  const digits = cleaned.replace(/\D/g, '');
-
-  // US 10-digit number
-  if (digits.length === 10) return `+1${digits}`;
-
-  // US 11-digit number starting with country code 1
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-
-  // Fallback: prefix with + and hope for the best
-  return `+${digits}`;
-}
-
-interface ShippingAddress {
-  name: string;
-  email: string;
-  phone: string;
-  street1: string;
-  street2?: string;
-  city: string;
-  state: string;
-  zip: string;
-  instructions?: string;
-}
-
-interface PickupContact {
-  name: string;
-  email: string;
-  phone: string;
-  notes?: string;
-}
 
 export const POST: APIRoute = async ({ request }) => {
   if (checkoutLimiter.check(clientIp(request))) {
@@ -326,101 +168,20 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Build line items array
-    const lineItems = validItems.map((item) => {
-      const lineItem: OrderLineItem = {
-        quantity: String(item.quantity),
-        catalogObjectId: item.variationId,
-        itemType: 'ITEM' as const,
-      };
-
-      // Apply a sale price ONLY when the Square catalog confirms an active sale
-      // for this variation. Without an override Square charges the catalog's
-      // regular price, so a missing or failed price lookup safely falls back to
-      // full price rather than an attacker-supplied discount.
-      const salePrice = pricing[item.variationId]?.salePrice;
-      if (salePrice) {
-        lineItem.basePriceMoney = {
-          amount: BigInt(Math.round(salePrice * 100)), // Convert to cents
-          currency: 'USD',
-        };
-      }
-
-      return lineItem;
-    });
-
-    // Add shipping as a custom line item if shipping is selected
-    if (fulfillmentMethod === 'shipping' && shippingRate > 0) {
-      lineItems.push({
-        quantity: '1',
-        itemType: 'ITEM' as const,
-        name: 'Shipping',
-        basePriceMoney: {
-          amount: BigInt(Math.round(shippingRate * 100)), // Convert to cents
-          currency: 'USD',
-        },
-      });
-    }
+    const lineItems = buildLineItems(
+      validItems,
+      pricing,
+      shippingRate,
+      fulfillmentMethod
+    );
 
     // Build fulfillment details
     let fulfillments: Fulfillment[] = [];
 
     if (fulfillmentMethod === 'shipping' && shippingAddress) {
-      // Calculate expected ship date (2 business days from now)
-      const shipDate = new Date();
-      shipDate.setDate(shipDate.getDate() + 2);
-
-      // Build shipment note — stores delivery instructions so the admin page can surface them
-      const shipmentNote = shippingAddress.instructions?.trim()
-        ? `Delivery Instructions: ${shippingAddress.instructions.trim()}`
-        : undefined;
-
-      fulfillments.push({
-        type: 'SHIPMENT',
-        state: 'PROPOSED',
-        shipmentDetails: {
-          recipient: {
-            displayName: shippingAddress.name,
-            emailAddress: shippingAddress.email,
-            phoneNumber: normalizePhoneE164(shippingAddress.phone),
-            address: {
-              addressLine1: shippingAddress.street1,
-              addressLine2: shippingAddress.street2 || undefined,
-              locality: shippingAddress.city,
-              administrativeDistrictLevel1: shippingAddress.state,
-              postalCode: shippingAddress.zip,
-              country: 'US',
-            },
-          },
-          expectedShippedAt: shipDate.toISOString(),
-          shippingNote: shipmentNote,
-        },
-      });
+      fulfillments.push(buildShippingFulfillment(shippingAddress));
     } else if (fulfillmentMethod === 'pickup' && pickupContact) {
-      // Fetch live pickup location and calculate ready time concurrently
-      const [pickupLocation, pickupTime] = await Promise.all([
-        getPickupLocation(),
-        nextPickupTime(new Date()),
-      ]);
-
-      // Build pickup note with location details and customer instructions
-      let pickupNote = `Pick up at ${pickupLocation.name}. ${pickupLocation.instructions}`;
-      if (pickupContact.notes?.trim()) {
-        pickupNote += `\n\nCustomer Notes: ${pickupContact.notes.trim()}`;
-      }
-
-      fulfillments.push({
-        type: 'PICKUP',
-        state: 'PROPOSED',
-        pickupDetails: {
-          recipient: {
-            displayName: pickupContact.name,
-            emailAddress: pickupContact.email,
-            phoneNumber: normalizePhoneE164(pickupContact.phone),
-          },
-          pickupAt: pickupTime.toISOString(),
-          note: pickupNote,
-        },
-      });
+      fulfillments.push(await buildPickupFulfillment(pickupContact));
     }
 
     // ── Create payment link ───────────────────────────────────────────────────
