@@ -1,10 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { AstroCookies } from 'astro';
 import {
   ADMIN_COOKIE_NAME,
   issueSessionToken,
   verifySessionToken,
   assertSameOrigin,
   isAuthenticated,
+  isAdminAuthenticated,
+  parseAdminFormData,
+  unauthorizedResponse,
 } from '../auth';
 
 // happy-dom's `Request` constructor silently drops forbidden header names
@@ -141,5 +145,63 @@ describe('isAuthenticated', () => {
 describe('ADMIN_COOKIE_NAME', () => {
   it('is the expected constant', () => {
     expect(ADMIN_COOKIE_NAME).toBe('admin_session');
+  });
+});
+
+describe('isAdminAuthenticated', () => {
+  beforeEach(() => {
+    vi.stubEnv('ADMIN_SECRET', 'test-secret');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('reads the session cookie and delegates to isAuthenticated', () => {
+    const token = issueSessionToken('test-secret');
+    const request = makeRequest({ method: 'GET' });
+    const cookies = {
+      get: (name: string) =>
+        name === ADMIN_COOKIE_NAME ? { value: token } : undefined,
+    } as unknown as AstroCookies;
+    expect(isAdminAuthenticated(request, cookies)).toBe(true);
+  });
+
+  it('returns false when the session cookie is absent', () => {
+    const request = makeRequest({ method: 'GET' });
+    const cookies = { get: () => undefined } as unknown as AstroCookies;
+    expect(isAdminAuthenticated(request, cookies)).toBe(false);
+  });
+});
+
+describe('parseAdminFormData', () => {
+  it('returns the parsed FormData on success', async () => {
+    const formData = new FormData();
+    formData.set('foo', 'bar');
+    const request = new Request('https://example.com/admin', {
+      method: 'POST',
+      body: formData,
+    });
+    const result = await parseAdminFormData(request);
+    expect(result?.get('foo')).toBe('bar');
+  });
+
+  it('returns null when the body cannot be parsed as FormData', async () => {
+    const request = {
+      formData: async () => {
+        throw new Error('bad body');
+      },
+    } as unknown as Request;
+    expect(await parseAdminFormData(request)).toBeNull();
+  });
+});
+
+describe('unauthorizedResponse', () => {
+  it('returns a 401 JSON response with an Unauthorized error', async () => {
+    const res = unauthorizedResponse();
+    expect(res.status).toBe(401);
+    expect(res.headers.get('Content-Type')).toBe('application/json');
+    const body = await res.json();
+    expect(body).toEqual({ error: 'Unauthorized' });
   });
 });

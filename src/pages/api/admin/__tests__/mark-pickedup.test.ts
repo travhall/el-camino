@@ -77,6 +77,24 @@ describe('POST /api/admin/mark-pickedup', () => {
     expect(res.headers.get('Location')).toContain('error=fetch');
   });
 
+  it('redirects with a fetch error when Square returns no order', async () => {
+    vi.mocked(squareClient.orders.get).mockResolvedValue({
+      order: null,
+    } as unknown as GetOrderResult);
+    const res = await POST(makeContext({ orderId: 'order-1' }));
+    expect(res.status).toBe(302);
+    expect(res.headers.get('Location')).toContain('error=fetch');
+  });
+
+  it('redirects with a fetch error when no active PICKUP fulfillment exists', async () => {
+    vi.mocked(squareClient.orders.get).mockResolvedValue(
+      orderWithFulfillment('COMPLETED') as unknown as GetOrderResult
+    );
+    const res = await POST(makeContext({ orderId: 'order-1' }));
+    expect(res.status).toBe(302);
+    expect(res.headers.get('Location')).toContain('error=fetch');
+  });
+
   it('walks PROPOSED -> RESERVED -> PREPARED -> COMPLETED and redirects with completed=1', async () => {
     vi.mocked(squareClient.orders.get).mockResolvedValue(
       orderWithFulfillment('PROPOSED') as unknown as GetOrderResult

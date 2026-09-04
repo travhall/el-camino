@@ -63,6 +63,11 @@ describe('POST /api/admin/restore-back-in-stock', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 when subscriptions is not an array', async () => {
+    const res = await POST(makeContext({ subscriptions: 'bad' }));
+    expect(res.status).toBe(400);
+  });
+
   it('returns 400 when body is not valid JSON', async () => {
     const request = new Request(URL_BASE, {
       method: 'POST',
