@@ -1,5 +1,5 @@
 // src/lib/square/apiRetry.ts - Enhanced API retry logic with exponential backoff and circuit breaker
-import { logger } from "@/lib/logger";
+import { logger } from '@/lib/logger';
 
 /**
  * Configuration for API retry behavior
@@ -16,9 +16,9 @@ export interface RetryConfig {
  * Circuit breaker states
  */
 export enum CircuitState {
-  CLOSED = 'CLOSED',     // Normal operation
-  OPEN = 'OPEN',         // Failing fast
-  HALF_OPEN = 'HALF_OPEN' // Testing recovery
+  CLOSED = 'CLOSED', // Normal operation
+  OPEN = 'OPEN', // Failing fast
+  HALF_OPEN = 'HALF_OPEN', // Testing recovery
 }
 
 /**
@@ -41,17 +41,17 @@ export class ApiRetryClient {
   private successCount = 0;
 
   private defaultRetryConfig: RetryConfig = {
-    maxRetries: parseInt(import.meta.env.SQUARE_MAX_RETRIES || '3'),
-    baseDelay: parseInt(import.meta.env.SQUARE_BASE_DELAY || '500'),
-    maxDelay: parseInt(import.meta.env.SQUARE_MAX_DELAY || '5000'),
-    jitterRange: parseFloat(import.meta.env.SQUARE_JITTER_RANGE || '0.1'),
-    timeoutMs: parseInt(import.meta.env.SQUARE_TIMEOUT_MS || '10000')
+    maxRetries: 3,
+    baseDelay: 500,
+    maxDelay: 5000,
+    jitterRange: 0.1,
+    timeoutMs: 10000,
   };
 
   private circuitConfig: CircuitBreakerConfig = {
-    failureThreshold: parseInt(import.meta.env.SQUARE_CIRCUIT_THRESHOLD || '5'),
-    recoveryTimeoutMs: parseInt(import.meta.env.SQUARE_RECOVERY_TIMEOUT || '30000'),
-    monitorWindowMs: parseInt(import.meta.env.SQUARE_MONITOR_WINDOW || '60000')
+    failureThreshold: 5,
+    recoveryTimeoutMs: 30000,
+    monitorWindowMs: 60000,
   };
 
   constructor() {}
@@ -88,7 +88,6 @@ export class ApiRetryClient {
         // Success - record for circuit breaker
         this.recordSuccess();
         return result;
-
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
@@ -104,14 +103,19 @@ export class ApiRetryClient {
         const delay = this.calculateDelay(attempt, config);
 
         if (import.meta.env.DEV) {
-          console.warn(`[ApiRetry] ${context} attempt ${attempt + 1} failed, retrying in ${delay}ms:`, lastError.message);
+          console.warn(
+            `[ApiRetry] ${context} attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
+            lastError.message
+          );
         }
 
         await this.sleep(delay);
       }
     }
 
-    throw new Error(`${context} failed after ${config.maxRetries + 1} attempts: ${lastError!.message}`);
+    throw new Error(
+      `${context} failed after ${config.maxRetries + 1} attempts: ${lastError!.message}`
+    );
   }
 
   /**
@@ -126,7 +130,10 @@ export class ApiRetryClient {
 
       case CircuitState.OPEN:
         // Check if recovery timeout has passed
-        if (now - this.lastFailureTime >= this.circuitConfig.recoveryTimeoutMs) {
+        if (
+          now - this.lastFailureTime >=
+          this.circuitConfig.recoveryTimeoutMs
+        ) {
           this.circuitState = CircuitState.HALF_OPEN;
           this.successCount = 0;
           return false;
@@ -182,7 +189,8 @@ export class ApiRetryClient {
     );
 
     // Add jitter to prevent thundering herd
-    const jitter = exponentialDelay * config.jitterRange * (Math.random() - 0.5);
+    const jitter =
+      exponentialDelay * config.jitterRange * (Math.random() - 0.5);
 
     return Math.max(0, exponentialDelay + jitter);
   }
@@ -193,7 +201,10 @@ export class ApiRetryClient {
   private withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
     let timeoutHandle: ReturnType<typeof setTimeout>;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutHandle = setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs);
+      timeoutHandle = setTimeout(
+        () => reject(new Error(`Operation timed out after ${timeoutMs}ms`)),
+        timeoutMs
+      );
     });
     return Promise.race([promise, timeoutPromise]).finally(() => {
       clearTimeout(timeoutHandle);
@@ -204,7 +215,7 @@ export class ApiRetryClient {
    * Simple sleep utility
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -215,7 +226,7 @@ export class ApiRetryClient {
       circuitState: this.circuitState,
       failureCount: this.failureCount,
       successCount: this.successCount,
-      lastFailureTime: this.lastFailureTime
+      lastFailureTime: this.lastFailureTime,
     };
   }
 

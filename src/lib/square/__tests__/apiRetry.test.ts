@@ -27,6 +27,7 @@ describe('ApiRetryClient', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
     client.reset();
   });
 
@@ -89,6 +90,22 @@ describe('ApiRetryClient', () => {
       ]);
 
       expect(mockOperation).toHaveBeenCalledTimes(1); // No retries
+    });
+
+    it('should not log retry attempts when DEV is false', async () => {
+      vi.stubEnv('DEV', false);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      warnSpy.mockClear();
+
+      mockOperation
+        .mockRejectedValueOnce(new Error('Temporary failure'))
+        .mockResolvedValueOnce('success');
+
+      const promise = client.executeWithRetry(mockOperation, 'test-operation');
+      await vi.runAllTimersAsync();
+      await promise;
+
+      expect(warnSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -382,6 +399,60 @@ describe('ApiRetryClient', () => {
 
       const status = client.getStatus();
       expect(status.failureCount).toBeGreaterThan(0);
+    });
+
+    it('should not log circuit open when DEV is false', async () => {
+      vi.stubEnv('DEV', false);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      warnSpy.mockClear();
+      mockOperation.mockRejectedValue(new Error('Service unavailable'));
+
+      for (let i = 0; i < 5; i++) {
+        const promise = client.executeWithRetry(
+          mockOperation,
+          'test-operation',
+          { maxRetries: 0 }
+        );
+        await Promise.all([
+          expect(promise).rejects.toThrow(),
+          vi.runAllTimersAsync(),
+        ]);
+      }
+
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not log circuit recovery when DEV is false', async () => {
+      vi.stubEnv('DEV', false);
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      logSpy.mockClear();
+      mockOperation.mockRejectedValue(new Error('Failure'));
+
+      // Open circuit
+      for (let i = 0; i < 5; i++) {
+        const promise = client.executeWithRetry(
+          mockOperation,
+          'test-operation',
+          { maxRetries: 0 }
+        );
+        await Promise.all([
+          expect(promise).rejects.toThrow(),
+          vi.runAllTimersAsync(),
+        ]);
+      }
+
+      // Move to half-open
+      await vi.advanceTimersByTimeAsync(30000);
+
+      mockOperation.mockClear();
+      mockOperation.mockResolvedValue('success');
+
+      // Make 3 successful requests to close circuit
+      for (let i = 0; i < 3; i++) {
+        await client.executeWithRetry(mockOperation, 'test-operation');
+      }
+
+      expect(logSpy).not.toHaveBeenCalled();
     });
   });
 
