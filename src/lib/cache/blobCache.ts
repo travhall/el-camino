@@ -182,15 +182,6 @@ export class BlobCache<T> {
   }
 
   /**
-   * Check if an entry exists and is not expired
-   * @param key Cache key
-   * @returns True if a valid entry exists
-   */
-  async has(key: string): Promise<boolean> {
-    return (await this.get(key)) !== undefined;
-  }
-
-  /**
    * Delete an entry from the cache
    * @param key Cache key
    */
@@ -256,17 +247,6 @@ export class BlobCache<T> {
   }
 
   /**
-   * Remove expired entries (not needed for Blobs - auto-expires)
-   * Kept for API compatibility with old Cache class
-   * Returns 0 immediately (sync) since Blobs handles expiration automatically
-   */
-  prune(): number {
-    // Blobs handles expiration automatically via TTL metadata
-    // No-op for compatibility - return 0 to indicate no entries pruned
-    return 0;
-  }
-
-  /**
    * Stop the periodic cleanup interval and release resources.
    * Call this when the cache instance is no longer needed.
    */
@@ -276,20 +256,6 @@ export class BlobCache<T> {
       this.cleanupIntervalId = null;
     }
     this.fallbackCache.clear();
-  }
-
-  /**
-   * Get cache statistics (simplified for Blobs)
-   */
-  getStats() {
-    return {
-      name: this.name,
-      ttl: this.ttl,
-      type: 'netlify-blobs',
-      // Blobs doesn't provide size/count metrics easily
-      size: 'N/A',
-      count: 'N/A',
-    };
   }
 
   /**
