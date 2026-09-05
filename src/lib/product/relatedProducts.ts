@@ -1,6 +1,7 @@
 // /src/lib/product/relatedProducts.ts
 
 import type { Product } from '@/lib/square/types';
+import { fetchCategoryHierarchy } from '@/lib/square/categories';
 
 /**
  * Configuration for related products algorithm
@@ -38,6 +39,45 @@ const COMPLEMENTARY_CATEGORIES: Record<string, string[]> = {
 };
 
 /**
+ * Build a flat category-ID → slug map from the category hierarchy,
+ * so real Square category IDs on a product can be resolved to the
+ * human-readable slugs COMPLEMENTARY_CATEGORIES is keyed by.
+ */
+async function buildCategoryIdToSlugMap(): Promise<Record<string, string>> {
+  const hierarchy = await fetchCategoryHierarchy();
+  const idToSlug: Record<string, string> = {};
+
+  for (const { category, subcategories } of hierarchy) {
+    idToSlug[category.id] = category.slug;
+    for (const subcategory of subcategories) {
+      idToSlug[subcategory.id] = subcategory.slug;
+    }
+  }
+
+  return idToSlug;
+}
+
+/**
+ * Resolve a product's category slug from its real category fields
+ * (Square category IDs), preferring its reporting category.
+ */
+function resolveCategorySlug(
+  product: Product,
+  idToSlug: Record<string, string>
+): string | undefined {
+  if (product.reportingCategoryId && idToSlug[product.reportingCategoryId]) {
+    return idToSlug[product.reportingCategoryId];
+  }
+
+  const firstCategoryId = product.categories?.[0];
+  if (firstCategoryId && idToSlug[firstCategoryId]) {
+    return idToSlug[firstCategoryId];
+  }
+
+  return undefined;
+}
+
+/**
  * Score a product based on its relationship to the source product
  * Scoring system:
  * - Same brand + complementary category: 100 points
@@ -49,7 +89,8 @@ const COMPLEMENTARY_CATEGORIES: Record<string, string[]> = {
 function scoreProduct(
   sourceProduct: Product,
   candidateProduct: Product,
-  sourceCategorySlug?: string
+  sourceCategorySlug?: string,
+  candidateCategorySlug?: string
 ): number {
   let score = 0;
 
@@ -57,13 +98,6 @@ function scoreProduct(
     sourceProduct.brand &&
     candidateProduct.brand &&
     sourceProduct.brand.toLowerCase() === candidateProduct.brand.toLowerCase();
-
-  // Extract category slug from URL (e.g., /category/decks/product-slug)
-  const candidateCategoryMatch =
-    candidateProduct.url.match(/\/category\/([^\/]+)/);
-  const candidateCategorySlug = candidateCategoryMatch
-    ? candidateCategoryMatch[1]
-    : undefined;
 
   const sameCategory =
     sourceCategorySlug &&
@@ -105,11 +139,8 @@ export async function getRelatedProducts(
   allProducts: Product[],
   config: RelatedProductsConfig = { maxResults: 6 }
 ): Promise<RelatedProductsResult> {
-  // Extract source category from URL
-  const sourceCategoryMatch = sourceProduct.url.match(/\/category\/([^\/]+)/);
-  const sourceCategorySlug = sourceCategoryMatch
-    ? sourceCategoryMatch[1]
-    : undefined;
+  const idToSlug = await buildCategoryIdToSlugMap();
+  const sourceCategorySlug = resolveCategorySlug(sourceProduct, idToSlug);
 
   // Score and filter products
   const scoredProducts = allProducts
@@ -126,7 +157,12 @@ export async function getRelatedProducts(
     })
     .map((product) => ({
       product,
-      score: scoreProduct(sourceProduct, product, sourceCategorySlug),
+      score: scoreProduct(
+        sourceProduct,
+        product,
+        sourceCategorySlug,
+        resolveCategorySlug(product, idToSlug)
+      ),
     }))
     .filter(({ score }) => score > 0) // Only keep products with a relationship
     .sort((a, b) => b.score - a.score) // Sort by score descending
