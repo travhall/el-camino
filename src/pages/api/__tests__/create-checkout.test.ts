@@ -30,7 +30,8 @@ vi.mock('@/lib/square/client', () => ({
   },
 }));
 
-import { POST, nextPickupTime, storeTimeOf } from '../create-checkout';
+import { POST } from '../create-checkout';
+import { nextPickupTime, storeTimeOf } from '@/lib/checkout/pickupScheduling';
 import { checkBulkInventory } from '@/lib/square/inventory';
 import { getAuthoritativePricing } from '@/lib/square/pricing';
 import { squareClient } from '@/lib/square/client';
