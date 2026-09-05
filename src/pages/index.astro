@@ -4,6 +4,7 @@ import Layout from "@/layouts/Layout.astro";
 import ArticleGrid from "@/components/ArticleGrid.astro";
 import { getNewsPagePosts } from "@/lib/wordpress/api";
 import type { WordPressPost } from "@/lib/wordpress/types";
+import { FEATURED_CARD_IMAGE_SIZES } from "@/lib/image/sizes";
 
 let posts: WordPressPost[] = [];
 let error: string | null = null;
@@ -82,9 +83,7 @@ const lcpImageSet = firstPostData?.featuredMedia?.source_url
     }
   : null;
 
-// Featured card is col-span-4 of grid-cols-6 at md (~67vw), col-span-4 of grid-cols-8 at 2xl (50vw)
-const lcpImageSizes =
-  "(max-width: 640px) 100vw, (max-width: 1535px) 67vw, 50vw";
+const lcpImageSizes = FEATURED_CARD_IMAGE_SIZES;
 ---
 
 <Layout
