@@ -63,7 +63,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     });
 
     return redirect(from);
-  } catch {
+  } catch (error) {
+    console.error('[admin-auth] Login error:', error);
     return redirect(`/admin/login?from=${encodeURIComponent(from)}&error=1`);
   }
 };

@@ -40,8 +40,8 @@ export const POST: APIRoute = async ({ request }) => {
         headers: { 'Content-Type': 'application/json' },
       }
     );
-  } catch {
-    // console.error('Cart inventory API error:', error);
+  } catch (error) {
+    console.error('Cart inventory API error:', error);
 
     return new Response(
       JSON.stringify({
