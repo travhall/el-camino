@@ -38,15 +38,15 @@ export default defineConfig(
         // part of vitest's threshold schema and is silently ignored (treated
         // as an unmatched per-file glob), which let this gate no-op for a long
         // time while actual coverage drifted well below the originally-intended
-        // 80%. Baselined just under real coverage as of 2026-08-16 (54.31%
-        // statements / 46.75% branches / 57.8% functions / 55.14% lines) so the
+        // 80%. Baselined just under real coverage as of 2026-09-04 (59.86%
+        // statements / 50.25% branches / 61.58% functions / 60.94% lines) so the
         // gate is honest and passes today — ratchet these up as coverage improves,
         // don't restore 80% without first getting real coverage there.
         thresholds: {
-          branches: 45,
-          functions: 55,
-          lines: 50,
-          statements: 50,
+          branches: 47,
+          functions: 59,
+          lines: 58,
+          statements: 57,
           // Per-file thresholds for critical modules
           // cart/index.ts: branch ceiling is ~84% — the remaining gap is 2-3
           // branches from `if (import.meta.hot)` HMR guards (always false in
