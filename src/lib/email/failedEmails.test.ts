@@ -82,6 +82,46 @@ describe('failedEmails', () => {
       const [, record] = mockBlobStore.setJSON.mock.calls[0];
       expect(record.error).toBe('plain string error');
     });
+
+    it('defaults emailType to order-confirmation when options is omitted (backward compatibility)', async () => {
+      mockBlobStore.setJSON.mockResolvedValue(undefined);
+
+      const order = { id: 'order-abc', lineItems: [] } as unknown as Order;
+      const contact = {
+        email: 'buyer@example.com',
+        name: 'Buyer',
+        fulfillmentMethod: 'shipping' as const,
+      };
+
+      await storeFailedEmail('order-abc', order, contact, new Error('boom'));
+
+      const [, record] = mockBlobStore.setJSON.mock.calls[0];
+      expect(record.emailType).toBe('order-confirmation');
+      expect(record.trackingNumber).toBeUndefined();
+      expect(record.carrier).toBeUndefined();
+    });
+
+    it('stores emailType, trackingNumber, and carrier when options is provided', async () => {
+      mockBlobStore.setJSON.mockResolvedValue(undefined);
+
+      const order = { id: 'order-ship', lineItems: [] } as unknown as Order;
+      const contact = {
+        email: 'buyer@example.com',
+        name: 'Buyer',
+        fulfillmentMethod: 'shipping' as const,
+      };
+
+      await storeFailedEmail('order-ship', order, contact, new Error('boom'), {
+        emailType: 'shipping-confirmation',
+        trackingNumber: '1Z999',
+        carrier: 'UPS',
+      });
+
+      const [, record] = mockBlobStore.setJSON.mock.calls[0];
+      expect(record.emailType).toBe('shipping-confirmation');
+      expect(record.trackingNumber).toBe('1Z999');
+      expect(record.carrier).toBe('UPS');
+    });
   });
 
   describe('getFailedEmail', () => {

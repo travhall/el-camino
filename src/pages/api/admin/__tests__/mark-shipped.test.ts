@@ -24,10 +24,15 @@ vi.mock('@/lib/email/sender', () => ({
   sendShippingConfirmation: vi.fn(),
 }));
 
+vi.mock('@/lib/email/failedEmails', () => ({
+  storeFailedEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { POST } from '../mark-shipped';
 import { isAdminAuthenticated } from '@/lib/admin/auth';
 import { squareClient } from '@/lib/square/client';
 import { sendShippingConfirmation } from '@/lib/email/sender';
+import { storeFailedEmail } from '@/lib/email/failedEmails';
 
 const URL_BASE = 'https://example.com/api/admin/mark-shipped';
 
@@ -200,8 +205,30 @@ describe('POST /api/admin/mark-shipped', () => {
       new Error('Resend down')
     );
 
-    const res = await POST(makeContext({ orderId: 'order-1' }));
+    const res = await POST(
+      makeContext({
+        orderId: 'order-1',
+        trackingNumber: '1Z999',
+        carrier: 'UPS',
+      })
+    );
     expect(res.status).toBe(302);
     expect(res.headers.get('Location')).toContain('error=email');
+
+    expect(storeFailedEmail).toHaveBeenCalledWith(
+      'order-1',
+      expect.anything(),
+      expect.objectContaining({
+        email: 'customer@example.com',
+        name: 'Test Customer',
+        fulfillmentMethod: 'shipping',
+      }),
+      expect.any(Error),
+      {
+        emailType: 'shipping-confirmation',
+        trackingNumber: '1Z999',
+        carrier: 'UPS',
+      }
+    );
   });
 });

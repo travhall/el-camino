@@ -11,6 +11,9 @@ export interface FailedEmailRecord {
   contact: PendingOrderContact;
   failedAt: string; // ISO timestamp
   error: string;    // error message (no stack traces)
+  emailType?: "order-confirmation" | "shipping-confirmation"; // defaults to "order-confirmation" when absent, for backward compatibility with records stored before this field existed
+  trackingNumber?: string;
+  carrier?: string;
 }
 
 function getFailedEmailsStore() {
@@ -21,7 +24,12 @@ export async function storeFailedEmail(
   orderId: string,
   order: Order,
   contact: PendingOrderContact,
-  error: unknown
+  error: unknown,
+  options?: {
+    emailType?: "order-confirmation" | "shipping-confirmation";
+    trackingNumber?: string;
+    carrier?: string;
+  }
 ): Promise<void> {
   const store = getFailedEmailsStore();
   const record: FailedEmailRecord = {
@@ -30,6 +38,9 @@ export async function storeFailedEmail(
     contact,
     failedAt: new Date().toISOString(),
     error: error instanceof Error ? error.message : String(error),
+    emailType: options?.emailType ?? "order-confirmation",
+    trackingNumber: options?.trackingNumber,
+    carrier: options?.carrier,
   };
   await store.setJSON(orderId, record);
 }

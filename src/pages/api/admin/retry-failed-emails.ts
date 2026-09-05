@@ -7,7 +7,7 @@ import {
   getFailedEmail,
   deleteFailedEmail,
 } from "@/lib/email/failedEmails";
-import { sendOrderConfirmation } from "@/lib/email/sender";
+import { sendOrderConfirmation, sendShippingConfirmation } from "@/lib/email/sender";
 
 // GET: list all failed email delivery records
 export const GET: APIRoute = async ({ request, cookies }) => {
@@ -43,7 +43,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   try {
-    await sendOrderConfirmation({ order: record.order, contact: record.contact });
+    if (record.emailType === 'shipping-confirmation') {
+      await sendShippingConfirmation({
+        order: record.order,
+        contact: record.contact,
+        trackingNumber: record.trackingNumber,
+        carrier: record.carrier,
+      });
+    } else {
+      await sendOrderConfirmation({ order: record.order, contact: record.contact });
+    }
     await deleteFailedEmail(orderId);
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
