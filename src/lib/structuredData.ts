@@ -1,20 +1,18 @@
 // src/lib/structuredData.ts
-// Async version of getStructuredData that pulls from Netlify Blobs-backed
-// lib functions so admin changes sync to schema.org SEO data.
+// Builds schema.org SEO data from already-resolved site config so admin
+// changes sync to it without this module re-reading Netlify Blobs itself.
 // Lives in its own file to avoid circular imports with site-config.ts.
 
 import { siteConfig } from "./site-config";
-import { getContactInfo } from "./contactInfo";
-import { getSocialLinks } from "./socialLinks";
-import { getShopHours } from "./shopHours";
+import type { ContactInfo } from "./contactInfo";
+import type { SocialLink } from "./socialLinks";
+import type { HoursDisplayEntry } from "./shopHours";
 
-export async function getStructuredData(): Promise<object> {
-  const [contact, social, hours] = await Promise.all([
-    getContactInfo(),
-    getSocialLinks(),
-    getShopHours(),
-  ]);
-
+export async function getStructuredData(
+  contact: ContactInfo,
+  social: SocialLink[],
+  hours: HoursDisplayEntry[],
+): Promise<object> {
   return {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",

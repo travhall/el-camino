@@ -287,7 +287,7 @@ your row when done.
 | 184  | Delete the dead exported surface + re-baseline coverage | P3 | M | LOW/MED | 160 (hard) | tech-debt | TODO |
 | 185  | Paginate the slug map | P2 | S | LOW | — | perf | TODO |
 | 186  | Upgrade `@netlify/blobs` 10 → 11 | P3 | M | MED | 166 (soft) | migration | TODO |
-| 187  | Stop `getStructuredData` re-reading blobs `getSiteContext` already has | P2 | S | LOW | — | perf | TODO |
+| 187  | Stop `getStructuredData` re-reading blobs `getSiteContext` already has | P2 | S | LOW | — | perf | DONE |
 | 188  | Scope the pre-commit hook | P3 | S | LOW-MED | 158, 159, 160 (hard) | dx | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)

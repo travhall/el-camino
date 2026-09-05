@@ -1,7 +1,8 @@
 // Per-request cache + parallel fetch for the "always-needed" site config that
-// Layout/Footer/Nav each used to fetch independently. Without this, every
-// page render did 6+ serial Netlify Blobs reads (with `getContactInfo` and
-// `getSocialLinks` called twice — once in Footer, once in Nav).
+// Layout/Footer/Nav each used to fetch independently, and that
+// `getStructuredData` used to re-fetch a second time internally. Without
+// this, every page render re-read contact info, social links, and shop hours
+// from Netlify Blobs multiple times over.
 //
 // Usage from any .astro frontmatter:
 //
@@ -41,15 +42,15 @@ export async function getSiteContext(locals: App.Locals): Promise<SiteContext> {
   if (memo.siteContextPromise) return memo.siteContextPromise;
 
   memo.siteContextPromise = (async () => {
-    const [contact, social, hours, structured, salePageVisible, shopPageVisible] =
+    const [contact, social, hours, salePageVisible, shopPageVisible] =
       await Promise.all([
         getContactInfo(),
         getSocialLinks(),
         getShopHours(),
-        getStructuredData(),
         getSalePageVisible(),
         getShopPageVisible(),
       ]);
+    const structured = await getStructuredData(contact, social, hours);
     const ctx: SiteContext = {
       contact,
       social,

@@ -1,6 +1,6 @@
 ---
 // src/layouts/CartLayout.astro
-import { getStructuredData } from "@/lib/structuredData";
+import { getSiteContext } from "@/lib/siteContext";
 import Header from "@/components/Header.astro";
 import CartFooter from "@/components/CartFooter.astro";
 import Modal from "@/components/Modal.astro";
@@ -14,8 +14,7 @@ interface Props {
 
 const { title, structuredData } = Astro.props;
 
-// Get structured data from site config
-const orgSchema = await getStructuredData();
+const orgSchema = (await getSiteContext(Astro.locals)).structured;
 ---
 
 <!doctype html>
