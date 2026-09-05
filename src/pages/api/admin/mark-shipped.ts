@@ -13,6 +13,7 @@ import type { APIRoute } from 'astro';
 import { isAdminAuthenticated, parseAdminFormData } from '@/lib/admin/auth';
 import { squareClient } from '@/lib/square/client';
 import { sendShippingConfirmation } from '@/lib/email/sender';
+import { storeFailedEmail } from '@/lib/email/failedEmails';
 import type { PendingOrderContact } from '@/lib/email/pendingOrders';
 import type { Fulfillment, SquareError } from 'square-legacy';
 
@@ -151,6 +152,16 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error(`[mark-shipped] Failed to send shipping confirmation:`, err);
+    await storeFailedEmail(orderId, order, contact, err, {
+      emailType: 'shipping-confirmation',
+      trackingNumber,
+      carrier,
+    }).catch((blobErr) => {
+      console.error(
+        `[mark-shipped] Failed to store retry record for ${orderId}:`,
+        blobErr
+      );
+    });
     return redirect(
       `/admin/orders/shipping?error=email&detail=${encodeURIComponent(detail)}`
     );

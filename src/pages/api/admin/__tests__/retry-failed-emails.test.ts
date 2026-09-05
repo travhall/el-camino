@@ -17,6 +17,7 @@ vi.mock('@/lib/email/failedEmails', () => ({
 
 vi.mock('@/lib/email/sender', () => ({
   sendOrderConfirmation: vi.fn(),
+  sendShippingConfirmation: vi.fn(),
 }));
 
 import { GET, POST } from '../retry-failed-emails';
@@ -27,7 +28,7 @@ import {
   deleteFailedEmail,
   type FailedEmailRecord,
 } from '@/lib/email/failedEmails';
-import { sendOrderConfirmation } from '@/lib/email/sender';
+import { sendOrderConfirmation, sendShippingConfirmation } from '@/lib/email/sender';
 
 const URL_BASE = 'https://example.com/api/admin/retry-failed-emails';
 
@@ -119,5 +120,27 @@ describe('POST /api/admin/retry-failed-emails', () => {
     const body = await res.json();
     expect(body.success).toBe(false);
     expect(deleteFailedEmail).not.toHaveBeenCalled();
+  });
+
+  it('resends the shipping confirmation (not order confirmation) when emailType is shipping-confirmation', async () => {
+    const shippingRecord: FailedEmailRecord = {
+      ...record,
+      contact: { ...record.contact, fulfillmentMethod: 'shipping' as const },
+      emailType: 'shipping-confirmation',
+      trackingNumber: '1Z999',
+      carrier: 'UPS',
+    };
+    vi.mocked(getFailedEmail).mockResolvedValue(shippingRecord);
+    vi.mocked(sendShippingConfirmation).mockResolvedValue(undefined);
+    const res = await POST(makeContext({ orderId: 'order-1' }));
+    expect(res.status).toBe(200);
+    expect(sendShippingConfirmation).toHaveBeenCalledWith({
+      order: shippingRecord.order,
+      contact: shippingRecord.contact,
+      trackingNumber: '1Z999',
+      carrier: 'UPS',
+    });
+    expect(sendOrderConfirmation).not.toHaveBeenCalled();
+    expect(deleteFailedEmail).toHaveBeenCalledWith('order-1');
   });
 });
