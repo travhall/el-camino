@@ -1,0 +1,248 @@
+# Plan 041: Quick-win cleanup — unused deps, dead code, .env.example gaps
+
+> **Executor instructions**: Follow this plan step by step. Run every
+> verification command and confirm the expected result before moving to the
+> next step. If anything in the "STOP conditions" section occurs, stop and
+> report — do not improvise. When done, update the status row for this plan
+> in `plans/README.md`.
+>
+> **Drift check (run first)**: `git diff --stat 0da82aa..HEAD -- package.json astro.config.mjs src/lib/square/categories.ts src/lib/square/categoryUtils.ts src/lib/square/client.ts src/lib/square/inventory.ts .env.example`
+
+## Status
+
+- **Priority**: P2
+- **Effort**: S
+- **Risk**: LOW
+- **Depends on**: none
+- **Category**: tech-debt
+- **Planned at**: commit `0da82aa`, 2026-07-22
+
+## Why this matters
+
+Several small cleanup items were found in the 2026-07-22 audit that don't warrant
+individual plans but add real maintenance debt:
+
+1. `web-vitals` is in `package.json` `dependencies` but is never imported anywhere in the source. It causes unnecessary pre-bundling and audit noise.
+2. `@astrojs/check` is in `dependencies` instead of `devDependencies` (it's a typecheck CLI tool with no runtime role).
+3. `clearCategoryProductCache()` in `categoryUtils.ts` is a no-op (it reads a field that doesn't exist on `BlobCache`) and has zero external callers.
+4. `pruneInventoryCache()` in `inventory.ts` calls `blobCache.prune()` which is documented as always returning 0 — the function and its misleading test stubs should be removed.
+5. `_fetchAllProductsFromCategory` in `categories.ts` is dead code (unexported, no callers).
+6. `cleanupClientState()` in `client.ts` is exported but has zero import sites outside the file itself.
+7. `src/lib/monitoring/` is an empty directory left over from a removed feature.
+8. `.env.example` is missing 5 Square circuit-breaker tuning vars and `PUBLIC_WORDPRESS_API_URL`.
+
+## Current state
+
+**`package.json`**:
+```json
+"web-vitals": "^5.3.0"   // in dependencies — never imported
+"@astrojs/check": "0.9.9" // in dependencies — should be devDependencies
+```
+
+**`astro.config.mjs:128`** (optimizeDeps entry to remove):
+```javascript
+optimizeDeps: {
+  include: [
+    "astro/virtual-modules/transitions-router.js",
+    // ...
+    "web-vitals",  // ← remove this line
+  ],
+},
+```
+
+**`src/lib/square/categoryUtils.ts:258-273`**:
+```typescript
+export function clearCategoryProductCache(): void {
+  const cache = categoryCache as any;
+  if (cache.cache) {   // .cache does not exist on BlobCache; always false
+    cache.cache.clear();
+  }
+}
+```
+Grep confirms zero callers: `grep -rn 'clearCategoryProductCache' src/` → only the definition.
+
+**`src/lib/square/inventory.ts:147-149`**:
+```typescript
+export function pruneInventoryCache(): number {
+  return inventoryCache.prune(); // BlobCache.prune() always returns 0 (documented no-op)
+}
+```
+The corresponding test stubs in `inventory.test.ts` assert a mock return value, not real behavior — remove both.
+
+**`src/lib/square/categories.ts:377-394`** (around line numbers — confirm against live file):
+```typescript
+async function _fetchAllProductsFromCategory(...) { ... }
+```
+Grep: `grep -rn '_fetchAllProductsFromCategory' src/` → only the definition; no callers.
+
+**`src/lib/square/client.ts:558-565`** (around line numbers — confirm against live file):
+```typescript
+export function cleanupClientState(): void {
+  apiRetryClient.reset();
+  requestDeduplicator = new RequestDeduplicator();
+}
+```
+Grep: `grep -rn 'cleanupClientState' src/` → only the definition; no callers.
+
+**`src/lib/monitoring/`** — empty directory.
+
+**`.env.example`** — currently missing these vars (read the file to confirm before adding):
+- `SQUARE_MAX_DELAY` — max retry delay in ms (default in apiRetry.ts: `30000`)
+- `SQUARE_JITTER_RANGE` — jitter range in ms (default: `2000`)
+- `SQUARE_TIMEOUT_MS` — per-request timeout (default: `15000`)
+- `SQUARE_RECOVERY_TIMEOUT` — circuit breaker reset timeout (default: `60000`)
+- `SQUARE_MONITOR_WINDOW` — circuit breaker monitor window (default: `60000`)
+- `PUBLIC_WORDPRESS_API_URL` — WordPress REST API base (fallback: production API)
+
+## Commands you will need
+
+| Purpose   | Command                    | Expected on success       |
+|-----------|----------------------------|---------------------------|
+| Typecheck | `pnpm check`               | exit 0, no errors         |
+| Unit tests | `pnpm test:run`           | all pass                  |
+| Coverage  | `pnpm test:coverage`       | thresholds pass           |
+| Grep dead code | `grep -rn <symbol> src/` | only definition, no callers |
+
+## Scope
+
+**In scope**:
+- `package.json`
+- `astro.config.mjs`
+- `src/lib/square/categoryUtils.ts`
+- `src/lib/square/inventory.ts`
+- `src/lib/square/inventory.test.ts` (remove pruneInventoryCache stubs)
+- `src/lib/square/categories.ts`
+- `src/lib/square/client.ts`
+- `src/lib/monitoring/` (delete the directory)
+- `.env.example`
+- `pnpm-lock.yaml` (regenerated by pnpm)
+
+**Out of scope**:
+- Any other file — this plan is scope-limited to the items above
+
+## Git workflow
+
+- Branch: `advisor/041-quick-wins-cleanup`
+- Commit message: `chore: remove unused deps, dead code, add missing .env.example vars`
+- Do NOT push or open a PR unless instructed.
+
+## Steps
+
+### Step 1: Remove web-vitals from package.json and optimizeDeps
+
+In `package.json`, remove the `"web-vitals"` entry from `dependencies`.
+
+In `astro.config.mjs`, remove `"web-vitals"` from the `optimizeDeps.include` array.
+
+Then:
+```bash
+pnpm install
+```
+
+**Verify**: `grep -rn '"web-vitals"' package.json astro.config.mjs` → no output
+
+### Step 2: Move @astrojs/check to devDependencies
+
+In `package.json`, move `"@astrojs/check"` from the `dependencies` object to
+`devDependencies`. Run `pnpm install` again (or it may not require a reinstall
+since it's already installed — pnpm handles this gracefully).
+
+**Verify**: `node -e "const p=require('./package.json'); console.log('dep:', !!p.dependencies['@astrojs/check'], 'dev:', !!p.devDependencies['@astrojs/check'])"` → `dep: false dev: true`
+
+### Step 3: Delete clearCategoryProductCache() from categoryUtils.ts
+
+Open `src/lib/square/categoryUtils.ts`. Find the `clearCategoryProductCache`
+export function (around line 258; confirm against live file). Delete the entire
+function.
+
+**Verify**: `grep -n 'clearCategoryProductCache' src/lib/square/categoryUtils.ts` → no output
+**Verify**: `grep -rn 'clearCategoryProductCache' src/` → no output
+
+### Step 4: Delete pruneInventoryCache() from inventory.ts and its test stubs
+
+In `src/lib/square/inventory.ts`, find and delete the `pruneInventoryCache` export
+function.
+
+In `src/lib/square/inventory.test.ts`, find the test block(s) that test
+`pruneInventoryCache` and delete them.
+
+**Verify**: `grep -n 'pruneInventoryCache' src/lib/square/inventory.ts` → no output
+**Verify**: `grep -n 'pruneInventoryCache' src/lib/square/inventory.test.ts` → no output
+
+### Step 5: Delete _fetchAllProductsFromCategory from categories.ts
+
+Open `src/lib/square/categories.ts`. Find the `_fetchAllProductsFromCategory`
+private async function (around line 377; confirm against live file). Delete it.
+
+**Verify**: `grep -n '_fetchAllProductsFromCategory' src/lib/square/categories.ts` → no output
+
+### Step 6: Remove export from cleanupClientState() in client.ts
+
+Open `src/lib/square/client.ts`. Find the `cleanupClientState` export function.
+Either delete it entirely (preferred, since it has no callers) or remove the
+`export` keyword. Deleting is preferred.
+
+**Verify**: `grep -n 'cleanupClientState' src/lib/square/client.ts` → no output (if deleted) or no `export` keyword
+
+### Step 7: Delete the empty src/lib/monitoring/ directory
+
+```bash
+rmdir src/lib/monitoring
+```
+
+**Verify**: `ls src/lib/monitoring` → "No such file or directory"
+
+### Step 8: Add missing vars to .env.example
+
+Read `.env.example` to understand the current structure and where to add entries.
+Read `src/lib/square/apiRetry.ts:45-53` to confirm the exact env var names and defaults.
+
+Add a block to `.env.example` (find the existing Square reliability section and extend it, or add a new section):
+
+```
+# Square reliability tuning — all optional; defaults shown
+# SQUARE_MAX_DELAY=30000          # max retry delay in ms
+# SQUARE_JITTER_RANGE=2000        # random jitter added to delay in ms
+# SQUARE_TIMEOUT_MS=15000         # per-request timeout in ms
+# SQUARE_RECOVERY_TIMEOUT=60000   # circuit breaker reset timeout in ms
+# SQUARE_MONITOR_WINDOW=60000     # circuit breaker monitoring window in ms
+
+# WordPress — optional; defaults to production API
+# PUBLIC_WORDPRESS_API_URL=https://public-api.wordpress.com/rest/v1.1/sites/elcaminoskateshop.wordpress.com
+```
+
+**Verify**: `grep -n 'SQUARE_MAX_DELAY\|PUBLIC_WORDPRESS_API_URL' .env.example` → both appear
+
+### Step 9: Typecheck, test, and coverage
+
+**Verify**: `pnpm check` → exit 0
+
+**Verify**: `pnpm test:run` → all pass (inventory tests should still pass with the prune stubs removed)
+
+**Verify**: `pnpm test:coverage` → coverage thresholds pass (removing dead code may slightly change line coverage counts but should not drop below thresholds)
+
+## Done criteria
+
+- [ ] `pnpm check` exits 0
+- [ ] `pnpm test:run` exits 0
+- [ ] `pnpm test:coverage` exits 0
+- [ ] `grep '"web-vitals"' package.json astro.config.mjs` → no output
+- [ ] `@astrojs/check` is in `devDependencies`, not `dependencies`
+- [ ] `clearCategoryProductCache` does not exist in `categoryUtils.ts`
+- [ ] `pruneInventoryCache` does not exist in `inventory.ts` or `inventory.test.ts`
+- [ ] `_fetchAllProductsFromCategory` does not exist in `categories.ts`
+- [ ] `cleanupClientState` is deleted from `client.ts`
+- [ ] `src/lib/monitoring/` directory does not exist
+- [ ] `.env.example` contains `SQUARE_MAX_DELAY` and `PUBLIC_WORDPRESS_API_URL`
+- [ ] `plans/README.md` status row for 041 updated to DONE
+
+## STOP conditions
+
+- `pnpm check` fails after removing `web-vitals` — it may be imported somewhere not found by grep; check the exact error and find the import.
+- `pnpm test:coverage` drops a per-file threshold after removing `pruneInventoryCache` — check `vitest.config.ts` for per-file minimums and adjust the threshold if the function was padding coverage.
+- A caller of `cleanupClientState` or `clearCategoryProductCache` is found in a non-`src/` location (e.g., `e2e/` or `scripts/`) — remove or update it before deleting the function.
+
+## Maintenance notes
+
+- If `web-vitals` reporting is ever needed, add it back as a `devDependency` with a client-side script rather than a production build dep.
+- The `.env.example` additions are all commented out (optional vars) — they document tuning knobs without requiring values for development.
