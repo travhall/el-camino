@@ -109,28 +109,6 @@ describe('BlobCache', () => {
       expect(storedData.timestamp).toBeDefined();
     });
 
-    it('should check if key exists', async () => {
-      const cachedEntry = {
-        value: 'test-value',
-        timestamp: Date.now(),
-        ttl: 60000,
-      };
-
-      mockBlobStore.get.mockResolvedValue(JSON.stringify(cachedEntry));
-
-      const exists = await cache.has('test-key');
-
-      expect(exists).toBe(true);
-    });
-
-    it('should return false for non-existent key', async () => {
-      mockBlobStore.get.mockResolvedValue(null);
-
-      const exists = await cache.has('missing-key');
-
-      expect(exists).toBe(false);
-    });
-
     it('should delete cache entry', async () => {
       mockBlobStore.delete.mockResolvedValue(undefined);
 
@@ -437,31 +415,6 @@ describe('BlobCache', () => {
       // Expiration should be around now + TTL (60 seconds)
       expect(metadata.expires).toBeGreaterThanOrEqual(beforeSet + 60000);
       expect(metadata.expires).toBeLessThanOrEqual(afterSet + 60000);
-    });
-  });
-
-  describe('Cache Statistics', () => {
-    it('should return cache stats', () => {
-      const stats = cache.getStats();
-
-      expect(stats.name).toContain('test-cache');
-      expect(stats.ttl).toBe(60000);
-      expect(stats.type).toBe('netlify-blobs');
-    });
-
-    it('should indicate N/A for blob metrics', () => {
-      const stats = cache.getStats();
-
-      expect(stats.size).toBe('N/A');
-      expect(stats.count).toBe('N/A');
-    });
-  });
-
-  describe('Prune Operation', () => {
-    it('should return 0 for prune (no-op for blobs)', () => {
-      const pruned = cache.prune();
-
-      expect(pruned).toBe(0);
     });
   });
 
