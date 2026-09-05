@@ -75,6 +75,14 @@ describe("POST /api/admin/shop-status", () => {
       expect(res.headers.get("Location")).toContain("saved=override");
     });
 
+    it("defaults until to undefined when the until field is not provided", async () => {
+      const res = await POST(makeContext({ action: "save-override", mode: "closed" }));
+      expect(saveShopStatusConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "closed", until: undefined }),
+      );
+      expect(res.status).toBe(302);
+    });
+
     it("clears until when reverting to auto", async () => {
       vi.mocked(getShopStatusConfig).mockResolvedValue({
         mode: "closed",
