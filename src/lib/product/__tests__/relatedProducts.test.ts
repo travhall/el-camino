@@ -1,25 +1,60 @@
 /**
  * Unit tests for relatedProducts.ts's scoring/filtering algorithm.
  *
- * Reduced scope (plan 141): the 3 category-dependent scoring tiers
- * (brand-category, complementary, category-only) are currently unreachable
- * in production — `scoreProduct`/`getRelatedProducts` extract a category
- * slug via `product.url.match(/\/category\/([^\/]+)/)`, but every real
- * `Product.url` is `/product/<slug>` (see `createProductUrl` in
- * `@/lib/square/slugUtils.ts`), never `/category/...`. Building fixtures
- * with a fake `/category/...` product URL to exercise those tiers would
- * paper over that bug rather than test real behavior, so this file only
- * covers what's reachable today plus `getComplementaryCategories`. The fix
- * (resolving category slugs from `Product.categories`/`reportingCategoryId`
- * instead of `.url`) and the full 5-tier test matrix are tracked in
- * plans/145-fix-related-products-category-matching.md.
+ * Plan 141 landed with a reduced scope after discovering that the 3
+ * category-dependent scoring tiers (brand-category, complementary,
+ * category-only) were unreachable in production: `scoreProduct` used to
+ * extract a category slug via `product.url.match(/\/category\/([^\/]+)/)`,
+ * but every real `Product.url` is `/product/<slug>` (see `createProductUrl`
+ * in `@/lib/square/slugUtils.ts`), never `/category/...`. Plan 145 fixed
+ * the source (resolving category slugs from `Product.categories`/
+ * `reportingCategoryId` via the real category hierarchy instead of
+ * `.url`) — the tests below mock `fetchCategoryHierarchy` to exercise the
+ * now-reachable tiers.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import type { CategoryHierarchy, Product } from '@/lib/square/types';
+
+const { CATEGORY_HIERARCHY } = vi.hoisted(() => ({
+  CATEGORY_HIERARCHY: [
+    {
+      category: {
+        id: 'cat-decks',
+        name: 'Decks',
+        slug: 'decks',
+        isTopLevel: true,
+      },
+      subcategories: [],
+    },
+    {
+      category: {
+        id: 'cat-trucks',
+        name: 'Trucks',
+        slug: 'trucks',
+        isTopLevel: true,
+      },
+      subcategories: [],
+    },
+    {
+      category: {
+        id: 'cat-apparel',
+        name: 'Apparel',
+        slug: 'apparel',
+        isTopLevel: true,
+      },
+      subcategories: [],
+    },
+  ] satisfies CategoryHierarchy[],
+}));
+
+vi.mock('@/lib/square/categories', () => ({
+  fetchCategoryHierarchy: vi.fn(() => Promise.resolve(CATEGORY_HIERARCHY)),
+}));
+
 import {
   getRelatedProducts,
   getComplementaryCategories,
 } from '@/lib/product/relatedProducts';
-import type { Product } from '@/lib/square/types';
 
 function makeProduct(overrides: Partial<Product> = {}): Product {
   return {
@@ -189,6 +224,136 @@ describe('getRelatedProducts', () => {
       matchType: 'complementary',
       confidence: 'low',
     });
+  });
+
+  // Plan 145 regression coverage: category slugs are now resolved from real
+  // `reportingCategoryId`/`categories` fields (via the mocked category
+  // hierarchy above), not parsed from `.url`. Before the fix, none of these
+  // 4 cases could ever score above 20 (same-brand-only) in production.
+  it('scores same-brand + complementary-category as the top tier (100, brand-category/high)', async () => {
+    const source = makeProduct({
+      id: 'source',
+      brand: 'brand-a',
+      reportingCategoryId: 'cat-decks',
+    });
+    const complementarySameBrand = makeProduct({
+      id: 'complementary-same-brand',
+      brand: 'brand-a',
+      reportingCategoryId: 'cat-trucks',
+    });
+
+    const result = await getRelatedProducts(source, [
+      source,
+      complementarySameBrand,
+    ]);
+
+    expect(result.products.map((p) => p.id)).toEqual([
+      'complementary-same-brand',
+    ]);
+    expect(result.matchType).toBe('brand-category');
+    expect(result.confidence).toBe('high');
+  });
+
+  it('scores same-brand + same-category (80) above same-brand-only (20)', async () => {
+    const source = makeProduct({
+      id: 'source',
+      brand: 'brand-a',
+      reportingCategoryId: 'cat-decks',
+    });
+    const sameCategorySameBrand = makeProduct({
+      id: 'same-category-same-brand',
+      brand: 'brand-a',
+      reportingCategoryId: 'cat-decks',
+    });
+    const brandOnly = makeProduct({
+      id: 'brand-only',
+      brand: 'brand-a',
+      reportingCategoryId: 'cat-apparel', // not complementary to decks
+    });
+
+    const result = await getRelatedProducts(source, [
+      source,
+      brandOnly,
+      sameCategorySameBrand,
+    ]);
+
+    expect(result.products.map((p) => p.id)).toEqual([
+      'same-category-same-brand',
+      'brand-only',
+    ]);
+    expect(result.matchType).toBe('brand-category');
+    expect(result.confidence).toBe('high');
+  });
+
+  it('scores complementary-category-only (different brand) as complementary/medium', async () => {
+    const source = makeProduct({
+      id: 'source',
+      brand: 'brand-a',
+      reportingCategoryId: 'cat-decks',
+    });
+    const complementaryDifferentBrand = makeProduct({
+      id: 'complementary-different-brand',
+      brand: 'brand-b',
+      reportingCategoryId: 'cat-trucks',
+    });
+
+    const result = await getRelatedProducts(source, [
+      source,
+      complementaryDifferentBrand,
+    ]);
+
+    expect(result.products.map((p) => p.id)).toEqual([
+      'complementary-different-brand',
+    ]);
+    expect(result.matchType).toBe('complementary');
+    expect(result.confidence).toBe('medium');
+  });
+
+  it('scores same-category-only (different brand, non-complementary) as category-only/medium', async () => {
+    const source = makeProduct({
+      id: 'source',
+      brand: 'brand-a',
+      reportingCategoryId: 'cat-decks',
+    });
+    const sameCategoryDifferentBrand = makeProduct({
+      id: 'same-category-different-brand',
+      brand: 'brand-b',
+      reportingCategoryId: 'cat-decks',
+    });
+
+    const result = await getRelatedProducts(source, [
+      source,
+      sameCategoryDifferentBrand,
+    ]);
+
+    expect(result.products.map((p) => p.id)).toEqual([
+      'same-category-different-brand',
+    ]);
+    expect(result.matchType).toBe('category-only');
+    expect(result.confidence).toBe('medium');
+  });
+
+  it('resolves category from the first entry in `categories` when `reportingCategoryId` is absent', async () => {
+    const source = makeProduct({
+      id: 'source',
+      brand: 'brand-a',
+      categories: ['cat-decks'],
+    });
+    const complementarySameBrand = makeProduct({
+      id: 'complementary-same-brand',
+      brand: 'brand-a',
+      categories: ['cat-trucks'],
+    });
+
+    const result = await getRelatedProducts(source, [
+      source,
+      complementarySameBrand,
+    ]);
+
+    expect(result.products.map((p) => p.id)).toEqual([
+      'complementary-same-brand',
+    ]);
+    expect(result.matchType).toBe('brand-category');
   });
 });
 
