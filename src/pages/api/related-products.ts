@@ -64,8 +64,8 @@ export const GET: APIRoute = async ({ request }) => {
     response.headers.set('Netlify-Cache-Tag', 'related-products,products');
 
     return response;
-  } catch {
-    // console.error("[related-products] Error:", error);
+  } catch (error) {
+    console.error('[related-products] Error:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
