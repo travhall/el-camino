@@ -5,7 +5,6 @@ import { Icon } from "astro-icon/components";
 import CartButton from "./CartButton.astro";
 import CartButtonMobile from "./CartButtonMobile.astro";
 import AnnouncementBanner from "./AnnouncementBanner.astro";
-import { detectDeviceFromUA } from "@/utils/device";
 
 interface Props {
   activeCategory?: string;
@@ -16,11 +15,6 @@ interface Props {
 const { activeCategory, showCart = true } = Astro.props;
 
 const nonce = Astro.locals.nonce;
-
-// Device detection for conditional rendering
-const userAgent = Astro.request.headers.get("user-agent") || "";
-const deviceInfo = detectDeviceFromUA(userAgent);
-const isMobile = deviceInfo.isMobile;
 ---
 
 <script is:inline nonce={nonce}>
@@ -87,11 +81,20 @@ const isMobile = deviceInfo.isMobile;
     >
       {
         showCart ? (
-          isMobile ? (
-            <CartButtonMobile />
-          ) : (
-            <CartButton />
-          )
+          <>
+            {
+              /* Device-invariant HTML: this page is CDN-cached publicly, so
+                 the choice of cart button must not depend on User-Agent.
+                 Both render; CSS picks one per viewport.
+                 See plans/156-vary-ua-branched-html.md. */
+            }
+            <span class="contents lg:hidden">
+              <CartButtonMobile />
+            </span>
+            <span class="hidden lg:contents">
+              <CartButton />
+            </span>
+          </>
         ) : (
           <div class="p-2" aria-hidden="true">
             <div class="h-6 w-6 m-1" />

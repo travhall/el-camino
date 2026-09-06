@@ -7,7 +7,6 @@ import MiniCart from "@/components/MiniCart.astro";
 import Modal from "@/components/Modal.astro";
 import Notification from "@/components/Notification.astro";
 import BaseHead from "@/components/BaseHead.astro";
-import { detectDeviceFromUA } from "@/utils/device";
 
 interface Props {
   title: string;
@@ -16,11 +15,6 @@ interface Props {
 }
 
 const { title, structuredData, activeCategory } = Astro.props;
-
-// Device detection for conditional component loading
-const userAgent = Astro.request.headers.get("user-agent") || "";
-const deviceInfo = detectDeviceFromUA(userAgent);
-const isDesktop = deviceInfo.isDesktop;
 
 // Hydrate the per-request site context. Footer/Nav read from this same
 // memoized bundle, so the 6 blob reads happen in one parallel batch instead
@@ -56,15 +50,14 @@ const orgSchema = siteCtx.structured;
     </main>
     <Footer />
 
-    <!-- Desktop-only features -->
-    {
-      isDesktop && (
-        <>
-          <QuickView />
-          <MiniCart />
-        </>
-      )
-    }
+    <!-- Desktop-only features. This HTML is CDN-cached (public,
+    s-maxage) and must not vary by request — QuickView/MiniCart are always
+    rendered and hidden for non-desktop viewports via CSS, not a
+    User-Agent branch. See plans/156-vary-ua-branched-html.md. -->
+    <div class="hidden lg:block">
+      <QuickView />
+      <MiniCart />
+    </div>
 
     <Notification />
     <Modal />
