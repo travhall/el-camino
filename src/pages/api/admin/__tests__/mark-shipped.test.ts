@@ -339,7 +339,11 @@ describe('POST /api/admin/mark-shipped', () => {
     vi.mocked(sendShippingConfirmation).mockResolvedValue(undefined);
 
     await POST(
-      makeContext({ orderId: 'order-1', trackingNumber: '1Z999', carrier: 'UPS' })
+      makeContext({
+        orderId: 'order-1',
+        trackingNumber: '1Z999',
+        carrier: 'UPS',
+      })
     );
 
     const calls = vi.mocked(squareClient.orders.update).mock.calls;
