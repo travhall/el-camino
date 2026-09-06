@@ -83,6 +83,7 @@ const getSkeletonVariant = () => {
 };
 
 const currentPath = Astro.url.pathname;
+const nonce = Astro.locals.nonce;
 ---
 
 {
@@ -170,6 +171,17 @@ const currentPath = Astro.url.pathname;
   }
 </div>
 
+<script is:inline nonce={nonce}>
+  // Belt-and-braces safety net (plan 148): if the hoisted script above fails
+  // to run or load (bundling error, CSP issue), this unconditionally arms
+  // every masonry card after 2500ms so the homepage can never stay blank.
+  setTimeout(() => {
+    document
+      .querySelectorAll(".article-grid .article-card-wrapper")
+      .forEach((wrapper) => wrapper.classList.add("entrance-armed"));
+  }, 2500);
+</script>
+
 <style is:global>
   /* ─── Keyframes ─────────────────────────────────────────────────────────── */
 
@@ -248,19 +260,43 @@ const currentPath = Astro.url.pathname;
 
   /* ─── Masonry grid (home page) — CSS-driven, fires at parse time ─────────── */
 
-  /* Non-featured cards: staggered entrance, offset by 200ms so the header
-     animation (0.2s delay) leads before secondary cards begin appearing.
-     The featured card (card-entrance-ready) is excluded from this offset
-     so it starts immediately — it's the LCP element and must not be delayed. */
+  /* Non-featured cards: staggered entrance. The animation is paused (see
+     entrance-armed below) until each card's own image is ready, so the
+     stagger is now provided by network arrival order rather than a fixed
+     200ms header-lead offset — that offset was removed since it no longer
+     applies once each card starts on its own image's readiness (plan 148). */
   .article-grid .article-card-wrapper {
     animation: cardEntrance var(--card-transition-duration, 0.5s) ease-out both;
-    animation-delay: calc(200ms + var(--animation-order, 0) * var(--card-stagger-delay));
+    animation-delay: calc(var(--animation-order, 0) * var(--card-stagger-delay));
+    animation-play-state: paused;
   }
 
   /* Featured card: starts immediately — LCP-critical, no offset applied */
   .article-grid .article-card-wrapper.card-entrance-ready {
     animation: cardEntranceFeatured var(--card-entrance-priority-duration, 800ms) ease-out both;
     animation-delay: 0s;
+    animation-play-state: paused;
+  }
+
+  /* The entrance animation is paused until JS marks the card armed (its image
+     is ready, or a bounded timeout elapsed). A CSS animation's clock otherwise
+     starts at first style resolution, so on a cold load the cards animated in
+     empty and the images popped in afterwards. `both` fill-mode holds the
+     `from` keyframe while paused, so a paused card is invisible-but-LCP-eligible
+     (opacity 0.001), exactly as before. */
+  .article-grid .article-card-wrapper.entrance-armed {
+    animation-play-state: running;
+  }
+
+  /* If JS never arms the cards (script error, JS disabled), reveal them.
+     Without this, a paused `both`-filled animation would hold opacity 0.001
+     forever and the page would look empty. */
+  @media (scripting: none) {
+    .article-grid .article-card-wrapper {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -291,6 +327,8 @@ const currentPath = Astro.url.pathname;
 </style>
 
 <script>
+  import { armCardsOnImageReady } from "@/lib/ui/cardEntrance";
+
   // Check for reduced motion preference
   const prefersReducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
@@ -474,6 +512,11 @@ const currentPath = Astro.url.pathname;
       // Make filterable grid visible
       filterableGrid.style.opacity = "1";
     }
+
+    // Arm masonry cards' entrance animation once each card's own image is
+    // ready (or after a bounded timeout). Selector is scoped to `.article-grid`
+    // so this has no effect on the filterable (news) grid. See plan 148.
+    armCardsOnImageReady(document, 1200);
 
     // Initialize animations for any cards found
     if (homePageCards.length > 0) {
