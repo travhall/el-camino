@@ -17,6 +17,7 @@ import {
   EL_CAMINO_LOADER_DATA_URI,
 } from "@/lib/constants/assets";
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
+import { FEATURED_CARD_IMAGE_SIZES } from "@/lib/image/sizes";
 import Tag from "./Tag.astro";
 import { Icon } from "astro-icon/components";
 
@@ -77,7 +78,6 @@ let optimizedImageUrl = "";
 let avifSrcSet: string | undefined;
 let webpSrcSet: string | undefined;
 let jpegSrcSet: string | undefined;
-// Featured masonry card: col-span-4 of grid-cols-6 at md (~67vw), col-span-4 of grid-cols-8 at 2xl (50vw)
 // Non-featured masonry: col-span-2 of grid-cols-6 (~33vw at md+)
 let imageSizes =
   variant === "list"
@@ -85,7 +85,7 @@ let imageSizes =
     : variant === "teaser"
       ? "(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
       : featured
-        ? "(max-width: 767px) 100vw, (max-width: 1535px) 67vw, 50vw"
+        ? FEATURED_CARD_IMAGE_SIZES
         : "(max-width: 767px) 100vw, 33vw";
 
 if (imageUrl) {
