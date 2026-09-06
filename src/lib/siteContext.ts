@@ -13,12 +13,12 @@
 // Memoization is on `Astro.locals`, which Astro resets per request, so we
 // avoid the staleness traps of module-level caches on warm function instances.
 
-import { getContactInfo, type ContactInfo } from "@/lib/contactInfo";
-import { getSocialLinks } from "@/lib/socialLinks";
-import { getShopHours } from "@/lib/shopHours";
-import { getStructuredData } from "@/lib/structuredData";
-import { getSalePageVisible } from "@/lib/saleVisibility";
-import { getShopPageVisible } from "@/lib/shopVisibility";
+import { getContactInfo, type ContactInfo } from '@/lib/contactInfo';
+import { getSocialLinks } from '@/lib/socialLinks';
+import { getShopHours } from '@/lib/shopHours';
+import { getStructuredData } from '@/lib/structuredData';
+import { getSalePageVisible } from '@/lib/saleVisibility';
+import { getShopPageVisible } from '@/lib/shopVisibility';
 
 export interface SiteContext {
   contact: ContactInfo;
