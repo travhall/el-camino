@@ -43,7 +43,12 @@ Cache-Control = "public, max-age=60, s-maxage=180, stale-while-revalidate=600"
 [[headers]]
 for = "/category/*"
 [headers.values]
-Netlify-Vary = "query=brand,query=availability"
+# Cache key must include every filter query param the category route reads —
+# see filtersToURLParams in src/lib/square/filterUtils.ts. A param missing here
+# collapses distinct filter results onto one cache entry, so users can be served
+# someone else's filtered page. Adding a filter param to the code means adding
+# it here.
+Netlify-Vary = "query=brands,query=categories,query=availability,query=onSale"
 
 # Product pages - aggressive caching for performance
 [[headers]]
