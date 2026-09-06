@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from 'node:crypto';
 
 // Same constant-time comparison shape as src/lib/admin/auth.ts's safeEqual.
 function safeEqual(a: string, b: string): boolean {
