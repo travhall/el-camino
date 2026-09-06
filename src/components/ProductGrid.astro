@@ -122,6 +122,26 @@ const displayProducts = hideSoldOut
     will-change: auto;
   }
 
+  /* Visibility must never depend on JS running. The server decides
+     opacity-0 vs opacity-100 per card (filter/scroll-hidden vs shown); JS
+     only re-triggers the transition later (scroll reveal, filtering). A
+     truly-hidden card also carries inline `display: none`, so forcing
+     opacity here can never make a hidden card visible. */
+  @media (scripting: none) {
+    .product-card-wrapper.opacity-0 {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .product-card-wrapper,
+    .product-card-wrapper.opacity-0,
+    .product-card-wrapper.opacity-100 {
+      transition: none;
+    }
+  }
+
   /* MOBILE INFINITE SCROLL: Better spacing and loading states */
   @media (max-width: 1023px) {
     #infinite-scroll-trigger {
@@ -167,7 +187,7 @@ const displayProducts = hideSoldOut
       return (
         <article
           role="article"
-          class="product-card-wrapper grid opacity-0"
+          class={`product-card-wrapper grid ${shouldHide ? 'opacity-0' : 'opacity-100'}`}
           aria-labelledby={`product-title-${product.id}`}
           aria-describedby={`product-price-${product.id}`}
           aria-posinset={index + 1}
