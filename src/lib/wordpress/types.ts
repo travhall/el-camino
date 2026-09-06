@@ -541,38 +541,6 @@ export interface ProcessedNewsData {
   featuredPost: WordPressPost | null;
   regularPosts: WordPressPost[];
   filterOptions: NewsFilterOptions;
-  searchIndex: NewsSearchIndex;
-}
-
-export interface NewsSearchIndex {
-  posts: Array<{
-    id: number;
-    slug: string;
-    searchableContent: string;
-    title: string;
-    excerpt: string;
-  }>;
-}
-
-/**
- * Build search index for client-side search
- */
-export function buildSearchIndex(posts: WordPressPost[]): NewsSearchIndex {
-  return {
-    posts: posts.map((post) => ({
-      id: post.id,
-      slug: post.slug,
-      title: post.title.rendered,
-      excerpt: sanitizeHtmlContent(post.excerpt.rendered),
-      searchableContent: [
-        post.title.rendered,
-        sanitizeHtmlContent(post.excerpt.rendered),
-        sanitizeHtmlContent(post.content.rendered),
-      ]
-        .join(' ')
-        .toLowerCase(),
-    })),
-  };
 }
 
 /**
