@@ -8,6 +8,7 @@ import type { SquareMoneyObject } from "@/lib/square/types";
 import { Image } from "astro:assets";
 import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
 import { getContactInfo } from "@/lib/contactInfo";
+import { resolveViewableOrderId } from "@/lib/checkout/resolveViewableOrderId";
 
 // Track line item additional info
 type LineItemInfo = {
@@ -18,47 +19,51 @@ type LineItemInfo = {
 type LineItemDetails = Record<string, LineItemInfo>;
 
 const contact = await getContactInfo();
-let orderId = Astro.url.searchParams.get("orderId");
+const paramOrderId = Astro.url.searchParams.get("orderId");
 const transactionId = Astro.url.searchParams.get("transactionId");
 
-// Primary fallback: read the orderId from the cookie we set in create-checkout.
-// This is the most reliable mechanism because cookies travel automatically with
-// every browser request — no JavaScript needed, no race conditions.
-// Square's sandbox (and legacy production API) does not append orderId to the
-// redirect URL, so the URL param alone cannot be trusted.
-if (!orderId) {
-  const cookieHeader = Astro.request.headers.get("cookie") ?? "";
-  const match = cookieHeader.match(/(?:^|;\s*)square-pending-orderId=([^;]+)/);
-  if (match?.[1]) {
-    orderId = match[1];
-    // Clear the cookie now that we've consumed it so a later visit to this page
-    // (e.g. a browser back-navigation) doesn't pull up a stale order.
-    Astro.response.headers.set(
-      "Set-Cookie",
-      "square-pending-orderId=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly",
-    );
-  }
-}
+// Read the purchaser's own order id from the cookie we set in create-checkout
+// unconditionally, before resolving which order to show. This cookie —
+// HttpOnly, SameSite=Lax, set only by our own server at checkout time — is
+// the one thing an attacker holding a leaked order id cannot forge, so every
+// resolution path below must still match it or the order will not be shown.
+// It is intentionally NOT cleared here: it needs to stay valid (until its
+// natural 1h Max-Age expiry) for the whole confirmation view, including a
+// page refresh and the client-side sessionStorage fallback below.
+const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+const cookieMatch = cookieHeader.match(/(?:^|;\s*)square-pending-orderId=([^;]+)/);
+const cookieOrderId = cookieMatch?.[1] ?? null;
 
 // Secondary fallback: Square sometimes appends transactionId (payment ID) to
-// the redirect URL even when orderId is absent. Resolve it via the Payments API.
-if (!orderId && transactionId) {
+// the redirect URL even when orderId is absent. Resolve it via the Payments
+// API. Only attempted when neither the URL param nor the cookie already gave
+// us an id, matching the original fallback order.
+let transactionOrderId: string | null = null;
+if (!paramOrderId && !cookieOrderId && transactionId) {
   try {
     const paymentResult =
       await squareClient.payments.get({ paymentId: transactionId });
-    orderId = (paymentResult as any).payment?.orderId ?? null;
+    transactionOrderId = (paymentResult as any).payment?.orderId ?? null;
   } catch {
     // fall through to the client-side sessionStorage head script
   }
 }
 
+// The order is only viewable when the resolved id matches the purchaser's
+// own cookie. This is the binding that stops anyone holding a bare order id
+// (leaked via JSON responses, sessionStorage, logs, or admin URLs) from
+// reading someone else's order details.
+const orderId = resolveViewableOrderId({
+  paramId: paramOrderId,
+  cookieId: cookieOrderId,
+  transactionOrderId,
+});
+
 let orderDetails: Order | null = null;
 let lineItemDetails: LineItemDetails = {};
 let error: string | null = null;
 
-if (!orderId) {
-  error = "Order ID not provided";
-} else {
+if (orderId) {
   try {
     // Retrieve the basic order
     const orderResult = await squareClient.orders.get({ orderId: orderId! });
@@ -171,7 +176,8 @@ if (!orderId) {
 
     // console.log("Order retrieved successfully:", orderDetails.id);
   } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load order";
+    error =
+      "We couldn't load your order. If you believe this is an error, please contact us.";
     console.error("Order retrieval error:", { error: e, orderId });
   }
 }
