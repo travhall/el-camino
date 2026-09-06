@@ -90,6 +90,28 @@ fine once cached" — driven by live Chrome DevTools performance traces against
 production and staging rather than static reading, since Lighthouse scores were
 already good and hid the defect (Plans 146-151). See the investigation section
 below for the trace evidence and for what was explicitly ruled out.
+**Plan 158 executed 2026-09-05** (branch `advisor/158-fix-dead-playwright-ci-job`,
+commit `336ac38`, [PR #19](https://github.com/travhall/el-camino/pull/19)): root
+cause confirmed exactly as planned — `pnpm dev`'s `--env-file=.env` exits 9 with
+no `.env` on a fresh CI checkout. Also found and fixed a second, undocumented
+blocker: Astro 7 auto-backgrounds `astro dev` when it detects an AI-agent
+environment (via the `am-i-vibing` package), which made the replacement
+`dev:ci` command daemonize and immediately return, breaking Playwright's
+`webServer` process management identically to running it from an agent's
+shell — `ASTRO_DEV_BACKGROUND=1` forces foreground. Against stub credentials,
+`e2e/cart-flow.spec.ts`'s "Cart Operations" suite (7 tests) and one "Cart
+Navigation" test, plus `checkout-flow.spec.ts`'s one test, all require a real
+Square catalog page load and were tagged `@needs-catalog`; both
+`memory-leak-*.spec.ts` files were tagged `@memory-leak-cdp` per the plan
+(excluded regardless of pass/fail). The new `test:e2e:gate` script (used by
+CI) runs everything else: **5 passed, 1 flaky** (a focus-restore timing test,
+tolerated by CI's existing `retries: 2`), **0 hard failures**, confirmed both
+locally and in a real GitHub Actions run —
+[run 34006617591](https://github.com/travhall/el-camino/actions/runs/34006617591),
+e2e job green in ~2m15s. `continue-on-error` removed from
+`.github/workflows/ci.yml`. No real Square credentials were added anywhere;
+CI still uses stubs only. Branch pushed and PR opened with the operator's
+explicit go-ahead (plan's default is no push/PR without instruction).
 Execute in the order below unless dependencies say otherwise. Each executor:
 read the plan fully before starting, honor its STOP conditions, and update
 your row when done.
@@ -257,7 +279,7 @@ your row when done.
 | 155  | Fix the `Netlify-Vary` query keys on category pages | P1 | S | LOW | — | bug | TODO |
 | 156  | Stop mobile/desktop visitors being served each other's cached HTML | P1 | S | MED | — | bug | TODO |
 | 157  | Batch the per-category Square image lookups in Sidebar/CategoryStrip | P1 | S | LOW | — | perf | TODO |
-| 158  | Make the Playwright CI job actually run instead of failing silently | P1 | M | MED | — | dx | TODO |
+| 158  | Make the Playwright CI job actually run instead of failing silently | P1 | M | MED | — | dx | DONE |
 | 159  | Make `pnpm lint` capable of failing, and widen its scope | P2 | S | LOW-MED | — | dx | TODO |
 | 160  | Actually run coverage in CI so the thresholds mean something | P2 | S | LOW | — | dx | TODO |
 | 161  | Collapse the five Netlify Image CDN URL builders into one | P2 | S | LOW-MED | 146 (hard) | tech-debt | TODO |
