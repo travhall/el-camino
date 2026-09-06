@@ -1,17 +1,26 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('ProductGrid Memory Leak Test', () => {
+// @memory-leak-cdp: uses Chromium CDP and is slow; excluded from the PR gate
+// regardless of pass/fail (plan 158). Run manually via
+// `pnpm exec playwright test --project=chromium --grep "@memory-leak-cdp"`.
+test.describe('ProductGrid Memory Leak Test @memory-leak-cdp', () => {
   // All three tests use CDP (context.newCDPSession) which is Chromium-only.
   test.beforeEach(({ browserName }) => {
-    test.skip(browserName !== 'chromium', 'CDP APIs (newCDPSession) are Chromium-only');
+    test.skip(
+      browserName !== 'chromium',
+      'CDP APIs (newCDPSession) are Chromium-only'
+    );
   });
 
   // 5-cycle navigation test does 10+ page loads — extend beyond the 30s default.
   test.describe.configure({ timeout: 120_000 });
-  test('should not leak memory during navigation and infinite scroll', async ({ page, context }) => {
+  test('should not leak memory during navigation and infinite scroll', async ({
+    page,
+    context,
+  }) => {
     // Enable CDP session for memory metrics
     const client = await context.newCDPSession(page);
-    
+
     // Helper to get heap size using proper CDP method
     async function getHeapSize(): Promise<number> {
       const { usedSize } = await client.send('Runtime.getHeapUsage');
@@ -33,7 +42,7 @@ test.describe('ProductGrid Memory Leak Test', () => {
     }
 
     console.log('Starting memory leak test...');
-    
+
     // Navigate to the actual product listing page
     await page.goto('http://localhost:4321/shop/all');
     await page.waitForLoadState('networkidle');
@@ -50,7 +59,7 @@ test.describe('ProductGrid Memory Leak Test', () => {
 
     for (let i = 0; i < cycles; i++) {
       console.log(`\nCycle ${i + 1}/${cycles}`);
-      
+
       // Scroll to trigger infinite scroll
       const trigger = await page.locator('#infinite-scroll-trigger');
       if (await trigger.isVisible()) {
@@ -72,7 +81,9 @@ test.describe('ProductGrid Memory Leak Test', () => {
       await forceGC();
       const currentHeap = await getHeapSize();
       heapMeasurements.push(currentHeap);
-      console.log(`Heap after cycle ${i + 1}: ${(currentHeap / 1024 / 1024).toFixed(2)} MB`);
+      console.log(
+        `Heap after cycle ${i + 1}: ${(currentHeap / 1024 / 1024).toFixed(2)} MB`
+      );
     }
 
     // Final measurement
@@ -87,8 +98,12 @@ test.describe('ProductGrid Memory Leak Test', () => {
     const growthPercentage = (heapGrowth / initialHeap) * 100;
 
     console.log(`\nMemory Analysis:`);
-    console.log(`  Growth: ${heapGrowthMB.toFixed(2)} MB (${growthPercentage.toFixed(1)}%)`);
-    console.log(`  Measurements: ${heapMeasurements.map(h => (h / 1024 / 1024).toFixed(1)).join(' -> ')} MB`);
+    console.log(
+      `  Growth: ${heapGrowthMB.toFixed(2)} MB (${growthPercentage.toFixed(1)}%)`
+    );
+    console.log(
+      `  Measurements: ${heapMeasurements.map((h) => (h / 1024 / 1024).toFixed(1)).join(' -> ')} MB`
+    );
 
     // Check for memory leak - realistic threshold for e-commerce SPA
     // Note: 500% growth over 5 navigation cycles with stabilization is acceptable
@@ -96,7 +111,7 @@ test.describe('ProductGrid Memory Leak Test', () => {
     // Key indicator: memory stabilizes at the end (not continuously growing)
     // Catastrophic leaks would show >1000% growth or continuous increase
     expect(growthPercentage).toBeLessThan(500);
-    
+
     // Check that cleanup is working by verifying observers are disconnected
     const observerCheck = await page.evaluate(() => {
       // Check if any observers are still attached to the window
@@ -135,7 +150,9 @@ test.describe('ProductGrid Memory Leak Test', () => {
     // the -10000px left offset set in ProductGrid.astro) — the home page has
     // its own aria-live elements (OpenStatusBadge, Nav) that are not leaks.
     const afterNav = await page.evaluate(() => {
-      const gridLiveRegions = document.querySelectorAll('[aria-live="polite"][style*="-10000px"]');
+      const gridLiveRegions = document.querySelectorAll(
+        '[aria-live="polite"][style*="-10000px"]'
+      );
       return {
         liveRegionCount: gridLiveRegions.length,
       };
@@ -145,9 +162,12 @@ test.describe('ProductGrid Memory Leak Test', () => {
     expect(afterNav.liveRegionCount).toBe(0);
   });
 
-  test('should work in button mode without leaks', async ({ page, context }) => {
+  test('should work in button mode without leaks', async ({
+    page,
+    context,
+  }) => {
     const client = await context.newCDPSession(page);
-    
+
     async function getHeapSize(): Promise<number> {
       const { usedSize } = await client.send('Runtime.getHeapUsage');
       return usedSize;
@@ -169,10 +189,12 @@ test.describe('ProductGrid Memory Leak Test', () => {
     // Navigate with test parameter to force button mode
     await page.goto('http://localhost:4321/shop/all?test-button=1');
     await page.waitForLoadState('networkidle');
-    
+
     await forceGC();
     const initialHeap = await getHeapSize();
-    console.log(`Initial heap (button mode): ${(initialHeap / 1024 / 1024).toFixed(2)} MB`);
+    console.log(
+      `Initial heap (button mode): ${(initialHeap / 1024 / 1024).toFixed(2)} MB`
+    );
 
     // Click load more button multiple times
     for (let i = 0; i < 3; i++) {
@@ -192,8 +214,10 @@ test.describe('ProductGrid Memory Leak Test', () => {
     await forceGC();
     const finalHeap = await getHeapSize();
     const growth = ((finalHeap - initialHeap) / initialHeap) * 100;
-    
-    console.log(`Final heap (button mode): ${(finalHeap / 1024 / 1024).toFixed(2)} MB`);
+
+    console.log(
+      `Final heap (button mode): ${(finalHeap / 1024 / 1024).toFixed(2)} MB`
+    );
     console.log(`Growth: ${growth.toFixed(1)}%`);
 
     // Button mode should have less growth than infinite scroll.

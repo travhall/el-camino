@@ -80,8 +80,11 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright (chromium only)
-        run: pnpm test:e2e:chromium
-        continue-on-error: true # e2e is informational until tests are stabilized against stub creds
+        # Runs the PR gate subset only: specs tagged @needs-catalog (require
+        # real Square catalog data, which stub creds can't provide) and
+        # @memory-leak-cdp (slow, Chromium-CDP-based) are excluded. See
+        # plan 158 and package.json's test:e2e:gate script.
+        run: pnpm test:e2e:gate
 
       - uses: actions/upload-artifact@v4
         if: always()
