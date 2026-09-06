@@ -4,6 +4,12 @@
 // Including `iat` makes each issued token unique and `exp` bounds its lifetime,
 // so a leaked cookie naturally expires instead of being valid forever.
 //
+// The HMAC key is not just ADMIN_SECRET: it's salted with a fingerprint of the
+// current ADMIN_PASSWORD (see `sessionKey`). That binds every issued token to
+// the password in effect when it was signed, so changing ADMIN_PASSWORD after
+// a suspected compromise invalidates all outstanding sessions — without any
+// server-side session store.
+//
 // Cross-site form posts are already blocked by `SameSite=Strict` on the cookie;
 // `assertSameOrigin` adds a second layer that rejects POSTs whose Origin/Referer
 // doesn't match the request host.
@@ -18,6 +24,17 @@ function hmac(secret: string, payload: string): string {
   return createHmac("sha256", secret).update(payload).digest("hex");
 }
 
+/**
+ * Derives the actual HMAC key from ADMIN_SECRET plus a fingerprint of the
+ * current ADMIN_PASSWORD. Never logged or exposed — it only ever feeds an
+ * HMAC key, so a leaked token or log line reveals nothing about it.
+ */
+function sessionKey(secret: string): string {
+  const password = process.env.ADMIN_PASSWORD ?? "";
+  const generation = hmac(secret, password);
+  return `${secret}.${generation}`;
+}
+
 function safeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
   const bufB = Buffer.from(b);
@@ -29,7 +46,7 @@ export function issueSessionToken(secret: string, ttlSeconds = ADMIN_SESSION_TTL
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + ttlSeconds;
   const payload = `${iat}.${exp}`;
-  return `${payload}.${hmac(secret, payload)}`;
+  return `${payload}.${hmac(sessionKey(secret), payload)}`;
 }
 
 export function verifySessionToken(secret: string, token: string | undefined): boolean {
@@ -41,7 +58,7 @@ export function verifySessionToken(secret: string, token: string | undefined): b
   const exp = Number(expStr);
   if (!Number.isFinite(iat) || !Number.isFinite(exp)) return false;
   if (Math.floor(Date.now() / 1000) >= exp) return false;
-  const expected = hmac(secret, `${iatStr}.${expStr}`);
+  const expected = hmac(sessionKey(secret), `${iatStr}.${expStr}`);
   return safeEqual(sig, expected);
 }
 

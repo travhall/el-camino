@@ -71,6 +71,47 @@ describe('issueSessionToken / verifySessionToken', () => {
   });
 });
 
+describe('session revocation via ADMIN_PASSWORD generation binding', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('rejects a token issued under one ADMIN_PASSWORD once ADMIN_PASSWORD changes', () => {
+    vi.stubEnv('ADMIN_PASSWORD', 'generation-a');
+    const token = issueSessionToken('test-secret');
+    expect(verifySessionToken('test-secret', token)).toBe(true);
+
+    vi.stubEnv('ADMIN_PASSWORD', 'generation-b');
+    expect(verifySessionToken('test-secret', token)).toBe(false);
+  });
+
+  it('accepts a token issued and verified under the same ADMIN_PASSWORD', () => {
+    vi.stubEnv('ADMIN_PASSWORD', 'stable-generation');
+    const token = issueSessionToken('test-secret');
+    expect(verifySessionToken('test-secret', token)).toBe(true);
+  });
+
+  it('an expired token still fails even under the same generation (exp check survives)', () => {
+    vi.stubEnv('ADMIN_PASSWORD', 'generation-a');
+    vi.useFakeTimers();
+    try {
+      const token = issueSessionToken('test-secret', 60);
+      vi.setSystemTime(Date.now() + 61_000);
+      expect(verifySessionToken('test-secret', token)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('still uses constant-time comparison (length-mismatch early return)', () => {
+    vi.stubEnv('ADMIN_PASSWORD', 'generation-a');
+    const token = issueSessionToken('test-secret');
+    const [iat, exp] = token.split('.');
+    // Shorter signature triggers safeEqual's length guard before timingSafeEqual.
+    expect(verifySessionToken('test-secret', `${iat}.${exp}.abc`)).toBe(false);
+  });
+});
+
 describe('assertSameOrigin', () => {
   it('returns true for a same-host Origin header', () => {
     const request = makeRequest({

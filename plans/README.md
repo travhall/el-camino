@@ -269,7 +269,7 @@ your row when done.
 | 166  | Make cache writes durable and inventory invalidation fleet-visible | P1 | M | MED | — | bug | TODO |
 | 167  | Scope the single-item inventory fallback to the configured location | P2 | S | LOW | — | bug | TODO |
 | 168  | Validate the `/api/create-checkout` request body | P2 | M | LOW | 152 (soft) | security | TODO |
-| 169  | Make admin sessions revocable | P2 | S | LOW | — | security | TODO |
+| 169  | Make admin sessions revocable | P2 | S | LOW | — | security | DONE |
 | 170  | Route the main WordPress content path through the sanitizer | P3 | S | LOW | — | security | TODO |
 | 171  | Reconcile the client cart when the server trims items at checkout | P2 | M | LOW | 152 (soft) | bug | TODO |
 | 172  | Constrain `productId` before it becomes a Blobs key | P3 | S | LOW | — | security | TODO |
@@ -636,6 +636,18 @@ and each is explicitly allowed to conclude "not worth doing".
 Two of these were outright errors. Every plan in this batch cites code the
 advisor opened directly, and several instruct the executor to re-derive line
 numbers rather than trust the plan.
+
+**Plan 169 — executed 2026-09-06.** Took option (a): bind the session HMAC key
+to a fingerprint of `ADMIN_PASSWORD` rather than adding a separate
+`ADMIN_SESSION_GENERATION` var. `ADMIN_PASSWORD` is a process-level env var —
+`process.env.ADMIN_PASSWORD` is readable from `src/lib/admin/auth.ts` itself
+(where `verifySessionToken`/`issueSessionToken` run) exactly the same way
+`ADMIN_SECRET` already is, so it's available at verification time, not just at
+login. No signature changes to `verifySessionToken`/`isAdminAuthenticated`;
+`src/middleware.ts` and the 15 admin API routes are untouched. Manually
+verified with a local dev server: logged in, changed `ADMIN_PASSWORD`,
+restarted, reloaded `/admin` with the old cookie — redirected to login;
+logged in with the new password — access restored.
 
 ## Findings considered and rejected
 

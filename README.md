@@ -78,6 +78,25 @@ ADMIN_PASSWORD=your_admin_password
 ADMIN_SECRET=a_long_random_string_for_hmac_signing
 ```
 
+#### Revoking admin sessions
+
+Every issued admin session token is bound to the `ADMIN_PASSWORD` in effect
+when it was signed. To sign out every outstanding admin session (e.g. after a
+suspected credential compromise):
+
+1. Change `ADMIN_PASSWORD` to a new value.
+2. Restart the server so the new value is picked up.
+
+All previously issued session cookies stop verifying immediately; anyone
+still holding one is redirected to `/admin/login` and must sign in again with
+the new password. Deploying this change also logs out any current admin
+session as a side effect — expected, not a bug.
+
+If `ADMIN_PASSWORD` is ever unavailable as a revocation lever, rotating
+`ADMIN_SECRET` is the fallback — it invalidates every session the same way,
+at the cost of also requiring the secret to be redistributed to wherever it's
+configured.
+
 Optional — feature-specific:
 
 ```env
