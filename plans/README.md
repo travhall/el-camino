@@ -267,7 +267,7 @@ your row when done.
 | 165  | Add tests for `src/lib/checkout/` — the order payload builders | P2 | S | LOW | — | tests | TODO |
 
 | 166  | Make cache writes durable and inventory invalidation fleet-visible | P1 | M | MED | — | bug | TODO |
-| 167  | Scope the single-item inventory fallback to the configured location | P2 | S | LOW | — | bug | TODO |
+| 167  | Scope the single-item inventory fallback to the configured location | P2 | S | LOW | — | bug | DONE (1 location — latent bug) |
 | 168  | Validate the `/api/create-checkout` request body | P2 | M | LOW | 152 (soft) | security | TODO |
 | 169  | Make admin sessions revocable | P2 | S | LOW | — | security | TODO |
 | 170  | Route the main WordPress content path through the sanitizer | P3 | S | LOW | — | security | TODO |

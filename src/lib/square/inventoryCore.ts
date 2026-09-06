@@ -84,8 +84,11 @@ async function fetchChunk(
     await Promise.all(
       ids.map(async (id) => {
         try {
+          // Must stay scoped identically to the batch path above — this runs
+          // precisely when things are already degraded.
           const page = await squareClient.inventory.get({
             catalogObjectId: id,
+            locationIds: locationId,
           });
           counts[id] = inStockQty(page.data || []);
         } catch {
