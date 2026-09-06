@@ -4,4 +4,4 @@
 // MUST use this exact string: if the preload's imagesizes and the <img>'s
 // sizes resolve to different srcset candidates, the browser downloads both.
 export const FEATURED_CARD_IMAGE_SIZES =
-  "(max-width: 767px) 100vw, (max-width: 1535px) 67vw, 50vw";
+  '(max-width: 767px) 100vw, (max-width: 1535px) 67vw, 50vw';
