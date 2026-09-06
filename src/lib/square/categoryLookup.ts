@@ -2,6 +2,7 @@
 
 import { categoryCache } from '@/lib/cache/blobCache';
 import { requestDeduplicator } from './requestDeduplication';
+import { logger } from '@/lib/logger';
 import type { Category, CategoryHierarchy } from './types';
 
 /**
@@ -36,27 +37,20 @@ export async function getCategoryBySlug(
       const { fetchCategoryHierarchy } = await import('./categories');
       const hierarchy = await fetchCategoryHierarchy();
 
-      // console.log(`[CategoryLookup] Searching for slug: "${slug}"`);
-
       // Search top-level categories
       for (const item of hierarchy) {
         if (item.category.slug === slug) {
-          // console.log(`[CategoryLookup] ✅ Found top-level category: ${item.category.name} (ID: ${item.category.id})`);
           return item.category;
         }
 
         // Search subcategories
         const subcat = item.subcategories.find((sub) => sub.slug === slug);
         if (subcat) {
-          // console.log(`[CategoryLookup] ✅ Found subcategory: ${subcat.name} (ID: ${subcat.id}) under ${item.category.name}`);
           return subcat;
         }
       }
 
-      // console.warn(`[CategoryLookup] ❌ No category found for slug: "${slug}"`);
-      // console.log(`[CategoryLookup] Available slugs:`,
-      //   hierarchy.flatMap(h => [h.category.slug, ...h.subcategories.map(s => s.slug)]).join(', ')
-      // );
+      logger.debug(`[CategoryLookup] No category found for slug: "${slug}"`);
 
       return null;
     })
@@ -172,20 +166,26 @@ export async function resolveCategoryPathWithRetry(
     // Success case - category found
     if (result.category) {
       if (attempt > 0) {
-        // console.log(`[CategoryLookup] ✅ Found category "${slugPath}" after ${attempt} retries`);
+        logger.debug(
+          `[CategoryLookup] Found category "${slugPath}" after ${attempt} retries`
+        );
       }
       return result;
     }
 
     // Last attempt - give up
     if (attempt === maxRetries) {
-      // console.warn(`[CategoryLookup] ❌ Category "${slugPath}" not found after ${maxRetries} retries`);
+      logger.debug(
+        `[CategoryLookup] Category "${slugPath}" not found after ${maxRetries} retries`
+      );
       return result;
     }
 
     // Retry with cache invalidation
     attempt++;
-    // console.log(`[CategoryLookup] 🔄 Retry ${attempt}/${maxRetries} for "${slugPath}" - invalidating cache`);
+    logger.debug(
+      `[CategoryLookup] Retry ${attempt}/${maxRetries} for "${slugPath}" - invalidating cache`
+    );
 
     const slugParts = slugPath.split('/');
     await Promise.all(slugParts.map((slug) => invalidateCategoryCache(slug)));

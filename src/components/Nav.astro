@@ -129,18 +129,6 @@ const navItems =
         staticNavItems[1], // "News" - always works
       ];
 
-// Debug: Log navigation state for development
-// if (import.meta.env.DEV) {
-//   console.log(
-//     `[Navigation] Status: ${navigationStatus}, Items: ${navItems.length}`
-//   );
-//   if (navigationStatus !== "success") {
-//     console.log(
-//       "[Navigation] Using minimal safe navigation - category data unavailable"
-//     );
-//   }
-// }
-
 // Get current path for context-aware prefetching
 const currentPath = Astro.url.pathname;
 const isProductPage = currentPath.includes("/product/");
@@ -516,10 +504,6 @@ const isCategoryPage = currentPath.includes("/category/");
     private initializePrefetching(): void {
       const context = getNavigationContext();
       prefetchHighPriorityTargets(context);
-
-      if (import.meta.env.DEV) {
-        // console.log("[Navigation] Prefetch initialized for context:", context);
-      }
     }
 
     private enhanceAccessibility(): void {
@@ -910,10 +894,6 @@ const isCategoryPage = currentPath.includes("/category/");
 
   function initializeOptimizedNavigation(): OptimizedNavigationController {
     const navController = new OptimizedNavigationController();
-
-    if (import.meta.env.DEV) {
-      // console.log("[Navigation] Optimized navigation controller initialized");
-    }
 
     return navController;
   }

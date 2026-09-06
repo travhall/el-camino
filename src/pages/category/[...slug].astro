@@ -38,23 +38,10 @@ if (subcategories.length > 0) {
 // === PARSE URL PARAMETERS FOR FILTERING ===
 const filters = parseFiltersFromURL(Astro.url.searchParams);
 
-// console.log(`[Category] 🔍 URL Parsing:`, {
-//   searchParams: Astro.url.search,
-//   parsedFilters: filters,
-//   hasBrands: filters.brands.length > 0,
-//   hasAvailability: filters.availability,
-// });
-
 // Check for active filters
 const hasFilters = filters.brands.length > 0 ||
                    filters.categories.length > 0 ||
                    filters.availability === true;
-
-// console.log(`[Category] 📊 Filter Analysis:`, {
-//   hasFilters,
-//   filterValues: Object.values(filters),
-//   filtersBreakdown: filters,
-// });
 
 // === PHASE 1: ISR CACHING - Enable Edge Caching ===
 // Serve from edge, revalidate in background for 88% improvement (870ms → 100ms)
@@ -82,18 +69,10 @@ let slugToIdMap: Record<string, string> = {};
 
 try {
   // Fetch ALL products for infinite scroll and client-side filtering
-  // console.log(
-  //   `[Category] Fetching all products for category: ${category.name} (ID: ${category.id})`
-  // );
-
   const productData = await fetchProductsByCategory(category.id, {
     limit: 200,
   });
   allProducts = productData.products;
-
-  // console.log(
-  //   `[Category] Square API returned ${allProducts.length} products for category ID: ${category.id}`
-  // );
 
   // Extract filter options from all products using the same logic as shop/all
   filterOptions = await extractFilterOptions(allProducts);
@@ -112,14 +91,10 @@ try {
     // Apply server-side filtering using the same logic as shop/all
     filteredProducts = await filterProductsWithCache(allProducts, resolvedFilters);
   } else {
-    // console.log(
-    //   `[Category] ⚪ No filters applied - showing all ${allProducts.length} products`
-    // );
     // No filters applied - show all products
     filteredProducts = [...allProducts];
   }
 } catch {
-  // console.error("Error fetching products");
   allProducts = [];
   filteredProducts = [];
 }
@@ -155,14 +130,6 @@ const categoryPath = parentCategory
 // Check for active filters (for display purposes)
 const hasActiveFilters =
   filters.brands.length > 0 || filters.availability === true;
-
-// console.log(`[Category] 🎬 Final data summary:`, {
-//   allProductsCount: allProducts.length,
-//   filteredProductsCount: filteredProducts.length,
-//   hasActiveFilters,
-//   categoryPath,
-//   sampleFilteredProducts: filteredProducts.slice(0, 2).map((p) => p.brand),
-// });
 ---
 
 <Layout title={fullPageTitle}>

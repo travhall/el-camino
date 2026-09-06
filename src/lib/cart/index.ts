@@ -2,6 +2,7 @@
 import type { CartItem, CartEvent, CartState } from './types';
 import type { ProductAvailabilityInfo } from '../square/types';
 import { ProductAvailabilityState, getAvailabilityInfo } from '../square/types';
+import { logger } from '@/lib/logger';
 
 // Fetch bulk inventory via API endpoint — keeps Square credentials server-side only
 async function fetchBulkInventory(
@@ -128,16 +129,13 @@ class CartManager {
     }
 
     try {
-      // console.log("Loading cart from localStorage");
       const savedCart = this.storage.getItem(CART_STORAGE_KEY);
 
       if (!savedCart) {
-        // console.log("No saved cart found in localStorage");
         return;
       }
 
       const items = JSON.parse(savedCart);
-      // console.log(`Loaded ${items.length} items from localStorage:`, items);
 
       // Clear existing items and add loaded ones
       this.items.clear();
@@ -145,9 +143,6 @@ class CartManager {
       if (Array.isArray(items)) {
         items.forEach((item: CartItem) => {
           if (item && item.id && item.quantity > 0) {
-            // console.log(
-            //   `Adding item to cart from storage: ${item.title || item.id}`
-            // );
             // Create compound key for each item
             const itemKey = `${item.id}:${item.variationId}`;
             this.items.set(itemKey, item);
@@ -157,7 +152,7 @@ class CartManager {
         console.warn('Saved cart is not an array:', items);
       }
 
-      // console.log(`Cart now has ${this.items.size} items after loading`);
+      logger.debug(`Cart now has ${this.items.size} items after loading`);
 
       // Fetch sale info for all items after loading - dispatch event when complete
       if (this.items.size > 0) {
@@ -229,17 +224,10 @@ class CartManager {
     }
 
     try {
-      // console.log("Saving cart to localStorage");
       const items = Array.from(this.items.values());
 
       // Create deep clone to avoid reference issues
       const itemsToSave = items.map((item) => ({ ...item }));
-
-      // Log what we're saving
-      // console.log(
-      //   `Saving ${itemsToSave.length} items to localStorage:`,
-      //   itemsToSave
-      // );
 
       // Serialize and save
       const serialized = JSON.stringify(itemsToSave);
@@ -262,7 +250,6 @@ class CartManager {
         }));
 
         this.storage.setItem(CART_STORAGE_KEY, JSON.stringify(simpleItems));
-        // console.log("Saved cart with simplified data");
       } catch (fallbackError) {
         console.error('Critical error saving cart:', fallbackError);
       }
@@ -473,7 +460,6 @@ class CartManager {
 
       // Only block completely out of stock items
       if (availableQuantity <= 0) {
-        // console.log(`Item is out of stock`);
         return {
           success: false,
           message: 'This item is out of stock',
@@ -483,16 +469,13 @@ class CartManager {
       // Check if this specific variation is already in the cart
       const existingItem = this.items.get(itemKey);
 
-      // console.log(`Checking cart for item with key: ${itemKey}`);
-      // console.log(`Existing item found?`, existingItem ? "Yes" : "No");
-
       // Calculate current cart quantity and new total
       const currentCartQty = existingItem?.quantity || 0;
       const newTotalQty = currentCartQty + requestedQuantity;
 
-      // console.log(
-      //   `Current quantity in cart: ${currentCartQty}, Adding: ${requestedQuantity}, New total would be: ${newTotalQty}, Available: ${availableQuantity}`
-      // );
+      logger.debug(
+        `Current quantity in cart: ${currentCartQty}, Adding: ${requestedQuantity}, New total would be: ${newTotalQty}, Available: ${availableQuantity}`
+      );
 
       // Check if adding would exceed available inventory
       if (newTotalQty > availableQuantity) {

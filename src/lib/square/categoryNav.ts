@@ -164,14 +164,6 @@ export async function filterCategoryHierarchyWithProducts(
     }
   }
 
-  // Debug logging
-  if (import.meta.env.DEV) {
-    const removedCategories = hierarchy.length - filteredHierarchy.length;
-    if (removedCategories > 0) {
-      // console.log(`[CategoryFilter] Filtered out ${removedCategories} empty categories`);
-    }
-  }
-
   return filteredHierarchy;
 }
 
@@ -202,12 +194,6 @@ export async function fetchCategoryHierarchyWithProducts(): Promise<
 
       // Sort by Square's ordinal system (maintained from original fetch)
       // The original hierarchy is already sorted by ordinals, so we preserve that order
-
-      if (import.meta.env.DEV) {
-        // console.log(
-        //   `[Navigation] Loaded ${filteredHierarchy.length} categories with products (cached for 1 hour)`
-        // );
-      }
 
       return filteredHierarchy;
     } catch (error) {

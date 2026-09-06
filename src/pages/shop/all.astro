@@ -19,13 +19,6 @@ import type {
 // === PARSE URL PARAMETERS FOR FILTERING ===
 const filters = parseFiltersFromURL(Astro.url.searchParams);
 
-// console.log(`[Shop/All] 🔍 URL Parsing:`, {
-//   searchParams: Astro.url.search,
-//   parsedFilters: filters,
-//   hasBrands: filters.brands.length > 0,
-//   hasAvailability: filters.availability,
-// });
-
 // Smart cache headers based on filters
 const hasFilters = filters.brands.length > 0 ||
                    filters.categories.length > 0 ||
@@ -93,16 +86,6 @@ try {
   if (hasFilters) {
     // Apply server-side filtering using the same logic as category pages
     filteredProducts = await filterProductsWithCache(allProducts, resolvedFilters);
-
-    // console.log(
-    //   `[Shop/All] ✅ After filtering: ${filteredProducts.length} products`
-    // );
-    // console.log(
-    //   `[Shop/All] 📋 Sample filtered products:`,
-    //   filteredProducts
-    //     .slice(0, 3)
-    //     .map((p) => ({ id: p.id, brand: p.brand, title: p.title }))
-    // );
   } else {
     // No filters applied - show all products
     filteredProducts = [...allProducts];
@@ -133,14 +116,6 @@ const hasActiveFilters =
   filters.brands.length > 0 ||
   filters.categories.length > 0 ||
   filters.availability === true;
-
-// console.log(`[Shop/All] 🎬 Final data summary:`, {
-//   allProductsCount: allProducts.length,
-//   filteredProductsCount: filteredProducts.length,
-//   hasActiveFilters,
-//   categoryPath,
-//   sampleFilteredProducts: filteredProducts.slice(0, 2).map((p) => p.brand),
-// });
 ---
 
 <Layout title={pageTitle}>
