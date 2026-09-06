@@ -266,7 +266,7 @@ your row when done.
 | 164  | Close the three fixable dependency advisories via overrides | P2 | S | LOW-MED | — | security | TODO |
 | 165  | Add tests for `src/lib/checkout/` — the order payload builders | P2 | S | LOW | — | tests | TODO |
 
-| 166  | Make cache writes durable and inventory invalidation fleet-visible | P1 | M | MED | — | bug | TODO |
+| 166  | Make cache writes durable and inventory invalidation fleet-visible | P1 | M | MED | — | bug | DONE — Step 1 (Netlify freeze behavior) not empirically verified: this session has no deploy access, so writes are awaited on the strength of the repo's existing `create-checkout.ts` precedent rather than a fresh preview log. Step 4 latency not measured for the same reason (no deployable preview here) — a maintainer should record cold-page-render latency before/after in a real deploy. `inventoryCache` memory TTL set to 10s; other 7 caches unchanged (regression-tested in `blobCache.test.ts`). |
 | 167  | Scope the single-item inventory fallback to the configured location | P2 | S | LOW | — | bug | DONE (1 location — latent bug) |
 | 168  | Validate the `/api/create-checkout` request body | P2 | M | LOW | 152 (soft) | security | TODO |
 | 169  | Make admin sessions revocable | P2 | S | LOW | — | security | TODO |

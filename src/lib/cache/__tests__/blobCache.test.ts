@@ -3,7 +3,7 @@
  * Tests Netlify Blobs integration, TTL expiration, and fallback cache
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { BlobCache } from '../blobCache';
 
 // Mock Netlify Blobs
@@ -415,6 +415,131 @@ describe('BlobCache', () => {
       // Expiration should be around now + TTL (60 seconds)
       expect(metadata.expires).toBeGreaterThanOrEqual(beforeSet + 60000);
       expect(metadata.expires).toBeLessThanOrEqual(afterSet + 60000);
+    });
+  });
+
+  describe('Memory TTL (independent of blob TTL)', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('falls through to the blob once the short memory TTL elapses, even though the blob TTL has not', async () => {
+      vi.useFakeTimers();
+      // Blob TTL 900s, memory TTL 10s — mirrors inventoryCache's configuration.
+      const shortMemoryCache = new BlobCache<string>(
+        'short-memory',
+        900,
+        'square-cache',
+        10
+      );
+
+      const compute = vi.fn().mockResolvedValue('first-value');
+      mockBlobStore.get.mockResolvedValue(null);
+      mockBlobStore.set.mockResolvedValue(undefined);
+      const first = await shortMemoryCache.getOrCompute('key', compute);
+      expect(first).toBe('first-value');
+      expect(compute).toHaveBeenCalledTimes(1);
+
+      // Within the memory TTL: still served from memory, blob untouched.
+      mockBlobStore.get.mockClear();
+      const withinMemoryTtl = await shortMemoryCache.getOrCompute(
+        'key',
+        compute
+      );
+      expect(withinMemoryTtl).toBe('first-value');
+      expect(mockBlobStore.get).not.toHaveBeenCalled();
+
+      // Advance past the 10s memory TTL but well within the 900s blob TTL —
+      // the entry should be treated as expired in memory and re-read from blob.
+      vi.advanceTimersByTime(11000);
+      const freshBlobEntry = {
+        value: 'blob-value',
+        timestamp: Date.now(),
+        ttl: 900000,
+      };
+      mockBlobStore.get.mockResolvedValue(JSON.stringify(freshBlobEntry));
+
+      const afterMemoryExpiry = await shortMemoryCache.getOrCompute(
+        'key',
+        compute
+      );
+
+      expect(afterMemoryExpiry).toBe('blob-value');
+      expect(mockBlobStore.get).toHaveBeenCalled();
+      expect(compute).toHaveBeenCalledTimes(1); // still just the original compute
+    });
+
+    it('caches without an explicit memoryTtlSeconds behave exactly as before (regression proof for the other seven caches)', async () => {
+      vi.useFakeTimers();
+      // No 4th constructor arg — memoryTtl defaults to the blob ttl, same as
+      // imageCache/navigationCache/wordpressCache/etc.
+      const defaultCache = new BlobCache<string>('default-memory', 60);
+
+      const compute = vi.fn().mockResolvedValue('value');
+      mockBlobStore.get.mockResolvedValue(null);
+      mockBlobStore.set.mockResolvedValue(undefined);
+      await defaultCache.getOrCompute('key', compute);
+
+      // Well past what would be a short inventory-style memory TTL, but still
+      // inside the 60s blob TTL — memory should still serve it.
+      vi.advanceTimersByTime(30000);
+      mockBlobStore.get.mockClear();
+
+      const result = await defaultCache.getOrCompute('key', compute);
+
+      expect(result).toBe('value');
+      expect(mockBlobStore.get).not.toHaveBeenCalled();
+      expect(compute).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getOrCompute awaits its blob write', () => {
+    it('resolves the blob set call before returning', async () => {
+      mockBlobStore.get.mockResolvedValue(null);
+
+      let setResolved = false;
+      mockBlobStore.set.mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => {
+              setResolved = true;
+              resolve(undefined);
+            }, 0)
+          )
+      );
+
+      const compute = vi.fn().mockResolvedValue('computed-value');
+      await cache.getOrCompute('test-key', compute);
+
+      expect(setResolved).toBe(true);
+    });
+
+    it('still returns the computed value when the blob write fails, without throwing', async () => {
+      mockBlobStore.get.mockResolvedValue(null);
+      mockBlobStore.set.mockRejectedValue(new Error('write failed'));
+
+      const compute = vi.fn().mockResolvedValue('computed-value');
+
+      await expect(
+        cache.getOrCompute('test-key', compute)
+      ).resolves.toBe('computed-value');
+    });
+  });
+
+  describe('delete removes both tiers', () => {
+    it('removes the in-memory entry and calls blob delete', async () => {
+      const fallbackCache = getFallbackCache(cache);
+      fallbackCache.set('v3-prod:test-cache:test-key', {
+        value: 'cached',
+        timestamp: Date.now(),
+        ttl: 60000,
+      });
+      mockBlobStore.delete.mockResolvedValue(undefined);
+
+      await cache.delete('test-key');
+
+      expect(fallbackCache.has('v3-prod:test-cache:test-key')).toBe(false);
+      expect(mockBlobStore.delete).toHaveBeenCalled();
     });
   });
 
