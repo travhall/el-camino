@@ -1,5 +1,5 @@
 // src/lib/square/slugResolver.ts
-import { squareClient } from './client';
+import { fetchAllCatalogItems } from './catalogFetch';
 import { createSlug } from './slugUtils';
 import { slugCache } from '../cache/blobCache';
 import { logger } from '@/lib/logger';
@@ -53,12 +53,12 @@ class SlugResolver {
     const startTime = Date.now();
 
     try {
-      // Fetch only ITEM objects with minimal data
-      const response = await squareClient.catalog.list({ types: 'ITEM' });
+      // Fetch all ITEM objects, paginating through the full catalog
+      const items = await fetchAllCatalogItems();
 
       const map: Record<string, string> = {};
 
-      for (const item of response.data ?? []) {
+      for (const item of items) {
         if (item.type === 'ITEM' && item.itemData?.name) {
           const slug = createSlug(item.itemData.name);
           map[slug] = item.id;
