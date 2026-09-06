@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Memory Leak Diagnostics', () => {
+// @memory-leak-cdp: uses Chromium CDP and is slow; excluded from the PR gate
+// regardless of pass/fail (plan 158). Run manually via
+// `pnpm exec playwright test --project=chromium --grep "@memory-leak-cdp"`.
+test.describe('Memory Leak Diagnostics @memory-leak-cdp', () => {
   // Both tests use CDP (context.newCDPSession) which is Chromium-only.
   test.beforeEach(({ browserName }) => {
     test.skip(browserName !== 'chromium', 'CDP APIs (newCDPSession) are Chromium-only');

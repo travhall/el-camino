@@ -22,7 +22,9 @@ test.describe("Checkout Flow", () => {
     });
   });
 
-  test("POST /api/create-checkout with correct body; no real Square call made", async ({
+  // @needs-catalog: adds a real product to cart first via the shop grid,
+  // which requires real Square catalog data (plan 158).
+  test("POST /api/create-checkout with correct body; no real Square call made @needs-catalog", async ({
     page,
   }) => {
     // 1. Add a product to cart

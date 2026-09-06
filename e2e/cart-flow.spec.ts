@@ -27,7 +27,11 @@ async function getProductName(page: Page): Promise<string> {
   return brandText ? fullText.replace(brandText, "").trim() : fullText.trim();
 }
 
-test.describe("Cart Operations", () => {
+// @needs-catalog: requires real Square catalog data to render a product
+// grid; against CI's stub credentials, `article[role="article"]` never
+// appears and every test here times out. Excluded from the PR gate
+// (plan 158) until CI has real (sandbox) catalog data.
+test.describe("Cart Operations @needs-catalog", () => {
   test.beforeEach(async ({ page, context }, testInfo) => {
     // Mobile UA causes SSR to render CartButtonMobile (<a> link) instead of
     // CartButton (<button>), so getByRole('button', { name: 'Shopping Cart' })
@@ -363,7 +367,8 @@ test.describe("Cart Navigation", () => {
     });
   });
 
-  test("should navigate to cart from mini-cart", async ({ page }) => {
+  // @needs-catalog: same as "Cart Operations" — adds a real product first.
+  test("should navigate to cart from mini-cart @needs-catalog", async ({ page }) => {
     // Add product
     await page.goto("/shop/all");
     await page.waitForSelector('article[role="article"]');
