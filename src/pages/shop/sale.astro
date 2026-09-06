@@ -57,17 +57,21 @@ const hasFilters = filters.brands.length > 0 ||
                    filters.categories.length > 0 ||
                    filters.availability === true;
 
+// Directive is "s-maxage" — one hyphen only. An extra hyphen before "max"
+// is silently ignored by caches: no error, no warning, no test failure.
 const cacheControl = hasFilters
-  ? "public, max-age=120, s-max-age=180, stale-while-revalidate=900" // 2min browser, 3min server, 15min stale for filtered
-  : "public, max-age=300, s-max-age=300, stale-while-revalidate=1800"; // 5min browser/server, 30min stale for unfiltered
+  ? "public, max-age=120, s-maxage=180, stale-while-revalidate=900" // 2min browser, 3min server, 15min stale for filtered
+  : "public, max-age=300, s-maxage=300, stale-while-revalidate=1800"; // 5min browser/server, 30min stale for unfiltered
 
 // Set cache headers for this response
+// Directive is "s-maxage" — one hyphen only. An extra hyphen before "max"
+// is silently ignored by caches: no error, no warning, no test failure.
 Astro.response.headers.set("Cache-Control", cacheControl);
 Astro.response.headers.set(
   "Netlify-CDN-Cache-Control",
   hasFilters
-    ? "public, s-max-age=180, stale-while-revalidate=900"
-    : "public, s-max-age=300, stale-while-revalidate=1800"
+    ? "public, s-maxage=180, stale-while-revalidate=900"
+    : "public, s-maxage=300, stale-while-revalidate=1800"
 );
 
 // Add cache debugging header
