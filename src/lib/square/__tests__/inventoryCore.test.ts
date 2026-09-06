@@ -144,7 +144,7 @@ describe('fetchInventoryCounts', () => {
     });
   });
 
-  it('returns the configured location\'s quantity, not another location\'s, from a multi-location account', async () => {
+  it("returns the configured location's quantity, not another location's, from a multi-location account", async () => {
     vi.mocked(squareClient.inventory.batchGetCounts).mockRejectedValue(
       new Error('batch endpoint down')
     );
