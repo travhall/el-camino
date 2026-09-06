@@ -396,8 +396,11 @@ const nonce = Astro.locals.nonce;
 
 <!-- Server-side data for JavaScript -->
 <script type="application/json" id="news-filter-options" set:html={JSON.stringify(filterOptions)} />
-<script is:inline nonce={nonce}>
-  window.newsFilterOptions = JSON.parse(document.getElementById('news-filter-options').textContent);
+<script>
+  const newsFilterOptionsEl = document.getElementById('news-filter-options');
+  if (newsFilterOptionsEl) {
+    window.newsFilterOptions = JSON.parse(newsFilterOptionsEl.textContent!);
+  }
 </script>
 
 <script>

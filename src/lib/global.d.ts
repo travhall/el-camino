@@ -25,6 +25,7 @@ declare global {
       searchIndex: any;
       filterOptions: any;
     };
+    newsFilterOptions?: any;
     responsiveFiltersInitialized?: boolean;
     dismissRecommendation?: (button: HTMLButtonElement) => void;
     applyRecommendation?: (button: HTMLButtonElement) => void;

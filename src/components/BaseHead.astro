@@ -211,6 +211,34 @@ const seoData = {
     });
 </script>
 
+<!-- Restore news view preference before first paint (avoids flash on /news).
+     Rendered on every page — not just news/index.astro — so its content is
+     byte-identical across navigations: Astro's ClientRouter only skips
+     re-executing an inline script on a client-side swap if that exact script
+     content already ran on a previously-visited page this session; a
+     page-only script fails that check on its first swap-in and gets
+     recreated with a fresh nonce that can never match the CSP nonce the
+     browser is still enforcing from the original full page load. -->
+<script is:inline nonce={nonce}>
+    (function () {
+        if (window.location.pathname !== "/news") return;
+        try {
+            if (!new URLSearchParams(window.location.search).has("view")) {
+                var pref = localStorage.getItem("newsViewPreference");
+                if (pref && pref !== "grid") {
+                    var params = new URLSearchParams(window.location.search);
+                    params.set("view", pref);
+                    window.location.replace(
+                        window.location.pathname + "?" + params.toString()
+                    );
+                }
+            }
+        } catch {
+            // localStorage can throw in sandboxed/private-browsing contexts; skip redirect silently.
+        }
+    })();
+</script>
+
 <!-- Clean news parameters when outside news section -->
 <script is:inline nonce={nonce}>
     document.addEventListener("astro:page-load", function () {

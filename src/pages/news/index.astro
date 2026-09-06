@@ -171,31 +171,13 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
       priority: true,
     })
   : null;
-
-const nonce = Astro.locals.nonce;
 ---
 
 <Layout title="The Latest News | El Camino">
   <Fragment slot="head">
-    {/* Restore session view preference before first paint to avoid flash */}
-    <script is:inline nonce={nonce}>
-      (function () {
-        try {
-          if (!new URLSearchParams(window.location.search).has("view")) {
-            var pref = localStorage.getItem("newsViewPreference");
-            if (pref && pref !== "grid") {
-              var params = new URLSearchParams(window.location.search);
-              params.set("view", pref);
-              window.location.replace(
-                window.location.pathname + "?" + params.toString()
-              );
-            }
-          }
-        } catch {
-          // localStorage can throw in sandboxed/private-browsing contexts; skip redirect silently.
-        }
-      })();
-    </script>
+    {/* View preference restore lives in BaseHead.astro (runs on every page,
+       pathname-guarded) so its content is byte-identical across navigations
+       and never gets caught by ClientRouter's per-page nonce mismatch. */}
 
     {/* Preconnect to WordPress CDN for faster image loading */}
     <link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" crossorigin />
@@ -247,8 +229,11 @@ const nonce = Astro.locals.nonce;
     )}
     
     <script type="application/json" id="news-data" set:html={JSON.stringify({ allPosts, searchIndex, filterOptions })} />
-    <script is:inline nonce={nonce}>
-      window.newsData = JSON.parse(document.getElementById('news-data').textContent);
+    <script>
+      const newsDataEl = document.getElementById('news-data');
+      if (newsDataEl) {
+        window.newsData = JSON.parse(newsDataEl.textContent!);
+      }
     </script>
     {hasFilters && <meta name="robots" content="noindex, follow" />}
     <link
