@@ -32,18 +32,22 @@ const hasFilters = filters.brands.length > 0 ||
                    filters.availability === true;
 
 // No max-age: inventory-sensitive pages must not be browser-cached.
-// Browsers will always revalidate; CDN benefits from s-max-age.
+// Browsers will always revalidate; CDN benefits from s-maxage.
+// Directive is "s-maxage" — one hyphen only. An extra hyphen before "max"
+// is silently ignored by caches: no error, no warning, no test failure.
 const cacheControl = hasFilters
-  ? "public, no-cache, s-max-age=180, stale-while-revalidate=900"
-  : "public, no-cache, s-max-age=300, stale-while-revalidate=1800";
+  ? "public, no-cache, s-maxage=180, stale-while-revalidate=900"
+  : "public, no-cache, s-maxage=300, stale-while-revalidate=1800";
 
 // Set cache headers for this response
+// Directive is "s-maxage" — one hyphen only. An extra hyphen before "max"
+// is silently ignored by caches: no error, no warning, no test failure.
 Astro.response.headers.set("Cache-Control", cacheControl);
 Astro.response.headers.set(
   "Netlify-CDN-Cache-Control",
   hasFilters
-    ? "public, s-max-age=180, stale-while-revalidate=900"
-    : "public, s-max-age=300, stale-while-revalidate=1800"
+    ? "public, s-maxage=180, stale-while-revalidate=900"
+    : "public, s-maxage=300, stale-while-revalidate=1800"
 );
 
 // Add cache debugging header
