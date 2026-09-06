@@ -977,6 +977,136 @@ describe('CartManager Real Implementation Tests', () => {
     });
   });
 
+  describe('reconcileWithServerCart', () => {
+    beforeEach(async () => {
+      cart.clear();
+      await new Promise((r) => setTimeout(r, 60));
+    });
+
+    it('removes an item absent from the server list', async () => {
+      await cart.addItem({
+        id: 'prod-gone',
+        variationId: 'var-gone',
+        catalogObjectId: 'cat-gone',
+        title: 'Removed Item',
+        price: 500,
+        quantity: 1,
+      });
+
+      cart.reconcileWithServerCart([]);
+
+      expect(cart.getItems()).toHaveLength(0);
+    });
+
+    it('clamps a quantity to the server-provided value', async () => {
+      await cart.addItem({
+        id: 'prod-clamp',
+        variationId: 'var-clamp',
+        catalogObjectId: 'cat-clamp',
+        title: 'Clamped Item',
+        price: 500,
+        quantity: 10,
+      });
+
+      cart.reconcileWithServerCart([{ variationId: 'var-clamp', quantity: 5 }]);
+
+      expect(cart.getItems()[0].quantity).toBe(5);
+    });
+
+    it('leaves state untouched and dispatches no event when nothing changed', async () => {
+      await cart.addItem({
+        id: 'prod-same',
+        variationId: 'var-same',
+        catalogObjectId: 'cat-same',
+        title: 'Unchanged Item',
+        price: 500,
+        quantity: 3,
+      });
+
+      const listener = vi.fn();
+      window.addEventListener('cartUpdated', listener);
+      listener.mockClear();
+
+      cart.reconcileWithServerCart([{ variationId: 'var-same', quantity: 3 }]);
+
+      expect(cart.getItems()[0].quantity).toBe(3);
+      expect(listener).not.toHaveBeenCalled();
+
+      window.removeEventListener('cartUpdated', listener);
+    });
+
+    it('dispatches cartUpdated exactly once for a multi-item reconciliation', async () => {
+      await Promise.all([
+        cart.addItem({
+          id: 'p1',
+          variationId: 'v1',
+          catalogObjectId: 'c1',
+          title: 'Removed',
+          price: 100,
+          quantity: 1,
+        }),
+        cart.addItem({
+          id: 'p2',
+          variationId: 'v2',
+          catalogObjectId: 'c2',
+          title: 'Clamped',
+          price: 200,
+          quantity: 8,
+        }),
+        cart.addItem({
+          id: 'p3',
+          variationId: 'v3',
+          catalogObjectId: 'c3',
+          title: 'Unchanged',
+          price: 300,
+          quantity: 1,
+        }),
+      ]);
+
+      const listener = vi.fn();
+      window.addEventListener('cartUpdated', listener);
+      listener.mockClear();
+
+      cart.reconcileWithServerCart([
+        { variationId: 'v2', quantity: 2 },
+        { variationId: 'v3', quantity: 1 },
+      ]);
+
+      expect(cart.getItems()).toHaveLength(2);
+      expect(
+        cart.getItems().find((i) => i.variationId === 'v2')?.quantity
+      ).toBe(2);
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      window.removeEventListener('cartUpdated', listener);
+    });
+
+    it('empties the cart when the server list is empty', async () => {
+      await Promise.all([
+        cart.addItem({
+          id: 'p1',
+          variationId: 'v1',
+          catalogObjectId: 'c1',
+          title: 'Item 1',
+          price: 100,
+          quantity: 1,
+        }),
+        cart.addItem({
+          id: 'p2',
+          variationId: 'v2',
+          catalogObjectId: 'c2',
+          title: 'Item 2',
+          price: 200,
+          quantity: 2,
+        }),
+      ]);
+
+      cart.reconcileWithServerCart([]);
+
+      expect(cart.getItems()).toHaveLength(0);
+    });
+  });
+
   describe('getProductAvailabilityState', () => {
     it('returns OUT_OF_STOCK when totalInventory is 0', () => {
       const state = cart.getProductAvailabilityState('prod-1', 'var-1', 0);

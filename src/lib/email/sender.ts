@@ -1,7 +1,7 @@
 // src/lib/email/sender.ts
-import { Resend } from "resend";
-import type { Order } from "square-legacy";
-import type { PendingOrderContact } from "./pendingOrders";
+import { Resend } from 'resend';
+import type { Order } from 'square-legacy';
+import type { PendingOrderContact } from './pendingOrders';
 import {
   buildOrderConfirmationHtml,
   buildPickupNotificationHtml,
@@ -11,8 +11,8 @@ import {
   buildBackInStockHtml,
   buildBisAdminNotificationHtml,
   type ShippingConfirmationPayload,
-} from "./templates";
-import { formatHoursForEmail } from "@/lib/shopHours";
+} from './templates';
+import { formatHoursForEmail } from '@/lib/shopHours';
 
 interface EmailPayload {
   order: Order;
@@ -33,13 +33,14 @@ export async function sendOrderConfirmation({
   contact,
 }: EmailPayload): Promise<void> {
   const subject =
-    contact.fulfillmentMethod === "pickup"
+    contact.fulfillmentMethod === 'pickup'
       ? `Your El Camino pickup order is confirmed`
       : `Your El Camino order is confirmed`;
 
-  const hoursLine = contact.fulfillmentMethod === "pickup"
-    ? await formatHoursForEmail()
-    : undefined;
+  const hoursLine =
+    contact.fulfillmentMethod === 'pickup'
+      ? await formatHoursForEmail()
+      : undefined;
 
   const html = buildOrderConfirmationHtml({ order, contact, hoursLine });
 
@@ -70,7 +71,10 @@ export async function sendShippingOrderNotification({
 
   if (error) {
     // Don't throw — Tyler not receiving a notification shouldn't block the customer confirmation
-    console.error("[sender] Failed to send shipping order notification:", error);
+    console.error(
+      '[sender] Failed to send shipping order notification:',
+      error
+    );
   }
 }
 
@@ -80,7 +84,12 @@ export async function sendShippingConfirmation({
   trackingNumber,
   carrier,
 }: ShippingConfirmationPayload): Promise<void> {
-  const html = buildShippingConfirmationHtml({ order, contact, trackingNumber, carrier });
+  const html = buildShippingConfirmationHtml({
+    order,
+    contact,
+    trackingNumber,
+    carrier,
+  });
 
   const { error } = await getResend().emails.send({
     from: process.env.EMAIL_FROM!,
@@ -121,7 +130,7 @@ export async function sendBisAdminNotification({
 
   if (error) {
     // Non-blocking — Tyler not getting the alert shouldn't break the customer experience
-    console.error("[sender] Failed to send BIS admin notification:", error);
+    console.error('[sender] Failed to send BIS admin notification:', error);
   }
 }
 
@@ -136,9 +145,12 @@ export async function sendBackInStockNotification({
 }): Promise<void> {
   // Derive a friendly first name from the email local part
   // e.g. "travis.hall@gmail.com" → "Travis"
-  const localPart = email.split("@")[0].replace(/[._+-]/g, " ").trim();
+  const localPart = email
+    .split('@')[0]
+    .replace(/[._+-]/g, ' ')
+    .trim();
   const customerName =
-    localPart.charAt(0).toUpperCase() + localPart.slice(1) || "there";
+    localPart.charAt(0).toUpperCase() + localPart.slice(1) || 'there';
 
   const html = buildBackInStockHtml({
     customerName,
@@ -174,12 +186,18 @@ export async function sendPickupReminderEmail({
   pickupAt?: string;
 }): Promise<void> {
   const hoursLine = await formatHoursForEmail();
-  const html = buildPickupReminderHtml({ customerName, orderId, items, pickupAt, hoursLine });
+  const html = buildPickupReminderHtml({
+    customerName,
+    orderId,
+    items,
+    pickupAt,
+    hoursLine,
+  });
 
   const { error } = await getResend().emails.send({
     from: process.env.EMAIL_FROM!,
     to,
-    subject: "Reminder: Your El Camino pickup order is ready",
+    subject: 'Reminder: Your El Camino pickup order is ready',
     html,
   });
 
@@ -203,6 +221,6 @@ export async function sendPickupNotification({
 
   if (error) {
     // Don't throw — Tyler not receiving a notification shouldn't block the customer confirmation
-    console.error("[sender] Failed to send pickup notification:", error);
+    console.error('[sender] Failed to send pickup notification:', error);
   }
 }

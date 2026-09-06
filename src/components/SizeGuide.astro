@@ -4,9 +4,9 @@
 // Usage: <SizeGuide category="tops" /> or <SizeGuide category="bottoms" />
 
 interface Props {
-  category?: "tops" | "bottoms";
+  category?: 'tops' | 'bottoms';
 }
-const { category = "tops" } = Astro.props;
+const { category = 'tops' } = Astro.props;
 
 const nonce = Astro.locals.nonce;
 ---
@@ -20,61 +20,67 @@ const nonce = Astro.locals.nonce;
   Size Guide
 </button>
 
-<script type="application/json" id="size-guide-config" set:html={JSON.stringify({ category })} />
+<script
+  type="application/json"
+  id="size-guide-config"
+  set:html={JSON.stringify({ category })}
+/>
 <script is:inline nonce={nonce}>
-  var category = JSON.parse(document.getElementById('size-guide-config').textContent).category;
+  var category = JSON.parse(
+    document.getElementById('size-guide-config').textContent
+  ).category;
 
   function openSizeGuide() {
-    const portalRoot = document.getElementById("portal-root");
+    const portalRoot = document.getElementById('portal-root');
     if (!portalRoot) return;
 
     const triggerElement = document.activeElement;
 
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = 'hidden';
 
     const topsRows = [
-      ["XS", '31–33"', '23–25"', '33–35"'],
-      ["S", '34–36"', '26–28"', '36–38"'],
-      ["M", '37–39"', '29–31"', '39–41"'],
-      ["L", '40–42"', '32–34"', '42–44"'],
-      ["XL", '43–45"', '35–37"', '45–47"'],
-      ["2XL", '46–48"', '38–40"', '48–50"'],
+      ['XS', '31–33"', '23–25"', '33–35"'],
+      ['S', '34–36"', '26–28"', '36–38"'],
+      ['M', '37–39"', '29–31"', '39–41"'],
+      ['L', '40–42"', '32–34"', '42–44"'],
+      ['XL', '43–45"', '35–37"', '45–47"'],
+      ['2XL', '46–48"', '38–40"', '48–50"'],
     ];
 
     const bottomsRows = [
-      ["28", '28"', '28"', '30"'],
-      ["30", '30"', '30"', '31"'],
-      ["32", '32"', '32"', '32"'],
-      ["34", '34"', '34"', '33"'],
-      ["36", '36"', '36"', '34"'],
-      ["38", '38"', '38"', '35"'],
+      ['28', '28"', '28"', '30"'],
+      ['30', '30"', '30"', '31"'],
+      ['32', '32"', '32"', '32"'],
+      ['34', '34"', '34"', '33"'],
+      ['36', '36"', '36"', '34"'],
+      ['38', '38"', '38"', '35"'],
     ];
 
-    const isTops = category === "tops";
+    const isTops = category === 'tops';
     const rows = isTops ? topsRows : bottomsRows;
     const headers = isTops
-      ? ["Size", "Chest", "Waist", "Hips"]
-      : ["Waist", "Waist (actual)", "Hip", "Inseam"];
+      ? ['Size', 'Chest', 'Waist', 'Hips']
+      : ['Waist', 'Waist (actual)', 'Hip', 'Inseam'];
 
     const tableRows = rows
       .map(
         (r) =>
           `<tr class="border-b border-(--border-secondary) last:border-0">
-            ${r.map((cell, i) => `<td class="py-2 px-3 text-sm ${i === 0 ? "font-semibold text-(--content-heading)" : "text-(--content-body)"}">${cell}</td>`).join("")}
-          </tr>`,
+            ${r.map((cell, i) => `<td class="py-2 px-3 text-sm ${i === 0 ? 'font-semibold text-(--content-heading)' : 'text-(--content-body)'}">${cell}</td>`).join('')}
+          </tr>`
       )
-      .join("");
+      .join('');
 
-    const backdrop = document.createElement("div");
+    const backdrop = document.createElement('div');
     backdrop.className =
-      "fixed inset-0 bg-(--ui-modal-overlay)/90 z-[9998] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 ease-out";
-    backdrop.setAttribute("role", "dialog");
-    backdrop.setAttribute("aria-modal", "true");
-    backdrop.setAttribute("aria-labelledby", "size-guide-title");
+      'fixed inset-0 bg-(--ui-modal-overlay)/90 z-[9998] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 ease-out';
+    backdrop.setAttribute('role', 'dialog');
+    backdrop.setAttribute('aria-modal', 'true');
+    backdrop.setAttribute('aria-labelledby', 'size-guide-title');
 
-    const modal = document.createElement("div");
+    const modal = document.createElement('div');
     modal.className =
-      "bg-(--ui-modal-surface) text-(--ui-modal-text) border-2 border-(--ui-modal-border) rounded panel-shadow max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out";
+      'bg-(--ui-modal-surface) text-(--ui-modal-text) border-2 border-(--ui-modal-border) rounded panel-shadow max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out';
 
     modal.innerHTML = `
       <div>
@@ -94,13 +100,13 @@ const nonce = Astro.locals.nonce;
         </div>
         <div class="p-5">
           <p class="text-xs text-(--content-meta) mb-4 uppercase tracking-widest">
-            ${isTops ? "Tops &amp; Outerwear" : "Bottoms &amp; Pants"} — measurements in inches
+            ${isTops ? 'Tops &amp; Outerwear' : 'Bottoms &amp; Pants'} — measurements in inches
           </p>
           <div class="overflow-x-auto -mx-1">
             <table class="w-full min-w-[280px]">
               <thead>
                 <tr class="border-b-2 border-(--border-primary)">
-                  ${headers.map((h) => `<th class="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider text-(--content-meta)">${h}</th>`).join("")}
+                  ${headers.map((h) => `<th class="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider text-(--content-meta)">${h}</th>`).join('')}
                 </tr>
               </thead>
               <tbody>${tableRows}</tbody>
@@ -117,37 +123,37 @@ const nonce = Astro.locals.nonce;
     portalRoot.appendChild(backdrop);
 
     requestAnimationFrame(() => {
-      backdrop.classList.remove("opacity-0");
-      modal.classList.remove("scale-95", "opacity-0");
-      modal.classList.add("scale-100", "opacity-100");
+      backdrop.classList.remove('opacity-0');
+      modal.classList.remove('scale-95', 'opacity-0');
+      modal.classList.add('scale-100', 'opacity-100');
     });
 
-    const closeBtn = modal.querySelector("#size-guide-close");
+    const closeBtn = modal.querySelector('#size-guide-close');
 
     const close = () => {
-      backdrop.classList.add("opacity-0");
-      modal.classList.remove("scale-100", "opacity-100");
-      modal.classList.add("scale-95", "opacity-0");
-      document.removeEventListener("keydown", onKey);
+      backdrop.classList.add('opacity-0');
+      modal.classList.remove('scale-100', 'opacity-100');
+      modal.classList.add('scale-95', 'opacity-0');
+      document.removeEventListener('keydown', onKey);
       setTimeout(() => {
         backdrop.remove();
-        document.body.style.overflow = "unset";
+        document.body.style.overflow = 'unset';
         triggerElement?.focus();
       }, 300);
     };
 
     const onKey = (e) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         close();
         return;
       }
 
-      if (e.key !== "Tab") return;
+      if (e.key !== 'Tab') return;
 
       const focusable = Array.from(
         modal.querySelectorAll(
-          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
       );
       if (focusable.length === 0) return;
 
@@ -165,25 +171,25 @@ const nonce = Astro.locals.nonce;
       }
     };
 
-    closeBtn?.addEventListener("click", close);
-    backdrop.addEventListener("click", (e) => {
+    closeBtn?.addEventListener('click', close);
+    backdrop.addEventListener('click', (e) => {
       if (e.target === backdrop) close();
     });
-    document.addEventListener("keydown", onKey);
+    document.addEventListener('keydown', onKey);
     closeBtn?.focus();
   }
 
   function init() {
-    const trigger = document.getElementById("size-guide-trigger");
+    const trigger = document.getElementById('size-guide-trigger');
     if (!trigger || trigger.dataset.initialized) return;
-    trigger.dataset.initialized = "true";
-    trigger.addEventListener("click", openSizeGuide);
+    trigger.dataset.initialized = 'true';
+    trigger.addEventListener('click', openSizeGuide);
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
-  document.addEventListener("astro:page-load", init);
+  document.addEventListener('astro:page-load', init);
 </script>

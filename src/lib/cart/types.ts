@@ -1,5 +1,5 @@
 // /src/lib/cart/types.ts
-import type { SaleInfo } from "../square/types";
+import type { SaleInfo } from '../square/types';
 
 export interface CartItem {
   id: string;
@@ -30,10 +30,7 @@ export interface CartStorage {
 }
 
 export type CartEventType =
-  | "cartUpdated"
-  | "itemAdded"
-  | "itemRemoved"
-  | "cartCleared";
+  'cartUpdated' | 'itemAdded' | 'itemRemoved' | 'cartCleared';
 
 export interface CartEvent extends Event {
   type: CartEventType;

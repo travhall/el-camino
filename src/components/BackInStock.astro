@@ -20,7 +20,7 @@ const {
   hidden = false,
 } = Astro.props;
 
-import { getContactInfo } from "@/lib/contactInfo";
+import { getContactInfo } from '@/lib/contactInfo';
 const contact = await getContactInfo();
 const productUrl = Astro.url.href;
 const label = variationName
@@ -32,8 +32,8 @@ const label = variationName
   id="back-in-stock-section"
   data-product-title={productTitle}
   class:list={[
-    "mt-6 p-4 border-2 border-(--border-secondary) rounded-sm bg-(--surface-secondary)",
-    hidden && "hidden",
+    'mt-6 p-4 border-2 border-(--border-secondary) rounded-sm bg-(--surface-secondary)',
+    hidden && 'hidden',
   ]}
 >
   <p class="text-base font-bold text-(--content-heading) mb-1">
@@ -110,54 +110,54 @@ const label = variationName
 <script>
   function initBackInStock() {
     const form = document.getElementById(
-      "back-in-stock-form",
+      'back-in-stock-form'
     ) as HTMLFormElement | null;
     if (!form || form.dataset.initialized) return;
-    form.dataset.initialized = "true";
+    form.dataset.initialized = 'true';
 
     const submitBtn = document.getElementById(
-      "bis-submit",
+      'bis-submit'
     ) as HTMLButtonElement;
-    const successMsg = document.getElementById("bis-success");
-    const errorMsg = document.getElementById("bis-error");
+    const successMsg = document.getElementById('bis-success');
+    const errorMsg = document.getElementById('bis-error');
 
-    form.addEventListener("submit", async (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const email = (
-        document.getElementById("bis-email") as HTMLInputElement
+        document.getElementById('bis-email') as HTMLInputElement
       )?.value?.trim();
       if (!email) return;
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "Sending…";
+      submitBtn.textContent = 'Sending…';
 
       try {
         const body = new FormData(form);
-        const res = await fetch("/api/back-in-stock", {
-          method: "POST",
+        const res = await fetch('/api/back-in-stock', {
+          method: 'POST',
           body,
         });
 
         if (res.ok) {
-          form.classList.add("hidden");
-          successMsg?.classList.remove("hidden");
-          errorMsg?.classList.add("hidden");
+          form.classList.add('hidden');
+          successMsg?.classList.remove('hidden');
+          errorMsg?.classList.add('hidden');
         } else {
-          throw new Error("Non-OK response");
+          throw new Error('Non-OK response');
         }
       } catch {
-        errorMsg?.classList.remove("hidden");
+        errorMsg?.classList.remove('hidden');
         submitBtn.disabled = false;
-        submitBtn.textContent = "Notify Me";
+        submitBtn.textContent = 'Notify Me';
       }
     });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initBackInStock);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBackInStock);
   } else {
     initBackInStock();
   }
-  document.addEventListener("astro:page-load", initBackInStock);
+  document.addEventListener('astro:page-load', initBackInStock);
 </script>

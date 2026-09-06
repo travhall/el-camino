@@ -1,6 +1,6 @@
 // /src/lib/product/recentlyViewed.ts
 
-import type { Product } from "@/lib/square/types";
+import type { Product } from '@/lib/square/types';
 
 /**
  * Recently viewed product item stored in localStorage
@@ -84,8 +84,8 @@ export class RecentlyViewedManager {
   private pruneExpired(): void {
     const now = Date.now();
     const initialLength = this.items.length;
-    
-    this.items = this.items.filter(item => {
+
+    this.items = this.items.filter((item) => {
       const age = now - item.timestamp;
       return age < EXPIRY_MS;
     });
@@ -113,7 +113,7 @@ export class RecentlyViewedManager {
     };
 
     // Remove if exists (deduplication)
-    this.items = this.items.filter(i => i.id !== item.id);
+    this.items = this.items.filter((i) => i.id !== item.id);
 
     // Add to front
     this.items.unshift(item);
@@ -133,11 +133,11 @@ export class RecentlyViewedManager {
    */
   get(limit?: number): RecentlyViewedItem[] {
     this.pruneExpired();
-    
+
     if (limit && limit > 0) {
       return this.items.slice(0, limit);
     }
-    
+
     return [...this.items];
   }
 
@@ -145,7 +145,7 @@ export class RecentlyViewedManager {
    * Remove a specific item by ID
    */
   remove(id: string): void {
-    this.items = this.items.filter(item => item.id !== id);
+    this.items = this.items.filter((item) => item.id !== id);
     this.save();
   }
 

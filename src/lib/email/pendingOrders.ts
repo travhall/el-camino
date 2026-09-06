@@ -1,19 +1,19 @@
 // src/lib/email/pendingOrders.ts
-import { BlobCache } from "@/lib/cache/blobCache";
+import { BlobCache } from '@/lib/cache/blobCache';
 
 export interface PendingOrderContact {
   email: string;
   name: string;
-  fulfillmentMethod: "shipping" | "pickup";
+  fulfillmentMethod: 'shipping' | 'pickup';
 }
 
 // TTL: 2 hours — long enough to survive slow Square webhook delivery
 const TWO_HOURS = 60 * 60 * 2;
 // Distinct storeName keeps pending order blobs out of the "square-cache" store
 const pendingOrderStore = new BlobCache<PendingOrderContact>(
-  "pending-order-emails",
+  'pending-order-emails',
   TWO_HOURS,
-  "email-pending"
+  'email-pending'
 );
 
 export async function storePendingOrder(

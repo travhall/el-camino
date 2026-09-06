@@ -14,9 +14,9 @@ export interface NavigationContext {
  * Get navigation context from current page state
  */
 export function getNavigationContext(): NavigationContext {
-  if (typeof window === "undefined") {
+  if (typeof window === 'undefined') {
     return {
-      currentPath: "/",
+      currentPath: '/',
       isProductCategory: false,
       isMobile: false,
       isHomepage: true,
@@ -30,9 +30,9 @@ export function getNavigationContext(): NavigationContext {
   return {
     currentPath: path,
     isProductCategory:
-      path.includes("/category/") || path.includes("/product/"),
+      path.includes('/category/') || path.includes('/product/'),
     isMobile,
-    isHomepage: path === "/",
+    isHomepage: path === '/',
     categoryDepth: (path.match(/\//g) || []).length - 1,
   };
 }
@@ -44,14 +44,14 @@ export function prefetchHighPriorityTargets(context: NavigationContext): void {
   const highPriorityUrls: string[] = [];
 
   if (context.isHomepage) {
-    highPriorityUrls.push("/the-shop", "/news");
-  } else if (context.currentPath.startsWith("/category/")) {
-    highPriorityUrls.push("/the-shop", "/news");
+    highPriorityUrls.push('/the-shop', '/news');
+  } else if (context.currentPath.startsWith('/category/')) {
+    highPriorityUrls.push('/the-shop', '/news');
   }
 
   highPriorityUrls.forEach((url) => {
-    const link = document.createElement("link");
-    link.rel = "prefetch";
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
     link.href = url;
     document.head.appendChild(link);
   });

@@ -1,11 +1,11 @@
 // src/lib/square/serverErrorUtils.ts
-import { SquareError } from "square-legacy";
+import { SquareError } from 'square-legacy';
 import {
   type AppError,
   ErrorType,
   createError,
   processClientError,
-} from "./errorUtils";
+} from './errorUtils';
 
 /**
  * Map Square error codes to our standardized types

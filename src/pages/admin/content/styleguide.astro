@@ -1,7 +1,7 @@
 ---
-import AdminLayout from "@/layouts/AdminLayout.astro";
-import Button from "@/components/Button.astro";
-import { Icon } from "astro-icon/components";
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import Button from '@/components/Button.astro';
+import { Icon } from 'astro-icon/components';
 
 // ── Palette data — CSS variable references rendered in the browser ────────────
 // Using var(--color-*) directly avoids readFileSync + import.meta.url, which
@@ -9,116 +9,116 @@ import { Icon } from "astro-icon/components";
 // AdminLayout imports global.css, so the variables are available at runtime.
 
 const STOPS = [
-  "50",
-  "100",
-  "200",
-  "300",
-  "400",
-  "500",
-  "600",
-  "700",
-  "800",
-  "900",
+  '50',
+  '100',
+  '200',
+  '300',
+  '400',
+  '500',
+  '600',
+  '700',
+  '800',
+  '900',
 ];
 
 const palettes = [
-  { name: "Beeswax", prefix: "elco-beeswax" },
-  { name: "Black Pearl", prefix: "elco-black-pearl" },
-  { name: "Fig Leaf", prefix: "elco-fig-leaf" },
-  { name: "Honey Cream", prefix: "elco-honey-cream" },
-  { name: "Sweet Tea", prefix: "elco-sweet-tea" },
+  { name: 'Beeswax', prefix: 'elco-beeswax' },
+  { name: 'Black Pearl', prefix: 'elco-black-pearl' },
+  { name: 'Fig Leaf', prefix: 'elco-fig-leaf' },
+  { name: 'Honey Cream', prefix: 'elco-honey-cream' },
+  { name: 'Sweet Tea', prefix: 'elco-sweet-tea' },
 ];
 
-const stateColors = ["success", "error", "warning", "info"].map((name) => ({
+const stateColors = ['success', 'error', 'warning', 'info'].map((name) => ({
   name: name.charAt(0).toUpperCase() + name.slice(1),
   token: `state-${name}`,
 }));
 
 const iconList = [
-  "uil:angle-down",
-  "uil:angle-left",
-  "uil:angle-right",
-  "uil:angle-up",
-  "uil:arrow-down",
-  "uil:arrow-left",
-  "uil:arrow-right",
-  "uil:arrow-up",
-  "uil:bill",
-  "uil:box",
-  "uil:check",
-  "uil:check-circle",
-  "uil:cloud-moon",
-  "uil:cloud-sun",
-  "uil:envelope",
-  "uil:facebook",
-  "uil:fast-mail",
-  "uil:fast-mail-alt",
-  "uil:instagram-alt",
-  "uil:map-marker",
-  "uil:moon",
-  "uil:mountains-sun",
-  "uil:package",
-  "uil:parcel",
-  "uil:search",
-  "uil:ship",
-  "uil:shopping-cart",
-  "uil:store",
-  "uil:sun",
-  "uil:user",
-  "uil:youtube",
+  'uil:angle-down',
+  'uil:angle-left',
+  'uil:angle-right',
+  'uil:angle-up',
+  'uil:arrow-down',
+  'uil:arrow-left',
+  'uil:arrow-right',
+  'uil:arrow-up',
+  'uil:bill',
+  'uil:box',
+  'uil:check',
+  'uil:check-circle',
+  'uil:cloud-moon',
+  'uil:cloud-sun',
+  'uil:envelope',
+  'uil:facebook',
+  'uil:fast-mail',
+  'uil:fast-mail-alt',
+  'uil:instagram-alt',
+  'uil:map-marker',
+  'uil:moon',
+  'uil:mountains-sun',
+  'uil:package',
+  'uil:parcel',
+  'uil:search',
+  'uil:ship',
+  'uil:shopping-cart',
+  'uil:store',
+  'uil:sun',
+  'uil:user',
+  'uil:youtube',
 ];
 
 const shopSites = [
-  { name: "Familia", url: "https://familiaskate.com/" },
-  { name: "Uprise", url: "https://upriseskateshop.com/" },
+  { name: 'Familia', url: 'https://familiaskate.com/' },
+  { name: 'Uprise', url: 'https://upriseskateshop.com/' },
   {
-    name: "The Block Skate Supply*",
-    url: "https://www.theblockskatesupply.com/",
+    name: 'The Block Skate Supply*',
+    url: 'https://www.theblockskatesupply.com/',
   },
-  { name: "Marriage", url: "https://marriageskateshop.com/" },
-  { name: "Ceremony*", url: "https://www.ceremonyskateshop.com/" },
-  { name: "Icon", url: "https://www.iconboardshop.com/" },
-  { name: "Atlas", url: "https://shop.atlasskateboarding.com/" },
-  { name: "Labor", url: "https://laborskateshop.com/" },
-  { name: "Humidity", url: "https://humiditynola.com/" },
-  { name: "Recess", url: "https://recessrideshop.com/" },
-  { name: "Black Sheep", url: "https://blacksheepskateshop.com/" },
-  { name: "Home", url: "https://www.homeskateshop.com/" },
-  { name: "First Gear", url: "https://www.firstgearskateshop.com/" },
-  { name: "Vu", url: "https://vuskateboardshop.com/" },
-  { name: "Premier", url: "https://thepremierstore.com/" },
-  { name: "Antics*", url: "https://www.anticsskateshop.com/" },
-  { name: "Central (Wausau)*", url: "https://www.central-boardshop.com/" },
+  { name: 'Marriage', url: 'https://marriageskateshop.com/' },
+  { name: 'Ceremony*', url: 'https://www.ceremonyskateshop.com/' },
+  { name: 'Icon', url: 'https://www.iconboardshop.com/' },
+  { name: 'Atlas', url: 'https://shop.atlasskateboarding.com/' },
+  { name: 'Labor', url: 'https://laborskateshop.com/' },
+  { name: 'Humidity', url: 'https://humiditynola.com/' },
+  { name: 'Recess', url: 'https://recessrideshop.com/' },
+  { name: 'Black Sheep', url: 'https://blacksheepskateshop.com/' },
+  { name: 'Home', url: 'https://www.homeskateshop.com/' },
+  { name: 'First Gear', url: 'https://www.firstgearskateshop.com/' },
+  { name: 'Vu', url: 'https://vuskateboardshop.com/' },
+  { name: 'Premier', url: 'https://thepremierstore.com/' },
+  { name: 'Antics*', url: 'https://www.anticsskateshop.com/' },
+  { name: 'Central (Wausau)*', url: 'https://www.central-boardshop.com/' },
   {
-    name: "DLX Skate Shop Day 2024 List",
-    url: "https://www.dlxsf.com/ssd-2024/",
+    name: 'DLX Skate Shop Day 2024 List',
+    url: 'https://www.dlxsf.com/ssd-2024/',
   },
 ];
 
 const prototypes = [
   {
-    name: "Concept One — Desktop",
-    url: "https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=0-1&t=CtkG0OIWku9WrUHh-1",
+    name: 'Concept One — Desktop',
+    url: 'https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=0-1&t=CtkG0OIWku9WrUHh-1',
   },
   {
-    name: "Concept One — Mobile",
-    url: "https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=300-2485&t=CtkG0OIWku9WrUHh-1",
+    name: 'Concept One — Mobile',
+    url: 'https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=300-2485&t=CtkG0OIWku9WrUHh-1',
   },
   {
-    name: "Concept Two — Desktop",
-    url: "https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=319-2668&t=CtkG0OIWku9WrUHh-1",
+    name: 'Concept Two — Desktop',
+    url: 'https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=319-2668&t=CtkG0OIWku9WrUHh-1',
   },
   {
-    name: "Concept Two — Mobile",
-    url: "https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=414-3177&t=CtkG0OIWku9WrUHh-1",
+    name: 'Concept Two — Mobile',
+    url: 'https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=414-3177&t=CtkG0OIWku9WrUHh-1',
   },
   {
-    name: "Concept Three — Desktop",
-    url: "https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=431-3468&t=CtkG0OIWku9WrUHh-1",
+    name: 'Concept Three — Desktop',
+    url: 'https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=431-3468&t=CtkG0OIWku9WrUHh-1',
   },
   {
-    name: "Concept Three — Mobile",
-    url: "https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=704-150&t=CtkG0OIWku9WrUHh-1",
+    name: 'Concept Three — Mobile',
+    url: 'https://www.figma.com/proto/l3hOw9t5wlZVLmvMyiUDn8/EC-Microsite?node-id=704-150&t=CtkG0OIWku9WrUHh-1',
   },
 ];
 ---
@@ -135,15 +135,15 @@ const prototypes = [
     <ol class="flex flex-wrap gap-x-6 gap-y-1.5">
       {
         [
-          ["#typography", "Typography"],
-          ["#colors", "Colors"],
-          ["#tokens", "Tokens"],
-          ["#buttons", "Buttons"],
-          ["#forms", "Forms"],
-          ["#states", "States"],
-          ["#loading", "Loading"],
-          ["#icons", "Icons"],
-          ["#references", "References"],
+          ['#typography', 'Typography'],
+          ['#colors', 'Colors'],
+          ['#tokens', 'Tokens'],
+          ['#buttons', 'Buttons'],
+          ['#forms', 'Forms'],
+          ['#states', 'States'],
+          ['#loading', 'Loading'],
+          ['#icons', 'Icons'],
+          ['#references', 'References'],
         ].map(([href, label]) => (
           <li>
             <a
@@ -291,15 +291,15 @@ const prototypes = [
       <div class="flex flex-wrap gap-x-8 gap-y-4">
         {
           [
-            ["font-thin", "100"],
-            ["font-extralight", "200"],
-            ["font-light", "300"],
-            ["font-normal", "400"],
-            ["font-medium", "500"],
-            ["font-semibold", "600"],
-            ["font-bold", "700"],
-            ["font-extrabold", "800"],
-            ["font-black", "900"],
+            ['font-thin', '100'],
+            ['font-extralight', '200'],
+            ['font-light', '300'],
+            ['font-normal', '400'],
+            ['font-medium', '500'],
+            ['font-semibold', '600'],
+            ['font-bold', '700'],
+            ['font-extrabold', '800'],
+            ['font-black', '900'],
           ].map(([cls, weight]) => (
             <div class="flex flex-col items-center gap-0.5">
               <span
@@ -349,14 +349,14 @@ const prototypes = [
                 <div class="flex flex-col items-center gap-1.5">
                   <div
                     class="w-full rounded-md shadow-sm"
-                    style={`aspect-ratio:1; background-color: var(--color-${palette.prefix}-${stop}); ${stop === "500" ? "outline: 2px solid var(--content-body); outline-offset: 2px;" : ""}`}
+                    style={`aspect-ratio:1; background-color: var(--color-${palette.prefix}-${stop}); ${stop === '500' ? 'outline: 2px solid var(--content-body); outline-offset: 2px;' : ''}`}
                   />
                   <div class="flex flex-col items-center gap-0">
                     <span
-                      class={`font-sans text-xs text-(--content-body) ${stop === "500" ? "font-bold" : ""}`}
+                      class={`font-sans text-xs text-(--content-body) ${stop === '500' ? 'font-bold' : ''}`}
                     >
                       {stop}
-                      {stop === "500" ? " ★" : ""}
+                      {stop === '500' ? ' ★' : ''}
                     </span>
                   </div>
                 </div>
@@ -398,9 +398,9 @@ const prototypes = [
       <div class="grid grid-cols-3 gap-3 sm:grid-cols-3 max-w-sm">
         {
           [
-            ["--surface-primary", "surface-primary", "Page background"],
-            ["--surface-secondary", "surface-secondary", "Card / section bg"],
-            ["--surface-tertiary", "surface-tertiary", "Hover / elevated"],
+            ['--surface-primary', 'surface-primary', 'Page background'],
+            ['--surface-secondary', 'surface-secondary', 'Card / section bg'],
+            ['--surface-tertiary', 'surface-tertiary', 'Hover / elevated'],
           ].map(([token, name, desc]) => (
             <div class="flex flex-col gap-1.5">
               <div
@@ -429,9 +429,9 @@ const prototypes = [
       <div class="grid grid-cols-3 gap-3 max-w-sm">
         {
           [
-            ["--border-primary", "border-primary"],
-            ["--border-secondary", "border-secondary"],
-            ["--border-tertiary", "border-tertiary"],
+            ['--border-primary', 'border-primary'],
+            ['--border-secondary', 'border-secondary'],
+            ['--border-tertiary', 'border-tertiary'],
           ].map(([token, name]) => (
             <div class="flex flex-col gap-1.5">
               <div
@@ -457,11 +457,11 @@ const prototypes = [
       <div class="flex flex-wrap gap-6">
         {
           [
-            ["--content-heading", "content-heading", "Headings"],
-            ["--content-body", "content-body", "Body copy"],
-            ["--content-meta", "content-meta", "Labels, captions"],
-            ["--content-emphasis", "content-emphasis", "Links, highlights"],
-            ["--content-caption", "content-caption", "Fine print"],
+            ['--content-heading', 'content-heading', 'Headings'],
+            ['--content-body', 'content-body', 'Body copy'],
+            ['--content-meta', 'content-meta', 'Labels, captions'],
+            ['--content-emphasis', 'content-emphasis', 'Links, highlights'],
+            ['--content-caption', 'content-caption', 'Fine print'],
           ].map(([token, name, desc]) => (
             <div class="flex flex-col items-start gap-0.5">
               <span
@@ -492,10 +492,10 @@ const prototypes = [
       <div class="flex flex-wrap gap-4">
         {
           [
-            ["--ui-button-surface", "button-surface"],
-            ["--ui-button-text", "button-text"],
-            ["--ui-button-border", "button-border"],
-            ["--ui-button-ring", "button-ring"],
+            ['--ui-button-surface', 'button-surface'],
+            ['--ui-button-text', 'button-text'],
+            ['--ui-button-border', 'button-border'],
+            ['--ui-button-ring', 'button-ring'],
           ].map(([token, name]) => (
             <div class="flex flex-col items-center gap-1.5">
               <div
@@ -520,10 +520,10 @@ const prototypes = [
       <div class="flex flex-wrap gap-4">
         {
           [
-            ["--ui-input-surface", "input-surface"],
-            ["--ui-input-text", "input-text"],
-            ["--ui-input-border", "input-border"],
-            ["--ui-input-focus", "input-focus"],
+            ['--ui-input-surface', 'input-surface'],
+            ['--ui-input-text', 'input-text'],
+            ['--ui-input-border', 'input-border'],
+            ['--ui-input-focus', 'input-focus'],
           ].map(([token, name]) => (
             <div class="flex flex-col items-center gap-1.5">
               <div
@@ -548,10 +548,10 @@ const prototypes = [
       <div class="flex flex-wrap gap-4">
         {
           [
-            ["--ui-nav-surface", "nav-surface"],
-            ["--ui-nav-text", "nav-text"],
-            ["--ui-nav-border", "nav-border"],
-            ["--ui-nav-hover", "nav-hover"],
+            ['--ui-nav-surface', 'nav-surface'],
+            ['--ui-nav-text', 'nav-text'],
+            ['--ui-nav-border', 'nav-border'],
+            ['--ui-nav-hover', 'nav-hover'],
           ].map(([token, name]) => (
             <div class="flex flex-col items-center gap-1.5">
               <div
@@ -610,7 +610,7 @@ const prototypes = [
         </thead>
         <tbody class="divide-y divide-(--border-primary)">
           {
-            (["primary", "secondary", "outline", "ghost", "link"] as const).map(
+            (['primary', 'secondary', 'outline', 'ghost', 'link'] as const).map(
               (variant) => (
                 <tr>
                   <td class="py-4 pr-6 font-sans text-xs text-(--content-meta) align-middle">
@@ -632,7 +632,7 @@ const prototypes = [
                     </Button>
                   </td>
                 </tr>
-              ),
+              )
             )
           }
         </tbody>
@@ -998,7 +998,7 @@ const prototypes = [
           <div class="flex flex-col items-center gap-2 rounded-md p-3 transition-colors hover:bg-(--surface-secondary)">
             <Icon class="h-8 w-8 text-(--content-body)" name={name} />
             <span class="text-center font-mono text-xs text-(--content-meta) leading-tight">
-              {name.replace("uil:", "")}
+              {name.replace('uil:', '')}
             </span>
           </div>
         ))
@@ -1081,6 +1081,6 @@ const prototypes = [
 </AdminLayout>
 
 <script>
-  import { initFloatSelects } from "@/lib/ui/floatFields";
+  import { initFloatSelects } from '@/lib/ui/floatFields';
   initFloatSelects();
 </script>

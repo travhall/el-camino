@@ -1,15 +1,15 @@
 ---
 // src/components/BaseHead.astro
-import { ClientRouter } from "astro:transitions";
-import { siteConfig } from "@/lib/site-config";
-import "@/styles/global.css";
+import { ClientRouter } from 'astro:transitions';
+import { siteConfig } from '@/lib/site-config';
+import '@/styles/global.css';
 
 interface Props {
-    title: string;
-    /** Page-specific structured data (e.g. Product, Article schema) */
-    structuredData?: object;
-    /** Org-level schema from getStructuredData() — caller's responsibility */
-    orgSchema: object;
+  title: string;
+  /** Page-specific structured data (e.g. Product, Article schema) */
+  structuredData?: object;
+  /** Org-level schema from getStructuredData() — caller's responsibility */
+  orgSchema: object;
 }
 
 const { title, structuredData, orgSchema } = Astro.props;
@@ -17,112 +17,176 @@ const { title, structuredData, orgSchema } = Astro.props;
 const nonce = Astro.locals.nonce;
 
 const seoData = {
-    ...siteConfig.seo,
+  ...siteConfig.seo,
 };
 ---
 
 <meta charset="UTF-8" />
 <script is:inline nonce={nonce}>
-    (function () {
-        const storedTheme = localStorage.getItem("theme");
-        const systemPrefersDark = window.matchMedia(
-            "(prefers-color-scheme: dark)",
-        ).matches;
-        const theme = storedTheme ?? (systemPrefersDark ? "dark" : "light");
-        document.documentElement.classList.add(theme);
-        document.documentElement.setAttribute("data-theme", theme);
+  (function () {
+    const storedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia(
+      '(prefers-color-scheme: dark)'
+    ).matches;
+    const theme = storedTheme ?? (systemPrefersDark ? 'dark' : 'light');
+    document.documentElement.classList.add(theme);
+    document.documentElement.setAttribute('data-theme', theme);
 
-        // ENHANCED: Font loading state management for View Transitions
-        document.documentElement.classList.add("fonts-loading");
+    // ENHANCED: Font loading state management for View Transitions
+    document.documentElement.classList.add('fonts-loading');
 
-        // CRITICAL: Use localStorage instead of sessionStorage for View Transitions persistence
-        const fontsLoaded = localStorage.getItem("fonts-loaded");
-        const fontsCached =
-            document.fonts.check("700 48px Alumni") &&
-            document.fonts.check("400 16px Cabin");
+    // CRITICAL: Use localStorage instead of sessionStorage for View Transitions persistence
+    const fontsLoaded = localStorage.getItem('fonts-loaded');
+    const fontsCached =
+      document.fonts.check('700 48px Alumni') &&
+      document.fonts.check('400 16px Cabin');
 
-        if (fontsLoaded === "true" || fontsCached) {
-            // Fonts already loaded - prevent FOUT immediately
-            document.documentElement.classList.remove("fonts-loading");
-            document.documentElement.classList.add("fonts-loaded");
-        } else {
-            // Force preloaded fonts to load immediately (critical weights)
-            Promise.all([
-                document.fonts.load("700 48px Alumni"),
-                document.fonts.load("600 24px Alumni"), // Navigation weight
-                document.fonts.load("400 16px Cabin"),
-                document.fonts.load("500 16px Cabin"), // Filter weights
-            ])
-                .then(() => {
-                    document.documentElement.classList.remove("fonts-loading");
-                    document.documentElement.classList.add("fonts-loaded");
-                    localStorage.setItem("fonts-loaded", "true");
-                })
-                .catch(() => {
-                    document.documentElement.classList.remove("fonts-loading");
-                    document.documentElement.classList.add("fonts-failed");
-                    // Still set loaded to prevent retries during View Transitions
-                    localStorage.setItem("fonts-loaded", "true");
-                });
-        }
-    })();
+    if (fontsLoaded === 'true' || fontsCached) {
+      // Fonts already loaded - prevent FOUT immediately
+      document.documentElement.classList.remove('fonts-loading');
+      document.documentElement.classList.add('fonts-loaded');
+    } else {
+      // Force preloaded fonts to load immediately (critical weights)
+      Promise.all([
+        document.fonts.load('700 48px Alumni'),
+        document.fonts.load('600 24px Alumni'), // Navigation weight
+        document.fonts.load('400 16px Cabin'),
+        document.fonts.load('500 16px Cabin'), // Filter weights
+      ])
+        .then(() => {
+          document.documentElement.classList.remove('fonts-loading');
+          document.documentElement.classList.add('fonts-loaded');
+          localStorage.setItem('fonts-loaded', 'true');
+        })
+        .catch(() => {
+          document.documentElement.classList.remove('fonts-loading');
+          document.documentElement.classList.add('fonts-failed');
+          // Still set loaded to prevent retries during View Transitions
+          localStorage.setItem('fonts-loaded', 'true');
+        });
+    }
+  })();
+</script>
+<script is:inline nonce={nonce}>
+  // Placeholder settling runs here, inline and early, rather than waiting
+  // for src/scripts/imageShimmer.ts — that module is deferred and only acts
+  // on astro:page-load, so on a cold load it landed at the tail of a
+  // ~40-chunk waterfall and skeletons stayed up over images that had already
+  // decoded. `load`/`error` don't bubble, hence capture-phase delegation on
+  // document. The module still owns View Transitions and the MutationObserver
+  // for post-paint images; both paths guard on data-shimmer-attached.
+  // NOTE: kept in sync by hand with settle() in src/scripts/imageShimmer.ts —
+  // if the data-shimmer-* attribute contract changes, update both.
+  (function () {
+    function settleEarly(img) {
+      if (!img || !img.dataset || !img.dataset.shimmerPlaceholder) return;
+      if (img.dataset.shimmerAttached) return;
+      img.dataset.shimmerAttached = '1';
+      var isError = img.naturalWidth === 0;
+      var ph = document.getElementById(img.dataset.shimmerPlaceholder);
+      if (ph) ph.remove();
+      var opacityKey = isError ? 'shimmerErrorOpacity' : 'shimmerLoadOpacity';
+      var addKey = isError ? 'shimmerErrorAdd' : 'shimmerLoadAdd';
+      var removeKey = isError ? 'shimmerErrorRemove' : 'shimmerLoadRemove';
+      if (opacityKey in img.dataset)
+        img.style.opacity = img.dataset[opacityKey] || '';
+      var rm = img.dataset[removeKey];
+      if (rm)
+        rm.split(' ')
+          .filter(Boolean)
+          .forEach(function (c) {
+            img.classList.remove(c);
+          });
+      if (!isError && 'shimmerStock' in img.dataset) {
+        img.classList.add(
+          img.dataset.inStock === 'true' ? 'opacity-100' : 'opacity-75'
+        );
+      } else {
+        var ad = img.dataset[addKey];
+        if (ad)
+          ad.split(' ')
+            .filter(Boolean)
+            .forEach(function (c) {
+              img.classList.add(c);
+            });
+      }
+    }
+    document.addEventListener(
+      'load',
+      function (e) {
+        if (e.target instanceof HTMLImageElement) settleEarly(e.target);
+      },
+      true
+    );
+    document.addEventListener(
+      'error',
+      function (e) {
+        if (e.target instanceof HTMLImageElement) settleEarly(e.target);
+      },
+      true
+    );
+  })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <meta name="generator" content={Astro.generator} />
 
 <!-- OPTIMIZED: Font preloading for FOUT prevention during View Transitions -->
-<!-- Alumni Sans: Display font - high priority for headings/LCP -->
+<!-- Alumni Sans: display font for headings. Preloaded (the h1 opacity gate
+     below waits on it) but deliberately NOT fetchpriority=high — that put it
+     in the same priority band as the LCP image and delayed it. -->
 <link
-    rel="preload"
-    href="/fonts/AlumniSans.woff2"
-    as="font"
-    type="font/woff2"
-    crossorigin="anonymous"
-    fetchpriority="high"
+  rel="preload"
+  href="/fonts/AlumniSans.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin="anonymous"
 />
 <!-- Cabin: Body font - standard priority -->
 <link
-    rel="preload"
-    href="/fonts/Cabin.woff2"
-    as="font"
-    type="font/woff2"
-    crossorigin="anonymous"
+  rel="preload"
+  href="/fonts/Cabin.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin="anonymous"
 />
 
 <!-- Critical font styling to prevent FOUT on h1 elements cSpell:ignore Segoe -->
 <style>
-    h1 {
-        font-family:
-            "Alumni",
-            "Alumni Fallback",
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            system-ui,
-            sans-serif;
-        font-synthesis: none;
-        font-optical-sizing: auto;
-    }
+  h1 {
+    font-family:
+      'Alumni',
+      'Alumni Fallback',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      system-ui,
+      sans-serif;
+    font-synthesis: none;
+    font-optical-sizing: auto;
+  }
 
-    /* Use opacity (not visibility/display) to avoid harming LCP measurement.
+  /* Use opacity (not visibility/display) to avoid harming LCP measurement.
      The browser still considers opacity:0 elements as LCP candidates,
      whereas visibility:hidden elements are excluded from LCP. */
-    .fonts-loading h1 {
-        opacity: 0;
-        transition: opacity 0.1s ease;
-    }
+  .fonts-loading h1 {
+    opacity: 0;
+    transition: opacity 0.1s ease;
+  }
 
-    .fonts-loaded h1,
-    .fonts-failed h1 {
-        opacity: 1;
-    }
+  .fonts-loaded h1,
+  .fonts-failed h1 {
+    opacity: 1;
+  }
 </style>
 
 <!-- OPTIMIZED: Resource hints for external domains -->
-<!-- preconnect: full TLS handshake up-front for domains hit on every page load -->
-<link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" />
-<link rel="preconnect" href="https://api.zippopotam.us" />
+<!-- No preconnect to elcaminoskateshop.wordpress.com: images are served
+     same-origin via Netlify's Image CDN, so that host is never a request
+     origin — only a ?url= parameter value. Likewise api.zippopotam.us is a
+     checkout-time postcode lookup, not a page-load request. Both were flagged
+     "Unused preconnect" by the DevTools NetworkDependencyTree insight and each
+     cost a speculative DNS+TCP+TLS handshake on the critical path. -->
 <!-- dns-prefetch: lightweight hint for domains hit conditionally -->
 <link rel="dns-prefetch" href="https://squarecdn.com" />
 <link rel="dns-prefetch" href="https://api.elcaminoskateshop.com" />
@@ -135,7 +199,11 @@ const seoData = {
 <meta property="og:title" content={title} />
 <meta name="twitter:title" content={title} />
 <meta property="og:image:alt" content={seoData.defaultDescription} />
-<meta name="description" property="og:description" content={seoData.defaultDescription} />
+<meta
+  name="description"
+  property="og:description"
+  content={seoData.defaultDescription}
+/>
 <meta name="twitter:description" content={seoData.defaultDescription} />
 <meta property="og:image" content={seoData.defaultImage} />
 <meta name="twitter:image:src" content={seoData.defaultImage} />
@@ -145,93 +213,118 @@ const seoData = {
 <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
 
 <script
-    is:inline
-    nonce={nonce}
-    type="application/ld+json"
-    set:html={JSON.stringify(orgSchema)}
+  is:inline
+  nonce={nonce}
+  type="application/ld+json"
+  set:html={JSON.stringify(orgSchema)}
 />
 {
-    structuredData && (
-        <script
-            is:inline
-            nonce={nonce}
-            type="application/ld+json"
-            set:html={JSON.stringify(structuredData)}
-        />
-    )
+  structuredData && (
+    <script
+      is:inline
+      nonce={nonce}
+      type="application/ld+json"
+      set:html={JSON.stringify(structuredData)}
+    />
+  )
 }
 
 <!-- Allow pages to inject custom head content -->
 <slot name="head" />
 
 <script>
-    // Only load Square when needed (cart/product pages).
-    // PUBLIC_ env vars are available in bundled scripts via import.meta.env.
-    if (
-        window.location.pathname.includes("/cart") ||
-        window.location.pathname.includes("/product") ||
-        window.location.pathname.includes("/category") ||
-        window.location.pathname.includes("/shop")
-    ) {
-        const squareEnv = import.meta.env.PUBLIC_SQUARE_ENVIRONMENT;
-        window.loadSquareScript = function () {
-            if (!window.squareLoaded && !window.Square) {
-                window.squareLoaded = true;
-                const script = document.createElement("script");
-                script.src =
-                    squareEnv === "production"
-                        ? "https://web.squarecdn.com/v1/square.js"
-                        : "https://sandbox.web.squarecdn.com/v1/square.js";
-                script.async = true;
-                document.head.appendChild(script);
-                return new Promise((resolve) => {
-                    script.onload = () => resolve();
-                });
-            }
-            return Promise.resolve();
-        };
-    }
+  // Only load Square when needed (cart/product pages).
+  // PUBLIC_ env vars are available in bundled scripts via import.meta.env.
+  if (
+    window.location.pathname.includes('/cart') ||
+    window.location.pathname.includes('/product') ||
+    window.location.pathname.includes('/category') ||
+    window.location.pathname.includes('/shop')
+  ) {
+    const squareEnv = import.meta.env.PUBLIC_SQUARE_ENVIRONMENT;
+    window.loadSquareScript = function () {
+      if (!window.squareLoaded && !window.Square) {
+        window.squareLoaded = true;
+        const script = document.createElement('script');
+        script.src =
+          squareEnv === 'production'
+            ? 'https://web.squarecdn.com/v1/square.js'
+            : 'https://sandbox.web.squarecdn.com/v1/square.js';
+        script.async = true;
+        document.head.appendChild(script);
+        return new Promise((resolve) => {
+          script.onload = () => resolve();
+        });
+      }
+      return Promise.resolve();
+    };
+  }
 </script>
 
 <!-- Font cache warmer: re-load fonts into active memory after each View Transition.
      font-display:swap ensures they render when ready, but proactively warming
      the cache prevents a visible swap flash on the *next* navigation. -->
 <script is:inline nonce={nonce}>
-    document.addEventListener("astro:page-load", function () {
-        if (document.fonts && document.fonts.load) {
-            Promise.all([
-                document.fonts.load("700 48px Alumni"),
-                document.fonts.load("600 24px Alumni"),
-                document.fonts.load("400 16px Cabin"),
-                document.fonts.load("500 16px Cabin"),
-            ]).catch(function () {
-                // Ignore — fonts will render via font-display:swap fallback
-            });
+  document.addEventListener('astro:page-load', function () {
+    if (document.fonts && document.fonts.load) {
+      Promise.all([
+        document.fonts.load('700 48px Alumni'),
+        document.fonts.load('600 24px Alumni'),
+        document.fonts.load('400 16px Cabin'),
+        document.fonts.load('500 16px Cabin'),
+      ]).catch(function () {
+        // Ignore — fonts will render via font-display:swap fallback
+      });
+    }
+  });
+</script>
+
+<!-- Restore news view preference before first paint (avoids flash on /news).
+     Rendered on every page — not just news/index.astro — so its content is
+     byte-identical across navigations: Astro's ClientRouter only skips
+     re-executing an inline script on a client-side swap if that exact script
+     content already ran on a previously-visited page this session; a
+     page-only script fails that check on its first swap-in and gets
+     recreated with a fresh nonce that can never match the CSP nonce the
+     browser is still enforcing from the original full page load. -->
+<script is:inline nonce={nonce}>
+  (function () {
+    if (window.location.pathname !== '/news') return;
+    try {
+      if (!new URLSearchParams(window.location.search).has('view')) {
+        var pref = localStorage.getItem('newsViewPreference');
+        if (pref && pref !== 'grid') {
+          var params = new URLSearchParams(window.location.search);
+          params.set('view', pref);
+          window.location.replace(
+            window.location.pathname + '?' + params.toString()
+          );
         }
-    });
+      }
+    } catch {
+      // localStorage can throw in sandboxed/private-browsing contexts; skip redirect silently.
+    }
+  })();
 </script>
 
 <!-- Clean news parameters when outside news section -->
 <script is:inline nonce={nonce}>
-    document.addEventListener("astro:page-load", function () {
-        if (!window.location.pathname.startsWith("/news")) {
-            const url = new URL(window.location);
-            if (url.searchParams.has("view")) {
-                url.searchParams.delete("view");
-                const newUrl =
-                    url.pathname +
-                    (url.searchParams.toString()
-                        ? "?" + url.searchParams.toString()
-                        : "");
-                if (
-                    newUrl !==
-                    window.location.pathname + window.location.search
-                ) {
-                    window.history.replaceState({}, "", newUrl);
-                }
-            }
+  document.addEventListener('astro:page-load', function () {
+    if (!window.location.pathname.startsWith('/news')) {
+      const url = new URL(window.location);
+      if (url.searchParams.has('view')) {
+        url.searchParams.delete('view');
+        const newUrl =
+          url.pathname +
+          (url.searchParams.toString()
+            ? '?' + url.searchParams.toString()
+            : '');
+        if (newUrl !== window.location.pathname + window.location.search) {
+          window.history.replaceState({}, '', newUrl);
         }
-    });
+      }
+    }
+  });
 </script>
 
 <ClientRouter />

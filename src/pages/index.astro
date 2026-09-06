@@ -1,9 +1,10 @@
 ---
 // src/pages/index.astro - Updated with featured article priority
-import Layout from "@/layouts/Layout.astro";
-import ArticleGrid from "@/components/ArticleGrid.astro";
-import { getNewsPagePosts } from "@/lib/wordpress/api";
-import type { WordPressPost } from "@/lib/wordpress/types";
+import Layout from '@/layouts/Layout.astro';
+import ArticleGrid from '@/components/ArticleGrid.astro';
+import { getNewsPagePosts } from '@/lib/wordpress/api';
+import type { WordPressPost } from '@/lib/wordpress/types';
+import { FEATURED_CARD_IMAGE_SIZES } from '@/lib/image/sizes';
 
 let posts: WordPressPost[] = [];
 let error: string | null = null;
@@ -19,7 +20,7 @@ try {
     posts = regularPosts.slice(0, 6); // Just most recent if no featured
   }
 } catch (e) {
-  console.error("Failed to load homepage posts:", e);
+  console.error('Failed to load homepage posts:', e);
   error = "We couldn't load the latest news right now.";
 }
 
@@ -28,17 +29,17 @@ try {
 // Cache for 10 min, serve stale for 7 days while revalidating
 // Aggressive caching for homepage (5min server, 30min stale)
 Astro.response.headers.set(
-  "Cache-Control",
-  "public, s-maxage=300, stale-while-revalidate=1800",
+  'Cache-Control',
+  'public, s-maxage=300, stale-while-revalidate=1800'
 );
 Astro.response.headers.set(
-  "Netlify-CDN-Cache-Control",
-  "public, s-maxage=300, stale-while-revalidate=1800",
+  'Netlify-CDN-Cache-Control',
+  'public, s-maxage=300, stale-while-revalidate=1800'
 );
 
 // === LCP OPTIMIZATION: Preload first article image ===
-import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
-import { extractEmbeddedData } from "@/lib/wordpress/types";
+import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
+import { extractEmbeddedData } from '@/lib/wordpress/types';
 
 const firstPost = posts[0];
 const firstPostData = firstPost ? extractEmbeddedData(firstPost) : null;
@@ -46,30 +47,30 @@ const lcpImageSet = firstPostData?.featuredMedia?.source_url
   ? {
       avif: EnhancedImageOptimizer.generateResponsiveSrcSet(
         firstPostData.featuredMedia.source_url,
-        "avif",
+        'avif',
         {
           width: 800,
           height: 533,
           quality: 85,
-        },
+        }
       ),
       webp: EnhancedImageOptimizer.generateResponsiveSrcSet(
         firstPostData.featuredMedia.source_url,
-        "webp",
+        'webp',
         {
           width: 800,
           height: 533,
           quality: 85,
-        },
+        }
       ),
       jpeg: EnhancedImageOptimizer.generateResponsiveSrcSet(
         firstPostData.featuredMedia.source_url,
-        "jpeg",
+        'jpeg',
         {
           width: 800,
           height: 533,
           quality: 85,
-        },
+        }
       ),
       href: EnhancedImageOptimizer.generateOptimizedSources(
         firstPostData.featuredMedia.source_url,
@@ -77,14 +78,12 @@ const lcpImageSet = firstPostData?.featuredMedia?.source_url
           width: 800,
           height: 533,
           quality: 85,
-        },
+        }
       ).avif, // Primary fallback href
     }
   : null;
 
-// Featured card is col-span-4 of grid-cols-6 at md (~67vw), col-span-4 of grid-cols-8 at 2xl (50vw)
-const lcpImageSizes =
-  "(max-width: 640px) 100vw, (max-width: 1535px) 67vw, 50vw";
+const lcpImageSizes = FEATURED_CARD_IMAGE_SIZES;
 ---
 
 <Layout

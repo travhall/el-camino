@@ -1,7 +1,7 @@
 // /src/lib/product/breadcrumbs.ts
 
-import type { Product, Category } from "@/lib/square/types";
-import { siteConfig } from "@/lib/site-config";
+import type { Product, Category } from '@/lib/square/types';
+import { siteConfig } from '@/lib/site-config';
 
 /**
  * Breadcrumb item for navigation
@@ -26,14 +26,20 @@ export interface BreadcrumbPath {
  * every category's product list via the API.
  * Returns the most specific (deepest) category the product belongs to.
  */
-function findProductCategory(product: Product, categories: Category[]): Category | null {
+function findProductCategory(
+  product: Product,
+  categories: Category[]
+): Category | null {
   let foundCategory: Category | null = null;
 
   // Prefer subcategories (non-top-level) over top-level categories for specificity
   for (const categoryId of product.categories ?? []) {
-    const category = categories.find(c => c.id === categoryId);
+    const category = categories.find((c) => c.id === categoryId);
     if (!category) continue;
-    if (!foundCategory || (!foundCategory.parentCategoryId && category.parentCategoryId)) {
+    if (
+      !foundCategory ||
+      (!foundCategory.parentCategoryId && category.parentCategoryId)
+    ) {
       foundCategory = category;
     }
   }
@@ -49,45 +55,47 @@ export async function generateBreadcrumbs(
   categories: Category[],
   baseUrl: string = siteConfig.url
 ): Promise<BreadcrumbPath> {
-  const items: BreadcrumbItem[] = [
-    { name: 'Home', url: '/', position: 1 }
-  ];
+  const items: BreadcrumbItem[] = [{ name: 'Home', url: '/', position: 1 }];
 
   // Find which category this product belongs to (most specific)
   const productCategory = findProductCategory(product, categories);
-  
+
   if (productCategory) {
     // Build category hierarchy from root to current
     const categoryPath: Category[] = [];
-    
+
     // If this is a subcategory, find its parent chain
     if (productCategory.parentCategoryId) {
       // Add root category
       if (productCategory.rootCategoryId) {
-        const rootCat = categories.find(c => c.id === productCategory.rootCategoryId);
+        const rootCat = categories.find(
+          (c) => c.id === productCategory.rootCategoryId
+        );
         if (rootCat) {
           categoryPath.push(rootCat);
         }
       }
-      
+
       // Add parent category if different from root
       if (productCategory.parentCategoryId !== productCategory.rootCategoryId) {
-        const parentCat = categories.find(c => c.id === productCategory.parentCategoryId);
+        const parentCat = categories.find(
+          (c) => c.id === productCategory.parentCategoryId
+        );
         if (parentCat) {
           categoryPath.push(parentCat);
         }
       }
     }
-    
+
     // Add current category (the most specific one)
     categoryPath.push(productCategory);
-    
+
     // Add all categories to breadcrumb path
-    categoryPath.forEach(cat => {
+    categoryPath.forEach((cat) => {
       items.push({
         name: cat.name,
         url: `/category/${cat.slug}`,
-        position: items.length + 1
+        position: items.length + 1,
       });
     });
   }
@@ -97,7 +105,7 @@ export async function generateBreadcrumbs(
     items.push({
       name: product.brand,
       url: `/shop/all?brands=${encodeURIComponent(product.brand)}`,
-      position: items.length + 1
+      position: items.length + 1,
     });
   }
 
@@ -105,23 +113,23 @@ export async function generateBreadcrumbs(
   items.push({
     name: product.title,
     url: product.url,
-    position: items.length + 1
+    position: items.length + 1,
   });
 
   // Generate JSON-LD structured data
   const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": items.map(item => ({
-      "@type": "ListItem",
-      "position": item.position,
-      "name": item.name,
-      "item": `${baseUrl}${item.url}`
-    }))
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item) => ({
+      '@type': 'ListItem',
+      position: item.position,
+      name: item.name,
+      item: `${baseUrl}${item.url}`,
+    })),
   };
 
   return {
     items,
-    structuredData
+    structuredData,
   };
 }

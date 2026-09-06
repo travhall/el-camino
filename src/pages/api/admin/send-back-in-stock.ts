@@ -2,11 +2,13 @@
 // Sends back-in-stock notification emails to all subscribers for a given
 // product and removes their entries from the blob store.
 
-import type { APIRoute } from "astro";
-import { isAdminAuthenticated, parseAdminFormData } from "@/lib/admin/auth";
-import { getSubscriptionsForProduct, removeSubscription } from "@/lib/backInStock";
-import { sendBackInStockNotification } from "@/lib/email/sender";
-
+import type { APIRoute } from 'astro';
+import { isAdminAuthenticated, parseAdminFormData } from '@/lib/admin/auth';
+import {
+  getSubscriptionsForProduct,
+  removeSubscription,
+} from '@/lib/backInStock';
+import { sendBackInStockNotification } from '@/lib/email/sender';
 
 function toAbsoluteUrl(url: string, origin: string): string {
   if (!url) return origin;
@@ -20,18 +22,18 @@ function toAbsoluteUrl(url: string, origin: string): string {
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (!isAdminAuthenticated(request, cookies)) {
-    return redirect("/admin/login?from=/admin/notifications/back-in-stock");
+    return redirect('/admin/login?from=/admin/notifications/back-in-stock');
   }
 
   const body = await parseAdminFormData(request);
-  if (!body) return new Response("Invalid form data", { status: 400 });
-  const productId = (body.get("productId") as string)?.trim();
+  if (!body) return new Response('Invalid form data', { status: 400 });
+  const productId = (body.get('productId') as string)?.trim();
 
-  if (!productId) return new Response("Missing productId", { status: 400 });
+  if (!productId) return new Response('Missing productId', { status: 400 });
 
   const subscribers = await getSubscriptionsForProduct(productId);
   if (subscribers.length === 0) {
-    return redirect("/admin/notifications/back-in-stock?error=none");
+    return redirect('/admin/notifications/back-in-stock?error=none');
   }
 
   const siteOrigin = new URL(request.url).origin;
@@ -61,6 +63,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   }
 
   const params = new URLSearchParams({ sent: String(sent) });
-  if (failed > 0) params.set("failed", String(failed));
+  if (failed > 0) params.set('failed', String(failed));
   return redirect(`/admin/notifications/back-in-stock?${params}`);
 };

@@ -17,13 +17,16 @@ remote_images = [
   "https://secure\\.gravatar\\.com/.*"  # Gravatar avatars
 ]
 
-# Root page - HTTP/2 Push for critical assets
+# Root page. Cache-Control here is superseded at runtime by the value
+# src/pages/index.astro sets on Astro.response; kept for the static case.
+# The font `Link: rel=preload` header that used to live here was removed:
+# it duplicated the in-document <link rel=preload> in BaseHead.astro and,
+# because response headers are processed before HTML parsing, it started
+# 119KB of WOFF2 ahead of the LCP image's own preload.
 [[headers]]
 for = "/"
 [headers.values]
 Cache-Control = "public, max-age=0, must-revalidate"
-Link = '''</fonts/AlumniSans.woff2>; rel=preload; as=font; type=font/woff2; crossorigin,
-</fonts/Cabin.woff2>; rel=preload; as=font; type=font/woff2; crossorigin'''
 
 # HTML files - short cache, always revalidate
 [[headers]]
@@ -43,7 +46,12 @@ Cache-Control = "public, max-age=60, s-maxage=180, stale-while-revalidate=600"
 [[headers]]
 for = "/category/*"
 [headers.values]
-Netlify-Vary = "query=brand,query=availability"
+# Cache key must include every filter query param the category route reads —
+# see filtersToURLParams in src/lib/square/filterUtils.ts. A param missing here
+# collapses distinct filter results onto one cache entry, so users can be served
+# someone else's filtered page. Adding a filter param to the code means adding
+# it here.
+Netlify-Vary = "query=brands,query=categories,query=availability,query=onSale"
 
 # Product pages - aggressive caching for performance
 [[headers]]

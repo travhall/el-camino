@@ -896,7 +896,7 @@ export function buildBisAdminNotificationHtml({
             <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#2b2215;">
               ${totalSubscribers} ${totalSubscribers === 1 ? 'person' : 'people'}
             </p>
-            <a href="${adminUrl}"
+            <a href="${escHtml(adminUrl)}"
                style="display:inline-block;background-color:#4d7a2e;color:#ffffff;font-size:14px;font-weight:600;letter-spacing:0.04em;text-decoration:none;padding:10px 24px;border-radius:6px;border:2px solid #3a5e22;">
               View in Admin
             </a>

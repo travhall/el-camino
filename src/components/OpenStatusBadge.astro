@@ -7,20 +7,20 @@ interface Props {
   class?: string;
 }
 
-const { class: className = "" } = Astro.props;
+const { class: className = '' } = Astro.props;
 ---
 
 <span
   data-open-status-badge
   class:list={[
-    "hidden text-xs font-semibold px-2 py-0.5 rounded-full border-2 text-nowrap",
+    'hidden text-xs font-semibold px-2 py-0.5 rounded-full border-2 text-nowrap',
     className,
   ]}
   aria-live="polite"></span>
 
 <script>
   interface ShopOverride {
-    mode: "auto" | "open" | "closed";
+    mode: 'auto' | 'open' | 'closed';
     until: string | null;
     holidays: Array<{
       id: string;
@@ -33,8 +33,8 @@ const { class: className = "" } = Astro.props;
   /** Returns "YYYY-MM-DD" for the given Date using local (browser) time. */
   function toDateString(d: Date): string {
     const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   }
 
@@ -45,11 +45,11 @@ const { class: className = "" } = Astro.props;
    */
   function resolveOverride(
     override: ShopOverride,
-    now: Date,
-  ): "open" | "closed" | null {
+    now: Date
+  ): 'open' | 'closed' | null {
     const todayStr = toDateString(now);
 
-    if (override.mode !== "auto") {
+    if (override.mode !== 'auto') {
       if (!override.until || override.until >= todayStr) {
         return override.mode;
       }
@@ -62,7 +62,7 @@ const { class: className = "" } = Astro.props;
         (h.date && h.date === todayStr) ||
         (h.recurring && h.recurring === monthDay)
       ) {
-        return "closed";
+        return 'closed';
       }
     }
 
@@ -71,40 +71,42 @@ const { class: className = "" } = Astro.props;
 
   async function updateOpenStatusBadges() {
     const badges = document.querySelectorAll<HTMLElement>(
-      "[data-open-status-badge]",
+      '[data-open-status-badge]'
     );
     if (!badges.length) return;
 
     const now = new Date();
 
     // ── 1. Check admin override ──────────────────────────────────────────────
-    let overrideStatus: "open" | "closed" | null = null;
-    try {
-      const res = await fetch("/api/shop-status");
-      if (res.ok) {
-        const override = (await res.json()) as ShopOverride;
+    let overrideStatus: 'open' | 'closed' | null = null;
+    const overrideEl = document.getElementById('shop-status-data');
+    if (overrideEl) {
+      try {
+        const override = JSON.parse(
+          overrideEl.textContent || '{}'
+        ) as ShopOverride;
         overrideStatus = resolveOverride(override, now);
+      } catch {
+        // Malformed embedded JSON — fall back to schedule silently
       }
-    } catch {
-      // Network error — fall back to schedule silently
     }
 
     // ── 2. Determine open/closed ─────────────────────────────────────────────
     let isOpenNow = false;
 
     if (overrideStatus !== null) {
-      isOpenNow = overrideStatus === "open";
+      isOpenNow = overrideStatus === 'open';
     } else {
       // Fall back to regular schedule logic
-      const todayName = new Intl.DateTimeFormat("en-US", {
-        weekday: "long",
+      const todayName = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
       }).format(now);
 
-      const hoursEl = document.getElementById("site-hours-data");
+      const hoursEl = document.getElementById('site-hours-data');
       let hours: { day: string; isOpen: boolean; hours: string }[] = [];
       if (hoursEl) {
         try {
-          hours = JSON.parse(hoursEl.textContent || "[]");
+          hours = JSON.parse(hoursEl.textContent || '[]');
         } catch {
           // Malformed embedded JSON is non-fatal; hours stays empty and the badge stays hidden.
         }
@@ -114,12 +116,12 @@ const { class: className = "" } = Astro.props;
 
       if (todayEntry?.isOpen) {
         const match = todayEntry.hours.match(
-          /(\d+)(am|pm)\s*-\s*(\d+)(am|pm)/i,
+          /(\d+)(am|pm)\s*-\s*(\d+)(am|pm)/i
         );
         if (match) {
           const toMinutes = (h: number, period: string) => {
             let hrs = h % 12;
-            if (period.toLowerCase() === "pm") hrs += 12;
+            if (period.toLowerCase() === 'pm') hrs += 12;
             return hrs * 60;
           };
           const openMins = toMinutes(parseInt(match[1]), match[2]);
@@ -132,30 +134,30 @@ const { class: className = "" } = Astro.props;
 
     // ── 3. Update badge UI ───────────────────────────────────────────────────
     badges.forEach((badge) => {
-      badge.classList.remove("hidden");
+      badge.classList.remove('hidden');
       if (isOpenNow) {
-        badge.textContent = "Open Now";
+        badge.textContent = 'Open Now';
         badge.classList.add(
-          "bg-state-success-surface",
-          "text-state-success-text",
-          "border-state-success-surface",
+          'bg-state-success-surface',
+          'text-state-success-text',
+          'border-state-success-surface'
         );
         badge.classList.remove(
-          "bg-state-error-surface",
-          "text-state-error-text",
-          "border-state-error-surface",
+          'bg-state-error-surface',
+          'text-state-error-text',
+          'border-state-error-surface'
         );
       } else {
-        badge.textContent = "Closed";
+        badge.textContent = 'Closed';
         badge.classList.add(
-          "bg-state-error-surface",
-          "text-state-error-text",
-          "border-state-error-surface",
+          'bg-state-error-surface',
+          'text-state-error-text',
+          'border-state-error-surface'
         );
         badge.classList.remove(
-          "bg-state-success-surface",
-          "text-state-success-text",
-          "border-state-success-surface",
+          'bg-state-success-surface',
+          'text-state-success-text',
+          'border-state-success-surface'
         );
       }
     });
@@ -165,5 +167,5 @@ const { class: className = "" } = Astro.props;
   // client-side navigation (this site uses Astro's ClientRouter — see
   // BaseHead.astro), so a single listener here covers both cases without
   // a redundant immediate/pre-ready call.
-  document.addEventListener("astro:page-load", updateOpenStatusBadges);
+  document.addEventListener('astro:page-load', updateOpenStatusBadges);
 </script>

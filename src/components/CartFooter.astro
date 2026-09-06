@@ -2,9 +2,9 @@
 // src/components/CartFooter.astro
 // Minimal footer for the cart/checkout funnel — no address, social, or logo.
 // Keeps the user focused on completing their purchase.
-import { getLegalPages } from "@/lib/wordpress/api";
-import type { WordPressPage } from "@/lib/wordpress/types";
-import { siteConfig } from "@/lib/site-config";
+import { getLegalPages } from '@/lib/wordpress/api';
+import type { WordPressPage } from '@/lib/wordpress/types';
+import { siteConfig } from '@/lib/site-config';
 
 const currentYear = new Date().getFullYear();
 
@@ -25,7 +25,7 @@ try {
       slug: p.slug,
       title: p.title,
       content: p.content,
-    })),
+    }))
   )}
 />
 
@@ -56,26 +56,26 @@ try {
 </footer>
 
 <script>
-  import { showPolicyModal } from "@/lib/events";
+  import { showPolicyModal } from '@/lib/events';
 
   function setupPolicyTriggers() {
     document
-      .querySelectorAll<HTMLButtonElement>(".policy-modal-trigger")
+      .querySelectorAll<HTMLButtonElement>('.policy-modal-trigger')
       .forEach((btn) => {
-        if (btn.getAttribute("data-policy-initialized") === "true") return;
-        btn.setAttribute("data-policy-initialized", "true");
-        btn.addEventListener("click", () => {
+        if (btn.getAttribute('data-policy-initialized') === 'true') return;
+        btn.setAttribute('data-policy-initialized', 'true');
+        btn.addEventListener('click', () => {
           const slug = btn.dataset.policySlug;
           if (slug) showPolicyModal(slug);
         });
       });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", setupPolicyTriggers);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupPolicyTriggers);
   } else {
     setupPolicyTriggers();
   }
 
-  document.addEventListener("astro:page-load", setupPolicyTriggers);
+  document.addEventListener('astro:page-load', setupPolicyTriggers);
 </script>

@@ -2,14 +2,15 @@
 // Re-adds a set of back-in-stock subscriptions that were previously removed.
 // Called by the client-side undo toast when an admin changes their mind.
 
-import type { APIRoute } from "astro";
-import { isAdminAuthenticated } from "@/lib/admin/auth";
-import { addSubscription, type BisSubscription } from "@/lib/backInStock";
-
+import type { APIRoute } from 'astro';
+import { isAdminAuthenticated } from '@/lib/admin/auth';
+import { addSubscription, type BisSubscription } from '@/lib/backInStock';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   if (!isAdminAuthenticated(request, cookies)) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+    });
   }
 
   let subscriptions: BisSubscription[];
@@ -17,16 +18,21 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const body = await request.json();
     subscriptions = body.subscriptions;
     if (!Array.isArray(subscriptions) || subscriptions.length === 0) {
-      return new Response(JSON.stringify({ error: "No subscriptions provided" }), { status: 400 });
+      return new Response(
+        JSON.stringify({ error: 'No subscriptions provided' }),
+        { status: 400 }
+      );
     }
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400 });
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+      status: 400,
+    });
   }
 
   await Promise.all(subscriptions.map((sub) => addSubscription(sub)));
 
   return new Response(JSON.stringify({ restored: subscriptions.length }), {
     status: 200,
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
   });
 };

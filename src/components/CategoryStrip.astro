@@ -3,20 +3,20 @@
 // Horizontal filmstrip — top-tier categories followed by their subcategories.
 // Flattens the full hierarchy so the strip has enough cards to earn horizontal scroll.
 // Image fetching covers both tiers (same Square CDN pattern as Sidebar.astro).
-import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryNav";
-import { squareClient } from "@/lib/square/client";
+import { fetchCategoryHierarchyWithProducts } from '@/lib/square/categoryNav';
+import { getCategoryImageUrls } from '@/lib/square/categoryImages';
 import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
-} from "@/lib/constants/assets";
-import { Icon } from "astro-icon/components";
-import { toNetlifyImageCDN } from "@/lib/image/enhanced-optimizer";
+} from '@/lib/constants/assets';
+import { Icon } from 'astro-icon/components';
+import { toNetlifyImageCDN } from '@/lib/image/enhanced-optimizer';
 
 interface Props {
   title?: string;
 }
 
-const { title = "Shop by Category" } = Astro.props;
+const { title = 'Shop by Category' } = Astro.props;
 
 // Full hierarchy, already filtered to categories that have products
 const hierarchy = await fetchCategoryHierarchyWithProducts();
@@ -50,28 +50,12 @@ for (const item of hierarchy) {
 }
 
 // Fetch Square CDN image URLs for every entry — top-tier and sub alike.
-// Sequential loop matches Sidebar.astro; the cache absorbs repeat calls
-// if Sidebar has already resolved the same IDs in this request.
-const categoryImageUrls: Record<string, string> = {};
-
-for (const cat of flatCategories) {
-  if (!cat.id) continue;
-  try {
-    const catResult = await squareClient.catalog.object.get({
-      objectId: cat.id,
-      includeRelatedObjects: true,
-    });
-    const imageObjects = ((catResult as any).relatedObjects ?? []).filter(
-      (obj: any) => obj.type === "IMAGE",
-    );
-    if (imageObjects.length > 0 && imageObjects[0].imageData?.url) {
-      categoryImageUrls[cat.id] = imageObjects[0].imageData.url;
-    }
-  } catch {
-    // fail silently — card falls back to logo placeholder
-  }
-}
-
+// Shared imageCache lookup plus one batched catalog.batchGet fetch for
+// misses (see src/lib/square/categoryImages.ts) — same cache Sidebar.astro
+// uses, so IDs Sidebar already resolved this request are a cache hit here.
+const categoryImageUrls: Record<string, string> = await getCategoryImageUrls(
+  flatCategories.filter((cat) => cat.id).map((cat) => cat.id)
+);
 ---
 
 <section class="py-8 bg-(--surface-primary)">
@@ -98,8 +82,10 @@ for (const cat of flatCategories) {
     <div class="flex gap-3 lg:gap-4 px-4 sm:px-6 lg:px-8">
       {
         flatCategories.map((cat, index) => {
-          const rawImageUrl = categoryImageUrls[cat.id] ?? "";
-          const imageUrl = rawImageUrl ? toNetlifyImageCDN(rawImageUrl, 600, { height: 600 }) : "";
+          const rawImageUrl = categoryImageUrls[cat.id] ?? '';
+          const imageUrl = rawImageUrl
+            ? toNetlifyImageCDN(rawImageUrl, 600, { height: 600 })
+            : '';
           const placeholderId = `cat-strip-placeholder-${cat.id}`;
           const isSubcategory = !!cat.parentName;
 
@@ -108,10 +94,10 @@ for (const cat of flatCategories) {
               href={cat.url}
               data-astro-prefetch="viewport"
               class:list={[
-                "group relative flex-none overflow-hidden rounded-sm bg-(--surface-primary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)",
+                'group relative flex-none overflow-hidden rounded-sm bg-(--surface-primary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)',
                 // Subcategory cards are narrower — creates a natural visual rhythm
                 // and echoes the brand/product hierarchy in RelatedProducts
-                isSubcategory ? "w-36 sm:w-44 lg:w-52" : "w-44 sm:w-52 lg:w-60",
+                isSubcategory ? 'w-36 sm:w-44 lg:w-52' : 'w-44 sm:w-52 lg:w-60',
               ]}
             >
               {/* Image — relative container keeps skeleton within bounds */}
@@ -135,7 +121,7 @@ for (const cat of flatCategories) {
                     alt=""
                     aria-hidden="true"
                     class="w-full h-full object-cover opacity-0 transition-all duration-500 group-hover:scale-105"
-                    loading={index < 4 ? "eager" : "lazy"}
+                    loading={index < 4 ? 'eager' : 'lazy'}
                     width="600"
                     height="600"
                     data-shimmer-placeholder={placeholderId}
@@ -150,7 +136,7 @@ for (const cat of flatCategories) {
                     alt=""
                     aria-hidden="true"
                     class="w-full h-full object-contain opacity-20"
-                    loading={index < 4 ? "eager" : "lazy"}
+                    loading={index < 4 ? 'eager' : 'lazy'}
                     width="600"
                     height="600"
                   />

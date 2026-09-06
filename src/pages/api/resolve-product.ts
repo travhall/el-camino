@@ -16,20 +16,15 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    // console.log(`[resolve-product] Resolving slug: ${slug}`);
-
     // Try fast path: lightweight slug resolver
     let productId = await slugResolver.resolve(slug);
 
     if (!productId) {
-      // console.log(`[resolve-product] Slug not in resolver, falling back to fetchProducts`);
       // Fallback to old method if resolver doesn't have it
       const products = await fetchProducts();
       const slugMapping = createSlugMapping(products);
       productId = slugMapping.get(slug) || null;
     }
-
-    // console.log(`[resolve-product] Resolved`);
 
     if (!productId) {
       return new Response(JSON.stringify({ error: 'Product not found' }), {

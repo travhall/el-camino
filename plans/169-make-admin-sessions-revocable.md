@@ -208,14 +208,14 @@ Extend the existing admin auth test file:
 
 ## Done criteria
 
-- [ ] Step 1's option and the `ADMIN_PASSWORD` availability finding recorded
-- [ ] A test proves a token from a previous generation fails verification
-- [ ] All existing auth tests still pass (expiry, tampering, malformed token)
-- [ ] Step 3's manual revocation check performed and recorded
-- [ ] Cookie flags, `safeEqual`, `exp` check, and `assertSameOrigin` unchanged
-- [ ] `ADMIN_SESSION_TTL_SECONDS` unchanged
-- [ ] README documents the revocation procedure with **no secret values**
-- [ ] `pnpm check` / `pnpm lint` / `pnpm test:run` all exit 0
+- [x] Step 1's option and the `ADMIN_PASSWORD` availability finding recorded
+- [x] A test proves a token from a previous generation fails verification
+- [x] All existing auth tests still pass (expiry, tampering, malformed token)
+- [x] Step 3's manual revocation check performed and recorded
+- [x] Cookie flags, `safeEqual`, `exp` check, and `assertSameOrigin` unchanged
+- [x] `ADMIN_SESSION_TTL_SECONDS` unchanged
+- [x] README documents the revocation procedure with **no secret values**
+- [x] `pnpm check` / `pnpm lint` / `pnpm test:run` all exit 0
 
 ## STOP conditions
 

@@ -3,7 +3,7 @@ import type {
   ProductVariation,
   VariationConfig,
   VariationSelectionState,
-} from "./types";
+} from './types';
 
 /**
  * Configuration for variation parsing
@@ -12,19 +12,19 @@ import type {
 export const VARIATION_CONFIG: VariationConfig = {
   // Position mappings for different part counts
   attributeMappings: {
-    1: ["variant"],
-    2: ["size", "color"],
-    3: ["size", "color", "material"],
-    4: ["size", "color", "material", "style"],
+    1: ['variant'],
+    2: ['size', 'color'],
+    3: ['size', 'color', 'material'],
+    4: ['size', 'color', 'material', 'style'],
   },
 
   // Display names for UI
   displayNames: {
-    size: "Size",
-    color: "Color",
-    material: "Material",
-    style: "Style",
-    variant: "Option",
+    size: 'Size',
+    color: 'Color',
+    material: 'Material',
+    style: 'Style',
+    variant: 'Option',
   },
 };
 
@@ -34,40 +34,69 @@ export const VARIATION_CONFIG: VariationConfig = {
  */
 function detectAttributeType(value: string): string | null {
   const valueLower = value.toLowerCase().trim();
-  
+
   // Size patterns: numbers, X/XL patterns, numeric + measurements
   const sizePatterns = [
-    /^\d+$/,  // Pure numbers: 28, 30, 32
-    /^[xms]+l$/,  // XS, S, M, L, XL, XXL, XXXL
-    /^\d+\.?\d*\s*(in|inch|inches|cm)?$/,  // 8.25, 8.25 inches
+    /^\d+$/, // Pure numbers: 28, 30, 32
+    /^[xms]+l$/, // XS, S, M, L, XL, XXL, XXXL
+    /^\d+\.?\d*\s*(in|inch|inches|cm)?$/, // 8.25, 8.25 inches
     /^(small|medium|large|extra)/, // small, medium, large, extra large
   ];
-  
-  if (sizePatterns.some(pattern => pattern.test(valueLower))) {
+
+  if (sizePatterns.some((pattern) => pattern.test(valueLower))) {
     return 'size';
   }
-  
+
   // Color patterns: common color names
   const commonColors = [
-    'black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple',
-    'pink', 'brown', 'gray', 'grey', 'navy', 'tan', 'beige', 'khaki',
-    'denim', 'indigo', 'maroon', 'olive', 'teal', 'cream', 'ivory'
+    'black',
+    'white',
+    'red',
+    'blue',
+    'green',
+    'yellow',
+    'orange',
+    'purple',
+    'pink',
+    'brown',
+    'gray',
+    'grey',
+    'navy',
+    'tan',
+    'beige',
+    'khaki',
+    'denim',
+    'indigo',
+    'maroon',
+    'olive',
+    'teal',
+    'cream',
+    'ivory',
   ];
-  
-  if (commonColors.some(color => valueLower.includes(color))) {
+
+  if (commonColors.some((color) => valueLower.includes(color))) {
     return 'color';
   }
-  
+
   // Material patterns
   const commonMaterials = [
-    'cotton', 'polyester', 'leather', 'suede', 'canvas', 'denim',
-    'wool', 'silk', 'nylon', 'fleece', 'mesh'
+    'cotton',
+    'polyester',
+    'leather',
+    'suede',
+    'canvas',
+    'denim',
+    'wool',
+    'silk',
+    'nylon',
+    'fleece',
+    'mesh',
   ];
-  
-  if (commonMaterials.some(material => valueLower.includes(material))) {
+
+  if (commonMaterials.some((material) => valueLower.includes(material))) {
     return 'material';
   }
-  
+
   return null;
 }
 
@@ -79,13 +108,13 @@ function detectAttributeType(value: string): string | null {
  * @returns Structured attributes object
  */
 export function parseVariationName(name: string): Record<string, string> {
-  if (!name || name.trim() === "") {
+  if (!name || name.trim() === '') {
     return {};
   }
 
   // Split by comma and trim whitespace
   const parts = name
-    .split(",")
+    .split(',')
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
 
@@ -97,29 +126,29 @@ export function parseVariationName(name: string): Record<string, string> {
   if (parts.length === 2) {
     const type0 = detectAttributeType(parts[0]);
     const type1 = detectAttributeType(parts[1]);
-    
+
     // If we can detect both types, use them
     if (type0 && type1 && type0 !== type1) {
       return {
         [type0]: parts[0],
-        [type1]: parts[1]
+        [type1]: parts[1],
       };
     }
-    
+
     // If we can only detect one, use it and guess the other
     if (type0) {
       const otherType = type0 === 'size' ? 'color' : 'size';
       return {
         [type0]: parts[0],
-        [otherType]: parts[1]
+        [otherType]: parts[1],
       };
     }
-    
+
     if (type1) {
       const otherType = type1 === 'size' ? 'color' : 'size';
       return {
         [otherType]: parts[0],
-        [type1]: parts[1]
+        [type1]: parts[1],
       };
     }
   }
@@ -260,7 +289,10 @@ export function getDefaultAttributes(
     return {};
   }
 
-  if (defaultVariation.attributes === undefined || defaultVariation.attributes === null) {
+  if (
+    defaultVariation.attributes === undefined ||
+    defaultVariation.attributes === null
+  ) {
     defaultVariation.attributes = parseVariationName(defaultVariation.name);
   }
 
@@ -314,7 +346,8 @@ export function createInitialSelectionState(
   // 1. Only one variation AND
   // 2. No commas in name (not using Item Options) AND
   // 3. Name is a default/generic variation name
-  const shouldParseAttributes = variations.length > 1 || 
+  const shouldParseAttributes =
+    variations.length > 1 ||
     (variations.length === 1 && variations[0].name.includes(','));
 
   if (shouldParseAttributes) {

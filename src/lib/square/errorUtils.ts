@@ -5,24 +5,24 @@
  */
 export enum ErrorType {
   // API Errors
-  API_UNAVAILABLE = "api_unavailable",
-  API_RATE_LIMIT = "api_rate_limit",
-  API_RESPONSE_ERROR = "api_response_error",
+  API_UNAVAILABLE = 'api_unavailable',
+  API_RATE_LIMIT = 'api_rate_limit',
+  API_RESPONSE_ERROR = 'api_response_error',
 
   // Data Errors
-  DATA_NOT_FOUND = "data_not_found",
-  DATA_VALIDATION = "data_validation",
-  DATA_PARSING = "data_parsing",
+  DATA_NOT_FOUND = 'data_not_found',
+  DATA_VALIDATION = 'data_validation',
+  DATA_PARSING = 'data_parsing',
 
   // Authentication Errors
-  AUTH_ERROR = "auth_error",
+  AUTH_ERROR = 'auth_error',
 
   // Client Errors
-  NETWORK_ERROR = "network_error",
-  TIMEOUT_ERROR = "timeout_error",
+  NETWORK_ERROR = 'network_error',
+  TIMEOUT_ERROR = 'timeout_error',
 
   // Other
-  UNKNOWN = "unknown_error",
+  UNKNOWN = 'unknown_error',
 }
 
 /**
@@ -62,7 +62,7 @@ export function createError(
  */
 export function logError(error: AppError): void {
   console.error(
-    `[ERROR:${error.type}] ${error.source ? `(${error.source})` : ""} ${
+    `[ERROR:${error.type}] ${error.source ? `(${error.source})` : ''} ${
       error.message
     }`,
     {
@@ -74,7 +74,7 @@ export function logError(error: AppError): void {
           ? {
               name: error.originalError.name,
               message: error.originalError.message,
-              stack: error.originalError.stack?.split("\n").slice(0, 5),
+              stack: error.originalError.stack?.split('\n').slice(0, 5),
             }
           : error.originalError,
     }
@@ -87,20 +87,20 @@ export function logError(error: AppError): void {
 export function processClientError(error: unknown, source: string): AppError {
   if (error instanceof Error) {
     if (
-      error.message.includes("timeout") ||
-      error.message.includes("ETIMEDOUT")
+      error.message.includes('timeout') ||
+      error.message.includes('ETIMEDOUT')
     ) {
-      return createError(ErrorType.TIMEOUT_ERROR, "Request timed out", {
+      return createError(ErrorType.TIMEOUT_ERROR, 'Request timed out', {
         source,
         originalError: error,
       });
     }
 
     if (
-      error.message.includes("network") ||
-      error.message.includes("ENOTFOUND")
+      error.message.includes('network') ||
+      error.message.includes('ENOTFOUND')
     ) {
-      return createError(ErrorType.NETWORK_ERROR, "Network error", {
+      return createError(ErrorType.NETWORK_ERROR, 'Network error', {
         source,
         originalError: error,
       });
@@ -112,7 +112,7 @@ export function processClientError(error: unknown, source: string): AppError {
     });
   }
 
-  return createError(ErrorType.UNKNOWN, "Unknown error occurred", {
+  return createError(ErrorType.UNKNOWN, 'Unknown error occurred', {
     source,
     originalError: error,
   });

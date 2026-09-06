@@ -17,10 +17,7 @@ vi.mock('../batchInventory', () => ({
   },
 }));
 
-import {
-  filterProducts,
-  filterProductsWithCache
-} from '../filterUtils';
+import { filterProducts, filterProductsWithCache } from '../filterUtils';
 import { filterCache } from '@/lib/cache/blobCache';
 import type { Product, ProductFilters } from '../types';
 
@@ -36,10 +33,10 @@ const mockProducts: Product[] = [
     price: 2999,
     image: 'test1.jpg',
     url: '/product/test-product-1',
-    variations: []
+    variations: [],
   },
   {
-    id: 'prod2', 
+    id: 'prod2',
     catalogObjectId: 'cat2',
     variationId: 'var2',
     title: 'Test Product 2',
@@ -48,20 +45,20 @@ const mockProducts: Product[] = [
     price: 3999,
     image: 'test2.jpg',
     url: '/product/test-product-2',
-    variations: []
+    variations: [],
   },
   {
     id: 'prod3',
     catalogObjectId: 'cat3',
-    variationId: 'var3', 
+    variationId: 'var3',
     title: 'Test Product 3',
     brand: 'Spitfire',
     description: 'Test description',
     price: 1999,
     image: 'test3.jpg',
     url: '/product/test-product-3',
-    variations: []
-  }
+    variations: [],
+  },
 ];
 
 describe('Cached Filter Functionality', () => {
@@ -74,16 +71,24 @@ describe('Cached Filter Functionality', () => {
   describe('Cache Performance', () => {
     it('should use cache on repeated calls with same parameters', async () => {
       const filters: ProductFilters = { brands: ['Spitfire'], categories: [] };
-      
+
       // First call - should compute and cache
-      const result1 = await filterProductsWithCache(mockProducts, filters, 'test-category');
+      const result1 = await filterProductsWithCache(
+        mockProducts,
+        filters,
+        'test-category'
+      );
       expect(result1).toHaveLength(2); // 2 Spitfire products
-      
+
       // Second call - should return from cache (faster)
       const start = performance.now();
-      const result2 = await filterProductsWithCache(mockProducts, filters, 'test-category');
+      const result2 = await filterProductsWithCache(
+        mockProducts,
+        filters,
+        'test-category'
+      );
       const duration = performance.now() - start;
-      
+
       expect(result2).toHaveLength(2);
       expect(result1).toEqual(result2);
       // Cache hit should be very fast (< 1ms)
@@ -91,22 +96,44 @@ describe('Cached Filter Functionality', () => {
     });
 
     it('should create different cache keys for different filters', async () => {
-      const spitfireFilter: ProductFilters = { brands: ['Spitfire'], categories: [] };
-      const independentFilter: ProductFilters = { brands: ['Independent'], categories: [] };
-      
-      const result1 = await filterProductsWithCache(mockProducts, spitfireFilter, 'wheels');
-      const result2 = await filterProductsWithCache(mockProducts, independentFilter, 'wheels');
-      
+      const spitfireFilter: ProductFilters = {
+        brands: ['Spitfire'],
+        categories: [],
+      };
+      const independentFilter: ProductFilters = {
+        brands: ['Independent'],
+        categories: [],
+      };
+
+      const result1 = await filterProductsWithCache(
+        mockProducts,
+        spitfireFilter,
+        'wheels'
+      );
+      const result2 = await filterProductsWithCache(
+        mockProducts,
+        independentFilter,
+        'wheels'
+      );
+
       expect(result1).toHaveLength(2); // Spitfire products
       expect(result2).toHaveLength(1); // Independent products
     });
 
     it('should create different cache keys for different categories', async () => {
       const filters: ProductFilters = { brands: ['Spitfire'], categories: [] };
-      
-      const result1 = await filterProductsWithCache(mockProducts, filters, 'wheels');
-      const result2 = await filterProductsWithCache(mockProducts, filters, 'bearings');
-      
+
+      const result1 = await filterProductsWithCache(
+        mockProducts,
+        filters,
+        'wheels'
+      );
+      const result2 = await filterProductsWithCache(
+        mockProducts,
+        filters,
+        'bearings'
+      );
+
       // Both should work independently
       expect(result1).toHaveLength(2);
       expect(result2).toHaveLength(2);
@@ -116,19 +143,19 @@ describe('Cached Filter Functionality', () => {
   describe('Functional Equivalence', () => {
     it('should produce identical results to basic filterProducts', async () => {
       const filters: ProductFilters = { brands: ['Spitfire'], categories: [] };
-      
+
       const basicResult = await filterProducts(mockProducts, filters);
       const cachedResult = await filterProductsWithCache(mockProducts, filters);
-      
+
       expect(cachedResult).toEqual(basicResult);
     });
 
     it('should handle empty filters correctly', async () => {
       const filters: ProductFilters = { brands: [], categories: [] };
-      
+
       const basicResult = await filterProducts(mockProducts, filters);
       const cachedResult = await filterProductsWithCache(mockProducts, filters);
-      
+
       expect(cachedResult).toEqual(basicResult);
       expect(cachedResult).toHaveLength(3); // All products
     });
@@ -137,12 +164,12 @@ describe('Cached Filter Functionality', () => {
       const filters: ProductFilters = {
         brands: ['Spitfire'],
         categories: [],
-        availability: true
+        availability: true,
       };
-      
+
       const basicResult = await filterProducts(mockProducts, filters);
       const cachedResult = await filterProductsWithCache(mockProducts, filters);
-      
+
       expect(cachedResult).toEqual(basicResult);
     });
   });

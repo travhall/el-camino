@@ -24,7 +24,9 @@ const mockCacheStore = {
 vi.mock('@netlify/blobs', () => ({
   getStore: vi.fn((arg: string | { name: string }) => {
     const name = typeof arg === 'string' ? arg : arg.name;
-    return name === 'back-in-stock-subscriptions' ? mockSubStore : mockCacheStore;
+    return name === 'back-in-stock-subscriptions'
+      ? mockSubStore
+      : mockCacheStore;
   }),
 }));
 
@@ -56,6 +58,35 @@ async function loadBackInStock() {
   return await import('../backInStock');
 }
 
+describe('backInStock — key() path-separator guard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockCacheStore.get.mockResolvedValue(undefined);
+    mockCacheStore.set.mockResolvedValue(undefined);
+    mockCacheStore.delete.mockResolvedValue(undefined);
+  });
+
+  it('throws when productId contains a path separator', async () => {
+    const { addSubscription } = await loadBackInStock();
+    await expect(
+      addSubscription({ ...subA, productId: 'a/b' })
+    ).rejects.toThrow();
+    await expect(
+      addSubscription({ ...subA, productId: 'a\\b' })
+    ).rejects.toThrow();
+  });
+
+  it('returns the existing "{productId}/{email}" format for a valid id', async () => {
+    const { addSubscription } = await loadBackInStock();
+    await addSubscription(subA);
+    expect(mockSubStore.setJSON).toHaveBeenCalledWith(
+      blobKey(subA.productId, subA.email),
+      subA
+    );
+  });
+});
+
 describe('backInStock — getAllProductSummaries caching', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -68,7 +99,9 @@ describe('backInStock — getAllProductSummaries caching', () => {
   it('serves the second call from cache without re-reading the subscription store', async () => {
     const { getAllProductSummaries } = await loadBackInStock();
 
-    mockSubStore.list.mockResolvedValue({ blobs: [{ key: blobKey(subA.productId, subA.email) }] });
+    mockSubStore.list.mockResolvedValue({
+      blobs: [{ key: blobKey(subA.productId, subA.email) }],
+    });
     mockSubStore.get.mockResolvedValue(subA);
 
     const first = await getAllProductSummaries();
@@ -105,7 +138,8 @@ describe('backInStock — getAllProductSummaries caching', () => {
   });
 
   it('invalidates the cache on removeSubscription so the next read reflects the removal', async () => {
-    const { removeSubscription, getAllProductSummaries } = await loadBackInStock();
+    const { removeSubscription, getAllProductSummaries } =
+      await loadBackInStock();
 
     mockSubStore.list.mockResolvedValueOnce({
       blobs: [
@@ -130,7 +164,8 @@ describe('backInStock — getAllProductSummaries caching', () => {
   });
 
   it('invalidates the cache on removeAllSubscriptionsForProduct so the next read is empty', async () => {
-    const { removeAllSubscriptionsForProduct, getAllProductSummaries } = await loadBackInStock();
+    const { removeAllSubscriptionsForProduct, getAllProductSummaries } =
+      await loadBackInStock();
 
     mockSubStore.list.mockResolvedValueOnce({
       blobs: [{ key: blobKey(subA.productId, subA.email) }],

@@ -9,9 +9,9 @@ interface Props {
 }
 
 const {
-  currentSearch = "",
-  currentSort = "newest",
-  currentView = "grid",
+  currentSearch = '',
+  currentSort = 'newest',
+  currentView = 'grid',
 } = Astro.props;
 ---
 
@@ -81,18 +81,18 @@ const {
           name="sort"
           class="px-3 py-2 text-sm border border-(--ui-input-border)/50 rounded-xs bg-(--ui-input-surface) text-(--ui-input-text) focus:ring-2 focus:ring-ui-accent focus:border-ui-accent"
         >
-          <option value="newest" selected={currentSort === "newest"}
+          <option value="newest" selected={currentSort === 'newest'}
             >Most Recent</option
           >
-          <option value="oldest" selected={currentSort === "oldest"}
+          <option value="oldest" selected={currentSort === 'oldest'}
             >Oldest First</option
           >
-          <option value="alphabetical" selected={currentSort === "alphabetical"}
+          <option value="alphabetical" selected={currentSort === 'alphabetical'}
             >A-Z</option
           >
           <option
             value="alphabetical-desc"
-            selected={currentSort === "alphabetical-desc"}>Z-A</option
+            selected={currentSort === 'alphabetical-desc'}>Z-A</option
           >
         </select>
       </form>
@@ -104,9 +104,9 @@ const {
         <button
           type="button"
           class={`px-3 py-2 text-sm transition-all view-toggle ${
-            currentView === "grid"
-              ? "bg-(--ui-button-surface) text-(--ui-button-text)"
-              : "text-(--content-meta) hover:text-(--content-body)"
+            currentView === 'grid'
+              ? 'bg-(--ui-button-surface) text-(--ui-button-text)'
+              : 'text-(--content-meta) hover:text-(--content-body)'
           }`}
           data-view="grid"
           aria-label="Grid view"
@@ -129,9 +129,9 @@ const {
         <button
           type="button"
           class={`px-3 py-2 text-sm transition-all view-toggle ${
-            currentView === "list"
-              ? "bg-(--ui-button-surface) text-(--ui-button-text)"
-              : "text-(--content-meta) hover:text-(--content-body)"
+            currentView === 'list'
+              ? 'bg-(--ui-button-surface) text-(--ui-button-text)'
+              : 'text-(--content-meta) hover:text-(--content-body)'
           }`}
           data-view="list"
           aria-label="List view"
@@ -160,11 +160,11 @@ const {
     createNewsAwareURL,
     isNewsPath,
     saveViewPreference,
-  } from "@/utils/newsNavigation";
-  import { navigate } from "astro:transitions/client";
-  import { FilterCoordinator, GRID_CONFIGS } from "@/lib/filterCoordinator";
+  } from '@/utils/newsNavigation';
+  import { navigate } from 'astro:transitions/client';
+  import { FilterCoordinator, GRID_CONFIGS } from '@/lib/filterCoordinator';
 
-  document.addEventListener("astro:page-load", () => {
+  document.addEventListener('astro:page-load', () => {
     // Only run on news pages
     if (!isNewsPath(window.location.pathname)) {
       return;
@@ -198,13 +198,13 @@ const {
     };
 
     // Handle clear search button
-    const clearButtons = document.querySelectorAll(".clear-search-btn");
+    const clearButtons = document.querySelectorAll('.clear-search-btn');
     clearButtons.forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
+      btn.addEventListener('click', async (e) => {
         e.preventDefault();
         const currentParams = new URLSearchParams(window.location.search);
-        currentParams.delete("search");
-        currentParams.delete("page");
+        currentParams.delete('search');
+        currentParams.delete('page');
         const newUrl = createNewsAwareURL(
           window.location.pathname,
           currentParams
@@ -216,18 +216,18 @@ const {
     // Handle sort dropdown changes
     const sortSelects = document.querySelectorAll('select[name="sort"]');
     sortSelects.forEach((select) => {
-      select.addEventListener("change", async (e) => {
+      select.addEventListener('change', async (e) => {
         e.preventDefault();
         const currentParams = new URLSearchParams(window.location.search);
         const sortValue = (e.target as HTMLSelectElement).value;
 
-        if (sortValue !== "newest") {
-          currentParams.set("sort", sortValue);
+        if (sortValue !== 'newest') {
+          currentParams.set('sort', sortValue);
         } else {
-          currentParams.delete("sort");
+          currentParams.delete('sort');
         }
 
-        currentParams.delete("page");
+        currentParams.delete('page');
         const newUrl = createNewsAwareURL(
           window.location.pathname,
           currentParams
@@ -237,10 +237,10 @@ const {
     });
 
     // FIXED: Simplified view toggle without immediate visual feedback
-    const viewToggleButtons = document.querySelectorAll(".view-toggle");
+    const viewToggleButtons = document.querySelectorAll('.view-toggle');
 
     viewToggleButtons.forEach((button) => {
-      button.addEventListener("click", async (e) => {
+      button.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -248,14 +248,14 @@ const {
         if (!viewType || isNavigating) return;
 
         // Save preference to localStorage
-        saveViewPreference(viewType as "grid" | "list");
+        saveViewPreference(viewType as 'grid' | 'list');
 
         // Build URL with view parameter
         const currentParams = new URLSearchParams(window.location.search);
-        if (viewType === "grid") {
-          currentParams.delete("view");
+        if (viewType === 'grid') {
+          currentParams.delete('view');
         } else {
-          currentParams.set("view", viewType);
+          currentParams.set('view', viewType);
         }
 
         const newUrl = createNewsAwareURL(
@@ -269,7 +269,7 @@ const {
     });
 
     // Keyboard shortcuts
-    document.addEventListener("keydown", async (e: KeyboardEvent) => {
+    document.addEventListener('keydown', async (e: KeyboardEvent) => {
       if (
         isNavigating ||
         e.target instanceof HTMLInputElement ||
@@ -277,21 +277,21 @@ const {
       )
         return;
 
-      if (e.key === "g" && !e.ctrlKey && !e.metaKey) {
+      if (e.key === 'g' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        saveViewPreference("grid");
+        saveViewPreference('grid');
         const currentParams = new URLSearchParams(window.location.search);
-        currentParams.delete("view");
+        currentParams.delete('view');
         const newUrl = createNewsAwareURL(
           window.location.pathname,
           currentParams
         );
         await navigateToUrl(newUrl);
-      } else if (e.key === "l" && !e.ctrlKey && !e.metaKey) {
+      } else if (e.key === 'l' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        saveViewPreference("list");
+        saveViewPreference('list');
         const currentParams = new URLSearchParams(window.location.search);
-        currentParams.set("view", "list");
+        currentParams.set('view', 'list');
         const newUrl = createNewsAwareURL(
           window.location.pathname,
           currentParams

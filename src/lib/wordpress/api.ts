@@ -21,6 +21,13 @@ import { wordpressCache } from '@/lib/cache/blobCache';
 const WP_URL =
   'https://public-api.wordpress.com/rest/v1.1/sites/elcaminoskateshop.wordpress.com';
 
+// Netlify's synchronous function execution limit is 60s (not configurable,
+// per https://docs.netlify.com/build/functions/configuration/). This must
+// stay comfortably under that so a slow (not down) WordPress rejects and
+// renders the degraded state instead of hanging until the platform kills
+// the function.
+const WP_FETCH_TIMEOUT_MS = 8_000;
+
 /**
  * Process WordPress API errors into standardized format
  */
@@ -109,6 +116,7 @@ async function fetchWithCache<T>(
     try {
       const response = await fetch(`${WP_URL}${endpoint}`, {
         headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(WP_FETCH_TIMEOUT_MS),
       });
 
       if (!response.ok) {

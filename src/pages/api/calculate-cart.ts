@@ -57,12 +57,20 @@ export const POST: APIRoute = async ({ request }) => {
       .map((item) => item.variationId);
     const pricing = await getAuthoritativePricing(pricedVariationIds);
 
-    // Calculate subtotal using server-derived effective prices, falling back
-    // to the catalog regular price (item.price) when no trusted entry exists
-    // (e.g. variable-price gift cards).
+    // Calculate subtotal using server-derived effective prices. A missing
+    // catalog entry (e.g. a variable-price gift card) contributes 0, NEVER
+    // the client-supplied item.price — a missing price can only reduce the
+    // subtotal, so the worst case is quoting shipping the customer might
+    // have earned free, never an attacker-forced free-shipping threshold. Do
+    // not restore the `?? item.price` fallback.
     const subtotal = items.reduce((sum, item) => {
-      const effectivePrice =
-        pricing[item.variationId]?.effectivePrice ?? item.price;
+      const entry = pricing[item.variationId];
+      if (!entry) {
+        console.warn(
+          `[calculate-cart] No authoritative price for variation ${item.variationId}; contributing 0 to subtotal.`
+        );
+      }
+      const effectivePrice = entry?.effectivePrice ?? 0;
       return sum + effectivePrice * item.quantity;
     }, 0);
 

@@ -13,8 +13,6 @@ export const GET: APIRoute = async ({ request }) => {
     const wasCached =
       cacheControl?.includes('max-age') && !cacheControl?.includes('no-cache');
 
-    // console.log("Fetching Square categories...");
-
     // Fetch all categories
     const categoryPage = await squareClient.catalog.list({ types: 'CATEGORY' });
     const categoryResponse = { result: { objects: categoryPage.data } };

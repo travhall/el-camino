@@ -18,6 +18,7 @@ interface CacheEntry<T> {
 export class BlobCache<T> {
   private storeName: string;
   private ttl: number;
+  private memoryTtl: number;
   private name: string;
   private isDevelopment: boolean = false;
 
@@ -30,12 +31,24 @@ export class BlobCache<T> {
    * @param name Name for logging purposes
    * @param ttlSeconds TTL in seconds (default: 60)
    * @param storeName Netlify Blobs store name (default: 'square-cache')
+   * @param memoryTtlSeconds How long the in-memory tier trusts an entry before
+   *   falling through to the blob, even if the blob TTL hasn't elapsed.
+   *   Defaults to ttlSeconds (no change from prior behavior). Set this shorter
+   *   than ttlSeconds for a cache whose staleness costs money or correctness —
+   *   a blob-level delete() is otherwise invisible to other warm instances
+   *   until this tier expires on its own.
    */
-  constructor(name: string, ttlSeconds = 60, storeName = 'square-cache') {
+  constructor(
+    name: string,
+    ttlSeconds = 60,
+    storeName = 'square-cache',
+    memoryTtlSeconds = ttlSeconds
+  ) {
     // CACHE VERSION: Increment this to invalidate all caches after env changes
     const CACHE_VERSION = 'v3-prod'; // Changed to force fresh Production cache
     this.name = `${CACHE_VERSION}:${name}`;
     this.ttl = ttlSeconds * 1000; // Convert to ms
+    this.memoryTtl = memoryTtlSeconds * 1000;
     this.storeName = storeName;
 
     // Check if we're in a browser environment (client-side)
@@ -102,11 +115,14 @@ export class BlobCache<T> {
   async get(key: string): Promise<T | undefined> {
     const cacheKey = this.getCacheKey(key);
 
-    // Check in-memory fallback first — fastest path, consistent with getOrCompute
+    // Check in-memory fallback first — fastest path, consistent with getOrCompute.
+    // Compared against memoryTtl (not the entry's own blob ttl) so a cache like
+    // inventoryCache can trust this tier for a much shorter window than the
+    // blob TTL, keeping a blob-level delete() visible fleet-wide quickly.
     const fallbackEntry = this.fallbackCache.get(cacheKey);
     if (fallbackEntry) {
       const now = Date.now();
-      if (now - fallbackEntry.timestamp <= fallbackEntry.ttl) {
+      if (now - fallbackEntry.timestamp <= this.memoryTtl) {
         return fallbackEntry.value;
       }
       this.fallbackCache.delete(cacheKey);
@@ -231,7 +247,7 @@ export class BlobCache<T> {
     let cleanedCount = 0;
 
     for (const [key, entry] of this.fallbackCache.entries()) {
-      if (now - entry.timestamp > entry.ttl) {
+      if (now - entry.timestamp > this.memoryTtl) {
         this.fallbackCache.delete(key);
         cleanedCount++;
       }
@@ -267,11 +283,11 @@ export class BlobCache<T> {
   async getOrCompute(key: string, compute: () => Promise<T>): Promise<T> {
     const cacheKey = this.getCacheKey(key);
 
-    // Try fallback cache first (fastest)
+    // Try fallback cache first (fastest). Compared against memoryTtl, see get().
     const fallbackEntry = this.fallbackCache.get(cacheKey);
     if (fallbackEntry) {
       const now = Date.now();
-      if (now - fallbackEntry.timestamp <= fallbackEntry.ttl) {
+      if (now - fallbackEntry.timestamp <= this.memoryTtl) {
         return fallbackEntry.value;
       } else {
         // Remove expired fallback entry
@@ -327,9 +343,12 @@ export class BlobCache<T> {
       };
       this.fallbackCache.set(cacheKey, entry);
 
-      // Try to store in blob cache (don't wait for it)
+      // Awaited — Netlify freezes the function once the response is sent, so a
+      // fire-and-forget write here is silently dropped before it reaches Blobs
+      // (see create-checkout.ts's storePendingOrder comment for the same rule).
+      // .catch() still keeps a write failure from throwing past the computed value.
       if (store) {
-        store
+        await store
           .set(cacheKey, JSON.stringify(entry), {
             metadata: {
               cacheName: this.name,
@@ -357,7 +376,16 @@ export class BlobCache<T> {
  * These replace the in-memory caches to fix function-per-route isolation
  */
 // UPDATED: Longer TTLs since catalog data changes infrequently
-export const inventoryCache = new BlobCache<number>('inventory', 900); // 15 min
+// Blob TTL stays 15 min, but the in-memory tier trusts an entry for only 10s —
+// long enough to dedupe reads within one render, short enough that a webhook's
+// inventoryCache.delete() (which only clears the blob-visible copy on other
+// instances) is observed fleet-wide almost immediately instead of after 15 min.
+export const inventoryCache = new BlobCache<number>(
+  'inventory',
+  900,
+  'square-cache',
+  10
+);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- stores multiple unrelated shapes under one instance (all-categories, hierarchy, has-products, etc.)
 export const categoryCache = new BlobCache<any>('category', 1800); // 30 min (was 1 hr)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- stores multiple unrelated shapes (single products, id maps)

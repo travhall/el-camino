@@ -10,11 +10,8 @@ import {
   getAllCategories,
   getAllTags,
 } from "@/lib/wordpress/api";
-import { buildSearchIndex, buildFilterOptions } from "@/lib/wordpress/types";
-import type {
-  NewsFilterOptions,
-  NewsSearchIndex,
-} from "@/lib/wordpress/types";
+import { buildFilterOptions } from "@/lib/wordpress/types";
+import type { NewsFilterOptions } from "@/lib/wordpress/types";
 
 // Fetch all data at build time
 const [newsData, categories, tags] = await Promise.all([
@@ -28,13 +25,12 @@ const { allPosts } = newsData;
 // Pagination configuration
 const POSTS_PER_PAGE = 12;
 
-// Build filter options and search index
+// Build filter options
 const filterOptions: NewsFilterOptions = buildFilterOptions(
   allPosts,
   categories,
   tags
 );
-const searchIndex: NewsSearchIndex = buildSearchIndex(allPosts);
 
 // Always start with most recent first
 let displayPosts = [...allPosts].sort(
@@ -171,31 +167,13 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
       priority: true,
     })
   : null;
-
-const nonce = Astro.locals.nonce;
 ---
 
 <Layout title="The Latest News | El Camino">
   <Fragment slot="head">
-    {/* Restore session view preference before first paint to avoid flash */}
-    <script is:inline nonce={nonce}>
-      (function () {
-        try {
-          if (!new URLSearchParams(window.location.search).has("view")) {
-            var pref = localStorage.getItem("newsViewPreference");
-            if (pref && pref !== "grid") {
-              var params = new URLSearchParams(window.location.search);
-              params.set("view", pref);
-              window.location.replace(
-                window.location.pathname + "?" + params.toString()
-              );
-            }
-          }
-        } catch {
-          // localStorage can throw in sandboxed/private-browsing contexts; skip redirect silently.
-        }
-      })();
-    </script>
+    {/* View preference restore lives in BaseHead.astro (runs on every page,
+       pathname-guarded) so its content is byte-identical across navigations
+       and never gets caught by ClientRouter's per-page nonce mismatch. */}
 
     {/* Preconnect to WordPress CDN for faster image loading */}
     <link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" crossorigin />
@@ -246,10 +224,14 @@ const nonce = Astro.locals.nonce;
       </>
     )}
     
-    <script type="application/json" id="news-data" set:html={JSON.stringify({ allPosts, searchIndex, filterOptions })} />
-    <script is:inline nonce={nonce}>
-      window.newsData = JSON.parse(document.getElementById('news-data').textContent);
-    </script>
+    {/*
+      NOTE (plan 175): window.newsData (allPosts + a full-body search index +
+      a duplicate of filterOptions) used to be serialized here, but no client
+      script ever read it — search/sort/filter/pagination all reload the page
+      via GET params (see NewsSearchSort.astro), and NewsFilters.astro
+      serializes its own window.newsFilterOptions independently. Removed
+      rather than trimmed since there were zero consumers.
+    */}
     {hasFilters && <meta name="robots" content="noindex, follow" />}
     <link
       rel="alternate"

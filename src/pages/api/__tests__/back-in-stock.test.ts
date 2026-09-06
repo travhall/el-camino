@@ -86,6 +86,40 @@ describe('POST /api/back-in-stock', () => {
     expect(res.status).toBe(400);
   });
 
+  it.each(['../other', 'a/b', 'a\\b', 'x'.repeat(500)])(
+    'returns 400 and does not store for a malformed product ID %s',
+    async (badProductId) => {
+      const res = await POST(
+        makeContext({ ...validFields, product_id: badProductId })
+      );
+      expect(res.status).toBe(400);
+      expect(addSubscription).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['../other', 'a/b', 'a\\b', 'x'.repeat(500)])(
+    'returns 400 and does not store for a malformed variation ID %s',
+    async (badVariationId) => {
+      const res = await POST(
+        makeContext({ ...validFields, variation_id: badVariationId })
+      );
+      expect(res.status).toBe(400);
+      expect(addSubscription).not.toHaveBeenCalled();
+    }
+  );
+
+  it('accepts a real-shaped Square catalog ID', async () => {
+    const res = await POST(
+      makeContext({
+        ...validFields,
+        product_id: 'AA27W3M2GGTF3H6AVPNB77CK',
+        variation_id: 'AFMwA08kR-MIF-3Vs0OE',
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(addSubscription).toHaveBeenCalled();
+  });
+
   it('stores a new subscription and returns 200 on valid input', async () => {
     const res = await POST(makeContext(validFields));
     expect(res.status).toBe(200);

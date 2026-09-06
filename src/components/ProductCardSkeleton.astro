@@ -1,22 +1,26 @@
 ---
 // src/components/ProductCardSkeleton.astro - Updated with Unified Loading System
 interface Props {
-  variant?: "default" | "compact" | "featured";
+  variant?: 'default' | 'compact' | 'featured';
   index?: number;
   priority?: boolean;
 }
 
-const { variant = "default", index = 0 } = Astro.props;
+const { variant = 'default', index = 0 } = Astro.props;
 
 // Calculate stagger delay for animation timing
 const staggerDelay = index * 0.1;
 
 // Determine image class based on variant
-const imageClass = variant === "compact" ? "loading-image compact" :
-                   variant === "featured" ? "loading-image featured" : "loading-image";
+const imageClass =
+  variant === 'compact'
+    ? 'loading-image compact'
+    : variant === 'featured'
+      ? 'loading-image featured'
+      : 'loading-image';
 
 // Container classes for the variant
-const containerClass = `loading-container loading-product-card ${variant === "featured" ? "col-span-2" : ""}`;
+const containerClass = `loading-container loading-product-card ${variant === 'featured' ? 'col-span-2' : ''}`;
 ---
 
 <div
@@ -27,7 +31,7 @@ const containerClass = `loading-container loading-product-card ${variant === "fe
 >
   <!-- Unified Image Skeleton -->
   <div class={`loading-skeleton ${imageClass}`}></div>
-  
+
   <!-- Unified Content Skeleton -->
   <div class="loading-product-content">
     <div class="loading-skeleton loading-brand"></div>
@@ -35,7 +39,7 @@ const containerClass = `loading-container loading-product-card ${variant === "fe
     <div class="loading-skeleton loading-title multi-line"></div>
     <div class="loading-skeleton loading-price"></div>
   </div>
-  
+
   <span class="sr-only">Loading product information...</span>
 </div>
 
@@ -47,23 +51,23 @@ const containerClass = `loading-container loading-product-card ${variant === "fe
     border-radius: 0.375rem;
     padding: 0.25rem;
   }
-  
+
   /* Maintain existing responsive behavior */
   @media (max-width: 768px) {
     .loading-image {
       height: 250px;
     }
   }
-  
+
   /* Ensure proper aspect ratios are maintained */
   .loading-image.compact {
     aspect-ratio: 4 / 3;
   }
-  
+
   .loading-image.featured {
     aspect-ratio: 2 / 1;
   }
-  
+
   /* Dark theme integration */
   :global(.dark) .loading-product-card {
     background: var(--surface-secondary);

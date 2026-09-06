@@ -6,7 +6,7 @@
  * batchCheckCategoriesHaveProducts are the main pure-ish utilities tested here.
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // ── Hoist mock fn declarations ─────────────────────────────────────────────
 const {
@@ -35,7 +35,7 @@ const {
   mockFetchCategoryHierarchy: vi.fn(),
 }));
 
-vi.mock("../client", () => ({
+vi.mock('../client', () => ({
   squareClient: {
     catalog: {
       searchItems: mockSearchItems,
@@ -44,7 +44,7 @@ vi.mock("../client", () => ({
   fetchProducts: mockFetchProducts,
 }));
 
-vi.mock("@/lib/cache/blobCache", () => ({
+vi.mock('@/lib/cache/blobCache', () => ({
   categoryCache: {
     get: mockCategoryGet,
     set: mockCategorySet,
@@ -55,27 +55,27 @@ vi.mock("@/lib/cache/blobCache", () => ({
   },
 }));
 
-vi.mock("../requestDeduplication", () => ({
+vi.mock('../requestDeduplication', () => ({
   requestDeduplicator: {
     dedupe: mockDedupe,
   },
 }));
 
-vi.mock("../apiRetry", () => ({
+vi.mock('../apiRetry', () => ({
   catalogRetryClient: {
     executeWithRetry: mockExecuteWithRetry,
   },
 }));
 
-vi.mock("../serverErrorUtils", () => ({
+vi.mock('../serverErrorUtils', () => ({
   processSquareError: mockProcessSquareError,
 }));
 
-vi.mock("../errorUtils", () => ({
+vi.mock('../errorUtils', () => ({
   handleError: mockHandleError,
 }));
 
-vi.mock("./categories", () => ({
+vi.mock('./categories', () => ({
   fetchCategoryHierarchy: mockFetchCategoryHierarchy,
 }));
 
@@ -84,69 +84,61 @@ import {
   categoryHasProducts,
   batchCheckCategoriesHaveProducts,
   filterCategoryHierarchyWithProducts,
-} from "../categoryNav";
-import type { CategoryHierarchy } from "../types";
+} from '../categoryNav';
+import type { CategoryHierarchy } from '../types';
 
 // Passthrough dedupe: immediately invokes the provided function
 function passthroughDedupe() {
-  mockDedupe.mockImplementation(
-    (_key: string, fn: () => unknown) => fn()
-  );
+  mockDedupe.mockImplementation((_key: string, fn: () => unknown) => fn());
 }
 
 // Passthrough getOrCompute: immediately invokes compute fn
 function passthroughGetOrCompute(mockFn: ReturnType<typeof vi.fn>) {
-  mockFn.mockImplementation(
-    (_key: string, computeFn: () => unknown) => computeFn()
+  mockFn.mockImplementation((_key: string, computeFn: () => unknown) =>
+    computeFn()
   );
 }
 
 // ── categoryHasProducts ────────────────────────────────────────────────────
 
-describe("categoryHasProducts", () => {
+describe('categoryHasProducts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     passthroughDedupe();
     passthroughGetOrCompute(mockCategoryGetOrCompute);
   });
 
-  it("returns true when searchItems finds at least one item", async () => {
-    mockExecuteWithRetry.mockImplementation(
-      (fn: () => unknown) => fn()
-    );
-    mockSearchItems.mockResolvedValue({ items: [{ id: "item-1" }] });
+  it('returns true when searchItems finds at least one item', async () => {
+    mockExecuteWithRetry.mockImplementation((fn: () => unknown) => fn());
+    mockSearchItems.mockResolvedValue({ items: [{ id: 'item-1' }] });
 
-    const result = await categoryHasProducts("cat-1");
+    const result = await categoryHasProducts('cat-1');
     expect(result).toBe(true);
   });
 
-  it("returns false when searchItems returns empty items", async () => {
-    mockExecuteWithRetry.mockImplementation(
-      (fn: () => unknown) => fn()
-    );
+  it('returns false when searchItems returns empty items', async () => {
+    mockExecuteWithRetry.mockImplementation((fn: () => unknown) => fn());
     mockSearchItems.mockResolvedValue({ items: [] });
 
-    const result = await categoryHasProducts("cat-1");
+    const result = await categoryHasProducts('cat-1');
     expect(result).toBe(false);
   });
 
-  it("returns false when searchItems returns undefined items", async () => {
-    mockExecuteWithRetry.mockImplementation(
-      (fn: () => unknown) => fn()
-    );
+  it('returns false when searchItems returns undefined items', async () => {
+    mockExecuteWithRetry.mockImplementation((fn: () => unknown) => fn());
     mockSearchItems.mockResolvedValue({});
 
-    const result = await categoryHasProducts("cat-1");
+    const result = await categoryHasProducts('cat-1');
     expect(result).toBe(false);
   });
 
-  it("fails open (returns true) and calls handleError on error", async () => {
-    const err = new Error("Square timeout");
+  it('fails open (returns true) and calls handleError on error', async () => {
+    const err = new Error('Square timeout');
     mockExecuteWithRetry.mockRejectedValue(err);
-    mockProcessSquareError.mockReturnValue({ message: "Square timeout" });
+    mockProcessSquareError.mockReturnValue({ message: 'Square timeout' });
     mockHandleError.mockReturnValue(true);
 
-    const result = await categoryHasProducts("cat-1");
+    const result = await categoryHasProducts('cat-1');
     expect(mockProcessSquareError).toHaveBeenCalled();
     expect(mockHandleError).toHaveBeenCalledWith(expect.anything(), true);
     expect(result).toBe(true);
@@ -155,91 +147,89 @@ describe("categoryHasProducts", () => {
 
 // ── batchCheckCategoriesHaveProducts ──────────────────────────────────────
 
-describe("batchCheckCategoriesHaveProducts", () => {
+describe('batchCheckCategoriesHaveProducts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     passthroughDedupe();
   });
 
-  it("derives has-products from fetchProducts categories array", async () => {
+  it('derives has-products from fetchProducts categories array', async () => {
     // Nothing cached
     mockCategoryGet.mockResolvedValue(undefined);
     mockFetchProducts.mockResolvedValue([
-      { id: "p1", categories: ["cat-1"], reportingCategoryId: undefined },
+      { id: 'p1', categories: ['cat-1'], reportingCategoryId: undefined },
     ]);
     mockCategorySet.mockResolvedValue(undefined);
 
-    const result = await batchCheckCategoriesHaveProducts(["cat-1", "cat-2"]);
-    expect(result["cat-1"]).toBe(true);
-    expect(result["cat-2"]).toBe(false);
+    const result = await batchCheckCategoriesHaveProducts(['cat-1', 'cat-2']);
+    expect(result['cat-1']).toBe(true);
+    expect(result['cat-2']).toBe(false);
   });
 
-  it("picks up reportingCategoryId as a category presence signal", async () => {
+  it('picks up reportingCategoryId as a category presence signal', async () => {
     mockCategoryGet.mockResolvedValue(undefined);
     mockFetchProducts.mockResolvedValue([
-      { id: "p1", categories: [], reportingCategoryId: "cat-reporting" },
+      { id: 'p1', categories: [], reportingCategoryId: 'cat-reporting' },
     ]);
     mockCategorySet.mockResolvedValue(undefined);
 
     const result = await batchCheckCategoriesHaveProducts([
-      "cat-reporting",
-      "cat-empty",
+      'cat-reporting',
+      'cat-empty',
     ]);
-    expect(result["cat-reporting"]).toBe(true);
-    expect(result["cat-empty"]).toBe(false);
+    expect(result['cat-reporting']).toBe(true);
+    expect(result['cat-empty']).toBe(false);
   });
 
-  it("uses cached values and skips API for already-cached categories", async () => {
+  it('uses cached values and skips API for already-cached categories', async () => {
     // cat-1 is already cached
-    mockCategoryGet.mockImplementation(
-      async (key: string) => (key === "category-has-products:cat-1" ? true : undefined)
+    mockCategoryGet.mockImplementation(async (key: string) =>
+      key === 'category-has-products:cat-1' ? true : undefined
     );
     mockFetchProducts.mockResolvedValue([]);
     mockCategorySet.mockResolvedValue(undefined);
 
-    const result = await batchCheckCategoriesHaveProducts(["cat-1"]);
-    expect(result["cat-1"]).toBe(true);
+    const result = await batchCheckCategoriesHaveProducts(['cat-1']);
+    expect(result['cat-1']).toBe(true);
     // fetchProducts should not have been called since everything was cached
     expect(mockFetchProducts).not.toHaveBeenCalled();
   });
 
-  it("fails open (defaults to true) when fetchProducts throws", async () => {
+  it('fails open (defaults to true) when fetchProducts throws', async () => {
     mockCategoryGet.mockResolvedValue(undefined);
-    mockFetchProducts.mockRejectedValue(new Error("Network error"));
-    mockProcessSquareError.mockReturnValue({ message: "Network error" });
+    mockFetchProducts.mockRejectedValue(new Error('Network error'));
+    mockProcessSquareError.mockReturnValue({ message: 'Network error' });
     mockHandleError.mockReturnValue(null);
 
-    const result = await batchCheckCategoriesHaveProducts(["cat-x"]);
-    expect(result["cat-x"]).toBe(true);
+    const result = await batchCheckCategoriesHaveProducts(['cat-x']);
+    expect(result['cat-x']).toBe(true);
   });
 });
 
 // ── filterCategoryHierarchyWithProducts ───────────────────────────────────
 
-describe("filterCategoryHierarchyWithProducts", () => {
+describe('filterCategoryHierarchyWithProducts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     passthroughDedupe();
   });
 
-  it("returns empty array for empty input hierarchy", async () => {
+  it('returns empty array for empty input hierarchy', async () => {
     const result = await filterCategoryHierarchyWithProducts([]);
     expect(result).toEqual([]);
   });
 
-  it("keeps category that directly has products", async () => {
+  it('keeps category that directly has products', async () => {
     mockCategoryGet.mockResolvedValue(undefined);
-    mockFetchProducts.mockResolvedValue([
-      { id: "p1", categories: ["cat-1"] },
-    ]);
+    mockFetchProducts.mockResolvedValue([{ id: 'p1', categories: ['cat-1'] }]);
     mockCategorySet.mockResolvedValue(undefined);
 
     const hierarchy: CategoryHierarchy[] = [
       {
         category: {
-          id: "cat-1",
-          name: "Skateboards",
-          slug: "skateboards",
+          id: 'cat-1',
+          name: 'Skateboards',
+          slug: 'skateboards',
           isTopLevel: true,
         },
         subcategories: [],
@@ -248,10 +238,10 @@ describe("filterCategoryHierarchyWithProducts", () => {
 
     const result = await filterCategoryHierarchyWithProducts(hierarchy);
     expect(result).toHaveLength(1);
-    expect(result[0].category.id).toBe("cat-1");
+    expect(result[0].category.id).toBe('cat-1');
   });
 
-  it("excludes category with zero products from the nav result", async () => {
+  it('excludes category with zero products from the nav result', async () => {
     mockCategoryGet.mockResolvedValue(undefined);
     mockFetchProducts.mockResolvedValue([]);
     mockCategorySet.mockResolvedValue(undefined);
@@ -259,9 +249,9 @@ describe("filterCategoryHierarchyWithProducts", () => {
     const hierarchy: CategoryHierarchy[] = [
       {
         category: {
-          id: "cat-empty",
-          name: "Empty",
-          slug: "empty",
+          id: 'cat-empty',
+          name: 'Empty',
+          slug: 'empty',
           isTopLevel: true,
         },
         subcategories: [],
@@ -272,26 +262,24 @@ describe("filterCategoryHierarchyWithProducts", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("keeps parent category when only a subcategory has products", async () => {
+  it('keeps parent category when only a subcategory has products', async () => {
     mockCategoryGet.mockResolvedValue(undefined);
-    mockFetchProducts.mockResolvedValue([
-      { id: "p1", categories: ["sub-1"] },
-    ]);
+    mockFetchProducts.mockResolvedValue([{ id: 'p1', categories: ['sub-1'] }]);
     mockCategorySet.mockResolvedValue(undefined);
 
     const hierarchy: CategoryHierarchy[] = [
       {
         category: {
-          id: "parent-1",
-          name: "Skateboards",
-          slug: "skateboards",
+          id: 'parent-1',
+          name: 'Skateboards',
+          slug: 'skateboards',
           isTopLevel: true,
         },
         subcategories: [
           {
-            id: "sub-1",
-            name: "Decks",
-            slug: "decks",
+            id: 'sub-1',
+            name: 'Decks',
+            slug: 'decks',
             isTopLevel: false,
           },
         ],
@@ -301,29 +289,29 @@ describe("filterCategoryHierarchyWithProducts", () => {
     const result = await filterCategoryHierarchyWithProducts(hierarchy);
     expect(result).toHaveLength(1);
     expect(result[0].subcategories).toHaveLength(1);
-    expect(result[0].subcategories[0].id).toBe("sub-1");
+    expect(result[0].subcategories[0].id).toBe('sub-1');
   });
 
-  it("strips subcategories with no products while retaining parent", async () => {
+  it('strips subcategories with no products while retaining parent', async () => {
     mockCategoryGet.mockResolvedValue(undefined);
     mockFetchProducts.mockResolvedValue([
-      { id: "p1", categories: ["parent-1"] },
+      { id: 'p1', categories: ['parent-1'] },
     ]);
     mockCategorySet.mockResolvedValue(undefined);
 
     const hierarchy: CategoryHierarchy[] = [
       {
         category: {
-          id: "parent-1",
-          name: "Skateboards",
-          slug: "skateboards",
+          id: 'parent-1',
+          name: 'Skateboards',
+          slug: 'skateboards',
           isTopLevel: true,
         },
         subcategories: [
           {
-            id: "sub-empty",
-            name: "Empty Sub",
-            slug: "empty-sub",
+            id: 'sub-empty',
+            name: 'Empty Sub',
+            slug: 'empty-sub',
             isTopLevel: false,
           },
         ],
@@ -336,29 +324,29 @@ describe("filterCategoryHierarchyWithProducts", () => {
     expect(result[0].subcategories).toHaveLength(0);
   });
 
-  it("preserves ordering from the original hierarchy", async () => {
+  it('preserves ordering from the original hierarchy', async () => {
     mockCategoryGet.mockResolvedValue(undefined);
     mockFetchProducts.mockResolvedValue([
-      { id: "p1", categories: ["cat-a"] },
-      { id: "p2", categories: ["cat-b"] },
+      { id: 'p1', categories: ['cat-a'] },
+      { id: 'p2', categories: ['cat-b'] },
     ]);
     mockCategorySet.mockResolvedValue(undefined);
 
     const hierarchy: CategoryHierarchy[] = [
       {
         category: {
-          id: "cat-a",
-          name: "Alpha",
-          slug: "alpha",
+          id: 'cat-a',
+          name: 'Alpha',
+          slug: 'alpha',
           isTopLevel: true,
         },
         subcategories: [],
       },
       {
         category: {
-          id: "cat-b",
-          name: "Beta",
-          slug: "beta",
+          id: 'cat-b',
+          name: 'Beta',
+          slug: 'beta',
           isTopLevel: true,
         },
         subcategories: [],
@@ -366,7 +354,7 @@ describe("filterCategoryHierarchyWithProducts", () => {
     ];
 
     const result = await filterCategoryHierarchyWithProducts(hierarchy);
-    expect(result[0].category.id).toBe("cat-a");
-    expect(result[1].category.id).toBe("cat-b");
+    expect(result[0].category.id).toBe('cat-a');
+    expect(result[1].category.id).toBe('cat-b');
   });
 });

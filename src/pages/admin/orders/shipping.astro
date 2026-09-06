@@ -139,6 +139,40 @@ const count = orders.length;
     </div>
   )}
 
+  <!-- Correct tracking on an order that's already been marked shipped -->
+  <details class="mb-4 border border-(--border-primary) rounded-sm bg-(--surface-secondary)">
+    <summary class="cursor-pointer select-none px-4 py-2.5 text-sm font-semibold text-(--content-heading)">
+      Correct tracking on a shipped order
+    </summary>
+    <div class="px-4 pb-3 pt-1">
+      <p class="text-xs text-(--content-meta) mb-2">
+        For an order already marked shipped. This updates Square only — it does
+        not resend the shipping confirmation email to the customer.
+      </p>
+      <form method="POST" action="/api/admin/mark-shipped" class="flex flex-wrap items-center gap-2">
+        <label for="amend-order-id" class="sr-only">Order ID</label>
+        <input id="amend-order-id" name="orderId" type="text" placeholder="Order ID" required
+               class="min-w-40 border border-(--border-primary) rounded-sm px-3 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)" />
+        <label for="amend-tracking" class="sr-only">Corrected tracking number</label>
+        <input id="amend-tracking" name="trackingNumber" type="text" placeholder="Tracking number"
+               class="flex-1 min-w-40 border border-(--border-primary) rounded-sm px-3 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)" />
+        <label for="amend-carrier" class="sr-only">Carrier</label>
+        <select id="amend-carrier" name="carrier"
+                class="border border-(--border-primary) rounded-sm px-2 py-1.5 text-sm bg-(--surface-primary) text-(--content-body) focus:outline-none focus:ring-2 focus:ring-(--fig-leaf-500,#4d7a2e)">
+          <option value="">Carrier</option>
+          <option value="USPS">USPS</option>
+          <option value="UPS">UPS</option>
+          <option value="FedEx">FedEx</option>
+          <option value="Other">Other</option>
+        </select>
+        <button type="submit"
+                class="font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap shrink-0">
+          Update Tracking
+        </button>
+      </form>
+    </div>
+  </details>
+
   {!fetchError && count === 0 && (
     <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-10 text-center">
       <p class="text-(--content-heading) font-semibold mb-1">No pending shipments</p>

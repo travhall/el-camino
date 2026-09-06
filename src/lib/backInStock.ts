@@ -4,8 +4,8 @@
 // list all subscribers for a given product and delete individual entries
 // after notifications are sent.
 
-import { getStore } from "@netlify/blobs";
-import { BlobCache } from "@/lib/cache/blobCache";
+import { getStore } from '@netlify/blobs';
+import { BlobCache } from '@/lib/cache/blobCache';
 
 export interface BisSubscription {
   email: string;
@@ -17,10 +17,16 @@ export interface BisSubscription {
 }
 
 function store() {
-  return getStore({ name: "back-in-stock-subscriptions", consistency: "strong" });
+  return getStore({
+    name: 'back-in-stock-subscriptions',
+    consistency: 'strong',
+  });
 }
 
 function key(productId: string, email: string) {
+  if (productId.includes('/') || productId.includes('\\')) {
+    throw new Error(`Invalid productId for blob key: ${productId}`);
+  }
   return `${productId}/${email.toLowerCase().trim()}`;
 }
 
@@ -42,8 +48,9 @@ export async function getSubscriptionsForProduct(
 ): Promise<BisSubscription[]> {
   const { blobs } = await store().list({ prefix: `${productId}/` });
   const results = await Promise.all(
-    blobs.map((b) =>
-      store().get(b.key, { type: "json" }) as Promise<BisSubscription | null>
+    blobs.map(
+      (b) =>
+        store().get(b.key, { type: 'json' }) as Promise<BisSubscription | null>
     )
   );
   return results.filter((s): s is BisSubscription => s !== null);
@@ -63,7 +70,12 @@ export async function removeAllSubscriptionsForProduct(
   const { blobs } = await store().list({ prefix: `${productId}/` });
   const subs = (
     await Promise.all(
-      blobs.map((b) => store().get(b.key, { type: "json" }) as Promise<BisSubscription | null>)
+      blobs.map(
+        (b) =>
+          store().get(b.key, {
+            type: 'json',
+          }) as Promise<BisSubscription | null>
+      )
     )
   ).filter((s): s is BisSubscription => s !== null);
   await Promise.all(blobs.map((b) => store().delete(b.key)));
@@ -80,11 +92,11 @@ export interface ProductSummary {
 }
 
 const summariesCache = new BlobCache<ProductSummary[]>(
-  "bis-summaries",
+  'bis-summaries',
   300, // 5 min — matches wordpressCache's TTL choice for a similar admin-facing aggregate
-  "back-in-stock-summaries-cache"
+  'back-in-stock-summaries-cache'
 );
-const SUMMARIES_KEY = "all";
+const SUMMARIES_KEY = 'all';
 
 export async function getAllProductSummaries(): Promise<ProductSummary[]> {
   return summariesCache.getOrCompute(SUMMARIES_KEY, async () => {
@@ -94,7 +106,7 @@ export async function getAllProductSummaries(): Promise<ProductSummary[]> {
     await Promise.all(
       blobs.map(async (b) => {
         const sub = (await store().get(b.key, {
-          type: "json",
+          type: 'json',
         })) as BisSubscription | null;
         if (!sub) return;
         if (!map.has(sub.productId)) {
@@ -108,7 +120,10 @@ export async function getAllProductSummaries(): Promise<ProductSummary[]> {
         }
         const entry = map.get(sub.productId)!;
         entry.count++;
-        entry.subscribers.push({ email: sub.email, submittedAt: sub.submittedAt });
+        entry.subscribers.push({
+          email: sub.email,
+          submittedAt: sub.submittedAt,
+        });
       })
     );
 

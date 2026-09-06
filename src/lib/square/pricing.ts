@@ -6,9 +6,9 @@
 // prices and `saleInfo` must NEVER be trusted when charging a customer. This
 // module re-derives every price directly from the Square catalog so checkout
 // can override line-item prices with values the server vouches for.
-import { squareClient } from "./client";
-import { extractSaleInfo } from "./catalogUtils";
-import { logApiError } from "./apiUtils";
+import { squareClient } from './client';
+import { extractSaleInfo } from './catalogUtils';
+import { logApiError } from './apiUtils';
 
 export interface AuthoritativePrice {
   /** Catalog regular price, in dollars. */
@@ -48,7 +48,7 @@ export async function getAuthoritativePricing(
 
     const result: Record<string, AuthoritativePrice> = {};
     for (const obj of response.objects ?? []) {
-      if (obj?.type !== "ITEM_VARIATION") continue;
+      if (obj?.type !== 'ITEM_VARIATION') continue;
 
       const priceMoney = obj.itemVariationData?.priceMoney;
       // Skip variable-price variations (no fixed amount) — there is nothing to
@@ -67,7 +67,7 @@ export async function getAuthoritativePricing(
     }
     return result;
   } catch (error) {
-    logApiError("getAuthoritativePricing", error);
+    logApiError('getAuthoritativePricing', error);
     return {};
   }
 }

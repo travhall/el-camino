@@ -5,15 +5,15 @@
 // links, not in-page tab panels.
 
 interface Props {
-  activeTab: "shipping" | "pickups" | "archive";
+  activeTab: 'shipping' | 'pickups' | 'archive';
 }
 
 const { activeTab } = Astro.props;
 
 const tabs = [
-  { name: "Shipping",  href: "/admin/orders/shipping", slug: "shipping"  },
-  { name: "Pick Ups",  href: "/admin/orders/pickups",  slug: "pickups"   },
-  { name: "Archive",   href: "/admin/orders/archive",  slug: "archive"   },
+  { name: 'Shipping', href: '/admin/orders/shipping', slug: 'shipping' },
+  { name: 'Pick Ups', href: '/admin/orders/pickups', slug: 'pickups' },
+  { name: 'Archive', href: '/admin/orders/archive', slug: 'archive' },
 ];
 ---
 
@@ -21,18 +21,20 @@ const tabs = [
   aria-label="Orders sections"
   class="flex gap-1 border-b border-(--border-primary) mb-6 -mt-4"
 >
-  {tabs.map((tab) => (
-    <a
-      href={tab.href}
-      aria-current={activeTab === tab.slug ? "page" : undefined}
-      class:list={[
-        "px-4 py-2 text-sm font-semibold border-b-2 transition-colors",
-        activeTab === tab.slug
-          ? "border-(--content-heading) text-(--content-heading)"
-          : "border-transparent text-(--content-meta) hover:text-(--content-body)",
-      ]}
-    >
-      {tab.name}
-    </a>
-  ))}
+  {
+    tabs.map((tab) => (
+      <a
+        href={tab.href}
+        aria-current={activeTab === tab.slug ? 'page' : undefined}
+        class:list={[
+          'px-4 py-2 text-sm font-semibold border-b-2 transition-colors',
+          activeTab === tab.slug
+            ? 'border-(--content-heading) text-(--content-heading)'
+            : 'border-transparent text-(--content-meta) hover:text-(--content-body)',
+        ]}
+      >
+        {tab.name}
+      </a>
+    ))
+  }
 </nav>

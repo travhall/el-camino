@@ -1,6 +1,6 @@
-import type { CatalogObject } from "square-legacy";
-import { squareClient } from "./squareInstance";
-import { logger } from "@/lib/logger";
+import type { CatalogObject } from 'square-legacy';
+import { squareClient } from './squareInstance';
+import { logger } from '@/lib/logger';
 
 const MAX_CATALOG_PAGES = 20;
 
@@ -12,10 +12,12 @@ export async function fetchAllCatalogItems(): Promise<CatalogObject[]> {
   do {
     requestCount++;
     if (requestCount > MAX_CATALOG_PAGES) {
-      logger.warn(`[fetchProducts] Hit max requests limit (${MAX_CATALOG_PAGES})`);
+      logger.warn(
+        `[fetchProducts] Hit max requests limit (${MAX_CATALOG_PAGES})`
+      );
       break;
     }
-    const page = await squareClient.catalog.list({ types: "ITEM", cursor });
+    const page = await squareClient.catalog.list({ types: 'ITEM', cursor });
     if (page.data?.length) {
       allObjects.push(...page.data);
     }

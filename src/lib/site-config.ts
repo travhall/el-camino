@@ -1,5 +1,5 @@
 // src/lib/site-config.ts
-import type { SocialLink } from "@/lib/socialLinks";
+import type { SocialLink } from '@/lib/socialLinks';
 
 export interface BusinessHours {
   day: string;
@@ -38,53 +38,53 @@ export interface SiteConfig {
 }
 
 export const siteConfig: SiteConfig = {
-  name: "El Camino Skate Shop",
+  name: 'El Camino Skate Shop',
   description:
-    "El Camino Skate Shop is a skater owned and operated skateboard shop, located in Eau Claire, WI",
-  url: "https://elcaminoskateshop.com",
-  logo: "/logo.png",
+    'El Camino Skate Shop is a skater owned and operated skateboard shop, located in Eau Claire, WI',
+  url: 'https://elcaminoskateshop.com',
+  logo: '/logo.png',
   contact: {
     address: {
-      street: "310 Water Street",
-      city: "Eau Claire",
-      state: "WI",
-      zip: "54703",
-      display: "310 Water Street, Eau Claire, WI 54703",
+      street: '310 Water Street',
+      city: 'Eau Claire',
+      state: 'WI',
+      zip: '54703',
+      display: '310 Water Street, Eau Claire, WI 54703',
     },
     phone: {
-      number: "+7159121169",
-      display: "(715) 912-1169",
+      number: '+7159121169',
+      display: '(715) 912-1169',
     },
-    email: "elco@elcaminoskateshop.com",
-    support: "elco@elcaminoskateshop.com",
+    email: 'elco@elcaminoskateshop.com',
+    support: 'elco@elcaminoskateshop.com',
   },
   hours: [
-    { day: "Monday", hours: "Closed", isOpen: false },
-    { day: "Tuesday", hours: "Closed", isOpen: false },
-    { day: "Wednesday", hours: "11am - 7pm", isOpen: true },
-    { day: "Thursday", hours: "11am - 7pm", isOpen: true },
-    { day: "Friday", hours: "11am - 7pm", isOpen: true },
-    { day: "Saturday", hours: "11am - 7pm", isOpen: true },
-    { day: "Sunday", hours: "11am - 5pm", isOpen: true },
+    { day: 'Monday', hours: 'Closed', isOpen: false },
+    { day: 'Tuesday', hours: 'Closed', isOpen: false },
+    { day: 'Wednesday', hours: '11am - 7pm', isOpen: true },
+    { day: 'Thursday', hours: '11am - 7pm', isOpen: true },
+    { day: 'Friday', hours: '11am - 7pm', isOpen: true },
+    { day: 'Saturday', hours: '11am - 7pm', isOpen: true },
+    { day: 'Sunday', hours: '11am - 5pm', isOpen: true },
   ],
   social: [
     {
-      platform: "facebook",
-      url: "https://www.facebook.com/people/El-Camino-Skateshop/61553258934455/",
-      icon: "uil:facebook",
+      platform: 'facebook',
+      url: 'https://www.facebook.com/people/El-Camino-Skateshop/61553258934455/',
+      icon: 'uil:facebook',
     },
     {
-      platform: "instagram",
-      url: "https://www.instagram.com/elcaminoskateshop/",
-      icon: "uil:instagram",
+      platform: 'instagram',
+      url: 'https://www.instagram.com/elcaminoskateshop/',
+      icon: 'uil:instagram',
     },
   ],
-  tagline: "100% Skater Owned, 100% Skater Operated",
+  tagline: '100% Skater Owned, 100% Skater Operated',
   seo: {
-    defaultTitle: "El Camino Skate Shop",
+    defaultTitle: 'El Camino Skate Shop',
     defaultDescription:
-      "El Camino Skate Shop is a skater owned and operated skateboard shop, located in Eau Claire, WI",
-    defaultImage: "/default-og-image.jpg",
+      'El Camino Skate Shop is a skater owned and operated skateboard shop, located in Eau Claire, WI',
+    defaultImage: '/default-og-image.jpg',
   },
 };
 
@@ -92,7 +92,7 @@ export const apiConfig = {
   wordpress: {
     baseUrl:
       import.meta.env.PUBLIC_WORDPRESS_API_URL ||
-      "https://api.elcaminoskateshop.com/wp-json/wp/v2",
+      'https://api.elcaminoskateshop.com/wp-json/wp/v2',
     requestTimeout: 5000, // milliseconds
     cacheTTL: 600, // seconds
   },

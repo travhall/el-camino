@@ -4,21 +4,22 @@ import type {
   WordPressPost,
   ExtractedWordPressData,
   WordPressFallbackContent,
-} from "@/lib/wordpress/types";
+} from '@/lib/wordpress/types';
 import {
   getDisplayCategory,
   extractEmbeddedData,
   generateFallbackContent,
-} from "@/lib/wordpress/types";
-import { formatDate } from "@/utils/dates";
-import { stripUnsafeHtml } from "@/lib/wordpress/content-utils";
+} from '@/lib/wordpress/types';
+import { formatDate } from '@/utils/dates';
+import { stripUnsafeHtml } from '@/lib/wordpress/content-utils';
 import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
-} from "@/lib/constants/assets";
-import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
-import Tag from "./Tag.astro";
-import { Icon } from "astro-icon/components";
+} from '@/lib/constants/assets';
+import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
+import { FEATURED_CARD_IMAGE_SIZES } from '@/lib/image/sizes';
+import Tag from './Tag.astro';
+import { Icon } from 'astro-icon/components';
 
 interface Props {
   post: WordPressPost;
@@ -28,10 +29,10 @@ interface Props {
   embeddedData?: ExtractedWordPressData;
   fallbackContent?: WordPressFallbackContent;
   // New props for different layouts
-  variant?: "masonry" | "grid" | "list" | "teaser";
+  variant?: 'masonry' | 'grid' | 'list' | 'teaser';
   // Animation props (passed through for entrance animations)
-  "data-initial-index"?: number;
-  "data-variant"?: string;
+  'data-initial-index'?: number;
+  'data-variant'?: string;
   style?: string;
 }
 
@@ -41,30 +42,30 @@ const {
   priority = false,
   embeddedData,
   fallbackContent,
-  variant = "masonry",
+  variant = 'masonry',
   style,
 } = Astro.props;
 
 // Only apply animation wrapper classes for masonry (home page)
 // Grid/list/teaser variants use a wrapper div for animation
-const shouldAnimate = variant === "masonry";
+const shouldAnimate = variant === 'masonry';
 
 // OPTIMIZED: Lazy computation - only process if not provided
 const actualEmbeddedData = embeddedData || extractEmbeddedData(post);
 const actualFallbackContent = fallbackContent || generateFallbackContent(post);
 
-const imageUrl = actualEmbeddedData.featuredMedia?.source_url || "";
+const imageUrl = actualEmbeddedData.featuredMedia?.source_url || '';
 
 // Image dimensions based on variant and card type
 const getImageDimensions = () => {
   switch (variant) {
-    case "list":
+    case 'list':
       return { width: 160, height: 120 };
-    case "grid":
+    case 'grid':
       return { width: 400, height: 240 };
-    case "teaser":
+    case 'teaser':
       return { width: 600, height: 400 };
-    case "masonry":
+    case 'masonry':
     default:
       return { width: featured ? 800 : 600, height: featured ? 533 : 400 };
   }
@@ -73,20 +74,19 @@ const getImageDimensions = () => {
 const { width: imageWidth, height: imageHeight } = getImageDimensions();
 
 // Enhanced image optimization - Generate all formats like ProductCard
-let optimizedImageUrl = "";
+let optimizedImageUrl = '';
 let avifSrcSet: string | undefined;
 let webpSrcSet: string | undefined;
 let jpegSrcSet: string | undefined;
-// Featured masonry card: col-span-4 of grid-cols-6 at md (~67vw), col-span-4 of grid-cols-8 at 2xl (50vw)
 // Non-featured masonry: col-span-2 of grid-cols-6 (~33vw at md+)
 let imageSizes =
-  variant === "list"
-    ? "(max-width: 768px) 0px, 256px"
-    : variant === "teaser"
-      ? "(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
+  variant === 'list'
+    ? '(max-width: 768px) 0px, 256px'
+    : variant === 'teaser'
+      ? '(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw'
       : featured
-        ? "(max-width: 767px) 100vw, (max-width: 1535px) 67vw, 50vw"
-        : "(max-width: 767px) 100vw, 33vw";
+        ? FEATURED_CARD_IMAGE_SIZES
+        : '(max-width: 767px) 100vw, 33vw';
 
 if (imageUrl) {
   const imageSet = EnhancedImageOptimizer.generateOptimizedSources(imageUrl, {
@@ -100,7 +100,7 @@ if (imageUrl) {
 
   // Generate responsive srcset for each format
   avifSrcSet = imageSet.avif
-    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, "avif", {
+    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, 'avif', {
         width: imageWidth,
         height: imageHeight,
         quality: 85,
@@ -108,7 +108,7 @@ if (imageUrl) {
     : undefined;
 
   webpSrcSet = imageSet.webp
-    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, "webp", {
+    ? EnhancedImageOptimizer.generateResponsiveSrcSet(imageUrl, 'webp', {
         width: imageWidth,
         height: imageHeight,
         quality: 85,
@@ -117,12 +117,12 @@ if (imageUrl) {
 
   jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(
     imageUrl,
-    "jpeg",
+    'jpeg',
     {
       width: imageWidth,
       height: imageHeight,
       quality: 85,
-    },
+    }
   );
 }
 
@@ -135,19 +135,19 @@ const displayTags = actualEmbeddedData.tags;
 // Define CSS classes based on variant
 const getCardClasses = () => {
   const baseClasses =
-    "relative overflow-hidden bg-(--ui-card-surface) hover:bg-(--ui-card-surface-hover) text-(--ui-card-text) border-(--ui-card-border) min-h-full group";
+    'relative overflow-hidden bg-(--ui-card-surface) hover:bg-(--ui-card-surface-hover) text-(--ui-card-text) border-(--ui-card-border) min-h-full group';
 
   switch (variant) {
-    case "list":
+    case 'list':
       return `${baseClasses} flex flex-row-reverse gap-4 p-1 transition-all duration-300 w-full max-w-full min-w-0`;
 
-    case "grid":
+    case 'grid':
       return `${baseClasses} flex flex-col p-1 transition-all duration-300 w-full max-w-full min-w-0`;
 
-    case "teaser":
+    case 'teaser':
       return `${baseClasses} flex flex-col justify-end overflow-hidden aspect-[3/2] transition-all duration-300 w-full max-w-full min-w-0`;
 
-    case "masonry":
+    case 'masonry':
     default:
       // `block` instead of `flex flex-col`: <a> is inline by default so we need
       // an explicit block context, but `flex` + `aspect-ratio` creates a circular
@@ -163,112 +163,110 @@ const getCardClasses = () => {
       // the ambiguity; the absolute-positioned children mean containment had no real
       // benefit here anyway.
       return `${baseClasses} block aspect-3/4 md:aspect-video lg:aspect-auto col-span-full lg:first-of-type:col-span-4 lg:col-span-2 lg:row-span-5 lg:first-of-type:row-span-4 2xl:row-span-4 2xl:first-of-type:row-span-3 ${
-        featured
-          ? "banner-card"
-          : "article-card transition-all duration-300"
+        featured ? 'banner-card' : 'article-card transition-all duration-300'
       }`;
   }
 };
 
 const getImageContainerClasses = () => {
   switch (variant) {
-    case "list":
+    case 'list':
       // FIX: Hide entire image container on mobile, not just the image
-      return "hidden md:flex flex-shrink-0 overflow-hidden relative";
+      return 'hidden md:flex flex-shrink-0 overflow-hidden relative';
 
-    case "grid":
+    case 'grid':
       // block ensures <picture> (inline by default) respects w-full/h-full
-      return "block overflow-hidden relative";
+      return 'block overflow-hidden relative';
 
-    case "teaser":
-      return "absolute inset-0";
+    case 'teaser':
+      return 'absolute inset-0';
 
-    case "masonry":
+    case 'masonry':
     default:
       // `block` on the picture (inline by default) ensures it participates in block
       // layout. `h-full` resolves against the card's aspect-ratio-determined height,
       // which is definite for block containers (no circular dependency).
-      return "block w-full h-full relative";
+      return 'block w-full h-full relative';
   }
 };
 
 const getImageClasses = () => {
   const baseClasses =
-    "object-cover max-w-full transition-all duration-300 mix-blend-luminosity group-hover:mix-blend-normal";
+    'object-cover max-w-full transition-all duration-300 mix-blend-luminosity group-hover:mix-blend-normal';
 
   switch (variant) {
-    case "list":
+    case 'list':
       // FIX: Container is hidden on mobile, so image just needs responsive width
       return `${baseClasses} w-full md:w-64 lg:w-72 h-full aspect-video group-hover:scale-105`;
 
-    case "grid":
+    case 'grid':
       return `${baseClasses} w-full h-48 group-hover:scale-105 aspect-video`;
 
-    case "teaser":
-      return "object-cover w-full h-full group-hover:scale-105 transition-all duration-300 mix-blend-luminosity group-hover:mix-blend-normal";
+    case 'teaser':
+      return 'object-cover w-full h-full group-hover:scale-105 transition-all duration-300 mix-blend-luminosity group-hover:mix-blend-normal';
 
-    case "masonry":
+    case 'masonry':
     default:
       return `${baseClasses} w-full h-full ${
         featured
-          ? "opacity-80 lg:group-hover:scale-105"
-          : "opacity-10 lg:group-hover:scale-105 lg:group-hover:opacity-80"
+          ? 'opacity-80 lg:group-hover:scale-105'
+          : 'opacity-10 lg:group-hover:scale-105 lg:group-hover:opacity-80'
       }`;
   }
 };
 
 const getContentClasses = () => {
   switch (variant) {
-    case "list":
-      return "flex flex-col p-4 flex-1 min-w-0 gap-2";
+    case 'list':
+      return 'flex flex-col p-4 flex-1 min-w-0 gap-2';
 
-    case "grid":
-      return "flex flex-col p-4 flex-1 gap-2 h-auto";
+    case 'grid':
+      return 'flex flex-col p-4 flex-1 gap-2 h-auto';
 
-    case "teaser":
-      return "relative z-10 flex flex-col gap-1.5 p-4";
+    case 'teaser':
+      return 'relative z-10 flex flex-col gap-1.5 p-4';
 
-    case "masonry":
+    case 'masonry':
     default:
       return `flex flex-col gap-2 px-6 py-12 xl:p-12 absolute bottom-0 m-1 bg-(--ui-card-surface)/00 lg:group-hover:bg-(--ui-card-surface)/100 transition-all duration-300 ${
         featured &&
-        "bg-(--ui-card-surface)/90 md:bg-(--ui-card-surface) first-of-type:m-0 md:border-t-4 md:border-l-4 md:border-(--ui-card-border) md:w-5/6 lg:w-4/5 xl:max-w-[44rem] right-0"
+        'bg-(--ui-card-surface)/90 md:bg-(--ui-card-surface) first-of-type:m-0 md:border-t-4 md:border-l-4 md:border-(--ui-card-border) md:w-5/6 lg:w-4/5 xl:max-w-[44rem] right-0'
       }`;
   }
 };
 
 const getTitleClasses = () => {
   switch (variant) {
-    case "list":
-      return "font-display font-bold text-3xl lg:text-4xl leading-[0.8] text-(--content-heading) line-clamp-2";
+    case 'list':
+      return 'font-display font-bold text-3xl lg:text-4xl leading-[0.8] text-(--content-heading) line-clamp-2';
 
-    case "grid":
-      return "font-display font-bold text-3xl lg:text-4xl leading-[0.8] text-(--content-heading) line-clamp-2";
+    case 'grid':
+      return 'font-display font-bold text-3xl lg:text-4xl leading-[0.8] text-(--content-heading) line-clamp-2';
 
-    case "teaser":
-      return "font-display font-bold text-4xl lg:text-5xl leading-[0.9] text-(--content-heading) line-clamp-2";
+    case 'teaser':
+      return 'font-display font-bold text-4xl lg:text-5xl leading-[0.9] text-(--content-heading) line-clamp-2';
 
-    case "masonry":
+    case 'masonry':
     default:
-      return "font-display font-black text-6xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-(--content-heading) mb-4 max-w-[28ch]";
+      return 'font-display font-black text-6xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.8] text-(--content-heading) mb-4 max-w-[28ch]';
   }
 };
 
 const getExcerptClasses = () => {
   switch (variant) {
-    case "list":
-      return "text-sm leading-snug text-(--content-body) line-clamp-2 mb-2 max-w-[72ch]";
+    case 'list':
+      return 'text-sm leading-snug text-(--content-body) line-clamp-2 mb-2 max-w-[72ch]';
 
-    case "grid":
-      return "text-sm leading-snug text-(--content-body) line-clamp-3 mb-2";
+    case 'grid':
+      return 'text-sm leading-snug text-(--content-body) line-clamp-3 mb-2';
 
-    case "teaser":
-      return "hidden";
+    case 'teaser':
+      return 'hidden';
 
-    case "masonry":
+    case 'masonry':
     default:
       return `text-sm md:text-base leading-snug text-(--content-body) max-w-[48ch] mb-2 ${
-        featured ? "line-clamp-3 md:line-clamp-2" : "line-clamp-3"
+        featured ? 'line-clamp-3 md:line-clamp-2' : 'line-clamp-3'
       }`;
   }
 };
@@ -276,13 +274,13 @@ const getExcerptClasses = () => {
 
 <a
   href={`/news/${post.slug}`}
-  class={`${getCardClasses()} ${shouldAnimate ? `article-card-wrapper${featured ? " card-entrance-ready" : ""}` : ""}`}
+  class={`${getCardClasses()} ${shouldAnimate ? `article-card-wrapper${featured ? ' card-entrance-ready' : ''}` : ''}`}
   style={shouldAnimate ? style : undefined}
   data-initial-index={shouldAnimate
-    ? Astro.props["data-initial-index"]
+    ? Astro.props['data-initial-index']
     : undefined}
   data-variant={shouldAnimate
-    ? Astro.props["data-variant"] || variant
+    ? Astro.props['data-variant'] || variant
     : undefined}
 >
   <!-- Enhanced Image with AVIF/WebP support -->
@@ -326,16 +324,20 @@ const getExcerptClasses = () => {
           alt={actualFallbackContent.imageAlt}
           width={imageWidth}
           height={imageHeight}
-          class={`${getImageClasses()}${priority ? "" : " opacity-0"}`}
-          loading={priority ? "eager" : "lazy"}
-          fetchpriority={priority ? "high" : "auto"}
-          decoding={priority ? "auto" : "async"}
+          class={`${getImageClasses()}${priority ? '' : ' opacity-0'}`}
+          loading={priority ? 'eager' : 'lazy'}
+          fetchpriority={priority ? 'high' : 'auto'}
+          decoding={priority ? 'auto' : 'async'}
           data-placeholder-id={`article-placeholder-${post.id}`}
           data-shimmer-placeholder={`article-placeholder-${post.id}`}
           data-shimmer-load-add="loaded"
           data-shimmer-error-add="error"
-          data-shimmer-load-opacity={(variant === "masonry" && !featured) ? "" : "1"}
-          data-shimmer-error-opacity={(variant === "masonry" && !featured) ? "" : "1"}
+          data-shimmer-load-opacity={
+            variant === 'masonry' && !featured ? '' : '1'
+          }
+          data-shimmer-error-opacity={
+            variant === 'masonry' && !featured ? '' : '1'
+          }
         />
       </picture>
     ) : (
@@ -345,8 +347,8 @@ const getExcerptClasses = () => {
         width={imageWidth}
         height={imageHeight}
         class={getImageClasses()}
-        loading={priority ? "eager" : "lazy"}
-        fetchpriority={priority ? "high" : "auto"}
+        loading={priority ? 'eager' : 'lazy'}
+        fetchpriority={priority ? 'high' : 'auto'}
         decoding="async"
       />
     )
@@ -354,7 +356,7 @@ const getExcerptClasses = () => {
 
   <!-- Gradient overlay for teaser — ensures text legibility over background image -->
   {
-    variant === "teaser" && (
+    variant === 'teaser' && (
       <div class="absolute inset-0 bg-linear-to-t from-(--ui-card-surface) via-(--ui-card-surface)/70 to-transparent pointer-events-none" />
     )
   }
@@ -369,11 +371,14 @@ const getExcerptClasses = () => {
     </span>
 
     <!-- Article Title -->
-    <h2 class={getTitleClasses()} set:html={stripUnsafeHtml(post.title.rendered)} />
+    <h2
+      class={getTitleClasses()}
+      set:html={stripUnsafeHtml(post.title.rendered)}
+    />
 
     <!-- Date  -->
     {
-      variant !== "masonry" && variant !== "teaser" && (
+      variant !== 'masonry' && variant !== 'teaser' && (
         <time
           datetime={post.date}
           class="text-xs text-(--content-meta-small) mb-1"
@@ -384,11 +389,14 @@ const getExcerptClasses = () => {
     }
 
     <!-- Article Excerpt -->
-    <div class={getExcerptClasses()} set:html={stripUnsafeHtml(post.excerpt.rendered)} />
+    <div
+      class={getExcerptClasses()}
+      set:html={stripUnsafeHtml(post.excerpt.rendered)}
+    />
 
     <!-- Read More Link ('masonry' cards only) -->
     {
-      variant === "masonry" && (
+      variant === 'masonry' && (
         <div class="overflow-hidden">
           <span class="font-display lg:-ml-[100%] lg:group-hover:ml-0 py-2 self-start text-2xl text-(--ui-button-surface) font-semibold transition-all duration-200">
             Read More
@@ -399,7 +407,7 @@ const getExcerptClasses = () => {
 
     <!-- Article Tags (masonry only, max 5 visible) -->
     {
-      variant === "masonry" &&
+      variant === 'masonry' &&
         displayTags.length > 0 &&
         (() => {
           const maxVisible = 5;
@@ -428,9 +436,9 @@ const getExcerptClasses = () => {
 
     <!-- Teaser read-more affordance -->
     {
-      variant === "teaser" && (
+      variant === 'teaser' && (
         <span class="mt-auto flex items-center pt-2 font-bold text-(--content-link) self-start">
-          Read More{" "}
+          Read More{' '}
           <Icon class="h-5 w-5 text-(--content-link)" name="uil:arrow-right" />
         </span>
       )
@@ -440,27 +448,27 @@ const getExcerptClasses = () => {
 
 <script>
   // SIMPLIFIED: Streamlined script based on working ProductCard pattern
-  document.addEventListener("astro:page-load", () => {
+  document.addEventListener('astro:page-load', () => {
     // Client-side fallback for failed images
     const images = document.querySelectorAll<HTMLImageElement>(
-      "img[src*='wordpress'], img[src*='gravatar']",
+      "img[src*='wordpress'], img[src*='gravatar']"
     );
 
     images.forEach((img) => {
-      img.addEventListener("error", () => {
-        if (img.classList.contains("w-8")) {
-          img.style.display = "none";
+      img.addEventListener('error', () => {
+        if (img.classList.contains('w-8')) {
+          img.style.display = 'none';
         } else {
-          img.style.opacity = "0.5";
-          img.alt = "Article image not available";
+          img.style.opacity = '0.5';
+          img.alt = 'Article image not available';
         }
       });
     });
 
     // Simplified intersection observer for analytics
-    if ("IntersectionObserver" in window) {
+    if ('IntersectionObserver' in window) {
       const articleCards = document.querySelectorAll(
-        "a[class*='article-'], a[class*='banner-card']",
+        "a[class*='article-'], a[class*='banner-card']"
       );
 
       const observer = new IntersectionObserver(
@@ -469,18 +477,18 @@ const getExcerptClasses = () => {
             if (entry.isIntersecting) {
               const card = entry.target as HTMLElement;
               const articleTitle = card
-                .querySelector("h2")
+                .querySelector('h2')
                 ?.textContent?.trim();
 
               if (
                 articleTitle &&
-                typeof window !== "undefined" &&
+                typeof window !== 'undefined' &&
                 window.gtag
               ) {
-                window.gtag("event", "article_impression", {
+                window.gtag('event', 'article_impression', {
                   article_title: articleTitle,
                   position: Array.from(
-                    card.parentElement?.children || [],
+                    card.parentElement?.children || []
                   ).indexOf(card),
                 });
               }
@@ -489,7 +497,7 @@ const getExcerptClasses = () => {
             }
           });
         },
-        { threshold: 0.5, rootMargin: "0px 0px -100px 0px" },
+        { threshold: 0.5, rootMargin: '0px 0px -100px 0px' }
       );
 
       articleCards.forEach((card) => {

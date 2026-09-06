@@ -6,7 +6,7 @@ interface Props {
   currentProductId?: string;
 }
 
-const { title = "Recently Viewed", currentProductId } = Astro.props;
+const { title = 'Recently Viewed', currentProductId } = Astro.props;
 ---
 
 <section
@@ -37,33 +37,39 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
 </section>
 
 <script>
-  import { recentlyViewed } from "@/lib/product/recentlyViewed";
-  import type { RecentlyViewedItem } from "@/lib/product/recentlyViewed";
-  import { MoneyUtils } from "@/lib/square/money";
-  import type { SaleInfo } from "@/lib/square/types";
+  import { recentlyViewed } from '@/lib/product/recentlyViewed';
+  import type { RecentlyViewedItem } from '@/lib/product/recentlyViewed';
+  import { MoneyUtils } from '@/lib/square/money';
+  import type { SaleInfo } from '@/lib/square/types';
 
   // Route any external image URL through Netlify Image CDN for compression,
   // format negotiation (AVIF/WebP), and edge caching — covers squarecdn.com,
   // s3.amazonaws.com, and any other Square storage backend.
   function optimizeProductImage(src: string): string {
-    if (!src || src.startsWith("/") || src.startsWith("data:")) return src;
-    const p = new URLSearchParams({ url: src, w: "400", h: "400", fit: "cover", q: "80" });
+    if (!src || src.startsWith('/') || src.startsWith('data:')) return src;
+    const p = new URLSearchParams({
+      url: src,
+      w: '400',
+      h: '400',
+      fit: 'cover',
+      q: '80',
+    });
     return `/.netlify/images?${p.toString()}`;
   }
 
   async function renderRecentlyViewed() {
-    const section = document.getElementById("recently-viewed-section");
-    const container = document.getElementById("recently-viewed-container");
+    const section = document.getElementById('recently-viewed-section');
+    const container = document.getElementById('recently-viewed-container');
 
     if (!section || !container) return;
 
-    const currentProductId = section.getAttribute("data-current-product-id");
+    const currentProductId = section.getAttribute('data-current-product-id');
     const items = recentlyViewed
       .get(8)
       .filter((item) => item.id !== currentProductId);
 
     if (items.length === 0) {
-      section.style.display = "none";
+      section.style.display = 'none';
       return;
     }
 
@@ -81,24 +87,24 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
         const isOnSale = !!saleInfo;
         const displayPrice = saleInfo?.salePrice ?? item.price;
         const formattedPrice = MoneyUtils.format(
-          MoneyUtils.fromFloat(displayPrice),
+          MoneyUtils.fromFloat(displayPrice)
         );
         const formattedOriginal = saleInfo
           ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))
           : null;
         const isOutOfStock = !inventoryMap[item.variationId];
         const optimizedImage = optimizeProductImage(item.image);
-        const brand = item.brand ?? "El Camino";
+        const brand = item.brand ?? 'El Camino';
         const priceClass =
           isOnSale && !isOutOfStock
-            ? "text-(--color-elco-sweet-tea-500) font-black text-base"
-            : "text-(--product-price) font-black text-base";
+            ? 'text-(--color-elco-sweet-tea-500) font-black text-base'
+            : 'text-(--product-price) font-black text-base';
 
         return `
           <a
             href="${item.url}"
             class="group flex-none w-56 relative rounded-xs overflow-hidden border border-(--border-primary) hover:border-(--color-elco-sweet-tea-300) transition-colors duration-200 shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)"
-            aria-label="${item.title} — ${formattedPrice}${isOutOfStock ? " — Sold Out" : ""}${isOnSale ? " — On Sale" : ""}"
+            aria-label="${item.title} — ${formattedPrice}${isOutOfStock ? ' — Sold Out' : ''}${isOnSale ? ' — On Sale' : ''}"
           >
             <!-- Colored brand header strip -->
             <div class="bg-(--color-elco-sweet-tea-300) px-3 py-2 flex items-center justify-between gap-2 min-h-[2rem]" aria-hidden="true">
@@ -111,16 +117,16 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
               <span class="text-xs font-black uppercase tracking-wide bg-state-success-surface text-state-success-text px-1.5 py-0.5 rounded-xs leading-none shrink-0">
                 Sale
               </span>`
-                  : ""
+                  : ''
               }
             </div>
 
             <!-- Product image — square -->
-            <div class="relative aspect-square overflow-hidden bg-(--surface-secondary)${isOutOfStock ? " opacity-70" : ""}" aria-hidden="true">
+            <div class="relative aspect-square overflow-hidden bg-(--surface-secondary)${isOutOfStock ? ' opacity-70' : ''}" aria-hidden="true">
               <img
                 src="${optimizedImage}"
                 alt=""
-                class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105${isOutOfStock ? " grayscale-[30%]" : ""}"
+                class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105${isOutOfStock ? ' grayscale-[30%]' : ''}"
                 loading="lazy"
                 width="200"
                 height="200"
@@ -133,7 +139,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
                   Sold Out
                 </span>
               </div>`
-                  : ""
+                  : ''
               }
             </div>
 
@@ -149,7 +155,7 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
                 <del class="text-xs text-(--content-meta)">
                   ${formattedOriginal}
                 </del>`
-                    : ""
+                    : ''
                 }
                 <span class="${priceClass}">
                   ${formattedPrice}
@@ -159,15 +165,15 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
           </a>
         `;
       })
-      .join("");
+      .join('');
 
     // Reveal after content is fully populated — single paint, no shift
-    section.classList.add("pt-10", "lg:pt-12");
-    section.style.display = "block";
+    section.classList.add('pt-10', 'lg:pt-12');
+    section.style.display = 'block';
   }
 
   async function fetchInventoryForItems(
-    items: RecentlyViewedItem[],
+    items: RecentlyViewedItem[]
   ): Promise<Record<string, boolean>> {
     // Gift cards have no inventory tracking in Square — always in stock
     const giftCardIds = items
@@ -184,9 +190,9 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
 
     try {
       const variationIds = trackableItems.map((item) => item.variationId);
-      const response = await fetch("/api/cart-inventory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/cart-inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ variationIds }),
       });
       if (!response.ok) {
@@ -209,13 +215,13 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
   }
 
   async function fetchSaleInfoForItems(
-    items: RecentlyViewedItem[],
+    items: RecentlyViewedItem[]
   ): Promise<Record<string, SaleInfo>> {
     try {
       const variationIds = items.map((item) => item.variationId);
-      const response = await fetch("/api/sale-info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/sale-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ variationIds }),
       });
       if (!response.ok) return {};
@@ -228,15 +234,15 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
   }
 
   function initRecentlyViewed() {
-    const section = document.getElementById("recently-viewed-section");
+    const section = document.getElementById('recently-viewed-section');
     if (section) {
       const variationData = document.getElementById(
-        "variation-data",
+        'variation-data'
       ) as HTMLInputElement;
       if (variationData?.value) {
         try {
           const data = JSON.parse(variationData.value);
-          section.setAttribute("data-current-product-id", data.productId);
+          section.setAttribute('data-current-product-id', data.productId);
         } catch {
           // ignore
         }
@@ -245,11 +251,11 @@ const { title = "Recently Viewed", currentProductId } = Astro.props;
     }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initRecentlyViewed);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initRecentlyViewed);
   } else {
     initRecentlyViewed();
   }
 
-  document.addEventListener("astro:page-load", initRecentlyViewed);
+  document.addEventListener('astro:page-load', initRecentlyViewed);
 </script>

@@ -4,11 +4,11 @@
  * Static guidance for analyzing and optimizing site resources.
  */
 
-import AdminLayout from "@/layouts/AdminLayout.astro";
+import AdminLayout from '@/layouts/AdminLayout.astro';
 
-const pageTitle = "Resource Analysis";
+const pageTitle = 'Resource Analysis';
 const pageDescription =
-  "Guidance for analyzing JavaScript bundles, images, fonts, and third-party resources.";
+  'Guidance for analyzing JavaScript bundles, images, fonts, and third-party resources.';
 ---
 
 <AdminLayout
@@ -19,36 +19,63 @@ const pageDescription =
   <!-- How to analyze -->
   <section class="mb-8">
     <div class="flex items-center justify-between mb-6">
-      <h2 class="text-2xl font-semibold text-(--content-heading)">Analyzing Your Build</h2>
-      <p class="text-sm text-(--content-meta)">Run locally or check Netlify deploy logs</p>
+      <h2 class="text-2xl font-semibold text-(--content-heading)">
+        Analyzing Your Build
+      </h2>
+      <p class="text-sm text-(--content-meta)">
+        Run locally or check Netlify deploy logs
+      </p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Build output -->
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-        <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Bundle Stats via Build</h3>
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
+        <h3 class="text-lg font-semibold text-(--content-heading) mb-4">
+          Bundle Stats via Build
+        </h3>
         <div class="space-y-3 text-sm text-(--content-body)">
-          <p class="text-(--content-meta)">Run the build locally to see real sizes printed to the terminal:</p>
-          <pre class="p-3 bg-(--surface-tertiary) rounded font-mono text-xs text-(--content-heading) overflow-x-auto">pnpm run build</pre>
+          <p class="text-(--content-meta)">
+            Run the build locally to see real sizes printed to the terminal:
+          </p>
+          <pre
+            class="p-3 bg-(--surface-tertiary) rounded font-mono text-xs text-(--content-heading) overflow-x-auto">pnpm run build</pre>
           <p class="text-(--content-meta)">
             Astro prints each page's HTML size and the JS/CSS chunks Vite emits.
-            For a detailed breakdown, add <code class="font-mono text-xs bg-(--surface-tertiary) px-1 rounded">--reporter verbose</code>
+            For a detailed breakdown, add <code
+              class="font-mono text-xs bg-(--surface-tertiary) px-1 rounded"
+              >--reporter verbose</code
+            >
             or enable Vite's built-in bundle analysis:
           </p>
-          <pre class="p-3 bg-(--surface-tertiary) rounded font-mono text-xs text-(--content-heading) overflow-x-auto">npx vite-bundle-visualizer</pre>
+          <pre
+            class="p-3 bg-(--surface-tertiary) rounded font-mono text-xs text-(--content-heading) overflow-x-auto">npx vite-bundle-visualizer</pre>
         </div>
       </div>
 
       <!-- Netlify deploy -->
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-        <h3 class="text-lg font-semibold text-(--content-heading) mb-4">Netlify Deploy Logs</h3>
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
+        <h3 class="text-lg font-semibold text-(--content-heading) mb-4">
+          Netlify Deploy Logs
+        </h3>
         <div class="space-y-3 text-sm text-(--content-body)">
-          <p class="text-(--content-meta)">Every Netlify deploy prints the build output including file sizes. To view:</p>
+          <p class="text-(--content-meta)">
+            Every Netlify deploy prints the build output including file sizes.
+            To view:
+          </p>
           <ol class="space-y-2 list-decimal list-inside text-(--content-meta)">
             <li>Open your Netlify site dashboard</li>
             <li>Navigate to Deploys → select the latest deploy</li>
             <li>Expand the "Deploy log" section</li>
-            <li>Search for <code class="font-mono text-xs bg-(--surface-tertiary) px-1 rounded">dist/</code> to find chunk sizes</li>
+            <li>
+              Search for <code
+                class="font-mono text-xs bg-(--surface-tertiary) px-1 rounded"
+                >dist/</code
+              > to find chunk sizes
+            </li>
           </ol>
         </div>
       </div>
@@ -57,54 +84,108 @@ const pageDescription =
 
   <!-- JavaScript -->
   <section class="mb-8">
-    <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">JavaScript</h2>
+    <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">
+      JavaScript
+    </h2>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-        <h3 class="font-semibold text-(--content-heading) mb-3">Astro's default output</h3>
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
+        <h3 class="font-semibold text-(--content-heading) mb-3">
+          Astro's default output
+        </h3>
         <div class="space-y-3 text-sm text-(--content-body)">
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Zero JS by default</div>
-            <div class="text-(--content-meta)">Static pages ship no JS unless you opt in with <code class="text-xs font-mono">client:*</code> directives</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Zero JS by default
+            </div>
+            <div class="text-(--content-meta)">
+              Static pages ship no JS unless you opt in with <code
+                class="text-xs font-mono">client:*</code
+              > directives
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Admin JS is isolated</div>
-            <div class="text-(--content-meta)">The admin section's scripts are not included on public-facing pages</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Admin JS is isolated
+            </div>
+            <div class="text-(--content-meta)">
+              The admin section's scripts are not included on public-facing
+              pages
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-        <h3 class="font-semibold text-(--content-heading) mb-3">Reduction strategies</h3>
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
+        <h3 class="font-semibold text-(--content-heading) mb-3">
+          Reduction strategies
+        </h3>
         <div class="space-y-3 text-sm">
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Defer non-critical scripts</div>
-            <div class="text-(--content-meta)">Use <code class="text-xs font-mono">defer</code> or <code class="text-xs font-mono">async</code> on non-essential third-party scripts</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Defer non-critical scripts
+            </div>
+            <div class="text-(--content-meta)">
+              Use <code class="text-xs font-mono">defer</code> or <code
+                class="text-xs font-mono">async</code
+              > on non-essential third-party scripts
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Load on interaction</div>
-            <div class="text-(--content-meta)">Use <code class="text-xs font-mono">client:idle</code> or <code class="text-xs font-mono">client:visible</code> for below-fold components</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Load on interaction
+            </div>
+            <div class="text-(--content-meta)">
+              Use <code class="text-xs font-mono">client:idle</code> or <code
+                class="text-xs font-mono">client:visible</code
+              > for below-fold components
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Keep tasks under 50ms</div>
-            <div class="text-(--content-meta)">Long tasks block the main thread and hurt INP — split or defer them</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Keep tasks under 50ms
+            </div>
+            <div class="text-(--content-meta)">
+              Long tasks block the main thread and hurt INP — split or defer
+              them
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
         <h3 class="font-semibold text-(--content-heading) mb-3">Tools</h3>
         <div class="space-y-3 text-sm">
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Chrome DevTools Coverage</div>
-            <div class="text-(--content-meta)">Press F12 → Coverage panel → record a page load to find unused JS/CSS bytes</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Chrome DevTools Coverage
+            </div>
+            <div class="text-(--content-meta)">
+              Press F12 → Coverage panel → record a page load to find unused
+              JS/CSS bytes
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">WebPageTest</div>
-            <div class="text-(--content-meta)">Waterfall view shows exactly which scripts block rendering</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              WebPageTest
+            </div>
+            <div class="text-(--content-meta)">
+              Waterfall view shows exactly which scripts block rendering
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Lighthouse</div>
-            <div class="text-(--content-meta)">"Reduce unused JavaScript" and "Avoid long main-thread tasks" audits</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Lighthouse
+            </div>
+            <div class="text-(--content-meta)">
+              "Reduce unused JavaScript" and "Avoid long main-thread tasks"
+              audits
+            </div>
           </div>
         </div>
       </div>
@@ -115,48 +196,93 @@ const pageDescription =
   <section class="mb-8">
     <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Images</h2>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-        <h3 class="font-semibold text-(--content-heading) mb-3">Netlify Image CDN</h3>
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
+        <h3 class="font-semibold text-(--content-heading) mb-3">
+          Netlify Image CDN
+        </h3>
         <div class="space-y-3 text-sm text-(--content-body)">
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Already configured</div>
-            <div class="text-(--content-meta)">Astro's <code class="text-xs font-mono">&lt;Image&gt;</code> component automatically serves AVIF/WebP via the Netlify Image CDN at the right sizes</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Already configured
+            </div>
+            <div class="text-(--content-meta)">
+              Astro's <code class="text-xs font-mono">&lt;Image&gt;</code> component
+              automatically serves AVIF/WebP via the Netlify Image CDN at the right
+              sizes
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">On-the-fly transforms</div>
-            <div class="text-(--content-meta)">Resize, format conversion, and quality tuning happen at the CDN edge — no pre-processing needed</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              On-the-fly transforms
+            </div>
+            <div class="text-(--content-meta)">
+              Resize, format conversion, and quality tuning happen at the CDN
+              edge — no pre-processing needed
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-        <h3 class="font-semibold text-(--content-heading) mb-3">Best practices</h3>
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
+        <h3 class="font-semibold text-(--content-heading) mb-3">
+          Best practices
+        </h3>
         <div class="space-y-3 text-sm">
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Always set width + height</div>
-            <div class="text-(--content-meta)">Prevents layout shift (CLS) — the browser reserves space before the image loads</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Always set width + height
+            </div>
+            <div class="text-(--content-meta)">
+              Prevents layout shift (CLS) — the browser reserves space before
+              the image loads
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Lazy-load below the fold</div>
-            <div class="text-(--content-meta)">Use <code class="text-xs font-mono">loading="lazy"</code> on non-priority images; omit it on the LCP image</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Lazy-load below the fold
+            </div>
+            <div class="text-(--content-meta)">
+              Use <code class="text-xs font-mono">loading="lazy"</code> on non-priority
+              images; omit it on the LCP image
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">fetchpriority="high" on LCP</div>
-            <div class="text-(--content-meta)">Tells the browser to fetch the hero image before other resources</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              fetchpriority="high" on LCP
+            </div>
+            <div class="text-(--content-meta)">
+              Tells the browser to fetch the hero image before other resources
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
         <h3 class="font-semibold text-(--content-heading) mb-3">Audit tools</h3>
         <div class="space-y-3 text-sm">
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Lighthouse image audits</div>
-            <div class="text-(--content-meta)">"Properly size images", "Serve images in next-gen formats", "Defer offscreen images"</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Lighthouse image audits
+            </div>
+            <div class="text-(--content-meta)">
+              "Properly size images", "Serve images in next-gen formats", "Defer
+              offscreen images"
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Squoosh.app</div>
-            <div class="text-(--content-meta)">Visually compare image quality vs. file size before committing source images</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Squoosh.app
+            </div>
+            <div class="text-(--content-meta)">
+              Visually compare image quality vs. file size before committing
+              source images
+            </div>
           </div>
         </div>
       </div>
@@ -167,34 +293,68 @@ const pageDescription =
   <section class="mb-8">
     <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Fonts</h2>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-        <h3 class="font-semibold text-(--content-heading) mb-3">Current configuration</h3>
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
+        <h3 class="font-semibold text-(--content-heading) mb-3">
+          Current configuration
+        </h3>
         <div class="space-y-3 text-sm text-(--content-body)">
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Font preloading configured</div>
-            <div class="text-(--content-meta)">Preload hints for the primary typeface are set in <code class="text-xs font-mono">netlify.toml</code> via <code class="text-xs font-mono">Link</code> headers</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Font preloading configured
+            </div>
+            <div class="text-(--content-meta)">
+              Preload hints for the primary typeface are set in <code
+                class="text-xs font-mono">netlify.toml</code
+              > via <code class="text-xs font-mono">Link</code> headers
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">font-display: swap</div>
-            <div class="text-(--content-meta)">Text renders immediately in a fallback font while the custom font loads, preventing invisible text (FOIT)</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              font-display: swap
+            </div>
+            <div class="text-(--content-meta)">
+              Text renders immediately in a fallback font while the custom font
+              loads, preventing invisible text (FOIT)
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-        <h3 class="font-semibold text-(--content-heading) mb-3">Further optimizations</h3>
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
+        <h3 class="font-semibold text-(--content-heading) mb-3">
+          Further optimizations
+        </h3>
         <div class="space-y-3 text-sm">
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Subset fonts</div>
-            <div class="text-(--content-meta)">Use <code class="text-xs font-mono">unicode-range</code> or a tool like Glyphhanger to strip unused character sets</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Subset fonts
+            </div>
+            <div class="text-(--content-meta)">
+              Use <code class="text-xs font-mono">unicode-range</code> or a tool like
+              Glyphhanger to strip unused character sets
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Use variable fonts</div>
-            <div class="text-(--content-meta)">A single variable font file replaces multiple weight files, reducing requests</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Use variable fonts
+            </div>
+            <div class="text-(--content-meta)">
+              A single variable font file replaces multiple weight files,
+              reducing requests
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Self-host instead of CDN</div>
-            <div class="text-(--content-meta)">Hosting fonts on the same origin avoids cross-origin connection setup time</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Self-host instead of CDN
+            </div>
+            <div class="text-(--content-meta)">
+              Hosting fonts on the same origin avoids cross-origin connection
+              setup time
+            </div>
           </div>
         </div>
       </div>
@@ -203,44 +363,83 @@ const pageDescription =
 
   <!-- Third-party resources -->
   <section>
-    <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">Third-Party Resources</h2>
+    <h2 class="text-2xl font-semibold text-(--content-heading) mb-6">
+      Third-Party Resources
+    </h2>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-        <h3 class="font-semibold text-(--content-heading) mb-3">Measuring impact</h3>
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
+        <h3 class="font-semibold text-(--content-heading) mb-3">
+          Measuring impact
+        </h3>
         <div class="space-y-3 text-sm text-(--content-body)">
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">WebPageTest "Opportunities &amp; Experiments"</div>
-            <div class="text-(--content-meta)">Block individual third-party domains and re-run the test to measure their exact impact on LCP and INP</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              WebPageTest "Opportunities &amp; Experiments"
+            </div>
+            <div class="text-(--content-meta)">
+              Block individual third-party domains and re-run the test to
+              measure their exact impact on LCP and INP
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Chrome DevTools Network panel</div>
-            <div class="text-(--content-meta)">Filter by domain, sort by duration; look for requests that delay the LCP resource</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Chrome DevTools Network panel
+            </div>
+            <div class="text-(--content-meta)">
+              Filter by domain, sort by duration; look for requests that delay
+              the LCP resource
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Lighthouse "Third-party code" audit</div>
-            <div class="text-(--content-meta)">Lists every third-party origin and its main-thread blocking time</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Lighthouse "Third-party code" audit
+            </div>
+            <div class="text-(--content-meta)">
+              Lists every third-party origin and its main-thread blocking time
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)">
-        <h3 class="font-semibold text-(--content-heading) mb-3">Mitigation strategies</h3>
+      <div
+        class="bg-(--surface-secondary) p-6 rounded-sm border border-(--border-primary)"
+      >
+        <h3 class="font-semibold text-(--content-heading) mb-3">
+          Mitigation strategies
+        </h3>
         <div class="space-y-3 text-sm">
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Load on interaction</div>
-            <div class="text-(--content-meta)">Defer chat widgets, social embeds, and non-critical analytics until the user first interacts with the page</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Load on interaction
+            </div>
+            <div class="text-(--content-meta)">
+              Defer chat widgets, social embeds, and non-critical analytics
+              until the user first interacts with the page
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Preconnect to critical origins</div>
-            <div class="text-(--content-meta)">Add <code class="text-xs font-mono">&lt;link rel="preconnect"&gt;</code> for any third-party origin that's on the critical path</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Preconnect to critical origins
+            </div>
+            <div class="text-(--content-meta)">
+              Add <code class="text-xs font-mono"
+                >&lt;link rel="preconnect"&gt;</code
+              > for any third-party origin that's on the critical path
+            </div>
           </div>
           <div class="p-3 bg-(--surface-tertiary) rounded">
-            <div class="font-medium text-(--content-heading) mb-0.5">Use a facade</div>
-            <div class="text-(--content-meta)">Replace video embeds and maps with a static placeholder that loads the real embed on click</div>
+            <div class="font-medium text-(--content-heading) mb-0.5">
+              Use a facade
+            </div>
+            <div class="text-(--content-meta)">
+              Replace video embeds and maps with a static placeholder that loads
+              the real embed on click
+            </div>
           </div>
         </div>
       </div>
     </div>
   </section>
 </AdminLayout>
-

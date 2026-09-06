@@ -1,23 +1,25 @@
 ---
 // src/components/Sidebar.astro
-import { getCategoriesForSidebar } from "@/lib/square/categoryNav";
-import { squareClient } from "@/lib/square/client";
-import { EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
-import { toNetlifyImageCDN } from "@/lib/image/enhanced-optimizer";
-import { createSlug } from "@/lib/square/slugUtils";
-import { Icon } from "astro-icon/components";
+import { getCategoriesForSidebar } from '@/lib/square/categoryNav';
+import { getCategoryImageUrls } from '@/lib/square/categoryImages';
+import { EL_CAMINO_LOADER_DATA_URI } from '@/lib/constants/assets';
+import { toNetlifyImageCDN } from '@/lib/image/enhanced-optimizer';
+import { createSlug } from '@/lib/square/slugUtils';
+import { Icon } from 'astro-icon/components';
 
 interface Props {
   class?: string;
 }
 
-const { class: additionalClasses = "" } = Astro.props;
+const { class: additionalClasses = '' } = Astro.props;
 
 // Get filtered categories (only those with products) using Square's ordering
 const categoriesWithImages = await getCategoriesForSidebar();
 
 // Square image URLs by category ID
-const categoryImageUrls: Record<string, string> = {};
+const categoryImageUrls: Record<string, string> = await getCategoryImageUrls(
+  categoriesWithImages.filter((item) => item.id).map((item) => item.id)
+);
 
 // Get an optimized image URL for a category via Netlify Image CDN.
 // Routes squarecdn.com, s3.amazonaws.com, and any other external URL through
@@ -25,39 +27,11 @@ const categoryImageUrls: Record<string, string> = {};
 // cache headers — regardless of which Square storage backend served the original.
 function getCategoryImageUrl(category: { id: string; slug: string }): string {
   if (category.id && categoryImageUrls[category.id]) {
-    return toNetlifyImageCDN(categoryImageUrls[category.id], 600, { height: 338 });
+    return toNetlifyImageCDN(categoryImageUrls[category.id], 600, {
+      height: 338,
+    });
   }
   return `/images/category-${category.slug}.png`;
-}
-
-// Process categories to get images (for existing categories only)
-for (const item of categoriesWithImages) {
-  try {
-    // Only try to fetch if we have a category ID
-    if (item.id) {
-      // Retrieve the category object with related objects
-      const catResult = await squareClient.catalog.object.get({
-        objectId: item.id,
-        includeRelatedObjects: true,
-      });
-
-      // Find image objects in related objects
-      const relatedObjects = (catResult as any).relatedObjects ?? [];
-      if (relatedObjects.length > 0) {
-        // Look for IMAGE type objects
-        const imageObjects = relatedObjects.filter(
-          (obj: any) => obj.type === "IMAGE",
-        );
-
-        // If we found any images, use the first one
-        if (imageObjects.length > 0 && imageObjects[0].imageData?.url) {
-          categoryImageUrls[item.id] = imageObjects[0].imageData.url;
-        }
-      }
-    }
-  } catch (error) {
-    console.error(`Error fetching images for category ${item.id}:`, error);
-  }
 }
 
 // Update image URLs in categories using enhanced Square images or local fallbacks
@@ -69,7 +43,7 @@ const prodCats = categoriesWithImages.map((item) => ({
 
 <aside
   class:list={[
-    "sidebar article-card-wrapper opacity-0 col-span-full lg:col-span-2 lg:col-start-1 lg:row-start-5 2xl:row-start-4 lg:row-end-15 2xl:row-end-11 bg-(--surface-secondary)",
+    'sidebar article-card-wrapper opacity-0 col-span-full lg:col-span-2 lg:col-start-1 lg:row-start-5 2xl:row-start-4 lg:row-end-15 2xl:row-end-11 bg-(--surface-secondary)',
     additionalClasses,
   ]}
   data-initial-index={6}
@@ -113,9 +87,9 @@ const prodCats = categoriesWithImages.map((item) => ({
               width="600"
               height="338"
               class="category-img object-cover w-full h-full will-change-transform opacity-0 translate-y-1 transition-all duration-300 ease-in-out [&.loaded]:opacity-30 [&.loaded]:sepia-50 [&.loaded]:translate-y-0 group-hover:scale-105 group-hover:[&.loaded]:opacity-80 group-hover:[&.loaded]:sepia-10"
-              loading={index < 2 ? "eager" : "lazy"}
-              decoding={index < 2 ? "sync" : "async"}
-              fetchpriority={index < 2 ? "high" : "auto"}
+              loading={index < 2 ? 'eager' : 'lazy'}
+              decoding={index < 2 ? 'sync' : 'async'}
+              fetchpriority={index < 2 ? 'high' : 'auto'}
               data-placeholder-id={placeholderId}
               data-shimmer-placeholder={placeholderId}
               data-shimmer-load-add="loaded"
@@ -146,14 +120,14 @@ const prodCats = categoriesWithImages.map((item) => ({
 
 <script>
   // Enhanced image loading for category images using unified system
-  document.addEventListener("astro:page-load", () => {
+  document.addEventListener('astro:page-load', () => {
     const categoryImages =
-      document.querySelectorAll<HTMLImageElement>(".category-img");
+      document.querySelectorAll<HTMLImageElement>('.category-img');
 
     categoryImages.forEach((img) => {
       // If image is already loaded (cached), trigger onload
       if (img.complete && img.naturalHeight !== 0) {
-        img.classList.add("loaded");
+        img.classList.add('loaded');
         const placeholderId = img.dataset.placeholderId;
         if (placeholderId) {
           document.getElementById(placeholderId)?.remove();

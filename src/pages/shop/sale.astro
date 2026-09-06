@@ -1,23 +1,23 @@
 ---
 // src/pages/shop/sale.astro - Sale items page following all.astro pattern
-import ProductFilters from "@/components/ProductFilters.astro";
-import AppliedFilters from "@/components/AppliedFilters.astro";
-import ProductGrid from "@/components/ProductGrid.astro";
-import Layout from "@/layouts/Layout.astro";
-import { fetchProducts } from "@/lib/square/client";
+import ProductFilters from '@/components/ProductFilters.astro';
+import AppliedFilters from '@/components/AppliedFilters.astro';
+import ProductGrid from '@/components/ProductGrid.astro';
+import Layout from '@/layouts/Layout.astro';
+import { fetchProducts } from '@/lib/square/client';
 import {
   parseFiltersFromURL,
   extractFilterOptions,
   filterProductsWithCache,
   filterSaleProducts,
-} from "@/lib/square/filterUtils";
-import { batchInventoryService } from "@/lib/square/batchInventory";
-import { createVariantSlug } from "@/lib/square/slugUtils";
+} from '@/lib/square/filterUtils';
+import { batchInventoryService } from '@/lib/square/batchInventory';
+import { createVariantSlug } from '@/lib/square/slugUtils';
 import type {
   Product,
   ProductFilters as ProductFiltersType,
   FilterOptions,
-} from "@/lib/square/types";
+} from '@/lib/square/types';
 
 // Reorder a product's variations so the first sale variation comes first.
 // Only used on the sale page so the card naturally displays the on-sale variant.
@@ -35,8 +35,10 @@ function withSaleVariationFirst(product: Product): Product {
   ];
 
   const saleVariation = reordered[0];
-  const variantSlug = saleVariation.name ? createVariantSlug(saleVariation.name) : null;
-  const baseUrl = product.url.split("?")[0];
+  const variantSlug = saleVariation.name
+    ? createVariantSlug(saleVariation.name)
+    : null;
+  const baseUrl = product.url.split('?')[0];
 
   return {
     ...product,
@@ -53,27 +55,32 @@ function withSaleVariationFirst(product: Product): Product {
 const filters = parseFiltersFromURL(Astro.url.searchParams);
 
 // Smart cache headers based on filters
-const hasFilters = filters.brands.length > 0 ||
-                   filters.categories.length > 0 ||
-                   filters.availability === true;
+const hasFilters =
+  filters.brands.length > 0 ||
+  filters.categories.length > 0 ||
+  filters.availability === true;
 
+// Directive is "s-maxage" — one hyphen only. An extra hyphen before "max"
+// is silently ignored by caches: no error, no warning, no test failure.
 const cacheControl = hasFilters
-  ? "public, max-age=120, s-max-age=180, stale-while-revalidate=900" // 2min browser, 3min server, 15min stale for filtered
-  : "public, max-age=300, s-max-age=300, stale-while-revalidate=1800"; // 5min browser/server, 30min stale for unfiltered
+  ? 'public, max-age=120, s-maxage=180, stale-while-revalidate=900' // 2min browser, 3min server, 15min stale for filtered
+  : 'public, max-age=300, s-maxage=300, stale-while-revalidate=1800'; // 5min browser/server, 30min stale for unfiltered
 
 // Set cache headers for this response
-Astro.response.headers.set("Cache-Control", cacheControl);
+// Directive is "s-maxage" — one hyphen only. An extra hyphen before "max"
+// is silently ignored by caches: no error, no warning, no test failure.
+Astro.response.headers.set('Cache-Control', cacheControl);
 Astro.response.headers.set(
-  "Netlify-CDN-Cache-Control",
+  'Netlify-CDN-Cache-Control',
   hasFilters
-    ? "public, s-max-age=180, stale-while-revalidate=900"
-    : "public, s-max-age=300, stale-while-revalidate=1800"
+    ? 'public, s-maxage=180, stale-while-revalidate=900'
+    : 'public, s-maxage=300, stale-while-revalidate=1800'
 );
 
 // Add cache debugging header
 Astro.response.headers.set(
-  "X-Cache-Strategy",
-  hasFilters ? "filtered-sale-content" : "base-sale-catalog"
+  'X-Cache-Strategy',
+  hasFilters ? 'filtered-sale-content' : 'base-sale-catalog'
 );
 
 // === OPTIMIZED PRODUCT FETCHING ===
@@ -86,14 +93,16 @@ let slugToIdMap: Record<string, string> = {};
 try {
   // Fetch all products initially
   const allProductsFull = await fetchProducts();
-  
+
   // Filter to only products with sale pricing, and surface the sale variant first
-  saleProducts = filterSaleProducts(allProductsFull).map(withSaleVariationFirst);
+  saleProducts = filterSaleProducts(allProductsFull).map(
+    withSaleVariationFirst
+  );
 
   // Sort alphabetically by brand (case-insensitive), unbranded fall to end
   saleProducts.sort((a, b) => {
-    const brandA = a.brand?.toLowerCase() ?? "\uFFFF";
-    const brandB = b.brand?.toLowerCase() ?? "\uFFFF";
+    const brandA = a.brand?.toLowerCase() ?? '\uFFFF';
+    const brandB = b.brand?.toLowerCase() ?? '\uFFFF';
     return brandA.localeCompare(brandB);
   });
 
@@ -104,7 +113,8 @@ try {
   try {
     const variationIds = saleProducts.map((p) => p.variationId).filter(Boolean);
     if (variationIds.length > 0) {
-      const inventoryMap = await batchInventoryService.getBatchInventoryStatus(variationIds);
+      const inventoryMap =
+        await batchInventoryService.getBatchInventoryStatus(variationIds);
       saleProducts = saleProducts.filter((p) => {
         const status = inventoryMap.get(p.variationId);
         if (!status || status.error) return true; // unknown \u2192 keep
@@ -118,14 +128,16 @@ try {
   // Always pass sale products to ProductGrid
   // ProductGrid handles progressive display via infinite scroll
   allProducts = saleProducts;
-  
+
   // Extract filter options from SALE products only (for filter UI)
   filterOptions = await extractFilterOptions(saleProducts);
 
   // Build slug→ID map for client-side filtering (passed to ProductGrid)
   filterOptions.categories.forEach((c) => {
     if (c.slug) slugToIdMap[c.slug] = c.id;
-    c.subcategories.forEach((s) => { if (s.slug) slugToIdMap[s.slug] = s.id; });
+    c.subcategories.forEach((s) => {
+      if (s.slug) slugToIdMap[s.slug] = s.id;
+    });
   });
   const resolvedFilters: ProductFiltersType = {
     ...filters,
@@ -134,21 +146,24 @@ try {
 
   if (hasFilters) {
     // Apply additional filters (brand, availability) to sale products
-    filteredProducts = await filterProductsWithCache(saleProducts, resolvedFilters);
+    filteredProducts = await filterProductsWithCache(
+      saleProducts,
+      resolvedFilters
+    );
   } else {
     // No additional filters - show all sale products
     filteredProducts = [...saleProducts];
   }
-
 } catch (error) {
-  console.error("Error fetching sale products:", error);
+  console.error('Error fetching sale products:', error);
   allProducts = [];
   filteredProducts = [];
 }
 
 // === PAGE METADATA ===
-const pageTitle = "Sale | El Camino";
-const pageDescription = "Shop sale items at El Camino Skate Shop. Save on skateboards, decks, apparel, and accessories from top brands.";
+const pageTitle = 'Sale | El Camino';
+const pageDescription =
+  'Shop sale items at El Camino Skate Shop. Save on skateboards, decks, apparel, and accessories from top brands.';
 
 // Preload only the LCP image — preloading more creates resource contention
 // that can delay the LCP element; the browser's own preload scanner handles
@@ -156,10 +171,10 @@ const pageDescription = "Shop sale items at El Camino Skate Shop. Save on skateb
 const preloadImages = allProducts
   .slice(0, 1)
   .map((p) => p.image)
-  .filter((img) => !img.includes("placeholder"));
+  .filter((img) => !img.includes('placeholder'));
 
 // Current path for filter URLs
-const categoryPath = "/shop/sale";
+const categoryPath = '/shop/sale';
 
 // Check for active filters (for display purposes)
 const hasActiveFilters =
@@ -169,30 +184,32 @@ const hasActiveFilters =
 
 // Structured data for sale items (ItemList schema)
 const structuredData = {
-  "@context": "https://schema.org",
-  "@type": "ItemList",
-  "name": "Sale Items",
-  "description": pageDescription,
-  "numberOfItems": filteredProducts.length,
-  "itemListElement": filteredProducts.slice(0, 20).map((product, index) => {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: 'Sale Items',
+  description: pageDescription,
+  numberOfItems: filteredProducts.length,
+  itemListElement: filteredProducts.slice(0, 20).map((product, index) => {
     // Get the sale price from the first variation with saleInfo
-    const saleVariation = product.variations?.find(v => v.saleInfo);
+    const saleVariation = product.variations?.find((v) => v.saleInfo);
     const salePrice = saleVariation?.saleInfo?.salePrice || product.price;
 
     return {
-      "@type": "ListItem",
-      "position": index + 1,
-      "item": {
-        "@type": "Product",
-        "name": product.title,
-        "image": product.image,
-        "url": `${Astro.site?.origin || ""}${product.url}`,
-        "offers": {
-          "@type": "Offer",
-          "price": salePrice.toFixed(2),
-          "priceCurrency": "USD",
-          "availability": "https://schema.org/InStock",
-          "priceValidUntil": new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'Product',
+        name: product.title,
+        image: product.image,
+        url: `${Astro.site?.origin || ''}${product.url}`,
+        offers: {
+          '@type': 'Offer',
+          price: salePrice.toFixed(2),
+          priceCurrency: 'USD',
+          availability: 'https://schema.org/InStock',
+          priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0], // 30 days from now
         },
       },
     };
@@ -200,16 +217,13 @@ const structuredData = {
 };
 ---
 
-<Layout 
-  title={pageTitle}
-  structuredData={structuredData}
->
+<Layout title={pageTitle} structuredData={structuredData}>
   <Fragment slot="seo">
     <meta name="description" content={pageDescription} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={pageDescription} />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content={`${Astro.site?.origin || ""}/shop/sale`} />
+    <meta property="og:url" content={`${Astro.site?.origin || ''}/shop/sale`} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={pageDescription} />
@@ -239,7 +253,10 @@ const structuredData = {
     <!-- Page Body -->
     <div class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-1 pb-0">
       <!-- Filter Sidebar -->
-      <aside class="lg:col-span-1 lg:sticky lg:self-start" style="top: var(--header-height);">
+      <aside
+        class="lg:col-span-1 lg:sticky lg:self-start"
+        style="top: var(--header-height);"
+      >
         <ProductFilters
           filterOptions={filterOptions}
           totalProducts={allProducts.length}
@@ -265,7 +282,9 @@ const structuredData = {
             <>
               <ProductGrid
                 products={allProducts}
-                filteredIds={hasFilters ? filteredProducts.map((p) => p.id) : undefined}
+                filteredIds={
+                  hasFilters ? filteredProducts.map((p) => p.id) : undefined
+                }
                 slugToIdMap={slugToIdMap}
                 categoryPath={categoryPath}
                 hideSoldOut={true}
@@ -274,17 +293,17 @@ const structuredData = {
           ) : (
             <div class="text-center py-16">
               <div class="text-6xl mb-4 opacity-20">
-                {hasActiveFilters ? "🔍" : "🛹"}
+                {hasActiveFilters ? '🔍' : '🛹'}
               </div>
               <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
                 {hasActiveFilters
-                  ? "No sale items match your filters"
-                  : "No sale items right now"}
+                  ? 'No sale items match your filters'
+                  : 'No sale items right now'}
               </h2>
               <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
                 {hasActiveFilters
-                  ? "Try adjusting your filters or browse all sale items."
-                  : "Check back soon for new deals!"}
+                  ? 'Try adjusting your filters or browse all sale items.'
+                  : 'Check back soon for new deals!'}
               </p>
               {hasActiveFilters ? (
                 <a
@@ -312,7 +331,7 @@ const structuredData = {
 <script>
   // Add View Transitions fallback detection
   if (!document.startViewTransition) {
-    document.documentElement.classList.add("no-view-transitions");
+    document.documentElement.classList.add('no-view-transitions');
   }
 </script>
 

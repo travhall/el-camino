@@ -1,7 +1,7 @@
 // /src/lib/square/types.ts
 
-import type { AppError } from "./errorUtils";
-import type { CatalogCustomAttributeValue } from "square-legacy";
+import type { AppError } from './errorUtils';
+import type { CatalogCustomAttributeValue } from 'square-legacy';
 
 export interface Money {
   amount: number; // Always in cents
@@ -131,7 +131,7 @@ export interface VariationConfig {
 export interface SquareApiConfig {
   accessToken: string;
   locationId: string;
-  environment: "sandbox" | "production";
+  environment: 'sandbox' | 'production';
   version: string;
 }
 
@@ -220,9 +220,9 @@ export interface CategoryResult {
  * Product availability state enum for consistent state management
  */
 export enum ProductAvailabilityState {
-  OUT_OF_STOCK = "out_of_stock", // Total inventory = 0
-  ALL_IN_CART = "all_in_cart", // Remaining = 0, total > 0
-  AVAILABLE = "available", // Remaining > 0
+  OUT_OF_STOCK = 'out_of_stock', // Total inventory = 0
+  ALL_IN_CART = 'all_in_cart', // Remaining = 0, total > 0
+  AVAILABLE = 'available', // Remaining > 0
 }
 
 /**
@@ -286,13 +286,13 @@ export function getAvailabilityInfo(
 export function getButtonText(state: ProductAvailabilityState): string {
   switch (state) {
     case ProductAvailabilityState.OUT_OF_STOCK:
-      return "Sold Out";
+      return 'Sold Out';
     case ProductAvailabilityState.ALL_IN_CART:
-      return "All in Cart";
+      return 'All in Cart';
     case ProductAvailabilityState.AVAILABLE:
-      return "Add to Cart";
+      return 'Add to Cart';
     default:
-      return "Add to Cart";
+      return 'Add to Cart';
   }
 }
 
@@ -304,15 +304,15 @@ export function getButtonText(state: ProductAvailabilityState): string {
 export function getStatusMessage(info: ProductAvailabilityInfo): string {
   switch (info.state) {
     case ProductAvailabilityState.OUT_OF_STOCK:
-      return "Out of Stock";
+      return 'Out of Stock';
     case ProductAvailabilityState.ALL_IN_CART:
       return `${info.inCart} in cart`;
     case ProductAvailabilityState.AVAILABLE:
       return info.remaining === 1
-        ? "1 remaining"
+        ? '1 remaining'
         : `${info.remaining} remaining`;
     default:
-      return "";
+      return '';
   }
 }
 
@@ -370,7 +370,7 @@ export interface ProductLoadingOptions {
   cursor?: string;
 }
 
-export type DisplayPreference = 24 | 48 | 96 | "all";
+export type DisplayPreference = 24 | 48 | 96 | 'all';
 
 /**
  * Navigation-specific interfaces that extend existing Category system
@@ -468,7 +468,7 @@ export interface FilterState {
 export function createFilterSlug(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
     .trim();
 }

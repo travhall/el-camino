@@ -1,9 +1,9 @@
 ---
 // src/components/ArticleGrid.astro
-import ArticleCard from "./ArticleCard.astro";
-import ArticleCardSkeleton from "./ArticleCardSkeleton.astro";
-import Sidebar from "./Sidebar.astro";
-import type { WordPressPost } from "@/lib/wordpress/types";
+import ArticleCard from './ArticleCard.astro';
+import ArticleCardSkeleton from './ArticleCardSkeleton.astro';
+import Sidebar from './Sidebar.astro';
+import type { WordPressPost } from '@/lib/wordpress/types';
 
 interface Props {
   posts: WordPressPost[];
@@ -11,7 +11,7 @@ interface Props {
   isLoading?: boolean;
   showSidebar?: boolean; // Legacy support for home page
   filterable?: boolean; // Enables filterable news page layout
-  view?: "grid" | "list"; // Controls grid vs list view for filterable mode
+  view?: 'grid' | 'list'; // Controls grid vs list view for filterable mode
 }
 
 const {
@@ -20,7 +20,7 @@ const {
   isLoading = !posts.length,
   showSidebar = false,
   filterable = false,
-  view = "grid",
+  view = 'grid',
 } = Astro.props;
 
 // If sidebar is shown (home page), limit to 6 posts
@@ -34,7 +34,7 @@ const getCardVariant = () => {
   if (filterable) {
     return view; // "grid" or "list"
   }
-  return "masonry"; // Home page masonry layout
+  return 'masonry'; // Home page masonry layout
 };
 
 // OPTIMIZATION: Conservative priority loading
@@ -43,17 +43,17 @@ const getCardVariant = () => {
 // News list: first image only (large cards)
 const shouldPrioritize = (index: number) => {
   if (!filterable) return index < 2; // Home page: first two (second card is actual LCP on mobile)
-  return view === "grid" ? index < 2 : index === 0; // News - more conservative
+  return view === 'grid' ? index < 2 : index === 0; // News - more conservative
 };
 
 // Get container classes based on layout mode
 const getContainerClasses = () => {
   if (filterable) {
-    if (view === "list") {
-      return "flex flex-col gap-1";
+    if (view === 'list') {
+      return 'flex flex-col gap-1';
     } else {
       // Grid view for news page - matches product category grid pattern
-      return "grid xs:grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-1";
+      return 'grid xs:grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-1';
     }
   }
   // Original masonry layout for home page
@@ -69,20 +69,21 @@ const getContainerClasses = () => {
   // eliminating the race. Confirmed via trace: shift fires ~7ms after the
   // featured image's network responseEnd, ~590ms after fonts are already
   // ready (ruling out font-swap). See plans/123-fix-homepage-masonry-cls.md.
-  return "article-grid grid grid-cols-1 justify-center md:grid-cols-6 3xl:grid-cols-8 md:auto-rows-auto md:auto-rows-[12vw] lg:auto-rows-[10vw] xl:auto-rows-[9vw] 3xl:auto-rows-[9.5vw] w-full gap-1 p-1 pb-0";
+  return 'article-grid grid grid-cols-1 justify-center md:grid-cols-6 3xl:grid-cols-8 md:auto-rows-auto md:auto-rows-[12vw] lg:auto-rows-[10vw] xl:auto-rows-[9vw] 3xl:auto-rows-[9.5vw] w-full gap-1 p-1 pb-0';
 };
 
 // Get skeleton variant for loading states
 const getSkeletonVariant = () => {
-  if (filterable && view === "list") {
-    return "list";
-  } else if (filterable && view === "grid") {
-    return "grid";
+  if (filterable && view === 'list') {
+    return 'list';
+  } else if (filterable && view === 'grid') {
+    return 'grid';
   }
-  return "masonry";
+  return 'masonry';
 };
 
 const currentPath = Astro.url.pathname;
+const nonce = Astro.locals.nonce;
 ---
 
 {
@@ -103,9 +104,9 @@ const currentPath = Astro.url.pathname;
 
 <div
   class={getContainerClasses()}
-  id={filterable ? "filterable-article-grid" : undefined}
-  role={filterable ? "feed" : undefined}
-  aria-label={filterable ? "Article listings" : undefined}
+  id={filterable ? 'filterable-article-grid' : undefined}
+  role={filterable ? 'feed' : undefined}
+  aria-label={filterable ? 'Article listings' : undefined}
   aria-busy="false"
 >
   {
@@ -169,6 +170,17 @@ const currentPath = Astro.url.pathname;
     )
   }
 </div>
+
+<script is:inline nonce={nonce}>
+  // Belt-and-braces safety net (plan 148): if the hoisted script above fails
+  // to run or load (bundling error, CSP issue), this unconditionally arms
+  // every masonry card after 2500ms so the homepage can never stay blank.
+  setTimeout(() => {
+    document
+      .querySelectorAll('.article-grid .article-card-wrapper')
+      .forEach((wrapper) => wrapper.classList.add('entrance-armed'));
+  }, 2500);
+</script>
 
 <style is:global>
   /* ─── Keyframes ─────────────────────────────────────────────────────────── */
@@ -248,19 +260,46 @@ const currentPath = Astro.url.pathname;
 
   /* ─── Masonry grid (home page) — CSS-driven, fires at parse time ─────────── */
 
-  /* Non-featured cards: staggered entrance, offset by 200ms so the header
-     animation (0.2s delay) leads before secondary cards begin appearing.
-     The featured card (card-entrance-ready) is excluded from this offset
-     so it starts immediately — it's the LCP element and must not be delayed. */
+  /* Non-featured cards: staggered entrance. The animation is paused (see
+     entrance-armed below) until each card's own image is ready, so the
+     stagger is now provided by network arrival order rather than a fixed
+     200ms header-lead offset — that offset was removed since it no longer
+     applies once each card starts on its own image's readiness (plan 148). */
   .article-grid .article-card-wrapper {
     animation: cardEntrance var(--card-transition-duration, 0.5s) ease-out both;
-    animation-delay: calc(200ms + var(--animation-order, 0) * var(--card-stagger-delay));
+    animation-delay: calc(
+      var(--animation-order, 0) * var(--card-stagger-delay)
+    );
+    animation-play-state: paused;
   }
 
   /* Featured card: starts immediately — LCP-critical, no offset applied */
   .article-grid .article-card-wrapper.card-entrance-ready {
-    animation: cardEntranceFeatured var(--card-entrance-priority-duration, 800ms) ease-out both;
+    animation: cardEntranceFeatured
+      var(--card-entrance-priority-duration, 800ms) ease-out both;
     animation-delay: 0s;
+    animation-play-state: paused;
+  }
+
+  /* The entrance animation is paused until JS marks the card armed (its image
+     is ready, or a bounded timeout elapsed). A CSS animation's clock otherwise
+     starts at first style resolution, so on a cold load the cards animated in
+     empty and the images popped in afterwards. `both` fill-mode holds the
+     `from` keyframe while paused, so a paused card is invisible-but-LCP-eligible
+     (opacity 0.001), exactly as before. */
+  .article-grid .article-card-wrapper.entrance-armed {
+    animation-play-state: running;
+  }
+
+  /* If JS never arms the cards (script error, JS disabled), reveal them.
+     Without this, a paused `both`-filled animation would hold opacity 0.001
+     forever and the page would look empty. */
+  @media (scripting: none) {
+    .article-grid .article-card-wrapper {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -291,9 +330,11 @@ const currentPath = Astro.url.pathname;
 </style>
 
 <script>
+  import { armCardsOnImageReady } from '@/lib/ui/cardEntrance';
+
   // Check for reduced motion preference
   const prefersReducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)",
+    '(prefers-reduced-motion: reduce)'
   ).matches;
 
   // Parse animation timing from CSS custom properties
@@ -301,36 +342,36 @@ const currentPath = Astro.url.pathname;
     const style = getComputedStyle(document.documentElement);
 
     const durationStr = style
-      .getPropertyValue("--card-transition-duration")
+      .getPropertyValue('--card-transition-duration')
       .trim();
     let duration = 300;
-    if (durationStr.includes("ms")) {
-      duration = parseInt(durationStr.replace("ms", ""));
-    } else if (durationStr.includes("s")) {
-      duration = parseFloat(durationStr.replace("s", "")) * 1000;
+    if (durationStr.includes('ms')) {
+      duration = parseInt(durationStr.replace('ms', ''));
+    } else if (durationStr.includes('s')) {
+      duration = parseFloat(durationStr.replace('s', '')) * 1000;
     }
 
-    const staggerStr = style.getPropertyValue("--card-stagger-delay").trim();
-    const staggerDelay = parseInt(staggerStr.replace("ms", "")) || 0;
+    const staggerStr = style.getPropertyValue('--card-stagger-delay').trim();
+    const staggerDelay = parseInt(staggerStr.replace('ms', '')) || 0;
 
-    const rowStaggerStr = style.getPropertyValue("--row-stagger-delay").trim();
-    const rowStaggerDelay = parseInt(rowStaggerStr.replace("ms", "")) || 0;
+    const rowStaggerStr = style.getPropertyValue('--row-stagger-delay').trim();
+    const rowStaggerDelay = parseInt(rowStaggerStr.replace('ms', '')) || 0;
 
     const priorityDurStr = style
-      .getPropertyValue("--card-entrance-priority-duration")
+      .getPropertyValue('--card-entrance-priority-duration')
       .trim();
     let priorityDuration = 800;
-    if (priorityDurStr.includes("ms")) {
-      priorityDuration = parseInt(priorityDurStr.replace("ms", ""));
-    } else if (priorityDurStr.includes("s")) {
-      priorityDuration = parseFloat(priorityDurStr.replace("s", "")) * 1000;
+    if (priorityDurStr.includes('ms')) {
+      priorityDuration = parseInt(priorityDurStr.replace('ms', ''));
+    } else if (priorityDurStr.includes('s')) {
+      priorityDuration = parseFloat(priorityDurStr.replace('s', '')) * 1000;
     }
 
     // Parse grid entrance delay (mobile: 250ms, desktop: 0ms)
     const entranceDelayStr = style
-      .getPropertyValue("--grid-entrance-delay")
+      .getPropertyValue('--grid-entrance-delay')
       .trim();
-    const entranceDelay = parseInt(entranceDelayStr.replace("ms", "")) || 0;
+    const entranceDelay = parseInt(entranceDelayStr.replace('ms', '')) || 0;
 
     return {
       duration,
@@ -345,12 +386,12 @@ const currentPath = Astro.url.pathname;
 
   // Calculate cards per row based on viewport and view
   function getCardsPerRow(view: string) {
-    if (view === "list") return 1; // List view is always single column
+    if (view === 'list') return 1; // List view is always single column
 
     const width = window.innerWidth;
 
     // Masonry layout (home page) - use grid column count
-    if (view === "masonry") {
+    if (view === 'masonry') {
       if (width >= 1536) return 8; // 3xl:grid-cols-8
       if (width >= 640) return 6; // sm:grid-cols-6
       return 1; // mobile - single column
@@ -371,7 +412,7 @@ const currentPath = Astro.url.pathname;
     // dependency on the image container — fixed by switching to absolute inset-0
     // on the masonry picture element. The opacity animation is safe to restore.
     const cards = document.querySelectorAll(
-      ".article-card-wrapper.opacity-0, .article-card-wrapper.card-entrance-ready",
+      '.article-card-wrapper.opacity-0, .article-card-wrapper.card-entrance-ready'
     );
 
     if (!cards.length) return;
@@ -380,22 +421,22 @@ const currentPath = Astro.url.pathname;
     if (prefersReducedMotion) {
       cards.forEach((card) => {
         const htmlCard = card as HTMLElement;
-        htmlCard.classList.remove("opacity-0");
-        htmlCard.classList.add("opacity-100");
+        htmlCard.classList.remove('opacity-0');
+        htmlCard.classList.add('opacity-100');
       });
       return;
     }
 
     // Get current view from first card (excluding sidebar)
     const firstCard = Array.from(cards).find(
-      (card) => !(card as HTMLElement).dataset.variant?.includes("sidebar"),
+      (card) => !(card as HTMLElement).dataset.variant?.includes('sidebar')
     ) as HTMLElement;
-    const view = firstCard?.dataset.variant || "grid";
+    const view = firstCard?.dataset.variant || 'grid';
     const cardsPerRow = getCardsPerRow(view);
 
     // For masonry (home page), animate all cards immediately without intersection observer
     // For grid/list (news page), use intersection observer to animate on scroll
-    const isMasonryLayout = view === "masonry";
+    const isMasonryLayout = view === 'masonry';
 
     if (isMasonryLayout) {
       // CSS animation handles the masonry entrance — fires at parse time,
@@ -409,15 +450,15 @@ const currentPath = Astro.url.pathname;
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const card = entry.target as HTMLElement;
-            const index = parseInt(card.dataset.initialIndex || "0");
-            const isSidebar = card.dataset.variant === "sidebar";
+            const index = parseInt(card.dataset.initialIndex || '0');
+            const isSidebar = card.dataset.variant === 'sidebar';
 
             // Calculate animation order
             let animationOrder: number;
             if (isSidebar) {
               // Sidebar animates after the article cards it appears near
               animationOrder = 9;
-            } else if (view === "list") {
+            } else if (view === 'list') {
               // Sequential stagger for list view
               animationOrder = index * 1.5;
             } else {
@@ -429,16 +470,16 @@ const currentPath = Astro.url.pathname;
 
             // Set CSS custom property for animation delay
             card.style.setProperty(
-              "--animation-order",
-              animationOrder.toString(),
+              '--animation-order',
+              animationOrder.toString()
             );
 
             // Add animating class for temporary will-change
-            card.classList.add("animating");
+            card.classList.add('animating');
 
             // Trigger CSS animation
-            card.classList.remove("opacity-0");
-            card.classList.add("opacity-100");
+            card.classList.remove('opacity-0');
+            card.classList.add('opacity-100');
 
             // Remove will-change after animation completes
             const duration = ANIMATION_CONFIG.duration;
@@ -446,7 +487,7 @@ const currentPath = Astro.url.pathname;
               duration + animationOrder * ANIMATION_CONFIG.staggerDelay;
 
             setTimeout(() => {
-              card.classList.remove("animating");
+              card.classList.remove('animating');
             }, totalAnimationTime);
 
             // Stop observing this card
@@ -456,8 +497,8 @@ const currentPath = Astro.url.pathname;
       },
       {
         threshold: 0.1,
-        rootMargin: "200px",
-      },
+        rootMargin: '200px',
+      }
     );
 
     // Observe all cards
@@ -465,15 +506,20 @@ const currentPath = Astro.url.pathname;
   }
 
   // Initialize on page load
-  document.addEventListener("astro:page-load", () => {
+  document.addEventListener('astro:page-load', () => {
     // Check for both filterable and home page cards
-    const filterableGrid = document.getElementById("filterable-article-grid");
-    const homePageCards = document.querySelectorAll(".article-card-wrapper");
+    const filterableGrid = document.getElementById('filterable-article-grid');
+    const homePageCards = document.querySelectorAll('.article-card-wrapper');
 
     if (filterableGrid) {
       // Make filterable grid visible
-      filterableGrid.style.opacity = "1";
+      filterableGrid.style.opacity = '1';
     }
+
+    // Arm masonry cards' entrance animation once each card's own image is
+    // ready (or after a bounded timeout). Selector is scoped to `.article-grid`
+    // so this has no effect on the filterable (news) grid. See plan 148.
+    armCardsOnImageReady(document, 1200);
 
     // Initialize animations for any cards found
     if (homePageCards.length > 0) {
@@ -489,8 +535,8 @@ const currentPath = Astro.url.pathname;
     }
 
     // SIMPLIFIED: Basic lazy loading without heavy intersection observer
-    const lazyImages = document.querySelectorAll("img[data-src]");
-    if (lazyImages.length > 0 && "IntersectionObserver" in window) {
+    const lazyImages = document.querySelectorAll('img[data-src]');
+    if (lazyImages.length > 0 && 'IntersectionObserver' in window) {
       const imageObserver = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
@@ -498,13 +544,13 @@ const currentPath = Astro.url.pathname;
               const img = entry.target as HTMLImageElement;
               if (img.dataset.src) {
                 img.src = img.dataset.src;
-                img.removeAttribute("data-src");
+                img.removeAttribute('data-src');
                 imageObserver.unobserve(img);
               }
             }
           });
         },
-        { rootMargin: "100px" },
+        { rootMargin: '100px' }
       );
 
       if (lazyImages.length > 6) {
@@ -514,7 +560,7 @@ const currentPath = Astro.url.pathname;
           const imgEl = img as HTMLImageElement;
           if (imgEl.dataset.src) {
             imgEl.src = imgEl.dataset.src;
-            imgEl.removeAttribute("data-src");
+            imgEl.removeAttribute('data-src');
           }
         });
       }
@@ -522,7 +568,7 @@ const currentPath = Astro.url.pathname;
   });
 
   // Listen for articleGridReady event from FilterCoordinator
-  window.addEventListener("articleGridReady", () => {
+  window.addEventListener('articleGridReady', () => {
     initializeArticleAnimations();
   });
 
@@ -530,17 +576,17 @@ const currentPath = Astro.url.pathname;
   // when cached may still have opacity-0 or card-entrance-ready without
   // opacity-100. Show them immediately without a transition so the user
   // doesn't see half-visible cards.
-  window.addEventListener("pageshow", (e) => {
+  window.addEventListener('pageshow', (e) => {
     if (e.persisted) {
       const cards = document.querySelectorAll<HTMLElement>(
-        ".article-card-wrapper.opacity-0, .article-card-wrapper.card-entrance-ready:not(.opacity-100)",
+        '.article-card-wrapper.opacity-0, .article-card-wrapper.card-entrance-ready:not(.opacity-100)'
       );
       cards.forEach((card) => {
-        card.style.transition = "none";
-        card.classList.remove("opacity-0");
-        card.classList.add("opacity-100");
+        card.style.transition = 'none';
+        card.classList.remove('opacity-0');
+        card.classList.add('opacity-100');
         requestAnimationFrame(() => {
-          card.style.transition = "";
+          card.style.transition = '';
         });
       });
     }

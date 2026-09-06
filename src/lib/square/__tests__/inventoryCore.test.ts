@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 
 vi.mock('../client', () => ({
   squareClient: {
@@ -48,6 +48,11 @@ function batchResult(data: InventoryCount[]): BatchGetCountsResult {
 function getResult(data: InventoryCount[]): GetResult {
   return { data } as unknown as GetResult;
 }
+
+beforeAll(() => {
+  (import.meta.env as Record<string, unknown>).PUBLIC_SQUARE_LOCATION_ID =
+    'test-loc';
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -123,6 +128,43 @@ describe('fetchInventoryCounts', () => {
     expect(result.failed).toEqual(new Set(['v2']));
   });
 
+  it('scopes the per-ID fallback to the configured location', async () => {
+    vi.mocked(squareClient.inventory.batchGetCounts).mockRejectedValue(
+      new Error('batch endpoint down')
+    );
+    vi.mocked(squareClient.inventory.get).mockResolvedValue(
+      getResult([{ state: 'IN_STOCK', quantity: '7' }])
+    );
+
+    await fetchInventoryCounts(['v1']);
+
+    expect(squareClient.inventory.get).toHaveBeenCalledWith({
+      catalogObjectId: 'v1',
+      locationIds: 'test-loc',
+    });
+  });
+
+  it("returns the configured location's quantity, not another location's, from a multi-location account", async () => {
+    vi.mocked(squareClient.inventory.batchGetCounts).mockRejectedValue(
+      new Error('batch endpoint down')
+    );
+    // Stands in for Square's real behavior: the API scopes its response to
+    // whatever `locationIds` the request carries. If the fallback stopped
+    // passing it, this mock would return the first (wrong) location's row.
+    const perLocationStock: Record<string, InventoryCount[]> = {
+      'other-loc': [{ state: 'IN_STOCK', quantity: '999' }],
+      'test-loc': [{ state: 'IN_STOCK', quantity: '7' }],
+    };
+    vi.mocked(squareClient.inventory.get).mockImplementation(
+      async ({ locationIds }) =>
+        getResult(perLocationStock[locationIds as string] ?? [])
+    );
+
+    const result = await fetchInventoryCounts(['v1']);
+
+    expect(result.counts).toEqual({ v1: 7 });
+  });
+
   it('does not cache IDs that could not be resolved at all', async () => {
     vi.mocked(squareClient.inventory.batchGetCounts).mockRejectedValue(
       new Error('down')
@@ -149,6 +191,29 @@ describe('fetchInventoryCounts', () => {
 
     expect(result.counts).toEqual({});
     expect(result.failed).toEqual(new Set(['v1', 'v2', 'v3']));
+  });
+
+  it('awaits the cache write before returning, so a caller never observes an in-flight write', async () => {
+    vi.mocked(squareClient.inventory.batchGetCounts).mockResolvedValue(
+      batchResult([
+        { catalogObjectId: 'v1', state: 'IN_STOCK', quantity: '10' },
+      ])
+    );
+
+    let setResolved = false;
+    mockInventoryCacheSet.mockImplementation(
+      () =>
+        new Promise<void>((resolve) =>
+          setTimeout(() => {
+            setResolved = true;
+            resolve();
+          }, 0)
+        )
+    );
+
+    await fetchInventoryCounts(['v1']);
+
+    expect(setResolved).toBe(true);
   });
 
   it('deduplicates identical concurrent requests for the same ID set', async () => {

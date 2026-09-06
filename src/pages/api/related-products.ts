@@ -19,8 +19,6 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    // console.log(`[related-products] Fetching for product: ${productId}`);
-
     // Fetch all products (this will be cached)
     const allProducts = await fetchProducts();
 
@@ -39,10 +37,6 @@ export const GET: APIRoute = async ({ request }) => {
       maxResults,
       excludeOutOfStock: false,
     });
-
-    // console.log(
-    //   `[related-products] Found ${result.products.length} related products`
-    // );
 
     const response = new Response(
       JSON.stringify({ products: result.products }),

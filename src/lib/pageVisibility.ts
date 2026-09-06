@@ -2,22 +2,29 @@
 // Generic getter/setter for a boolean page-visibility toggle stored in
 // Netlify Blobs. Defaults to true (visible) until explicitly hidden.
 
-import { getStore } from "@netlify/blobs";
+import { getStore } from '@netlify/blobs';
 
 function store() {
-  return getStore({ name: "shop-config", consistency: "strong" });
+  return getStore({ name: 'shop-config', consistency: 'strong' });
 }
 
 export async function getPageVisible(blobKey: string): Promise<boolean> {
   try {
-    const value = (await store().get(blobKey, { type: "json" })) as boolean | null;
-    if (typeof value === "boolean") return value;
+    const value = (await store().get(blobKey, { type: 'json' })) as
+      boolean | null;
+    if (typeof value === 'boolean') return value;
   } catch (e) {
-    console.error("[pageVisibility] Failed to read page visibility from blob store, defaulting to visible:", e);
+    console.error(
+      '[pageVisibility] Failed to read page visibility from blob store, defaulting to visible:',
+      e
+    );
   }
   return true;
 }
 
-export async function setPageVisible(blobKey: string, visible: boolean): Promise<void> {
+export async function setPageVisible(
+  blobKey: string,
+  visible: boolean
+): Promise<void> {
   await store().setJSON(blobKey, visible);
 }

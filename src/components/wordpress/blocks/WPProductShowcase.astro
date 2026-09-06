@@ -1,11 +1,11 @@
 ---
 // src/components/wordpress/blocks/WPProductShowcase.astro - SIMPLE CAROUSEL FIX
-import BlogProductCard from "@/components/wordpress/blocks/BlogProductCard.astro";
-import { fetchProducts } from "@/lib/square/client";
+import BlogProductCard from '@/components/wordpress/blocks/BlogProductCard.astro';
+import { fetchProducts } from '@/lib/square/client';
 
 interface Props {
   productSkus: string[];
-  layout?: "grid" | "carousel" | "list";
+  layout?: 'grid' | 'carousel' | 'list';
   columns?: number;
   title?: string;
   description?: string;
@@ -14,10 +14,10 @@ interface Props {
 
 const {
   productSkus = [],
-  layout = "grid",
+  layout = 'grid',
   columns = 3,
-  title = "",
-  description = "",
+  title = '',
+  description = '',
   fallbackIds = [],
 } = Astro.props;
 
@@ -59,18 +59,18 @@ try {
       .filter(Boolean);
   }
 } catch (error) {
-  console.error("Error fetching products:", error);
-  errors.push("Failed to load product data");
+  console.error('Error fetching products:', error);
+  errors.push('Failed to load product data');
 }
 
 // Simple grid classes
 const gridClasses = {
-  1: "grid-cols-1",
-  2: "grid-cols-1 sm:grid-cols-2",
-  3: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3",
-  4: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
-  5: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
-  6: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6",
+  1: 'grid-cols-1',
+  2: 'grid-cols-1 sm:grid-cols-2',
+  3: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3',
+  4: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+  5: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
+  6: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6',
 };
 
 const gridClass =
@@ -96,7 +96,7 @@ const gridClass =
     products.length > 0 && (
       <div>
         {/* GRID LAYOUT */}
-        {layout === "grid" && (
+        {layout === 'grid' && (
           <div class={`grid ${gridClass} gap-1`}>
             {products.map((product) => (
               <BlogProductCard product={product} variant="compact" />
@@ -105,7 +105,7 @@ const gridClass =
         )}
 
         {/* CAROUSEL LAYOUT */}
-        {layout === "carousel" && (
+        {layout === 'carousel' && (
           <div class="carousel-container">
             <div class="carousel-scroll snap-x">
               {products.map((product) => (
@@ -118,7 +118,7 @@ const gridClass =
         )}
 
         {/* LIST LAYOUT */}
-        {layout === "list" && (
+        {layout === 'list' && (
           <div class="space-y-1">
             {products.map((product) => (
               <BlogProductCard product={product} variant="list" />

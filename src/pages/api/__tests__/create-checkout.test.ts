@@ -27,6 +27,9 @@ vi.mock('@/lib/square/client', () => ({
         create: vi.fn(),
       },
     },
+    catalog: {
+      batchGet: vi.fn(),
+    },
   },
 }));
 
@@ -36,6 +39,7 @@ import { checkBulkInventory } from '@/lib/square/inventory';
 import { getAuthoritativePricing } from '@/lib/square/pricing';
 import { squareClient } from '@/lib/square/client';
 import { checkoutRetryClient } from '@/lib/square/apiRetry';
+import { calculateShippingRate } from '@/lib/config/shipping';
 import { getShopHoursRaw } from '@/lib/shopHours';
 import type { CartItem } from '@/lib/cart/types';
 import type { ShopHoursEntry } from '@/lib/shopHours';
@@ -50,8 +54,48 @@ const getAuthoritativePricingMock =
   getAuthoritativePricing as unknown as ReturnType<typeof vi.fn>;
 const createPaymentLinkMock = squareClient.checkout.paymentLinks
   .create as unknown as ReturnType<typeof vi.fn>;
+const catalogBatchGetMock = squareClient.catalog
+  .batchGet as unknown as ReturnType<typeof vi.fn>;
+const calculateShippingRateMock =
+  calculateShippingRate as unknown as ReturnType<typeof vi.fn>;
 
 type LineItemLike = { catalogObjectId?: string; quantity?: string };
+
+/** A catalog custom-attribute value shaped like extractIsGiftCard expects. */
+function giftCardAttr(isGiftCard: boolean) {
+  return {
+    __isGiftCard: {
+      name: 'isGiftCard',
+      type: 'BOOLEAN',
+      booleanValue: isGiftCard,
+    },
+  };
+}
+
+/**
+ * Build a squareClient.catalog.batchGet response for a set of variations,
+ * each attributed to a parent ITEM whose customAttributeValues confirm (or
+ * deny) gift-card status — mirroring what includeRelatedObjects returns.
+ */
+function makeCatalogBatchGetResponse(
+  variations: { variationId: string; itemId: string; isGiftCard: boolean }[]
+) {
+  const itemIds = [...new Set(variations.map((v) => v.itemId))];
+  return {
+    objects: variations.map((v) => ({
+      id: v.variationId,
+      type: 'ITEM_VARIATION',
+      itemVariationData: { itemId: v.itemId },
+    })),
+    relatedObjects: itemIds.map((itemId) => ({
+      id: itemId,
+      type: 'ITEM',
+      customAttributeValues: giftCardAttr(
+        variations.find((v) => v.itemId === itemId)!.isGiftCard
+      ),
+    })),
+  };
+}
 
 let ipCounter = 0;
 function nextIp(): string {
@@ -93,6 +137,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   checkoutRetryClient.reset();
   getAuthoritativePricingMock.mockResolvedValue({});
+  // Default: the catalog confirms nothing as a gift card. Tests that need a
+  // catalog-confirmed gift card override this explicitly.
+  catalogBatchGetMock.mockResolvedValue({ objects: [], relatedObjects: [] });
   createPaymentLinkMock.mockResolvedValue({
     paymentLink: {
       url: 'https://square.link/checkout/abc',
@@ -172,7 +219,7 @@ describe('POST /api/create-checkout', () => {
     } as unknown as Parameters<typeof POST>[0]);
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe('No items provided');
+    expect(json.error).toBe('Invalid request');
   });
 
   it('returns 400 when shipping method has no shippingAddress', async () => {
@@ -184,7 +231,7 @@ describe('POST /api/create-checkout', () => {
     } as unknown as Parameters<typeof POST>[0]);
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe('Shipping address required');
+    expect(json.error).toBe('Invalid request');
   });
 
   it('returns 400 when pickup method has no pickupContact', async () => {
@@ -196,7 +243,21 @@ describe('POST /api/create-checkout', () => {
     } as unknown as Parameters<typeof POST>[0]);
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe('Pick up contact required');
+    expect(json.error).toBe('Invalid request');
+  });
+
+  it('returns 400 and never calls Square when the request body is invalid', async () => {
+    const res = await POST({
+      request: makeRequest({
+        items: [makeItem({ quantity: -1 })],
+        fulfillmentMethod: 'shipping',
+        shippingAddress: SHIPPING_ADDRESS,
+      }),
+    } as unknown as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe('Invalid request');
+    expect(createPaymentLinkMock).not.toHaveBeenCalled();
   });
 
   it('removes out-of-stock items and clamps over-quantity items', async () => {
@@ -220,6 +281,11 @@ describe('POST /api/create-checkout', () => {
     expect(json.stockMessage).toContain('Clamped Item');
     expect(json.stockMessage).toContain('10 → 5');
 
+    // The client needs the adjusted cart keyed by variationId (not title,
+    // which is not a stable identifier) to reconcile local state.
+    expect(json.removedVariationIds).toEqual(['var-1']);
+    expect(json.adjustedCart).toEqual([{ variationId: 'var-2', quantity: 5 }]);
+
     // Confirm the order actually sent to Square only contains the clamped quantity
     const createArgs = createPaymentLinkMock.mock.calls[0][0];
     const lineItems = createArgs.order.lineItems;
@@ -232,8 +298,15 @@ describe('POST /api/create-checkout', () => {
     expect(clamped.quantity).toBe('5');
   });
 
-  it('lets gift card items bypass inventory checks entirely', async () => {
+  it('lets a catalog-confirmed gift card bypass inventory checks and still check out', async () => {
     checkBulkInventoryMock.mockResolvedValue({});
+    // Catalog confirms 'gc-1' is a gift card via its parent item's attribute —
+    // this is what actually grants the bypass, not the client's flag.
+    catalogBatchGetMock.mockResolvedValue(
+      makeCatalogBatchGetResponse([
+        { variationId: 'gc-1', itemId: 'item-gc', isGiftCard: true },
+      ])
+    );
     const items = [
       makeItem({ variationId: 'gc-1', isGiftCard: true, quantity: 1 }),
     ];
@@ -254,6 +327,143 @@ describe('POST /api/create-checkout', () => {
         (li: LineItemLike) => li.catalogObjectId === 'gc-1'
       )
     ).toBe(true);
+  });
+
+  describe('server-derived gift-card status', () => {
+    it('sends a forged isGiftCard item through inventory and prices it from the catalog, not the client', async () => {
+      // Regression proof for plan 152: an attacker sends isGiftCard:true and
+      // an inflated price for a variation the catalog does NOT confirm as a
+      // gift card. The item must go through the normal inventory path, and
+      // the shipping subtotal must be computed from the catalog price (10),
+      // never the forged client price (999).
+      checkBulkInventoryMock.mockResolvedValue({ 'var-1': 5 });
+      getAuthoritativePricingMock.mockResolvedValue({
+        'var-1': { regularPrice: 10, effectivePrice: 10 },
+      });
+      catalogBatchGetMock.mockResolvedValue(
+        makeCatalogBatchGetResponse([
+          { variationId: 'var-1', itemId: 'item-1', isGiftCard: false },
+        ])
+      );
+      const items = [
+        makeItem({
+          variationId: 'var-1',
+          isGiftCard: true,
+          price: 999,
+          quantity: 1,
+        }),
+      ];
+
+      const res = await POST({
+        request: makeRequest({
+          items,
+          fulfillmentMethod: 'shipping',
+          shippingAddress: SHIPPING_ADDRESS,
+        }),
+      } as unknown as Parameters<typeof POST>[0]);
+
+      expect(res.status).toBe(200);
+      // Not treated as a gift card -> inventory IS checked for this variation.
+      expect(checkBulkInventoryMock).toHaveBeenCalledWith(['var-1']);
+      // Shipping is computed from the real catalog subtotal (10), never the
+      // forged client price (999) — the exact free-shipping bypass this fixes.
+      expect(calculateShippingRateMock).toHaveBeenCalledWith(10);
+    });
+
+    it('still skips inventory and checks out a genuine catalog-confirmed gift card', async () => {
+      checkBulkInventoryMock.mockResolvedValue({});
+      catalogBatchGetMock.mockResolvedValue(
+        makeCatalogBatchGetResponse([
+          { variationId: 'gc-real', itemId: 'item-gc', isGiftCard: true },
+        ])
+      );
+      const items = [
+        makeItem({ variationId: 'gc-real', isGiftCard: true, quantity: 1 }),
+      ];
+
+      const res = await POST({
+        request: makeRequest({
+          items,
+          fulfillmentMethod: 'shipping',
+          shippingAddress: SHIPPING_ADDRESS,
+        }),
+      } as unknown as Parameters<typeof POST>[0]);
+
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(checkBulkInventoryMock).not.toHaveBeenCalledWith(['gc-real']);
+      const createArgs = createPaymentLinkMock.mock.calls[0][0];
+      expect(
+        createArgs.order.lineItems.some(
+          (li: LineItemLike) => li.catalogObjectId === 'gc-real'
+        )
+      ).toBe(true);
+    });
+
+    it('contributes 0 to the subtotal for a variation with no server price, never the client price', async () => {
+      // Variable-price gift cards have no fixed catalog price, so
+      // getAuthoritativePricing omits them. The subtotal must NOT fall back
+      // to the client-supplied price.
+      checkBulkInventoryMock.mockResolvedValue({});
+      getAuthoritativePricingMock.mockResolvedValue({});
+      catalogBatchGetMock.mockResolvedValue(
+        makeCatalogBatchGetResponse([
+          { variationId: 'gc-var', itemId: 'item-gc', isGiftCard: true },
+        ])
+      );
+      const items = [
+        makeItem({
+          variationId: 'gc-var',
+          isGiftCard: true,
+          price: 999,
+          quantity: 1,
+        }),
+      ];
+
+      const res = await POST({
+        request: makeRequest({
+          items,
+          fulfillmentMethod: 'shipping',
+          shippingAddress: SHIPPING_ADDRESS,
+        }),
+      } as unknown as Parameters<typeof POST>[0]);
+
+      expect(res.status).toBe(200);
+      expect(calculateShippingRateMock).toHaveBeenCalledWith(0);
+    });
+
+    it('removes an out-of-stock item even when the client flags it isGiftCard, once the catalog denies it', async () => {
+      checkBulkInventoryMock.mockResolvedValue({ 'var-1': 0 });
+      getAuthoritativePricingMock.mockResolvedValue({
+        'var-1': { regularPrice: 10, effectivePrice: 10 },
+      });
+      catalogBatchGetMock.mockResolvedValue(
+        makeCatalogBatchGetResponse([
+          { variationId: 'var-1', itemId: 'item-1', isGiftCard: false },
+        ])
+      );
+      const items = [
+        makeItem({
+          variationId: 'var-1',
+          title: 'Forged Gift Card Item',
+          isGiftCard: true,
+          quantity: 1,
+        }),
+      ];
+
+      const res = await POST({
+        request: makeRequest({
+          items,
+          fulfillmentMethod: 'shipping',
+          shippingAddress: SHIPPING_ADDRESS,
+        }),
+      } as unknown as Parameters<typeof POST>[0]);
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.removedItems).toContain('Forged Gift Card Item');
+    });
   });
 
   it('rate-limits after 10 requests from the same IP, returning 429 on the 11th', async () => {
