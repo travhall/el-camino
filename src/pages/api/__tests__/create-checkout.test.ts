@@ -172,7 +172,7 @@ describe('POST /api/create-checkout', () => {
     } as unknown as Parameters<typeof POST>[0]);
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe('No items provided');
+    expect(json.error).toBe('Invalid request');
   });
 
   it('returns 400 when shipping method has no shippingAddress', async () => {
@@ -184,7 +184,7 @@ describe('POST /api/create-checkout', () => {
     } as unknown as Parameters<typeof POST>[0]);
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe('Shipping address required');
+    expect(json.error).toBe('Invalid request');
   });
 
   it('returns 400 when pickup method has no pickupContact', async () => {
@@ -196,7 +196,21 @@ describe('POST /api/create-checkout', () => {
     } as unknown as Parameters<typeof POST>[0]);
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe('Pick up contact required');
+    expect(json.error).toBe('Invalid request');
+  });
+
+  it('returns 400 and never calls Square when the request body is invalid', async () => {
+    const res = await POST({
+      request: makeRequest({
+        items: [makeItem({ quantity: -1 })],
+        fulfillmentMethod: 'shipping',
+        shippingAddress: SHIPPING_ADDRESS,
+      }),
+    } as unknown as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe('Invalid request');
+    expect(createPaymentLinkMock).not.toHaveBeenCalled();
   });
 
   it('removes out-of-stock items and clamps over-quantity items', async () => {

@@ -19,7 +19,7 @@ import {
   buildPickupFulfillment,
 } from '@/lib/checkout/fulfillmentBuilders';
 import { buildLineItems } from '@/lib/checkout/lineItems';
-import type { ShippingAddress, PickupContact } from '@/lib/checkout/types';
+import { validateCheckoutBody } from '@/lib/checkout/validate';
 
 // 10 checkout attempts per 5 min per IP — generous for real users, blocks scripts
 const checkoutLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
@@ -37,43 +37,27 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     const body = await request.json();
+    const validation = validateCheckoutBody(body);
+    if (!validation.ok) {
+      console.error(
+        '[create-checkout] Invalid request body:',
+        validation.errors.join('; ')
+      );
+      return new Response(JSON.stringify({ error: 'Invalid request' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     const {
       items,
-      fulfillmentMethod = 'shipping',
+      fulfillmentMethod,
       shippingAddress,
       pickupContact,
       checkoutKey,
-    } = body as {
-      items: CartItem[];
-      fulfillmentMethod?: 'shipping' | 'pickup';
-      shippingAddress?: ShippingAddress;
-      pickupContact?: PickupContact;
-      checkoutKey?: string;
-    };
+    } = validation.value;
 
     // Stable idempotency key — Square deduplicates retries with the same key.
     const idempotencyKey = checkoutKey ?? crypto.randomUUID();
-
-    if (!items?.length) {
-      return new Response(JSON.stringify({ error: 'No items provided' }), {
-        status: 400,
-      });
-    }
-
-    // Validate fulfillment details
-    if (fulfillmentMethod === 'shipping' && !shippingAddress) {
-      return new Response(
-        JSON.stringify({ error: 'Shipping address required' }),
-        { status: 400 }
-      );
-    }
-
-    if (fulfillmentMethod === 'pickup' && !pickupContact) {
-      return new Response(
-        JSON.stringify({ error: 'Pick up contact required' }),
-        { status: 400 }
-      );
-    }
 
     // Validate inventory before checkout
     // Skip gift cards — they have no tracked inventory and are always available

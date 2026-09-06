@@ -268,7 +268,7 @@ your row when done.
 
 | 166  | Make cache writes durable and inventory invalidation fleet-visible | P1 | M | MED | — | bug | TODO |
 | 167  | Scope the single-item inventory fallback to the configured location | P2 | S | LOW | — | bug | TODO |
-| 168  | Validate the `/api/create-checkout` request body | P2 | M | LOW | 152 (soft) | security | TODO |
+| 168  | Validate the `/api/create-checkout` request body | P2 | M | LOW | 152 (soft) | security | DONE (hand-rolled validator — no zod added, per repo's existing hand-rolled pattern in back-in-stock.ts and to avoid new supply-chain surface; plan 152 was still TODO at execution time but its scope, gift-card/subtotal trust, is untouched here, so no conflict. Verified against Square sandbox: both shipping and pickup checkout succeed with realistic data; a malicious body is rejected 400 with a generic message before any Square call, with the specific reason logged server-side.) |
 | 169  | Make admin sessions revocable | P2 | S | LOW | — | security | TODO |
 | 170  | Route the main WordPress content path through the sanitizer | P3 | S | LOW | — | security | TODO |
 | 171  | Reconcile the client cart when the server trims items at checkout | P2 | M | LOW | 152 (soft) | bug | TODO |
