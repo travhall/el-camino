@@ -6,7 +6,7 @@
  * exercised end-to-end through the real fetchAllCatalogItems implementation.
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const { mockCatalogList, mockSlugCacheGet, mockSlugCacheSet } = vi.hoisted(
   () => ({
@@ -16,7 +16,7 @@ const { mockCatalogList, mockSlugCacheGet, mockSlugCacheSet } = vi.hoisted(
   })
 );
 
-vi.mock("../squareInstance", () => ({
+vi.mock('../squareInstance', () => ({
   squareClient: {
     catalog: {
       list: mockCatalogList,
@@ -25,7 +25,7 @@ vi.mock("../squareInstance", () => ({
   validateEnvironment: vi.fn(),
 }));
 
-vi.mock("../../cache/blobCache", () => ({
+vi.mock('../../cache/blobCache', () => ({
   slugCache: {
     get: mockSlugCacheGet,
     set: mockSlugCacheSet,
@@ -34,10 +34,10 @@ vi.mock("../../cache/blobCache", () => ({
 }));
 
 // Import after mocks
-import { slugResolver } from "../slugResolver";
+import { slugResolver } from '../slugResolver';
 
 function item(id: string, name: string) {
-  return { type: "ITEM", id, itemData: { name } };
+  return { type: 'ITEM', id, itemData: { name } };
 }
 
 beforeEach(() => {
@@ -46,89 +46,86 @@ beforeEach(() => {
   mockSlugCacheSet.mockResolvedValue(undefined);
 });
 
-describe("slugResolver buildSlugMap pagination", () => {
-  it("includes items from both pages of a two-page catalog", async () => {
+describe('slugResolver buildSlugMap pagination', () => {
+  it('includes items from both pages of a two-page catalog', async () => {
     mockCatalogList
       .mockResolvedValueOnce({
-        data: [item("1", "First Item")],
-        response: { cursor: "page-2-cursor" },
+        data: [item('1', 'First Item')],
+        response: { cursor: 'page-2-cursor' },
       })
       .mockResolvedValueOnce({
-        data: [item("2", "Second Item")],
+        data: [item('2', 'Second Item')],
         response: { cursor: undefined },
       });
 
-    const id = await slugResolver.resolve("second-item");
+    const id = await slugResolver.resolve('second-item');
 
     expect(mockCatalogList).toHaveBeenCalledTimes(2);
     expect(mockCatalogList.mock.calls[1][0]).toMatchObject({
-      cursor: "page-2-cursor",
+      cursor: 'page-2-cursor',
     });
-    expect(id).toBe("2");
+    expect(id).toBe('2');
     const cachedMap = mockSlugCacheSet.mock.calls[0][1];
     expect(cachedMap).toEqual({
-      "first-item": "1",
-      "second-item": "2",
+      'first-item': '1',
+      'second-item': '2',
     });
   });
 
-  it("behaves unchanged for a single-page catalog", async () => {
+  it('behaves unchanged for a single-page catalog', async () => {
     mockCatalogList.mockResolvedValueOnce({
-      data: [item("1", "Only Item")],
+      data: [item('1', 'Only Item')],
       response: { cursor: undefined },
     });
 
-    const id = await slugResolver.resolve("only-item");
+    const id = await slugResolver.resolve('only-item');
 
     expect(mockCatalogList).toHaveBeenCalledTimes(1);
-    expect(id).toBe("1");
+    expect(id).toBe('1');
   });
 
-  it("stops at MAX_CATALOG_PAGES and warns", async () => {
+  it('stops at MAX_CATALOG_PAGES and warns', async () => {
     mockCatalogList.mockImplementation(() =>
       Promise.resolve({
         data: [],
-        response: { cursor: "always-more" },
+        response: { cursor: 'always-more' },
       })
     );
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    await slugResolver.resolve("anything");
+    await slugResolver.resolve('anything');
 
     expect(mockCatalogList).toHaveBeenCalledTimes(20);
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Hit max requests limit")
+      expect.stringContaining('Hit max requests limit')
     );
 
     warnSpy.mockRestore();
   });
 
-  it("skips an item without itemData.name", async () => {
+  it('skips an item without itemData.name', async () => {
     mockCatalogList.mockResolvedValueOnce({
-      data: [
-        { type: "ITEM", id: "1", itemData: {} },
-        item("2", "Named Item"),
-      ],
+      data: [{ type: 'ITEM', id: '1', itemData: {} }, item('2', 'Named Item')],
       response: { cursor: undefined },
     });
 
-    const namedId = await slugResolver.resolve("named-item");
-    expect(namedId).toBe("2");
+    const namedId = await slugResolver.resolve('named-item');
+    expect(namedId).toBe('2');
 
     const cachedMap = mockSlugCacheSet.mock.calls[0][1];
-    expect(Object.values(cachedMap)).not.toContain("1");
+    expect(Object.values(cachedMap)).not.toContain('1');
   });
 
-  it("returns an empty map and does not throw on a Square error mid-pagination", async () => {
+  it('returns an empty map and does not throw on a Square error mid-pagination', async () => {
     mockCatalogList
       .mockResolvedValueOnce({
-        data: [item("1", "First Item")],
-        response: { cursor: "page-2-cursor" },
+        data: [item('1', 'First Item')],
+        response: { cursor: 'page-2-cursor' },
       })
-      .mockRejectedValueOnce(new Error("Square API error"));
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      .mockRejectedValueOnce(new Error('Square API error'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const id = await slugResolver.resolve("first-item");
+    const id = await slugResolver.resolve('first-item');
 
     expect(id).toBeNull();
     expect(mockSlugCacheSet).not.toHaveBeenCalled();
