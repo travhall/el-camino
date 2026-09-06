@@ -235,6 +235,34 @@ describe('WordPress API', () => {
 
       expect(posts).toEqual([]);
     });
+
+    it('should categorize an AbortSignal.timeout rejection as a timeout, not an unhandled throw', async () => {
+      // Matches what `fetch(..., { signal: AbortSignal.timeout(ms) })` actually
+      // rejects with on a real timeout (verified against Node's fetch/undici):
+      // a DOMException named "TimeoutError" whose message contains "timeout".
+      mockFetch.mockRejectedValueOnce(
+        new DOMException(
+          'The operation was aborted due to timeout',
+          'TimeoutError'
+        )
+      );
+
+      const posts = await getPosts();
+
+      expect(posts).toEqual([]);
+    });
+
+    it('should pass an AbortSignal.timeout signal on the WordPress fetch', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ posts: [] }),
+      });
+
+      await getPosts();
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(options.signal).toBeInstanceOf(AbortSignal);
+    });
   });
 
   describe('getPages', () => {
