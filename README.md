@@ -2,7 +2,7 @@
 
 A modern e-commerce platform built with Astro and Square integration, featuring dynamic product catalogs, cart management, and seamless checkout experiences.
 
-![Astro](https://img.shields.io/badge/Astro-7.2.0-orange?logo=astro&logoColor=white)
+![Astro](https://img.shields.io/badge/Astro-7.x-orange?logo=astro&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0.3-blue?logo=typescript&logoColor=white)
 ![Square](https://img.shields.io/badge/Square-44.1.0-success?logo=square&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3.0-blue?logo=tailwind-css&logoColor=white)
@@ -154,15 +154,15 @@ src/
 ├── lib/               # Business logic
 │   ├── cart/          # Cart management system
 │   │   ├── index.ts           # CartManager singleton
-│   │   ├── types.ts           # Cart type definitions
-│   │   └── cartHelpers.ts     # Utility functions
+│   │   └── types.ts           # Cart type definitions
 │   ├── square/        # Square API integration
 │   │   ├── client.ts          # Square client configuration
 │   │   ├── categories.ts      # Category management
 │   │   ├── variationParser.ts # Product variation parsing
 │   │   ├── batchInventory.ts  # Bulk inventory checks
 │   │   ├── inventory.ts       # Real-time stock validation
-│   │   ├── apiUtils.ts        # Circuit breaker & utilities
+│   │   ├── apiUtils.ts        # Shared API error logging
+│   │   ├── apiRetry.ts        # Retry logic & circuit breaker
 │   │   ├── errorUtils.ts      # Error handling
 │   │   ├── imageUtils.ts      # Image URL processing
 │   │   └── types.ts           # Square type definitions
@@ -173,8 +173,7 @@ src/
 │   │   └── relatedProducts.ts # Related product logic
 │   ├── wordpress/     # WordPress CMS integration
 │   │   ├── api.ts             # WordPress REST API client
-│   │   ├── types.ts           # WordPress type definitions
-│   │   └── block-config.ts    # Block renderer configuration
+│   │   └── types.ts           # WordPress type definitions
 │   ├── cache/         # Netlify Blobs caching layer
 │   │   └── blobCache.ts       # Distributed cache implementation
 │   ├── email/         # Email system with Resend
@@ -185,30 +184,8 @@ src/
 │   ├── backInStock.ts # Back-in-stock subscription management
 │   └── image/         # Enhanced image optimization
 ├── pages/             # Routes and API endpoints
-│   ├── api/           # Server endpoints
-│   │   ├── list-catalog.ts         # Product catalog
-│   │   ├── create-checkout.ts      # Square checkout
-│   │   ├── batch-inventory.ts      # Bulk inventory validation (GET)
-│   │   ├── cart-inventory.ts       # Cart inventory validation (POST)
-│   │   ├── check-inventory.ts      # Single item stock check
-│   │   ├── get-categories.ts       # Category listing
-│   │   ├── load-more-products.ts   # Pagination
-│   │   ├── quick-view-product.ts   # Quick view data
-│   │   ├── sale-info.ts            # Sale pricing
-│   │   ├── back-in-stock.ts        # Back-in-stock subscriptions
-│   │   ├── admin/                  # Admin API endpoints
-│   │   │   ├── mark-shipped.ts          # Mark order as shipped
-│   │   │   ├── mark-pickedup.ts         # Mark order as picked up
-│   │   │   ├── send-back-in-stock.ts    # Send BIS notifications
-│   │   │   ├── send-pickup-reminder.ts  # Send pickup reminder email
-│   │   │   ├── dismiss-order.ts         # Dismiss order notifications
-│   │   │   ├── shop-visibility.ts       # Shop open/close toggle
-│   │   │   ├── banner.ts                # Announcement banner
-│   │   │   ├── shop-status.ts           # Shop status message
-│   │   │   ├── contact.ts               # Contact info settings
-│   │   │   ├── hours.ts                 # Store hours settings
-│   │   │   ├── navigation.ts            # Navigation settings
-│   │   │   └── social.ts                # Social links settings
+│   ├── api/           # Server endpoints — see "API Endpoints" below for the full list
+│   │   ├── admin/                  # Admin-only API endpoints
 │   │   └── webhooks/               # Webhook handlers
 │   ├── product/       # Dynamic product pages
 │   │   └── [id].astro
@@ -298,35 +275,41 @@ src/
 
 ## 🛠️ API Endpoints
 
-| Endpoint                        | Method | Purpose                    |
-| ------------------------------- | ------ | -------------------------- |
-| `/api/list-catalog`             | GET    | Fetch product catalog      |
-| `/api/create-checkout`          | POST   | Initialize Square checkout |
-| `/api/batch-inventory`          | GET    | Bulk inventory validation  |
-| `/api/cart-inventory`           | POST   | Cart inventory validation  |
-| `/api/check-inventory`          | GET    | Single item stock check    |
-| `/api/get-categories`           | GET    | Product categories         |
-| `/api/load-more-products`       | GET    | Paginated product loading  |
-| `/api/quick-view-product`       | GET    | Quick view product data    |
-| `/api/calculate-cart`           | POST   | Calculate cart totals      |
-| `/api/sale-info`                | GET    | Sale pricing information   |
-| `/api/related-products`         | GET    | Related products           |
-| `/api/resolve-product`          | GET    | Product resolution         |
-| `/api/warmup`                   | GET    | Cache warming endpoint     |
-| `/api/back-in-stock`            | POST   | Back-in-stock subscription |
-| `/api/admin/mark-shipped`            | POST   | Mark order as shipped         |
-| `/api/admin/mark-pickedup`           | POST   | Mark order as picked up       |
-| `/api/admin/send-back-in-stock`      | POST   | Send BIS notifications        |
-| `/api/admin/send-pickup-reminder`    | POST   | Send pickup reminder email    |
-| `/api/admin/dismiss-order`           | POST   | Dismiss order notification    |
-| `/api/admin/shop-visibility`         | POST   | Toggle shop open/closed       |
-| `/api/admin/banner`                  | POST   | Update announcement banner    |
-| `/api/admin/shop-status`             | POST   | Update shop status message    |
-| `/api/admin/contact`                 | POST   | Update contact info           |
-| `/api/admin/hours`                   | POST   | Update store hours            |
-| `/api/admin/navigation`              | POST   | Update navigation links       |
-| `/api/admin/social`                  | POST   | Update social links           |
-| `/api/crux-data`                     | GET    | Core Web Vitals field data    |
+| Endpoint                              | Method | Purpose                       |
+| -------------------------------------- | ------ | ------------------------------ |
+| `/api/create-checkout`                 | POST   | Initialize Square checkout     |
+| `/api/batch-inventory`                 | GET    | Bulk inventory validation      |
+| `/api/cart-inventory`                  | POST   | Cart inventory validation      |
+| `/api/check-inventory`                 | GET    | Single item stock check        |
+| `/api/get-categories`                  | GET    | Product categories             |
+| `/api/quick-view-product`              | GET    | Quick view product data        |
+| `/api/calculate-cart`                  | POST   | Calculate cart totals          |
+| `/api/sale-info`                       | GET    | Sale pricing information       |
+| `/api/related-products`                | GET    | Related products                |
+| `/api/resolve-product`                 | GET    | Product resolution             |
+| `/api/warmup`                          | GET    | Cache warming endpoint         |
+| `/api/back-in-stock`                   | POST   | Back-in-stock subscription     |
+| `/api/hours`                           | GET    | Store hours                    |
+| `/api/shop-status`                     | GET    | Shop open/closed status        |
+| `/api/crux-data`                       | GET    | Core Web Vitals field data     |
+| `/api/admin-auth`                      | POST   | Admin login                    |
+| `/api/admin-logout`                    | POST   | Admin logout                   |
+| `/api/webhooks/square`                 | POST   | Square webhook receiver        |
+| `/api/admin/mark-shipped`              | POST   | Mark order as shipped          |
+| `/api/admin/mark-pickedup`             | POST   | Mark order as picked up        |
+| `/api/admin/send-back-in-stock`        | POST   | Send BIS notifications         |
+| `/api/admin/send-pickup-reminder`      | POST   | Send pickup reminder email     |
+| `/api/admin/dismiss-order`             | POST   | Dismiss order notification     |
+| `/api/admin/shop-visibility`           | POST   | Toggle shop open/closed        |
+| `/api/admin/sale-visibility`           | POST   | Toggle sale visibility         |
+| `/api/admin/banner`                    | POST   | Update announcement banner     |
+| `/api/admin/shop-status`               | POST   | Update shop status message     |
+| `/api/admin/contact`                   | POST   | Update contact info            |
+| `/api/admin/hours`                     | POST   | Update store hours             |
+| `/api/admin/social`                    | POST   | Update social links            |
+| `/api/admin/retry-failed-emails`       | POST   | Retry failed transactional emails |
+| `/api/admin/remove-back-in-stock`      | POST   | Remove BIS subscriber          |
+| `/api/admin/restore-back-in-stock`     | POST   | Restore BIS subscriber         |
 
 ## 📱 Pages
 
@@ -400,9 +383,9 @@ pnpm preview-local
 
 - **Build Command**: `pnpm build`
 - **Publish Directory**: `dist`
-- **Node Version**: 20.x
+- **Node Version**: 22.x
 - **Package Manager**: pnpm 10.33.0
-- **Adapter**: @astrojs/netlify v8.2.0 with SSR
+- **Adapter**: @astrojs/netlify v8.x with SSR
 - **Image CDN**: Enabled with AVIF/WebP conversion
 - **Caching**: Netlify Blobs for distributed state management
 
@@ -444,7 +427,7 @@ Recent comprehensive performance optimization strategy implementation:
 - **Build Time**: ~3 seconds
 - **TypeScript Compilation**: 0 compiler errors (does not mean zero `any`/`unknown` usage)
 - **Codebase Size**: ~64,515 lines of code across 282 files
-- **Test Coverage**: 80% threshold with Vitest
+- **Test Coverage**: threshold-gated with Vitest — see `vitest.config.ts`
 - **API Response Times**: Optimized with Netlify Blobs caching
 - **Bundle Size**: Optimized with code splitting and lazy loading
 - **Lighthouse Scores**: Optimized for Core Web Vitals
@@ -506,7 +489,7 @@ Recent comprehensive performance optimization strategy implementation:
 
 ### Performance & Optimization
 
-- **@astrojs/netlify 8.2.0** - Deployment adapter with SSR
+- **@astrojs/netlify 8.x** - Deployment adapter with SSR
 - **@astrojs/sitemap** - SEO sitemap generation with dynamic product/category/news pages
 - **astro-icon** - Optimized icon system
 - **sharp** - Image processing and optimization
@@ -514,7 +497,7 @@ Recent comprehensive performance optimization strategy implementation:
 ### Development Tools
 
 - **@astrojs/node** - Local development adapter (preview mode)
-- **Vitest** - Unit testing framework with 80% coverage threshold
+- **Vitest** - Unit testing framework with coverage thresholds (see `vitest.config.ts`)
 - **Playwright** - E2E testing across browsers
 - **ESLint** - Linting (`pnpm lint`)
 - **Prettier** - Code formatting (`pnpm format` / `pnpm format:check`)
@@ -562,7 +545,9 @@ For issues and questions:
 - Check [existing issues](https://github.com/travhall/el-camino/issues)
 - Review Square API documentation
 - Contact Square developer support for payment issues
-- Check project documentation in `/docs`
+- Check `docs/` for historical implementation-plan notes — it is gitignored
+  and not a maintained index; verify anything there against the actual code
+  before trusting it
 
 ## 📊 Project Status
 
@@ -591,12 +576,6 @@ For issues and questions:
 - ✅ Email notifications via Resend (orders, shipping, pickups, BIS)
 - ✅ Order management dashboard (shipping, pickups, archive)
 - ✅ Admin dashboard with needs attention summary
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
