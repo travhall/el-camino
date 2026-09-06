@@ -214,14 +214,19 @@ describe('POST /api/calculate-cart', () => {
       expect(lineItem.basePriceMoney.amount).toBe(BigInt(700));
     });
 
-    it('falls back to item.price for gift cards, which have no catalog-fixed price', async () => {
-      // getAuthoritativePricing is only called for non-gift-card variation IDs.
+    it('contributes 0 to the subtotal for a variation with no catalog-fixed price, never item.price', async () => {
+      // getAuthoritativePricing is only called for non-gift-card variation IDs,
+      // so a variable-price gift card never gets a pricing entry. The
+      // subtotal must NOT fall back to the client-supplied item.price — a
+      // forged price there would otherwise flow straight into the shipping
+      // calculation. Missing price -> contributes 0, fails safe toward the
+      // merchant (undercounts subtotal, never overcounts).
       getAuthoritativePricingMock.mockResolvedValue({});
       const items = [
         makeItem({
           variationId: 'gc-1',
           isGiftCard: true,
-          price: 25,
+          price: 999,
           quantity: 1,
         }),
       ];
@@ -233,7 +238,7 @@ describe('POST /api/calculate-cart', () => {
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.success).toBe(true);
-      expect(json.subtotal).toBe(25);
+      expect(json.subtotal).toBe(0);
       expect(getAuthoritativePricingMock).toHaveBeenCalledWith([]);
     });
   });

@@ -11,7 +11,12 @@ import {
 import { calculateShippingRate } from '@/lib/config/shipping';
 import { siteConfig } from '@/lib/site-config';
 import { inventoryCache } from '@/lib/cache/blobCache';
-import { SquareError, type Fulfillment } from 'square-legacy';
+import { extractIsGiftCard } from '@/lib/square/catalogUtils';
+import {
+  SquareError,
+  type Fulfillment,
+  type CatalogObject,
+} from 'square-legacy';
 import { storePendingOrder } from '@/lib/email/pendingOrders';
 import { createRateLimiter, clientIp } from '@/lib/rateLimit';
 import {
@@ -23,6 +28,52 @@ import type { ShippingAddress, PickupContact } from '@/lib/checkout/types';
 
 // 10 checkout attempts per 5 min per IP — generous for real users, blocks scripts
 const checkoutLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
+
+// ── Server-authoritative gift-card detection ────────────────────────────────
+// The client's `isGiftCard` flag is attacker-controlled (it comes straight
+// from the cart in localStorage) and must never decide whether inventory is
+// checked or whether the client-supplied price is trusted. The Square
+// catalog's own item-level `isGiftCard` custom attribute (read via
+// `extractIsGiftCard`) is the only source of truth. Batch-fetching each
+// variation WITH its related objects gives us the parent ITEM for each
+// variation (Square returns a variation's parent item in `relatedObjects`
+// when `includeRelatedObjects` is set), so the attribute can be read without
+// trusting anything the client sent besides which variation IDs to look up.
+async function getServerGiftCardVariationIds(
+  variationIds: string[]
+): Promise<Set<string>> {
+  const giftCardIds = new Set<string>();
+  try {
+    const response = await squareClient.catalog.batchGet({
+      objectIds: variationIds,
+      includeRelatedObjects: true,
+    });
+
+    const itemsById = new Map(
+      (response.relatedObjects ?? [])
+        .filter((obj): obj is CatalogObject.Item => obj.type === 'ITEM')
+        .map((item) => [item.id, item] as const)
+    );
+
+    for (const obj of response.objects ?? []) {
+      if (obj.type !== 'ITEM_VARIATION') continue;
+      const parentItemId = obj.itemVariationData?.itemId;
+      const parentItem = parentItemId ? itemsById.get(parentItemId) : undefined;
+      if (extractIsGiftCard(parentItem?.customAttributeValues)) {
+        giftCardIds.add(obj.id);
+      }
+    }
+  } catch (error) {
+    // Fail safe toward the merchant: on any catalog failure, trust nothing as
+    // a gift card. Every item then goes through the normal inventory path
+    // like any other item — never the client's forged flag.
+    console.error(
+      '[create-checkout] Failed to derive gift-card status from catalog:',
+      error
+    );
+  }
+  return giftCardIds;
+}
 
 export const POST: APIRoute = async ({ request }) => {
   if (checkoutLimiter.check(clientIp(request))) {
@@ -75,25 +126,44 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // Validate inventory before checkout
-    // Skip gift cards — they have no tracked inventory and are always available
-    const nonGiftCardItems = items.filter((item) => !item.isGiftCard);
-    const giftCardItems = items.filter((item) => item.isGiftCard);
+    // Validate inventory before checkout.
+    // Gift-card status is derived from the catalog, never trusted from the
+    // client's `isGiftCard` flag (see getServerGiftCardVariationIds above).
+    const allVariationIds = items.map((item) => item.variationId);
 
-    const variationIds = nonGiftCardItems.map((item) => item.variationId);
-
-    // Fetch inventory and pricing in parallel — they are independent.
+    // Fetch pricing and gift-card status in parallel — both are independent
+    // catalog lookups over the full item list.
     // pricingAll uses the full variationIds list (before inventory filtering);
     // OOS pricing is fetched but later discarded — small wasted work traded for
     // lower latency (saves ~150–500 ms per checkout vs. sequential awaits).
-    const [inventoryLevels, pricingAll] = await Promise.all([
-      variationIds.length > 0
-        ? checkBulkInventory(variationIds)
-        : Promise.resolve({} as Record<string, number>),
-      variationIds.length > 0
-        ? getAuthoritativePricing(variationIds)
+    const [pricingAll, giftCardVariationIds] = await Promise.all([
+      allVariationIds.length > 0
+        ? getAuthoritativePricing(allVariationIds)
         : Promise.resolve({} as Record<string, AuthoritativePrice>),
+      allVariationIds.length > 0
+        ? getServerGiftCardVariationIds(allVariationIds)
+        : Promise.resolve(new Set<string>()),
     ]);
+
+    // Skip gift cards — they have no tracked inventory and are always
+    // available. Membership here is catalog-confirmed (giftCardVariationIds),
+    // never the client's flag.
+    const nonGiftCardItems = items.filter(
+      (item) => !giftCardVariationIds.has(item.variationId)
+    );
+    const giftCardItems = items.filter((item) =>
+      giftCardVariationIds.has(item.variationId)
+    );
+
+    const variationIds = nonGiftCardItems.map((item) => item.variationId);
+
+    // Inventory is checked only for catalog-confirmed non-gift-card items.
+    // Gift cards have no tracked inventory — checkBulkInventory would report
+    // 0 for them and wrongly flag a real gift card as out of stock.
+    const inventoryLevels =
+      variationIds.length > 0
+        ? await checkBulkInventory(variationIds)
+        : ({} as Record<string, number>);
 
     // Filter out out-of-stock items and adjust quantities
     const validItems: CartItem[] = [...giftCardItems]; // gift cards always valid
@@ -152,12 +222,20 @@ export const POST: APIRoute = async ({ request }) => {
     // pricing was fetched above in parallel with inventory; alias for clarity.
     const pricing = pricingAll;
 
-    // Calculate subtotal for shipping using server-derived effective prices,
-    // falling back to the catalog regular price (item.price) when no trusted
-    // entry exists (e.g. variable-price gift cards).
+    // Calculate subtotal for shipping using server-derived effective prices.
+    // A missing catalog entry (e.g. a variable-price gift card) contributes 0,
+    // NEVER the client-supplied item.price — a missing price can only reduce
+    // the subtotal, so the worst case is charging shipping the customer might
+    // have earned free, never an attacker-forced free-shipping threshold. Do
+    // not restore the `?? item.price` fallback.
     const subtotal = validItems.reduce((sum, item) => {
-      const effectivePrice =
-        pricing[item.variationId]?.effectivePrice ?? item.price;
+      const entry = pricing[item.variationId];
+      if (!entry) {
+        console.warn(
+          `[create-checkout] No authoritative price for variation ${item.variationId} (${item.title}); contributing 0 to subtotal.`
+        );
+      }
+      const effectivePrice = entry?.effectivePrice ?? 0;
       return sum + effectivePrice * item.quantity;
     }, 0);
 
