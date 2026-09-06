@@ -259,7 +259,7 @@ your row when done.
 | 157  | Batch the per-category Square image lookups in Sidebar/CategoryStrip | P1 | S | LOW | — | perf | TODO |
 | 158  | Make the Playwright CI job actually run instead of failing silently | P1 | M | MED | — | dx | TODO |
 | 159  | Make `pnpm lint` capable of failing, and widen its scope | P2 | S | LOW-MED | — | dx | TODO |
-| 160  | Actually run coverage in CI so the thresholds mean something | P2 | S | LOW | — | dx | TODO |
+| 160  | Actually run coverage in CI so the thresholds mean something | P2 | S | LOW | — | dx | DONE |
 | 161  | Collapse the five Netlify Image CDN URL builders into one | P2 | S | LOW-MED | 146 (hard) | tech-debt | TODO |
 | 162  | Make the documented `SQUARE_*` tuning env vars actually work | P2 | S | LOW | — | bug | TODO |
 | 163  | Correct the false claims in CLAUDE.md and README.md | P2 | M | LOW | — | docs | TODO |
