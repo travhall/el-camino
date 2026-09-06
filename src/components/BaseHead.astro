@@ -72,14 +72,15 @@ const seoData = {
 <meta name="generator" content={Astro.generator} />
 
 <!-- OPTIMIZED: Font preloading for FOUT prevention during View Transitions -->
-<!-- Alumni Sans: Display font - high priority for headings/LCP -->
+<!-- Alumni Sans: display font for headings. Preloaded (the h1 opacity gate
+     below waits on it) but deliberately NOT fetchpriority=high — that put it
+     in the same priority band as the LCP image and delayed it. -->
 <link
     rel="preload"
     href="/fonts/AlumniSans.woff2"
     as="font"
     type="font/woff2"
     crossorigin="anonymous"
-    fetchpriority="high"
 />
 <!-- Cabin: Body font - standard priority -->
 <link
@@ -120,9 +121,12 @@ const seoData = {
 </style>
 
 <!-- OPTIMIZED: Resource hints for external domains -->
-<!-- preconnect: full TLS handshake up-front for domains hit on every page load -->
-<link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" />
-<link rel="preconnect" href="https://api.zippopotam.us" />
+<!-- No preconnect to elcaminoskateshop.wordpress.com: images are served
+     same-origin via Netlify's Image CDN, so that host is never a request
+     origin — only a ?url= parameter value. Likewise api.zippopotam.us is a
+     checkout-time postcode lookup, not a page-load request. Both were flagged
+     "Unused preconnect" by the DevTools NetworkDependencyTree insight and each
+     cost a speculative DNS+TCP+TLS handshake on the critical path. -->
 <!-- dns-prefetch: lightweight hint for domains hit conditionally -->
 <link rel="dns-prefetch" href="https://squarecdn.com" />
 <link rel="dns-prefetch" href="https://api.elcaminoskateshop.com" />
