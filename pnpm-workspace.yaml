@@ -16,6 +16,14 @@ overrides:
   "minimatch@5.1.9>brace-expansion": ">=2.1.4 <3.0.0"
   "minimatch@9.0.9>brace-expansion": ">=2.1.4 <3.0.0"
   "minimatch@10.2.5>brace-expansion": ">=5.0.9"
+  # Advisory closures — see plan 164. toml: prototype pollution + uncontrolled
+  # recursion (build-time, via @astrojs/netlify's bundler). @opentelemetry/core:
+  # unbounded memory allocation (via @netlify/blobs). yaml: stack overflow (via
+  # @astrojs/check). image-size and extract-zip have no upstream fix and are
+  # deliberately not overridden.
+  toml: ">=4.2.0"
+  "@opentelemetry/core": ">=2.8.0"
+  yaml: ">=2.8.3"
 
 onlyBuiltDependencies:
   - esbuild
