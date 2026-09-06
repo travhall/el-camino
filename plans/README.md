@@ -252,7 +252,7 @@ your row when done.
 | 151  | Cut transformed-image weight by lowering AVIF quality | P3 | S | LOW | — | perf | TODO |
 
 | 152  | Stop trusting the client's `isGiftCard` flag and price at checkout | P1 | S | LOW | — | security | TODO |
-| 153  | Stop serving any customer's order details to anyone holding an order ID | P1 | M | MED | — | security | TODO |
+| 153  | Stop serving any customer's order details to anyone holding an order ID | P1 | M | MED | — | security | IN PROGRESS |
 | 154  | Fix the `s-max-age` typo disabling CDN caching on the shop routes | P1 | S | LOW | — | perf | TODO |
 | 155  | Fix the `Netlify-Vary` query keys on category pages | P1 | S | LOW | — | bug | TODO |
 | 156  | Stop mobile/desktop visitors being served each other's cached HTML | P1 | S | MED | — | bug | TODO |
