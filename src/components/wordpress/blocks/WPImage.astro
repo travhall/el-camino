@@ -2,25 +2,25 @@
 // src/components/wordpress/blocks/WPImage.astro
 // Enhanced image component for wp-block-image with optimized loading
 
-import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
-import { EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
+import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
+import { EL_CAMINO_LOADER_DATA_URI } from '@/lib/constants/assets';
 
 interface Props {
   src: string;
   alt: string;
   caption?: string;
-  alignment?: "default" | "wide" | "full";
+  alignment?: 'default' | 'wide' | 'full';
   priority?: boolean;
   width?: number;
   height?: number;
-  loading?: "eager" | "lazy";
+  loading?: 'eager' | 'lazy';
 }
 
 const {
   src,
   alt,
   caption,
-  alignment = "default",
+  alignment = 'default',
   priority = false,
   width,
   height,
@@ -28,9 +28,9 @@ const {
 } = Astro.props;
 
 const alignmentClasses = {
-  default: "max-w-4xl mx-auto",
-  wide: "max-w-6xl mx-auto",
-  full: "w-full",
+  default: 'max-w-4xl mx-auto',
+  wide: 'max-w-6xl mx-auto',
+  full: 'w-full',
 };
 
 // Optimize image based on alignment size
@@ -47,8 +47,8 @@ const imgHeight =
   height || sizeSettings[alignment as keyof typeof sizeSettings].height;
 
 // Smart loading strategy: priority images load eagerly, others lazy
-const imageLoading = loading || (priority ? "eager" : "lazy");
-const fetchPriority = priority ? "high" : "auto";
+const imageLoading = loading || (priority ? 'eager' : 'lazy');
+const fetchPriority = priority ? 'high' : 'auto';
 
 // Generate optimized sources using EnhancedImageOptimizer
 // PHASE 4 TRACK B: Reduced quality to 75 for 20-30% faster load times

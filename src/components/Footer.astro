@@ -1,12 +1,12 @@
 ---
 // src/components/Footer.astro
-import { Icon } from "astro-icon/components";
-import ThemeToggle from "./ThemeToggle.astro";
-import { getLegalPages } from "@/lib/wordpress/api";
-import type { WordPressPage } from "@/lib/wordpress/types";
-import { siteConfig } from "@/lib/site-config";
-import { getSiteContext } from "@/lib/siteContext";
-import OpenStatusBadge from "./OpenStatusBadge.astro";
+import { Icon } from 'astro-icon/components';
+import ThemeToggle from './ThemeToggle.astro';
+import { getLegalPages } from '@/lib/wordpress/api';
+import type { WordPressPage } from '@/lib/wordpress/types';
+import { siteConfig } from '@/lib/site-config';
+import { getSiteContext } from '@/lib/siteContext';
+import OpenStatusBadge from './OpenStatusBadge.astro';
 
 const currentYear = new Date().getFullYear();
 const { tagline } = siteConfig;
@@ -25,12 +25,12 @@ let wpError: string | null = null;
 try {
   footerPages = await getLegalPages();
   if (footerPages.length === 0) {
-    throw new Error("No legal pages returned from API");
+    throw new Error('No legal pages returned from API');
   }
 } catch (error) {
   wpError =
-    error instanceof Error ? error.message : "WordPress connection failed";
-  console.error("Footer pages error:", wpError);
+    error instanceof Error ? error.message : 'WordPress connection failed';
+  console.error('Footer pages error:', wpError);
 }
 ---
 
@@ -43,7 +43,7 @@ try {
       slug: p.slug,
       title: p.title,
       content: p.content,
-    })),
+    }))
   )}
 />
 
@@ -165,26 +165,26 @@ try {
 </footer>
 
 <script>
-  import { showPolicyModal } from "@/lib/events";
+  import { showPolicyModal } from '@/lib/events';
 
   function setupPolicyTriggers() {
     document
-      .querySelectorAll<HTMLButtonElement>(".policy-modal-trigger")
+      .querySelectorAll<HTMLButtonElement>('.policy-modal-trigger')
       .forEach((btn) => {
-        if (btn.getAttribute("data-policy-initialized") === "true") return;
-        btn.setAttribute("data-policy-initialized", "true");
-        btn.addEventListener("click", () => {
+        if (btn.getAttribute('data-policy-initialized') === 'true') return;
+        btn.setAttribute('data-policy-initialized', 'true');
+        btn.addEventListener('click', () => {
           const slug = btn.dataset.policySlug;
           if (slug) showPolicyModal(slug);
         });
       });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", setupPolicyTriggers);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupPolicyTriggers);
   } else {
     setupPolicyTriggers();
   }
 
-  document.addEventListener("astro:page-load", setupPolicyTriggers);
+  document.addEventListener('astro:page-load', setupPolicyTriggers);
 </script>

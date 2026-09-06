@@ -1,19 +1,19 @@
 ---
 // src/pages/the-shop/index.astro
-import Layout from "@/layouts/Layout.astro";
-import { siteConfig } from "@/lib/site-config";
-import Button from "@/components/Button.astro";
-import { Icon } from "astro-icon/components";
-import { EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
-import { getSiteContext } from "@/lib/siteContext";
-import CategoryStrip from "@/components/CategoryStrip.astro";
-import ArticleCard from "@/components/ArticleCard.astro";
-import OpenStatusBadge from "@/components/OpenStatusBadge.astro";
-import { getPosts, getPostsByCategory } from "@/lib/wordpress/api";
+import Layout from '@/layouts/Layout.astro';
+import { siteConfig } from '@/lib/site-config';
+import Button from '@/components/Button.astro';
+import { Icon } from 'astro-icon/components';
+import { EL_CAMINO_LOADER_DATA_URI } from '@/lib/constants/assets';
+import { getSiteContext } from '@/lib/siteContext';
+import CategoryStrip from '@/components/CategoryStrip.astro';
+import ArticleCard from '@/components/ArticleCard.astro';
+import OpenStatusBadge from '@/components/OpenStatusBadge.astro';
+import { getPosts, getPostsByCategory } from '@/lib/wordpress/api';
 import {
   extractEmbeddedData,
   generateFallbackContent,
-} from "@/lib/wordpress/types";
+} from '@/lib/wordpress/types';
 
 const {
   hours: shopHours,
@@ -22,7 +22,7 @@ const {
 } = await getSiteContext(Astro.locals);
 
 // Fetch "Shop News" category posts, fall back to most recent posts if empty
-const shopNewsPosts = await getPostsByCategory("shop-news");
+const shopNewsPosts = await getPostsByCategory('shop-news');
 const fallbackPosts = shopNewsPosts.length === 0 ? await getPosts() : [];
 const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -398,10 +398,10 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
                     <div
                       class="flex justify-between items-center border-b-2 border-(--border-tertiary) last-of-type:border-b-0 py-2"
                       data-day={day.day}
-                      data-is-open={day.isOpen ? "true" : "false"}
+                      data-is-open={day.isOpen ? 'true' : 'false'}
                     >
                       <span
-                        class={`flex items-center gap-1.5 ${!day.isOpen ? "text-(--content-meta) opacity-40" : ""}`}
+                        class={`flex items-center gap-1.5 ${!day.isOpen ? 'text-(--content-meta) opacity-40' : ''}`}
                       >
                         <span
                           class="day-dot hidden w-1.5 h-1.5 rounded-full bg-(--ui-accent) shrink-0"
@@ -414,7 +414,7 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
                       </span>
                       <span
                         class={
-                          !day.isOpen ? "text-(--content-meta) opacity-40" : ""
+                          !day.isOpen ? 'text-(--content-meta) opacity-40' : ''
                         }
                       >
                         {day.hours}
@@ -428,38 +428,38 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
             <script>
               {
                 const now = new Date();
-                const todayName = new Intl.DateTimeFormat("en-US", {
-                  weekday: "long",
+                const todayName = new Intl.DateTimeFormat('en-US', {
+                  weekday: 'long',
                 }).format(now);
 
                 // Highlight today's row
                 const rows = document.querySelectorAll<HTMLElement>(
-                  "#store-hours-list [data-day]",
+                  '#store-hours-list [data-day]'
                 );
                 rows.forEach((row) => {
                   if (row.dataset.day !== todayName) return;
                   row.classList.add(
-                    "-mx-2",
-                    "px-2",
-                    "rounded-xs",
-                    "bg-(--surface-tertiary)/30",
+                    '-mx-2',
+                    'px-2',
+                    'rounded-xs',
+                    'bg-(--surface-tertiary)/30'
                   );
                   const [daySpan, hoursSpan] = Array.from(
-                    row.children,
+                    row.children
                   ) as HTMLElement[];
                   [daySpan, hoursSpan].forEach((s) => {
-                    s.classList.remove("text-(--content-meta)", "opacity-40");
+                    s.classList.remove('text-(--content-meta)', 'opacity-40');
                     s.classList.add(
-                      "text-(--content-heading)",
-                      "font-semibold",
+                      'text-(--content-heading)',
+                      'font-semibold'
                     );
                   });
                   row
-                    .querySelector<HTMLElement>(".day-dot")
-                    ?.classList.remove("hidden");
+                    .querySelector<HTMLElement>('.day-dot')
+                    ?.classList.remove('hidden');
                   row
-                    .querySelector<HTMLElement>(".today-label")
-                    ?.classList.remove("hidden");
+                    .querySelector<HTMLElement>('.today-label')
+                    ?.classList.remove('hidden');
                 });
               }
             </script>
@@ -467,30 +467,30 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
             <script>
               // Show a contextual notice when an admin override changes today's status.
               (async () => {
-                const notice = document.getElementById("hours-override-notice");
+                const notice = document.getElementById('hours-override-notice');
                 if (!notice) return;
 
                 const now = new Date();
                 const todayStr = [
                   now.getFullYear(),
-                  String(now.getMonth() + 1).padStart(2, "0"),
-                  String(now.getDate()).padStart(2, "0"),
-                ].join("-");
+                  String(now.getMonth() + 1).padStart(2, '0'),
+                  String(now.getDate()).padStart(2, '0'),
+                ].join('-');
                 const monthDay = todayStr.slice(5); // "MM-DD"
 
                 try {
-                  const res = await fetch("/api/shop-status");
+                  const res = await fetch('/api/shop-status');
                   if (!res.ok) return;
                   const override = await res.json();
 
                   let message: string | null = null;
 
-                  if (override.mode !== "auto") {
+                  if (override.mode !== 'auto') {
                     if (!override.until || override.until >= todayStr) {
                       message =
-                        override.mode === "closed"
-                          ? "Closed today"
-                          : "Open today — special hours";
+                        override.mode === 'closed'
+                          ? 'Closed today'
+                          : 'Open today — special hours';
                     }
                   } else {
                     for (const h of override.holidays ?? []) {
@@ -506,7 +506,7 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
 
                   if (message) {
                     notice.textContent = `* ${message}`;
-                    notice.classList.remove("hidden");
+                    notice.classList.remove('hidden');
                   }
                 } catch {
                   // Fail silently — notice just won't appear
@@ -535,7 +535,7 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
               href="/news"
               class="px-2.5 py-1.5 text-sm items-center border rounded-sm bg-(--surface-secondary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 hidden md:inline-flex mb-0.5"
             >
-              See all news{" "}
+              See all news{' '}
               <Icon
                 class="h-4 w-4 text-(--content-emphasis)"
                 name="uil:arrow-right"
@@ -563,7 +563,7 @@ const newsToShow = (shopNewsPosts.length > 0 ? shopNewsPosts : fallbackPosts)
               href="/news"
               class="px-2.5 py-1.5 border inline-flex items-center self-start rounded-sm bg-(--surface-secondary) text-(--content-emphasis) border-(--ui-input-border)/50"
             >
-              See all news{" "}
+              See all news{' '}
               <Icon
                 class="h-4 w-4 text-(--content-emphasis)"
                 name="uil:arrow-right"

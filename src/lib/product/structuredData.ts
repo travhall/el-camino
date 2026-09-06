@@ -1,23 +1,23 @@
 // /src/lib/product/structuredData.ts
 
-import type { Product, ProductVariation } from "@/lib/square/types";
-import { siteConfig } from "@/lib/site-config";
+import type { Product, ProductVariation } from '@/lib/square/types';
+import { siteConfig } from '@/lib/site-config';
 
 /**
  * Product Schema.org structured data
  */
 export interface ProductSchema {
-  "@context": "https://schema.org";
-  "@type": "Product";
+  '@context': 'https://schema.org';
+  '@type': 'Product';
   name: string;
   image: string | string[];
   description?: string;
   brand?: {
-    "@type": "Brand";
+    '@type': 'Brand';
     name: string;
   };
   offers: {
-    "@type": "Offer";
+    '@type': 'Offer';
     url: string;
     priceCurrency: string;
     price: string;
@@ -41,29 +41,29 @@ export function generateProductSchema(
 
   // Availability mapping
   const availability = inStock
-    ? "https://schema.org/InStock"
-    : "https://schema.org/OutOfStock";
+    ? 'https://schema.org/InStock'
+    : 'https://schema.org/OutOfStock';
 
   // Build full URL
   const productUrl = `${baseUrl}${product.url}`;
 
   // Build image URL (ensure absolute)
-  const imageUrl = product.image.startsWith("http")
+  const imageUrl = product.image.startsWith('http')
     ? product.image
     : `${baseUrl}${product.image}`;
 
   const schema: ProductSchema = {
-    "@context": "https://schema.org",
-    "@type": "Product",
+    '@context': 'https://schema.org',
+    '@type': 'Product',
     name: product.title,
     image: imageUrl,
     offers: {
-      "@type": "Offer",
+      '@type': 'Offer',
       url: productUrl,
-      priceCurrency: "USD",
+      priceCurrency: 'USD',
       price: price.toFixed(2),
       availability,
-      itemCondition: "https://schema.org/NewCondition",
+      itemCondition: 'https://schema.org/NewCondition',
     },
   };
 
@@ -74,7 +74,7 @@ export function generateProductSchema(
 
   if (product.brand) {
     schema.brand = {
-      "@type": "Brand",
+      '@type': 'Brand',
       name: product.brand,
     };
   }
@@ -114,12 +114,12 @@ export function generateOGData(
   const inStock = variation?.inStock ?? true;
 
   const productUrl = `${baseUrl}${product.url}`;
-  const imageUrl = product.image.startsWith("http")
+  const imageUrl = product.image.startsWith('http')
     ? product.image
     : `${baseUrl}${product.image}`;
 
   // Build title with brand (guard against brand already being in the title)
-  const brandPrefix = product.brand ? product.brand.toLowerCase() + " " : "";
+  const brandPrefix = product.brand ? product.brand.toLowerCase() + ' ' : '';
   const title =
     product.brand && !product.title.toLowerCase().startsWith(brandPrefix)
       ? `${product.brand} ${product.title}`
@@ -135,11 +135,11 @@ export function generateOGData(
     description,
     image: imageUrl,
     url: productUrl,
-    type: "product",
-    siteName: "El Camino Skate Shop",
+    type: 'product',
+    siteName: 'El Camino Skate Shop',
     price: price.toFixed(2),
-    currency: "USD",
-    availability: inStock ? "in stock" : "out of stock",
+    currency: 'USD',
+    availability: inStock ? 'in stock' : 'out of stock',
   };
 }
 
@@ -160,11 +160,11 @@ export function generateTwitterCardData(
   product: Product,
   baseUrl: string = siteConfig.url
 ): TwitterCardData {
-  const imageUrl = product.image.startsWith("http")
+  const imageUrl = product.image.startsWith('http')
     ? product.image
     : `${baseUrl}${product.image}`;
 
-  const brandPrefix2 = product.brand ? product.brand.toLowerCase() + " " : "";
+  const brandPrefix2 = product.brand ? product.brand.toLowerCase() + ' ' : '';
   const title =
     product.brand && !product.title.toLowerCase().startsWith(brandPrefix2)
       ? `${product.brand} ${product.title}`
@@ -174,7 +174,7 @@ export function generateTwitterCardData(
     product.description || `${title} - Available at El Camino Skate Shop`;
 
   return {
-    card: "summary_large_image",
+    card: 'summary_large_image',
     title,
     description,
     image: imageUrl,

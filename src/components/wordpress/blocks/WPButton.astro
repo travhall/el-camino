@@ -5,27 +5,27 @@
 interface Props {
   url: string;
   text: string;
-  style?: "fill" | "outline";
+  style?: 'fill' | 'outline';
   color?: string;
 }
 
-const { url, text, style = "fill", color } = Astro.props;
+const { url, text, style = 'fill', color } = Astro.props;
 
 const isExternal =
-  url.startsWith("http") && !url.includes(Astro.site?.hostname || "");
+  url.startsWith('http') && !url.includes(Astro.site?.hostname || '');
 ---
 
 <div class="wp-button my-6 text-center">
   <a
     href={url}
     class={`inline-block px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-      style === "outline"
-        ? "border-2 border-(--ui-button-border) text-(--ui-button-text) hover:bg-(--ui-button-surface)"
-        : "bg-(--ui-button-surface) text-(--ui-button-text) border-2 border-(--ui-button-border) hover:bg-(--ui-button-surface)/80"
+      style === 'outline'
+        ? 'border-2 border-(--ui-button-border) text-(--ui-button-text) hover:bg-(--ui-button-surface)'
+        : 'bg-(--ui-button-surface) text-(--ui-button-text) border-2 border-(--ui-button-border) hover:bg-(--ui-button-surface)/80'
     }`}
-    style={color ? `background-color: ${color}` : ""}
-    target={isExternal ? "_blank" : "_self"}
-    rel={isExternal ? "noopener noreferrer" : ""}
+    style={color ? `background-color: ${color}` : ''}
+    target={isExternal ? '_blank' : '_self'}
+    rel={isExternal ? 'noopener noreferrer' : ''}
   >
     {text}
     {

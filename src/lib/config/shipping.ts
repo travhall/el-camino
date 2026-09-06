@@ -3,7 +3,7 @@
  * Update rates here without touching API logic
  */
 
-import { getContactInfo } from "../contactInfo";
+import { getContactInfo } from '../contactInfo';
 
 export interface ShippingRate {
   id: string;
@@ -16,26 +16,28 @@ export interface ShippingRate {
 
 export const SHIPPING_RATES: ShippingRate[] = [
   {
-    id: "standard",
-    name: "Standard Shipping",
-    description: "5-7 business days",
+    id: 'standard',
+    name: 'Standard Shipping',
+    description: '5-7 business days',
     rate: 5.99,
-    estimatedDays: "5-7",
+    estimatedDays: '5-7',
   },
   {
-    id: "free",
-    name: "Free Standard Shipping",
-    description: "5-7 business days",
+    id: 'free',
+    name: 'Free Standard Shipping',
+    description: '5-7 business days',
     rate: 0,
-    estimatedDays: "5-7",
+    estimatedDays: '5-7',
     freeThreshold: 75.0,
   },
 ];
 
-export const FREE_SHIPPING_THRESHOLD_DOLLARS =
-  SHIPPING_RATES.find((r) => r.id === "free")!.freeThreshold!;
-export const FLAT_RATE_SHIPPING_DOLLARS =
-  SHIPPING_RATES.find((r) => r.id === "standard")!.rate;
+export const FREE_SHIPPING_THRESHOLD_DOLLARS = SHIPPING_RATES.find(
+  (r) => r.id === 'free'
+)!.freeThreshold!;
+export const FLAT_RATE_SHIPPING_DOLLARS = SHIPPING_RATES.find(
+  (r) => r.id === 'standard'
+)!.rate;
 
 /**
  * Pickup location name and note, from live admin-managed contact data.
@@ -48,7 +50,7 @@ export async function getPickupLocation(): Promise<{
 
   return {
     name: contact.name,
-    instructions: "Pick up only available during store hours.",
+    instructions: 'Pick up only available during store hours.',
   };
 }
 
@@ -60,4 +62,3 @@ export function calculateShippingRate(subtotal: number): number {
     ? 0
     : FLAT_RATE_SHIPPING_DOLLARS;
 }
-

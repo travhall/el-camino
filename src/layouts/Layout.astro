@@ -1,12 +1,12 @@
 ---
-import { getSiteContext } from "@/lib/siteContext";
-import Header from "@/components/Header.astro";
-import Footer from "@/components/Footer.astro";
-import QuickView from "@/components/QuickView.astro";
-import MiniCart from "@/components/MiniCart.astro";
-import Modal from "@/components/Modal.astro";
-import Notification from "@/components/Notification.astro";
-import BaseHead from "@/components/BaseHead.astro";
+import { getSiteContext } from '@/lib/siteContext';
+import Header from '@/components/Header.astro';
+import Footer from '@/components/Footer.astro';
+import QuickView from '@/components/QuickView.astro';
+import MiniCart from '@/components/MiniCart.astro';
+import Modal from '@/components/Modal.astro';
+import Notification from '@/components/Notification.astro';
+import BaseHead from '@/components/BaseHead.astro';
 
 interface Props {
   title: string;
@@ -34,7 +34,7 @@ const orgSchema = siteCtx.structured;
 
   <body
     class="bg-(--surface-primary) text-(--content-body) grid grid-rows-[auto_1fr_auto] min-h-screen relative overflow-x-hidden"
-    data-active-category={activeCategory || ""}
+    data-active-category={activeCategory || ''}
   >
     <!-- Navigation progress bar: visible feedback during view transitions -->
     <div id="nav-progress" transition:persist="nav-progress" aria-hidden="true">
@@ -65,16 +65,16 @@ const orgSchema = siteCtx.structured;
 
     <!-- Global cleanup for news view parameters -->
     <script>
-      document.addEventListener("astro:page-load", () => {
+      document.addEventListener('astro:page-load', () => {
         // Clean view parameters from non-news forms
         const cleanNonNewsForms = () => {
-          const forms = document.querySelectorAll("form");
+          const forms = document.querySelectorAll('form');
           forms.forEach((form) => {
-            const action = form.getAttribute("action") || "";
+            const action = form.getAttribute('action') || '';
             const isNewsForm =
               !action ||
-              action.startsWith("/news") ||
-              window.location.pathname.startsWith("/news");
+              action.startsWith('/news') ||
+              window.location.pathname.startsWith('/news');
 
             if (!isNewsForm) {
               const viewInputs = form.querySelectorAll('input[name="view"]');
@@ -89,19 +89,19 @@ const orgSchema = siteCtx.structured;
       });
 
       // Clean view parameter from URLs when navigating away from news
-      document.addEventListener("astro:before-swap", (e) => {
+      document.addEventListener('astro:before-swap', (e) => {
         if (
-          window.location.pathname.startsWith("/news") &&
+          window.location.pathname.startsWith('/news') &&
           e.to &&
-          !e.to.pathname.startsWith("/news")
+          !e.to.pathname.startsWith('/news')
         ) {
           const currentParams = new URLSearchParams(window.location.search);
-          if (currentParams.has("view")) {
-            currentParams.delete("view");
+          if (currentParams.has('view')) {
+            currentParams.delete('view');
             const cleanUrl =
               e.to.pathname +
-              (currentParams.toString() ? "?" + currentParams.toString() : "");
-            window.history.replaceState({}, "", cleanUrl);
+              (currentParams.toString() ? '?' + currentParams.toString() : '');
+            window.history.replaceState({}, '', cleanUrl);
           }
         }
       });
@@ -124,40 +124,40 @@ const orgSchema = siteCtx.structured;
       }
     </style>
     <script>
-      document.addEventListener("astro:before-preparation", () => {
-        const bar = document.getElementById("nav-progress");
+      document.addEventListener('astro:before-preparation', () => {
+        const bar = document.getElementById('nav-progress');
         if (!bar) return;
         // Reset and animate to 80% over ~3 s (slow crawl — gives sense of progress)
-        bar.style.transition = "none";
-        bar.style.width = "0%";
-        bar.style.opacity = "1";
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+        bar.style.opacity = '1';
         // Force reflow so the reset takes effect before the animation starts
         bar.getBoundingClientRect();
         bar.style.transition =
-          "width 3s cubic-bezier(0.05, 0.5, 0.1, 1), opacity 0.1s ease";
-        bar.style.width = "80%";
+          'width 3s cubic-bezier(0.05, 0.5, 0.1, 1), opacity 0.1s ease';
+        bar.style.width = '80%';
       });
 
-      document.addEventListener("astro:after-preparation", () => {
+      document.addEventListener('astro:after-preparation', () => {
         // Page data is ready — bump toward 95% while swap is pending
-        const bar = document.getElementById("nav-progress");
+        const bar = document.getElementById('nav-progress');
         if (!bar) return;
-        bar.style.transition = "width 0.2s ease";
-        bar.style.width = "95%";
+        bar.style.transition = 'width 0.2s ease';
+        bar.style.width = '95%';
       });
 
-      document.addEventListener("astro:page-load", () => {
+      document.addEventListener('astro:page-load', () => {
         // Page rendered — snap to 100% then fade out
-        const bar = document.getElementById("nav-progress");
+        const bar = document.getElementById('nav-progress');
         if (!bar) return;
-        bar.style.transition = "width 0.15s ease";
-        bar.style.width = "100%";
+        bar.style.transition = 'width 0.15s ease';
+        bar.style.width = '100%';
         setTimeout(() => {
-          bar.style.transition = "opacity 0.3s ease";
-          bar.style.opacity = "0";
+          bar.style.transition = 'opacity 0.3s ease';
+          bar.style.opacity = '0';
           setTimeout(() => {
-            bar.style.transition = "none";
-            bar.style.width = "0%";
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
           }, 300);
         }, 100);
       });

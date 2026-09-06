@@ -22,31 +22,31 @@ const hasPrevPage = currentPage > 1;
 function generatePageNumbers(
   current: number,
   total: number
-): (number | "ellipsis")[] {
+): (number | 'ellipsis')[] {
   if (total <= 7) {
     return Array.from({ length: total }, (_, i) => i + 1);
   }
 
-  const pages: (number | "ellipsis")[] = [];
+  const pages: (number | 'ellipsis')[] = [];
   pages.push(1);
 
   if (current <= 4) {
     for (let i = 2; i <= Math.min(5, total - 1); i++) {
       pages.push(i);
     }
-    if (total > 6) pages.push("ellipsis");
+    if (total > 6) pages.push('ellipsis');
     if (total > 1) pages.push(total);
   } else if (current >= total - 3) {
-    if (total > 6) pages.push("ellipsis");
+    if (total > 6) pages.push('ellipsis');
     for (let i = Math.max(2, total - 4); i <= total; i++) {
       pages.push(i);
     }
   } else {
-    pages.push("ellipsis");
+    pages.push('ellipsis');
     for (let i = current - 1; i <= current + 1; i++) {
       pages.push(i);
     }
-    pages.push("ellipsis");
+    pages.push('ellipsis');
     pages.push(total);
   }
 
@@ -119,7 +119,7 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
     <div class="hidden md:flex items-center space-x-1">
       {
         pageNumbers.map((page) =>
-          page === "ellipsis" ? (
+          page === 'ellipsis' ? (
             <span class="px-3 py-1 text-(--content-meta)" aria-hidden="true">
               ...
             </span>
@@ -197,8 +197,8 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
 </nav>
 
 <script>
-  import { createNewsAwareURL } from "@/utils/newsNavigation";
-  
+  import { createNewsAwareURL } from '@/utils/newsNavigation';
+
   class NewsAjaxPagination {
     constructor() {
       this.setupPaginationHandlers();
@@ -206,19 +206,19 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
 
     private setupPaginationHandlers(): void {
       const paginationContainer = document.getElementById(
-        "news-pagination-controls"
+        'news-pagination-controls'
       );
       if (!paginationContainer) return;
 
-      paginationContainer.addEventListener("click", async (e) => {
+      paginationContainer.addEventListener('click', async (e) => {
         const target = e.target as HTMLElement;
-        const link = target.closest("[data-news-page]") as HTMLAnchorElement;
+        const link = target.closest('[data-news-page]') as HTMLAnchorElement;
 
         if (!link) return;
 
         e.preventDefault();
 
-        const page = parseInt(link.dataset.newsPage || "1", 10);
+        const page = parseInt(link.dataset.newsPage || '1', 10);
         await this.loadPage(page);
       });
     }
@@ -231,17 +231,20 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
         const currentParams = new URLSearchParams(window.location.search);
 
         if (page > 1) {
-          currentParams.set("page", page.toString());
+          currentParams.set('page', page.toString());
         } else {
-          currentParams.delete("page");
+          currentParams.delete('page');
         }
 
-        const newUrl = createNewsAwareURL(window.location.pathname, currentParams);
+        const newUrl = createNewsAwareURL(
+          window.location.pathname,
+          currentParams
+        );
 
         const response = await fetch(newUrl, {
           headers: {
-            Accept: "text/html",
-            "X-Requested-With": "XMLHttpRequest",
+            Accept: 'text/html',
+            'X-Requested-With': 'XMLHttpRequest',
           },
         });
 
@@ -251,15 +254,15 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
         await this.updatePageContent(html);
 
         // Update URL without page reload
-        history.pushState(null, "", newUrl);
+        history.pushState(null, '', newUrl);
 
         // Scroll to top of results
-        document.querySelector("main")?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
+        document.querySelector('main')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
         });
       } catch (error) {
-        console.error("News pagination error:", error);
+        console.error('News pagination error:', error);
         this.showErrorState();
         // Fallback to normal navigation
         window.location.href = this.buildFallbackURL(page);
@@ -272,9 +275,9 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
       const currentParams = new URLSearchParams(window.location.search);
 
       if (page > 1) {
-        currentParams.set("page", page.toString());
+        currentParams.set('page', page.toString());
       } else {
-        currentParams.delete("page");
+        currentParams.delete('page');
       }
 
       return createNewsAwareURL(window.location.pathname, currentParams);
@@ -282,23 +285,23 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
 
     private async updatePageContent(html: string): Promise<void> {
       const parser = new DOMParser();
-      const newDoc = parser.parseFromString(html, "text/html");
+      const newDoc = parser.parseFromString(html, 'text/html');
 
       // Update main content area
-      const newMain = newDoc.querySelector("main");
-      const currentMain = document.querySelector("main");
+      const newMain = newDoc.querySelector('main');
+      const currentMain = document.querySelector('main');
 
       if (newMain && currentMain) {
-        currentMain.style.opacity = "0";
+        currentMain.style.opacity = '0';
         await new Promise((resolve) => setTimeout(resolve, 150));
         currentMain.innerHTML = newMain.innerHTML;
-        currentMain.style.opacity = "1";
+        currentMain.style.opacity = '1';
       }
 
       // Update pagination controls
-      const newPagination = newDoc.querySelector("#news-pagination-controls");
+      const newPagination = newDoc.querySelector('#news-pagination-controls');
       const currentPagination = document.querySelector(
-        "#news-pagination-controls"
+        '#news-pagination-controls'
       );
 
       if (newPagination && currentPagination) {
@@ -308,10 +311,10 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
 
       // Update search results summary
       const newSearchSort = newDoc.querySelector(
-        ".text-sm.text-(--content-meta)"
+        '.text-sm.text-(--content-meta)'
       );
       const currentSearchSort = document.querySelector(
-        ".text-sm.text-(--content-meta)"
+        '.text-sm.text-(--content-meta)'
       );
 
       if (newSearchSort && currentSearchSort) {
@@ -320,18 +323,18 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
     }
 
     private showLoadingState(): void {
-      const main = document.querySelector("main") as HTMLElement;
+      const main = document.querySelector('main') as HTMLElement;
       if (main) {
-        main.style.opacity = "0.6";
-        main.style.pointerEvents = "none";
+        main.style.opacity = '0.6';
+        main.style.pointerEvents = 'none';
       }
 
       // Add loading indicator
-      const pagination = document.querySelector("#news-pagination-controls");
+      const pagination = document.querySelector('#news-pagination-controls');
       if (pagination) {
-        const loader = document.createElement("div");
-        loader.id = "pagination-loader";
-        loader.className = "flex items-center justify-center mt-4";
+        const loader = document.createElement('div');
+        loader.id = 'pagination-loader';
+        loader.className = 'flex items-center justify-center mt-4';
         loader.innerHTML = `
           <div class="animate-spin rounded-full h-6 w-6 border-2 border-(--ui-accent) border-t-transparent"></div>
           <span class="ml-2 text-sm text-(--content-meta)">Loading...</span>
@@ -341,21 +344,21 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
     }
 
     private hideLoadingState(): void {
-      const main = document.querySelector("main") as HTMLElement;
+      const main = document.querySelector('main') as HTMLElement;
       if (main) {
-        main.style.opacity = "1";
-        main.style.pointerEvents = "";
+        main.style.opacity = '1';
+        main.style.pointerEvents = '';
       }
 
       // Remove loading indicator
-      const loader = document.querySelector("#pagination-loader");
+      const loader = document.querySelector('#pagination-loader');
       if (loader) {
         loader.remove();
       }
     }
 
     private showErrorState(): void {
-      const loader = document.querySelector("#pagination-loader");
+      const loader = document.querySelector('#pagination-loader');
       if (loader) {
         loader.innerHTML = `
           <span class="text-sm text-(--state-error-text)">Failed to load page. Redirecting...</span>
@@ -365,7 +368,7 @@ const endResult = Math.min(currentPage * postsPerPage, totalPosts);
     }
   }
 
-  document.addEventListener("astro:page-load", () => {
+  document.addEventListener('astro:page-load', () => {
     new NewsAjaxPagination();
   });
 </script>

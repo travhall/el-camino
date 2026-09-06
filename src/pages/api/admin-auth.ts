@@ -1,18 +1,18 @@
-import type { APIRoute } from "astro";
-import { timingSafeEqual } from "node:crypto";
+import type { APIRoute } from 'astro';
+import { timingSafeEqual } from 'node:crypto';
 import {
   ADMIN_COOKIE_NAME,
   ADMIN_SESSION_TTL_SECONDS,
   assertSameOrigin,
   issueSessionToken,
-} from "@/lib/admin/auth";
-import { createRateLimiter, clientIp } from "@/lib/rateLimit";
+} from '@/lib/admin/auth';
+import { createRateLimiter, clientIp } from '@/lib/rateLimit';
 
-function safeRedirectDest(raw: string | null, fallback = "/admin"): string {
+function safeRedirectDest(raw: string | null, fallback = '/admin'): string {
   if (!raw) return fallback;
   // Only allow site-relative paths: must start with / and not with //
   // (// would be protocol-relative, treated as absolute by browsers)
-  if (raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
   return fallback;
 }
 
@@ -31,24 +31,26 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!secret || !adminPassword) {
-    console.error("[admin-auth] ADMIN_SECRET or ADMIN_PASSWORD env var is not set");
-    return new Response("Admin not configured", { status: 503 });
+    console.error(
+      '[admin-auth] ADMIN_SECRET or ADMIN_PASSWORD env var is not set'
+    );
+    return new Response('Admin not configured', { status: 503 });
   }
 
   if (!assertSameOrigin(request)) {
-    return new Response("Bad origin", { status: 403 });
+    return new Response('Bad origin', { status: 403 });
   }
 
   if (loginLimiter.check(clientIp(request))) {
-    return new Response("Too many attempts. Try again later.", { status: 429 });
+    return new Response('Too many attempts. Try again later.', { status: 429 });
   }
 
-  let from = "/admin";
+  let from = '/admin';
 
   try {
     const formData = await request.formData();
-    const submitted = (formData.get("password") as string) ?? "";
-    from = safeRedirectDest(formData.get("from") as string | null);
+    const submitted = (formData.get('password') as string) ?? '';
+    from = safeRedirectDest(formData.get('from') as string | null);
 
     if (!safeCompare(submitted, adminPassword)) {
       return redirect(`/admin/login?from=${encodeURIComponent(from)}&error=1`);
@@ -57,8 +59,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     cookies.set(ADMIN_COOKIE_NAME, issueSessionToken(secret), {
       httpOnly: true,
       secure: true,
-      sameSite: "strict",
-      path: "/",
+      sameSite: 'strict',
+      path: '/',
       maxAge: ADMIN_SESSION_TTL_SECONDS,
     });
 

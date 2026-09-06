@@ -1,15 +1,15 @@
 ---
 // src/components/wordpress/blocks/BlogProductCard.astro - Updated to match ProductCard look and feel
-import type { Product } from "@/lib/square/types";
-import { MoneyUtils } from "@/lib/square/money";
-import { getProductStockStatus } from "@/lib/square/inventory";
-import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
-import { EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
+import type { Product } from '@/lib/square/types';
+import { MoneyUtils } from '@/lib/square/money';
+import { getProductStockStatus } from '@/lib/square/inventory';
+import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
+import { EL_CAMINO_LOADER_DATA_URI } from '@/lib/constants/assets';
 
 interface Props {
   product: Product;
   priority?: boolean;
-  variant?: "compact" | "inline" | "minimal" | "list";
+  variant?: 'compact' | 'inline' | 'minimal' | 'list';
   index?: number;
   skipInventoryCheck?: boolean;
 }
@@ -17,7 +17,7 @@ interface Props {
 const {
   product,
   priority = false,
-  variant = "compact",
+  variant = 'compact',
   index = 0,
   skipInventoryCheck = false,
 } = Astro.props;
@@ -46,8 +46,8 @@ const formattedOriginalPrice = saleInfo
 
 // Schema.org availability (same as ProductCard)
 const availabilitySchema = isOutOfStock
-  ? "https://schema.org/OutOfStock"
-  : "https://schema.org/InStock";
+  ? 'https://schema.org/OutOfStock'
+  : 'https://schema.org/InStock';
 
 // Generate unique IDs (same as ProductCard)
 const imageId = `blog-img-${product.id}-${index}`;
@@ -69,7 +69,7 @@ const imageSet = EnhancedImageOptimizer.generateOptimizedSources(
 
 // Generate responsive srcsets for all formats
 const avifSrcSet = imageSet.avif
-  ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, "avif", {
+  ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'avif', {
       width: 600,
       height: 400,
       quality: 85,
@@ -77,7 +77,7 @@ const avifSrcSet = imageSet.avif
   : undefined;
 
 const webpSrcSet = imageSet.webp
-  ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, "webp", {
+  ? EnhancedImageOptimizer.generateResponsiveSrcSet(product.image, 'webp', {
       width: 600,
       height: 400,
       quality: 85,
@@ -86,7 +86,7 @@ const webpSrcSet = imageSet.webp
 
 const jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(
   product.image,
-  "jpeg",
+  'jpeg',
   {
     width: 600,
     height: 400,
@@ -94,15 +94,15 @@ const jpegSrcSet = EnhancedImageOptimizer.generateResponsiveSrcSet(
   }
 );
 
-const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
+const imageSizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw';
 ---
 
 <!-- LIST VARIANT -->{
-  variant === "list" && (
+  variant === 'list' && (
     <a
       href={product.url}
       data-astro-prefetch="viewport"
-      class={`flex gap-3 items-center p-1 bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors duration-200 ${isOutOfStock ? "opacity-75" : ""}`}
+      class={`flex gap-3 items-center p-1 bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors duration-200 ${isOutOfStock ? 'opacity-75' : ''}`}
       itemscope
       itemtype="http://schema.org/Product"
     >
@@ -133,10 +133,10 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
             alt={product.title}
             width="600"
             height="400"
-            class={`object-cover w-full h-full opacity-0 transition-opacity duration-300 ${isOutOfStock ? "opacity-50" : ""}`}
-            loading={isDynamicPriority ? "eager" : "lazy"}
-            fetchpriority={isDynamicPriority ? "high" : "auto"}
-            decoding={isDynamicPriority ? "sync" : "async"}
+            class={`object-cover w-full h-full opacity-0 transition-opacity duration-300 ${isOutOfStock ? 'opacity-50' : ''}`}
+            loading={isDynamicPriority ? 'eager' : 'lazy'}
+            fetchpriority={isDynamicPriority ? 'high' : 'auto'}
+            decoding={isDynamicPriority ? 'sync' : 'async'}
             data-placeholder-id={`${placeholderId}-list`}
             data-shimmer-placeholder={`${placeholderId}-list`}
             data-shimmer-load-add="opacity-100"
@@ -158,7 +158,7 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 
       {/* Product Info */}
       <div class="grid px-1">
-        <div class={`self-start ${isOutOfStock ? "opacity-50" : ""}`}>
+        <div class={`self-start ${isOutOfStock ? 'opacity-50' : ''}`}>
           {product.brand && (
             <p class="text-xs uppercase text-(--content-meta)" itemprop="brand">
               {product.brand}
@@ -173,7 +173,7 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
         </div>
 
         <div
-          class={`text-(--product-price) self-end mb-2 lg:mb-0 ${isOutOfStock ? "opacity-50" : ""}`}
+          class={`text-(--product-price) self-end mb-2 lg:mb-0 ${isOutOfStock ? 'opacity-50' : ''}`}
         >
           <meta itemprop="availability" content={availabilitySchema} />
           {/* Original price strikethrough when on sale */}
@@ -183,7 +183,7 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
             </div>
           )}
           <span
-            class={`font-display font-semibold text-3xl whitespace-nowrap ${isOnSale ? "text-(--content-emphasis)" : ""}`}
+            class={`font-display font-semibold text-3xl whitespace-nowrap ${isOnSale ? 'text-(--content-emphasis)' : ''}`}
             itemprop="offers"
             itemscope
             itemtype="http://schema.org/Offer"
@@ -205,11 +205,11 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 
 <!-- GRID VARIANTS (compact/inline/minimal) -->
 {
-  variant !== "list" && (
+  variant !== 'list' && (
     <a
       href={product.url}
       data-astro-prefetch="viewport"
-      class={`group grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-(--ui-card-surface) hover:bg-(--ui-card-surface-hover) transition-all duration-200 ${isOutOfStock ? "opacity-75" : ""}`}
+      class={`group grid grid-rows-[auto_1fr] gap-2 w-full h-full p-1 bg-(--ui-card-surface) hover:bg-(--ui-card-surface-hover) transition-all duration-200 ${isOutOfStock ? 'opacity-75' : ''}`}
       itemscope
       itemtype="http://schema.org/Product"
     >
@@ -244,10 +244,10 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
             alt={product.title}
             width="600"
             height="400"
-            class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? "opacity-50" : ""} image-enhanced will-change-transform`}
-            loading={isDynamicPriority ? "eager" : "lazy"}
-            fetchpriority={isDynamicPriority ? "high" : "auto"}
-            decoding={isDynamicPriority ? "sync" : "async"}
+            class={`object-cover w-full h-full opacity-0 lg:group-hover:scale-105 transition-all duration-300 ${isOutOfStock ? 'opacity-50' : ''} image-enhanced will-change-transform`}
+            loading={isDynamicPriority ? 'eager' : 'lazy'}
+            fetchpriority={isDynamicPriority ? 'high' : 'auto'}
+            decoding={isDynamicPriority ? 'sync' : 'async'}
             data-placeholder-id={placeholderId}
             data-shimmer-placeholder={placeholderId}
             data-shimmer-load-add="opacity-100 loaded"
@@ -270,7 +270,7 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 
       {/* Product Info */}
       <div class="grid px-1">
-        <div class={`self-start ${isOutOfStock ? "opacity-50" : ""}`}>
+        <div class={`self-start ${isOutOfStock ? 'opacity-50' : ''}`}>
           {product.brand && (
             <p
               class="text-xs uppercase text-(--content-meta) mb-0"
@@ -288,7 +288,7 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
         </div>
 
         <div
-          class={`text-(--product-price) self-end mb-2 lg:mb-0 ${isOutOfStock ? "opacity-50" : ""}`}
+          class={`text-(--product-price) self-end mb-2 lg:mb-0 ${isOutOfStock ? 'opacity-50' : ''}`}
         >
           <meta itemprop="availability" content={availabilitySchema} />
           {/* Original price strikethrough when on sale */}
@@ -298,7 +298,7 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
             </div>
           )}
           <span
-            class={`font-display font-semibold text-3xl whitespace-nowrap ${isOnSale ? "text-(--content-emphasis)" : ""}`}
+            class={`font-display font-semibold text-3xl whitespace-nowrap ${isOnSale ? 'text-(--content-emphasis)' : ''}`}
             itemprop="offers"
             itemscope
             itemtype="http://schema.org/Offer"
@@ -331,13 +331,13 @@ const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 </style>
 
 <script>
-  document.addEventListener("astro:page-load", () => {
+  document.addEventListener('astro:page-load', () => {
     const images =
-      document.querySelectorAll<HTMLImageElement>(".image-enhanced");
+      document.querySelectorAll<HTMLImageElement>('.image-enhanced');
 
     images.forEach((img) => {
       if (img.complete && img.naturalHeight !== 0) {
-        img.classList.add("opacity-100", "loaded");
+        img.classList.add('opacity-100', 'loaded');
         const placeholderId = img.dataset.placeholderId;
         if (placeholderId) {
           document.getElementById(placeholderId)?.remove();

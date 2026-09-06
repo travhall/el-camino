@@ -1,52 +1,53 @@
 ---
 // src/pages/shop/all.astro - Rebuilt using existing component architecture with working availability filter
-import ProductFilters from "@/components/ProductFilters.astro";
-import AppliedFilters from "@/components/AppliedFilters.astro";
-import ProductGrid from "@/components/ProductGrid.astro";
-import Layout from "@/layouts/Layout.astro";
-import { fetchProducts } from "@/lib/square/client";
+import ProductFilters from '@/components/ProductFilters.astro';
+import AppliedFilters from '@/components/AppliedFilters.astro';
+import ProductGrid from '@/components/ProductGrid.astro';
+import Layout from '@/layouts/Layout.astro';
+import { fetchProducts } from '@/lib/square/client';
 import {
   parseFiltersFromURL,
   extractFilterOptions,
   filterProductsWithCache,
-} from "@/lib/square/filterUtils";
+} from '@/lib/square/filterUtils';
 import type {
   Product,
   ProductFilters as ProductFiltersType,
   FilterOptions,
-} from "@/lib/square/types";
+} from '@/lib/square/types';
 
 // === PARSE URL PARAMETERS FOR FILTERING ===
 const filters = parseFiltersFromURL(Astro.url.searchParams);
 
 // Smart cache headers based on filters
-const hasFilters = filters.brands.length > 0 ||
-                   filters.categories.length > 0 ||
-                   filters.availability === true;
+const hasFilters =
+  filters.brands.length > 0 ||
+  filters.categories.length > 0 ||
+  filters.availability === true;
 
 // No max-age: inventory-sensitive pages must not be browser-cached.
 // Browsers will always revalidate; CDN benefits from s-maxage.
 // Directive is "s-maxage" — one hyphen only. An extra hyphen before "max"
 // is silently ignored by caches: no error, no warning, no test failure.
 const cacheControl = hasFilters
-  ? "public, no-cache, s-maxage=180, stale-while-revalidate=900"
-  : "public, no-cache, s-maxage=300, stale-while-revalidate=1800";
+  ? 'public, no-cache, s-maxage=180, stale-while-revalidate=900'
+  : 'public, no-cache, s-maxage=300, stale-while-revalidate=1800';
 
 // Set cache headers for this response
 // Directive is "s-maxage" — one hyphen only. An extra hyphen before "max"
 // is silently ignored by caches: no error, no warning, no test failure.
-Astro.response.headers.set("Cache-Control", cacheControl);
+Astro.response.headers.set('Cache-Control', cacheControl);
 Astro.response.headers.set(
-  "Netlify-CDN-Cache-Control",
+  'Netlify-CDN-Cache-Control',
   hasFilters
-    ? "public, s-maxage=180, stale-while-revalidate=900"
-    : "public, s-maxage=300, stale-while-revalidate=1800"
+    ? 'public, s-maxage=180, stale-while-revalidate=900'
+    : 'public, s-maxage=300, stale-while-revalidate=1800'
 );
 
 // Add cache debugging header
 Astro.response.headers.set(
-  "X-Cache-Strategy",
-  hasFilters ? "filtered-content" : "base-catalog"
+  'X-Cache-Strategy',
+  hasFilters ? 'filtered-content' : 'base-catalog'
 );
 
 // === OPTIMIZED PRODUCT FETCHING ===
@@ -61,22 +62,24 @@ try {
 
   // Sort alphabetically by brand (case-insensitive), unbranded fall to end
   allProductsFull.sort((a, b) => {
-    const brandA = a.brand?.toLowerCase() ?? "\uFFFF";
-    const brandB = b.brand?.toLowerCase() ?? "\uFFFF";
+    const brandA = a.brand?.toLowerCase() ?? '\uFFFF';
+    const brandB = b.brand?.toLowerCase() ?? '\uFFFF';
     return brandA.localeCompare(brandB);
   });
 
   // Always pass ALL products to ProductGrid
   // ProductGrid handles progressive display via infinite scroll
   allProducts = allProductsFull;
-  
+
   // Extract filter options from ALL products (for filter UI)
   filterOptions = await extractFilterOptions(allProductsFull);
 
   // Build slug→ID map for client-side filtering (passed to ProductGrid)
   filterOptions.categories.forEach((c) => {
     if (c.slug) slugToIdMap[c.slug] = c.id;
-    c.subcategories.forEach((s) => { if (s.slug) slugToIdMap[s.slug] = s.id; });
+    c.subcategories.forEach((s) => {
+      if (s.slug) slugToIdMap[s.slug] = s.id;
+    });
   });
   const resolvedFilters: ProductFiltersType = {
     ...filters,
@@ -85,20 +88,22 @@ try {
 
   if (hasFilters) {
     // Apply server-side filtering using the same logic as category pages
-    filteredProducts = await filterProductsWithCache(allProducts, resolvedFilters);
+    filteredProducts = await filterProductsWithCache(
+      allProducts,
+      resolvedFilters
+    );
   } else {
     // No filters applied - show all products
     filteredProducts = [...allProducts];
   }
-
 } catch (error) {
-  console.error("Error fetching products:", error);
+  console.error('Error fetching products:', error);
   allProducts = [];
   filteredProducts = [];
 }
 
 // === PAGE METADATA ===
-const pageTitle = "Shop All | El Camino";
+const pageTitle = 'Shop All | El Camino';
 
 // Preload only the LCP image — preloading more creates resource contention
 // that can delay the LCP element; the browser's own preload scanner handles
@@ -106,10 +111,10 @@ const pageTitle = "Shop All | El Camino";
 const preloadImages = allProducts
   .slice(0, 1)
   .map((p) => p.image)
-  .filter((img) => !img.includes("placeholder"));
+  .filter((img) => !img.includes('placeholder'));
 
 // Current path for filter URLs
-const categoryPath = "/shop/all";
+const categoryPath = '/shop/all';
 
 // Check for active filters (for display purposes)
 const hasActiveFilters =
@@ -143,7 +148,10 @@ const hasActiveFilters =
     <!-- Page Body -->
     <div class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-1 pb-0">
       <!-- Filter Sidebar -->
-      <aside class="lg:col-span-1 lg:sticky lg:self-start" style="top: var(--header-height);">
+      <aside
+        class="lg:col-span-1 lg:sticky lg:self-start"
+        style="top: var(--header-height);"
+      >
         <ProductFilters
           filterOptions={filterOptions}
           totalProducts={allProducts.length}
@@ -168,7 +176,9 @@ const hasActiveFilters =
             <>
               <ProductGrid
                 products={allProducts}
-                filteredIds={hasFilters ? filteredProducts.map((p) => p.id) : undefined}
+                filteredIds={
+                  hasFilters ? filteredProducts.map((p) => p.id) : undefined
+                }
                 slugToIdMap={slugToIdMap}
                 categoryPath={categoryPath}
               />
@@ -176,17 +186,17 @@ const hasActiveFilters =
           ) : (
             <div class="text-center py-16">
               <div class="text-6xl mb-4 opacity-20">
-                {hasActiveFilters ? "🔍" : "🛹"}
+                {hasActiveFilters ? '🔍' : '🛹'}
               </div>
               <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
                 {hasActiveFilters
-                  ? "No products match your filters"
-                  : "No products found"}
+                  ? 'No products match your filters'
+                  : 'No products found'}
               </h2>
               <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
                 {hasActiveFilters
-                  ? "Try adjusting your filters or browse all products."
-                  : "Check back soon for new products!"}
+                  ? 'Try adjusting your filters or browse all products.'
+                  : 'Check back soon for new products!'}
               </p>
               {hasActiveFilters ? (
                 <a
@@ -214,7 +224,7 @@ const hasActiveFilters =
 <script>
   // Add View Transitions fallback detection
   if (!document.startViewTransition) {
-    document.documentElement.classList.add("no-view-transitions");
+    document.documentElement.classList.add('no-view-transitions');
   }
 </script>
 

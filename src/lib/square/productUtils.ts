@@ -1,7 +1,7 @@
 // src/lib/square/productUtils.ts
 // Shared utilities used by both client.ts and categories.ts
-import { squareClient } from "./client";
-import { measurementUnitCache } from "@/lib/cache/blobCache";
+import { squareClient } from './client';
+import { measurementUnitCache } from '@/lib/cache/blobCache';
 
 /**
  * Batch-fetch measurement unit names from Square, cached via BlobCache to
@@ -15,17 +15,19 @@ export async function fetchMeasurementUnits(
   if (!unitIds.length) return {};
 
   const uniqueIds = [...new Set(unitIds)];
-  const cacheKey = uniqueIds.sort().join(",");
+  const cacheKey = uniqueIds.sort().join(',');
 
   return measurementUnitCache.getOrCompute(cacheKey, async () => {
     const results = await Promise.allSettled(
       uniqueIds.map(async (unitId) => {
         try {
-          const result = await squareClient.catalog.object.get({ objectId: unitId });
+          const result = await squareClient.catalog.object.get({
+            objectId: unitId,
+          });
 
-          if (result.object?.type === "MEASUREMENT_UNIT") {
+          if (result.object?.type === 'MEASUREMENT_UNIT') {
             const unitData = result.object.measurementUnitData;
-            let unitName = "";
+            let unitName = '';
 
             if (unitData?.measurementUnit?.customUnit?.name) {
               unitName = unitData.measurementUnit.customUnit.name;
@@ -34,21 +36,21 @@ export async function fetchMeasurementUnits(
             } else if (unitData?.measurementUnit?.type) {
               unitName = unitData.measurementUnit.type
                 .toLowerCase()
-                .replace(/_/g, " ");
+                .replace(/_/g, ' ');
             }
 
             return { unitId, unitName };
           }
-          return { unitId, unitName: "" };
+          return { unitId, unitName: '' };
         } catch {
-          return { unitId, unitName: "" };
+          return { unitId, unitName: '' };
         }
       })
     );
 
     const unitMap: Record<string, string> = {};
     results.forEach((result) => {
-      if (result.status === "fulfilled" && result.value.unitName) {
+      if (result.status === 'fulfilled' && result.value.unitName) {
         unitMap[result.value.unitId] = result.value.unitName;
       }
     });

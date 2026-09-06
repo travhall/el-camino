@@ -4,15 +4,15 @@
  * Main entry point for all admin tools and performance monitoring.
  */
 
-import AdminLayout from "@/layouts/AdminLayout.astro";
-import AccentCard from "@/components/admin/AccentCard.astro";
-import { Icon } from "astro-icon/components";
-import { squareClient } from "@/lib/square/client";
-import { getAllProductSummaries } from "@/lib/backInStock";
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import AccentCard from '@/components/admin/AccentCard.astro';
+import { Icon } from 'astro-icon/components';
+import { squareClient } from '@/lib/square/client';
+import { getAllProductSummaries } from '@/lib/backInStock';
 
-const pageTitle = "Dashboard";
+const pageTitle = 'Dashboard';
 const pageDescription =
-  "Admin tools for performance monitoring and content management.";
+  'Admin tools for performance monitoring and content management.';
 
 // ── Attention summary — fetch all three sources in parallel ──────────────────
 interface ShippingSummary {
@@ -37,18 +37,20 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
       query: {
         filter: {
           fulfillmentFilter: {
-            fulfillmentTypes: ["SHIPMENT"],
-            fulfillmentStates: ["PROPOSED"],
+            fulfillmentTypes: ['SHIPMENT'],
+            fulfillmentStates: ['PROPOSED'],
           },
-          stateFilter: { states: ["OPEN"] },
+          stateFilter: { states: ['OPEN'] },
         },
-        sort: { sortField: "CREATED_AT", sortOrder: "ASC" },
+        sort: { sortField: 'CREATED_AT', sortOrder: 'ASC' },
       },
     });
-    const paid = (searchResult.orders ?? []).filter((o: any) => o.tenders?.length);
+    const paid = (searchResult.orders ?? []).filter(
+      (o: any) => o.tenders?.length
+    );
     const totalCents = paid.reduce((sum: number, o: any) => {
       const v = o.totalMoney?.amount;
-      return sum + (v != null ? (typeof v === "bigint" ? Number(v) : v) : 0);
+      return sum + (v != null ? (typeof v === 'bigint' ? Number(v) : v) : 0);
     }, 0);
     const oldest = paid[0]?.createdAt ?? null;
     return { count: paid.length, oldestDate: oldest, totalCents };
@@ -61,15 +63,17 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
       query: {
         filter: {
           fulfillmentFilter: {
-            fulfillmentTypes: ["PICKUP"],
-            fulfillmentStates: ["PROPOSED", "RESERVED", "PREPARED"],
+            fulfillmentTypes: ['PICKUP'],
+            fulfillmentStates: ['PROPOSED', 'RESERVED', 'PREPARED'],
           },
-          stateFilter: { states: ["OPEN"] },
+          stateFilter: { states: ['OPEN'] },
         },
-        sort: { sortField: "CREATED_AT", sortOrder: "ASC" },
+        sort: { sortField: 'CREATED_AT', sortOrder: 'ASC' },
       },
     });
-    const paid = (searchResult.orders ?? []).filter((o: any) => o.tenders?.length);
+    const paid = (searchResult.orders ?? []).filter(
+      (o: any) => o.tenders?.length
+    );
     const oldest = paid[0]?.createdAt ?? null;
     return { count: paid.length, oldestDate: oldest };
   })(),
@@ -83,34 +87,34 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
 ]);
 
 const shipping: ShippingSummary =
-  shippingResult.status === "fulfilled"
+  shippingResult.status === 'fulfilled'
     ? shippingResult.value
     : { count: 0, oldestDate: null, totalCents: 0 };
 const pickup: PickupSummary =
-  pickupResult.status === "fulfilled"
+  pickupResult.status === 'fulfilled'
     ? pickupResult.value
     : { count: 0, oldestDate: null };
 const bis: BisSummary =
-  bisResult.status === "fulfilled"
+  bisResult.status === 'fulfilled'
     ? bisResult.value
     : { products: 0, subscribers: 0 };
 
-const shippingError = shippingResult.status === "rejected";
-const pickupError = pickupResult.status === "rejected";
-const bisError = bisResult.status === "rejected";
+const shippingError = shippingResult.status === 'rejected';
+const pickupError = pickupResult.status === 'rejected';
+const bisError = bisResult.status === 'rejected';
 
 function formatMoney(cents: number) {
-  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 function relativeDate(iso: string | null): string {
-  if (!iso) return "";
+  if (!iso) return '';
   const d = new Date(iso);
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000);
-  if (diffDays === 0) return "today";
-  if (diffDays === 1) return "yesterday";
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'yesterday';
   if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 ---
 
@@ -136,7 +140,10 @@ function relativeDate(iso: string | null): string {
       >
         <!-- Label bar -->
         <div class="flex items-center gap-2 px-5 pt-4 pb-2">
-          <Icon name="uil:box" class="w-5 h-5 text-(--status-info-strong) shrink-0" />
+          <Icon
+            name="uil:box"
+            class="w-5 h-5 text-(--status-info-strong) shrink-0"
+          />
           <span
             class="text-sm font-semibold uppercase tracking-wider text-(--status-info-strong)"
             >Shipping</span
@@ -145,7 +152,9 @@ function relativeDate(iso: string | null): string {
         <!-- Content -->
         {
           shippingError ? (
-            <p class="px-5 pb-4 text-xs text-(--status-danger-strong)">Could not load data</p>
+            <p class="px-5 pb-4 text-xs text-(--status-danger-strong)">
+              Could not load data
+            </p>
           ) : shipping.count > 0 ? (
             <>
               <div class="px-5 pb-3">
@@ -153,12 +162,12 @@ function relativeDate(iso: string | null): string {
                   {shipping.count}
                 </p>
                 <p class="text-base text-(--content-body) mt-1.5">
-                  {shipping.count === 1 ? "order" : "orders"} waiting to ship
+                  {shipping.count === 1 ? 'order' : 'orders'} waiting to ship
                 </p>
                 <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
                   {shipping.oldestDate && (
                     <span>
-                      Oldest:{" "}
+                      Oldest:{' '}
                       <strong class="text-(--content-body) font-medium">
                         {relativeDate(shipping.oldestDate)}
                       </strong>
@@ -166,7 +175,7 @@ function relativeDate(iso: string | null): string {
                   )}
                   {shipping.totalCents > 0 && (
                     <span>
-                      Value:{" "}
+                      Value:{' '}
                       <strong class="text-(--content-body) font-medium">
                         {formatMoney(shipping.totalCents)}
                       </strong>
@@ -176,7 +185,7 @@ function relativeDate(iso: string | null): string {
               </div>
               <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
                 <span class="text-sm flex items-center font-semibold text-(--status-info-strong) group-hover:opacity-80 transition-opacity">
-                  View orders{" "}
+                  View orders{' '}
                   <Icon
                     class="h-4 w-4 text-(--status-info-strong)"
                     name="uil:arrow-right"
@@ -217,7 +226,9 @@ function relativeDate(iso: string | null): string {
         <!-- Content -->
         {
           pickupError ? (
-            <p class="px-5 pb-4 text-xs text-(--status-danger-strong)">Could not load data</p>
+            <p class="px-5 pb-4 text-xs text-(--status-danger-strong)">
+              Could not load data
+            </p>
           ) : pickup.count > 0 ? (
             <>
               <div class="px-5 pb-3">
@@ -225,13 +236,13 @@ function relativeDate(iso: string | null): string {
                   {pickup.count}
                 </p>
                 <p class="text-base text-(--content-body) mt-1.5">
-                  {pickup.count === 1 ? "customer" : "customers"} ready to pick
+                  {pickup.count === 1 ? 'customer' : 'customers'} ready to pick
                   up
                 </p>
                 <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
                   {pickup.oldestDate && (
                     <span>
-                      Oldest:{" "}
+                      Oldest:{' '}
                       <strong class="text-(--content-body) font-medium">
                         {relativeDate(pickup.oldestDate)}
                       </strong>
@@ -241,7 +252,7 @@ function relativeDate(iso: string | null): string {
               </div>
               <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
                 <span class="text-sm flex items-center font-semibold text-(--status-success-strong) group-hover:opacity-80 transition-opacity">
-                  View pick ups{" "}
+                  View pick ups{' '}
                   <Icon
                     class="h-4 w-4 text-(--status-success-strong)"
                     name="uil:arrow-right"
@@ -270,7 +281,10 @@ function relativeDate(iso: string | null): string {
       >
         <!-- Label bar -->
         <div class="flex items-center gap-2 px-5 pt-4 pb-2">
-          <Icon name="uil:bell" class="w-5 h-5 text-(--status-warning-strong) shrink-0" />
+          <Icon
+            name="uil:bell"
+            class="w-5 h-5 text-(--status-warning-strong) shrink-0"
+          />
           <span
             class="text-sm font-semibold uppercase tracking-wider text-(--status-warning-strong)"
             >Back in Stock</span
@@ -279,7 +293,9 @@ function relativeDate(iso: string | null): string {
         <!-- Content -->
         {
           bisError ? (
-            <p class="px-5 pb-4 text-xs text-(--status-danger-strong)">Could not load data</p>
+            <p class="px-5 pb-4 text-xs text-(--status-danger-strong)">
+              Could not load data
+            </p>
           ) : bis.products > 0 ? (
             <>
               <div class="px-5 pb-3">
@@ -287,21 +303,21 @@ function relativeDate(iso: string | null): string {
                   {bis.subscribers}
                 </p>
                 <p class="text-base text-(--content-body) mt-1.5">
-                  {bis.subscribers === 1 ? "subscriber" : "subscribers"} waiting
+                  {bis.subscribers === 1 ? 'subscriber' : 'subscribers'} waiting
                 </p>
                 <div class="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-sm text-(--content-meta)">
                   <span>
-                    Across{" "}
+                    Across{' '}
                     <strong class="text-(--content-body) font-medium">
-                      {bis.products}{" "}
-                      {bis.products === 1 ? "product" : "products"}
+                      {bis.products}{' '}
+                      {bis.products === 1 ? 'product' : 'products'}
                     </strong>
                   </span>
                 </div>
               </div>
               <div class="mt-auto border-t border-(--border-primary) px-5 py-2.5 flex justify-end">
                 <span class="text-sm flex items-center font-semibold text-(--status-warning-strong) group-hover:opacity-80 transition-opacity">
-                  View subscribers{" "}
+                  View subscribers{' '}
                   <Icon
                     class="h-4 w-4 text-(--content-emphasis)"
                     name="uil:arrow-right"
@@ -675,10 +691,10 @@ function relativeDate(iso: string | null): string {
 
 <script>
   type CruxStatus =
-    | { status: "no_data"; origin: string }
-    | { status: "no_key"; origin: string }
+    | { status: 'no_data'; origin: string }
+    | { status: 'no_key'; origin: string }
     | {
-        status: "ok";
+        status: 'ok';
         origin: string;
         lcp: number | null;
         inp: number | null;
@@ -691,92 +707,94 @@ function relativeDate(iso: string | null): string {
       };
 
   function vitalClass(good: boolean | null): string {
-    if (good === null) return "text-(--content-meta)";
-    return good ? "text-(--status-success-strong)" : "text-(--status-warning-strong)";
+    if (good === null) return 'text-(--content-meta)';
+    return good
+      ? 'text-(--status-success-strong)'
+      : 'text-(--status-warning-strong)';
   }
 
   function lcpStatus(ms: number | null): {
     label: string;
     good: boolean | null;
   } {
-    if (ms === null) return { label: "—", good: null };
-    if (ms <= 2500) return { label: "Good", good: true };
-    if (ms <= 4000) return { label: "Needs improvement", good: false };
-    return { label: "Poor", good: false };
+    if (ms === null) return { label: '—', good: null };
+    if (ms <= 2500) return { label: 'Good', good: true };
+    if (ms <= 4000) return { label: 'Needs improvement', good: false };
+    return { label: 'Poor', good: false };
   }
 
   function inpStatus(ms: number | null): {
     label: string;
     good: boolean | null;
   } {
-    if (ms === null) return { label: "—", good: null };
-    if (ms <= 200) return { label: "Good", good: true };
-    if (ms <= 500) return { label: "Needs improvement", good: false };
-    return { label: "Poor", good: false };
+    if (ms === null) return { label: '—', good: null };
+    if (ms <= 200) return { label: 'Good', good: true };
+    if (ms <= 500) return { label: 'Needs improvement', good: false };
+    return { label: 'Poor', good: false };
   }
 
   function clsStatus(score: number | null): {
     label: string;
     good: boolean | null;
   } {
-    if (score === null) return { label: "—", good: null };
-    if (score <= 0.1) return { label: "Good", good: true };
-    if (score <= 0.25) return { label: "Needs improvement", good: false };
-    return { label: "Poor", good: false };
+    if (score === null) return { label: '—', good: null };
+    if (score <= 0.1) return { label: 'Good', good: true };
+    if (score <= 0.25) return { label: 'Needs improvement', good: false };
+    return { label: 'Poor', good: false };
   }
 
   async function loadCrux() {
-    const loading = document.getElementById("cwv-loading")!;
-    const noData = document.getElementById("cwv-no-data")!;
-    const noKey = document.getElementById("cwv-no-key")!;
-    const metrics = document.getElementById("cwv-metrics")!;
+    const loading = document.getElementById('cwv-loading')!;
+    const noData = document.getElementById('cwv-no-data')!;
+    const noKey = document.getElementById('cwv-no-key')!;
+    const metrics = document.getElementById('cwv-metrics')!;
 
     try {
-      const res = await fetch("/api/crux-data");
+      const res = await fetch('/api/crux-data');
       const data: CruxStatus = await res.json();
 
-      loading.classList.add("hidden");
+      loading.classList.add('hidden');
 
-      if (data.status === "no_key") {
-        noKey.classList.remove("hidden");
+      if (data.status === 'no_key') {
+        noKey.classList.remove('hidden');
         return;
       }
 
-      if (data.status === "no_data") {
-        noData.classList.remove("hidden");
+      if (data.status === 'no_data') {
+        noData.classList.remove('hidden');
         return;
       }
 
       // LCP
       const lcpMs = data.lcp;
       const lcpSt = lcpStatus(lcpMs);
-      document.getElementById("lcp-value")!.textContent =
-        lcpMs !== null ? (lcpMs / 1000).toFixed(1) + "s" : "—";
-      const lcpStatusEl = document.getElementById("lcp-status")!;
+      document.getElementById('lcp-value')!.textContent =
+        lcpMs !== null ? (lcpMs / 1000).toFixed(1) + 's' : '—';
+      const lcpStatusEl = document.getElementById('lcp-status')!;
       lcpStatusEl.textContent = lcpSt.label;
       lcpStatusEl.className = `text-xs mt-1 ${vitalClass(lcpSt.good)}`;
 
       // INP
       const inpMs = data.inp;
       const inpSt = inpStatus(inpMs);
-      document.getElementById("inp-value")!.textContent =
-        inpMs !== null ? Math.round(inpMs) + "ms" : "—";
-      const inpStatusEl = document.getElementById("inp-status")!;
+      document.getElementById('inp-value')!.textContent =
+        inpMs !== null ? Math.round(inpMs) + 'ms' : '—';
+      const inpStatusEl = document.getElementById('inp-status')!;
       inpStatusEl.textContent = inpSt.label;
       inpStatusEl.className = `text-xs mt-1 ${vitalClass(inpSt.good)}`;
 
       // CLS
       const clsScore = data.cls;
       const clsSt = clsStatus(clsScore);
-      document.getElementById("cls-value")!.textContent =
-        clsScore !== null ? clsScore.toFixed(2) : "—";
-      const clsStatusEl = document.getElementById("cls-status")!;
+      document.getElementById('cls-value')!.textContent =
+        clsScore !== null ? clsScore.toFixed(2) : '—';
+      const clsStatusEl = document.getElementById('cls-status')!;
       clsStatusEl.textContent = clsSt.label;
       clsStatusEl.className = `text-xs mt-1 ${vitalClass(clsSt.good)}`;
 
-      metrics.style.display = "grid";
+      metrics.style.display = 'grid';
     } catch {
-      loading.textContent = "Could not load field data.";
+      loading.textContent = 'Could not load field data.';
     }
   }
 

@@ -1,20 +1,20 @@
 ---
 // src/pages/category/[...slug].astro
-import ProductFilters from "@/components/ProductFilters.astro";
-import AppliedFilters from "@/components/AppliedFilters.astro";
-import ProductGrid from "@/components/ProductGrid.astro";
-import { fetchProductsByCategory } from "@/lib/square/categories";
-import { resolveCategoryPathWithRetry } from "@/lib/square/categoryLookup";
+import ProductFilters from '@/components/ProductFilters.astro';
+import AppliedFilters from '@/components/AppliedFilters.astro';
+import ProductGrid from '@/components/ProductGrid.astro';
+import { fetchProductsByCategory } from '@/lib/square/categories';
+import { resolveCategoryPathWithRetry } from '@/lib/square/categoryLookup';
 import {
   parseFiltersFromURL,
   filterProductsWithCache,
   extractFilterOptions,
-} from "@/lib/square/filterUtils";
-import { batchCheckCategoriesHaveProducts } from "@/lib/square/categoryNav";
-import Layout from "@/layouts/Layout.astro";
+} from '@/lib/square/filterUtils';
+import { batchCheckCategoriesHaveProducts } from '@/lib/square/categoryNav';
+import Layout from '@/layouts/Layout.astro';
 
 const { slug } = Astro.params;
-if (!slug) return Astro.redirect("/404");
+if (!slug) return Astro.redirect('/404');
 
 // === OPTIMIZED CATEGORY RESOLUTION WITH RETRY ===
 // Uses direct category lookup with retry + cache invalidation
@@ -23,13 +23,14 @@ if (!slug) return Astro.redirect("/404");
 const { category, parentCategory, subcategories } =
   await resolveCategoryPathWithRetry(slug);
 
-if (!category) return Astro.redirect("/404");
+if (!category) return Astro.redirect('/404');
 
 // Filter subcategories to only show those with products (matching navigation behavior)
 let filteredSubcategories = subcategories;
 if (subcategories.length > 0) {
   const subcategoryIds = subcategories.map((sub) => sub.id);
-  const categoryProductMap = await batchCheckCategoriesHaveProducts(subcategoryIds);
+  const categoryProductMap =
+    await batchCheckCategoriesHaveProducts(subcategoryIds);
   filteredSubcategories = subcategories.filter(
     (sub) => categoryProductMap[sub.id] === true
   );
@@ -39,9 +40,10 @@ if (subcategories.length > 0) {
 const filters = parseFiltersFromURL(Astro.url.searchParams);
 
 // Check for active filters
-const hasFilters = filters.brands.length > 0 ||
-                   filters.categories.length > 0 ||
-                   filters.availability === true;
+const hasFilters =
+  filters.brands.length > 0 ||
+  filters.categories.length > 0 ||
+  filters.availability === true;
 
 // === PHASE 1: ISR CACHING - Enable Edge Caching ===
 // Serve from edge, revalidate in background for 88% improvement (870ms → 100ms)
@@ -52,15 +54,15 @@ const hasFilters = filters.brands.length > 0 ||
 // stale-while-revalidate=0: after TTL expires, CDN waits for a fresh response
 // rather than serving stale HTML with outdated inventory status baked in.
 Astro.response.headers.set(
-  "Cache-Control",
-  "public, no-cache, s-maxage=300, stale-while-revalidate=0"
+  'Cache-Control',
+  'public, no-cache, s-maxage=300, stale-while-revalidate=0'
 );
 Astro.response.headers.set(
-  "Netlify-CDN-Cache-Control",
-  "public, s-maxage=300, stale-while-revalidate=0"
+  'Netlify-CDN-Cache-Control',
+  'public, s-maxage=300, stale-while-revalidate=0'
 );
 
-import type { Product, FilterOptions } from "@/lib/square/types";
+import type { Product, FilterOptions } from '@/lib/square/types';
 
 let allProducts: Product[] = [];
 let filteredProducts: Product[] = [];
@@ -80,7 +82,9 @@ try {
   // Build slug→ID map for client-side filtering (passed to ProductGrid)
   filterOptions.categories.forEach((c) => {
     if (c.slug) slugToIdMap[c.slug] = c.id;
-    c.subcategories.forEach((s) => { if (s.slug) slugToIdMap[s.slug] = s.id; });
+    c.subcategories.forEach((s) => {
+      if (s.slug) slugToIdMap[s.slug] = s.id;
+    });
   });
   const resolvedFilters = {
     ...filters,
@@ -89,7 +93,10 @@ try {
 
   if (hasFilters) {
     // Apply server-side filtering using the same logic as shop/all
-    filteredProducts = await filterProductsWithCache(allProducts, resolvedFilters);
+    filteredProducts = await filterProductsWithCache(
+      allProducts,
+      resolvedFilters
+    );
   } else {
     // No filters applied - show all products
     filteredProducts = [...allProducts];
@@ -109,11 +116,11 @@ const fullPageTitle = `Shop ${pageTitle} | El Camino`;
 // CRITICAL LCP FIX: Preload only the first product image (LCP element)
 // Was: 8 images (excessive preloading hurts performance)
 // Now: 1 image with modern format support (AVIF/WebP/JPEG)
-import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
+import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
 
 const firstProduct = allProducts[0];
 const lcpImage =
-  firstProduct?.image && !firstProduct.image.includes("placeholder")
+  firstProduct?.image && !firstProduct.image.includes('placeholder')
     ? EnhancedImageOptimizer.generateOptimizedSources(firstProduct.image, {
         width: 600,
         height: 400,
@@ -223,7 +230,10 @@ const hasActiveFilters =
     <!-- Page Body -->
     <div class="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-1 p-1 pb-0">
       <!-- Filter Sidebar -->
-      <aside class="lg:col-span-1 lg:sticky lg:self-start" style="top: var(--header-height);">
+      <aside
+        class="lg:col-span-1 lg:sticky lg:self-start"
+        style="top: var(--header-height);"
+      >
         <ProductFilters
           filterOptions={filterOptions}
           totalProducts={allProducts.length}
@@ -243,7 +253,9 @@ const hasActiveFilters =
             <>
               <ProductGrid
                 products={allProducts}
-                filteredIds={hasFilters ? filteredProducts.map((p) => p.id) : undefined}
+                filteredIds={
+                  hasFilters ? filteredProducts.map((p) => p.id) : undefined
+                }
                 slugToIdMap={slugToIdMap}
                 categoryPath={categoryPath}
               />
@@ -251,19 +263,19 @@ const hasActiveFilters =
           ) : (
             <div class="text-center py-16">
               <div class="text-6xl mb-4 opacity-20">
-                {hasActiveFilters ? "🔍" : "🛹"}
+                {hasActiveFilters ? '🔍' : '🛹'}
               </div>
               <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
                 {hasActiveFilters
-                  ? "No products match your filters"
-                  : "No products found"}
+                  ? 'No products match your filters'
+                  : 'No products found'}
               </h2>
               <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
                 {hasActiveFilters
-                  ? "Try adjusting your filters or browse all products."
+                  ? 'Try adjusting your filters or browse all products.'
                   : filteredSubcategories.length > 0
-                    ? "Try browsing our subcategories above, or check out other product categories."
-                    : "This category is currently empty. Check back soon for new products!"}
+                    ? 'Try browsing our subcategories above, or check out other product categories.'
+                    : 'This category is currently empty. Check back soon for new products!'}
               </p>
               {hasActiveFilters ? (
                 <a
@@ -291,7 +303,7 @@ const hasActiveFilters =
 <script>
   // Add View Transitions fallback detection
   if (!document.startViewTransition) {
-    document.documentElement.classList.add("no-view-transitions");
+    document.documentElement.classList.add('no-view-transitions');
   }
 </script>
 

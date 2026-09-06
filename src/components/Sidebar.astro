@@ -1,24 +1,24 @@
 ---
 // src/components/Sidebar.astro
-import { getCategoriesForSidebar } from "@/lib/square/categoryNav";
-import { getCategoryImageUrls } from "@/lib/square/categoryImages";
-import { EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
-import { toNetlifyImageCDN } from "@/lib/image/enhanced-optimizer";
-import { createSlug } from "@/lib/square/slugUtils";
-import { Icon } from "astro-icon/components";
+import { getCategoriesForSidebar } from '@/lib/square/categoryNav';
+import { getCategoryImageUrls } from '@/lib/square/categoryImages';
+import { EL_CAMINO_LOADER_DATA_URI } from '@/lib/constants/assets';
+import { toNetlifyImageCDN } from '@/lib/image/enhanced-optimizer';
+import { createSlug } from '@/lib/square/slugUtils';
+import { Icon } from 'astro-icon/components';
 
 interface Props {
   class?: string;
 }
 
-const { class: additionalClasses = "" } = Astro.props;
+const { class: additionalClasses = '' } = Astro.props;
 
 // Get filtered categories (only those with products) using Square's ordering
 const categoriesWithImages = await getCategoriesForSidebar();
 
 // Square image URLs by category ID
 const categoryImageUrls: Record<string, string> = await getCategoryImageUrls(
-  categoriesWithImages.filter((item) => item.id).map((item) => item.id),
+  categoriesWithImages.filter((item) => item.id).map((item) => item.id)
 );
 
 // Get an optimized image URL for a category via Netlify Image CDN.
@@ -27,7 +27,9 @@ const categoryImageUrls: Record<string, string> = await getCategoryImageUrls(
 // cache headers — regardless of which Square storage backend served the original.
 function getCategoryImageUrl(category: { id: string; slug: string }): string {
   if (category.id && categoryImageUrls[category.id]) {
-    return toNetlifyImageCDN(categoryImageUrls[category.id], 600, { height: 338 });
+    return toNetlifyImageCDN(categoryImageUrls[category.id], 600, {
+      height: 338,
+    });
   }
   return `/images/category-${category.slug}.png`;
 }
@@ -41,7 +43,7 @@ const prodCats = categoriesWithImages.map((item) => ({
 
 <aside
   class:list={[
-    "sidebar article-card-wrapper opacity-0 col-span-full lg:col-span-2 lg:col-start-1 lg:row-start-5 2xl:row-start-4 lg:row-end-15 2xl:row-end-11 bg-(--surface-secondary)",
+    'sidebar article-card-wrapper opacity-0 col-span-full lg:col-span-2 lg:col-start-1 lg:row-start-5 2xl:row-start-4 lg:row-end-15 2xl:row-end-11 bg-(--surface-secondary)',
     additionalClasses,
   ]}
   data-initial-index={6}
@@ -85,9 +87,9 @@ const prodCats = categoriesWithImages.map((item) => ({
               width="600"
               height="338"
               class="category-img object-cover w-full h-full will-change-transform opacity-0 translate-y-1 transition-all duration-300 ease-in-out [&.loaded]:opacity-30 [&.loaded]:sepia-50 [&.loaded]:translate-y-0 group-hover:scale-105 group-hover:[&.loaded]:opacity-80 group-hover:[&.loaded]:sepia-10"
-              loading={index < 2 ? "eager" : "lazy"}
-              decoding={index < 2 ? "sync" : "async"}
-              fetchpriority={index < 2 ? "high" : "auto"}
+              loading={index < 2 ? 'eager' : 'lazy'}
+              decoding={index < 2 ? 'sync' : 'async'}
+              fetchpriority={index < 2 ? 'high' : 'auto'}
               data-placeholder-id={placeholderId}
               data-shimmer-placeholder={placeholderId}
               data-shimmer-load-add="loaded"
@@ -118,14 +120,14 @@ const prodCats = categoriesWithImages.map((item) => ({
 
 <script>
   // Enhanced image loading for category images using unified system
-  document.addEventListener("astro:page-load", () => {
+  document.addEventListener('astro:page-load', () => {
     const categoryImages =
-      document.querySelectorAll<HTMLImageElement>(".category-img");
+      document.querySelectorAll<HTMLImageElement>('.category-img');
 
     categoryImages.forEach((img) => {
       // If image is already loaded (cached), trigger onload
       if (img.complete && img.naturalHeight !== 0) {
-        img.classList.add("loaded");
+        img.classList.add('loaded');
         const placeholderId = img.dataset.placeholderId;
         if (placeholderId) {
           document.getElementById(placeholderId)?.remove();

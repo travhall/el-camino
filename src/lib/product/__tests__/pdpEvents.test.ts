@@ -10,7 +10,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 vi.mock('@/lib/cart', () => ({
   cart: {
     canAddToCart: vi.fn(() => true),
-    addItem: vi.fn(() => Promise.resolve({ success: true, message: 'Added to cart' })),
+    addItem: vi.fn(() =>
+      Promise.resolve({ success: true, message: 'Added to cart' })
+    ),
   },
 }));
 
@@ -49,9 +51,19 @@ function setupDom(): void {
   `;
 }
 
-function productData(overrides: Partial<ProductPageData> = {}): ProductPageData {
+function productData(
+  overrides: Partial<ProductPageData> = {}
+): ProductPageData {
   return {
-    variations: [{ id: 'var-1', variationId: 'var-1', name: 'Test', price: 10, quantity: 10 }],
+    variations: [
+      {
+        id: 'var-1',
+        variationId: 'var-1',
+        name: 'Test',
+        price: 10,
+        quantity: 10,
+      },
+    ],
     availableAttributes: { color: ['red'] },
     selectedVariationId: 'var-1',
     productId: 'prod-1',
@@ -71,7 +83,10 @@ describe('PDPEventManager', () => {
     // clearAllMocks() wipes call history but not mockReturnValue/mockRejectedValue
     // overrides from a prior test — reassert defaults so tests don't leak into each other.
     vi.mocked(cart.canAddToCart).mockReturnValue(true);
-    vi.mocked(cart.addItem).mockResolvedValue({ success: true, message: 'Added to cart' });
+    vi.mocked(cart.addItem).mockResolvedValue({
+      success: true,
+      message: 'Added to cart',
+    });
     setupDom();
     uiManager = new PDPUIManager();
     onCartUpdate = vi.fn();
@@ -93,7 +108,9 @@ describe('PDPEventManager', () => {
   describe('handleAddToCart via a click on the add-to-cart button', () => {
     function clickAddToCart(): Promise<void> {
       manager.setupAllEventHandlers();
-      const button = document.getElementById('add-to-cart-button') as HTMLButtonElement;
+      const button = document.getElementById(
+        'add-to-cart-button'
+      ) as HTMLButtonElement;
       button.click();
       // handleAddToCart is async; flush microtasks
       return new Promise((resolve) => setTimeout(resolve, 0));
@@ -118,7 +135,10 @@ describe('PDPEventManager', () => {
 
       await clickAddToCart();
 
-      expect(showNotification).toHaveBeenCalledWith('Please enter a valid quantity', 'error');
+      expect(showNotification).toHaveBeenCalledWith(
+        'Please enter a valid quantity',
+        'error'
+      );
       expect(cart.addItem).not.toHaveBeenCalled();
     });
 
@@ -127,7 +147,10 @@ describe('PDPEventManager', () => {
 
       await clickAddToCart();
 
-      expect(showNotification).toHaveBeenCalledWith('Cannot add that quantity to cart', 'error');
+      expect(showNotification).toHaveBeenCalledWith(
+        'Cannot add that quantity to cart',
+        'error'
+      );
       expect(cart.addItem).not.toHaveBeenCalled();
     });
 
@@ -136,15 +159,22 @@ describe('PDPEventManager', () => {
 
       await clickAddToCart();
 
-      expect(showNotification).toHaveBeenCalledWith('Failed to add to cart', 'error');
-      const button = document.getElementById('add-to-cart-button') as HTMLButtonElement;
+      expect(showNotification).toHaveBeenCalledWith(
+        'Failed to add to cart',
+        'error'
+      );
+      const button = document.getElementById(
+        'add-to-cart-button'
+      ) as HTMLButtonElement;
       expect(button.hasAttribute('data-loading')).toBe(false);
       expect(onCartUpdate).toHaveBeenCalled();
     });
 
     it('double-submit guard: two rapid clicks only result in one cart.addItem call', async () => {
       manager.setupAllEventHandlers();
-      const button = document.getElementById('add-to-cart-button') as HTMLButtonElement;
+      const button = document.getElementById(
+        'add-to-cart-button'
+      ) as HTMLButtonElement;
       button.click();
       button.click();
       await new Promise((resolve) => setTimeout(resolve, 0));

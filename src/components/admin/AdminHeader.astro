@@ -1,7 +1,7 @@
 ---
 // src/components/admin/AdminHeader.astro - Following established Header.astro patterns
-import AdminNav from "@/components/admin/AdminNav.astro";
-import { Icon } from "astro-icon/components";
+import AdminNav from '@/components/admin/AdminNav.astro';
+import { Icon } from 'astro-icon/components';
 ---
 
 <header
@@ -82,33 +82,33 @@ import { Icon } from "astro-icon/components";
   // Mobile admin menu functionality - following main site patterns
   function setupAdminMobileMenu() {
     const toggleButton = document.getElementById(
-      "mobile-admin-menu-toggle"
+      'mobile-admin-menu-toggle'
     ) as HTMLButtonElement;
-    const menuIcon = document.getElementById("admin-menu-icon") as HTMLElement;
+    const menuIcon = document.getElementById('admin-menu-icon') as HTMLElement;
     const closeIcon = document.getElementById(
-      "admin-close-icon"
+      'admin-close-icon'
     ) as HTMLElement;
-    const nav = document.querySelector("nav") as HTMLElement;
+    const nav = document.querySelector('nav') as HTMLElement;
 
     if (!toggleButton || !menuIcon || !closeIcon || !nav) return;
 
     function handleToggle(e: MouseEvent) {
       e.stopPropagation();
-      const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
+      const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
 
-      toggleButton.setAttribute("aria-expanded", (!isExpanded).toString());
-      menuIcon.classList.toggle("hidden");
-      closeIcon.classList.toggle("hidden");
-      nav.classList.toggle("nav-open");
-      document.body.style.overflow = isExpanded ? "" : "hidden";
+      toggleButton.setAttribute('aria-expanded', (!isExpanded).toString());
+      menuIcon.classList.toggle('hidden');
+      closeIcon.classList.toggle('hidden');
+      nav.classList.toggle('nav-open');
+      document.body.style.overflow = isExpanded ? '' : 'hidden';
     }
 
-    toggleButton.removeEventListener("click", handleToggle);
-    toggleButton.addEventListener("click", handleToggle);
+    toggleButton.removeEventListener('click', handleToggle);
+    toggleButton.addEventListener('click', handleToggle);
 
     // Close menu when clicking outside
-    document.addEventListener("click", (e: MouseEvent) => {
-      const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
+    document.addEventListener('click', (e: MouseEvent) => {
+      const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
       const clickTarget = e.target as Node;
       if (
         isExpanded &&
@@ -120,10 +120,10 @@ import { Icon } from "astro-icon/components";
     });
 
     // Close menu on escape key
-    document.addEventListener("keydown", (e: KeyboardEvent) => {
+    document.addEventListener('keydown', (e: KeyboardEvent) => {
       if (
-        e.key === "Escape" &&
-        toggleButton.getAttribute("aria-expanded") === "true"
+        e.key === 'Escape' &&
+        toggleButton.getAttribute('aria-expanded') === 'true'
       ) {
         toggleButton.click();
       }
@@ -134,7 +134,7 @@ import { Icon } from "astro-icon/components";
   setupAdminMobileMenu();
 
   // Handle view transitions
-  document.addEventListener("astro:after-swap", () => {
+  document.addEventListener('astro:after-swap', () => {
     setupAdminMobileMenu();
   });
 </script>

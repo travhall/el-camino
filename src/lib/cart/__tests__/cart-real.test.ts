@@ -1008,9 +1008,7 @@ describe('CartManager Real Implementation Tests', () => {
         quantity: 10,
       });
 
-      cart.reconcileWithServerCart([
-        { variationId: 'var-clamp', quantity: 5 },
-      ]);
+      cart.reconcileWithServerCart([{ variationId: 'var-clamp', quantity: 5 }]);
 
       expect(cart.getItems()[0].quantity).toBe(5);
     });
@@ -1029,9 +1027,7 @@ describe('CartManager Real Implementation Tests', () => {
       window.addEventListener('cartUpdated', listener);
       listener.mockClear();
 
-      cart.reconcileWithServerCart([
-        { variationId: 'var-same', quantity: 3 },
-      ]);
+      cart.reconcileWithServerCart([{ variationId: 'var-same', quantity: 3 }]);
 
       expect(cart.getItems()[0].quantity).toBe(3);
       expect(listener).not.toHaveBeenCalled();

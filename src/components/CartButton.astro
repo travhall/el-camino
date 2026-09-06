@@ -1,8 +1,8 @@
 ---
 // src/components/CartButton.astro
 // Updated to trigger mini cart instead of navigation
-import { Icon } from "astro-icon/components";
-import { cart } from "@/lib/cart";
+import { Icon } from 'astro-icon/components';
+import { cart } from '@/lib/cart';
 const cartCount = cart.getItemCount();
 ---
 
@@ -16,7 +16,7 @@ const cartCount = cart.getItemCount();
   <span
     id="cart-count"
     class:list={[
-      "absolute top-1 right-0 bg-(--ui-button-surface) text-(--ui-button-text) text-xs rounded-full w-4 h-4 flex items-center justify-center",
+      'absolute top-1 right-0 bg-(--ui-button-surface) text-(--ui-button-text) text-xs rounded-full w-4 h-4 flex items-center justify-center',
       { hidden: cartCount === 0 },
     ]}
   >
@@ -25,13 +25,13 @@ const cartCount = cart.getItemCount();
 </button>
 
 <script>
-  import { cart as cartInstance } from "@/lib/cart";
+  import { cart as cartInstance } from '@/lib/cart';
 
   let updateTimeout: number | null = null;
   // Initialize with server-rendered count to prevent initial flash
   let lastKnownCount: number | null = (() => {
-    const countElement = document.getElementById("cart-count");
-    return countElement ? parseInt(countElement.textContent || "0", 10) : null;
+    const countElement = document.getElementById('cart-count');
+    return countElement ? parseInt(countElement.textContent || '0', 10) : null;
   })();
 
   async function loadCart() {
@@ -42,7 +42,7 @@ const cartCount = cart.getItemCount();
     if (updateTimeout) window.clearTimeout(updateTimeout);
 
     updateTimeout = window.setTimeout(async () => {
-      const countElement = document.getElementById("cart-count");
+      const countElement = document.getElementById('cart-count');
       if (!countElement) return;
 
       try {
@@ -52,52 +52,52 @@ const cartCount = cart.getItemCount();
         // Only update DOM if count actually changed (prevents flash)
         if (force || lastKnownCount !== count) {
           countElement.textContent = count.toString();
-          countElement.classList.toggle("hidden", count === 0);
+          countElement.classList.toggle('hidden', count === 0);
           lastKnownCount = count;
         }
       } catch (error) {
-        console.error("Error updating cart count:", error);
+        console.error('Error updating cart count:', error);
       }
     }, 50);
   }
 
   function initCartButton() {
-    const cartButton = document.getElementById("cart-button");
+    const cartButton = document.getElementById('cart-button');
     if (!cartButton) return;
 
     // initCartButton re-runs on every astro:page-load with no element swap
     // in between (cart-button persists across view transitions), so without
     // this guard each re-run stacks another click listener — one click would
     // dispatch openMiniCart multiple times.
-    if (cartButton.dataset.cartButtonInitialized === "true") return;
-    cartButton.dataset.cartButtonInitialized = "true";
+    if (cartButton.dataset.cartButtonInitialized === 'true') return;
+    cartButton.dataset.cartButtonInitialized = 'true';
 
     // CHANGE: Dispatch event instead of navigate
-    cartButton.addEventListener("click", (e) => {
+    cartButton.addEventListener('click', (e) => {
       e.preventDefault();
-      window.dispatchEvent(new CustomEvent("openMiniCart"));
+      window.dispatchEvent(new CustomEvent('openMiniCart'));
     });
   }
 
   // Initialize cart button
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initCartButton);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCartButton);
   } else {
     initCartButton();
   }
 
   // Re-initialize on Astro navigation
-  document.addEventListener("astro:page-load", initCartButton);
+  document.addEventListener('astro:page-load', initCartButton);
 
   // Update cart count when cart is actually modified
-  window.addEventListener("cartUpdated", () => updateCartCount(true));
+  window.addEventListener('cartUpdated', () => updateCartCount(true));
 
   // On page load, only update if different (prevents flash during filtering)
-  document.addEventListener("astro:page-load", () => {
+  document.addEventListener('astro:page-load', () => {
     // Re-sync lastKnownCount with fresh DOM state after swap
-    const countElement = document.getElementById("cart-count");
+    const countElement = document.getElementById('cart-count');
     if (countElement) {
-      lastKnownCount = parseInt(countElement.textContent || "0", 10);
+      lastKnownCount = parseInt(countElement.textContent || '0', 10);
     }
     updateCartCount(false);
   });

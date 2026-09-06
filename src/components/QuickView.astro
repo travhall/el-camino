@@ -1,9 +1,9 @@
 ---
 // src/components/QuickView.astro - Fixed to mirror PDP functionality
-import { Icon } from "astro-icon/components";
-import Button from "@/components/Button.astro";
-import { EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
-import { getContactInfo } from "@/lib/contactInfo";
+import { Icon } from 'astro-icon/components';
+import Button from '@/components/Button.astro';
+import { EL_CAMINO_LOADER_DATA_URI } from '@/lib/constants/assets';
+import { getContactInfo } from '@/lib/contactInfo';
 const contact = await getContactInfo();
 ---
 
@@ -315,7 +315,7 @@ const contact = await getContactInfo();
 </div>
 
 <script>
-  import { QuickViewController } from "@/lib/product/quickViewController";
+  import { QuickViewController } from '@/lib/product/quickViewController';
 
   declare global {
     interface Window {
@@ -331,19 +331,19 @@ const contact = await getContactInfo();
     // Global function for product cards
     window.openQuickView = (
       productId: string,
-      preferredVariationId?: string,
+      preferredVariationId?: string
     ) => {
       controller.openQuickView(productId, preferredVariationId);
     };
   }
 
   // Initialize on page load
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initQuickView);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initQuickView);
   } else {
     initQuickView();
   }
 
   // Astro view transitions
-  document.addEventListener("astro:page-load", initQuickView);
+  document.addEventListener('astro:page-load', initQuickView);
 </script>

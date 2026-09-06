@@ -1,29 +1,29 @@
 ---
 // src/pages/legal/[slug].astro - SSR Version
-import { getPages, getLegalPages } from "@/lib/wordpress/api";
-import type { WordPressPage } from "@/lib/wordpress/types";
-import Layout from "@/layouts/Layout.astro";
-import { stripUnsafeHtml } from "@/lib/wordpress/content-utils";
+import { getPages, getLegalPages } from '@/lib/wordpress/api';
+import type { WordPressPage } from '@/lib/wordpress/types';
+import Layout from '@/layouts/Layout.astro';
+import { stripUnsafeHtml } from '@/lib/wordpress/content-utils';
 
 // Get the slug from the URL params
 const { slug } = Astro.params;
 
 // Validate slug parameter
-if (!slug || typeof slug !== "string") {
-  return Astro.redirect("/404");
+if (!slug || typeof slug !== 'string') {
+  return Astro.redirect('/404');
 }
 
 // Define valid legal page slugs
 const validLegalSlugs = [
-  "privacy-policy",
-  "return-policy",
-  "shipping-policy",
-  "terms-and-conditions",
+  'privacy-policy',
+  'return-policy',
+  'shipping-policy',
+  'terms-and-conditions',
 ];
 
 // Check if this is a valid legal page slug
 if (!validLegalSlugs.includes(slug)) {
-  return Astro.redirect("/404");
+  return Astro.redirect('/404');
 }
 
 // Fetch the specific page
@@ -46,14 +46,14 @@ try {
 // If page not found, create fallback content
 if (!page) {
   const fallbackTitles: Record<string, string> = {
-    "privacy-policy": "Privacy Policy",
-    "return-policy": "Return Policy",
-    "shipping-policy": "Shipping Policy",
-    "terms-and-conditions": "Terms and Conditions",
+    'privacy-policy': 'Privacy Policy',
+    'return-policy': 'Return Policy',
+    'shipping-policy': 'Shipping Policy',
+    'terms-and-conditions': 'Terms and Conditions',
   };
 
   const fallbackContent: Record<string, string> = {
-    "privacy-policy": `
+    'privacy-policy': `
       <h2>Privacy Policy</h2>
       <p>This privacy policy explains how El Camino Skate Shop collects, uses, and protects your information.</p>
       <h3>Information We Collect</h3>
@@ -63,7 +63,7 @@ if (!page) {
       <h3>Data Protection</h3>
       <p>We implement appropriate security measures to protect your personal information.</p>
     `,
-    "return-policy": `
+    'return-policy': `
       <h2>Return Policy</h2>
       <p>We want you to be completely satisfied with your purchase.</p>
       <h3>Return Period</h3>
@@ -71,7 +71,7 @@ if (!page) {
       <h3>Return Process</h3>
       <p>Contact us to initiate a return. Items must be in original condition.</p>
     `,
-    "shipping-policy": `
+    'shipping-policy': `
       <h2>Shipping Policy</h2>
       <p>We ship to locations within the United States.</p>
       <h3>Processing Time</h3>
@@ -79,7 +79,7 @@ if (!page) {
       <h3>Shipping Rates</h3>
       <p>Shipping costs are calculated at checkout based on location and weight.</p>
     `,
-    "terms-and-conditions": `
+    'terms-and-conditions': `
       <h2>Terms and Conditions</h2>
       <p>By using our website, you agree to these terms and conditions.</p>
       <h3>Use of Website</h3>
@@ -93,9 +93,9 @@ if (!page) {
     id: Date.now(),
     date: new Date().toISOString(),
     slug,
-    title: { rendered: fallbackTitles[slug] || "Legal Page" },
+    title: { rendered: fallbackTitles[slug] || 'Legal Page' },
     content: {
-      rendered: fallbackContent[slug] || "<p>Content is being updated.</p>",
+      rendered: fallbackContent[slug] || '<p>Content is being updated.</p>',
     },
   };
 }
@@ -142,7 +142,7 @@ const pageContent = stripUnsafeHtml(page.content.rendered);
 
       <!-- Fallback if content is empty -->
       {
-        (!pageContent || pageContent.trim() === "") && (
+        (!pageContent || pageContent.trim() === '') && (
           <div class="mt-8 p-6 bg-(--surface-tertiary) border border-(--border-tertiary) rounded">
             <p class="text-(--content-body)">
               This page content is currently being updated. Please check back

@@ -14,7 +14,10 @@ interface Limiter {
   check: (key: string) => boolean; // true if rate-limited
 }
 
-export function createRateLimiter(opts: { windowMs: number; max: number }): Limiter {
+export function createRateLimiter(opts: {
+  windowMs: number;
+  max: number;
+}): Limiter {
   const buckets = new Map<string, Bucket>();
 
   const sweep = () => {
@@ -28,7 +31,7 @@ export function createRateLimiter(opts: { windowMs: number; max: number }): Limi
   const sweepInterval = setInterval(sweep, 5 * 60_000);
   // Unref so this timer doesn't keep the process alive on its own
   // (Node-specific; matches this codebase's serverless-function runtime).
-  if (typeof sweepInterval.unref === "function") {
+  if (typeof sweepInterval.unref === 'function') {
     sweepInterval.unref();
   }
 
@@ -50,9 +53,9 @@ export function createRateLimiter(opts: { windowMs: number; max: number }): Limi
 export function clientIp(request: Request): string {
   // x-nf-client-connection-ip is injected by Netlify's CDN edge and cannot
   // be spoofed by clients; fall back to the last XFF hop (least controllable).
-  const nf = request.headers.get("x-nf-client-connection-ip");
+  const nf = request.headers.get('x-nf-client-connection-ip');
   if (nf) return nf.trim();
-  const fwd = request.headers.get("x-forwarded-for") ?? "";
-  const parts = fwd.split(",");
-  return parts[parts.length - 1].trim() || "unknown";
+  const fwd = request.headers.get('x-forwarded-for') ?? '';
+  const parts = fwd.split(',');
+  return parts[parts.length - 1].trim() || 'unknown';
 }

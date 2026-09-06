@@ -73,8 +73,9 @@ async function resolveSubscribersForVariation(
   const result = await squareClient.catalog.object.get({
     objectId: variationId,
   });
-  const itemId = (result as { object?: { itemVariationData?: { itemId?: string } } })
-    .object?.itemVariationData?.itemId;
+  const itemId = (
+    result as { object?: { itemVariationData?: { itemId?: string } } }
+  ).object?.itemVariationData?.itemId;
   if (!itemId) return [];
 
   return getSubscriptionsForProduct(itemId);
@@ -85,7 +86,7 @@ describe('Plan 120 spike — variationId -> subscriber resolution (Candidate B)'
     vi.clearAllMocks();
   });
 
-  it('resolves a known variationId to its product\'s active subscribers', async () => {
+  it("resolves a known variationId to its product's active subscribers", async () => {
     mockCatalogObjectGet.mockResolvedValue({
       object: {
         type: 'ITEM_VARIATION',

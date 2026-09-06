@@ -7,18 +7,18 @@
  */
 export function initFloatSelects(root: Document | Element = document): void {
   const selects = root.querySelectorAll<HTMLSelectElement>(
-    ".elco-field-float > select"
+    '.elco-field-float > select'
   );
 
   selects.forEach((select) => {
-    const wrapper = select.closest<HTMLElement>(".elco-field-float");
+    const wrapper = select.closest<HTMLElement>('.elco-field-float');
     if (!wrapper) return;
 
     const update = () => {
-      wrapper.classList.toggle("has-value", select.value !== "");
+      wrapper.classList.toggle('has-value', select.value !== '');
     };
 
     update(); // set initial state
-    select.addEventListener("change", update);
+    select.addEventListener('change', update);
   });
 }

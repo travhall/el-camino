@@ -4,7 +4,7 @@
 /**
  * Initial page size for product listings
  * Optimized for mobile network performance and Time to Interactive (TTI)
- * 
+ *
  * Why 24 products?
  * - Desktop: 3-4 columns × 6-8 rows = ~24 visible products
  * - Mobile: 2 columns × 12 rows = ~24 visible products

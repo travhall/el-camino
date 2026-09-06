@@ -6,37 +6,41 @@
  * Focus is resolveCategoryPathWithRetry's retry/invalidation loop.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import type { Category, CategoryHierarchy } from "../types";
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { Category, CategoryHierarchy } from '../types';
 
 // ── Hoist mock fn declarations ─────────────────────────────────────────────
-const { mockCategoryGetOrCompute, mockCategoryDelete, mockDedupe, mockFetchCategoryHierarchy } =
-  vi.hoisted(() => ({
-    mockCategoryGetOrCompute: vi.fn(),
-    mockCategoryDelete: vi.fn(),
-    mockDedupe: vi.fn(),
-    mockFetchCategoryHierarchy: vi.fn(),
-  }));
+const {
+  mockCategoryGetOrCompute,
+  mockCategoryDelete,
+  mockDedupe,
+  mockFetchCategoryHierarchy,
+} = vi.hoisted(() => ({
+  mockCategoryGetOrCompute: vi.fn(),
+  mockCategoryDelete: vi.fn(),
+  mockDedupe: vi.fn(),
+  mockFetchCategoryHierarchy: vi.fn(),
+}));
 
-vi.mock("@/lib/cache/blobCache", () => ({
+vi.mock('@/lib/cache/blobCache', () => ({
   categoryCache: {
     getOrCompute: mockCategoryGetOrCompute,
     delete: mockCategoryDelete,
   },
 }));
 
-vi.mock("../requestDeduplication", () => ({
+vi.mock('../requestDeduplication', () => ({
   requestDeduplicator: {
     dedupe: mockDedupe,
   },
 }));
 
-vi.mock("../categories", () => ({
+vi.mock('../categories', () => ({
   fetchCategoryHierarchy: mockFetchCategoryHierarchy,
 }));
 
 // ── Import after mocks ─────────────────────────────────────────────────────
-import { resolveCategoryPathWithRetry } from "../categoryLookup";
+import { resolveCategoryPathWithRetry } from '../categoryLookup';
 
 // Passthrough dedupe: immediately invokes the provided function
 function passthroughDedupe() {
@@ -54,18 +58,28 @@ function passthroughGetOrCompute() {
 
 const fixtureHierarchy: CategoryHierarchy[] = [
   {
-    category: { id: "cat-decks", name: "Decks", slug: "decks", isTopLevel: true },
+    category: {
+      id: 'cat-decks',
+      name: 'Decks',
+      slug: 'decks',
+      isTopLevel: true,
+    },
     subcategories: [
       {
-        id: "sub-mini-cruisers",
-        name: "Mini Cruisers",
-        slug: "mini-cruisers",
+        id: 'sub-mini-cruisers',
+        name: 'Mini Cruisers',
+        slug: 'mini-cruisers',
         isTopLevel: false,
       },
     ],
   },
   {
-    category: { id: "cat-trucks", name: "Trucks", slug: "trucks", isTopLevel: true },
+    category: {
+      id: 'cat-trucks',
+      name: 'Trucks',
+      slug: 'trucks',
+      isTopLevel: true,
+    },
     subcategories: [],
   },
 ];
@@ -74,12 +88,17 @@ const fixtureHierarchy: CategoryHierarchy[] = [
 // to simulate a not-found-yet lookup that succeeds only after invalidation/retry.
 const hierarchyMissingTargets: CategoryHierarchy[] = [
   {
-    category: { id: "cat-other", name: "Other", slug: "other", isTopLevel: true },
+    category: {
+      id: 'cat-other',
+      name: 'Other',
+      slug: 'other',
+      isTopLevel: true,
+    },
     subcategories: [],
   },
 ];
 
-describe("resolveCategoryPathWithRetry", () => {
+describe('resolveCategoryPathWithRetry', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -92,34 +111,34 @@ describe("resolveCategoryPathWithRetry", () => {
     vi.useRealTimers();
   });
 
-  it("resolves on the first try without invalidating the cache", async () => {
+  it('resolves on the first try without invalidating the cache', async () => {
     mockFetchCategoryHierarchy.mockResolvedValue(fixtureHierarchy);
 
-    const result = await resolveCategoryPathWithRetry("decks");
+    const result = await resolveCategoryPathWithRetry('decks');
 
-    expect(result.category?.slug).toBe("decks");
+    expect(result.category?.slug).toBe('decks');
     expect(mockCategoryDelete).not.toHaveBeenCalled();
   });
 
-  it("retries after invalidating the cache when not found on the first attempt", async () => {
+  it('retries after invalidating the cache when not found on the first attempt', async () => {
     mockFetchCategoryHierarchy
       .mockResolvedValueOnce(hierarchyMissingTargets) // attempt 0: getCategoryBySlug("decks") -> not found
       .mockResolvedValue(fixtureHierarchy); // attempt 1+: found
 
-    const promise = resolveCategoryPathWithRetry("decks", 2);
+    const promise = resolveCategoryPathWithRetry('decks', 2);
     await vi.runAllTimersAsync();
     const result = await promise;
 
-    expect(result.category?.slug).toBe("decks");
-    expect(mockCategoryDelete).toHaveBeenCalledWith("category-by-slug:decks");
-    expect(mockCategoryDelete).toHaveBeenCalledWith("nav-hierarchy");
-    expect(mockCategoryDelete).toHaveBeenCalledWith("hierarchy-with-products");
+    expect(result.category?.slug).toBe('decks');
+    expect(mockCategoryDelete).toHaveBeenCalledWith('category-by-slug:decks');
+    expect(mockCategoryDelete).toHaveBeenCalledWith('nav-hierarchy');
+    expect(mockCategoryDelete).toHaveBeenCalledWith('hierarchy-with-products');
   });
 
-  it("gives up after exactly maxRetries + 1 attempts when never found", async () => {
+  it('gives up after exactly maxRetries + 1 attempts when never found', async () => {
     mockFetchCategoryHierarchy.mockResolvedValue(fixtureHierarchy);
 
-    const promise = resolveCategoryPathWithRetry("nonexistent-slug", 2);
+    const promise = resolveCategoryPathWithRetry('nonexistent-slug', 2);
     await vi.runAllTimersAsync();
     const result = await promise;
 
@@ -127,7 +146,7 @@ describe("resolveCategoryPathWithRetry", () => {
     expect(mockFetchCategoryHierarchy).toHaveBeenCalledTimes(3);
   });
 
-  it("invalidates the cache for both slug parts of a nested path on retry", async () => {
+  it('invalidates the cache for both slug parts of a nested path on retry', async () => {
     // resolveCategoryPath's two-segment branch resolves both slugs via
     // Promise.all, i.e. two concurrent getCategoryBySlug calls. Driving that
     // through fetchCategoryHierarchy (dynamic import) races two concurrent
@@ -135,26 +154,26 @@ describe("resolveCategoryPathWithRetry", () => {
     // mock categoryCache.getOrCompute directly per cache key instead (per the
     // plan's suggested fallback) to avoid that race.
     const trucksCategory: Category = {
-      id: "cat-trucks",
-      name: "Trucks",
-      slug: "trucks",
+      id: 'cat-trucks',
+      name: 'Trucks',
+      slug: 'trucks',
       isTopLevel: true,
     };
     const miniCruisersCategory: Category = {
-      id: "sub-mini-cruisers",
-      name: "Mini Cruisers",
-      slug: "mini-cruisers",
+      id: 'sub-mini-cruisers',
+      name: 'Mini Cruisers',
+      slug: 'mini-cruisers',
       isTopLevel: false,
     };
     const callCounts: Record<string, number> = {};
 
     mockCategoryGetOrCompute.mockImplementation(
       async (cacheKey: string, computeFn: () => unknown) => {
-        if (cacheKey === "category-by-slug:trucks") {
+        if (cacheKey === 'category-by-slug:trucks') {
           callCounts[cacheKey] = (callCounts[cacheKey] ?? 0) + 1;
           return callCounts[cacheKey] === 1 ? null : trucksCategory;
         }
-        if (cacheKey === "category-by-slug:mini-cruisers") {
+        if (cacheKey === 'category-by-slug:mini-cruisers') {
           callCounts[cacheKey] = (callCounts[cacheKey] ?? 0) + 1;
           return callCounts[cacheKey] === 1 ? null : miniCruisersCategory;
         }
@@ -162,14 +181,16 @@ describe("resolveCategoryPathWithRetry", () => {
       }
     );
 
-    const promise = resolveCategoryPathWithRetry("trucks/mini-cruisers");
+    const promise = resolveCategoryPathWithRetry('trucks/mini-cruisers');
     await vi.runAllTimersAsync();
     const result = await promise;
 
-    expect(result.category?.slug).toBe("mini-cruisers");
-    expect(mockCategoryDelete).toHaveBeenCalledWith("category-by-slug:trucks");
-    expect(mockCategoryDelete).toHaveBeenCalledWith("category-by-slug:mini-cruisers");
-    expect(mockCategoryDelete).toHaveBeenCalledWith("nav-hierarchy");
-    expect(mockCategoryDelete).toHaveBeenCalledWith("hierarchy-with-products");
+    expect(result.category?.slug).toBe('mini-cruisers');
+    expect(mockCategoryDelete).toHaveBeenCalledWith('category-by-slug:trucks');
+    expect(mockCategoryDelete).toHaveBeenCalledWith(
+      'category-by-slug:mini-cruisers'
+    );
+    expect(mockCategoryDelete).toHaveBeenCalledWith('nav-hierarchy');
+    expect(mockCategoryDelete).toHaveBeenCalledWith('hierarchy-with-products');
   });
 });

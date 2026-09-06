@@ -7,17 +7,17 @@
 // Dismissed orders are stored per-ID in Netlify Blobs with a 90-day TTL.
 // This does not modify Square — it only affects the admin UI.
 
-import { BlobCache } from "@/lib/cache/blobCache";
+import { BlobCache } from '@/lib/cache/blobCache';
 
 const NINETY_DAYS = 60 * 60 * 24 * 90;
 
 const store = new BlobCache<string[]>(
-  "admin-dismissed-orders",
+  'admin-dismissed-orders',
   NINETY_DAYS,
-  "dismissed"
+  'dismissed'
 );
 
-const DISMISSED_KEY = "all";
+const DISMISSED_KEY = 'all';
 
 export async function dismissOrder(orderId: string): Promise<void> {
   const current = (await store.get(DISMISSED_KEY)) ?? [];

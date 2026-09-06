@@ -1,17 +1,17 @@
 ---
 // /src/components/RelatedProducts.astro
 // Editorial horizontal scroll filmstrip — wider breathing room, stronger hierarchy.
-import type { Product } from "@/lib/square/types";
-import { MoneyUtils } from "@/lib/square/money";
-import { batchInventoryService } from "@/lib/square/batchInventory";
-import { toNetlifyImageCDN } from "@/lib/image/enhanced-optimizer";
+import type { Product } from '@/lib/square/types';
+import { MoneyUtils } from '@/lib/square/money';
+import { batchInventoryService } from '@/lib/square/batchInventory';
+import { toNetlifyImageCDN } from '@/lib/image/enhanced-optimizer';
 
 interface Props {
   products: Product[];
   title?: string;
 }
 
-const { products, title = "Complete Your Setup" } = Astro.props;
+const { products, title = 'Complete Your Setup' } = Astro.props;
 
 if (products.length === 0) {
   return null;
@@ -24,12 +24,11 @@ const displayProducts = products.slice(0, 5);
 const brand = displayProducts[0]?.brand;
 const seeAllUrl = brand
   ? `/shop/all?brands=${encodeURIComponent(brand)}`
-  : "/shop/all";
+  : '/shop/all';
 
 const variationIds = displayProducts.map((p) => p.variationId).filter(Boolean);
 const inventoryMap =
   await batchInventoryService.getBatchInventoryStatus(variationIds);
-
 ---
 
 <section class="related-products py-12 lg:py-16">
@@ -50,7 +49,7 @@ const inventoryMap =
         <a
           href={seeAllUrl}
           class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 hidden lg:inline-block"
-          aria-label={`See all products${brand ? ` from ${brand}` : ""}`}
+          aria-label={`See all products${brand ? ` from ${brand}` : ''}`}
         >
           See all from {brand}
         </a>
@@ -62,7 +61,7 @@ const inventoryMap =
   <div
     class="-mx-4 sm:-mx-6 lg:-mx-8 overflow-x-auto pb-4 scrollbar-hide"
     role="region"
-    aria-label={`More from ${brand ?? "this brand"}`}
+    aria-label={`More from ${brand ?? 'this brand'}`}
   >
     <div class="flex gap-3 lg:gap-4 px-4 sm:px-6 lg:px-8">
       {
@@ -74,12 +73,14 @@ const inventoryMap =
           const isOnSale = !!saleInfo && !isOutOfStock;
           const displayPrice = saleInfo?.salePrice ?? product.price;
           const formattedPrice = MoneyUtils.format(
-            MoneyUtils.fromFloat(displayPrice),
+            MoneyUtils.fromFloat(displayPrice)
           );
           const formattedOriginal = saleInfo
             ? MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))
             : null;
-          const imageUrl = toNetlifyImageCDN(product.image ?? "", 600, { height: 600 });
+          const imageUrl = toNetlifyImageCDN(product.image ?? '', 600, {
+            height: 600,
+          });
           const productUrl = product.url;
 
           return (
@@ -87,10 +88,10 @@ const inventoryMap =
               href={productUrl}
               data-astro-prefetch="viewport"
               class:list={[
-                "group relative flex-none w-52 sm:w-60 lg:w-72 overflow-hidden rounded-sm bg-(--surface-secondary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)",
-                isOutOfStock && "opacity-80",
+                'group relative flex-none w-52 sm:w-60 lg:w-72 overflow-hidden rounded-sm bg-(--surface-secondary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)',
+                isOutOfStock && 'opacity-80',
               ]}
-              aria-label={`${product.brand ? product.brand + " " : ""}${product.title} — ${formattedPrice}${isOutOfStock ? " — Sold Out" : ""}${isOnSale ? " — On Sale" : ""}`}
+              aria-label={`${product.brand ? product.brand + ' ' : ''}${product.title} — ${formattedPrice}${isOutOfStock ? ' — Sold Out' : ''}${isOnSale ? ' — On Sale' : ''}`}
             >
               {/* Image */}
               <div class="aspect-3/4 overflow-hidden">
@@ -99,10 +100,10 @@ const inventoryMap =
                   alt=""
                   aria-hidden="true"
                   class:list={[
-                    "w-full h-full object-cover transition-transform duration-500 group-hover:scale-105",
-                    isOutOfStock && "grayscale-40",
+                    'w-full h-full object-cover transition-transform duration-500 group-hover:scale-105',
+                    isOutOfStock && 'grayscale-40',
                   ]}
-                  loading={index < 2 ? "eager" : "lazy"}
+                  loading={index < 2 ? 'eager' : 'lazy'}
                   width="600"
                   height="800"
                 />
@@ -127,10 +128,10 @@ const inventoryMap =
                   )}
                   <span
                     class:list={[
-                      "text-xl font-black",
+                      'text-xl font-black',
                       isOnSale
-                        ? "text-(--color-elco-sweet-tea-300)"
-                        : "text-white",
+                        ? 'text-(--color-elco-sweet-tea-300)'
+                        : 'text-white',
                     ]}
                   >
                     {formattedPrice}
@@ -181,7 +182,7 @@ const inventoryMap =
         <p
           class="text-xs font-bold uppercase tracking-widest text-(--content-meta) group-hover:text-(--content-heading) transition-colors leading-snug"
         >
-          See all{brand ? ` from ${brand}` : ""}
+          See all{brand ? ` from ${brand}` : ''}
         </p>
       </a>
     </div>

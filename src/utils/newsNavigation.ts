@@ -19,38 +19,49 @@ export function isCurrentlyInNewsSection(): boolean {
  * Creates a news-aware URL that only preserves view parameter within news section
  */
 export function createNewsAwareURL(
-  targetPath: string, 
+  targetPath: string,
   currentParams?: URLSearchParams,
   options: { preserveAll?: boolean } = {}
 ): string {
   const { preserveAll = false } = options;
-  const params = new URLSearchParams(currentParams || (typeof window !== 'undefined' ? window.location.search : ''));
-  
+  const params = new URLSearchParams(
+    currentParams ||
+      (typeof window !== 'undefined' ? window.location.search : '')
+  );
+
   // If target is outside news section, remove news-specific parameters
   if (!isNewsPath(targetPath)) {
     params.delete('view');
     // Could add other news-specific params here in future
   }
-  
-  // If preserveAll is false and we're going to a news path, 
+
+  // If preserveAll is false and we're going to a news path,
   // only preserve relevant news parameters
   if (!preserveAll && isNewsPath(targetPath)) {
     const newsParams = new URLSearchParams();
-    
+
     // Preserve these parameters for news section
-    const preserveParams = ['view', 'search', 'sort', 'page', 'categories', 'tags', 'dateRange'];
-    
-    preserveParams.forEach(param => {
+    const preserveParams = [
+      'view',
+      'search',
+      'sort',
+      'page',
+      'categories',
+      'tags',
+      'dateRange',
+    ];
+
+    preserveParams.forEach((param) => {
       if (params.has(param)) {
         const values = params.getAll(param);
-        values.forEach(value => newsParams.append(param, value));
+        values.forEach((value) => newsParams.append(param, value));
       }
     });
-    
+
     const queryString = newsParams.toString();
     return queryString ? `${targetPath}?${queryString}` : targetPath;
   }
-  
+
   const queryString = params.toString();
   return queryString ? `${targetPath}?${queryString}` : targetPath;
 }
@@ -60,7 +71,7 @@ export function createNewsAwareURL(
  */
 export function getSavedViewPreference(): 'grid' | 'list' | null {
   if (typeof window === 'undefined') return null;
-  
+
   try {
     const saved = localStorage.getItem('newsViewPreference');
     return saved === 'list' ? 'list' : 'grid';
@@ -74,7 +85,7 @@ export function getSavedViewPreference(): 'grid' | 'list' | null {
  */
 export function saveViewPreference(view: 'grid' | 'list'): void {
   if (typeof window === 'undefined') return;
-  
+
   try {
     localStorage.setItem('newsViewPreference', view);
   } catch {
@@ -89,21 +100,24 @@ export function saveViewPreference(view: 'grid' | 'list'): void {
  * 2. URL doesn't already have view parameter
  * 3. URL has other parameters (indicating filtered state) OR user explicitly set preference
  */
-export function shouldRestoreViewFromLocalStorage(currentParams: URLSearchParams, pathname: string): boolean {
+export function shouldRestoreViewFromLocalStorage(
+  currentParams: URLSearchParams,
+  pathname: string
+): boolean {
   // Only in news section
   if (!isNewsPath(pathname)) return false;
-  
+
   // Don't restore if view already in URL
   if (currentParams.has('view')) return false;
-  
+
   // Get saved preference
   const savedView = getSavedViewPreference();
   if (!savedView || savedView === 'grid') return false;
-  
+
   // Restore if URL has other parameters (user is in filtered state)
   // or if this is a direct navigation with saved preference
   const hasOtherParams = Array.from(currentParams.keys()).length > 0;
-  
+
   return hasOtherParams || savedView === 'list';
 }
 
@@ -120,20 +134,20 @@ export function createCleanNewsURL(): string {
  */
 export function updateViewInCurrentURL(view: 'grid' | 'list'): void {
   if (typeof window === 'undefined' || !isCurrentlyInNewsSection()) return;
-  
+
   const currentParams = new URLSearchParams(window.location.search);
-  
+
   if (view === 'grid') {
     currentParams.delete('view');
   } else {
     currentParams.set('view', view);
   }
-  
+
   const newURL = createNewsAwareURL(window.location.pathname, currentParams);
-  
+
   // Save preference immediately
   saveViewPreference(view);
-  
+
   // Update URL without navigation - caller handles navigation
   window.history.pushState({}, '', newURL);
 }
@@ -141,9 +155,12 @@ export function updateViewInCurrentURL(view: 'grid' | 'list'): void {
 /**
  * Navigation handler that preserves appropriate parameters based on target
  */
-export function navigateWithContext(targetPath: string, currentParams?: URLSearchParams): void {
+export function navigateWithContext(
+  targetPath: string,
+  currentParams?: URLSearchParams
+): void {
   if (typeof window === 'undefined') return;
-  
+
   const url = createNewsAwareURL(targetPath, currentParams);
   window.location.href = url;
 }

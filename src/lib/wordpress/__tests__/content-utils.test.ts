@@ -9,12 +9,16 @@ import {
 
 describe('stripUnsafeHtml', () => {
   it('neutralizes data:text/html URIs', () => {
-    const result = stripUnsafeHtml('<img src="data:text/html,<script>alert(1)</script>">');
+    const result = stripUnsafeHtml(
+      '<img src="data:text/html,<script>alert(1)</script>">'
+    );
     expect(result).not.toContain('data:text/html');
   });
 
   it('neutralizes data:application/javascript URIs', () => {
-    const result = stripUnsafeHtml('<a href="data:application/javascript,alert(1)">x</a>');
+    const result = stripUnsafeHtml(
+      '<a href="data:application/javascript,alert(1)">x</a>'
+    );
     expect(result).not.toContain('data:application/javascript');
   });
 
@@ -118,7 +122,7 @@ describe('optimizeWordPressImage', () => {
 });
 
 describe('generateWordPressSrcSet', () => {
-  it('returns \'\' for a non-wordpress.com URL', () => {
+  it("returns '' for a non-wordpress.com URL", () => {
     expect(generateWordPressSrcSet('https://example.com/foo.jpg')).toBe('');
   });
 
@@ -210,7 +214,8 @@ describe('processRawWordPressHTML', () => {
   });
 
   it('keeps existing <img> dimensions unchanged', () => {
-    const input = '<img width="200" height="150" src="https://example.com/photo.jpg">';
+    const input =
+      '<img width="200" height="150" src="https://example.com/photo.jpg">';
     const result = processRawWordPressHTML(input);
     expect(result).toContain('width="200"');
     expect(result).toContain('height="150"');

@@ -2,31 +2,41 @@
 // src/pages/admin/notifications/banner.astro
 // Admin UI for the site-wide announcement banner.
 
-import AdminLayout from "@/layouts/AdminLayout.astro";
-import AccentCard from "@/components/admin/AccentCard.astro";
-import AccentCardHeader from "@/components/admin/AccentCardHeader.astro";
-import { getAnnouncementBanner } from "@/lib/announcementBanner";
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import AccentCard from '@/components/admin/AccentCard.astro';
+import AccentCardHeader from '@/components/admin/AccentCardHeader.astro';
+import { getAnnouncementBanner } from '@/lib/announcementBanner';
 
-const saved = Astro.url.searchParams.has("saved");
+const saved = Astro.url.searchParams.has('saved');
 const banner = await getAnnouncementBanner();
 
 const INPUT_CLASS =
-  "w-full border border-(--border-primary) bg-(--surface-primary) text-(--content-body) rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-(--content-body)/30 focus:ring-offset-1";
+  'w-full border border-(--border-primary) bg-(--surface-primary) text-(--content-body) rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-(--content-body)/30 focus:ring-offset-1';
 const BTN_CLASS =
-  "font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap";
+  'font-sans font-semibold transition-all ease-in-out duration-300 border-2 rounded-sm focus-visible:ring outline-0 focus-visible:ring-offset-2 text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 focus-visible:ring-(--ui-button-ring) text-sm py-1.5 px-4 whitespace-nowrap';
 ---
 
 <AdminLayout
   title="Announcement Banner"
   description="Show a message across the top of the site — perfect for sales, events, or closures."
 >
-  {saved && (
-    <div role="status" class="saved-banner mb-4 px-4 py-3 bg-(--status-success-bg) border border-(--status-success-border) rounded-sm text-sm text-(--status-success-text)">
-      Banner saved successfully.
-    </div>
-  )}
+  {
+    saved && (
+      <div
+        role="status"
+        class="saved-banner mb-4 px-4 py-3 bg-(--status-success-bg) border border-(--status-success-border) rounded-sm text-sm text-(--status-success-text)"
+      >
+        Banner saved successfully.
+      </div>
+    )
+  }
 
-  <AccentCard as="form" tone="highlight" method="POST" action="/api/admin/banner">
+  <AccentCard
+    as="form"
+    tone="highlight"
+    method="POST"
+    action="/api/admin/banner"
+  >
     <AccentCardHeader
       title="Banner Settings"
       subtitle="Displayed above the navigation on every page while active."
@@ -35,7 +45,10 @@ const BTN_CLASS =
     <div class="divide-y divide-(--border-primary)">
       <!-- Active toggle -->
       <div class="flex flex-wrap items-center gap-4 px-4 py-3.5">
-        <span class="w-36 shrink-0 text-sm font-semibold text-(--content-heading)">Active</span>
+        <span
+          class="w-36 shrink-0 text-sm font-semibold text-(--content-heading)"
+          >Active</span
+        >
         <label class="flex items-center gap-2 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -50,7 +63,10 @@ const BTN_CLASS =
 
       <!-- Message text -->
       <div class="flex flex-wrap items-start gap-4 px-4 py-3.5">
-        <label for="banner-text" class="w-36 shrink-0 text-sm font-semibold text-(--content-heading) pt-2">
+        <label
+          for="banner-text"
+          class="w-36 shrink-0 text-sm font-semibold text-(--content-heading) pt-2"
+        >
           Message
         </label>
         <textarea
@@ -59,13 +75,16 @@ const BTN_CLASS =
           rows="2"
           placeholder="Grand reopening this Saturday — come ride with us!"
           class={INPUT_CLASS}
-          maxlength="200"
-        >{banner.text}</textarea>
+          maxlength="200">{banner.text}</textarea
+        >
       </div>
 
       <!-- Link URL -->
       <div class="flex flex-wrap items-start gap-4 px-4 py-3.5">
-        <label for="banner-link" class="w-36 shrink-0 text-sm font-semibold text-(--content-heading) pt-2">
+        <label
+          for="banner-link"
+          class="w-36 shrink-0 text-sm font-semibold text-(--content-heading) pt-2"
+        >
           Link URL
         </label>
         <div class="flex flex-col gap-1 flex-1">
@@ -73,17 +92,24 @@ const BTN_CLASS =
             id="banner-link"
             type="url"
             name="linkUrl"
-            value={banner.linkUrl ?? ""}
+            value={banner.linkUrl ?? ''}
             placeholder="https://... or /path"
             class={INPUT_CLASS}
           />
-          <p class="text-xs text-(--content-meta)">Optional. Clicking the banner will navigate here. Must start with <code>/</code> or <code>https://</code>.</p>
+          <p class="text-xs text-(--content-meta)">
+            Optional. Clicking the banner will navigate here. Must start with <code
+              >/</code
+            > or <code>https://</code>.
+          </p>
         </div>
       </div>
 
       <!-- Expires -->
       <div class="flex flex-wrap items-center gap-4 px-4 py-3.5">
-        <label for="banner-expires" class="w-36 shrink-0 text-sm font-semibold text-(--content-heading)">
+        <label
+          for="banner-expires"
+          class="w-36 shrink-0 text-sm font-semibold text-(--content-heading)"
+        >
           Expires on
         </label>
         <div class="flex flex-col gap-1">
@@ -91,16 +117,21 @@ const BTN_CLASS =
             id="banner-expires"
             type="date"
             name="expiresAt"
-            value={banner.expiresAt ?? ""}
+            value={banner.expiresAt ?? ''}
             class={`${INPUT_CLASS} w-auto`}
           />
-          <p class="text-xs text-(--content-meta)">The banner will not show on or after this date. Leave blank to show indefinitely.</p>
+          <p class="text-xs text-(--content-meta)">
+            The banner will not show on or after this date. Leave blank to show
+            indefinitely.
+          </p>
         </div>
       </div>
     </div>
 
     <!-- Footer actions -->
-    <div class="flex items-center justify-between px-4 py-3 bg-(--surface-primary) border-t border-(--border-primary)">
+    <div
+      class="flex items-center justify-between px-4 py-3 bg-(--surface-primary) border-t border-(--border-primary)"
+    >
       <p class="text-xs text-(--content-meta)">
         Max 200 characters. Links and formatting are not supported.
       </p>
@@ -109,31 +140,38 @@ const BTN_CLASS =
   </AccentCard>
 
   <!-- Preview -->
-  {banner.text && (
-    <div class="mt-6">
-      <p class="text-xs font-semibold text-(--content-meta) uppercase tracking-wide mb-2">Current preview</p>
-      <div class="w-full px-4 py-2.5 text-sm text-center font-medium bg-(--content-heading) text-(--surface-primary)">
-        {banner.text}
-      </div>
-      {banner.expiresAt && (
-        <p class="text-xs text-(--content-meta) mt-1">
-          {banner.active ? "Hidden on or after" : "Was set to hide on or after"} {banner.expiresAt}
+  {
+    banner.text && (
+      <div class="mt-6">
+        <p class="text-xs font-semibold text-(--content-meta) uppercase tracking-wide mb-2">
+          Current preview
         </p>
-      )}
-    </div>
-  )}
+        <div class="w-full px-4 py-2.5 text-sm text-center font-medium bg-(--content-heading) text-(--surface-primary)">
+          {banner.text}
+        </div>
+        {banner.expiresAt && (
+          <p class="text-xs text-(--content-meta) mt-1">
+            {banner.active
+              ? 'Hidden on or after'
+              : 'Was set to hide on or after'}{' '}
+            {banner.expiresAt}
+          </p>
+        )}
+      </div>
+    )
+  }
 </AdminLayout>
 
 <script>
-  const banner = document.querySelector<HTMLElement>(".saved-banner");
+  const banner = document.querySelector<HTMLElement>('.saved-banner');
   if (banner) {
     setTimeout(() => {
-      banner.style.transition = "opacity 0.5s ease";
-      banner.style.opacity = "0";
+      banner.style.transition = 'opacity 0.5s ease';
+      banner.style.opacity = '0';
       setTimeout(() => banner.remove(), 500);
       const url = new URL(window.location.href);
-      url.searchParams.delete("saved");
-      history.replaceState(null, "", url.toString());
+      url.searchParams.delete('saved');
+      history.replaceState(null, '', url.toString());
     }, 4000);
   }
 </script>

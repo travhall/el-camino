@@ -1,22 +1,22 @@
 ---
 // src/pages/news/[slug].astro - Using WordPress Block Parser
-import Layout from "@/layouts/Layout.astro";
-import { getPost, getPosts } from "@/lib/wordpress/api";
-import { formatDate } from "@/utils/dates";
-import type { WordPressPost } from "@/lib/wordpress/types";
-import { extractEmbeddedData } from "@/lib/wordpress/types";
-import { stripUnsafeHtml } from "@/lib/wordpress/content-utils";
-import Tag from "@/components/Tag.astro";
-import WordPressBlockParser from "@/components/wordpress/WordPressBlockParser.astro";
-import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
-import { EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
+import Layout from '@/layouts/Layout.astro';
+import { getPost, getPosts } from '@/lib/wordpress/api';
+import { formatDate } from '@/utils/dates';
+import type { WordPressPost } from '@/lib/wordpress/types';
+import { extractEmbeddedData } from '@/lib/wordpress/types';
+import { stripUnsafeHtml } from '@/lib/wordpress/content-utils';
+import Tag from '@/components/Tag.astro';
+import WordPressBlockParser from '@/components/wordpress/WordPressBlockParser.astro';
+import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
+import { EL_CAMINO_LOADER_DATA_URI } from '@/lib/constants/assets';
 
 const { slug } = Astro.params;
 
 if (!slug) {
   return new Response(null, {
     status: 404,
-    statusText: "Not found",
+    statusText: 'Not found',
   });
 }
 
@@ -27,12 +27,12 @@ try {
   if (!post) {
     return new Response(null, {
       status: 404,
-      statusText: "Post not found",
+      statusText: 'Post not found',
     });
   }
 } catch (e) {
-  console.error("[news/[slug]] Failed to load post", e);
-  return new Response("An error occurred loading the post.", { status: 500 });
+  console.error('[news/[slug]] Failed to load post', e);
+  return new Response('An error occurred loading the post.', { status: 500 });
 }
 
 let prevPost: WordPressPost | null = null;
@@ -96,26 +96,26 @@ const fullTitle = `${pageTitle} | El Camino`;
 
 // Enhanced structured data
 const structuredData = {
-  "@context": "https://schema.org",
-  "@type": "Article",
+  '@context': 'https://schema.org',
+  '@type': 'Article',
   headline: pageTitle,
   image: imageSet ? imageSet.avif || imageSet.webp || imageSet.jpeg : undefined,
   author: {
-    "@type": "Person",
-    name: author?.name || "El Camino",
+    '@type': 'Person',
+    name: author?.name || 'El Camino',
   },
   publisher: {
-    "@type": "Organization",
-    name: "El Camino Skate Shop",
+    '@type': 'Organization',
+    name: 'El Camino Skate Shop',
     logo: {
-      "@type": "ImageObject",
+      '@type': 'ImageObject',
       url: `${Astro.site}logo.png`,
     },
   },
   datePublished: post.date,
   dateModified: post.modified,
   articleSection: category?.name,
-  description: post.excerpt.rendered.replace(/<[^>]*>/g, "").substring(0, 160),
+  description: post.excerpt.rendered.replace(/<[^>]*>/g, '').substring(0, 160),
   keywords: tags.length > 0 ? tags.map((tag) => tag.name) : undefined,
 };
 
@@ -153,8 +153,8 @@ const nonce = Astro.locals.nonce;
         type="image/avif"
         imagesrcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
           rawImageUrl,
-          "avif",
-          { width: heroImageWidth, height: heroImageHeight, quality: 75 },
+          'avif',
+          { width: heroImageWidth, height: heroImageHeight, quality: 75 }
         )}
         imagesizes="(max-width: 768px) 100vw, (max-width: 1024px) 66vw, 1200px"
         slot="head"
@@ -190,7 +190,7 @@ const nonce = Astro.locals.nonce;
         {
           author && (
             <div class="flex items-center gap-4 text-(--content-meta) mb-6">
-              {author.avatar_urls?.["96"] && (
+              {author.avatar_urls?.['96'] && (
                 <div class="relative w-12 h-12">
                   {/* Avatar loading placeholder */}
                   <div
@@ -207,7 +207,7 @@ const nonce = Astro.locals.nonce;
 
                   {/* Optimized avatar image */}
                   <img
-                    src={author.avatar_urls["96"]}
+                    src={author.avatar_urls['96']}
                     alt={author.name}
                     width="96"
                     height="96"
@@ -262,12 +262,12 @@ const nonce = Astro.locals.nonce;
                   type="image/avif"
                   srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
                     rawImageUrl!,
-                    "avif",
+                    'avif',
                     {
                       width: heroImageWidth,
                       height: heroImageHeight,
                       quality: 75,
-                    },
+                    }
                   )}
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 66vw, 1200px"
                 />
@@ -279,12 +279,12 @@ const nonce = Astro.locals.nonce;
                   type="image/webp"
                   srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
                     rawImageUrl!,
-                    "webp",
+                    'webp',
                     {
                       width: heroImageWidth,
                       height: heroImageHeight,
                       quality: 75,
-                    },
+                    }
                   )}
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 66vw, 1200px"
                 />
@@ -295,12 +295,12 @@ const nonce = Astro.locals.nonce;
                 src={imageSet.jpeg}
                 srcset={EnhancedImageOptimizer.generateResponsiveSrcSet(
                   rawImageUrl!,
-                  "jpeg",
+                  'jpeg',
                   {
                     width: heroImageWidth,
                     height: heroImageHeight,
                     quality: 75,
-                  },
+                  }
                 )}
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 66vw, 1200px"
                 alt={featuredMedia?.alt_text || post.title.rendered}
@@ -377,7 +377,7 @@ const nonce = Astro.locals.nonce;
                   style={
                     prevPostFeaturedImage
                       ? `background-image: url('${prevPostFeaturedImage}'); background-size: cover; background-position: center;`
-                      : ""
+                      : ''
                   }
                 >
                   <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center z-10">
@@ -438,7 +438,7 @@ const nonce = Astro.locals.nonce;
                   style={
                     nextPostFeaturedImage
                       ? `background-image: url('${nextPostFeaturedImage}'); background-size: cover; background-position: center;`
-                      : ""
+                      : ''
                   }
                 >
                   <span class="text-(--content-meta) text-sm font-medium mb-1 flex items-center justify-end z-10">
@@ -499,11 +499,11 @@ const nonce = Astro.locals.nonce;
 
 <script>
   // Enhanced sharing functionality
-  document.addEventListener("astro:page-load", () => {
-    const shareButton = document.getElementById("share-article-button");
+  document.addEventListener('astro:page-load', () => {
+    const shareButton = document.getElementById('share-article-button');
 
     if (shareButton) {
-      shareButton.addEventListener("click", async (e) => {
+      shareButton.addEventListener('click', async (e) => {
         e.preventDefault();
 
         try {
@@ -513,7 +513,7 @@ const nonce = Astro.locals.nonce;
             text:
               document
                 .querySelector('meta[name="description"]')
-                ?.getAttribute("content") || "",
+                ?.getAttribute('content') || '',
           };
 
           if (
@@ -524,9 +524,9 @@ const nonce = Astro.locals.nonce;
             await navigator.share(shareData);
 
             // Analytics for successful share
-            if (typeof window !== "undefined" && window.gtag) {
-              window.gtag("event", "article_shared", {
-                method: "native_share",
+            if (typeof window !== 'undefined' && window.gtag) {
+              window.gtag('event', 'article_shared', {
+                method: 'native_share',
                 article_title: document.title,
               });
             }
@@ -536,18 +536,18 @@ const nonce = Astro.locals.nonce;
 
             // Show feedback
             const originalText = shareButton.textContent;
-            shareButton.textContent = "Link Copied!";
-            shareButton.classList.add("text-(--ui-accent)");
+            shareButton.textContent = 'Link Copied!';
+            shareButton.classList.add('text-(--ui-accent)');
 
             setTimeout(() => {
               shareButton.textContent = originalText;
-              shareButton.classList.remove("text-(--ui-accent)");
+              shareButton.classList.remove('text-(--ui-accent)');
             }, 2000);
 
             // Analytics for clipboard copy
-            if (typeof window !== "undefined" && window.gtag) {
-              window.gtag("event", "article_shared", {
-                method: "clipboard",
+            if (typeof window !== 'undefined' && window.gtag) {
+              window.gtag('event', 'article_shared', {
+                method: 'clipboard',
                 article_title: document.title,
               });
             }
@@ -555,12 +555,12 @@ const nonce = Astro.locals.nonce;
         } catch {
           // Fallback feedback
           const originalText = shareButton.textContent;
-          shareButton.textContent = "Share Failed";
-          shareButton.classList.add("text-(--state-error-text)");
+          shareButton.textContent = 'Share Failed';
+          shareButton.classList.add('text-(--state-error-text)');
 
           setTimeout(() => {
             shareButton.textContent = originalText;
-            shareButton.classList.remove("text-(--state-error-text)");
+            shareButton.classList.remove('text-(--state-error-text)');
           }, 2000);
         }
       });
@@ -572,23 +572,33 @@ const nonce = Astro.locals.nonce;
   // YouTube facade: replaces the static thumbnail+play-button with a live iframe on click.
   // Applies to facades generated by both WPEmbed.astro and processRawWordPressHTML().
   // Uses youtube-nocookie.com to avoid SameSite cookie inspector warnings.
-  document.addEventListener('click', (e: MouseEvent) => {
-    const btn = (e.target as Element).closest<HTMLButtonElement>('.youtube-play-btn');
-    if (!btn) return;
+  document.addEventListener(
+    'click',
+    (e: MouseEvent) => {
+      const btn = (e.target as Element).closest<HTMLButtonElement>(
+        '.youtube-play-btn'
+      );
+      if (!btn) return;
 
-    const videoId = btn.dataset.videoid;
-    const container = btn.closest<HTMLElement>('.youtube-facade');
-    if (!videoId || !container) return;
+      const videoId = btn.dataset.videoid;
+      const container = btn.closest<HTMLElement>('.youtube-facade');
+      if (!videoId || !container) return;
 
-    const iframe = document.createElement('iframe');
-    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
-    iframe.title = 'YouTube video player';
-    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
-    iframe.setAttribute('allowfullscreen', '');
-    iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;';
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
+      iframe.title = 'YouTube video player';
+      iframe.setAttribute(
+        'allow',
+        'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
+      );
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.style.cssText =
+        'position:absolute;inset:0;width:100%;height:100%;border:none;';
 
-    container.innerHTML = '';
-    container.appendChild(iframe);
-    iframe.focus();
-  }, { passive: true });
+      container.innerHTML = '';
+      container.appendChild(iframe);
+      iframe.focus();
+    },
+    { passive: true }
+  );
 </script>

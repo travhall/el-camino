@@ -4,12 +4,12 @@
  * singleton pattern and a couple of key public methods, not exhaustive
  * behavior testing (mirrors pdpController-real.test.ts's approach).
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-vi.mock("@/lib/cart", () => ({
+vi.mock('@/lib/cart', () => ({
   cart: {
     getProductAvailability: vi.fn(() => ({
-      state: "AVAILABLE",
+      state: 'AVAILABLE',
       total: 10,
       inCart: 0,
       remaining: 10,
@@ -20,7 +20,7 @@ vi.mock("@/lib/cart", () => ({
   },
 }));
 
-vi.mock("@/lib/product/pdpUI", () => ({
+vi.mock('@/lib/product/pdpUI', () => ({
   PDPUIManager: class {
     updateAvailabilityDisplay = vi.fn();
     updatePriceDisplay = vi.fn();
@@ -30,20 +30,20 @@ vi.mock("@/lib/product/pdpUI", () => ({
   },
 }));
 
-vi.mock("@/lib/square/errorUtils", () => ({
+vi.mock('@/lib/square/errorUtils', () => ({
   processClientError: vi.fn((error) => ({ message: String(error) })),
   logError: vi.fn(),
 }));
 
-vi.mock("@/lib/events", () => ({
+vi.mock('@/lib/events', () => ({
   showNotification: vi.fn(),
 }));
 
-vi.mock("astro:transitions/client", () => ({
+vi.mock('astro:transitions/client', () => ({
   navigate: vi.fn(),
 }));
 
-import { QuickViewController } from "../quickViewController";
+import { QuickViewController } from '../quickViewController';
 
 function setupDom(): void {
   document.body.innerHTML = `
@@ -64,18 +64,18 @@ function setupDom(): void {
 }
 
 const product = {
-  id: "prod-1",
-  catalogObjectId: "prod-1",
-  variationId: "var-1",
-  title: "Test Deck",
-  image: "test.jpg",
+  id: 'prod-1',
+  catalogObjectId: 'prod-1',
+  variationId: 'var-1',
+  title: 'Test Deck',
+  image: 'test.jpg',
   price: 65,
-  url: "/product/test-deck",
+  url: '/product/test-deck',
   variations: [
     {
-      id: "var-1",
-      variationId: "var-1",
-      name: "Test Deck",
+      id: 'var-1',
+      variationId: 'var-1',
+      name: 'Test Deck',
       price: 65,
       quantity: 10,
       inStock: true,
@@ -84,7 +84,7 @@ const product = {
   ],
 };
 
-describe("QuickViewController", () => {
+describe('QuickViewController', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupDom();
@@ -92,54 +92,62 @@ describe("QuickViewController", () => {
       Promise.resolve({
         ok: true,
         status: 200,
-        statusText: "OK",
+        statusText: 'OK',
         json: () => Promise.resolve(product),
-      }),
+      })
     ) as unknown as typeof fetch;
   });
 
-  it("getInstance() returns the same instance on repeated calls", () => {
+  it('getInstance() returns the same instance on repeated calls', () => {
     const a = QuickViewController.getInstance();
     const b = QuickViewController.getInstance();
     expect(a).toBe(b);
   });
 
-  it("openQuickView() fetches the product and reveals the product panel", async () => {
+  it('openQuickView() fetches the product and reveals the product panel', async () => {
     const controller = QuickViewController.getInstance();
-    await controller.openQuickView("prod-1");
+    await controller.openQuickView('prod-1');
 
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/quick-view-product?id=prod-1"),
-      expect.any(Object),
+      expect.stringContaining('/api/quick-view-product?id=prod-1'),
+      expect.any(Object)
     );
     expect(
-      document.getElementById("quick-view-product")?.classList.contains("hidden"),
+      document
+        .getElementById('quick-view-product')
+        ?.classList.contains('hidden')
     ).toBe(false);
-    expect(document.getElementById("quick-view-title-text")?.textContent).toBe(
-      "Test Deck",
+    expect(document.getElementById('quick-view-title-text')?.textContent).toBe(
+      'Test Deck'
     );
   });
 
-  it("openQuickView() shows the error state when the fetch fails", async () => {
-    global.fetch = vi.fn(() => Promise.reject(new Error("network error"))) as unknown as typeof fetch;
+  it('openQuickView() shows the error state when the fetch fails', async () => {
+    global.fetch = vi.fn(() =>
+      Promise.reject(new Error('network error'))
+    ) as unknown as typeof fetch;
     const controller = QuickViewController.getInstance();
-    await controller.openQuickView("prod-1");
+    await controller.openQuickView('prod-1');
 
     expect(
-      document.getElementById("quick-view-error")?.classList.contains("hidden"),
+      document.getElementById('quick-view-error')?.classList.contains('hidden')
     ).toBe(false);
   });
 
-  it("closeModal() hides the overlay and resets panel state", async () => {
+  it('closeModal() hides the overlay and resets panel state', async () => {
     const controller = QuickViewController.getInstance();
-    await controller.openQuickView("prod-1");
+    await controller.openQuickView('prod-1');
 
     controller.closeModal();
 
-    expect(document.getElementById("quick-view-panel")?.getAttribute("inert")).toBe("");
     expect(
-      document.getElementById("quick-view-overlay")?.classList.contains("opacity-0"),
+      document.getElementById('quick-view-panel')?.getAttribute('inert')
+    ).toBe('');
+    expect(
+      document
+        .getElementById('quick-view-overlay')
+        ?.classList.contains('opacity-0')
     ).toBe(true);
-    expect(document.body.style.overflow).toBe("unset");
+    expect(document.body.style.overflow).toBe('unset');
   });
 });

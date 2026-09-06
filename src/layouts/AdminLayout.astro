@@ -3,16 +3,17 @@
  * Admin Layout - Following established site patterns
  * File: src/layouts/AdminLayout.astro
  */
-import AdminHeader from "@/components/admin/AdminHeader.astro";
-import "@/styles/global.css";
-import AdminFooter from "@/components/admin/AdminFooter.astro";
+import AdminHeader from '@/components/admin/AdminHeader.astro';
+import '@/styles/global.css';
+import AdminFooter from '@/components/admin/AdminFooter.astro';
 
 // Auth guard — redirect to login if session cookie is absent, expired, or tampered.
 // Middleware also enforces this for /admin/*; this layout-level check is a defense
 // in depth in case a route slips past the middleware matcher.
 const secret = process.env.ADMIN_SECRET;
 if (secret) {
-  const { ADMIN_COOKIE_NAME, verifySessionToken } = await import("@/lib/admin/auth");
+  const { ADMIN_COOKIE_NAME, verifySessionToken } =
+    await import('@/lib/admin/auth');
   const token = Astro.cookies.get(ADMIN_COOKIE_NAME)?.value;
   if (!verifySessionToken(secret, token)) {
     const from = encodeURIComponent(Astro.url.pathname);
@@ -26,11 +27,11 @@ interface Props {
   description?: string;
 }
 
-const { title, description = "" } = Astro.props;
+const { title, description = '' } = Astro.props;
 
 const adminTitle = `${title} - El Camino Admin`;
 const adminDescription =
-  description || "El Camino Skate Shop administration tools";
+  description || 'El Camino Skate Shop administration tools';
 
 const nonce = Astro.locals.nonce;
 ---
@@ -46,13 +47,13 @@ const nonce = Astro.locals.nonce;
 
     <script is:inline nonce={nonce}>
       (function () {
-        const storedTheme = localStorage.getItem("theme");
+        const storedTheme = localStorage.getItem('theme');
         const systemPrefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)",
+          '(prefers-color-scheme: dark)'
         ).matches;
-        const theme = storedTheme ?? (systemPrefersDark ? "dark" : "light");
+        const theme = storedTheme ?? (systemPrefersDark ? 'dark' : 'light');
         document.documentElement.classList.add(theme);
-        document.documentElement.setAttribute("data-theme", theme);
+        document.documentElement.setAttribute('data-theme', theme);
       })();
     </script>
 

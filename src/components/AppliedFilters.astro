@@ -1,11 +1,11 @@
 ---
 // src/components/AppliedFilters.astro
-import { fetchCategoryHierarchy } from "@/lib/square/categories";
+import { fetchCategoryHierarchy } from '@/lib/square/categories';
 import type {
   FilterOptions,
   ProductFilters,
   CategoryFilterOption,
-} from "@/lib/square/types";
+} from '@/lib/square/types';
 
 export interface Props {
   classes?: string;
@@ -18,19 +18,19 @@ const {
   classes,
   filterOptions,
   appliedFilters,
-  categoryPath = "",
+  categoryPath = '',
 } = Astro.props;
 
 // Parse current filters from URL
 const currentParams = new URLSearchParams(Astro.url.search);
 const currentBrands =
-  appliedFilters?.brands || currentParams.getAll("brands") || [];
+  appliedFilters?.brands || currentParams.getAll('brands') || [];
 const currentCategories =
-  appliedFilters?.categories || currentParams.getAll("categories") || [];
+  appliedFilters?.categories || currentParams.getAll('categories') || [];
 const currentAvailability =
-  appliedFilters?.availability ?? currentParams.get("availability") === "true";
+  appliedFilters?.availability ?? currentParams.get('availability') === 'true';
 const currentOnSale =
-  appliedFilters?.onSale ?? currentParams.get("onSale") === "true";
+  appliedFilters?.onSale ?? currentParams.get('onSale') === 'true';
 
 const hasActiveFilters =
   currentBrands.length > 0 ||
@@ -78,13 +78,13 @@ if (currentCategories.length > 0) {
 
 function getCategoryName(
   slugOrId: string,
-  categories: CategoryFilterOption[] = [],
+  categories: CategoryFilterOption[] = []
 ): string {
   // Check filterOptions first (fastest, already in memory)
   for (const cat of categories) {
     if (cat.slug === slugOrId || cat.id === slugOrId) return cat.name;
     const sub = cat.subcategories.find(
-      (s) => s.slug === slugOrId || s.id === slugOrId,
+      (s) => s.slug === slugOrId || s.id === slugOrId
     );
     if (sub) return sub.name;
   }
@@ -144,9 +144,9 @@ function getCategoryName(
   id="applied-filters-container"
   tabindex="-1"
   class:list={[
-    "applied-filters-container px-2",
+    'applied-filters-container px-2',
     classes,
-    !hasActiveFilters ? "no-filters" : "",
+    !hasActiveFilters ? 'no-filters' : '',
   ]}
   style="view-transition-name: applied-filters;"
   data-category-names={JSON.stringify(Object.fromEntries(categorySlugNameMap))}
@@ -189,7 +189,7 @@ function getCategoryName(
           {currentCategories.map((categoryId) => {
             const name = getCategoryName(
               categoryId,
-              filterOptions?.categories || [],
+              filterOptions?.categories || []
             );
             return (
               <span class="shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50">
@@ -295,20 +295,20 @@ function getCategoryName(
 </div>
 
 <script>
-  import { FilterCoordinator } from "@/lib/filterCoordinator";
+  import { FilterCoordinator } from '@/lib/filterCoordinator';
 
   FilterCoordinator.initialize();
 
   // ── Pill rendering ──────────────────────────────────────────────────────────
 
   const PILL_WRAP_CLASS =
-    "shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50";
+    'shrink-0 inline-flex items-center gap-0.5 pl-3 pr-1 py-1.5 text-sm border rounded-full bg-(--surface-primary) text-(--ui-input-text) border-(--ui-input-border)/50';
 
   const REMOVE_BTN_CLASS =
-    "inline-flex items-center justify-center rounded-full p-2.5 -m-0.5 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors";
+    'inline-flex items-center justify-center rounded-full p-2.5 -m-0.5 text-(--content-meta) hover:text-(--content-body) hover:bg-(--surface-tertiary) transition-colors';
 
   const REMOVE_BTN_CLASS_GREEN =
-    "inline-flex items-center justify-center rounded-full p-2.5 -m-0.5 text-(--state-success-text)/70 hover:text-(--state-success-text) hover:bg-(--surface-tertiary) transition-colors";
+    'inline-flex items-center justify-center rounded-full p-2.5 -m-0.5 text-(--state-success-text)/70 hover:text-(--state-success-text) hover:bg-(--surface-tertiary) transition-colors';
 
   const X_ICON = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
 
@@ -316,22 +316,22 @@ function getCategoryName(
     label: string,
     removeBtnClass: string,
     ariaLabel: string,
-    configureBtn: (btn: HTMLButtonElement) => void,
+    configureBtn: (btn: HTMLButtonElement) => void
   ): HTMLElement {
-    const wrap = document.createElement("span");
+    const wrap = document.createElement('span');
     wrap.className = PILL_WRAP_CLASS;
 
-    const labelSpan = document.createElement("span");
-    labelSpan.className = "relative z-10";
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'relative z-10';
     labelSpan.textContent = label;
     wrap.appendChild(labelSpan);
 
-    const btn = document.createElement("button");
-    btn.type = "button";
+    const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = removeBtnClass;
-    btn.setAttribute("aria-label", ariaLabel);
+    btn.setAttribute('aria-label', ariaLabel);
     btn.title = ariaLabel;
-    btn.insertAdjacentHTML("beforeend", X_ICON);
+    btn.insertAdjacentHTML('beforeend', X_ICON);
     configureBtn(btn);
     wrap.appendChild(btn);
 
@@ -344,13 +344,13 @@ function getCategoryName(
     categories: string[],
     availability: boolean,
     categoryNames: Record<string, string>,
-    onSale: boolean,
+    onSale: boolean
   ) {
     brands.forEach((brand) => {
       row.appendChild(
         buildPill(brand, REMOVE_BTN_CLASS, `Remove ${brand} filter`, (btn) => {
           btn.dataset.removeBrand = brand;
-        }),
+        })
       );
     });
 
@@ -358,35 +358,35 @@ function getCategoryName(
       const name = categoryNames[slug] || slug;
       row.appendChild(
         buildPill(name, REMOVE_BTN_CLASS, `Remove ${name} filter`, (btn) => {
-          btn.dataset.filterType = "categories";
+          btn.dataset.filterType = 'categories';
           btn.dataset.filterValue = slug;
-        }),
+        })
       );
     });
 
     if (availability) {
       row.appendChild(
         buildPill(
-          "In stock only",
+          'In stock only',
           REMOVE_BTN_CLASS_GREEN,
-          "Remove in stock only filter",
+          'Remove in stock only filter',
           (btn) => {
-            btn.dataset.removeAvailability = "";
-          },
-        ),
+            btn.dataset.removeAvailability = '';
+          }
+        )
       );
     }
 
     if (onSale) {
       row.appendChild(
         buildPill(
-          "On sale only",
+          'On sale only',
           REMOVE_BTN_CLASS,
-          "Remove on sale only filter",
+          'Remove on sale only filter',
           (btn) => {
-            btn.dataset.removeOnSale = "";
-          },
-        ),
+            btn.dataset.removeOnSale = '';
+          }
+        )
       );
     }
   }
@@ -401,22 +401,22 @@ function getCategoryName(
   let pendingRemovedLabel: string | null = null;
 
   function getRemoveButtons(): HTMLElement[] {
-    const row = document.getElementById("applied-filters-row");
+    const row = document.getElementById('applied-filters-row');
     if (!row) return [];
     return Array.from(
       row.querySelectorAll<HTMLElement>(
-        "[data-remove-brand], [data-filter-type='categories'], [data-remove-availability], [data-remove-on-sale]",
-      ),
+        "[data-remove-brand], [data-filter-type='categories'], [data-remove-availability], [data-remove-on-sale]"
+      )
     );
   }
 
   function focusFallback(container: HTMLElement) {
     // Last chip removed — the container is about to be hidden, so move focus
     // to the page heading rather than an element that's leaving the a11y tree.
-    const heading = document.querySelector("h1") as HTMLElement | null;
+    const heading = document.querySelector('h1') as HTMLElement | null;
     if (heading) {
-      if (!heading.hasAttribute("tabindex"))
-        heading.setAttribute("tabindex", "-1");
+      if (!heading.hasAttribute('tabindex'))
+        heading.setAttribute('tabindex', '-1');
       heading.focus();
     } else {
       container.focus();
@@ -425,9 +425,9 @@ function getCategoryName(
 
   function announceRemoval() {
     if (!pendingRemovedLabel) return;
-    const region = document.getElementById("applied-filters-live-region");
+    const region = document.getElementById('applied-filters-live-region');
     if (region) {
-      region.textContent = "";
+      region.textContent = '';
       const label = pendingRemovedLabel;
       window.setTimeout(() => {
         region.textContent = `${label} filter removed`;
@@ -440,10 +440,10 @@ function getCategoryName(
     brands: string[],
     categories: string[],
     availability: boolean,
-    onSale: boolean = false,
+    onSale: boolean = false
   ) {
-    const container = document.getElementById("applied-filters-container");
-    const row = document.getElementById("applied-filters-row");
+    const container = document.getElementById('applied-filters-container');
+    const row = document.getElementById('applied-filters-row');
     if (!container || !row) return;
 
     const hasActive =
@@ -452,28 +452,28 @@ function getCategoryName(
     if (!hasActive) {
       // Focus while still visible — a hidden/removed element can't take focus.
       if (pendingFocusIndex !== null) focusFallback(container);
-      container.classList.add("no-filters");
-      row.innerHTML = "";
+      container.classList.add('no-filters');
+      row.innerHTML = '';
       pendingFocusIndex = null;
       announceRemoval();
       return;
     }
 
-    container.classList.remove("no-filters");
+    container.classList.remove('no-filters');
 
     const categoryNames = JSON.parse(
-      container.dataset.categoryNames || "{}",
+      container.dataset.categoryNames || '{}'
     ) as Record<string, string>;
 
-    row.innerHTML = "";
+    row.innerHTML = '';
     appendPills(row, brands, categories, availability, categoryNames, onSale);
 
-    const clearAllBtn = document.createElement("button");
-    clearAllBtn.type = "button";
-    clearAllBtn.dataset.clearAllFilters = "";
+    const clearAllBtn = document.createElement('button');
+    clearAllBtn.type = 'button';
+    clearAllBtn.dataset.clearAllFilters = '';
     clearAllBtn.className =
-      "shrink-0 text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-nowrap";
-    clearAllBtn.textContent = "Clear All";
+      'shrink-0 text-sm text-(--content-meta) hover:text-(--content-emphasis) transition-colors text-nowrap';
+    clearAllBtn.textContent = 'Clear All';
     row.appendChild(clearAllBtn);
 
     setupFilterHandlers();
@@ -496,50 +496,50 @@ function getCategoryName(
     brands: string[],
     categories: string[],
     availability: boolean,
-    onSale: boolean = false,
+    onSale: boolean = false
   ) {
     const params = new URLSearchParams();
-    brands.forEach((b) => params.append("brands", b));
-    categories.forEach((c) => params.append("categories", c));
-    if (availability) params.set("availability", "true");
-    if (onSale) params.set("onSale", "true");
+    brands.forEach((b) => params.append('brands', b));
+    categories.forEach((c) => params.append('categories', c));
+    if (availability) params.set('availability', 'true');
+    if (onSale) params.set('onSale', 'true');
     const qs = params.toString();
     history.pushState(
       {},
-      "",
-      `${window.location.pathname}${qs ? "?" + qs : ""}`,
+      '',
+      `${window.location.pathname}${qs ? '?' + qs : ''}`
     );
     window.dispatchEvent(
-      new CustomEvent("filterchange", {
+      new CustomEvent('filterchange', {
         detail: { brands, categories, availability, onSale },
-      }),
+      })
     );
   }
 
   function removeFilter(type: string, value: string | null = null) {
     const p = new URLSearchParams(window.location.search);
-    const brands = p.getAll("brands");
-    const cats = p.getAll("categories");
-    const avail = p.get("availability") === "true";
-    const sale = p.get("onSale") === "true";
+    const brands = p.getAll('brands');
+    const cats = p.getAll('categories');
+    const avail = p.get('availability') === 'true';
+    const sale = p.get('onSale') === 'true';
 
-    if (type === "brand" && value) {
+    if (type === 'brand' && value) {
       dispatchFilterChange(
         brands.filter((b) => b !== value),
         cats,
         avail,
-        sale,
+        sale
       );
-    } else if (type === "categories" && value) {
+    } else if (type === 'categories' && value) {
       dispatchFilterChange(
         brands,
         cats.filter((c) => c !== value),
         avail,
-        sale,
+        sale
       );
-    } else if (type === "availability") {
+    } else if (type === 'availability') {
       dispatchFilterChange(brands, cats, false, sale);
-    } else if (type === "onSale") {
+    } else if (type === 'onSale') {
       dispatchFilterChange(brands, cats, avail, false);
     }
   }
@@ -548,15 +548,15 @@ function getCategoryName(
 
   function setupFilterHandlers() {
     document
-      .querySelectorAll<HTMLElement>("[data-remove-brand]")
+      .querySelectorAll<HTMLElement>('[data-remove-brand]')
       .forEach((btn) => {
-        btn.addEventListener("click", (e) => {
+        btn.addEventListener('click', (e) => {
           const target = e.currentTarget as HTMLElement;
           const brand = target.dataset.removeBrand;
           if (brand) {
             pendingFocusIndex = getRemoveButtons().indexOf(target);
             pendingRemovedLabel = brand;
-            removeFilter("brand", brand);
+            removeFilter('brand', brand);
           }
         });
       });
@@ -564,51 +564,51 @@ function getCategoryName(
     document
       .querySelectorAll<HTMLElement>("[data-filter-type='categories']")
       .forEach((btn) => {
-        btn.addEventListener("click", (e) => {
+        btn.addEventListener('click', (e) => {
           const target = e.currentTarget as HTMLElement;
           const slug = target.dataset.filterValue;
           if (slug) {
             pendingFocusIndex = getRemoveButtons().indexOf(target);
             pendingRemovedLabel =
               target
-                .getAttribute("aria-label")
-                ?.replace(/^Remove /, "")
-                .replace(/ filter$/, "") ?? slug;
-            removeFilter("categories", slug);
+                .getAttribute('aria-label')
+                ?.replace(/^Remove /, '')
+                .replace(/ filter$/, '') ?? slug;
+            removeFilter('categories', slug);
           }
         });
       });
 
     document
-      .querySelector<HTMLElement>("[data-remove-availability]")
-      ?.addEventListener("click", (e) => {
+      .querySelector<HTMLElement>('[data-remove-availability]')
+      ?.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
         pendingFocusIndex = getRemoveButtons().indexOf(target);
-        pendingRemovedLabel = "In stock only";
-        removeFilter("availability");
+        pendingRemovedLabel = 'In stock only';
+        removeFilter('availability');
       });
 
     document
-      .querySelector<HTMLElement>("[data-remove-on-sale]")
-      ?.addEventListener("click", (e) => {
+      .querySelector<HTMLElement>('[data-remove-on-sale]')
+      ?.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
         pendingFocusIndex = getRemoveButtons().indexOf(target);
-        pendingRemovedLabel = "On sale only";
-        removeFilter("onSale");
+        pendingRemovedLabel = 'On sale only';
+        removeFilter('onSale');
       });
 
     document
-      .querySelector("[data-clear-all-filters]")
-      ?.addEventListener("click", () => {
+      .querySelector('[data-clear-all-filters]')
+      ?.addEventListener('click', () => {
         pendingFocusIndex = 0;
-        pendingRemovedLabel = "All";
+        pendingRemovedLabel = 'All';
         dispatchFilterChange([], [], false, false);
       });
   }
 
   // ── Module-level listeners ───────────────────────────────────────────────────
 
-  window.addEventListener("filterchange", (e: Event) => {
+  window.addEventListener('filterchange', (e: Event) => {
     const evt = e as CustomEvent<{
       brands: string[];
       categories: string[];
@@ -619,11 +619,11 @@ function getCategoryName(
       evt.detail.brands,
       evt.detail.categories,
       evt.detail.availability,
-      evt.detail.onSale ?? false,
+      evt.detail.onSale ?? false
     );
   });
 
-  document.addEventListener("astro:page-load", () => {
+  document.addEventListener('astro:page-load', () => {
     setupFilterHandlers();
   });
 </script>

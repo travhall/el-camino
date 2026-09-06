@@ -4,13 +4,13 @@
  * Standalone page — not wrapped in AdminLayout to avoid auth loop.
  */
 
-import { Icon } from "astro-icon/components";
+import { Icon } from 'astro-icon/components';
 
-function safeRedirectDest(raw: string | null, fallback = "/admin"): string {
+function safeRedirectDest(raw: string | null, fallback = '/admin'): string {
   if (!raw) return fallback;
   // Only allow site-relative paths: must start with / and not with //
   // (// would be protocol-relative, treated as absolute by browsers)
-  if (raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
   return fallback;
 }
 
@@ -18,16 +18,17 @@ function safeRedirectDest(raw: string | null, fallback = "/admin"): string {
 const secret = process.env.ADMIN_SECRET;
 
 if (secret) {
-  const { ADMIN_COOKIE_NAME, verifySessionToken } = await import("@/lib/admin/auth");
+  const { ADMIN_COOKIE_NAME, verifySessionToken } =
+    await import('@/lib/admin/auth');
   const token = Astro.cookies.get(ADMIN_COOKIE_NAME)?.value;
   if (verifySessionToken(secret, token)) {
-    const dest = safeRedirectDest(Astro.url.searchParams.get("from"));
+    const dest = safeRedirectDest(Astro.url.searchParams.get('from'));
     return Astro.redirect(dest);
   }
 }
 
-const from = safeRedirectDest(Astro.url.searchParams.get("from"));
-const hasError = Astro.url.searchParams.has("error");
+const from = safeRedirectDest(Astro.url.searchParams.get('from'));
+const hasError = Astro.url.searchParams.has('error');
 
 const nonce = Astro.locals.nonce;
 ---
@@ -43,18 +44,20 @@ const nonce = Astro.locals.nonce;
 
     <script is:inline nonce={nonce}>
       (function () {
-        const storedTheme = localStorage.getItem("theme");
+        const storedTheme = localStorage.getItem('theme');
         const systemPrefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)"
+          '(prefers-color-scheme: dark)'
         ).matches;
-        const theme = storedTheme ?? (systemPrefersDark ? "dark" : "light");
+        const theme = storedTheme ?? (systemPrefersDark ? 'dark' : 'light');
         document.documentElement.classList.add(theme);
-        document.documentElement.setAttribute("data-theme", theme);
+        document.documentElement.setAttribute('data-theme', theme);
       })();
     </script>
   </head>
 
-  <body class="min-h-screen flex flex-col items-center justify-center bg-(--surface-primary) px-4">
+  <body
+    class="min-h-screen flex flex-col items-center justify-center bg-(--surface-primary) px-4"
+  >
     <div class="w-full max-w-sm">
       <!-- Logo -->
       <a href="/" class="flex justify-center mb-8" aria-label="Go to main site">
@@ -62,19 +65,25 @@ const nonce = Astro.locals.nonce;
       </a>
 
       <!-- Card -->
-      <div class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-8">
-        <h1 class="font-display font-bold text-3xl text-(--content-heading) mb-2">
+      <div
+        class="bg-(--surface-secondary) border border-(--border-primary) rounded-sm p-8"
+      >
+        <h1
+          class="font-display font-bold text-3xl text-(--content-heading) mb-2"
+        >
           Admin Access
         </h1>
         <p class="text-sm text-(--content-meta) mb-6">
           Enter the admin password to continue.
         </p>
 
-        {hasError && (
-          <div class="mb-4 px-3 py-2 bg-(--status-danger-bg) border border-(--status-danger-border) rounded text-sm text-(--status-danger-text)">
-            Incorrect password. Please try again.
-          </div>
-        )}
+        {
+          hasError && (
+            <div class="mb-4 px-3 py-2 bg-(--status-danger-bg) border border-(--status-danger-border) rounded text-sm text-(--status-danger-text)">
+              Incorrect password. Please try again.
+            </div>
+          )
+        }
 
         <form method="POST" action="/api/admin-auth" class="space-y-4">
           <input type="hidden" name="from" value={from} />
@@ -117,5 +126,5 @@ const nonce = Astro.locals.nonce;
 </html>
 
 <script>
-  import "@/styles/global.css";
+  import '@/styles/global.css';
 </script>

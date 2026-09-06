@@ -520,9 +520,9 @@ describe('BlobCache', () => {
 
       const compute = vi.fn().mockResolvedValue('computed-value');
 
-      await expect(
-        cache.getOrCompute('test-key', compute)
-      ).resolves.toBe('computed-value');
+      await expect(cache.getOrCompute('test-key', compute)).resolves.toBe(
+        'computed-value'
+      );
     });
   });
 

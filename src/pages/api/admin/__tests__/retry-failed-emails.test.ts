@@ -28,7 +28,10 @@ import {
   deleteFailedEmail,
   type FailedEmailRecord,
 } from '@/lib/email/failedEmails';
-import { sendOrderConfirmation, sendShippingConfirmation } from '@/lib/email/sender';
+import {
+  sendOrderConfirmation,
+  sendShippingConfirmation,
+} from '@/lib/email/sender';
 
 const URL_BASE = 'https://example.com/api/admin/retry-failed-emails';
 

@@ -1,10 +1,10 @@
 ---
 // src/components/Header.astro
-import Nav from "@/components/Nav.astro";
-import { Icon } from "astro-icon/components";
-import CartButton from "./CartButton.astro";
-import CartButtonMobile from "./CartButtonMobile.astro";
-import AnnouncementBanner from "./AnnouncementBanner.astro";
+import Nav from '@/components/Nav.astro';
+import { Icon } from 'astro-icon/components';
+import CartButton from './CartButton.astro';
+import CartButtonMobile from './CartButtonMobile.astro';
+import AnnouncementBanner from './AnnouncementBanner.astro';
 
 interface Props {
   activeCategory?: string;
@@ -19,9 +19,9 @@ const nonce = Astro.locals.nonce;
 
 <script is:inline nonce={nonce}>
   (function () {
-    if (!sessionStorage.getItem("header-animated")) {
-      document.documentElement.classList.add("header-first-load");
-      sessionStorage.setItem("header-animated", "true");
+    if (!sessionStorage.getItem('header-animated')) {
+      document.documentElement.classList.add('header-first-load');
+      sessionStorage.setItem('header-animated', 'true');
     }
   })();
 </script>
@@ -82,12 +82,10 @@ const nonce = Astro.locals.nonce;
       {
         showCart ? (
           <>
-            {
-              /* Device-invariant HTML: this page is CDN-cached publicly, so
+            {/* Device-invariant HTML: this page is CDN-cached publicly, so
                  the choice of cart button must not depend on User-Agent.
                  Both render; CSS picks one per viewport.
-                 See plans/156-vary-ua-branched-html.md. */
-            }
+                 See plans/156-vary-ua-branched-html.md. */}
             <span class="contents lg:hidden">
               <CartButtonMobile />
             </span>
@@ -140,71 +138,71 @@ const nonce = Astro.locals.nonce;
     const signal = menuAbortController.signal;
 
     const toggleButton = document.getElementById(
-      "mobile-menu-toggle",
+      'mobile-menu-toggle'
     ) as HTMLButtonElement;
-    const menuIcon = document.getElementById("menu-icon") as HTMLElement;
-    const closeIcon = document.getElementById("close-icon") as HTMLElement;
-    const nav = document.querySelector("nav") as HTMLElement;
+    const menuIcon = document.getElementById('menu-icon') as HTMLElement;
+    const closeIcon = document.getElementById('close-icon') as HTMLElement;
+    const nav = document.querySelector('nav') as HTMLElement;
 
     // Early return if elements don't exist
     if (!toggleButton || !menuIcon || !closeIcon || !nav) return;
 
     // Always reset to closed state on setup — ensures icon/aria sync after page transitions
-    toggleButton.setAttribute("aria-expanded", "false");
-    toggleButton.setAttribute("aria-label", "Open navigation");
-    menuIcon.classList.remove("hidden");
-    closeIcon.classList.add("hidden");
-    nav.classList.remove("nav-open");
-    document.body.style.overflow = "";
+    toggleButton.setAttribute('aria-expanded', 'false');
+    toggleButton.setAttribute('aria-label', 'Open navigation');
+    menuIcon.classList.remove('hidden');
+    closeIcon.classList.add('hidden');
+    nav.classList.remove('nav-open');
+    document.body.style.overflow = '';
 
     function openMenu() {
-      toggleButton.setAttribute("aria-expanded", "true");
-      toggleButton.setAttribute("aria-label", "Close navigation");
-      menuIcon.classList.add("hidden");
-      closeIcon.classList.remove("hidden");
-      nav.classList.add("nav-open");
-      document.body.style.overflow = "hidden";
+      toggleButton.setAttribute('aria-expanded', 'true');
+      toggleButton.setAttribute('aria-label', 'Close navigation');
+      menuIcon.classList.add('hidden');
+      closeIcon.classList.remove('hidden');
+      nav.classList.add('nav-open');
+      document.body.style.overflow = 'hidden';
 
       // Move focus to first focusable item in nav
-      const firstNavLink = nav.querySelector<HTMLElement>("a, button");
+      const firstNavLink = nav.querySelector<HTMLElement>('a, button');
       if (firstNavLink) {
         requestAnimationFrame(() => firstNavLink.focus());
       }
     }
 
     function closeMenu() {
-      toggleButton.setAttribute("aria-expanded", "false");
-      toggleButton.setAttribute("aria-label", "Open navigation");
-      menuIcon.classList.remove("hidden");
-      closeIcon.classList.add("hidden");
-      nav.classList.remove("nav-open");
-      document.body.style.overflow = "";
+      toggleButton.setAttribute('aria-expanded', 'false');
+      toggleButton.setAttribute('aria-label', 'Open navigation');
+      menuIcon.classList.remove('hidden');
+      closeIcon.classList.add('hidden');
+      nav.classList.remove('nav-open');
+      document.body.style.overflow = '';
 
       // Return focus to the toggle button
       toggleButton.focus();
     }
 
     toggleButton.addEventListener(
-      "click",
+      'click',
       (e: MouseEvent) => {
         e.stopPropagation();
         const isExpanded =
-          toggleButton.getAttribute("aria-expanded") === "true";
+          toggleButton.getAttribute('aria-expanded') === 'true';
         if (isExpanded) {
           closeMenu();
         } else {
           openMenu();
         }
       },
-      { signal },
+      { signal }
     );
 
     // Close menu when clicking outside
     document.addEventListener(
-      "click",
+      'click',
       (e: MouseEvent) => {
         const isExpanded =
-          toggleButton.getAttribute("aria-expanded") === "true";
+          toggleButton.getAttribute('aria-expanded') === 'true';
         const clickTarget = e.target as Node;
         if (
           isExpanded &&
@@ -214,29 +212,29 @@ const nonce = Astro.locals.nonce;
           closeMenu();
         }
       },
-      { signal },
+      { signal }
     );
 
     // Close menu on Escape + focus trap
     document.addEventListener(
-      "keydown",
+      'keydown',
       (e: KeyboardEvent) => {
         const isExpanded =
-          toggleButton.getAttribute("aria-expanded") === "true";
+          toggleButton.getAttribute('aria-expanded') === 'true';
 
-        if (e.key === "Escape" && isExpanded) {
+        if (e.key === 'Escape' && isExpanded) {
           closeMenu();
           return;
         }
 
-        if (e.key !== "Tab" || !isExpanded) return;
+        if (e.key !== 'Tab' || !isExpanded) return;
 
         const focusable = Array.from(
           nav.querySelectorAll<HTMLElement>(
-            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-          ),
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
         ).filter(
-          (el) => !el.closest(".lg\\:hidden") || window.innerWidth < 1024,
+          (el) => !el.closest('.lg\\:hidden') || window.innerWidth < 1024
         );
 
         if (focusable.length === 0) return;
@@ -256,7 +254,7 @@ const nonce = Astro.locals.nonce;
           }
         }
       },
-      { signal },
+      { signal }
     );
   }
 
@@ -264,5 +262,5 @@ const nonce = Astro.locals.nonce;
   setupMobileMenu();
 
   // Re-initialize on each page transition — AbortController handles cleanup
-  document.addEventListener("astro:after-swap", setupMobileMenu);
+  document.addEventListener('astro:after-swap', setupMobileMenu);
 </script>

@@ -4,12 +4,12 @@
  * Real CWV field data from the Chrome UX Report API.
  */
 
-import AdminLayout from "@/layouts/AdminLayout.astro";
-import { Icon } from "astro-icon/components";
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import { Icon } from 'astro-icon/components';
 
-const pageTitle = "Performance Overview";
+const pageTitle = 'Performance Overview';
 const pageDescription =
-  "Core Web Vitals field data from real Chrome users via the Chrome UX Report.";
+  'Core Web Vitals field data from real Chrome users via the Chrome UX Report.';
 ---
 
 <AdminLayout
@@ -75,8 +75,7 @@ const pageDescription =
             <span>https://console.cloud.google.com/</span>
             <button
               class="copy-btn"
-              data-url="https://console.cloud.google.com/"
-              >Copy</button
+              data-url="https://console.cloud.google.com/">Copy</button
             >
           </div>
           <p>
@@ -412,22 +411,26 @@ const pageDescription =
 
   window.copyURL = function (btn: HTMLButtonElement, url: string) {
     navigator.clipboard.writeText(url).then(() => {
-      btn.textContent = "Copied!";
-      btn.classList.add("copied");
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
       setTimeout(() => {
-        btn.textContent = "Copy";
-        btn.classList.remove("copied");
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
       }, 2000);
     });
   };
 
   // Wire up copy buttons without inline onclick handlers
-  document.querySelectorAll<HTMLButtonElement>(".copy-btn[data-url]").forEach(btn => {
-    btn.addEventListener("click", () => window.copyURL(btn, btn.dataset.url!));
-  });
+  document
+    .querySelectorAll<HTMLButtonElement>('.copy-btn[data-url]')
+    .forEach((btn) => {
+      btn.addEventListener('click', () =>
+        window.copyURL(btn, btn.dataset.url!)
+      );
+    });
 
   type CruxOk = {
-    status: "ok";
+    status: 'ok';
     origin: string;
     lcp: number | null;
     inp: number | null;
@@ -440,106 +443,106 @@ const pageDescription =
   };
 
   type CruxResponse =
-    | { status: "no_data"; origin: string }
-    | { status: "no_key"; origin: string }
+    | { status: 'no_data'; origin: string }
+    | { status: 'no_key'; origin: string }
     | CruxOk;
 
   function badgeClass(
     value: number | null,
     good: number,
-    poor: number,
+    poor: number
   ): string {
-    if (value === null) return "cwv-badge cwv-unknown";
-    if (value <= good) return "cwv-badge cwv-good";
-    if (value <= poor) return "cwv-badge cwv-needs-improvement";
-    return "cwv-badge cwv-poor";
+    if (value === null) return 'cwv-badge cwv-unknown';
+    if (value <= good) return 'cwv-badge cwv-good';
+    if (value <= poor) return 'cwv-badge cwv-needs-improvement';
+    return 'cwv-badge cwv-poor';
   }
 
   function badgeLabel(
     value: number | null,
     good: number,
-    poor: number,
+    poor: number
   ): string {
-    if (value === null) return "No data";
-    if (value <= good) return "Good";
-    if (value <= poor) return "Needs Improvement";
-    return "Poor";
+    if (value === null) return 'No data';
+    if (value <= good) return 'Good';
+    if (value <= poor) return 'Needs Improvement';
+    return 'Poor';
   }
 
   function pctLabel(pct: number | null): string {
-    if (pct === null) return "";
+    if (pct === null) return '';
     return `${Math.round(pct * 100)}% of URLs in "Good" range`;
   }
 
   async function loadPerf() {
-    const loading = document.getElementById("perf-loading")!;
-    const noKey = document.getElementById("perf-no-key")!;
-    const noData = document.getElementById("perf-no-data")!;
-    const dataView = document.getElementById("perf-data")!;
+    const loading = document.getElementById('perf-loading')!;
+    const noKey = document.getElementById('perf-no-key')!;
+    const noData = document.getElementById('perf-no-data')!;
+    const dataView = document.getElementById('perf-data')!;
 
     try {
-      const res = await fetch("/api/crux-data");
+      const res = await fetch('/api/crux-data');
       const data: CruxResponse = await res.json();
 
-      loading.classList.add("hidden");
+      loading.classList.add('hidden');
 
-      if (data.status === "no_key") {
-        noKey.classList.remove("hidden");
+      if (data.status === 'no_key') {
+        noKey.classList.remove('hidden');
         return;
       }
 
-      if (data.status === "no_data") {
-        const originEl = document.getElementById("no-data-origin");
+      if (data.status === 'no_data') {
+        const originEl = document.getElementById('no-data-origin');
         if (originEl) originEl.textContent = data.origin;
-        noData.classList.remove("hidden");
+        noData.classList.remove('hidden');
         return;
       }
 
       // LCP
-      const lcpEl = document.getElementById("lcp-value")!;
-      const lcpBadge = document.getElementById("lcp-badge")!;
+      const lcpEl = document.getElementById('lcp-value')!;
+      const lcpBadge = document.getElementById('lcp-badge')!;
       lcpEl.textContent =
-        data.lcp !== null ? (data.lcp / 1000).toFixed(1) : "—";
+        data.lcp !== null ? (data.lcp / 1000).toFixed(1) : '—';
       lcpBadge.textContent = badgeLabel(data.lcp, 2500, 4000);
       lcpBadge.className = badgeClass(data.lcp, 2500, 4000);
-      document.getElementById("lcp-good-pct")!.textContent = pctLabel(
-        data.lcpGoodPercent,
+      document.getElementById('lcp-good-pct')!.textContent = pctLabel(
+        data.lcpGoodPercent
       );
 
       // INP
-      const inpEl = document.getElementById("inp-value")!;
-      const inpBadge = document.getElementById("inp-badge")!;
+      const inpEl = document.getElementById('inp-value')!;
+      const inpBadge = document.getElementById('inp-badge')!;
       inpEl.textContent =
-        data.inp !== null ? Math.round(data.inp).toString() : "—";
+        data.inp !== null ? Math.round(data.inp).toString() : '—';
       inpBadge.textContent = badgeLabel(data.inp, 200, 500);
       inpBadge.className = badgeClass(data.inp, 200, 500);
-      document.getElementById("inp-good-pct")!.textContent = pctLabel(
-        data.inpGoodPercent,
+      document.getElementById('inp-good-pct')!.textContent = pctLabel(
+        data.inpGoodPercent
       );
 
       // CLS
-      const clsEl = document.getElementById("cls-value")!;
-      const clsBadge = document.getElementById("cls-badge")!;
-      clsEl.textContent = data.cls !== null ? data.cls.toFixed(2) : "—";
+      const clsEl = document.getElementById('cls-value')!;
+      const clsBadge = document.getElementById('cls-badge')!;
+      clsEl.textContent = data.cls !== null ? data.cls.toFixed(2) : '—';
       clsBadge.textContent = badgeLabel(data.cls, 0.1, 0.25);
       clsBadge.className = badgeClass(data.cls, 0.1, 0.25);
-      document.getElementById("cls-good-pct")!.textContent = pctLabel(
-        data.clsGoodPercent,
+      document.getElementById('cls-good-pct')!.textContent = pctLabel(
+        data.clsGoodPercent
       );
 
       // FCP
-      const fcpEl = document.getElementById("fcp-value")!;
+      const fcpEl = document.getElementById('fcp-value')!;
       fcpEl.textContent =
-        data.fcp !== null ? (data.fcp / 1000).toFixed(1) : "—";
+        data.fcp !== null ? (data.fcp / 1000).toFixed(1) : '—';
 
       // TTFB
-      const ttfbEl = document.getElementById("ttfb-value")!;
+      const ttfbEl = document.getElementById('ttfb-value')!;
       ttfbEl.textContent =
-        data.ttfb !== null ? Math.round(data.ttfb).toString() : "—";
+        data.ttfb !== null ? Math.round(data.ttfb).toString() : '—';
 
-      dataView.classList.remove("hidden");
+      dataView.classList.remove('hidden');
     } catch {
-      loading.textContent = "Could not load field data.";
+      loading.textContent = 'Could not load field data.';
     }
   }
 

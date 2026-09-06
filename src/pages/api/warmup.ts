@@ -12,15 +12,18 @@
 
 import type { APIRoute } from 'astro';
 import { fetchProducts } from '@/lib/square/client';
-import { filterProductsWithCache, extractFilterOptions } from '@/lib/square/filterUtils';
+import {
+  filterProductsWithCache,
+  extractFilterOptions,
+} from '@/lib/square/filterUtils';
 import { batchInventoryService } from '@/lib/square/batchInventory';
 
 export const GET: APIRoute = async ({ request }) => {
   const secret = import.meta.env.WARMUP_SECRET;
-  if (!secret || request.headers.get("x-warmup-secret") !== secret) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+  if (!secret || request.headers.get('x-warmup-secret') !== secret) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 
@@ -37,14 +40,16 @@ export const GET: APIRoute = async ({ request }) => {
 
       // Extract all variation IDs and pre-warm batch inventory cache
       const variationIds = allProducts
-        .map(p => p.variationId)
+        .map((p) => p.variationId)
         .filter((id): id is string => Boolean(id));
 
       if (variationIds.length > 0) {
         const inventoryStart = performance.now();
         await batchInventoryService.getBatchInventoryStatus(variationIds);
         const inventoryDuration = performance.now() - inventoryStart;
-        warmedCaches.push(`inventory (${variationIds.length} items in ${inventoryDuration.toFixed(0)}ms)`);
+        warmedCaches.push(
+          `inventory (${variationIds.length} items in ${inventoryDuration.toFixed(0)}ms)`
+        );
       }
 
       // PHASE 2: Pre-warm common filter combinations
@@ -58,34 +63,43 @@ export const GET: APIRoute = async ({ request }) => {
       // Pre-warm filter cache for common scenarios:
 
       // 1. No filters (baseline - all products)
-      await filterProductsWithCache(allProducts, { brands: [], categories: [], availability: false });
+      await filterProductsWithCache(allProducts, {
+        brands: [],
+        categories: [],
+        availability: false,
+      });
       warmedCaches.push('filter: none');
 
       // 2. Availability only (very common filter)
-      await filterProductsWithCache(allProducts, { brands: [], categories: [], availability: true });
+      await filterProductsWithCache(allProducts, {
+        brands: [],
+        categories: [],
+        availability: true,
+      });
       warmedCaches.push('filter: availability');
 
       // 3. Top 5 individual brands (most likely first selections)
       for (const brand of topBrands) {
-        await filterProductsWithCache(
-          allProducts,
-          { brands: [brand.name], categories: [], availability: false }
-        );
+        await filterProductsWithCache(allProducts, {
+          brands: [brand.name],
+          categories: [],
+          availability: false,
+        });
         warmedCaches.push(`filter: ${brand.name}`);
       }
 
       // 4. Top 3 brands + availability (common combination)
       for (const brand of topBrands.slice(0, 3)) {
-        await filterProductsWithCache(
-          allProducts,
-          { brands: [brand.name], categories: [], availability: true }
-        );
+        await filterProductsWithCache(allProducts, {
+          brands: [brand.name],
+          categories: [],
+          availability: true,
+        });
         warmedCaches.push(`filter: ${brand.name} + availability`);
       }
 
       const filterDuration = performance.now() - filterStart;
       warmedCaches.push(`filter combinations (${filterDuration.toFixed(0)}ms)`);
-
     } catch (error) {
       const errorMsg = `Product/Inventory warmup failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
       console.error('[Warmup]', errorMsg);
@@ -101,19 +115,19 @@ export const GET: APIRoute = async ({ request }) => {
         duration: `${totalDuration.toFixed(0)}ms`,
         caches: warmedCaches,
         // Do not expose internal error details to callers
-        message: errors.length > 0
-          ? `Partially warmed ${warmedCaches.length} caches with ${errors.length} errors`
-          : `Successfully warmed ${warmedCaches.length} caches`
+        message:
+          errors.length > 0
+            ? `Partially warmed ${warmedCaches.length} caches with ${errors.length} errors`
+            : `Successfully warmed ${warmedCaches.length} caches`,
       }),
       {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
+          'Cache-Control': 'no-store',
+        },
       }
     );
-
   } catch (error) {
     console.error('[Warmup] Critical error:', error);
 
@@ -123,14 +137,14 @@ export const GET: APIRoute = async ({ request }) => {
         timestamp: Date.now(),
         error: error instanceof Error ? error.message : 'Unknown error',
         warmedCaches,
-        message: 'Warmup failed with critical error'
+        message: 'Warmup failed with critical error',
       }),
       {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
+          'Cache-Control': 'no-store',
+        },
       }
     );
   }

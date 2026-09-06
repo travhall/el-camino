@@ -1,5 +1,5 @@
 // src/utils/slugUtils.ts
-import type { Product, ProductVariation } from "@/lib/square/types";
+import type { Product, ProductVariation } from '@/lib/square/types';
 
 /**
  * Create URL-safe slug from product title
@@ -7,10 +7,10 @@ import type { Product, ProductVariation } from "@/lib/square/types";
 export function createSlug(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "") // Remove special chars
-    .replace(/\s+/g, "-") // Replace spaces with hyphens
-    .replace(/-+/g, "-") // Remove duplicate hyphens
-    .replace(/^-|-$/g, "") // Remove leading/trailing hyphens
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Remove duplicate hyphens
+    .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
     .substring(0, 50); // Limit length for URLs
 }
 
@@ -20,16 +20,16 @@ export function createSlug(title: string): string {
 export function createVariantSlug(variantName: string): string {
   return variantName
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "") // Remove punctuation
-    .replace(/\s+/g, "-") // Replace spaces with hyphens
-    .replace(/-+/g, "-") // Remove duplicate hyphens
-    .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+    .replace(/[^a-z0-9\s]/g, '') // Remove punctuation
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Remove duplicate hyphens
+    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
 }
 
 /**
  * Create complete product URL
  */
-export function createProductUrl(product: Pick<Product, "title">): string {
+export function createProductUrl(product: Pick<Product, 'title'>): string {
   return `/product/${createSlug(product.title)}`;
 }
 
@@ -100,7 +100,7 @@ export function createSEOTitle(
 
   // Only prepend brand if the title doesn't already start with it
   if (product.brand) {
-    const brandPrefix = product.brand.toLowerCase() + " ";
+    const brandPrefix = product.brand.toLowerCase() + ' ';
     if (!title.toLowerCase().startsWith(brandPrefix)) {
       title = `${product.brand} ${title}`;
     }
