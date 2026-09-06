@@ -141,7 +141,10 @@ export async function fetchInventoryCounts(
       }
       for (const id of r.failed) failed.add(id);
     }
-    void Promise.all(cacheWrites);
+    // Awaited — Netlify freezes the function once the response is sent, so a
+    // fire-and-forget write here is silently dropped before it reaches Blobs
+    // (see create-checkout.ts's storePendingOrder comment for the same rule).
+    await Promise.all(cacheWrites);
 
     return { counts, failed };
   });

@@ -151,6 +151,29 @@ describe('fetchInventoryCounts', () => {
     expect(result.failed).toEqual(new Set(['v1', 'v2', 'v3']));
   });
 
+  it('awaits the cache write before returning, so a caller never observes an in-flight write', async () => {
+    vi.mocked(squareClient.inventory.batchGetCounts).mockResolvedValue(
+      batchResult([
+        { catalogObjectId: 'v1', state: 'IN_STOCK', quantity: '10' },
+      ])
+    );
+
+    let setResolved = false;
+    mockInventoryCacheSet.mockImplementation(
+      () =>
+        new Promise<void>((resolve) =>
+          setTimeout(() => {
+            setResolved = true;
+            resolve();
+          }, 0)
+        )
+    );
+
+    await fetchInventoryCounts(['v1']);
+
+    expect(setResolved).toBe(true);
+  });
+
   it('deduplicates identical concurrent requests for the same ID set', async () => {
     vi.mocked(squareClient.inventory.batchGetCounts).mockResolvedValue(
       batchResult([
