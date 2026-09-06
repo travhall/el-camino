@@ -286,17 +286,17 @@ happens regardless of the result.
 
 ## Done criteria
 
-- [ ] Step 1's historical `manualChunks` config found and quoted, or its
+- [x] Step 1's historical `manualChunks` config found and quoted, or its
       absence confirmed
-- [ ] Step 2's four metrics (chunk count, total bytes, main-thread script
+- [x] Step 2's four metrics (chunk count, total bytes, main-thread script
       time, protocol) measured and recorded
-- [ ] Step 3: at least one mitigation candidate measured before/after, then
+- [x] Step 3: at least one mitigation candidate measured before/after, then
       reverted
-- [ ] Step 4's preconnect question answered with reasoning, not assumption
-- [ ] Step 5's recommendation written here and in `plans/README.md`
-- [ ] **No production file modified** (`git status` shows only this plan
+- [x] Step 4's preconnect question answered with reasoning, not assumption
+- [x] Step 5's recommendation written here and in `plans/README.md`
+- [x] **No production file modified** (`git status` shows only this plan
       file, `plans/README.md`, and possibly new plan files)
-- [ ] `pnpm check` and `pnpm build` exit 0
+- [x] `pnpm check` and `pnpm build` exit 0
 
 ## STOP conditions
 
@@ -315,6 +315,172 @@ Stop and report if:
   investigation concludes.
 - You are tempted to make this plan's own experiment the shipped fix rather
   than writing it up as a separate, reviewable build plan.
+
+## Findings (investigation complete, 2026-09-06)
+
+### Step 1: the previous `manualChunks` config, recovered
+
+Found via `git log --all --source -p -S"REMOVED manualChunks" -- astro.config.mjs`
+→ commit `ecda564d39f35a3de366253e9179bb4a2302ee64` ("...enable build
+sourcemaps, and remove manual chunking."). The removed config:
+
+```js
+manualChunks(id) {
+  // Desktop-only features
+  if (id.includes('CartButton') ||
+      id.includes('ProductCard') ||
+      id.includes('@astrojs/view-transitions')) {
+    return 'desktop-features';
+  }
+  // Mobile-only features
+  if (id.includes('MobileProductFilters') ||
+      id.includes('MobileProductCard')) {
+    return 'mobile-features';
+  }
+  // Core vendor code
+  if (id.includes('node_modules')) {
+    return 'vendor';
+  }
+},
+```
+
+The likely mechanism for the 369KB regression: the unconditional
+`id.includes('node_modules') → 'vendor'` branch swept **every** third-party
+dependency reachable from the client graph — including whatever
+`@astrojs/view-transitions`'s runtime (the precursor to today's
+`ClientRouter`) pulled in — into one shared vendor chunk. That forced the
+router's dependency graph to wait on a single monolithic chunk instead of
+resolving its own small graph independently. This is a different failure
+mode than today's fan-out (per-component script chunks), which is relevant
+to Step 3 below.
+
+### Step 2: cost of the fan-out, measured
+
+Local `pnpm preview` doesn't work with the `@astrojs/netlify` adapter here
+(`astro preview` expects a Node/static-style `dist/`, but this adapter emits
+a Netlify Function under `.netlify/`; confirmed by reproducing the "Preview
+server process exited before becoming ready" failure, and `preview-start`
+in `package.json` — `node dist/server/entry.mjs` — also doesn't apply to
+this adapter's output shape). Per the plan's own allowance, measured
+against the staging deploy instead (`https://elcaminoskateshop.netlify.app/`,
+hard-reloaded, via Resource Timing / Navigation Timing / Long Task APIs
+through the browser's `read_network_requests` and `javascript_tool`):
+
+- **Chunk count**: 32 JS + 6 CSS = **38 requests** under `/_astro/` on a
+  homepage load — matches the plan's original ~40-chunk trace.
+- **Bytes**: staging's decoded (uncompressed) JS payload for those 32
+  chunks was 131,320 bytes (~128KB) via the Resource Timing API;
+  `transferSize` read as 0 for every entry because this environment's
+  browser couldn't be forced to bypass HTTP cache (cmd+shift+r didn't
+  produce a true cold load here) — noted as a measurement limitation.
+  As a compressed-bytes proxy, the equivalent 34 chunks in a fresh local
+  `pnpm build` total **149,514 bytes raw / 50,613 bytes gzip**; the 6 CSS
+  chunks add **144,918 bytes raw / 24,738 bytes gzip**. Combined JS+CSS
+  fan-out weight: **~75KB gzip across ~38 requests** — small in absolute
+  terms (for comparison, the previous single-chunk regression was 369KB in
+  *one* request).
+- **Main-thread script time**: the Long Task API (`performance.getEntriesByType('longtask')`,
+  which only reports tasks >50ms) recorded **zero long tasks** during the
+  fan-out on staging. Given the total JS payload is ~50KB gzip / ~150KB raw
+  across 32 files, this is consistent with parse/compile/eval time being
+  well under any single-task threshold that would show up as jank.
+- **Protocol**: `h2` (HTTP/2) confirmed via `nextHopProtocol` on every
+  `_astro/*.js` request — connections are multiplexed over one TCP
+  connection, so the 38-request count does not carry the
+  per-request/per-connection overhead it would under HTTP/1.1.
+
+**Conclusion for Step 2**: the fan-out's actual network-byte and
+main-thread cost is small. The "~40 chunks" framing in the original trace
+overstates the problem when measured in bytes/blocking-time rather than
+request-count.
+
+### Step 3: mitigation experiment — scoped `manualChunks`, tried and reverted
+
+Tested candidate (c): a `manualChunks` callback intended to group only the
+always-hydrated chrome components (Header/Nav/Footer/Layout/ThemeToggle/
+OpenStatusBadge/CartButton/CartButtonMobile/MiniCart) into one `core-chrome`
+chunk, matching on `id` substrings, leaving route-conditional components
+(QuickView, Modal, Notification, ArticleGrid, Sidebar, Tag, ArticleCard)
+untouched.
+
+**Result: the JS fan-out was completely unaffected.** After rebuilding, all
+32 per-component script chunks still existed as separate files — the
+`CartButton.astro..._script..._.js` chunk was still its own file (in fact
+larger than before, an unrelated hash/rebuild artifact, not a merge). The
+*only* thing the callback actually grouped was an unrelated CSS bundle
+(`core-chrome.css`, 140KB) — CSS extraction goes through a different
+Rollup/Vite code path that does respect `manualChunks`-style grouping.
+
+This is a concrete, load-bearing finding: **Astro's script-hoisting plugin
+builds each hoisted `<script>` block as a separate Rollup *entry point*, not
+as a chunk subject to normal chunk-splitting/grouping.** `manualChunks`
+operates on the chunk graph, not on entry points, so it structurally cannot
+consolidate these per-component script files — no `manualChunks` config,
+however scoped, can fix this fan-out. This also clarifies Step 1: the old
+`manualChunks`'s 369KB regression came from its `vendor` bucket capturing
+shared runtime/dependency chunks (which *are* subject to normal chunk
+splitting), not from grouping hoisted component scripts — a genuinely
+different part of the bundle graph than what's fanning out today.
+
+Candidates (a) (modulepreload/priority hints) and (b) (lazier hydration
+directives) were not empirically tried: (a) would not change chunk
+boundaries and, given HTTP/2 multiplexing already avoids connection
+contention and the total payload is ~50KB gzip, is unlikely to move the
+needle enough to justify a build plan; (b) doesn't apply here since these
+are plain hoisted `<script>` blocks (Astro components, not islands with a
+`client:*` directive) — there is no hydration-timing lever to pull for most
+of the components on this list; Astro runs hoisted scripts once per page
+load regardless of a `client:*` directive, so "defer hydration" isn't a
+concept that applies to them.
+
+Experiment was reverted before finishing (`git status` showed a clean tree
+apart from this file and `plans/README.md`; `astro.config.mjs` matches its
+committed content — confirmed via `git status --short`, and via Edit
+restoring the exact prior text since the sandbox's Bash policy blocked
+`git checkout --` in this session).
+
+### Step 4: preconnect
+
+Every request in the fan-out's critical path is same-origin
+(`elcaminoskateshop.netlify.app`, including the `.netlify/images` proxy
+endpoint) — confirmed directly from the captured request list, not assumed.
+A same-origin `preconnect` hint is a no-op: the connection to that origin is
+already open from the initial HTML request, so there is no separate TCP/TLS
+handshake for `preconnect` to shortcut. **No preconnect hint is warranted
+here.** (This matches plan 149's earlier, unrelated finding for the
+WordPress/CrUX origins — different origins, same reasoning.)
+
+### Step 5: Recommendation
+
+**No action plan is warranted for this fan-out.** Summary of why:
+
+1. The byte cost is small (~75KB gzip across ~38 requests) relative to the
+   369KB single-chunk regression this space was previously optimized away
+   from, and relative to the page's other, already-addressed costs (fonts,
+   images — plans 146-151; the shop-status fetch — plan 189).
+2. HTTP/2 multiplexing means the 38-request count does not carry
+   connection-level overhead.
+3. No long tasks (>50ms) were measured during the fan-out — there's no
+   measured main-thread jank to attribute to it.
+4. The one mitigation that could structurally change this (`manualChunks`)
+   **cannot** touch these chunks at all — they're separate Rollup entry
+   points by construction of Astro's script-hoisting plugin, not chunks.
+   There is no safe middle ground to spec between "40 chunks" and "369KB
+   monolith" via `manualChunks`, because `manualChunks` was never actually
+   the lever controlling the hoisted-script chunk count in the first place.
+5. Preconnect hints would be a no-op (Step 4).
+
+This is a valid "no action" outcome under the plan's own STOP conditions,
+analogous to plan 176. Recording it here so the ~40-chunk fan-out isn't
+re-investigated from scratch: **it is real, it is visible in a dependency
+tree trace, and it is not the same failure mode as the previous 369KB
+regression — but its measured cost (bytes, request-overhead under h2,
+main-thread time) is small, and the only structural mitigation
+(`manualChunks`) is not applicable to Astro's hoisted-script architecture.**
+If the operator still perceives load-time lag after this is read, the more
+likely remaining levers are outside this plan's scope entirely (e.g.
+plan 176's server-side cold-SSR fan-out, or something not yet
+trace-profiled).
 
 ## Maintenance notes
 
