@@ -10,6 +10,7 @@
 // Square increments it on each successful update.
 
 import type { APIRoute } from 'astro';
+import { createHash } from 'node:crypto';
 import { isAdminAuthenticated, parseAdminFormData } from '@/lib/admin/auth';
 import { squareClient } from '@/lib/square/client';
 import { sendShippingConfirmation } from '@/lib/email/sender';
@@ -18,6 +19,23 @@ import type { PendingOrderContact } from '@/lib/email/pendingOrders';
 import type { Fulfillment, SquareError } from 'square-legacy';
 
 const SHIPMENT_STATES = ['PROPOSED', 'RESERVED', 'COMPLETED'] as const;
+
+// Square silently discards a retried update under a repeated idempotency key
+// (confirmed against sandbox: the second call returns 200 with the cached
+// first-call response — no error, no change applied). A key derived from the
+// tracking payload itself makes each distinct correction its own operation,
+// while an accidental double-submit of the same correction still dedupes.
+function amendIdempotencyKey(
+  orderId: string,
+  trackingNumber: string | undefined,
+  carrier: string | undefined
+): string {
+  const hash = createHash('sha256')
+    .update(`${orderId}:${trackingNumber ?? ''}:${carrier ?? ''}`)
+    .digest('hex')
+    .slice(0, 32);
+  return `amend-${hash}`;
+}
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   // ── Auth check ────────────────────────────────────────────────────────────
@@ -51,11 +69,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
     locationId = order.locationId ?? import.meta.env.PUBLIC_SQUARE_LOCATION_ID;
 
+    // Accepts COMPLETED shipments too — the amend path below corrects
+    // tracking on an already-shipped order. CANCELED is still excluded.
     const fulfillment = order.fulfillments?.find(
-      (f: Fulfillment) =>
-        f.type === 'SHIPMENT' &&
-        f.state !== 'COMPLETED' &&
-        f.state !== 'CANCELED'
+      (f: Fulfillment) => f.type === 'SHIPMENT' && f.state !== 'CANCELED'
     );
     if (!fulfillment?.uid)
       throw new Error('No active SHIPMENT fulfillment found');
@@ -83,6 +100,54 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     name: customerName,
     fulfillmentMethod: 'shipping',
   };
+
+  // ── Amend path: correct tracking on an already-shipped order ──────────────
+  // Distinct from the state walk below — it targets a fulfillment that's
+  // already COMPLETED, so there's no state to walk. Does not re-send the
+  // shipping confirmation email (see plan 173, Step 3): a corrected tracking
+  // number might be welcome, but re-sending the same email could read as a
+  // second shipment notice. That's the operator's call to revisit later.
+  if (currentState === 'COMPLETED') {
+    try {
+      await squareClient.orders.update({
+        orderId,
+        // Keyed on the tracking payload, not a fixed state — each distinct
+        // correction is a distinct operation, while re-submitting the same
+        // correction still dedupes.
+        idempotencyKey: amendIdempotencyKey(orderId, trackingNumber, carrier),
+        order: {
+          locationId,
+          version: order.version ?? 1,
+          fulfillments: [
+            {
+              uid: fulfillmentUid,
+              state: 'COMPLETED',
+              shipmentDetails: {
+                ...(trackingNumber ? { trackingNumber } : {}),
+                ...(carrier ? { carrier } : {}),
+              },
+            },
+          ],
+        },
+      });
+    } catch (err) {
+      const squareErrors = (err as SquareError)?.errors;
+      const detail =
+        squareErrors?.[0]?.detail ??
+        squareErrors?.[0]?.code ??
+        (err as Error)?.message ??
+        'unknown';
+      console.error(
+        `[mark-shipped] Square amend failed for ${orderId}:`,
+        JSON.stringify(err, null, 2)
+      );
+      return redirect(
+        `/admin/orders/shipping?error=update&detail=${encodeURIComponent(detail)}`
+      );
+    }
+
+    return redirect(`/admin/orders/shipping?shipped=1&shippedId=${orderId}`);
+  }
 
   // ── Walk the state machine to COMPLETED ───────────────────────────────────
   // Square requires sequential transitions — skipping states is rejected.

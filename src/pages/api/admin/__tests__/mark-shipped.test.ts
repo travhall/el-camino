@@ -125,7 +125,7 @@ describe('POST /api/admin/mark-shipped', () => {
 
   it('redirects with a fetch error when no active SHIPMENT fulfillment exists', async () => {
     vi.mocked(squareClient.orders.get).mockResolvedValue(
-      orderWithFulfillment('COMPLETED') as unknown as GetOrderResult
+      orderWithFulfillment('CANCELED') as unknown as GetOrderResult
     );
     const res = await POST(makeContext({ orderId: 'order-1' }));
     expect(res.status).toBe(302);
@@ -230,5 +230,120 @@ describe('POST /api/admin/mark-shipped', () => {
         carrier: 'UPS',
       }
     );
+  });
+
+  describe('amend path (correcting tracking on an already-shipped order)', () => {
+    it('finds a COMPLETED SHIPMENT fulfillment instead of throwing, and does not send a confirmation email', async () => {
+      vi.mocked(squareClient.orders.get).mockResolvedValue(
+        orderWithFulfillment('COMPLETED', {
+          shipmentDetails: {
+            recipient: {
+              emailAddress: 'customer@example.com',
+              displayName: 'Test Customer',
+            },
+            trackingNumber: 'AAA',
+          },
+        }) as unknown as GetOrderResult
+      );
+      vi.mocked(squareClient.orders.update).mockResolvedValue(
+        {} as unknown as UpdateOrderResult
+      );
+
+      const res = await POST(
+        makeContext({ orderId: 'order-1', trackingNumber: 'BBB' })
+      );
+
+      expect(squareClient.orders.update).toHaveBeenCalledTimes(1);
+      const [call] = vi.mocked(squareClient.orders.update).mock.calls[0]!;
+      expect(call.order!.fulfillments![0]!.state).toBe('COMPLETED');
+      expect(call.order!.fulfillments![0]!.shipmentDetails).toEqual({
+        trackingNumber: 'BBB',
+      });
+      expect(sendShippingConfirmation).not.toHaveBeenCalled();
+      expect(res.status).toBe(302);
+      expect(res.headers.get('Location')).toContain('shipped=1');
+    });
+
+    it('produces a different idempotency key for a different tracking number', async () => {
+      vi.mocked(squareClient.orders.get).mockResolvedValue(
+        orderWithFulfillment('COMPLETED') as unknown as GetOrderResult
+      );
+      vi.mocked(squareClient.orders.update).mockResolvedValue(
+        {} as unknown as UpdateOrderResult
+      );
+
+      await POST(makeContext({ orderId: 'order-1', trackingNumber: 'AAA' }));
+      await POST(makeContext({ orderId: 'order-1', trackingNumber: 'BBB' }));
+
+      const calls = vi.mocked(squareClient.orders.update).mock.calls;
+      const [firstCall] = calls[0]!;
+      const [secondCall] = calls[1]!;
+      expect(firstCall.idempotencyKey).not.toBe(secondCall.idempotencyKey);
+    });
+
+    it('produces the same idempotency key when the same tracking number is submitted twice', async () => {
+      vi.mocked(squareClient.orders.get).mockResolvedValue(
+        orderWithFulfillment('COMPLETED') as unknown as GetOrderResult
+      );
+      vi.mocked(squareClient.orders.update).mockResolvedValue(
+        {} as unknown as UpdateOrderResult
+      );
+
+      await POST(makeContext({ orderId: 'order-1', trackingNumber: 'AAA' }));
+      await POST(makeContext({ orderId: 'order-1', trackingNumber: 'AAA' }));
+
+      const calls = vi.mocked(squareClient.orders.update).mock.calls;
+      const [firstCall] = calls[0]!;
+      const [secondCall] = calls[1]!;
+      expect(firstCall.idempotencyKey).toBe(secondCall.idempotencyKey);
+    });
+
+    it("the amend path's key never collides with the state-walk path's key", async () => {
+      vi.mocked(squareClient.orders.get).mockResolvedValue(
+        orderWithFulfillment('COMPLETED') as unknown as GetOrderResult
+      );
+      vi.mocked(squareClient.orders.update).mockResolvedValue(
+        {} as unknown as UpdateOrderResult
+      );
+
+      await POST(makeContext({ orderId: 'order-1', trackingNumber: 'AAA' }));
+
+      const [call] = vi.mocked(squareClient.orders.update).mock.calls[0]!;
+      expect(call.idempotencyKey).not.toBe('shipped-order-1-COMPLETED');
+      expect(call.idempotencyKey).toMatch(/^amend-/);
+    });
+
+    it('redirects with an update error when Square rejects the amend', async () => {
+      vi.mocked(squareClient.orders.get).mockResolvedValue(
+        orderWithFulfillment('COMPLETED') as unknown as GetOrderResult
+      );
+      vi.mocked(squareClient.orders.update).mockRejectedValue(
+        new Error('Square update failed')
+      );
+
+      const res = await POST(
+        makeContext({ orderId: 'order-1', trackingNumber: 'BBB' })
+      );
+      expect(res.status).toBe(302);
+      expect(res.headers.get('Location')).toContain('error=update');
+    });
+  });
+
+  it('the normal state walk still uses the stable shipped-${orderId}-${targetState} key (regression)', async () => {
+    vi.mocked(squareClient.orders.get).mockResolvedValue(
+      orderWithFulfillment('PROPOSED') as unknown as GetOrderResult
+    );
+    vi.mocked(squareClient.orders.update).mockResolvedValue(
+      {} as unknown as UpdateOrderResult
+    );
+    vi.mocked(sendShippingConfirmation).mockResolvedValue(undefined);
+
+    await POST(
+      makeContext({ orderId: 'order-1', trackingNumber: '1Z999', carrier: 'UPS' })
+    );
+
+    const calls = vi.mocked(squareClient.orders.update).mock.calls;
+    expect(calls[0]![0].idempotencyKey).toBe('shipped-order-1-RESERVED');
+    expect(calls[1]![0].idempotencyKey).toBe('shipped-order-1-COMPLETED');
   });
 });
