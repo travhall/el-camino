@@ -79,14 +79,16 @@ const { class: className = '' } = Astro.props;
 
     // ── 1. Check admin override ──────────────────────────────────────────────
     let overrideStatus: 'open' | 'closed' | null = null;
-    try {
-      const res = await fetch('/api/shop-status');
-      if (res.ok) {
-        const override = (await res.json()) as ShopOverride;
+    const overrideEl = document.getElementById('shop-status-data');
+    if (overrideEl) {
+      try {
+        const override = JSON.parse(
+          overrideEl.textContent || '{}'
+        ) as ShopOverride;
         overrideStatus = resolveOverride(override, now);
+      } catch {
+        // Malformed embedded JSON — fall back to schedule silently
       }
-    } catch {
-      // Network error — fall back to schedule silently
     }
 
     // ── 2. Determine open/closed ─────────────────────────────────────────────

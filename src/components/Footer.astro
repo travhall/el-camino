@@ -6,6 +6,7 @@ import { getLegalPages } from '@/lib/wordpress/api';
 import type { WordPressPage } from '@/lib/wordpress/types';
 import { siteConfig } from '@/lib/site-config';
 import { getSiteContext } from '@/lib/siteContext';
+import { getShopStatusConfig } from '@/lib/shopStatus';
 import OpenStatusBadge from './OpenStatusBadge.astro';
 
 const currentYear = new Date().getFullYear();
@@ -16,6 +17,10 @@ const { tagline } = siteConfig;
 // making for contact/social.
 const siteCtx = await getSiteContext(Astro.locals);
 const { hours, contact, social } = siteCtx;
+
+// Admin override config for OpenStatusBadge — inlined server-side (see
+// shop-status-data below) instead of fetched client-side on every page load.
+const shopStatusConfig = await getShopStatusConfig();
 
 // Fetch footer pages from WordPress (independent — runs in parallel with
 // the page's own fetches via Astro's render scheduler).
@@ -52,6 +57,17 @@ try {
   id="site-hours-data"
   type="application/json"
   set:html={JSON.stringify(hours)}
+/>
+
+<!-- Shop-status override data island — read by OpenStatusBadge on every page -->
+<script
+  id="shop-status-data"
+  type="application/json"
+  set:html={JSON.stringify({
+    mode: shopStatusConfig.mode,
+    until: shopStatusConfig.until ?? null,
+    holidays: shopStatusConfig.holidays,
+  })}
 />
 
 <footer
