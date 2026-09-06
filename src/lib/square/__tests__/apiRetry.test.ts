@@ -630,6 +630,82 @@ describe('ApiRetryClient', () => {
     });
   });
 
+  describe('Env-configured tuning', () => {
+    it('matches the documented defaults when no env is set', () => {
+      const fresh = new ApiRetryClient();
+
+      expect(fresh.getConfig()).toEqual({
+        retry: {
+          maxRetries: 3,
+          baseDelay: 500,
+          maxDelay: 5000,
+          jitterRange: 0.1,
+          timeoutMs: 10000,
+        },
+        circuit: {
+          failureThreshold: 5,
+          recoveryTimeoutMs: 30000,
+          monitorWindowMs: 60000,
+        },
+      });
+    });
+
+    it('reads each documented var into its config field', () => {
+      vi.stubEnv('SQUARE_MAX_RETRIES', '7');
+      vi.stubEnv('SQUARE_BASE_DELAY', '111');
+      vi.stubEnv('SQUARE_MAX_DELAY', '9999');
+      vi.stubEnv('SQUARE_JITTER_RANGE', '0.25');
+      vi.stubEnv('SQUARE_TIMEOUT_MS', '20000');
+      vi.stubEnv('SQUARE_CIRCUIT_THRESHOLD', '9');
+      vi.stubEnv('SQUARE_RECOVERY_TIMEOUT', '45000');
+      vi.stubEnv('SQUARE_MONITOR_WINDOW', '90000');
+
+      const fresh = new ApiRetryClient();
+
+      expect(fresh.getConfig()).toEqual({
+        retry: {
+          maxRetries: 7,
+          baseDelay: 111,
+          maxDelay: 9999,
+          jitterRange: 0.25,
+          timeoutMs: 20000,
+        },
+        circuit: {
+          failureThreshold: 9,
+          recoveryTimeoutMs: 45000,
+          monitorWindowMs: 90000,
+        },
+      });
+    });
+
+    it('falls back to defaults for a non-numeric value, never NaN', () => {
+      vi.stubEnv('SQUARE_MAX_RETRIES', 'not-a-number');
+
+      const fresh = new ApiRetryClient();
+
+      expect(fresh.getConfig().retry.maxRetries).toBe(3);
+      expect(Number.isNaN(fresh.getConfig().retry.maxRetries)).toBe(false);
+    });
+
+    it('falls back to defaults for 0 or a negative value', () => {
+      vi.stubEnv('SQUARE_BASE_DELAY', '0');
+      vi.stubEnv('SQUARE_MAX_DELAY', '-5000');
+
+      const fresh = new ApiRetryClient();
+
+      expect(fresh.getConfig().retry.baseDelay).toBe(500);
+      expect(fresh.getConfig().retry.maxDelay).toBe(5000);
+    });
+
+    it('parses a decimal SQUARE_JITTER_RANGE correctly', () => {
+      vi.stubEnv('SQUARE_JITTER_RANGE', '0.25');
+
+      const fresh = new ApiRetryClient();
+
+      expect(fresh.getConfig().retry.jitterRange).toBe(0.25);
+    });
+  });
+
   describe('Singleton Pattern', () => {
     it('should return same instance', () => {
       const instance1 = ApiRetryClient.getInstance();

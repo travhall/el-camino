@@ -30,6 +30,14 @@ export interface CircuitBreakerConfig {
   monitorWindowMs: number;
 }
 
+// `||` (not `??`) is deliberate: 0 is not a valid value for any of these
+// tuning vars, so an env value of "0" (or unparseable/negative) must also
+// fall back to the default rather than only guarding against `undefined`.
+function envNumber(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+  return (Number.isFinite(parsed) && parsed > 0 ? parsed : 0) || fallback;
+}
+
 /**
  * Enhanced API retry client with circuit breaker pattern
  */
@@ -54,13 +62,70 @@ export class ApiRetryClient {
     monitorWindowMs: 60000,
   };
 
-  constructor() {}
+  constructor() {
+    this.defaultRetryConfig = {
+      maxRetries: envNumber(
+        'SQUARE_MAX_RETRIES',
+        this.defaultRetryConfig.maxRetries
+      ),
+      baseDelay: envNumber(
+        'SQUARE_BASE_DELAY',
+        this.defaultRetryConfig.baseDelay
+      ),
+      maxDelay: envNumber('SQUARE_MAX_DELAY', this.defaultRetryConfig.maxDelay),
+      jitterRange: envNumber(
+        'SQUARE_JITTER_RANGE',
+        this.defaultRetryConfig.jitterRange
+      ),
+      timeoutMs: envNumber(
+        'SQUARE_TIMEOUT_MS',
+        this.defaultRetryConfig.timeoutMs
+      ),
+    };
+
+    this.circuitConfig = {
+      failureThreshold: envNumber(
+        'SQUARE_CIRCUIT_THRESHOLD',
+        this.circuitConfig.failureThreshold
+      ),
+      recoveryTimeoutMs: envNumber(
+        'SQUARE_RECOVERY_TIMEOUT',
+        this.circuitConfig.recoveryTimeoutMs
+      ),
+      monitorWindowMs: envNumber(
+        'SQUARE_MONITOR_WINDOW',
+        this.circuitConfig.monitorWindowMs
+      ),
+    };
+
+    logger.info(
+      '[ApiRetry] effective config:',
+      JSON.stringify({
+        retry: this.defaultRetryConfig,
+        circuit: this.circuitConfig,
+      })
+    );
+  }
 
   public static getInstance(): ApiRetryClient {
     if (!ApiRetryClient.instance) {
       ApiRetryClient.instance = new ApiRetryClient();
     }
     return ApiRetryClient.instance;
+  }
+
+  /**
+   * Get the resolved retry/circuit-breaker configuration (for tests and
+   * startup diagnostics).
+   */
+  public getConfig(): {
+    retry: RetryConfig;
+    circuit: CircuitBreakerConfig;
+  } {
+    return {
+      retry: { ...this.defaultRetryConfig },
+      circuit: { ...this.circuitConfig },
+    };
   }
 
   /**
