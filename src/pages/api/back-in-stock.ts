@@ -3,10 +3,19 @@
 // Tyler triggers the actual notification emails from the admin panel when
 // the product is restocked.
 
-import type { APIRoute } from "astro";
-import { addSubscription, isAlreadySubscribed, getSubscriptionsForProduct } from "@/lib/backInStock";
-import { sendBisAdminNotification } from "@/lib/email/sender";
-import { createRateLimiter, clientIp } from "@/lib/rateLimit";
+import type { APIRoute } from 'astro';
+import {
+  addSubscription,
+  isAlreadySubscribed,
+  getSubscriptionsForProduct,
+} from '@/lib/backInStock';
+import { sendBisAdminNotification } from '@/lib/email/sender';
+import { createRateLimiter, clientIp } from '@/lib/rateLimit';
+import { siteConfig } from '@/lib/site-config';
+
+// Square catalog object IDs are alphanumeric plus `-`/`_` — no slashes or dots.
+// These values become a Netlify Blobs key prefix, so anything else is rejected.
+const CATALOG_ID_RE = /^[A-Za-z0-9_-]{1,100}$/;
 
 // 5 submissions per minute per IP — high enough that real users typing
 // captchas slowly aren't blocked, low enough to stop a script.
@@ -14,34 +23,46 @@ const limiter = createRateLimiter({ windowMs: 60_000, max: 5 });
 
 export const POST: APIRoute = async ({ request }) => {
   if (limiter.check(clientIp(request))) {
-    return new Response(JSON.stringify({ error: "Too many requests. Please try again in a minute." }), {
-      status: 429,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        error: 'Too many requests. Please try again in a minute.',
+      }),
+      {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 
   try {
     const formData = await request.formData();
 
-    const email = formData.get("email")?.toString().trim() ?? "";
-    const productTitle = formData.get("product_title")?.toString().trim() ?? "";
-    const productId = formData.get("product_id")?.toString().trim() ?? "";
-    const variationId = formData.get("variation_id")?.toString().trim() ?? "";
-    const productUrl = formData.get("product_url")?.toString().trim() ?? "";
+    const email = formData.get('email')?.toString().trim() ?? '';
+    const productTitle = formData.get('product_title')?.toString().trim() ?? '';
+    const productId = formData.get('product_id')?.toString().trim() ?? '';
+    const variationId = formData.get('variation_id')?.toString().trim() ?? '';
+    const productUrl = formData.get('product_url')?.toString().trim() ?? '';
     // Sanitize: only accept https:// URLs to prevent javascript:/data: href injection
-    const safeProductUrl = productUrl.startsWith("https://") ? productUrl : "";
+    const safeProductUrl = productUrl.startsWith('https://') ? productUrl : '';
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return new Response(JSON.stringify({ error: "Invalid email address" }), {
+      return new Response(JSON.stringify({ error: 'Invalid email address' }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    if (!productId) {
-      return new Response(JSON.stringify({ error: "Missing product ID" }), {
+    if (!productId || !CATALOG_ID_RE.test(productId)) {
+      return new Response(JSON.stringify({ error: 'Invalid product ID' }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (variationId && !CATALOG_ID_RE.test(variationId)) {
+      return new Response(JSON.stringify({ error: 'Invalid variation ID' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -62,24 +83,26 @@ export const POST: APIRoute = async ({ request }) => {
     // Notify Tyler of new subscription (non-blocking)
     if (!alreadyOn) {
       const allSubs = await getSubscriptionsForProduct(productId);
-      const origin = new URL(request.url).origin;
+      const origin = siteConfig.url;
       sendBisAdminNotification({
         subscriberEmail: email,
         productName: productTitle,
         totalSubscribers: allSubs.length,
         origin,
-      }).catch((err) => console.error("[back-in-stock] Admin notify failed:", err));
+      }).catch((err) =>
+        console.error('[back-in-stock] Admin notify failed:', err)
+      );
     }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.error("[back-in-stock] Error:", err);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
+    console.error('[back-in-stock] Error:', err);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 };
