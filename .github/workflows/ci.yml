@@ -44,8 +44,11 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Unit tests
-        run: pnpm test:run
+      # Coverage-enabled: vitest only evaluates the `thresholds` in
+      # vitest.config.ts when coverage is on. Running plain `vitest run` here
+      # (as this step used to) meant the thresholds were never checked.
+      - name: Unit tests (with coverage)
+        run: pnpm test:coverage
 
       - name: Build
         run: pnpm build
