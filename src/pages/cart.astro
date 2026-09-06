@@ -658,6 +658,10 @@ import FulfillmentSelector from '@/components/FulfillmentSelector.astro';
       if (!response.ok) throw new Error(data.error || 'Checkout failed');
       if (!data.checkoutUrl) throw new Error('No checkout URL returned');
 
+      if (data.cartUpdated) {
+        cart.reconcileWithServerCart(data.adjustedCart || []);
+      }
+
       if (data.stockMessage) {
         showNotification(data.stockMessage, 'error');
         await new Promise((resolve) => setTimeout(resolve, 3000));

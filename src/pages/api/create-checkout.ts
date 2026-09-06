@@ -152,6 +152,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Filter out out-of-stock items and adjust quantities
     const validItems: CartItem[] = [...giftCardItems]; // gift cards always valid
     const removedItems: string[] = [];
+    const removedVariationIds: string[] = [];
     const adjustedItems: { name: string; oldQty: number; newQty: number }[] =
       [];
 
@@ -160,6 +161,7 @@ export const POST: APIRoute = async ({ request }) => {
 
       if (availableQuantity <= 0) {
         removedItems.push(item.title);
+        removedVariationIds.push(item.variationId);
       } else if (item.quantity > availableQuantity) {
         adjustedItems.push({
           name: item.title,
@@ -372,6 +374,11 @@ export const POST: APIRoute = async ({ request }) => {
         shippingCost: fulfillmentMethod === 'shipping' ? shippingRate : 0,
         stockMessage: stockMessage || undefined,
         cartUpdated: removedItems.length > 0 || adjustedItems.length > 0,
+        removedVariationIds,
+        adjustedCart: validItems.map((item) => ({
+          variationId: item.variationId,
+          quantity: item.quantity,
+        })),
       }),
       cookie ? { headers: { 'Set-Cookie': cookie } } : undefined
     );

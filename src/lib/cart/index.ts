@@ -690,6 +690,40 @@ class CartManager {
     }
   }
 
+  /**
+   * Reconcile local cart state against the server's authoritative surviving
+   * item list (returned by /api/create-checkout when it drops out-of-stock
+   * items or clamps quantities). Removes items absent from the server list
+   * and clamps quantities to match, then dispatches a single `cartUpdated`
+   * DOM event if anything changed — never one event per mutated item.
+   */
+  public reconcileWithServerCart(
+    survivingItems: { variationId: string; quantity: number }[]
+  ): void {
+    const survivingQuantities = new Map(
+      survivingItems.map((item) => [item.variationId, item.quantity])
+    );
+
+    let changed = false;
+
+    for (const [key, item] of this.items) {
+      const serverQuantity = survivingQuantities.get(item.variationId);
+
+      if (serverQuantity === undefined) {
+        this.items.delete(key);
+        changed = true;
+      } else if (item.quantity !== serverQuantity) {
+        this.items.set(key, { ...item, quantity: serverQuantity });
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this.saveCart();
+      this.dispatchCartEvent('cartUpdated', { cartState: this.getState() });
+    }
+  }
+
   public clear(): void {
     this.items.clear();
     // Persist immediately — see removeItem() for why the save can't wait on

@@ -281,6 +281,11 @@ describe('POST /api/create-checkout', () => {
     expect(json.stockMessage).toContain('Clamped Item');
     expect(json.stockMessage).toContain('10 → 5');
 
+    // The client needs the adjusted cart keyed by variationId (not title,
+    // which is not a stable identifier) to reconcile local state.
+    expect(json.removedVariationIds).toEqual(['var-1']);
+    expect(json.adjustedCart).toEqual([{ variationId: 'var-2', quantity: 5 }]);
+
     // Confirm the order actually sent to Square only contains the clamped quantity
     const createArgs = createPaymentLinkMock.mock.calls[0][0];
     const lineItems = createArgs.order.lineItems;
