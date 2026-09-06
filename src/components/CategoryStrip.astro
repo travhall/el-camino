@@ -4,7 +4,7 @@
 // Flattens the full hierarchy so the strip has enough cards to earn horizontal scroll.
 // Image fetching covers both tiers (same Square CDN pattern as Sidebar.astro).
 import { fetchCategoryHierarchyWithProducts } from "@/lib/square/categoryNav";
-import { squareClient } from "@/lib/square/client";
+import { getCategoryImageUrls } from "@/lib/square/categoryImages";
 import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
@@ -50,27 +50,12 @@ for (const item of hierarchy) {
 }
 
 // Fetch Square CDN image URLs for every entry — top-tier and sub alike.
-// Sequential loop matches Sidebar.astro; the cache absorbs repeat calls
-// if Sidebar has already resolved the same IDs in this request.
-const categoryImageUrls: Record<string, string> = {};
-
-for (const cat of flatCategories) {
-  if (!cat.id) continue;
-  try {
-    const catResult = await squareClient.catalog.object.get({
-      objectId: cat.id,
-      includeRelatedObjects: true,
-    });
-    const imageObjects = ((catResult as any).relatedObjects ?? []).filter(
-      (obj: any) => obj.type === "IMAGE",
-    );
-    if (imageObjects.length > 0 && imageObjects[0].imageData?.url) {
-      categoryImageUrls[cat.id] = imageObjects[0].imageData.url;
-    }
-  } catch {
-    // fail silently — card falls back to logo placeholder
-  }
-}
+// Shared imageCache lookup plus one batched catalog.batchGet fetch for
+// misses (see src/lib/square/categoryImages.ts) — same cache Sidebar.astro
+// uses, so IDs Sidebar already resolved this request are a cache hit here.
+const categoryImageUrls: Record<string, string> = await getCategoryImageUrls(
+  flatCategories.filter((cat) => cat.id).map((cat) => cat.id),
+);
 
 ---
 
