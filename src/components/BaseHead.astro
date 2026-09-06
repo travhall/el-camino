@@ -67,6 +67,45 @@ const seoData = {
         }
     })();
 </script>
+<script is:inline nonce={nonce}>
+    // Placeholder settling runs here, inline and early, rather than waiting
+    // for src/scripts/imageShimmer.ts — that module is deferred and only acts
+    // on astro:page-load, so on a cold load it landed at the tail of a
+    // ~40-chunk waterfall and skeletons stayed up over images that had already
+    // decoded. `load`/`error` don't bubble, hence capture-phase delegation on
+    // document. The module still owns View Transitions and the MutationObserver
+    // for post-paint images; both paths guard on data-shimmer-attached.
+    // NOTE: kept in sync by hand with settle() in src/scripts/imageShimmer.ts —
+    // if the data-shimmer-* attribute contract changes, update both.
+    (function () {
+        function settleEarly(img) {
+            if (!img || !img.dataset || !img.dataset.shimmerPlaceholder) return;
+            if (img.dataset.shimmerAttached) return;
+            img.dataset.shimmerAttached = "1";
+            var isError = img.naturalWidth === 0;
+            var ph = document.getElementById(img.dataset.shimmerPlaceholder);
+            if (ph) ph.remove();
+            var opacityKey = isError ? "shimmerErrorOpacity" : "shimmerLoadOpacity";
+            var addKey = isError ? "shimmerErrorAdd" : "shimmerLoadAdd";
+            var removeKey = isError ? "shimmerErrorRemove" : "shimmerLoadRemove";
+            if (opacityKey in img.dataset) img.style.opacity = img.dataset[opacityKey] || "";
+            var rm = img.dataset[removeKey];
+            if (rm) rm.split(" ").filter(Boolean).forEach(function (c) { img.classList.remove(c); });
+            if (!isError && "shimmerStock" in img.dataset) {
+                img.classList.add(img.dataset.inStock === "true" ? "opacity-100" : "opacity-75");
+            } else {
+                var ad = img.dataset[addKey];
+                if (ad) ad.split(" ").filter(Boolean).forEach(function (c) { img.classList.add(c); });
+            }
+        }
+        document.addEventListener("load", function (e) {
+            if (e.target instanceof HTMLImageElement) settleEarly(e.target);
+        }, true);
+        document.addEventListener("error", function (e) {
+            if (e.target instanceof HTMLImageElement) settleEarly(e.target);
+        }, true);
+    })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <meta name="generator" content={Astro.generator} />

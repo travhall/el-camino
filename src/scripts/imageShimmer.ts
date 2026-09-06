@@ -18,7 +18,7 @@
 // MutationObserver handles images injected after the initial page paint
 // (cart items, dynamically-loaded content, etc.).
 
-import { EL_CAMINO_LOGO_DATA_URI } from "@/lib/constants/assets";
+import { EL_CAMINO_LOGO_DATA_URI } from '@/lib/constants/assets';
 
 function settle(img: HTMLImageElement, isError: boolean): void {
   // Remove the skeleton placeholder
@@ -27,70 +27,101 @@ function settle(img: HTMLImageElement, isError: boolean): void {
 
   // On error: swap in fallback src
   if (isError) {
+    img.dataset.shimmerFallbackApplied = '1';
     img.src = img.dataset.shimmerFallback ?? EL_CAMINO_LOGO_DATA_URI;
   }
 
   // Which set of behaviour attrs to read
-  const opacityKey = isError ? "shimmerErrorOpacity" : "shimmerLoadOpacity";
-  const removeKey  = isError ? "shimmerErrorRemove"  : "shimmerLoadRemove";
-  const addKey     = isError ? "shimmerErrorAdd"     : "shimmerLoadAdd";
+  const opacityKey = isError ? 'shimmerErrorOpacity' : 'shimmerLoadOpacity';
+  const removeKey = isError ? 'shimmerErrorRemove' : 'shimmerLoadRemove';
+  const addKey = isError ? 'shimmerErrorAdd' : 'shimmerLoadAdd';
 
   // Set/clear inline opacity.
   // Empty string ("") clears the inline style and lets CSS cascade take over.
   // Attribute absent → don't touch opacity at all.
   if (opacityKey in img.dataset) {
-    img.style.opacity = img.dataset[opacityKey] ?? "";
+    img.style.opacity = img.dataset[opacityKey] ?? '';
   }
 
   // Remove classes first so add-then-remove ordering is deterministic
-  img.dataset[removeKey]?.split(" ").filter(Boolean).forEach(c => img.classList.remove(c));
+  img.dataset[removeKey]
+    ?.split(' ')
+    .filter(Boolean)
+    .forEach((c) => img.classList.remove(c));
 
   // Add classes — with in-stock conditional for PDP
-  if (!isError && "shimmerStock" in img.dataset) {
-    img.classList.add(img.dataset.inStock === "true" ? "opacity-100" : "opacity-75");
+  if (!isError && 'shimmerStock' in img.dataset) {
+    img.classList.add(
+      img.dataset.inStock === 'true' ? 'opacity-100' : 'opacity-75'
+    );
   } else {
-    img.dataset[addKey]?.split(" ").filter(Boolean).forEach(c => img.classList.add(c));
+    img.dataset[addKey]
+      ?.split(' ')
+      .filter(Boolean)
+      .forEach((c) => img.classList.add(c));
   }
 }
 
+// Applies the error-fallback src swap only. Split out of settle() so the
+// already-attached path below can perform just this one step, guarded by a
+// distinct flag so a src reassignment (which fires another "error") can't loop.
+function applyFallback(img: HTMLImageElement): void {
+  if (img.dataset.shimmerFallbackApplied) return;
+  img.dataset.shimmerFallbackApplied = '1';
+  img.src = img.dataset.shimmerFallback ?? EL_CAMINO_LOGO_DATA_URI;
+}
+
 function attach(img: HTMLImageElement): void {
-  // Guard against double-binding (matters for astro:page-load re-runs and observer overlap)
-  if (img.dataset.shimmerAttached) return;
-  img.dataset.shimmerAttached = "1";
+  // Guard against double-binding (matters for astro:page-load re-runs and observer overlap).
+  // An image can already be attached by the early inline script in BaseHead.astro, which
+  // settles load/error but does not apply the error-fallback src swap (see plan 147) — so an
+  // already-attached broken image still needs that one step here.
+  if (img.dataset.shimmerAttached) {
+    if (img.complete && img.naturalWidth === 0) applyFallback(img);
+    return;
+  }
+  img.dataset.shimmerAttached = '1';
 
   if (img.complete) {
     // Image already settled (cached hit or error before script ran)
     settle(img, img.naturalWidth === 0);
   } else {
-    img.addEventListener("load",  () => settle(img, false), { once: true });
-    img.addEventListener("error", () => settle(img, true),  { once: true });
+    img.addEventListener('load', () => settle(img, false), { once: true });
+    img.addEventListener('error', () => settle(img, true), { once: true });
   }
 }
 
 function initShimmer(): void {
-  document.querySelectorAll<HTMLImageElement>("img[data-shimmer-placeholder]").forEach(attach);
+  document
+    .querySelectorAll<HTMLImageElement>('img[data-shimmer-placeholder]')
+    .forEach(attach);
 }
 
 // Watch for images injected after paint (cart items, QuickView swaps, etc.)
 let observerStarted = false;
-const observer = new MutationObserver(mutations => {
+const observer = new MutationObserver((mutations) => {
   for (const m of mutations) {
     for (const node of m.addedNodes) {
       if (node instanceof HTMLImageElement && node.dataset.shimmerPlaceholder) {
         attach(node);
       } else if (node instanceof Element) {
-        node.querySelectorAll<HTMLImageElement>("img[data-shimmer-placeholder]").forEach(attach);
+        node
+          .querySelectorAll<HTMLImageElement>('img[data-shimmer-placeholder]')
+          .forEach(attach);
       }
     }
   }
 });
 
 // astro:page-load fires on initial load AND after every View Transition navigation
-document.addEventListener("astro:page-load", () => {
+document.addEventListener('astro:page-load', () => {
   initShimmer();
   if (!observerStarted) {
     // Observe the document root so the observer survives body replacements
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
     observerStarted = true;
   }
 });
