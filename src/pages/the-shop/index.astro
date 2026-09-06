@@ -5,9 +5,7 @@ import { siteConfig } from "@/lib/site-config";
 import Button from "@/components/Button.astro";
 import { Icon } from "astro-icon/components";
 import { EL_CAMINO_LOADER_DATA_URI } from "@/lib/constants/assets";
-import { getShopHours } from "@/lib/shopHours";
-import { getContactInfo } from "@/lib/contactInfo";
-import { getSocialLinks } from "@/lib/socialLinks";
+import { getSiteContext } from "@/lib/siteContext";
 import CategoryStrip from "@/components/CategoryStrip.astro";
 import ArticleCard from "@/components/ArticleCard.astro";
 import OpenStatusBadge from "@/components/OpenStatusBadge.astro";
@@ -17,11 +15,11 @@ import {
   generateFallbackContent,
 } from "@/lib/wordpress/types";
 
-const [shopHours, contact, social] = await Promise.all([
-  getShopHours(),
-  getContactInfo(),
-  getSocialLinks(),
-]);
+const {
+  hours: shopHours,
+  contact,
+  social,
+} = await getSiteContext(Astro.locals);
 
 // Fetch "Shop News" category posts, fall back to most recent posts if empty
 const shopNewsPosts = await getPostsByCategory("shop-news");
