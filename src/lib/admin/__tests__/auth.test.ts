@@ -178,7 +178,10 @@ describe('isAuthenticated', () => {
 
   it('POST request with a matching origin and valid token succeeds', () => {
     const token = issueSessionToken('test-secret');
-    const request = makeRequest({ method: 'POST', origin: 'https://example.com' });
+    const request = makeRequest({
+      method: 'POST',
+      origin: 'https://example.com',
+    });
     expect(isAuthenticated(request, token)).toBe(true);
   });
 });
