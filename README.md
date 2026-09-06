@@ -57,49 +57,24 @@ pnpm install
 
 ### Environment Setup
 
-There is no `.env.example` — create a `.env` file yourself with the variables
-below. `PUBLIC_*` vars are exposed to the client; the rest are server-only.
+Copy [`.env.example`](.env.example) to `.env` and fill in real values — it is
+the single source of truth for required and optional configuration, with a
+comment on each variable explaining its purpose and where it's read.
+`PUBLIC_*` vars are exposed to the client; the rest are server-only.
 
-Required:
+A few credentials need to be obtained rather than invented:
 
-```env
-# Square
-SQUARE_ACCESS_TOKEN=your_square_access_token
-PUBLIC_SQUARE_LOCATION_ID=your_square_location_id
-SQUARE_WEBHOOK_SIGNATURE_KEY=your_webhook_signature_key
-
-# Email (Resend)
-RESEND_API_KEY=your_resend_api_key
-EMAIL_FROM=noreply@yourdomain.com
-TYLER_EMAIL=owner-notifications@yourdomain.com
-
-# Admin (/admin/*)
-ADMIN_PASSWORD=your_admin_password
-ADMIN_SECRET=a_long_random_string_for_hmac_signing
-```
-
-Optional — feature-specific:
-
-```env
-PUBLIC_SQUARE_ENVIRONMENT=sandbox        # or "production"; affects Square env indicator
-PUBLIC_WORDPRESS_API_URL=                # defaults to https://api.elcaminoskateshop.com/wp-json/wp/v2
-CRUX_API_KEY=                            # Core Web Vitals dashboard (Chrome UX Report API)
-WARMUP_SECRET=                           # auth header for the /api/warmup cron endpoint
-ASTRO_NODE_ENV=                          # set to "development" to bypass Blobs cache locally
-```
-
-Optional — Square retry/circuit-breaker tuning (sane defaults if unset):
-
-```env
-SQUARE_MAX_RETRIES=3
-SQUARE_BASE_DELAY=500
-SQUARE_MAX_DELAY=5000
-SQUARE_JITTER_RANGE=0.1
-SQUARE_TIMEOUT_MS=10000
-SQUARE_CIRCUIT_THRESHOLD=5
-SQUARE_RECOVERY_TIMEOUT=30000
-SQUARE_MONITOR_WINDOW=60000
-```
+- **Square**: `SQUARE_ACCESS_TOKEN` and `PUBLIC_SQUARE_LOCATION_ID` come from
+  the [Square Developer Dashboard](https://developer.squareup.com/apps).
+  `SQUARE_WEBHOOK_SIGNATURE_KEY` comes from the webhook subscription you
+  create there (see the comment above the webhook route in
+  `src/pages/api/webhooks/square.ts` for the exact steps).
+- **Resend**: `RESEND_API_KEY` comes from your
+  [Resend dashboard](https://resend.com/api-keys).
+- **Chrome UX Report** (optional): `CRUX_API_KEY` comes from the
+  [CrUX API](https://developer.chrome.com/docs/crux/api) in Google Cloud
+  Console; the admin performance dashboard works without it, just without
+  real field data.
 
 ### Development
 
