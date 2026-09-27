@@ -219,6 +219,12 @@ export class PDPController {
     this.selectedAttributes[attributeType] = value;
     this.updateCurrentVariation();
     this.updateAttributeButtonStates();
+    this.announceSelection(
+      findVariationByAttributes(
+        this.productData.variations,
+        this.selectedAttributes
+      ) ?? null
+    );
   }
 
   private handleVariationSelection(variationId: string): void {
@@ -227,7 +233,38 @@ export class PDPController {
     );
     if (variation) {
       this.updateProductUI(variation);
+      this.announceSelection(variation);
     }
+  }
+
+  /**
+   * Announce a user-driven selection to screen readers. Deliberately not
+   * called from initialize()/handleCartUpdate() so page load and cart syncs
+   * stay silent. A null variation means the chosen combination doesn't exist,
+   * which the UI already renders as out of stock.
+   */
+  private announceSelection(variation: ProductVariation | null): void {
+    if (!this.currentVariation) return;
+
+    const shown = variation ?? this.currentVariation;
+    const info = variation
+      ? cart.getProductAvailability(
+          this.productData.productId,
+          variation.variationId,
+          variation.quantity || 0
+        )
+      : cart.getProductAvailability(
+          this.productData.productId,
+          'out-of-stock',
+          0
+        );
+    const selectedValues = Object.values(this.selectedAttributes).join(' ');
+
+    this.uiManager.announceVariantChange({
+      label: selectedValues || shown.name,
+      price: shown.saleInfo?.salePrice ?? shown.price,
+      info,
+    });
   }
 
   private handleCartUpdate(): void {

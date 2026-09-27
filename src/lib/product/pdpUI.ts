@@ -24,7 +24,10 @@ export interface ElementIds {
   remainingCount?: string;
   cartQuantity?: string;
   inventoryStatus?: string;
+  liveStatus?: string;
 }
+
+const ANNOUNCE_DEBOUNCE_MS = 250;
 
 export class PDPUIManager {
   private elements: {
@@ -40,7 +43,10 @@ export class PDPUIManager {
     remainingCount?: HTMLElement;
     cartQuantity?: HTMLElement;
     inventoryStatus?: HTMLElement;
+    liveStatus?: HTMLElement;
   } = {};
+
+  private announceTimer?: ReturnType<typeof setTimeout>;
 
   private elementIds?: ElementIds; // Store for re-caching
 
@@ -64,6 +70,7 @@ export class PDPUIManager {
       remainingCount: customIds?.remainingCount || 'remaining-count',
       cartQuantity: customIds?.cartQuantity || 'cart-quantity',
       inventoryStatus: customIds?.inventoryStatus || 'inventory-status',
+      liveStatus: customIds?.liveStatus || 'pdp-live-status',
     };
 
     const productImage = document.getElementById(
@@ -94,7 +101,53 @@ export class PDPUIManager {
       cartQuantity: document.getElementById(ids.cartQuantity) || undefined,
       inventoryStatus:
         document.getElementById(ids.inventoryStatus) || undefined,
+      liveStatus: document.getElementById(ids.liveStatus) || undefined,
     };
+  }
+
+  /**
+   * Write a message into the PDP's dedicated live region for screen readers.
+   * Debounced so rapid selection changes announce only the final state.
+   */
+  announce(message: string): void {
+    if (this.announceTimer) clearTimeout(this.announceTimer);
+    this.announceTimer = setTimeout(() => {
+      this.announceTimer = undefined;
+      const liveStatus =
+        this.elements.liveStatus ||
+        document.getElementById('pdp-live-status') ||
+        undefined;
+      if (liveStatus) liveStatus.textContent = message;
+    }, ANNOUNCE_DEBOUNCE_MS);
+  }
+
+  /**
+   * Announce the result of a user-driven variant change as
+   * "<selected values>, <price>, <state>". Not called on initial render.
+   */
+  announceVariantChange(details: {
+    label: string;
+    price: number;
+    info: ProductAvailabilityInfo;
+  }): void {
+    const { label, price, info } = details;
+    let state: string;
+    switch (info.state) {
+      case ProductAvailabilityState.OUT_OF_STOCK:
+        state = 'out of stock';
+        break;
+      case ProductAvailabilityState.ALL_IN_CART:
+        state = 'all in cart';
+        break;
+      default:
+        state = `in stock, ${info.remaining} available`;
+    }
+    const parts = [
+      label,
+      MoneyUtils.format(MoneyUtils.fromFloat(price)),
+      state,
+    ].filter(Boolean);
+    this.announce(parts.join(', '));
   }
 
   updateAvailabilityDisplay(

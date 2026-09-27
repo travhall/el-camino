@@ -4,6 +4,10 @@
 
 <div
   id="notification-container"
+  role="region"
+  aria-label="Notifications"
+  aria-live="polite"
+  aria-relevant="additions"
   class="fixed top-4 right-4 z-9999 flex flex-col gap-2 items-end pointer-events-none"
 >
 </div>
@@ -39,6 +43,11 @@
               : 'bg-state-info-surface text-state-info-text';
 
       const notification = document.createElement('div');
+      // Errors/warnings announce assertively; everything else politely
+      notification.setAttribute(
+        'role',
+        type === 'error' || type === 'warning' ? 'alert' : 'status'
+      );
       notification.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 text-base font-light rounded shadow-md opacity-0 translate-x-4 transition-all duration-300 ${bgClass}`;
 
       const textNode = document.createElement('span');
