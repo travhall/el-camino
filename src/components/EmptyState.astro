@@ -1,0 +1,82 @@
+---
+// src/components/EmptyState.astro
+// Shared empty state (cart, mini-cart, shop, news). Any new empty state in the
+// app should use this component instead of hand-rolling markup.
+import { Icon } from 'astro-icon/components';
+import Button from '@/components/Button.astro';
+
+interface Props {
+  heading: string;
+  body?: string;
+  /** astro-icon name. Mutually exclusive with `emoji`. */
+  icon?: string;
+  /** Decorative emoji. Mutually exclusive with `icon`. */
+  emoji?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  ctaVariant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'link';
+  ctaId?: string;
+  headingLevel?: 'h1' | 'h2' | 'h3';
+  class?: string;
+  /** Vertically centre in a full-height area (used by the cart page). */
+  fill?: boolean;
+  /** Tighter vertical padding, for use inside panels that already pad. */
+  compact?: boolean;
+}
+
+const {
+  heading,
+  body,
+  icon,
+  emoji,
+  ctaLabel,
+  ctaHref,
+  ctaVariant = 'primary',
+  ctaId,
+  headingLevel = 'h2',
+  class: className,
+  fill = false,
+  compact = false,
+} = Astro.props;
+
+const Heading = headingLevel;
+---
+
+<div
+  class:list={[
+    'text-center flex flex-col items-center',
+    compact ? 'py-4' : 'py-16',
+    fill && 'lg:min-h-[90dvh] justify-center',
+    className,
+  ]}
+>
+  {
+    (icon || emoji) && (
+      <div aria-hidden="true" class="mb-4 opacity-20">
+        {icon ? (
+          <Icon name={icon} class="w-16 h-16 mx-auto" />
+        ) : (
+          <span class="text-6xl">{emoji}</span>
+        )}
+      </div>
+    )
+  }
+  <Heading
+    class="text-2xl font-display font-bold text-(--content-heading) mb-2"
+  >
+    {heading}
+  </Heading>
+  {body && <p class="text-(--content-meta) mb-6 max-w-md mx-auto">{body}</p>}
+  {
+    ctaLabel &&
+      (ctaHref ? (
+        <Button href={ctaHref} variant={ctaVariant} id={ctaId}>
+          {ctaLabel}
+        </Button>
+      ) : (
+        <Button variant={ctaVariant} id={ctaId}>
+          {ctaLabel}
+        </Button>
+      ))
+  }
+</div>
