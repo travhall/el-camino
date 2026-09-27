@@ -155,6 +155,37 @@ test.describe('Money path (no catalog needed)', () => {
     await expect(deck.locator('[data-action="increase"]')).toBeEnabled();
   });
 
+  test('flags an out-of-stock item and blocks incrementing it', async ({
+    page,
+  }) => {
+    await openCart(page, [DECK], { inventory: { [DECK.variationId]: 0 } });
+
+    const deck = itemRow(page, DECK);
+    await expect(deck).toBeVisible();
+    await expect(deck).toContainText('Out of stock');
+    await expect(deck.locator('[data-action="increase"]')).toBeDisabled();
+  });
+
+  test('rejects incrementing past available inventory', async ({ page }) => {
+    await openCart(page, [{ ...DECK, quantity: 2 }], {
+      inventory: { [DECK.variationId]: 2 },
+    });
+
+    const deck = itemRow(page, DECK);
+    const increase = deck.locator('[data-action="increase"]');
+    await expect(increase).toBeDisabled();
+
+    // The button is disabled at the cap, so re-enable it to exercise the
+    // click handler's own inventory guard.
+    await increase.evaluate((el) => el.removeAttribute('disabled'));
+    await increase.click();
+
+    await expect(page.locator('#notification-container')).toContainText(
+      'Only 2 available'
+    );
+    await expect(deck.locator('input.quantity-input')).toHaveValue('2');
+  });
+
   test('still renders the cart when the inventory endpoint fails', async ({
     page,
   }) => {

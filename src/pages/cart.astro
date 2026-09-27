@@ -396,7 +396,7 @@ import FulfillmentSelector from '@/components/FulfillmentSelector.astro';
     const saleInfo = item.saleInfo;
     const displayPrice = saleInfo?.salePrice || item.price;
     const itemSubtotal = displayPrice * item.quantity;
-    const inventory = inventoryData[item.variationId] || 999;
+    const inventory = inventoryData[item.variationId] ?? 999;
     const isOutOfStock = !item.isGiftCard && inventory <= 0;
     const canIncrement = item.isGiftCard
       ? item.quantity < 10
@@ -802,7 +802,7 @@ import FulfillmentSelector from '@/components/FulfillmentSelector.astro';
             );
             if (item) {
               const newQty = item.quantity + 1;
-              const inventory = inventoryData[item.variationId] || 999;
+              const inventory = inventoryData[item.variationId] ?? 999;
               if (newQty <= inventory) {
                 await cart.updateQuantity(itemKey, newQty);
                 await updateCartItemQuantity(itemKey);
@@ -946,7 +946,7 @@ import FulfillmentSelector from '@/components/FulfillmentSelector.astro';
       return;
     }
 
-    const inventory = inventoryData[item.variationId] || 999;
+    const inventory = inventoryData[item.variationId] ?? 999;
     const saleInfo = item.saleInfo;
     const displayPrice = saleInfo?.salePrice || item.price;
     const itemSubtotal = displayPrice * item.quantity;
