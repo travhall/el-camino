@@ -12,6 +12,7 @@ export default defineConfig(
         '**/dist/**',
         '**/.{idea,git,cache,output,temp}/**',
         '**/.claude/**', // Worktrees and agent state
+        '**/.kilo/**', // Worktrees created by other agent tools
         '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
         'e2e/**', // Exclude Playwright e2e tests from Vitest
       ],
