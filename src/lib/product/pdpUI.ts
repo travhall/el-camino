@@ -128,6 +128,23 @@ export function setHeroImage(img: HTMLImageElement, imageUrl: string): void {
   }
 }
 
+/**
+ * Replace an element's contents with `text`, preceded by a visually hidden
+ * `label` for screen readers (aria-label is not reliably announced on
+ * role-less elements like <p> and <div>). Clears any previous label, so a
+ * sale-to-regular variant switch doesn't leave a stale one behind.
+ */
+function setLabeledText(el: HTMLElement, text: string, label?: string): void {
+  el.replaceChildren();
+  if (label) {
+    const hidden = document.createElement('span');
+    hidden.className = 'sr-only';
+    hidden.textContent = `${label} `;
+    el.appendChild(hidden);
+  }
+  el.appendChild(document.createTextNode(text));
+}
+
 export class PDPUIManager {
   private elements: {
     priceDisplay?: HTMLElement;
@@ -390,22 +407,29 @@ export class PDPUIManager {
     if (saleInfo) {
       // Show original price with strikethrough
       if (originalPriceDisplay) {
-        originalPriceDisplay.textContent = MoneyUtils.format(
-          MoneyUtils.fromFloat(saleInfo.originalPrice)
+        setLabeledText(
+          originalPriceDisplay,
+          MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice)),
+          'Regular price'
         );
         originalPriceDisplay.classList.remove('hidden');
       }
       // Show sale price
-      priceDisplay.textContent = MoneyUtils.format(
-        MoneyUtils.fromFloat(saleInfo.salePrice)
+      setLabeledText(
+        priceDisplay,
+        MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.salePrice)),
+        'Sale price'
       );
     } else {
-      // Regular price display
-      const formattedPrice = MoneyUtils.format(MoneyUtils.fromFloat(price));
-      priceDisplay.textContent = formattedPrice;
+      // Regular price display: a lone price needs no label
+      setLabeledText(
+        priceDisplay,
+        MoneyUtils.format(MoneyUtils.fromFloat(price))
+      );
 
       // Hide original price if shown
       if (originalPriceDisplay) {
+        originalPriceDisplay.replaceChildren();
         originalPriceDisplay.classList.add('hidden');
       }
     }

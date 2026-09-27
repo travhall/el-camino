@@ -375,6 +375,42 @@ describe('PDPUIManager', () => {
       expect(priceDisplay?.contains(unitDisplay as Node)).toBe(true);
       expect(unitDisplay?.classList.contains('hidden')).toBe(true);
     });
+
+    it('prefixes sale and regular prices with sr-only labels when saleInfo is given', () => {
+      const saleInfo: SaleInfo = {
+        salePrice: 15,
+        originalPrice: 20,
+        discountPercent: 25,
+      };
+      manager.updatePriceDisplay(15, { saleInfo });
+      const original = document.getElementById('original-price-display');
+      const priceDisplay = document.getElementById('price-display');
+      expect(original?.querySelector('.sr-only')?.textContent).toBe(
+        'Regular price '
+      );
+      expect(original?.textContent).toContain('20.00');
+      expect(priceDisplay?.querySelector('.sr-only')?.textContent).toBe(
+        'Sale price '
+      );
+      expect(priceDisplay?.textContent).toContain('15.00');
+      expect(original?.hasAttribute('aria-label')).toBe(false);
+      expect(priceDisplay?.hasAttribute('aria-label')).toBe(false);
+    });
+
+    it('drops the sr-only labels on a sale-to-non-sale variant switch', () => {
+      const saleInfo: SaleInfo = {
+        salePrice: 15,
+        originalPrice: 20,
+        discountPercent: 25,
+      };
+      manager.updatePriceDisplay(15, { saleInfo });
+      manager.updatePriceDisplay(19.99);
+      const original = document.getElementById('original-price-display');
+      const priceDisplay = document.getElementById('price-display');
+      expect(original?.querySelector('.sr-only')).toBeNull();
+      expect(priceDisplay?.querySelector('.sr-only')).toBeNull();
+      expect(priceDisplay?.textContent).toContain('19.99');
+    });
   });
 
   describe('updateAttributeButtonStates', () => {

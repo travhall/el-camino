@@ -803,14 +803,20 @@ Astro.response.headers.set(
               !isOnSale || !formattedOriginalPrice ? 'hidden' : '',
             ]}
           >
-            {formattedOriginalPrice || ''}
+            {
+              isOnSale && formattedOriginalPrice && (
+                <span class="sr-only">Regular price </span>
+              )
+            }{formattedOriginalPrice || ''}
           </div>
           {/* Sale/Regular price */}
           <p
             id="price-display"
             class="text-4xl lg:text-5xl xl:text-6xl font-display font-bold text-(--content-emphasis)"
           >
-            {formattedPrice}
+            {isOnSale && <span class="sr-only">Sale price </span>}{
+              formattedPrice
+            }
             {/* Unit display */}
             {
               unitDisplay && (
