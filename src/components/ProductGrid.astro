@@ -124,7 +124,9 @@ const displayProducts = hideSoldOut
 
   /* Visibility must never depend on JS running. The server decides
      opacity-0 vs opacity-100 per card (filter/scroll-hidden vs shown); JS
-     only re-triggers the transition later (scroll reveal, filtering). A
+     only re-triggers the transition later (scroll reveal, filtering) and
+     re-arms the initial batch on client-side navigation (with its own
+     force-reveal timeout; cold loads are never re-armed). A
      truly-hidden card also carries inline `display: none`, so forcing
      opacity here can never make a hidden card visible. */
   @media (scripting: none) {
@@ -310,6 +312,11 @@ const displayProducts = hideSoldOut
 </div>
 
 <script>
+  import {
+    armInitialCardsForEntrance,
+    restoreCards,
+  } from '@/lib/ui/gridEntrance';
+
   // Check for reduced motion preference
   const prefersReducedMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)'
@@ -409,6 +416,10 @@ const displayProducts = hideSoldOut
       // Add animating class for temporary will-change
       htmlCard.classList.add('animating');
 
+      // Drop the inline `transition: none` set when the card was re-armed on
+      // client-side navigation, so the entrance transition runs (no-op otherwise).
+      htmlCard.style.removeProperty('transition');
+
       // Trigger CSS animation immediately
       htmlCard.classList.remove('opacity-0');
       htmlCard.classList.add('opacity-100');
@@ -438,6 +449,34 @@ const displayProducts = hideSoldOut
     // On mobile, defer card entrance until after the nav close animation (400ms)
     // has had a head start. Desktop entrance delay is 0ms (no-op timeout).
     const entranceDelay = ANIMATION_CONFIG.entranceDelay;
+
+    // Plan 202: on a client-side navigation only, re-hide the server-visible
+    // initial cards (synchronously, before any frame paints) so the existing
+    // reveal below can animate them in. Cold loads never set the router's
+    // direction attribute, so they keep plan 177's server-visible grid.
+    // Independent safety nets: try/catch restore, a hard force-reveal timeout,
+    // and no arming at all under reduced motion.
+    const isClientNavigation =
+      document.documentElement.dataset.astroTransition !== undefined;
+    if (isClientNavigation && !prefersReducedMotion) {
+      let armed: HTMLElement[] = [];
+      try {
+        armed = armInitialCardsForEntrance(document);
+        const forceReveal = setTimeout(() => {
+          restoreCards(
+            armed.filter(
+              (card) =>
+                card.classList.contains('opacity-0') &&
+                card.style.display !== 'none'
+            )
+          );
+        }, entranceDelay + 1500);
+        animationTimeouts.push(forceReveal);
+      } catch {
+        restoreCards(armed);
+      }
+    }
+
     if (entranceDelay > 0) {
       setTimeout(() => initializePageLoadAnimations(), entranceDelay);
     } else {
