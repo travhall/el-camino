@@ -42,6 +42,7 @@ vi.mock('@/lib/product/pdpUI', () => ({
     updatePriceDisplay = vi.fn();
     updateProductImage = vi.fn();
     updateAttributeButtonStates = vi.fn();
+    announceVariantChange = vi.fn();
     updateButtonProductData = vi.fn((productData: unknown) => {
       const btn = document.getElementById(
         'quick-view-add-to-cart'
@@ -494,6 +495,72 @@ describe('QuickViewController — real implementation', () => {
       expect(
         document.getElementById('qv-atc-wrapper')?.classList.contains('hidden')
       ).toBe(true);
+    });
+  });
+
+  describe('screen reader announcements', () => {
+    it('does not announce when the panel opens', async () => {
+      await openWith(controller, makeProduct());
+
+      expect(
+        internals(controller).uiManager.announceVariantChange
+      ).not.toHaveBeenCalled();
+    });
+
+    it('does not announce on cart updates', async () => {
+      await openWith(controller, makeProduct());
+      internals(controller).uiManager.updateAvailabilityDisplay.mockClear();
+
+      // The cartUpdated window listener isn't registered in this harness, so
+      // drive the handler directly.
+      internals(controller).handleCartUpdate();
+
+      // Guard against a vacuous pass: the cart-update handler did run
+      expect(
+        internals(controller).uiManager.updateAvailabilityDisplay
+      ).toHaveBeenCalled();
+      expect(
+        internals(controller).uiManager.announceVariantChange
+      ).not.toHaveBeenCalled();
+    });
+
+    it('announces once after a user-driven attribute selection', async () => {
+      await openWith(controller, makeProduct());
+      const uiManager = internals(controller).uiManager;
+
+      attrButton('size', 'Large').click();
+
+      expect(uiManager.announceVariantChange).toHaveBeenCalledTimes(1);
+      expect(uiManager.announceVariantChange).toHaveBeenCalledWith({
+        label: 'Large Red',
+        price: 75,
+        info: expect.objectContaining({ state: 'AVAILABLE' }),
+      });
+      expect(cart.getProductAvailability).toHaveBeenCalledWith(
+        'prod-1',
+        'var-lg-red',
+        5
+      );
+    });
+
+    it('announces out of stock for a combination that does not exist', async () => {
+      await openWith(controller, makeProduct());
+      const uiManager = internals(controller).uiManager;
+      attrButton('size', 'Large').click();
+      uiManager.announceVariantChange.mockClear();
+      vi.mocked(cart.getProductAvailability).mockClear();
+
+      attrButton('color', 'Blue').click(); // Large/Blue does not exist
+
+      expect(cart.getProductAvailability).toHaveBeenCalledWith(
+        'prod-1',
+        'out-of-stock',
+        0
+      );
+      expect(uiManager.announceVariantChange).toHaveBeenCalledTimes(1);
+      expect(uiManager.announceVariantChange).toHaveBeenCalledWith(
+        expect.objectContaining({ label: 'Large Blue' })
+      );
     });
   });
 
