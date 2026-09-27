@@ -424,16 +424,38 @@ describe('PDPUIManager', () => {
       `;
     }
 
-    it('marks an available, selected button as selected with no out-of-stock styling', () => {
+    function getButton(value: string): HTMLButtonElement {
+      return document.querySelector(
+        `[data-attribute-value="${value}"]`
+      ) as HTMLButtonElement;
+    }
+
+    it('marks an available, unselected button with input surface styling', () => {
       setupButton();
       manager.updateAttributeButtonStates(
         { color: ['red', 'blue'] },
         { color: 'red' },
         () => true
       );
-      const red = document.querySelector(
-        '[data-attribute-value="red"]'
-      ) as HTMLButtonElement;
+      const blue = getButton('blue');
+      expect(blue.className).toBe(
+        'min-w-11 min-h-11 px-3 py-2 rounded-sm attribute-button cursor-pointer relative inline-flex items-center justify-center border border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text)'
+      );
+      expect(blue.getAttribute('aria-pressed')).toBe('false');
+      expect(blue.hasAttribute('aria-label')).toBe(false);
+    });
+
+    it('marks an available, selected button with selected-surface styling and no out-of-stock styling', () => {
+      setupButton();
+      manager.updateAttributeButtonStates(
+        { color: ['red', 'blue'] },
+        { color: 'red' },
+        () => true
+      );
+      const red = getButton('red');
+      expect(red.className).toBe(
+        'min-w-11 min-h-11 px-3 py-2 rounded-sm attribute-button cursor-pointer relative inline-flex items-center justify-center border border-(--ui-variant-selected-border) bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text)'
+      );
       expect(red.getAttribute('aria-pressed')).toBe('true');
       expect(red.classList.contains('line-through')).toBe(false);
       expect(red.hasAttribute('aria-label')).toBe(false);
@@ -446,12 +468,54 @@ describe('PDPUIManager', () => {
         { color: 'red' },
         (_type, value) => value !== 'blue'
       );
-      const blue = document.querySelector(
-        '[data-attribute-value="blue"]'
-      ) as HTMLButtonElement;
+      const blue = getButton('blue');
+      expect(blue.className).toBe(
+        'min-w-11 min-h-11 px-3 py-2 rounded-sm attribute-button cursor-pointer relative inline-flex items-center justify-center border border-(--ui-input-border) bg-(--ui-input-surface) text-(--content-meta)! line-through'
+      );
       expect(blue.getAttribute('aria-pressed')).toBe('false');
-      expect(blue.classList.contains('line-through')).toBe(true);
       expect(blue.getAttribute('aria-label')).toBe('blue — out of stock');
+    });
+
+    it('marks an unavailable, selected button with out-of-stock styling and a ring instead of the selected fill', () => {
+      setupButton();
+      manager.updateAttributeButtonStates(
+        { color: ['red', 'blue'] },
+        { color: 'red' },
+        () => false
+      );
+      const red = getButton('red');
+      expect(red.className).toBe(
+        'min-w-11 min-h-11 px-3 py-2 rounded-sm attribute-button cursor-pointer relative inline-flex items-center justify-center border border-(--ui-input-border) bg-(--ui-input-surface) text-(--content-meta)! line-through ring-2 ring-offset-1 ring-(--ui-variant-selected-border)'
+      );
+      expect(red.getAttribute('aria-pressed')).toBe('true');
+      expect(red.getAttribute('aria-label')).toBe('red — out of stock');
+    });
+
+    it('fully replaces classes on a transition between states rather than accumulating them', () => {
+      setupButton();
+      const red = getButton('red');
+
+      manager.updateAttributeButtonStates(
+        { color: ['red', 'blue'] },
+        { color: 'red' },
+        () => true
+      );
+      expect(red.classList.contains('line-through')).toBe(false);
+      expect(
+        red.classList.contains('bg-(--ui-variant-selected-surface)')
+      ).toBe(true);
+
+      manager.updateAttributeButtonStates(
+        { color: ['red', 'blue'] },
+        { color: 'red' },
+        () => false
+      );
+      expect(
+        red.classList.contains('bg-(--ui-variant-selected-surface)')
+      ).toBe(false);
+      expect(red.classList.contains('line-through')).toBe(true);
+      expect(red.classList.contains('ring-2')).toBe(true);
+      expect(red.getAttribute('aria-label')).toBe('red — out of stock');
     });
   });
 
