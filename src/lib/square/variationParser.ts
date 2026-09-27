@@ -153,6 +153,17 @@ export function parseVariationName(name: string): Record<string, string> {
     }
   }
 
+  // Single-token names ("Black", "$25") skip comma-based detection above.
+  // Still try the same heuristic detector before falling back to the
+  // generic 'variant' key, so recognizable values (e.g. plain colors) get
+  // their real attribute type and display name instead of "Option".
+  if (parts.length === 1) {
+    const detectedType = detectAttributeType(parts[0]);
+    if (detectedType) {
+      return { [detectedType]: parts[0] };
+    }
+  }
+
   // Fallback to position-based parsing
   const attributeNames =
     VARIATION_CONFIG.attributeMappings[parts.length] ||
