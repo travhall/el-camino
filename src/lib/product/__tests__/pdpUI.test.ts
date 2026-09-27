@@ -3,7 +3,7 @@
  * PDPUIManager has no external module dependencies beyond pure helpers/types,
  * so these tests exercise real DOM via happy-dom.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PDPUIManager } from '../pdpUI';
 import {
   ProductAvailabilityState,
@@ -26,6 +26,7 @@ function setupDom(): void {
     <div id="inventory-status"></div>
     <div id="quantity-stepper"></div>
     <div id="gallery-thumbnails"></div>
+    <p id="pdp-live-status" role="status" aria-live="polite"></p>
   `;
 }
 
@@ -389,6 +390,85 @@ describe('PDPUIManager', () => {
       expect(
         (document.getElementById('product-image') as HTMLImageElement).src
       ).toContain('a.jpg');
+    });
+  });
+
+  describe('announce', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    const liveText = () =>
+      document.getElementById('pdp-live-status')?.textContent;
+
+    it('writes the message into #pdp-live-status after the debounce', () => {
+      manager.announce('Large, $10.00, in stock, 5 available');
+      expect(liveText()).toBe('');
+      vi.advanceTimersByTime(250);
+      expect(liveText()).toBe('Large, $10.00, in stock, 5 available');
+    });
+
+    it('announces only the last of two rapid calls', () => {
+      manager.announce('first');
+      vi.advanceTimersByTime(100);
+      manager.announce('second');
+      vi.advanceTimersByTime(250);
+      expect(liveText()).toBe('second');
+    });
+
+    it('does not throw when the live region is missing', () => {
+      document.getElementById('pdp-live-status')?.remove();
+      const noRegion = new PDPUIManager();
+      expect(() => {
+        noRegion.announce('anything');
+        vi.advanceTimersByTime(250);
+      }).not.toThrow();
+    });
+  });
+
+  describe('announceVariantChange', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    const liveText = () =>
+      document.getElementById('pdp-live-status')?.textContent;
+
+    it('composes "<label>, <price>, in stock, N available"', () => {
+      manager.announceVariantChange({
+        label: 'Large Blue',
+        price: 12.5,
+        info: availabilityInfo({ remaining: 3 }),
+      });
+      vi.advanceTimersByTime(250);
+      expect(liveText()).toBe('Large Blue, $12.50, in stock, 3 available');
+    });
+
+    it('announces out of stock', () => {
+      manager.announceVariantChange({
+        label: 'Small',
+        price: 10,
+        info: availabilityInfo({
+          state: ProductAvailabilityState.OUT_OF_STOCK,
+          totalInventory: 0,
+          remaining: 0,
+        }),
+      });
+      vi.advanceTimersByTime(250);
+      expect(liveText()).toBe('Small, $10.00, out of stock');
+    });
+
+    it('announces all in cart', () => {
+      manager.announceVariantChange({
+        label: 'Small',
+        price: 10,
+        info: availabilityInfo({
+          state: ProductAvailabilityState.ALL_IN_CART,
+          totalInventory: 2,
+          inCart: 2,
+          remaining: 0,
+        }),
+      });
+      vi.advanceTimersByTime(250);
+      expect(liveText()).toBe('Small, $10.00, all in cart');
     });
   });
 });

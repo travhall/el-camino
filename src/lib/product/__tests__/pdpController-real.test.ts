@@ -28,6 +28,7 @@ interface MockedUIManager {
   updateProductImage: ReturnType<typeof vi.fn>;
   updateButtonProductData: ReturnType<typeof vi.fn>;
   updateAttributeButtonStates: ReturnType<typeof vi.fn>;
+  announceVariantChange: ReturnType<typeof vi.fn>;
 }
 
 interface MockedEventManager {
@@ -70,6 +71,7 @@ vi.mock('../pdpUI', () => ({
     updateProductImage = vi.fn();
     updateButtonProductData = vi.fn();
     updateAttributeButtonStates = vi.fn();
+    announceVariantChange = vi.fn();
   },
 }));
 
@@ -358,6 +360,37 @@ describe('PDPController Real Implementation Tests', () => {
       // Check if Small + Blue (out of stock) returns false
       const isAvailable = availabilityChecker('Color', 'Blue');
       expect(typeof isAvailable).toBe('boolean');
+    });
+  });
+
+  describe('Screen reader announcements', () => {
+    it('does not announce on initial render', () => {
+      controller = new PDPController(mockProductData);
+      expect(
+        internals(controller).uiManager.announceVariantChange
+      ).not.toHaveBeenCalled();
+    });
+
+    it('announces once after a user-driven variation selection', () => {
+      controller = new PDPController(mockProductData);
+      const uiManager = internals(controller).uiManager;
+
+      internals(controller).eventManager.handlers?.onVariationSelection(
+        'var-2'
+      );
+
+      expect(uiManager.announceVariantChange).toHaveBeenCalledTimes(1);
+      expect(uiManager.announceVariantChange).toHaveBeenCalledWith(
+        expect.objectContaining({ price: 3000 })
+      );
+    });
+
+    it('does not announce on cart updates', () => {
+      controller = new PDPController(mockProductData);
+      internals(controller).eventManager.handlers?.onCartUpdate();
+      expect(
+        internals(controller).uiManager.announceVariantChange
+      ).not.toHaveBeenCalled();
     });
   });
 
