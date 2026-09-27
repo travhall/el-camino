@@ -14,9 +14,23 @@ interface Props {
   activeCategory?: string;
   /** Page-specific meta description; falls back to the site default */
   description?: string;
+  /** Overrides og:title / twitter:title; falls back to `title` */
+  socialTitle?: string;
+  /** Absolute URL for og:image / twitter:image:src; falls back to the site default */
+  image?: string;
+  /** og:type value; defaults to 'website' */
+  ogType?: 'website' | 'product' | 'article';
 }
 
-const { title, structuredData, activeCategory, description } = Astro.props;
+const {
+  title,
+  structuredData,
+  activeCategory,
+  description,
+  socialTitle,
+  image,
+  ogType,
+} = Astro.props;
 
 // Hydrate the per-request site context. Footer/Nav read from this same
 // memoized bundle, so the 6 blob reads happen in one parallel batch instead
@@ -32,6 +46,9 @@ const orgSchema = siteCtx.structured;
     structuredData={structuredData}
     orgSchema={orgSchema}
     description={description}
+    socialTitle={socialTitle}
+    image={image}
+    ogType={ogType}
   />
   <slot name="head" />
 

@@ -12,6 +12,12 @@ interface Props {
   orgSchema: object;
   /** Page-specific meta description; falls back to the site default */
   description?: string;
+  /** Overrides the og:title / twitter:title text; falls back to `title` */
+  socialTitle?: string;
+  /** Absolute URL for og:image / twitter:image:src; falls back to the site default */
+  image?: string;
+  /** og:type value; defaults to 'website' */
+  ogType?: 'website' | 'product' | 'article';
 }
 
 const {
@@ -19,6 +25,9 @@ const {
   structuredData,
   orgSchema,
   description: descriptionProp,
+  socialTitle: socialTitleProp,
+  image: imageProp,
+  ogType = 'website',
 } = Astro.props;
 
 const nonce = Astro.locals.nonce;
@@ -28,6 +37,8 @@ const seoData = {
 };
 
 const description = descriptionProp ?? seoData.defaultDescription;
+const socialTitle = socialTitleProp ?? title;
+const image = imageProp ?? seoData.defaultImage;
 ---
 
 <meta charset="UTF-8" />
@@ -201,17 +212,17 @@ const description = descriptionProp ?? seoData.defaultDescription;
 <link rel="dns-prefetch" href="https://api.elcaminoskateshop.com" />
 
 <link rel="canonical" href={Astro.url.toString()} />
-<meta property="og:type" content="website" />
+<meta property="og:type" content={ogType} />
 <meta name="apple-mobile-web-app-title" content={siteConfig.name} />
 <meta property="og:site_name" content={siteConfig.name} />
 <title>{title}</title>
-<meta property="og:title" content={title} />
-<meta name="twitter:title" content={title} />
+<meta property="og:title" content={socialTitle} />
+<meta name="twitter:title" content={socialTitle} />
 <meta property="og:image:alt" content={description} />
 <meta name="description" property="og:description" content={description} />
 <meta name="twitter:description" content={description} />
-<meta property="og:image" content={seoData.defaultImage} />
-<meta name="twitter:image:src" content={seoData.defaultImage} />
+<meta property="og:image" content={image} />
+<meta name="twitter:image:src" content={image} />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="author" content={siteConfig.name} />
 <meta name="copyright" content="ISC" />

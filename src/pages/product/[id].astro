@@ -419,14 +419,15 @@ Astro.response.headers.set(
   title={fullTitle}
   structuredData={productSchema}
   activeCategory={activeCategory}
+  description={ogData.description}
+  socialTitle={ogData.title}
+  image={ogData.image}
+  ogType="product"
 >
-  <!-- Open Graph Tags -->
-  <meta property="og:title" content={ogData.title} slot="head" />
-  <meta property="og:description" content={ogData.description} slot="head" />
-  <meta property="og:image" content={ogData.image} slot="head" />
+  <!-- Generic og:/twitter: tags (title, description, image, type, site_name,
+       card) come from BaseHead via the Layout props above. Only tags with no
+       BaseHead equivalent are emitted here. -->
   <meta property="og:url" content={ogData.url} slot="head" />
-  <meta property="og:type" content={ogData.type} slot="head" />
-  <meta property="og:site_name" content={ogData.siteName} slot="head" />
   <meta property="product:price:amount" content={ogData.price} slot="head" />
   <meta
     property="product:price:currency"
@@ -439,14 +440,7 @@ Astro.response.headers.set(
     slot="head"
   />
 
-  <!-- Twitter Card Tags -->
-  <meta name="twitter:card" content={twitterData.card} slot="head" />
-  <meta name="twitter:title" content={twitterData.title} slot="head" />
-  <meta
-    name="twitter:description"
-    content={twitterData.description}
-    slot="head"
-  />
+  <!-- Twitter Card Tags (unique only) -->
   <meta name="twitter:image" content={twitterData.image} slot="head" />
 
   <!-- Preload LCP image for faster loading -->
