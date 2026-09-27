@@ -499,54 +499,33 @@ export class PDPUIManager {
         const isAvailable = canAddToCartFn(attributeType, value);
         const isSelected = selectedAttributes[attributeType] === value;
 
-        // Update availability styling — keep OOS buttons clickable so users can
-        // select them and see the back-in-stock form (mirrors QuickView behavior)
+        // Base sizing/shape + state classes rebuilt as one string, mirroring the
+        // SSR branch in src/pages/product/[id].astro exactly — OOS now wins the
+        // cascade outright (via `!important`) instead of losing to the
+        // selected-surface classes, and a ring stands in for the fill when both
+        // selected and OOS so the low-contrast filled-OOS state never renders.
+        const base =
+          'min-w-11 min-h-11 px-3 py-2 rounded-sm attribute-button cursor-pointer relative inline-flex items-center justify-center border';
+        const stateClasses = !isAvailable
+          ? 'border-(--ui-input-border) bg-(--ui-input-surface) text-(--content-meta)! line-through'
+          : isSelected
+            ? 'border-(--ui-variant-selected-border) bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text)'
+            : 'border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text)';
+        const ringClasses =
+          !isAvailable && isSelected
+            ? 'ring-2 ring-offset-1 ring-(--ui-variant-selected-border)'
+            : '';
+
+        btn.className = [base, stateClasses, ringClasses]
+          .filter(Boolean)
+          .join(' ');
+
         if (!isAvailable) {
-          btn.classList.add(
-            'text-(--content-meta)',
-            'line-through',
-            'opacity-60'
-          );
-          btn.classList.remove('opacity-100');
           btn.setAttribute('aria-label', `${value} — out of stock`);
         } else {
-          btn.classList.remove(
-            'text-(--content-meta)',
-            'line-through',
-            'opacity-60'
-          );
-          // Remove aria-label on available buttons — aria-pressed conveys selection state,
-          // and WCAG 2.5.3 requires the accessible name to match visible text.
           btn.removeAttribute('aria-label');
         }
-
-        // Update selected state — use dedicated variant-selected token
-        // (visually distinct from the primary CTA button)
-        if (isSelected) {
-          btn.classList.remove(
-            'bg-(--ui-input-surface)',
-            'text-(--ui-input-text)',
-            'border-(--ui-input-border)'
-          );
-          btn.classList.add(
-            'bg-(--ui-variant-selected-surface)',
-            'text-(--ui-variant-selected-text)',
-            'border-(--ui-variant-selected-border)'
-          );
-          btn.setAttribute('aria-pressed', 'true');
-        } else {
-          btn.classList.remove(
-            'bg-(--ui-variant-selected-surface)',
-            'text-(--ui-variant-selected-text)',
-            'border-(--ui-variant-selected-border)'
-          );
-          btn.classList.add(
-            'bg-(--ui-input-surface)',
-            'text-(--ui-input-text)',
-            'border-(--ui-input-border)'
-          );
-          btn.setAttribute('aria-pressed', 'false');
-        }
+        btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
       });
     });
   }
