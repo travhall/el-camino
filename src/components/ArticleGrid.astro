@@ -8,7 +8,7 @@ import type { WordPressPost } from '@/lib/wordpress/types';
 interface Props {
   posts: WordPressPost[];
   error?: string | null;
-  isLoading?: boolean;
+  isLoading?: boolean; // explicit only — never inferred; SSR has no async resolution
   showSidebar?: boolean; // Legacy support for home page
   filterable?: boolean; // Enables filterable news page layout
   view?: 'grid' | 'list'; // Controls grid vs list view for filterable mode
@@ -17,7 +17,7 @@ interface Props {
 const {
   posts,
   error = null,
-  isLoading = !posts.length,
+  isLoading = false,
   showSidebar = false,
   filterable = false,
   view = 'grid',
@@ -163,11 +163,30 @@ const nonce = Astro.locals.nonce;
           </>
         )}
       </>
-    ) : (
-      <p class="text-(--content-body) text-center py-12 col-span-full">
-        No posts found.
-      </p>
-    )
+    ) : !error ? (
+      <div class="text-center py-16 col-span-full">
+        <div class="text-6xl mb-4 opacity-20" aria-hidden="true">
+          🛹
+        </div>
+        <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
+          {showSidebar ? 'Nothing new on the wall yet' : 'No posts found'}
+        </h2>
+        {showSidebar && (
+          <>
+            <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
+              Fresh news and shop updates land here. In the meantime, the shop's
+              open.
+            </p>
+            <a
+              href="/shop/all"
+              class="font-sans font-semibold text-sm text-center lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300"
+            >
+              Shop All
+            </a>
+          </>
+        )}
+      </div>
+    ) : null
   }
 </div>
 
