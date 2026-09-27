@@ -16,6 +16,105 @@ export async function clearCart(page: Page) {
 }
 
 /**
+ * Minimal cart line item for seeding `localStorage['cart']`.
+ * Mirrors `CartItem` in src/lib/cart/types.ts (price is in dollars).
+ */
+export interface SeedItem {
+  id: string;
+  catalogObjectId: string;
+  variationId: string;
+  title: string;
+  price: number;
+  quantity: number;
+  variationName?: string;
+}
+
+/**
+ * Seed the cart page's localStorage state without touching the catalog.
+ * Must run on a same-origin page, so it visits "/" first, writes the cart,
+ * and clears any stored fulfillment form from a previous test.
+ */
+export async function seedCart(page: Page, items: SeedItem[]) {
+  await page.goto("/");
+  await page.evaluate((cartItems) => {
+    sessionStorage.clear();
+    localStorage.clear();
+    localStorage.setItem("cart", JSON.stringify(cartItems));
+  }, items);
+}
+
+export interface MockCartApiOptions {
+  /** Stock per variationId; `false` makes the endpoint return a 500 */
+  inventory?: Record<string, number> | false;
+  /** Overrides merged over the default calculate-cart response */
+  calculate?: Record<string, unknown>;
+  /** Response for create-checkout */
+  checkout?: { status?: number; body: Record<string, unknown> };
+}
+
+/**
+ * Mock every network call the cart page makes so it runs with no
+ * Square/WordPress credentials: /api/sale-info, /api/cart-inventory,
+ * /api/calculate-cart, /api/create-checkout, plus the third-party ZIP
+ * autofill lookup used by the shipping form.
+ */
+export async function mockCartApis(page: Page, opts: MockCartApiOptions = {}) {
+  const json = (body: unknown, status = 200) => ({
+    status,
+    contentType: "application/json",
+    body: JSON.stringify(body),
+  });
+
+  await page.route("**/api/sale-info", (route) =>
+    route.fulfill(json({ success: true, saleInfo: {} }))
+  );
+
+  await page.route("**/api/cart-inventory", (route) => {
+    if (opts.inventory === false) {
+      return route.fulfill(json({ success: false, error: "boom" }, 500));
+    }
+    const { variationIds = [] } = route.request().postDataJSON() as {
+      variationIds?: string[];
+    };
+    const inventory: Record<string, number> = {};
+    for (const id of variationIds) inventory[id] = opts.inventory?.[id] ?? 10;
+    return route.fulfill(json({ success: true, inventory }));
+  });
+
+  await page.route("**/api/calculate-cart", (route) => {
+    const { items = [] } = route.request().postDataJSON() as {
+      items?: Array<{ price: number; quantity: number }>;
+    };
+    const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    return route.fulfill(
+      json({
+        success: true,
+        shipping: 0,
+        tax: 0,
+        total: subtotal,
+        ...opts.calculate,
+      })
+    );
+  });
+
+  await page.route("**/api/create-checkout", (route) => {
+    const checkout = opts.checkout ?? {
+      body: {
+        success: true,
+        checkoutUrl: "http://localhost:4321/",
+        orderId: "e2e-order",
+      },
+    };
+    return route.fulfill(json(checkout.body, checkout.status ?? 200));
+  });
+
+  // Optional ZIP → city/state autofill hits a public third-party API
+  await page.route("https://api.zippopotam.us/**", (route) =>
+    route.fulfill({ status: 404, body: "" })
+  );
+}
+
+/**
  * Add first available product to cart
  * @returns Product name that was added
  */

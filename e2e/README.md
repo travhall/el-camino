@@ -124,6 +124,23 @@ Tests included:
 - ✅ Continue shopping from cart
 - ✅ Open cart from header button
 
+### Money-Path Tests (money-path.spec.ts)
+
+**Priority:** CRITICAL - Cart and checkout handoff, no catalog required
+
+Seeds `localStorage['cart']` and mocks `/api/cart-inventory`,
+`/api/calculate-cart`, `/api/create-checkout` (plus `/api/sale-info` and the
+ZIP autofill lookup), so it runs with no Square/WordPress credentials. It is
+intentionally not tagged `@needs-catalog`, so the CI PR gate
+(`pnpm test:e2e:gate`) runs it. Helpers: `seedCart` and `mockCartApis` in
+`helpers/test-helpers.ts`. Desktop only (mobile projects are skipped).
+
+Covers: seeded cart render, empty state, quantity edit/remove, inventory cap,
+inventory-endpoint failure fallback, pickup and shipping checkout requests,
+checkout server error, and server-adjusted cart (stock message).
+
+It does not replace a real Square-sandbox check.
+
 ### Future Test Suites (To Add)
 
 **checkout-flow.spec.ts** - Checkout process with Square
