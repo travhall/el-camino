@@ -402,7 +402,7 @@ export class PDPUIManager {
           btn.classList.remove(
             'bg-(--ui-input-surface)',
             'text-(--ui-input-text)',
-            'border-(--ui-input-border)/50'
+            'border-(--ui-input-border)'
           );
           btn.classList.add(
             'bg-(--ui-variant-selected-surface)',
@@ -419,7 +419,7 @@ export class PDPUIManager {
           btn.classList.add(
             'bg-(--ui-input-surface)',
             'text-(--ui-input-text)',
-            'border-(--ui-input-border)/50'
+            'border-(--ui-input-border)'
           );
           btn.setAttribute('aria-pressed', 'false');
         }
@@ -444,7 +444,7 @@ export class PDPUIManager {
         btn.classList.remove(
           'bg-(--ui-input-surface)',
           'text-(--ui-input-text)',
-          'border-(--ui-input-border)/50'
+          'border-(--ui-input-border)'
         );
       } else {
         btn.classList.remove(
@@ -455,7 +455,7 @@ export class PDPUIManager {
         btn.classList.add(
           'bg-(--ui-input-surface)',
           'text-(--ui-input-text)',
-          'border-(--ui-input-border)/50'
+          'border-(--ui-input-border)'
         );
       }
     });

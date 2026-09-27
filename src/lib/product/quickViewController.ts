@@ -331,7 +331,7 @@ export class QuickViewController {
             button.dataset.attributeValue = value;
             button.textContent = value;
             button.className =
-              'px-2.5 py-1.5 border rounded-sm text-sm cursor-pointer bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50';
+              'px-2.5 py-1.5 border rounded-sm text-sm cursor-pointer bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)';
 
             button.addEventListener('click', () => {
               this.handleAttributeSelection(attributeType, value);
@@ -686,7 +686,7 @@ export class QuickViewController {
               'px-2.5 py-1.5 border rounded-sm text-sm cursor-pointer bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)';
           } else {
             button.className =
-              'px-2.5 py-1.5 border rounded-sm text-sm cursor-pointer bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)/50';
+              'px-2.5 py-1.5 border rounded-sm text-sm cursor-pointer bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)';
           }
 
           // Apply opacity for availability (but keep clickable)
