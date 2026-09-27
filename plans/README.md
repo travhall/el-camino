@@ -112,6 +112,11 @@ e2e job green in ~2m15s. `continue-on-error` removed from
 `.github/workflows/ci.yml`. No real Square credentials were added anywhere;
 CI still uses stubs only. Branch pushed and PR opened with the operator's
 explicit go-ahead (plan's default is no push/PR without instruction).
+Extended again on 2026-09-27 (commit `45060e2`) with a `/impeccable audit`
+of the product detail page, discussed live with the maintainer and refined
+per their feedback before planning — see "PDP audit findings" below for
+which raw findings were corrected, dropped, or turned into spikes rather
+than direct-implementation plans (Plans 203-208).
 Execute in the order below unless dependencies say otherwise. Each executor:
 read the plan fully before starting, honor its STOP conditions, and update
 your row when done.
@@ -325,6 +330,12 @@ your row when done.
 | 200  | QuickView announces variant changes to screen readers | P3 | S | LOW | 193 (merged) | bug (a11y) | DONE, branch `advisor/200-quickview-announce`, merged to local master as `ef5422f` (not pushed). Advisor review: mirrors the PDP's `announceSelection`; not called from open/init/cart-update; gates pass. Manual VoiceOver check still worthwhile. |
 | 201  | Cart page treats real stock of 0 as 999 (`|| 999` should be `?? 999`); out-of-stock items look purchasable | P2 | S | LOW-MED | 195 (merged) | bug | DONE, branch `advisor/201-cart-zero-stock`, merged to local master as `309d0a9` (not pushed). Three `|| 999` to `?? 999` in `cart.astro`; 2 e2e tests (out-of-stock flag + disabled increment; cap guard) — the out-of-stock one failed before the fix (`money-path.spec.ts:165`, `toContainText('Out of stock')`). Executor: 22/22 money-path; advisor re-ran the 4 inventory tests x2 on port 4322: 8/8. **Open product question**: `#checkout-button` stays enabled with an out-of-stock item and hands off to checkout (server reconciles); whether to block it was left to the maintainer. |
 | 202  | Restore the product-grid entrance animation on client-side navigation only (plan 177 made initial cards server-visible, which silently no-op'd `initializePageLoadAnimations`) | P3 | M | MED | — | direction | DONE (code), branch `advisor/202-grid-entrance-on-navigation` (`29310cd`), merged to local master as `44d7bfa` (not pushed) at the maintainer's direction; the 8-point operator visual check (esp. the visible-then-hidden flash when arriving from a non-grid page) was not reported back to the advisor before the merge, so it remains an open manual check (no Square data in worktrees). Advisor review: gates pass (0 type errors, lint ok, 1182 tests); merges cleanly with 197. Signal chosen after measuring on a real router: `document.documentElement.dataset.astroTransition !== undefined` (readyState was `complete` on every scenario, so it can't distinguish cold load from navigation; `astroTransition` is unset on cold load/reload and `forward`/`back` on link clicks and history nav). Safety nets: try/catch restore, `entranceDelay + 1500ms` force-reveal (tracked in `animationTimeouts`), reduced-motion skip; SSR HTML untouched. Known minor gap: if arming threw mid-loop, `armed` would be empty so the catch restores nothing (loop is plain classList/style calls). Open risk: a visible-then-hidden flash when arriving from a page that doesn't load `ProductGrid` — operator check step 1. (The temporary `preview/197-202` branch has been deleted.) |
+| 203  | Make PDP variant-chip availability combination-aware on first render (SSR disagrees with client-side `pdpController.ts`, which is already correct) | P1 | S | LOW | — | bug | TODO |
+| 204  | Spike: mobile PDP purchase-path options for multi-attribute products (Add to Cart sits at/below the fold; maintainer already rejected a persistent sticky bar) | P2 | S (spike) | LOW | — | direction | TODO |
+| 205  | Spike: PDP variant-chip touch-target redesign + selected-out-of-stock contrast (chips ~38px, several adjacent controls ~20px, below 44px guidance; selected-OOS chip measured 3.87:1) | P2 | S (spike) | LOW | 204 (soft) | direction | TODO |
+| 206  | Add screen-reader labels distinguishing regular vs. sale price (non-visual only, no layout/density change) | P2 | S | LOW | — | bug (a11y) | TODO |
+| 207  | Detect color for single-token variation names in `variationParser.ts` (fixes generic "Option" label on e.g. Lil Jawns' color picker; existing `detectAttributeType` heuristic already exists but is only called for 2-part comma names) | P2 | S | LOW | — | tech-debt | TODO |
+| 208  | Fix h1→h3 heading-level skip in the PDP's unstructured-variation fallback block (markup-only — confirmed no CSS depends on the `h3` tag specifically) | P3 | S | LOW | — | tech-debt (a11y) | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -334,6 +345,8 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 - 002 and 014 both touch `src/pages/admin/orders/*.astro` — no hard ordering requirement, but if both are in flight in the same session, land 002 first so 014's investigation reads the post-singleton code.
 - 009 is a prerequisite *investigation* for a future (not-yet-written) QuickView/PDP consolidation plan — it does not by itself reduce the duplication, only characterizes it safely.
 - 016 supersedes 013 — same goal (populate sitemap customPages), different approach (alias-free fetchers using the `square-legacy` SDK and a plain WordPress `fetch()` directly, instead of importing `src/lib/square/client.ts`/`categories.ts` into `astro.config.mjs`). Execute 016, not 013.
+- 205 has a *soft* dependency on 204: if 204's Option A (collapsed selector/bottom-sheet) is the one chosen, 205's chip redesign should also cover the sheet's internal chips and its trigger row, not just the current inline chip row. 205 can still run first — its plan file notes this in Maintenance.
+- 203 and 207 both touch `src/lib/square/variationParser.ts` but in disjoint functions (203 adds `isAttributeValueAvailable`; 207 changes one branch of `parseVariationName`) — no ordering requirement, but land one before starting the other's worktree to avoid a manual merge on the same file.
 - 017 and 018 both touch root config (`vitest.config.ts` and `package.json`/`pnpm-workspace.yaml` respectively) but not the same files — no ordering requirement between them.
 - 021 and 022 both touch `src/pages/api/calculate-cart.ts`, in different non-adjacent regions (021: the `orders.calculate` call; 022: the `lineItems`/subtotal pricing above it). No hard dependency, but if both are executed as separate worktrees, expect a manual merge step when landing the second one — the diffs don't overlap in content, only in file.
 - 024 touches `src/lib/square/client.ts`/`inventoryCore.ts`/`apiUtils.ts`, disjoint from 021's files (`create-checkout.ts`/`calculate-cart.ts`) — no ordering requirement, both reuse the same already-existing `apiRetryClient` pattern from `categoryUtils.ts` independently.
@@ -707,6 +720,30 @@ Audit claims corrected (do not re-audit):
 - The PDF says the homepage error banner covers the failure mode; it does not (WordPress helpers swallow errors) — this is exactly Plan 191.
 
 Not planned: the PDF's "keep doing what's working" recommendation (token system, nav/modal a11y, CLS/LCP work) — no action; the plans above are scoped not to touch those patterns.
+
+## PDP audit findings (2026-09-27, commit `45060e2`) — Plans 203-208
+
+Source: `/impeccable audit` of the product detail page (5 live products
+checked in-browser: apparel with size+color variants, a single-attribute
+deck, a gift card, and a single-color accessory), followed by a live
+back-and-forth with the maintainer that corrected several of the raw
+findings before any plan was written. The corrections matter more than the
+findings themselves — read them before touching this area again.
+
+**Corrected during discussion (raw finding was wrong or overstated):**
+- **"Struck-through chips are a dead end"** — wrong. `pdpUI.ts` deliberately keeps out-of-stock chips clickable (comment: "keep OOS buttons clickable so users can select them and see the back-in-stock form") and `BackInStock.astro` renders when the selection is OOS. This is standard multi-axis variant UX, not a bug. Retracted; not planned.
+- **"Generic 'Option' label is the single-value case"** — wrong guess by the maintainer, corrected by reading `variationParser.ts`: it's actually any *single-token, comma-free* variation name (regardless of how many values exist), which skips the `detectAttributeType` heuristic entirely because that heuristic is only invoked in the 2-part comma-parsing branch. This became Plan 207 — the real, narrower fix.
+- **A proposed mobile-CTA fix set (scroll-past-reveal sticky bar, generic compression, anchor jump)** — the maintainer had already tried and rejected a sticky bar (blocked content, "almost always visible"); none of the three alternatives offered were judged different enough to be worth building outright. Turned into Plan 204, a spike producing genuinely distinct options (a non-persistent collapsed-selector sheet, a scoped compression pass, and a reveal-only-after-scroll-past bar) for the maintainer to choose from, rather than a pre-committed build.
+
+**Verified, not corrected, planned directly:**
+- **Selected-out-of-stock chip contrast (3.87:1)** and **sub-44px touch targets** — measured live (DevTools computed color + WCAG formula; bounding-rect dimensions). The maintainer wants to see redesign options before any code lands for either — bundled into Plan 205 as a spike rather than a direct fix.
+- **Missing screen-reader distinction between regular and sale price** — confirmed no `aria-label` on either price element; maintainer confirmed this should be fixed as long as it adds zero visual density (it does — `aria-label` only). Plan 206.
+- **h1→h3 heading skip in the rare unstructured-variation fallback** — confirmed via `global.css` that no CSS selects `h3` by bare tag name outside a shared `h1..h6` rule, so the fix is markup-only as the maintainer suspected. Plan 208.
+- **SSR variant-chip availability is not combination-aware, unlike the client-side `pdpController.ts`** — not part of the original discussion (found while re-reading the code to answer the maintainer's Item 1 question), but a real, evidence-backed bug: `[id].astro`'s inline availability check ignores every attribute except the one being evaluated, while `pdpController.ts:286-309` correctly scopes to the full current selection. Plan 203, P1 — this is the highest-confidence functional bug in the batch.
+
+**Dropped, no plan:**
+- **Gift card page copy/information gaps** — maintainer confirmed the current content is placeholder test data, not representative of production. Not planned.
+- **White image frames on a dark page (skateboard decks, rails)** — photography/content variance across vendors, not a code defect; no action.
 
 ## Findings considered and rejected
 
