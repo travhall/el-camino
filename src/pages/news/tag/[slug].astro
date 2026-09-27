@@ -2,6 +2,7 @@
 // src/pages/news/tag/[slug].astro
 import Layout from "@/layouts/Layout.astro";
 import ArticleGrid from "@/components/ArticleGrid.astro";
+import EmptyState from "@/components/EmptyState.astro";
 import NewsPaginationControls from "@/components/NewsPaginationControls.astro";
 import { getPostsByTag } from "@/lib/wordpress/api";
 
@@ -135,21 +136,13 @@ const description = `Browse ${actualPostCount} articles tagged with ${tagName} f
           )}
         </>
       ) : (
-        <div class="text-center py-16">
-          <div class="text-6xl mb-4 opacity-20">🏷️</div>
-          <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
-            No articles found for #{tagName}
-          </h2>
-          <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
-            This tag doesn't have any articles yet. Check back later!
-          </p>
-          <a
-            href="/news"
-            class="font-sans font-semibold text-sm text-center py-2 px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all"
-          >
-            Browse All Articles
-          </a>
-        </div>
+        <EmptyState
+          emoji="🏷️"
+          heading={`No articles found for #${tagName}`}
+          body="This tag doesn't have any articles yet. Check back later!"
+          ctaLabel="Browse All Articles"
+          ctaHref="/news"
+        />
       )}
     </div>
   </div>

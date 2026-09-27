@@ -2,6 +2,7 @@
 // src/pages/news/index.astro - Enhanced with pagination support
 import Layout from "@/layouts/Layout.astro";
 import ArticleGrid from "@/components/ArticleGrid.astro";
+import EmptyState from "@/components/EmptyState.astro";
 import NewsSearchSort from "@/components/NewsSearchSort.astro";
 import NewsFilters from "@/components/NewsFilters.astro";
 import NewsPaginationControls from "@/components/NewsPaginationControls.astro";
@@ -295,27 +296,21 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
               baseURL="/news"
             />
           ) : (
-            <div class="text-center py-16">
-              <div class="text-6xl mb-4 opacity-20">📰</div>
-              <h2 class="text-2xl font-display font-bold text-(--content-heading) mb-2">
-                {hasFilters
+            <EmptyState
+              emoji="📰"
+              heading={
+                hasFilters
                   ? "No articles match your criteria"
-                  : "No articles found"}
-              </h2>
-              <p class="text-(--content-meta) mb-6 max-w-md mx-auto">
-                {hasFilters
+                  : "No articles found"
+              }
+              body={
+                hasFilters
                   ? "Try adjusting your search, filters, or browse all articles."
-                  : "Check back soon for new articles!"}
-              </p>
-              {hasFilters && (
-                <a
-                  href="/news"
-                  class="font-sans font-semibold text-sm text-center py-2 px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 transition-all"
-                >
-                  Clear All Filters
-                </a>
-              )}
-            </div>
+                  : "Check back soon for new articles!"
+              }
+              ctaLabel={hasFilters ? "Clear All Filters" : undefined}
+              ctaHref={hasFilters ? "/news" : undefined}
+            />
           )
         }
       </div>
