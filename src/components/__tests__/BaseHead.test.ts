@@ -40,3 +40,54 @@ describe('BaseHead description', () => {
     expect(count(html, /name="description"/g)).toBe(1);
   });
 });
+
+describe('BaseHead social tags', () => {
+  const tag = (html: string, attr: string, name: string) =>
+    html.match(new RegExp(`<meta[^>]*${attr}="${name}"[^>]*>`, 'g')) ?? [];
+  const content = (metaTag: string | undefined) =>
+    metaTag?.match(/content="([^"]*)"/)?.[1];
+
+  it('defaults to a single website og:type and the site default image', async () => {
+    const html = await render();
+    const ogType = tag(html, 'property', 'og:type');
+    const ogImage = tag(html, 'property', 'og:image');
+    expect(ogType).toHaveLength(1);
+    expect(content(ogType[0])).toBe('website');
+    expect(ogImage).toHaveLength(1);
+    expect(content(ogImage[0])).toBe(siteConfig.seo.defaultImage);
+    expect(count(html, /<title>T<\/title>/g)).toBe(1);
+    expect(content(tag(html, 'property', 'og:title')[0])).toBe('T');
+  });
+
+  it('uses per-page ogType, image and socialTitle without duplicating tags', async () => {
+    const html = await render({
+      ogType: 'product',
+      image: 'https://x/y.jpg',
+      socialTitle: 'Brand Thing',
+      description: 'D',
+    });
+    for (const [attr, name] of [
+      ['property', 'og:type'],
+      ['property', 'og:image'],
+      ['property', 'og:title'],
+      ['property', 'og:site_name'],
+      ['name', 'twitter:title'],
+      ['name', 'twitter:card'],
+      ['name', 'twitter:description'],
+      ['name', 'twitter:image:src'],
+    ]) {
+      expect(tag(html, attr, name), name).toHaveLength(1);
+    }
+    expect(content(tag(html, 'property', 'og:type')[0])).toBe('product');
+    expect(content(tag(html, 'property', 'og:image')[0])).toBe(
+      'https://x/y.jpg'
+    );
+    expect(content(tag(html, 'name', 'twitter:image:src')[0])).toBe(
+      'https://x/y.jpg'
+    );
+    expect(content(tag(html, 'property', 'og:title')[0])).toBe('Brand Thing');
+    expect(content(tag(html, 'name', 'twitter:title')[0])).toBe('Brand Thing');
+    expect(html).toContain('<title>T</title>');
+    expect(html).not.toContain(siteConfig.seo.defaultImage);
+  });
+});
