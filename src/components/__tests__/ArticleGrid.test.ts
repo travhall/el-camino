@@ -38,6 +38,13 @@ describe('ArticleGrid', () => {
     expect(html).not.toContain('Loading article...');
   });
 
+  it('makes the empty state span the full grid width', async () => {
+    const html = await render({ posts: [], showSidebar: true });
+    expect(html).toMatch(
+      /<div class="[^"]*text-center[^"]*col-span-full[^"]*"/
+    );
+  });
+
   it('renders only the error banner when posts is empty and error is set', async () => {
     const html = await render({
       posts: [],
