@@ -12,9 +12,11 @@ interface Props {
   title: string;
   structuredData?: object;
   activeCategory?: string;
+  /** Page-specific meta description; falls back to the site default */
+  description?: string;
 }
 
-const { title, structuredData, activeCategory } = Astro.props;
+const { title, structuredData, activeCategory, description } = Astro.props;
 
 // Hydrate the per-request site context. Footer/Nav read from this same
 // memoized bundle, so the 6 blob reads happen in one parallel batch instead
@@ -29,6 +31,7 @@ const orgSchema = siteCtx.structured;
     title={title}
     structuredData={structuredData}
     orgSchema={orgSchema}
+    description={description}
   />
   <slot name="head" />
 

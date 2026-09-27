@@ -10,15 +10,24 @@ interface Props {
   structuredData?: object;
   /** Org-level schema from getStructuredData() — caller's responsibility */
   orgSchema: object;
+  /** Page-specific meta description; falls back to the site default */
+  description?: string;
 }
 
-const { title, structuredData, orgSchema } = Astro.props;
+const {
+  title,
+  structuredData,
+  orgSchema,
+  description: descriptionProp,
+} = Astro.props;
 
 const nonce = Astro.locals.nonce;
 
 const seoData = {
   ...siteConfig.seo,
 };
+
+const description = descriptionProp ?? seoData.defaultDescription;
 ---
 
 <meta charset="UTF-8" />
@@ -198,13 +207,9 @@ const seoData = {
 <title>{title}</title>
 <meta property="og:title" content={title} />
 <meta name="twitter:title" content={title} />
-<meta property="og:image:alt" content={seoData.defaultDescription} />
-<meta
-  name="description"
-  property="og:description"
-  content={seoData.defaultDescription}
-/>
-<meta name="twitter:description" content={seoData.defaultDescription} />
+<meta property="og:image:alt" content={description} />
+<meta name="description" property="og:description" content={description} />
+<meta name="twitter:description" content={description} />
 <meta property="og:image" content={seoData.defaultImage} />
 <meta name="twitter:image:src" content={seoData.defaultImage} />
 <meta name="twitter:card" content="summary_large_image" />
