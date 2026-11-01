@@ -182,4 +182,65 @@ describe('PDPEventManager', () => {
       expect(cart.addItem).toHaveBeenCalledTimes(1);
     });
   });
+  describe('cleanup() detaches every listener', () => {
+    it('attribute and fallback variation buttons stop calling back after cleanup()', () => {
+      manager.setupAllEventHandlers();
+      manager.cleanup();
+
+      document.querySelector<HTMLButtonElement>('.attribute-button')!.click();
+      document.querySelector<HTMLButtonElement>('[data-variation-id]')!.click();
+
+      expect(onAttributeSelection).not.toHaveBeenCalled();
+      expect(onVariationSelection).not.toHaveBeenCalled();
+    });
+
+    it('window cartUpdated stops calling onCartUpdate after cleanup()', () => {
+      manager.setupAllEventHandlers();
+      window.dispatchEvent(new CustomEvent('cartUpdated'));
+      expect(onCartUpdate).toHaveBeenCalledTimes(1);
+
+      manager.cleanup();
+      window.dispatchEvent(new CustomEvent('cartUpdated'));
+      expect(onCartUpdate).toHaveBeenCalledTimes(1);
+    });
+
+    it('add-to-cart click does nothing after cleanup()', async () => {
+      manager.setupAllEventHandlers();
+      manager.cleanup();
+      document.getElementById('add-to-cart-button')!.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(cart.addItem).not.toHaveBeenCalled();
+    });
+
+    it('a stale manager does not fire alongside its replacement', () => {
+      // Mirrors the double-init bug: a second manager is set up on the same
+      // DOM after the first has been cleaned up. One click => one callback.
+      manager.setupAllEventHandlers();
+      manager.cleanup();
+
+      const replacementSelection = vi.fn();
+      const replacement = new PDPEventManager(uiManager, productData(), {
+        onAttributeSelection: replacementSelection,
+        onVariationSelection,
+        onCartUpdate,
+      });
+      replacement.setupAllEventHandlers();
+
+      document.querySelector<HTMLButtonElement>('.attribute-button')!.click();
+
+      expect(onAttributeSelection).not.toHaveBeenCalled();
+      expect(replacementSelection).toHaveBeenCalledTimes(1);
+    });
+
+    it('can be set up again after cleanup()', () => {
+      manager.setupAllEventHandlers();
+      manager.cleanup();
+      manager.setupAllEventHandlers();
+
+      document.querySelector<HTMLButtonElement>('.attribute-button')!.click();
+
+      expect(onAttributeSelection).toHaveBeenCalledWith('color', 'red');
+    });
+  });
 });

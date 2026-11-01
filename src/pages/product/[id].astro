@@ -1251,7 +1251,16 @@ Astro.response.headers.set(
     const variationDataElement = document.getElementById('variation-data');
     const isProductPage = variationDataElement !== null;
 
+    // initializePage runs twice on a fresh load (once directly, once on
+    // astro:page-load, which fires on initial load when ClientRouter is on).
+    // Mark the DOM it initialized so the second call is a no-op instead of
+    // creating a second controller with its own handlers. A Client Router
+    // navigation swaps in new DOM, which carries no flag, so it still inits.
+    if (variationDataElement?.dataset.pdpInitialized === 'true') return;
+
     if (isProductPage) {
+      variationDataElement.dataset.pdpInitialized = 'true';
+
       // Track recently viewed product
       try {
         const productButton = document.getElementById('add-to-cart-button');
