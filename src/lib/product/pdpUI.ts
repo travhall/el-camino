@@ -25,6 +25,12 @@ export interface ElementIds {
   cartQuantity?: string;
   inventoryStatus?: string;
   liveStatus?: string;
+  /**
+   * Wrapper around the whole quantity block, hidden while sold out. Defaults
+   * to 'quantity-section'; pass null to leave it alone (QuickView manages its
+   * own quantity section, and this id may belong to a PDP behind the modal).
+   */
+  quantitySection?: string | null;
 }
 
 const ANNOUNCE_DEBOUNCE_MS = 250;
@@ -113,6 +119,7 @@ export class PDPUIManager {
     cartQuantity?: HTMLElement;
     inventoryStatus?: HTMLElement;
     liveStatus?: HTMLElement;
+    quantitySection?: HTMLElement;
   } = {};
 
   private announceTimer?: ReturnType<typeof setTimeout>;
@@ -140,6 +147,10 @@ export class PDPUIManager {
       cartQuantity: customIds?.cartQuantity || 'cart-quantity',
       inventoryStatus: customIds?.inventoryStatus || 'inventory-status',
       liveStatus: customIds?.liveStatus || 'pdp-live-status',
+      quantitySection:
+        customIds?.quantitySection === undefined
+          ? 'quantity-section'
+          : customIds.quantitySection,
     };
 
     const productImage = document.getElementById(
@@ -171,6 +182,9 @@ export class PDPUIManager {
       inventoryStatus:
         document.getElementById(ids.inventoryStatus) || undefined,
       liveStatus: document.getElementById(ids.liveStatus) || undefined,
+      quantitySection: ids.quantitySection
+        ? document.getElementById(ids.quantitySection) || undefined
+        : undefined,
     };
   }
 
@@ -240,12 +254,10 @@ export class PDPUIManager {
     // The whole quantity block (stepper + availability text) is always in the
     // DOM; show it unless the variation is sold out. Done before the input
     // guard so it also applies on pages without a stepper.
-    document
-      .getElementById('quantity-section')
-      ?.classList.toggle(
-        'hidden',
-        info.state === ProductAvailabilityState.OUT_OF_STOCK
-      );
+    this.elements.quantitySection?.classList.toggle(
+      'hidden',
+      info.state === ProductAvailabilityState.OUT_OF_STOCK
+    );
 
     const { quantityInput, decreaseButton, increaseButton } = this.elements;
     if (!quantityInput) return;

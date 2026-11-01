@@ -235,6 +235,43 @@ export function findVariationByAttributes(
 }
 
 /**
+ * The variation that selecting `value` for `attributeType` should land on.
+ *
+ * If the exact combination exists it is returned as-is, even when sold out:
+ * the shopper picked it deliberately, and the back-in-stock form needs that
+ * variation's real ID. If the combination doesn't exist (a sparse matrix,
+ * e.g. Black comes in S/M but not L), snap to the closest variation that has
+ * the requested value: keep as many of the other current selections as
+ * possible, then prefer in stock, then catalog order.
+ *
+ * Returns undefined only when no variation has `value` for `attributeType`.
+ *
+ * Shared by the PDP and QuickView controllers so both resolve identically.
+ */
+export function resolveVariationForSelection(
+  variations: ProductVariation[],
+  selectedAttributes: Record<string, string>,
+  attributeType: string,
+  value: string
+): ProductVariation | undefined {
+  const wanted = { ...selectedAttributes, [attributeType]: value };
+  const exact = findVariationByAttributes(variations, wanted);
+  if (exact) return exact;
+
+  const matchesInCommon = (v: ProductVariation): number =>
+    Object.entries(wanted).filter(([k, val]) => v.attributes?.[k] === val)
+      .length;
+
+  return variations
+    .filter((v) => v.attributes?.[attributeType] === value)
+    .sort(
+      (a, b) =>
+        matchesInCommon(b) - matchesInCommon(a) ||
+        Number(Boolean(b.inStock)) - Number(Boolean(a.inStock))
+    )[0];
+}
+
+/**
  * Get all possible values for a specific attribute type
  *
  * @param variations - Array of product variations

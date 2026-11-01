@@ -73,6 +73,27 @@ describe('PDPUIManager', () => {
       expect(section.classList.contains('hidden')).toBe(false);
     });
 
+    it('leaves #quantity-section alone when constructed with quantitySection: null (QuickView)', () => {
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        '<div id="quantity-section"></div>'
+      );
+      const quickViewManager = new PDPUIManager({ quantitySection: null });
+
+      quickViewManager.updateQuantityControls(
+        availabilityInfo({
+          state: ProductAvailabilityState.OUT_OF_STOCK,
+          remaining: 0,
+        })
+      );
+
+      expect(
+        document
+          .getElementById('quantity-section')!
+          .classList.contains('hidden')
+      ).toBe(false);
+    });
+
     it('keeps the section visible when everything available is already in the cart', () => {
       document.body.insertAdjacentHTML(
         'beforeend',

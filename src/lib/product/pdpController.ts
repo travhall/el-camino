@@ -1,6 +1,6 @@
 // src/lib/product/pdpController.ts
 import { cart } from '@/lib/cart';
-import { findVariationByAttributes } from '@/lib/square/variationParser';
+import { resolveVariationForSelection } from '@/lib/square/variationParser';
 import { createVariantSlug } from '@/lib/square/slugUtils';
 import {
   processClientError,
@@ -51,38 +51,16 @@ export class PDPController {
     this.updateAttributeButtonStates();
   }
 
-  /**
-   * The variation that selecting `value` for `attributeType` should land on.
-   *
-   * If the exact combination exists it is returned as-is, even when sold out:
-   * the shopper picked it deliberately and the back-in-stock form needs that
-   * variation's real ID. If the combination doesn't exist (a sparse matrix,
-   * e.g. Black comes in S/M but not L), snap to the closest variation that
-   * has the requested value: keep as many of the other current selections as
-   * possible, then prefer in stock, then catalog order.
-   */
   private resolveVariation(
     attributeType: string,
     value: string
   ): ProductVariation | undefined {
-    const wanted = { ...this.selectedAttributes, [attributeType]: value };
-    const exact = findVariationByAttributes(
+    return resolveVariationForSelection(
       this.productData.variations,
-      wanted
+      this.selectedAttributes,
+      attributeType,
+      value
     );
-    if (exact) return exact;
-
-    const matchesInCommon = (v: ProductVariation): number =>
-      Object.entries(wanted).filter(([k, val]) => v.attributes?.[k] === val)
-        .length;
-
-    return this.productData.variations
-      .filter((v) => v.attributes?.[attributeType] === value)
-      .sort(
-        (a, b) =>
-          matchesInCommon(b) - matchesInCommon(a) ||
-          Number(Boolean(b.inStock)) - Number(Boolean(a.inStock))
-      )[0];
   }
 
   private updateProductUI(variation: ProductVariation): void {
