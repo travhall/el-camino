@@ -4,7 +4,7 @@
  * so these tests exercise real DOM via happy-dom.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { PDPUIManager } from '../pdpUI';
+import { PDPUIManager, setHeroImage } from '../pdpUI';
 import {
   ProductAvailabilityState,
   type ProductAvailabilityInfo,
@@ -357,6 +357,94 @@ describe('PDPUIManager', () => {
       manager.resetQuantityToOne();
       expect(input.value).toBe('1');
       expect(manager.getQuantityValue()).toBe(1);
+    });
+  });
+
+  describe('hero image swap with a <picture> (AVIF/WebP sources)', () => {
+    const OLD = 'https://items-images-sandbox.s3.amazonaws.com/OLD.jpg';
+    const NEW = 'https://items-images-sandbox.s3.amazonaws.com/NEW.jpg';
+
+    function setupPicture(): HTMLImageElement {
+      // Swap the plain <img> from setupDom() for the SSR <picture> structure
+      document.getElementById('product-image')!.outerHTML = `<picture>
+        <source type="image/avif" srcset="/.netlify/images?url=OLD&fm=avif 320w">
+        <source type="image/webp" srcset="/.netlify/images?url=OLD&fm=webp 320w">
+        <img id="product-image" src="/.netlify/images?url=OLD"
+             srcset="/.netlify/images?url=OLD 320w" sizes="100vw">
+      </picture>`;
+      manager.refreshElements();
+      return document.getElementById('product-image') as HTMLImageElement;
+    }
+
+    it('setHeroImage removes the stale <source> elements and repoints src/srcset', () => {
+      const img = setupPicture();
+      setHeroImage(img, NEW);
+
+      expect(document.querySelectorAll('picture source').length).toBe(0);
+      expect(img.src).toBe(NEW);
+      const srcset = decodeURIComponent(img.getAttribute('srcset') ?? '');
+      expect(srcset).toContain(NEW);
+      expect(srcset).not.toContain('OLD');
+      expect(img.getAttribute('sizes')).toBe('100vw');
+    });
+
+    it('updateProductImage (variant change) swaps through a <picture>', () => {
+      const img = setupPicture();
+      manager.updateProductImage(NEW);
+
+      expect(document.querySelectorAll('picture source').length).toBe(0);
+      expect(decodeURIComponent(img.getAttribute('srcset') ?? '')).toContain(
+        NEW
+      );
+    });
+
+    it('updateGalleryThumbnails (variant with its own image set) swaps through a <picture>', () => {
+      const img = setupPicture();
+      manager.updateGalleryThumbnails([NEW, OLD]);
+
+      expect(document.querySelectorAll('picture source').length).toBe(0);
+      expect(img.src).toBe(NEW);
+      expect(decodeURIComponent(img.getAttribute('srcset') ?? '')).toContain(
+        NEW
+      );
+    });
+
+    it('is a no-op when the hero already shows that image (keeps sources and the preloaded URL)', () => {
+      const img = setupPicture();
+      const proxied = `/.netlify/images?${new URLSearchParams({ url: OLD, w: '800' })}`;
+      img.setAttribute('src', proxied);
+      const srcsetBefore = img.getAttribute('srcset');
+
+      setHeroImage(img, OLD);
+
+      expect(document.querySelectorAll('picture source').length).toBe(2);
+      expect(img.getAttribute('src')).toBe(proxied);
+      expect(img.getAttribute('srcset')).toBe(srcsetBefore);
+    });
+
+    it('clears srcset for a non-remote URL so a stale srcset cannot override src', () => {
+      const img = setupPicture();
+      setHeroImage(img, 'data:image/png;base64,AAAA');
+
+      expect(img.hasAttribute('srcset')).toBe(false);
+      expect(img.src).toContain('data:image/png');
+    });
+
+    it('is a no-op for an empty URL', () => {
+      const img = setupPicture();
+      setHeroImage(img, '');
+
+      expect(document.querySelectorAll('picture source').length).toBe(2);
+      expect(img.getAttribute('srcset')).toContain('OLD');
+    });
+
+    it('works on a plain <img> with no <picture>', () => {
+      const img = document.getElementById('product-image') as HTMLImageElement;
+      setHeroImage(img, NEW);
+
+      expect(img.src).toBe(NEW);
+      // No srcset and no picture: nothing to optimize, none added
+      expect(img.hasAttribute('srcset')).toBe(false);
     });
   });
 

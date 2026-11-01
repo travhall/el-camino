@@ -1096,6 +1096,7 @@ Astro.response.headers.set(
 
 <script>
   import { PDPController } from '@/lib/product/pdpController';
+  import { setHeroImage } from '@/lib/product/pdpUI';
   import { processClientError, logError } from '@/lib/square/errorUtils';
   import { recentlyViewed } from '@/lib/product/recentlyViewed';
   import type { Product } from '@/lib/square/types';
@@ -1182,9 +1183,9 @@ Astro.response.headers.set(
       // Cross fade the main image
       mainImage.classList.remove('opacity-100');
       mainImage.classList.add('opacity-0');
-      // Clear srcset so <picture> source tags don't override the new src
-      mainImage.removeAttribute('srcset');
-      mainImage.src = src;
+      // Drops the <picture> <source>s and rewrites srcset, otherwise the
+      // original AVIF/WebP source keeps winning over the new src
+      setHeroImage(mainImage, src);
       // Handle cached images where onload won't fire
       if (mainImage.complete && mainImage.naturalWidth > 0) {
         mainImage.classList.remove('opacity-0');
