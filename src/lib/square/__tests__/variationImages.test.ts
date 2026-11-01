@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { assignProductImagesToVariations } from '../variationImages';
+import {
+  assignProductImagesToVariations,
+  heroImageForVariation,
+} from '../variationImages';
 import type { ProductVariation } from '../types';
 
 const v = (
@@ -142,5 +145,34 @@ describe('assignProductImagesToVariations', () => {
         assignProductImagesToVariations([], ['a.jpg', 'b.jpg'])
       ).not.toThrow();
     });
+  });
+});
+
+describe('heroImageForVariation', () => {
+  it("prefers the selected variation's own image", () => {
+    expect(heroImageForVariation('primary.jpg', { image: 'white.jpg' })).toBe(
+      'white.jpg'
+    );
+  });
+
+  it('falls back to the product image when the variation has none', () => {
+    expect(heroImageForVariation('primary.jpg', {})).toBe('primary.jpg');
+    expect(heroImageForVariation('primary.jpg', { image: '' })).toBe(
+      'primary.jpg'
+    );
+    expect(heroImageForVariation('primary.jpg', undefined)).toBe('primary.jpg');
+  });
+
+  it('picks up the image the item-level mapping assigns, for a non-first color', () => {
+    // The bug this guards: a promoted default (or ?variant=) on White while
+    // the item's primary image is Black's.
+    const variations = [
+      v('black-s', { color: 'Black', size: 'S' }),
+      v('white-s', { color: 'White', size: 'S' }),
+    ];
+    assignProductImagesToVariations(variations, ['black.jpg', 'white.jpg']);
+
+    expect(heroImageForVariation('black.jpg', variations[1])).toBe('white.jpg');
+    expect(heroImageForVariation('black.jpg', variations[0])).toBe('black.jpg');
   });
 });

@@ -65,3 +65,21 @@ export function assignProductImagesToVariations(
     }
   }
 }
+
+/**
+ * The hero image for the selected variation: its own image (or the one
+ * `assignProductImagesToVariations` mapped onto it), falling back to the
+ * product-level image when the variation has none.
+ *
+ * Call this after `assignProductImagesToVariations`. With item-level color
+ * images a variation's image only exists once that mapping has run, so
+ * anything that picked the hero earlier (the item's primary image) is wrong
+ * whenever the selected variation isn't the first color: a promoted in-stock
+ * default, or an explicit `?variant=` link.
+ */
+export function heroImageForVariation(
+  productImage: string,
+  variation: Pick<ProductVariation, 'image'> | undefined
+): string {
+  return variation?.image || productImage;
+}

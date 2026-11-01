@@ -22,7 +22,10 @@ import {
   createSlugMapping,
 } from '@/lib/square/slugUtils';
 import { slugResolver } from '@/lib/square/slugResolver';
-import { assignProductImagesToVariations } from '@/lib/square/variationImages';
+import {
+  assignProductImagesToVariations,
+  heroImageForVariation,
+} from '@/lib/square/variationImages';
 import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
@@ -115,9 +118,6 @@ if (variantParam && product.variations) {
   if (targetVariation) {
     product.selectedVariationId = targetVariation.variationId;
     product.price = targetVariation.price;
-    if (targetVariation.image) {
-      product.image = targetVariation.image;
-    }
   } else {
     // Invalid variant parameter - redirect to base product
     return Astro.redirect(`/product/${id}`, 301);
@@ -162,9 +162,6 @@ if (!isGiftCard && variations.length > 0) {
       const firstInStockVariation = variations.find((v) => v.inStock);
       if (firstInStockVariation) {
         defaultVariationId = firstInStockVariation.variationId;
-        if (firstInStockVariation.image) {
-          product.image = firstInStockVariation.image;
-        }
       }
     }
   } catch (err) {
@@ -250,6 +247,15 @@ const attributeTypes = Object.keys(availableAttributes);
 // Find selected variation
 const selectedVariation =
   variations.find((v) => v.variationId === defaultVariationId) || variations[0];
+
+// Hero image for the selected variation. product.image started as the item's
+// primary image, but the selected variation can be another color (a promoted
+// in-stock default, or an explicit ?variant=), and with item-level color
+// images its image only exists after the mapping above. Sync it here, after
+// both, so the preload, <picture>, add-to-cart data, OG tags and JSON-LD all
+// describe the variation that is actually selected.
+product.image = heroImageForVariation(product.image, selectedVariation);
+
 const selectedVariationInStock = selectedVariation?.inStock || false;
 const selectedVariationQuantity = selectedVariation?.quantity || 0;
 
