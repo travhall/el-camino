@@ -50,6 +50,49 @@ describe('PDPUIManager', () => {
     manager = new PDPUIManager();
   });
 
+  describe('quantity section visibility', () => {
+    it('hides #quantity-section for a sold-out variation and shows it again for an in-stock one', () => {
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        '<div id="quantity-section" class="hidden"></div>'
+      );
+      const section = document.getElementById('quantity-section')!;
+
+      manager.updateQuantityControls(availabilityInfo({ remaining: 5 }));
+      expect(section.classList.contains('hidden')).toBe(false);
+
+      manager.updateQuantityControls(
+        availabilityInfo({
+          state: ProductAvailabilityState.OUT_OF_STOCK,
+          remaining: 0,
+        })
+      );
+      expect(section.classList.contains('hidden')).toBe(true);
+
+      manager.updateQuantityControls(availabilityInfo({ remaining: 3 }));
+      expect(section.classList.contains('hidden')).toBe(false);
+    });
+
+    it('keeps the section visible when everything available is already in the cart', () => {
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        '<div id="quantity-section"></div>'
+      );
+      manager.updateQuantityControls(
+        availabilityInfo({
+          state: ProductAvailabilityState.ALL_IN_CART,
+          remaining: 0,
+          inCart: 5,
+        })
+      );
+      expect(
+        document
+          .getElementById('quantity-section')!
+          .classList.contains('hidden')
+      ).toBe(false);
+    });
+  });
+
   describe('updateQuantityControls', () => {
     it('sets value/max for an in-stock product and enables increase (default quantity always starts at 1)', () => {
       manager.updateQuantityControls(availabilityInfo({ remaining: 5 }));

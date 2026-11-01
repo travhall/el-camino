@@ -102,6 +102,11 @@ if (!product) {
 // persist in the in-memory fallback cache and bleed across unrelated requests.
 product = { ...product };
 
+// A valid ?variant= is an explicit request for that variation (an invalid one
+// redirects below). Remember it so the in-stock promotion further down only
+// applies to the implicit default, never to a variation the link asked for.
+const hasExplicitVariant = Boolean(variantParam && product.variations);
+
 // Handle variant parameter
 if (variantParam && product.variations) {
   const targetVariation = getVariationFromVariantParam(product, variantParam);
@@ -145,9 +150,14 @@ if (!isGiftCard && variations.length > 0) {
       quantity: inventoryMap[v.variationId] || 0,
     }));
 
-    // If default variation is out of stock, promote first in-stock variation
+    // If the *default* variation is out of stock, promote the first in-stock
+    // one. Skipped when the URL explicitly asked for a variation: swapping it
+    // silently would show a different variant than the link, and the SEO
+    // title/structured data would describe one while the page sells another.
+    // A sold-out requested variant renders as sold out, with the back-in-stock
+    // form and the other options still selectable.
     const defaultIsInStock = (inventoryMap[defaultVariationId] || 0) > 0;
-    if (!defaultIsInStock && variations.length > 0) {
+    if (!defaultIsInStock && variations.length > 0 && !hasExplicitVariant) {
       const firstInStockVariation = variations.find((v) => v.inStock);
       if (firstInStockVariation) {
         defaultVariationId = firstInStockVariation.variationId;
@@ -869,66 +879,70 @@ Astro.response.headers.set(
           )
         }
 
-        <!-- Quantity Input — only shown when more than 1 unit is available (or gift card) -->
-        {
-          selectedVariationInStock && (
-            <div class="mt-6">
-              <div class="flex flex-col space-y-2 items-start">
-                <div
-                  id="quantity-stepper"
-                  class:list={[
-                    !isGiftCard && selectedVariationQuantity <= 1
-                      ? 'hidden'
-                      : '',
-                  ]}
+        <!-- Quantity Input — only shown when more than 1 unit is available (or gift card).
+             Always in the DOM (hidden while the selected variation is sold out) so a
+             shopper who lands on a sold-out variation and switches to an in-stock one
+             gets the stepper and availability text; pdpUI toggles #quantity-section. -->
+        <div
+          id="quantity-section"
+          class:list={['mt-6', !selectedVariationInStock && 'hidden']}
+        >
+          <div class="flex flex-col space-y-2 items-start">
+            <div
+              id="quantity-stepper"
+              class:list={[
+                !isGiftCard && selectedVariationQuantity <= 1 ? 'hidden' : '',
+              ]}
+            >
+              <label
+                for="quantity-input"
+                class="text-sm font-medium mb-2 block"
+              >
+                Quantity
+              </label>
+              <div
+                class="flex border border-(--ui-input-border) rounded-sm overflow-hidden"
+              >
+                <button
+                  type="button"
+                  id="decrease-quantity"
+                  class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
+                  disabled={true}
                 >
-                  <label
-                    for="quantity-input"
-                    class="text-sm font-medium mb-2 block"
-                  >
-                    Quantity
-                  </label>
-                  <div class="flex border border-(--ui-input-border) rounded-sm overflow-hidden">
-                    <button
-                      type="button"
-                      id="decrease-quantity"
-                      class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
-                      disabled={true}
-                    >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      id="quantity-input"
-                      min="1"
-                      max={isGiftCard ? 10 : selectedVariationQuantity}
-                      value="1"
-                      class="w-14 h-10 text-center bg-(--surface-primary) text-(--ui-input-text) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                    <button
-                      type="button"
-                      id="increase-quantity"
-                      class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
-                      disabled={!isGiftCard && selectedVariationQuantity <= 1}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-                <div id="availability-indicator" class="text-sm">
-                  {!isGiftCard && (
-                    <span class="text-(--content-meta)" id="remaining-count">
-                      {selectedVariationQuantity} available
-                    </span>
-                  )}
-                  <span id="cart-quantity" class="ml-1 hidden">
-                    ( 0 in cart )
-                  </span>
-                </div>
+                  -
+                </button>
+                <input
+                  type="number"
+                  id="quantity-input"
+                  min="1"
+                  max={isGiftCard ? 10 : selectedVariationQuantity}
+                  value="1"
+                  class="w-14 h-10 text-center bg-(--surface-primary) text-(--ui-input-text) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <button
+                  type="button"
+                  id="increase-quantity"
+                  class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
+                  disabled={!isGiftCard && selectedVariationQuantity <= 1}
+                >
+                  +
+                </button>
               </div>
             </div>
-          )
-        }
+            <div id="availability-indicator" class="text-sm">
+              {
+                !isGiftCard && (
+                  <span class="text-(--content-meta)" id="remaining-count">
+                    {selectedVariationQuantity} available
+                  </span>
+                )
+              }
+              <span id="cart-quantity" class="ml-1 hidden">
+                ( 0 in cart )
+              </span>
+            </div>
+          </div>
+        </div>
 
         <!-- Hidden data for JavaScript -->
         <input

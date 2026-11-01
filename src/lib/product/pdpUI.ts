@@ -237,6 +237,16 @@ export class PDPUIManager {
     // Re-cache elements in case they were cloned/replaced
     this.cacheElements(this.elementIds); // Use stored IDs
 
+    // The whole quantity block (stepper + availability text) is always in the
+    // DOM; show it unless the variation is sold out. Done before the input
+    // guard so it also applies on pages without a stepper.
+    document
+      .getElementById('quantity-section')
+      ?.classList.toggle(
+        'hidden',
+        info.state === ProductAvailabilityState.OUT_OF_STOCK
+      );
+
     const { quantityInput, decreaseButton, increaseButton } = this.elements;
     if (!quantityInput) return;
 
