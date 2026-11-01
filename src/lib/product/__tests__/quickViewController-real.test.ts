@@ -534,6 +534,54 @@ describe('QuickViewController — real implementation', () => {
     });
   });
 
+  describe('color images stored at the item level', () => {
+    // Square often stores one image per color on the Item, not on each
+    // variation. The PDP maps those onto variations; QuickView must too, or
+    // the hero never follows the selected color.
+    const itemLevelProduct = () =>
+      makeProduct({
+        images: ['red.jpg', 'blue.jpg'],
+        variations: makeProduct().variations!.map((v) => ({
+          ...v,
+          image: undefined,
+        })),
+      });
+
+    it('the hero follows the selected color', async () => {
+      await openWith(controller, itemLevelProduct());
+      const uiManager = internals(controller).uiManager;
+
+      // Opens on Small/Red -> the first (Red) image
+      expect(uiManager.updateProductImage).toHaveBeenLastCalledWith('red.jpg');
+
+      attrButton('color', 'Blue').click(); // Small/Blue
+
+      expect(uiManager.updateProductImage).toHaveBeenLastCalledWith('blue.jpg');
+    });
+
+    it('a snapped selection also takes the image of the variation it lands on', async () => {
+      await openWith(controller, itemLevelProduct());
+      const uiManager = internals(controller).uiManager;
+      attrButton('color', 'Blue').click(); // Small/Blue
+
+      attrButton('size', 'Large').click(); // Large/Blue doesn't exist -> Large/Red
+
+      expect(uiManager.updateProductImage).toHaveBeenLastCalledWith('red.jpg');
+    });
+
+    it('still honors a variation-level image over the item-level one', async () => {
+      const product = itemLevelProduct();
+      product.variations![2].image = 'sm-blue-own.jpg'; // Small/Blue
+      await openWith(controller, product);
+
+      attrButton('color', 'Blue').click();
+
+      expect(
+        internals(controller).uiManager.updateProductImage
+      ).toHaveBeenLastCalledWith('sm-blue-own.jpg');
+    });
+  });
+
   describe('screen reader announcements', () => {
     it('does not announce when the panel opens', async () => {
       await openWith(controller, makeProduct());

@@ -22,6 +22,7 @@ import {
   createSlugMapping,
 } from '@/lib/square/slugUtils';
 import { slugResolver } from '@/lib/square/slugResolver';
+import { assignProductImagesToVariations } from '@/lib/square/variationImages';
 import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
@@ -236,50 +237,13 @@ if (!isGiftCard && variations.length > 0) {
 // run BEFORE any code that reads variation.attributes (e.g. the image assignment below).
 const selectionState = createInitialSelectionState(variations);
 
-// Fallback image assignment — covers the common Square pattern where color variant
-// images are stored at the Item level (itemData.imageIds) rather than on each
-// ItemVariation. After createInitialSelectionState, every variation has attributes
-// parsed, so we can reliably find the color key and map product-level images onto
-// the variations that lack a variation-level image.
-// Mutates in place so all downstream references (selectionState, selectedVariation,
-// the serialized hidden input) all see the updated image values. cSpell:ignore colour
-if (product.images && product.images.length > 1) {
-  const colorKey = Object.keys(variations[0]?.attributes ?? {}).find(
-    (k) => k.toLowerCase() === 'color' || k.toLowerCase() === 'colour'
-  );
-
-  if (colorKey) {
-    // Color variants: map one product image per color value onto variation.image.
-    // Collect unique color values in catalog order (first-seen order)
-    const colorOrder: string[] = [];
-    for (const v of variations) {
-      const c = v.attributes?.[colorKey];
-      if (c && !colorOrder.includes(c)) colorOrder.push(c);
-    }
-
-    // Only map when there are at least as many product images as colors
-    if (product.images.length >= colorOrder.length) {
-      for (const v of variations) {
-        if (v.image) continue; // Variation-level image always wins
-        const colorValue = v.attributes?.[colorKey];
-        const idx = colorOrder.indexOf(colorValue ?? '');
-        if (idx >= 0 && product.images[idx]) {
-          v.image = product.images[idx];
-        }
-      }
-    }
-  } else {
-    // No color attribute — product.images are multi-angle shots shared by all
-    // variations (e.g. a deck in multiple sizes). Assign the full image array to
-    // every variation that doesn't already have variation-level images.
-    for (const v of variations) {
-      if (!v.images || v.images.length === 0) {
-        v.images = product.images;
-        if (!v.image) v.image = product.images[0];
-      }
-    }
-  }
-}
+// Fallback image assignment — covers the common Square pattern where images are
+// stored at the Item level (itemData.imageIds) rather than on each ItemVariation:
+// one image per color, or shared multi-angle shots when there is no color. Needs
+// attributes parsed, which createInitialSelectionState just did. Mutates in place so
+// all downstream references (selectionState, selectedVariation, the serialized
+// hidden input) see the updated image values. Shared with QuickView.
+assignProductImagesToVariations(variations, product.images);
 const availableAttributes = selectionState.availableAttributes;
 const attributeTypes = Object.keys(availableAttributes);
 

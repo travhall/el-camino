@@ -8,6 +8,7 @@ import {
   getAttributeDisplayName,
   resolveVariationForSelection,
 } from '@/lib/square/variationParser';
+import { assignProductImagesToVariations } from '@/lib/square/variationImages';
 import { processClientError, logError } from '@/lib/square/errorUtils';
 import type { Product, ProductVariation } from '@/lib/square/types';
 import type { ProductPageData } from '@/lib/product/pdpEvents';
@@ -147,22 +148,10 @@ export class QuickViewController {
     // Create initial selection state using PDP parser
     const selectionState = createInitialSelectionState(variations);
 
-    // Mirror PDP fallback image assignment: if product has multiple images and
-    // no color attribute exists, the images are multi-angle shots shared by all
-    // variations (e.g. a deck in multiple sizes) — assign them to variation.images. cSpell:ignore colour
-    if (product.images && product.images.length > 1) {
-      const colorKey = Object.keys(variations[0]?.attributes ?? {}).find(
-        (k) => k.toLowerCase() === 'color' || k.toLowerCase() === 'colour'
-      );
-      if (!colorKey) {
-        for (const v of variations) {
-          if (!v.images || v.images.length === 0) {
-            v.images = product.images;
-            if (!v.image) v.image = product.images[0];
-          }
-        }
-      }
-    }
+    // Same fallback image assignment as the PDP (one image per color, or shared
+    // multi-angle shots when there is no color). Requires attributes parsed,
+    // which createInitialSelectionState above just did.
+    assignProductImagesToVariations(variations, product.images);
 
     // Set up product data structure (matching PDP)
     this.productData = {
