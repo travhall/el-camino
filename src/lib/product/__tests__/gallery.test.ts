@@ -3,8 +3,16 @@
  * behavior (focus return, real swipes, the dialog itself) is covered by
  * e2e/pdp-gallery.stub.spec.ts.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { initGallery } from '../gallery';
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  vi,
+  type Mock,
+} from 'vitest';
+import { initGallery, type GalleryConfig } from '../gallery';
 
 const IMGS = ['a.jpg', 'b.jpg', 'c.jpg'];
 
@@ -315,5 +323,118 @@ describe('initGallery', () => {
       cleanup();
       expect(($('pdp-lightbox') as HTMLDialogElement).open).toBe(false);
     });
+  });
+});
+
+// QuickView runs the same module against its own elements, with no zoom.
+describe('initGallery with the QuickView configuration', () => {
+  const QV: Omit<GalleryConfig, 'showImage'> = {
+    containerId: 'qv-container',
+    heroId: 'qv-image',
+    stripId: 'qv-thumbs',
+    thumbClass: 'qv-thumb',
+    prevId: 'qv-prev',
+    nextId: 'qv-next',
+    statusId: 'qv-status',
+    zoom: false,
+  };
+  let cleanup: () => void;
+  let showImage: Mock<(hero: HTMLImageElement, url: string) => void>;
+
+  function setupQv(images: string[] = IMGS): void {
+    document.body.innerHTML = `
+      <div id="qv-container">
+        <img id="qv-image" src="${images[0]}" alt="Test" />
+        <button id="qv-prev" class="hidden"></button>
+        <button id="qv-next" class="hidden"></button>
+        <p id="qv-status"></p>
+      </div>
+      <div id="qv-thumbs" class="${images.length > 1 ? '' : 'hidden'}">
+        ${images
+          .map(
+            (src, i) =>
+              `<button type="button" class="qv-thumb" data-gallery-src="${src}" aria-pressed="${i === 0}"></button>`
+          )
+          .join('')}
+      </div>
+      <button id="gallery-zoom" class="hidden"></button>
+      <dialog id="pdp-lightbox"><img id="pdp-lightbox-image" src="" alt="" /></dialog>
+    `;
+  }
+
+  const pressed = () =>
+    Array.from(document.querySelectorAll('.qv-thumb')).findIndex(
+      (t) => t.getAttribute('aria-pressed') === 'true'
+    );
+
+  beforeEach(() => {
+    setupQv();
+    showImage = vi.fn<(hero: HTMLImageElement, url: string) => void>();
+    cleanup = initGallery({ ...QV, showImage });
+  });
+  afterEach(() => cleanup());
+
+  it('shows the arrows when there is more than one image', () => {
+    expect($('qv-prev').classList.contains('hidden')).toBe(false);
+    expect($('qv-next').classList.contains('hidden')).toBe(false);
+  });
+
+  it('keeps the arrows hidden for a single image', () => {
+    cleanup();
+    setupQv(['only.jpg']);
+    cleanup = initGallery({ ...QV, showImage });
+    expect($('qv-prev').classList.contains('hidden')).toBe(true);
+    expect($('qv-next').classList.contains('hidden')).toBe(true);
+  });
+
+  it('steps with the arrows, wraps, moves the pressed thumb and announces', () => {
+    $('qv-next').click();
+    expect(pressed()).toBe(1);
+    expect(showImage).toHaveBeenLastCalledWith(
+      document.getElementById('qv-image'),
+      'b.jpg'
+    );
+    expect($('qv-status').textContent).toBe('Image 2 of 3');
+
+    $('qv-prev').click();
+    $('qv-prev').click();
+    expect(pressed()).toBe(2);
+    expect($('qv-status').textContent).toBe('Image 3 of 3');
+  });
+
+  it('a thumbnail click shows that image and the arrows continue from it', () => {
+    (document.querySelectorAll('.qv-thumb')[2] as HTMLElement).click();
+    expect(pressed()).toBe(2);
+    $('qv-next').click();
+    expect(pressed()).toBe(0);
+  });
+
+  it('steps with the arrow keys from inside the container', () => {
+    $('qv-container').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })
+    );
+    expect(pressed()).toBe(1);
+  });
+
+  it('has no zoom: clicking the image opens nothing, and the PDP zoom button is untouched', () => {
+    $('qv-image').click();
+    expect(($('pdp-lightbox') as HTMLDialogElement).open).toBe(false);
+    expect($('gallery-zoom').classList.contains('hidden')).toBe(true);
+    expect($('qv-container').classList.contains('cursor-zoom-in')).toBe(false);
+  });
+
+  it('a touch swipe steps the image', () => {
+    const c = $('qv-container');
+    const ev = (type: string, x: number) =>
+      c.dispatchEvent(
+        Object.assign(new Event(type, { bubbles: true }), {
+          pointerType: 'touch',
+          clientX: x,
+          clientY: 100,
+        })
+      );
+    ev('pointerdown', 200);
+    ev('pointerup', 100);
+    expect(pressed()).toBe(1);
   });
 });
