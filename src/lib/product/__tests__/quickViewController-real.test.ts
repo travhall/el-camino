@@ -55,6 +55,12 @@ vi.mock('@/lib/product/pdpUI', () => ({
   },
 }));
 
+// The gallery is exercised for real in gallery.test.ts and the QuickView e2e;
+// here only how the controller wires it up matters.
+vi.mock('../gallery', () => ({
+  initGallery: vi.fn(() => vi.fn()),
+}));
+
 vi.mock('@/lib/square/errorUtils', () => ({
   processClientError: vi.fn((error) => ({
     message: error instanceof Error ? error.message : String(error),
@@ -73,6 +79,7 @@ vi.mock('astro:transitions/client', () => ({
 import { cart } from '@/lib/cart';
 import { showNotification } from '@/lib/events';
 import { QuickViewController } from '../quickViewController';
+import { initGallery } from '../gallery';
 import type { Product, ProductVariation } from '@/lib/square/types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -913,6 +920,79 @@ describe('QuickViewController — real implementation', () => {
       expect(
         document.getElementById('quick-view-title-text')?.textContent
       ).toBe('Second Deck');
+    });
+  });
+});
+
+describe('QuickViewController — gallery', () => {
+  let controller: QuickViewController;
+
+  beforeEach(() => {
+    setupDom();
+    vi.mocked(initGallery).mockClear();
+    controller = QuickViewController.getInstance();
+  });
+
+  afterEach(() => {
+    internals(controller).listenersAbort?.abort();
+  });
+
+  it('runs the shared gallery against QuickView elements, without zoom', () => {
+    controller.setupEventHandlers();
+
+    expect(initGallery).toHaveBeenCalledTimes(1);
+    expect(initGallery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        containerId: 'quick-view-image-container',
+        heroId: 'quick-view-image',
+        stripId: 'quick-view-thumbnails',
+        thumbClass: 'quick-view-thumb',
+        prevId: 'quick-view-gallery-prev',
+        nextId: 'quick-view-gallery-next',
+        statusId: 'quick-view-gallery-status',
+        zoom: false,
+      })
+    );
+  });
+
+  it('detaches the previous gallery when handlers are set up again', () => {
+    const cleanups: Array<ReturnType<typeof vi.fn>> = [];
+    vi.mocked(initGallery).mockImplementation(() => {
+      const fn = vi.fn();
+      cleanups.push(fn);
+      return fn;
+    });
+
+    controller.setupEventHandlers();
+    controller.setupEventHandlers();
+
+    expect(cleanups).toHaveLength(2);
+    expect(cleanups[0]).toHaveBeenCalledTimes(1);
+    expect(cleanups[1]).not.toHaveBeenCalled();
+  });
+
+  describe('renderGallery thumbnails', () => {
+    const IMGS = ['a.jpg', 'b.jpg', 'c.jpg'];
+    const pressed = () =>
+      Array.from(document.querySelectorAll('.quick-view-thumb')).map((t) =>
+        t.getAttribute('aria-pressed')
+      );
+
+    it('marks exactly the showing image as pressed', () => {
+      internals(controller).renderGallery(IMGS, 'c.jpg');
+      expect(pressed()).toEqual(['false', 'false', 'true']);
+    });
+
+    it('marks the first when the showing image is not in the set', () => {
+      internals(controller).renderGallery(IMGS, 'elsewhere.jpg');
+      expect(pressed()).toEqual(['true', 'false', 'false']);
+    });
+
+    it('hides the strip for a single image', () => {
+      internals(controller).renderGallery(['a.jpg'], 'a.jpg');
+      const strip = document.getElementById('quick-view-thumbnails')!;
+      expect(strip.classList.contains('hidden')).toBe(true);
+      expect(strip.children).toHaveLength(0);
     });
   });
 });

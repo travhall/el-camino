@@ -9,6 +9,7 @@ import {
   resolveVariationForSelection,
 } from '@/lib/square/variationParser';
 import { assignProductImagesToVariations } from '@/lib/square/variationImages';
+import { initGallery } from './gallery';
 import { processClientError, logError } from '@/lib/square/errorUtils';
 import type { Product, ProductVariation } from '@/lib/square/types';
 import type { ProductPageData } from '@/lib/product/pdpEvents';
@@ -203,6 +204,22 @@ export class QuickViewController {
     return `/.netlify/images?${p.toString()}`;
   }
 
+  // Swap the hero to another image of the gallery, fading it in.
+  private showGalleryImage(hero: HTMLImageElement, src: string): void {
+    hero.style.opacity = '0';
+    hero.src = this.optimizeImageSrc(src, 400);
+    if (hero.complete && hero.naturalWidth > 0) {
+      hero.style.opacity = '0.9';
+    } else {
+      hero.onload = () => {
+        hero.style.opacity = '0.9';
+      };
+      hero.onerror = () => {
+        hero.style.opacity = '1';
+      };
+    }
+  }
+
   // Build/refresh the thumbnail strip from an array of image URLs.
   // Hides the strip when there is only one image.
   private renderGallery(images: string[], activeImageSrc: string): void {
@@ -216,10 +233,16 @@ export class QuickViewController {
       return;
     }
 
+    // Exactly one thumb is active: the one showing, else the first. (Marking
+    // both i === 0 and the match left two pressed, so the gallery arrows
+    // stepped from the wrong place.)
+    const matched = images.indexOf(activeImageSrc);
+    const activeIndex = matched === -1 ? 0 : matched;
+
     container.innerHTML = images
       .map((src, i) => {
         const thumbSrc = this.optimizeImageSrc(src, 64);
-        const isActive = src === activeImageSrc || i === 0;
+        const isActive = i === activeIndex;
         return `<button
           type="button"
           class="quick-view-thumb shrink-0 w-14 h-14 border-2 overflow-hidden bg-(--surface-secondary) transition-all ${isActive ? 'border-(--ui-button-border) opacity-100' : 'border-(--border-secondary) opacity-60 hover:opacity-100 hover:border-(--border-primary)'}"
@@ -1065,52 +1088,20 @@ export class QuickViewController {
       { signal }
     );
 
-    // Thumbnail gallery — event delegation so it survives innerHTML rebuilds
-    const thumbnailContainer = document.getElementById('quick-view-thumbnails');
-    thumbnailContainer?.addEventListener(
-      'click',
-      (e) => {
-        const thumb = (e.target as Element).closest<HTMLButtonElement>(
-          '.quick-view-thumb'
-        );
-        if (!thumb) return;
-
-        const src = thumb.dataset.gallerySrc;
-        if (!src) return;
-
-        // Update active thumb styles
-        thumbnailContainer
-          .querySelectorAll<HTMLButtonElement>('.quick-view-thumb')
-          .forEach((t) => {
-            t.classList.remove('border-(--ui-button-border)', 'opacity-100');
-            t.classList.add('border-(--border-secondary)', 'opacity-60');
-            t.setAttribute('aria-pressed', 'false');
-          });
-        thumb.classList.add('border-(--ui-button-border)', 'opacity-100');
-        thumb.classList.remove('border-(--border-secondary)', 'opacity-60');
-        thumb.setAttribute('aria-pressed', 'true');
-
-        // Crossfade the main image
-        const mainImage = document.getElementById(
-          'quick-view-image'
-        ) as HTMLImageElement | null;
-        if (mainImage) {
-          mainImage.style.opacity = '0';
-          mainImage.src = this.optimizeImageSrc(src, 400);
-          if (mainImage.complete && mainImage.naturalWidth > 0) {
-            mainImage.style.opacity = '0.9';
-          } else {
-            mainImage.onload = () => {
-              mainImage.style.opacity = '0.9';
-            };
-            mainImage.onerror = () => {
-              mainImage.style.opacity = '1';
-            };
-          }
-        }
-      },
-      { signal }
-    );
+    // Gallery: thumbnails, arrows, swipe, keyboard. Shared with the PDP; it
+    // watches the strip, so it survives renderGallery rebuilding it.
+    const cleanupGallery = initGallery({
+      containerId: 'quick-view-image-container',
+      heroId: 'quick-view-image',
+      stripId: 'quick-view-thumbnails',
+      thumbClass: 'quick-view-thumb',
+      prevId: 'quick-view-gallery-prev',
+      nextId: 'quick-view-gallery-next',
+      statusId: 'quick-view-gallery-status',
+      zoom: false,
+      showImage: (hero, url) => this.showGalleryImage(hero, url),
+    });
+    signal.addEventListener('abort', cleanupGallery, { once: true });
 
     // Cart update events (PDP pattern)
     window.addEventListener(

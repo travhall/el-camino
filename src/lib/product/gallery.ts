@@ -11,6 +11,9 @@
 //
 // Products with one image per variant (e.g. color variants) have no strip;
 // the controls then reduce to zoom on the single hero image.
+//
+// The PDP and QuickView run this same code, each against its own elements
+// (see GalleryConfig). QuickView has no zoom lightbox.
 import { setHeroImage, sourceImageUrl } from './pdpUI';
 import { toNetlifyImageCDN } from '@/lib/image/enhanced-optimizer';
 
@@ -22,38 +25,95 @@ const LIGHTBOX_WIDTH = 1600;
 const THUMB_ACTIVE = ['border-(--ui-button-border)', 'opacity-100'];
 const THUMB_INACTIVE = ['border-(--border-secondary)', 'opacity-60'];
 
+/** Which elements a gallery drives, and how it swaps the hero image. */
+export interface GalleryConfig {
+  containerId: string;
+  heroId: string;
+  stripId: string;
+  /** Class on each thumbnail button in the strip (no leading dot) */
+  thumbClass: string;
+  prevId: string;
+  nextId: string;
+  /** Live region that announces "Image n of m" */
+  statusId: string;
+  /** Wire up the zoom button, click-to-zoom and the lightbox (PDP only) */
+  zoom: boolean;
+  /**
+   * Swap the hero to `url` and fade it in. Defaults to the PDP's picture-aware
+   * swap; QuickView's plain <img> sizes its own URLs.
+   */
+  showImage?: (hero: HTMLImageElement, url: string) => void;
+}
+
+export const PDP_GALLERY: GalleryConfig = {
+  containerId: 'product-image-container',
+  heroId: 'product-image',
+  stripId: 'gallery-thumbnails',
+  thumbClass: 'gallery-thumb',
+  prevId: 'gallery-prev',
+  nextId: 'gallery-next',
+  statusId: 'gallery-status',
+  zoom: true,
+};
+
+/** Cross-fade the PDP hero. setHeroImage drops the <picture> <source>s that
+ *  would otherwise pin the original image. */
+function showPdpImage(main: HTMLImageElement, url: string): void {
+  main.classList.remove('opacity-100');
+  main.classList.add('opacity-0');
+  setHeroImage(main, url);
+  const reveal = () => {
+    main.classList.remove('opacity-0');
+    main.classList.add('opacity-100');
+  };
+  if (main.complete && main.naturalWidth > 0) {
+    reveal(); // cached: onload won't fire
+  } else {
+    main.onload = reveal;
+    main.onerror = reveal;
+  }
+}
+
 /**
- * Wire up the gallery for the current page. Returns a cleanup function that
+ * Wire up a gallery for the current page. Returns a cleanup function that
  * detaches everything (call it before the DOM is swapped out).
  */
-export function initGallery(): () => void {
+export function initGallery(config: GalleryConfig = PDP_GALLERY): () => void {
   const abort = new AbortController();
   const { signal } = abort;
 
   const byId = <T extends HTMLElement>(id: string) =>
     document.getElementById(id) as T | null;
 
-  const container = byId('product-image-container');
-  const strip = byId('gallery-thumbnails');
-  const prevBtn = byId<HTMLButtonElement>('gallery-prev');
-  const nextBtn = byId<HTMLButtonElement>('gallery-next');
-  const zoomBtn = byId<HTMLButtonElement>('gallery-zoom');
-  const status = byId('gallery-status');
-  const dialog = byId<HTMLDialogElement>('pdp-lightbox');
-  const lbImage = byId<HTMLImageElement>('pdp-lightbox-image');
-  const lbCount = byId('pdp-lightbox-count');
-  const lbClose = byId<HTMLButtonElement>('pdp-lightbox-close');
-  const lbPrev = byId<HTMLButtonElement>('pdp-lightbox-prev');
-  const lbNext = byId<HTMLButtonElement>('pdp-lightbox-next');
+  const container = byId(config.containerId);
+  const strip = byId(config.stripId);
+  const prevBtn = byId<HTMLButtonElement>(config.prevId);
+  const nextBtn = byId<HTMLButtonElement>(config.nextId);
+  const status = byId(config.statusId);
+  // Zoom is PDP-only: without it there's no button, dialog or click-to-open
+  const zoomBtn = config.zoom ? byId<HTMLButtonElement>('gallery-zoom') : null;
+  const dialog = config.zoom ? byId<HTMLDialogElement>('pdp-lightbox') : null;
+  const lbImage = config.zoom
+    ? byId<HTMLImageElement>('pdp-lightbox-image')
+    : null;
+  const lbCount = config.zoom ? byId('pdp-lightbox-count') : null;
+  const lbClose = config.zoom
+    ? byId<HTMLButtonElement>('pdp-lightbox-close')
+    : null;
+  const lbPrev = config.zoom
+    ? byId<HTMLButtonElement>('pdp-lightbox-prev')
+    : null;
+  const lbNext = config.zoom
+    ? byId<HTMLButtonElement>('pdp-lightbox-next')
+    : null;
 
-  const hero = () => byId<HTMLImageElement>('product-image');
+  const hero = () => byId<HTMLImageElement>(config.heroId);
 
   if (!container || !hero()) return () => {};
 
+  const thumbSelector = `.${config.thumbClass}`;
   const thumbs = (): HTMLButtonElement[] =>
-    Array.from(
-      strip?.querySelectorAll<HTMLButtonElement>('.gallery-thumb') ?? []
-    );
+    Array.from(strip?.querySelectorAll<HTMLButtonElement>(thumbSelector) ?? []);
 
   // The strip is only "live" while it is shown with more than one thumb. pdpUI
   // can leave stale thumbs in a hidden strip, which must not count.
@@ -93,8 +153,10 @@ export function initGallery(): () => void {
       btn?.classList.toggle('hidden', !many);
     }
     // Zoom works with a single image, so it shows whenever there is a hero
-    zoomBtn?.classList.remove('hidden');
-    container?.classList.add('cursor-zoom-in');
+    if (config.zoom) {
+      zoomBtn?.classList.remove('hidden');
+      container?.classList.add('cursor-zoom-in');
+    }
   }
 
   function syncLightbox(): void {
@@ -130,21 +192,7 @@ export function initGallery(): () => void {
       });
     }
 
-    // Cross-fade the hero. setHeroImage drops the <picture> <source>s that
-    // would otherwise pin the original image.
-    main.classList.remove('opacity-100');
-    main.classList.add('opacity-0');
-    setHeroImage(main, list[i]);
-    const reveal = () => {
-      main.classList.remove('opacity-0');
-      main.classList.add('opacity-100');
-    };
-    if (main.complete && main.naturalWidth > 0) {
-      reveal(); // cached: onload won't fire
-    } else {
-      main.onload = reveal;
-      main.onerror = reveal;
-    }
+    (config.showImage ?? showPdpImage)(main, list[i]);
 
     if (n > 1) announce(`Image ${i + 1} of ${n}`);
     syncLightbox();
@@ -164,7 +212,7 @@ export function initGallery(): () => void {
     'click',
     (e) => {
       const thumb = (e.target as Element).closest<HTMLButtonElement>(
-        '.gallery-thumb'
+        thumbSelector
       );
       if (!thumb) return;
       const i = thumbs().indexOf(thumb);
@@ -234,6 +282,7 @@ export function initGallery(): () => void {
   container.addEventListener(
     'click',
     (e) => {
+      if (!config.zoom) return;
       if ((e.target as Element).closest('button')) return;
       if (suppressClick) return;
       openLightbox();
