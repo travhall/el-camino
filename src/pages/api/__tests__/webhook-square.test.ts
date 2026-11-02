@@ -22,6 +22,10 @@ vi.mock('@/lib/cache/blobCache', () => ({
   filterCache: { delete: vi.fn(), clear: vi.fn() },
 }));
 
+vi.mock('@/lib/cache/cdnPurge', () => ({
+  purgeProductPages: vi.fn().mockResolvedValue(true),
+}));
+
 vi.mock('@/lib/email/pendingOrders', () => ({
   getPendingOrder: vi.fn(),
   deletePendingOrder: vi.fn().mockResolvedValue(undefined),
@@ -39,6 +43,8 @@ vi.mock('@/lib/email/failedEmails', () => ({
 
 // Import handler AFTER mocks
 import { POST } from '../webhooks/square';
+import { purgeProductPages } from '@/lib/cache/cdnPurge';
+import { inventoryCache, productCache } from '@/lib/cache/blobCache';
 import { verifySquareWebhookSignature } from '@/lib/square/verifyWebhookSignature';
 import { squareClient } from '@/lib/square/client';
 import { getPendingOrder, deletePendingOrder } from '@/lib/email/pendingOrders';
@@ -340,5 +346,91 @@ describe('POST /api/webhooks/square', () => {
       expect(res.status).toBe(200);
       expect(sendOrderConfirmation).not.toHaveBeenCalled();
     });
+  });
+});
+
+// ── CDN purge ─────────────────────────────────────────────────────────────────
+
+describe('edge cache purge', () => {
+  const inventoryEvent = (counts: object[]) => ({
+    type: 'inventory.count.updated',
+    data: { object: { inventory_counts: counts } },
+  });
+  const catalogEvent = (ids: string[]) => ({
+    type: 'catalog.version.updated',
+    data: { object: { catalog_version: { updated_object_ids: ids } } },
+  });
+
+  it('inventory.count.updated purges the variations that changed', async () => {
+    const res = await POST(
+      makeContext(
+        inventoryEvent([
+          { catalog_object_type: 'ITEM_VARIATION', catalog_object_id: 'V1' },
+          { catalog_object_type: 'ITEM_VARIATION', catalog_object_id: 'V2' },
+        ])
+      )
+    );
+
+    expect(res.status).toBe(200);
+    expect(purgeProductPages).toHaveBeenCalledTimes(1);
+    expect(purgeProductPages).toHaveBeenCalledWith({
+      variationIds: ['V1', 'V2'],
+    });
+  });
+
+  it('purges after the blob inventory cache is cleared, not before', async () => {
+    await POST(
+      makeContext(
+        inventoryEvent([
+          { catalog_object_type: 'ITEM_VARIATION', catalog_object_id: 'V1' },
+        ])
+      )
+    );
+
+    const deleted = vi.mocked(inventoryCache.delete).mock
+      .invocationCallOrder[0];
+    const purged = vi.mocked(purgeProductPages).mock.invocationCallOrder[0];
+    expect(deleted).toBeLessThan(purged);
+  });
+
+  it('ignores counts that are not item variations', async () => {
+    await POST(
+      makeContext(
+        inventoryEvent([
+          { catalog_object_type: 'ITEM', catalog_object_id: 'ITEM1' },
+        ])
+      )
+    );
+
+    expect(purgeProductPages).not.toHaveBeenCalled();
+  });
+
+  it('catalog.version.updated purges the changed objects as items and variations', async () => {
+    await POST(makeContext(catalogEvent(['A', 'B'])));
+
+    expect(purgeProductPages).toHaveBeenCalledWith({
+      productIds: ['A', 'B'],
+      variationIds: ['A', 'B'],
+    });
+    const deleted = vi.mocked(productCache.delete).mock.invocationCallOrder[0];
+    const purged = vi.mocked(purgeProductPages).mock.invocationCallOrder[0];
+    expect(deleted).toBeLessThan(purged);
+  });
+
+  it('does not purge on payment events', async () => {
+    await POST(makeContext(paymentUpdatedCompleted));
+    expect(purgeProductPages).not.toHaveBeenCalled();
+  });
+
+  it('still acknowledges the event if the purge blows up', async () => {
+    vi.mocked(purgeProductPages).mockRejectedValueOnce(new Error('boom'));
+    const res = await POST(
+      makeContext(
+        inventoryEvent([
+          { catalog_object_type: 'ITEM_VARIATION', catalog_object_id: 'V1' },
+        ])
+      )
+    );
+    expect(res.status).toBe(200);
   });
 });

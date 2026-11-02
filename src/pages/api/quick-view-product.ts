@@ -2,6 +2,7 @@
 import type { APIRoute } from 'astro';
 import { fetchProduct } from '@/lib/square/client';
 import { checkBulkInventory } from '@/lib/square/inventory';
+import { productCacheTags } from '@/lib/cache/cdnPurge';
 import { logError } from '@/lib/square/errorUtils';
 import { processSquareError } from '@/lib/square/serverErrorUtils';
 
@@ -69,8 +70,12 @@ export const GET: APIRoute = async ({ url }) => {
         // from an expired edge cache entry with outdated inventory data.
         'Netlify-CDN-Cache-Control':
           'public, s-maxage=300, stale-while-revalidate=0',
-        // Cache tag for invalidation
-        'Netlify-Cache-Tag': `product-${productId},products,quick-view`,
+        // Cache tags: purged by the Square webhook (lib/cache/cdnPurge.ts)
+        'Netlify-Cache-Tag': productCacheTags(
+          productId,
+          (product.variations ?? []).map((v) => v.variationId),
+          ['quick-view']
+        ).join(','),
       },
     });
   } catch (error) {
