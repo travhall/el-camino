@@ -60,6 +60,16 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
 - Test coverage thresholds in `vitest.config.ts` will fail the build if a
   change drops coverage below the configured minimums — run
   `pnpm test:coverage` before considering a non-trivial change done.
+- Product pages are CDN-cached (`s-maxage=300`, stale-while-revalidate, durable)
+  and tagged `product-<itemId>`, `products` and `variation-<id>` per variation
+  (`productCacheTags` in `src/lib/cache/cdnPurge.ts`; the quick-view API uses the
+  same). The Square webhook (`src/pages/api/webhooks/square.ts`) clears the blob
+  caches and then purges those tags with `purgeProductPages`, so stock and
+  catalog edits show up without waiting out the TTL. `purgeCache` only has
+  credentials inside a deployed function: in dev and tests it fails and is
+  logged, never thrown. Listing pages (`/shop/*`, sale, home) are not tagged and
+  still expire on their TTL. The PDP also re-checks stock on load
+  (`refreshInventory`) as a backstop.
 - WordPress content routing: posts in the `shop-news` category appear on The
   Shop page (`/the-shop`); posts with only `news` appear on the News page.
   Posts tagged `event` are filterable on the News page. This is a WordPress

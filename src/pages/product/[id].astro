@@ -1,5 +1,6 @@
 ---
 import Layout from '@/layouts/Layout.astro';
+import { productCacheTags } from '@/lib/cache/cdnPurge';
 import Button from '@/components/Button.astro';
 import Modal from '@/components/Modal.astro';
 import RecentlyViewed from '@/components/RecentlyViewed.astro';
@@ -410,10 +411,14 @@ Astro.response.headers.set(
   'public, max-age=0, s-maxage=300, stale-while-revalidate=3600, durable' //cSpell:ignore maxage
 );
 
-// Add cache tag for per-product invalidation via webhooks
+// Cache tags: the Square webhook purges these when stock or the catalog
+// changes (see lib/cache/cdnPurge.ts), so the page isn't stale for its TTL.
 Astro.response.headers.set(
   'Netlify-Cache-Tag',
-  `product-${product.id},products`
+  productCacheTags(
+    product.id,
+    (product.variations ?? []).map((v) => v.variationId)
+  ).join(',')
 );
 ---
 

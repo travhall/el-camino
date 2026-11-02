@@ -1,6 +1,7 @@
 // src/pages/api/webhooks/square.ts
 //
-// Handles Square webhook events for real-time cache invalidation.
+// Handles Square webhook events for real-time cache invalidation: the blob
+// caches (lib/cache/blobCache.ts) and the Netlify CDN pages (lib/cache/cdnPurge.ts).
 //
 // Supported events:
 //   inventory.count.updated — fires when stock changes (purchase, restock, adjustment)
@@ -28,6 +29,7 @@ import {
   slugCache,
   filterCache,
 } from '@/lib/cache/blobCache';
+import { purgeProductPages } from '@/lib/cache/cdnPurge';
 import { getPendingOrder, deletePendingOrder } from '@/lib/email/pendingOrders';
 import { storeFailedEmail } from '@/lib/email/failedEmails';
 import {
@@ -133,6 +135,11 @@ export const POST: APIRoute = async ({ request }) => {
             `[Webhook/Square] Inventory cache busted for ${variationIds.length} variation(s):`,
             variationIds
           );
+
+          // Then the edge: the PDP and quick-view responses are CDN-cached
+          // and tagged per variation. After the blob delete, so the re-render
+          // this triggers reads fresh stock.
+          await purgeProductPages({ variationIds });
         }
         break;
       }
@@ -164,6 +171,14 @@ export const POST: APIRoute = async ({ request }) => {
           `[Webhook/Square] Catalog caches busted for ${objectIds.length} object(s):`,
           objectIds
         );
+
+        // Changed ids can be items or variations; both have page tags.
+        // Category/navigation edits aren't purged at the edge: those pages
+        // expire on their own TTL.
+        await purgeProductPages({
+          productIds: objectIds,
+          variationIds: objectIds,
+        });
         break;
       }
 

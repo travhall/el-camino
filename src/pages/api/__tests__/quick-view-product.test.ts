@@ -97,6 +97,20 @@ describe('GET /api/quick-view-product', () => {
     );
   });
 
+  it('tags the response with each variation so a stock change can purge it', async () => {
+    vi.mocked(fetchProduct).mockResolvedValue({
+      id: 'p1',
+      isGiftCard: false,
+      variations: [{ variationId: 'V1' }, { variationId: 'V2' }],
+    } as never);
+    vi.mocked(checkBulkInventory).mockResolvedValue({ V1: 1, V2: 0 });
+
+    const res = await GET(makeContext('?id=p1'));
+    expect(res.headers.get('Netlify-Cache-Tag')).toBe(
+      'product-p1,products,quick-view,variation-V1,variation-V2'
+    );
+  });
+
   it('returns 500 when fetchProduct throws', async () => {
     vi.mocked(fetchProduct).mockRejectedValue(new Error('network error'));
     const res = await GET(makeContext('?id=p1'));
