@@ -43,7 +43,10 @@ import {
   type RelatedSection,
 } from '@/lib/product/relatedProducts';
 import { fetchCategories } from '@/lib/square/categories';
-import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
+import {
+  EnhancedImageOptimizer,
+  toNetlifyImageCDN,
+} from '@/lib/image/enhanced-optimizer';
 
 // Get the slug or ID from URL params
 const { id: slugOrId } = Astro.params;
@@ -744,7 +747,7 @@ Astro.response.headers.set(
                   aria-pressed={i === 0 ? 'true' : 'false'}
                 >
                   <img
-                    src={imgUrl}
+                    src={toNetlifyImageCDN(imgUrl, 128, { height: 128 })}
                     alt={`${product.title} — image ${i + 1}`}
                     class="w-full h-full object-cover"
                     loading={i < 3 ? 'eager' : 'lazy'}
@@ -758,7 +761,9 @@ Astro.response.headers.set(
       </div><!-- end gallery wrapper -->
 
       <!-- Product Info -->
-      <div class="product-info mt-4 max-w-xl">
+      <!-- data-brand: read by the recently-viewed tracking below, so it does not depend
+           on how the heading below is marked up -->
+      <div class="product-info mt-4 max-w-xl" data-brand={product.brand}>
         {
           breadcrumbPath && (
             <div class="hidden lg:block">
@@ -1048,9 +1053,7 @@ Astro.response.headers.set(
                   </span>
                 )
               }
-              <span id="cart-quantity" class="ml-1 hidden">
-                ( 0 in cart )
-              </span>
+              <span id="cart-quantity" class="ml-1 hidden"> (0 in cart) </span>
             </div>
           </div>
         </div>
@@ -1128,6 +1131,7 @@ Astro.response.headers.set(
             <button
               type="button"
               id="easy-returns-trigger"
+              aria-haspopup="dialog"
               class="flex items-center gap-1.5 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
             >
               <svg
@@ -1150,6 +1154,7 @@ Astro.response.headers.set(
             </button>
             <button
               id="local-pickup-trigger"
+              aria-haspopup="dialog"
               type="button"
               class="flex items-center gap-1.5 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
             >
@@ -1172,6 +1177,7 @@ Astro.response.headers.set(
             <button
               type="button"
               id="secure-checkout-trigger"
+              aria-haspopup="dialog"
               class="flex items-center gap-1.5 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
               aria-label="Learn about our secure checkout"
             >
@@ -1430,13 +1436,16 @@ Astro.response.headers.set(
           const productDataStr = productButton.getAttribute('data-product');
           if (productDataStr) {
             const productData = JSON.parse(productDataStr);
-            const productImage =
-              (document.getElementById('product-image') as HTMLImageElement)
-                ?.src || '';
+            // The product's own image URL, not the hero's `src`: that is an
+            // image-CDN URL (absolute, so the card would proxy it a second
+            // time) or, after a load error, the logo placeholder.
+            const hero = document.getElementById(
+              'product-image'
+            ) as HTMLImageElement | null;
+            const productImage = hero?.dataset.heroSrc || hero?.src || '';
             const productBrand =
-              document
-                .querySelector('.product-info h1 span.uppercase')
-                ?.textContent?.trim() || undefined;
+              document.querySelector<HTMLElement>('.product-info')?.dataset
+                .brand || undefined;
 
             const product: Product = {
               id: productData.id,

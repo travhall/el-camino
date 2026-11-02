@@ -171,3 +171,18 @@ test.describe('PDP back link on small screens', () => {
     });
   });
 });
+
+test.describe('PDP trust-signal buttons', () => {
+  test('say that they open a dialog', async ({ page }) => {
+    await open(page, pdp(TEE));
+
+    // Each of these opens a modal (returns policy, pickup hours, secure checkout)
+    for (const id of [
+      '#easy-returns-trigger',
+      '#local-pickup-trigger',
+      '#secure-checkout-trigger',
+    ]) {
+      await expect(page.locator(id)).toHaveAttribute('aria-haspopup', 'dialog');
+    }
+  });
+});

@@ -58,6 +58,8 @@ export class QuickViewController {
       // Opt out so the shared manager never touches a PDP's #quantity-section
       // when QuickView is opened on a product page.
       quantitySection: null,
+      // ...and keep to its own chips, not a PDP's behind it
+      attributeRoot: '#quick-view-attributes',
     });
   }
 
@@ -669,10 +671,15 @@ export class QuickViewController {
   private updateAttributeButtonStates(): void {
     if (!this.productData?.variations) return;
 
+    // Only QuickView's own chips: on a product page the PDP's chips share the
+    // [data-attribute-type] attribute, and this overwrites className
+    const root = document.getElementById('quick-view-attributes');
+    if (!root) return;
+
     // EXACTLY mirror PDP updateAttributeButtonStates pattern
     Object.keys(this.productData.availableAttributes).forEach(
       (attributeType) => {
-        const buttons = document.querySelectorAll(
+        const buttons = root.querySelectorAll(
           `[data-attribute-type="${attributeType}"]`
         );
 

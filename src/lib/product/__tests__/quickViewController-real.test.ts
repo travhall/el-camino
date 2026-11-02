@@ -535,6 +535,24 @@ describe('QuickViewController — real implementation', () => {
     });
   });
 
+  describe("QuickView's chips versus a PDP's on the same page", () => {
+    it("restyles only the chips inside #quick-view-attributes, never a page's own", async () => {
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        `<div class="product-info">
+           <button id="pdp-chip" class="attribute-button" data-attribute-type="color" data-attribute-value="Blue"></button>
+         </div>`
+      );
+      await openWith(controller, makeProduct());
+
+      attrButton('color', 'Blue').click(); // QuickView's own Blue chip
+
+      const pdpChip = document.getElementById('pdp-chip')!;
+      // QuickView overwrites className on its chips; the PDP's must keep its own
+      expect(pdpChip.className).toBe('attribute-button');
+    });
+  });
+
   describe('hero alt text', () => {
     it('stores the product title as the base alt and follows the selected color', async () => {
       await openWith(controller, makeProduct());

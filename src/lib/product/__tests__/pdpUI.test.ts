@@ -4,7 +4,7 @@
  * so these tests exercise real DOM via happy-dom.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { PDPUIManager, setHeroImage } from '../pdpUI';
+import { PDPUIManager, setHeroImage, thumbnailSrc } from '../pdpUI';
 import {
   ProductAvailabilityState,
   type ProductAvailabilityInfo,
@@ -23,7 +23,6 @@ function setupDom(): void {
     <div id="product-image-container"></div>
     <div id="remaining-count"></div>
     <div id="cart-quantity"></div>
-    <div id="inventory-status"></div>
     <div id="quantity-stepper"></div>
     <div id="gallery-thumbnails"></div>
     <p id="pdp-live-status" role="status" aria-live="polite"></p>
@@ -321,7 +320,7 @@ describe('PDPUIManager', () => {
       manager.updateInventoryDisplay(availabilityInfo({ inCart: 2 }));
       const el = document.getElementById('cart-quantity');
       expect(el?.classList.contains('hidden')).toBe(false);
-      expect(el?.textContent).toBe('( 2 in cart )');
+      expect(el?.textContent).toBe('(2 in cart)');
     });
 
     it('hides the in-cart count when inCart is 0', () => {
@@ -329,24 +328,6 @@ describe('PDPUIManager', () => {
       expect(
         document.getElementById('cart-quantity')?.classList.contains('hidden')
       ).toBe(true);
-    });
-
-    it('injects the out-of-stock message only for OUT_OF_STOCK', () => {
-      manager.updateInventoryDisplay(
-        availabilityInfo({
-          state: ProductAvailabilityState.OUT_OF_STOCK,
-          remaining: 0,
-          totalInventory: 0,
-        })
-      );
-      expect(
-        document.getElementById('inventory-status')?.textContent
-      ).toContain('currently out of stock');
-    });
-
-    it('clears inventory-status for non OUT_OF_STOCK states', () => {
-      manager.updateInventoryDisplay(availabilityInfo());
-      expect(document.getElementById('inventory-status')?.innerHTML).toBe('');
     });
   });
 
@@ -397,10 +378,13 @@ describe('PDPUIManager', () => {
   });
 
   describe('updateAttributeButtonStates', () => {
+    // The PDP's chips live under .product-info (the manager's default root)
     function setupButton(): void {
       document.body.innerHTML += `
-        <button data-attribute-type="color" data-attribute-value="red"></button>
-        <button data-attribute-type="color" data-attribute-value="blue"></button>
+        <div class="product-info">
+          <button data-attribute-type="color" data-attribute-value="red"></button>
+          <button data-attribute-type="color" data-attribute-value="blue"></button>
+        </div>
       `;
     }
 
@@ -432,6 +416,75 @@ describe('PDPUIManager', () => {
       expect(blue.getAttribute('aria-pressed')).toBe('false');
       expect(blue.classList.contains('line-through')).toBe(true);
       expect(blue.getAttribute('aria-label')).toBe('blue — out of stock');
+    });
+  });
+
+  describe('updateAttributeButtonStates: only its own chips', () => {
+    // QuickView is mounted on every page, so on a product page a second set of
+    // [data-attribute-type] chips sits elsewhere in the document.
+    const chips = `
+      <div class="product-info">
+        <button id="pdp-red" data-attribute-type="color" data-attribute-value="red"></button>
+      </div>
+      <div id="quick-view-attributes">
+        <button id="qv-red" data-attribute-type="color" data-attribute-value="red" class="untouched"></button>
+      </div>`;
+
+    it("leaves chips outside its root alone (the PDP manager ignores QuickView's)", () => {
+      document.body.insertAdjacentHTML('beforeend', chips);
+
+      manager.updateAttributeButtonStates(
+        { color: ['red'] },
+        { color: 'red' },
+        () => true
+      );
+
+      expect(
+        document.getElementById('pdp-red')!.getAttribute('aria-pressed')
+      ).toBe('true');
+      const qv = document.getElementById('qv-red')!;
+      expect(qv.hasAttribute('aria-pressed')).toBe(false);
+      expect(qv.className).toBe('untouched');
+    });
+
+    it("honors a custom root (QuickView's manager ignores the PDP's)", () => {
+      document.body.insertAdjacentHTML('beforeend', chips);
+      const quickView = new PDPUIManager({
+        attributeRoot: '#quick-view-attributes',
+      });
+
+      quickView.updateAttributeButtonStates(
+        { color: ['red'] },
+        { color: 'red' },
+        () => true
+      );
+
+      expect(
+        document.getElementById('qv-red')!.getAttribute('aria-pressed')
+      ).toBe('true');
+      expect(
+        document.getElementById('pdp-red')!.hasAttribute('aria-pressed')
+      ).toBe(false);
+    });
+
+    it('does nothing, and does not throw, when its root is not on the page', () => {
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        '<button data-attribute-type="color" data-attribute-value="red"></button>'
+      );
+
+      expect(() =>
+        manager.updateAttributeButtonStates(
+          { color: ['red'] },
+          { color: 'red' },
+          () => true
+        )
+      ).not.toThrow();
+      expect(
+        document
+          .querySelector('[data-attribute-value="red"]')!
+          .hasAttribute('aria-pressed')
+      ).toBe(false);
     });
   });
 
@@ -584,6 +637,41 @@ describe('PDPUIManager', () => {
       expect(
         (document.getElementById('product-image') as HTMLImageElement).src
       ).toContain('a.jpg');
+    });
+  });
+
+  describe('gallery thumbnails load a small image, not the original', () => {
+    const ORIGINAL = 'https://items-images-sandbox.s3.amazonaws.com/ONE.jpg';
+
+    it('thumbnailSrc is a 128px (2x of the 64px slot) image-CDN URL', () => {
+      const src = new URL(thumbnailSrc(ORIGINAL), 'http://localhost');
+
+      expect(src.pathname).toBe('/.netlify/images');
+      expect(src.searchParams.get('url')).toBe(ORIGINAL);
+      expect(src.searchParams.get('w')).toBe('128');
+      expect(src.searchParams.get('h')).toBe('128');
+    });
+
+    it('passes a non-remote URL through unchanged', () => {
+      expect(thumbnailSrc('a.jpg')).toBe('a.jpg');
+      expect(thumbnailSrc('data:image/png;base64,AAAA')).toBe(
+        'data:image/png;base64,AAAA'
+      );
+    });
+
+    it('rebuilt thumbnails show the small image but keep the original for the hero and zoom', () => {
+      manager.updateGalleryThumbnails([ORIGINAL, `${ORIGINAL}?2`]);
+
+      const [first] = Array.from(
+        document.querySelectorAll<HTMLButtonElement>('.gallery-thumb')
+      );
+      expect(first.dataset.gallerySrc).toBe(ORIGINAL);
+      expect(first.querySelector('img')!.getAttribute('src')).toContain(
+        '/.netlify/images?'
+      );
+      expect(first.querySelector('img')!.getAttribute('src')).toContain(
+        'w=128'
+      );
     });
   });
 

@@ -12,6 +12,7 @@ import {
 } from '@/lib/square/types';
 import { MoneyUtils } from '@/lib/square/money';
 import { heroAlt } from '@/lib/square/variationImages';
+import { toNetlifyImageCDN } from '@/lib/image/enhanced-optimizer';
 
 export interface ElementIds {
   priceDisplay?: string;
@@ -25,7 +26,6 @@ export interface ElementIds {
   imageContainer?: string;
   remainingCount?: string;
   cartQuantity?: string;
-  inventoryStatus?: string;
   liveStatus?: string;
   /**
    * Wrapper around the whole quantity block, hidden while sold out. Defaults
@@ -33,11 +33,28 @@ export interface ElementIds {
    * own quantity section, and this id may belong to a PDP behind the modal).
    */
   quantitySection?: string | null;
+  /**
+   * CSS selector for the element that contains this manager's attribute chips.
+   * Defaults to the PDP's '.product-info'. QuickView is mounted on every page,
+   * so on a product page there are two sets of `[data-attribute-type]` chips;
+   * each manager must only touch its own.
+   */
+  attributeRoot?: string;
 }
 
 const ANNOUNCE_DEBOUNCE_MS = 250;
 
 const HERO_SRCSET_WIDTHS = [320, 640, 768, 1024];
+
+/**
+ * A gallery thumbnail is shown at 64px; load a 128px version (2x, for dense
+ * screens) from the image CDN rather than the full-size original. The
+ * thumbnail's `data-gallery-src` keeps the original, which the hero and the
+ * zoom use. Non-remote URLs pass through unchanged.
+ */
+export function thumbnailSrc(imageUrl: string): string {
+  return toNetlifyImageCDN(imageUrl, 128, { height: 128 });
+}
 
 function buildHeroSrcSet(imageUrl: string): string {
   return HERO_SRCSET_WIDTHS.map((size) => {
@@ -124,7 +141,6 @@ export class PDPUIManager {
     imageContainer?: HTMLElement;
     remainingCount?: HTMLElement;
     cartQuantity?: HTMLElement;
-    inventoryStatus?: HTMLElement;
     liveStatus?: HTMLElement;
     quantitySection?: HTMLElement;
   } = {};
@@ -132,9 +148,11 @@ export class PDPUIManager {
   private announceTimer?: ReturnType<typeof setTimeout>;
 
   private elementIds?: ElementIds; // Store for re-caching
+  private attributeRoot: string;
 
   constructor(elementIds?: ElementIds) {
     this.elementIds = elementIds;
+    this.attributeRoot = elementIds?.attributeRoot ?? '.product-info';
     this.cacheElements(elementIds);
   }
 
@@ -152,7 +170,6 @@ export class PDPUIManager {
       imageContainer: customIds?.imageContainer || 'product-image-container',
       remainingCount: customIds?.remainingCount || 'remaining-count',
       cartQuantity: customIds?.cartQuantity || 'cart-quantity',
-      inventoryStatus: customIds?.inventoryStatus || 'inventory-status',
       liveStatus: customIds?.liveStatus || 'pdp-live-status',
       quantitySection:
         customIds?.quantitySection === undefined
@@ -186,8 +203,6 @@ export class PDPUIManager {
       imageContainer: imageContainer || undefined,
       remainingCount: document.getElementById(ids.remainingCount) || undefined,
       cartQuantity: document.getElementById(ids.cartQuantity) || undefined,
-      inventoryStatus:
-        document.getElementById(ids.inventoryStatus) || undefined,
       liveStatus: document.getElementById(ids.liveStatus) || undefined,
       quantitySection: ids.quantitySection
         ? document.getElementById(ids.quantitySection) || undefined
@@ -340,7 +355,7 @@ export class PDPUIManager {
     info: ProductAvailabilityInfo,
     isGiftCard?: boolean
   ): void {
-    const { remainingCount, cartQuantity, inventoryStatus } = this.elements;
+    const { remainingCount, cartQuantity } = this.elements;
 
     if (remainingCount) {
       if (isGiftCard) {
@@ -354,22 +369,10 @@ export class PDPUIManager {
 
     if (cartQuantity) {
       if (info.inCart > 0) {
-        cartQuantity.textContent = `( ${info.inCart} in cart )`;
+        cartQuantity.textContent = `(${info.inCart} in cart)`;
         cartQuantity.classList.remove('hidden');
       } else {
         cartQuantity.classList.add('hidden');
-      }
-    }
-
-    if (inventoryStatus) {
-      if (info.state === ProductAvailabilityState.OUT_OF_STOCK) {
-        inventoryStatus.innerHTML = `
-          <p class="mt-2 text-sm">
-            This item is currently out of stock
-          </p>
-        `;
-      } else {
-        inventoryStatus.innerHTML = '';
       }
     }
   }
@@ -456,8 +459,11 @@ export class PDPUIManager {
     selectedAttributes: Record<string, string>,
     canAddToCartFn: (attributeType: string, value: string) => boolean
   ): void {
+    const root = document.querySelector(this.attributeRoot);
+    if (!root) return;
+
     Object.keys(availableAttributes).forEach((attributeType) => {
-      const buttons = document.querySelectorAll(
+      const buttons = root.querySelectorAll(
         `[data-attribute-type="${attributeType}"]`
       );
 
@@ -587,7 +593,7 @@ export class PDPUIManager {
         aria-pressed="${i === 0 ? 'true' : 'false'}"
       >
         <img
-          src="${imgUrl.replace(/"/g, '&quot;')}"
+          src="${thumbnailSrc(imgUrl).replace(/"/g, '&quot;')}"
           alt="Product image ${i + 1}"
           class="w-full h-full object-cover"
           loading="${i < 3 ? 'eager' : 'lazy'}"

@@ -120,6 +120,31 @@ test.describe('PDP gallery arrows', () => {
   });
 });
 
+test.describe('PDP gallery thumbnails', () => {
+  test('load a small CDN image but keep the original for the hero and zoom', async ({
+    page,
+  }) => {
+    await open(page, DECK);
+
+    const thumbs = await page.locator('.gallery-thumb').evaluateAll((els) =>
+      els.map((e) => ({
+        original: (e as HTMLElement).dataset.gallerySrc,
+        shown: e.querySelector('img')!.getAttribute('src'),
+      }))
+    );
+
+    expect(thumbs).toHaveLength(3);
+    for (const { original, shown } of thumbs) {
+      // The 64px slot loads a 128px (2x) image, not the full-size original
+      expect(original).toContain('items-images-sandbox.s3.amazonaws.com/');
+      expect(shown).toContain('/.netlify/images?');
+      expect(shown).toContain('w=128');
+      // ...and the original is what the hero swaps to
+      expect(decodeURIComponent(shown!)).toContain(original!);
+    }
+  });
+});
+
 test.describe('PDP gallery swipe', () => {
   test.use({ hasTouch: true, viewport: { width: 375, height: 800 } });
 
