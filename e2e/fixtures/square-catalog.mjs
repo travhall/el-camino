@@ -21,12 +21,28 @@ const imageUrl = (name) =>
 // avoids words ("tees", "tops", "apparel", ...) that switch on the size guide.
 export const CATEGORY = { id: 'CAT_TEST_GOODS', name: 'Test Goods' };
 
-function product({ id, name, description, images, variations, categoryIds }) {
+// Categories for the related-products cluster. Their slugs (decks, trucks,
+// wheels) are the ones the related-products scorer treats as complementary.
+export const DECKS = { id: 'CAT_DECKS', name: 'Decks' };
+export const TRUCKS = { id: 'CAT_TRUCKS', name: 'Trucks' };
+export const WHEELS = { id: 'CAT_WHEELS', name: 'Wheels' };
+export const CATEGORIES = [CATEGORY, DECKS, TRUCKS, WHEELS];
+
+function product({
+  id,
+  name,
+  description,
+  images,
+  variations,
+  categoryIds,
+  brand,
+}) {
   return {
     id,
     name,
     description,
     images,
+    brand,
     categoryIds: categoryIds ?? [],
     variations: variations.map((v, i) => ({ ...v, ordinal: i + 1 })),
   };
@@ -71,6 +87,108 @@ export const PROMO = product({
   ],
 });
 
-export const PRODUCTS = [TEE, DECK, PROMO];
+// --- Related-products cluster ------------------------------------------------
+//
+// Viewed from SOURCE (brand Acme, category Decks), each of the others lands in
+// a different scoring tier, so the order and the cap are both observable:
+//
+//   ACME_TRUCKS    Acme   Trucks      100  same brand, complementary category
+//   ACME_DECK_TWO  Acme   Decks        80  same brand, same category
+//                                          (every variation sold out)
+//   ZETA_WHEELS    Zeta   Wheels       60  complementary category
+//   ZETA_DECK      Zeta   Decks        40  same category
+//                                          (default size sold out, another in stock)
+//   ACME_STICKER   Acme   Test Goods   20  same brand only
+//   ACME_CAP       Acme   Test Goods   20  same brand only: the sixth, cut by the cap
+//   UNRELATED_HAT  Zeta   Test Goods    0  no relationship: never shown
+const solo = (id, price = 2000, stock = 5) => [
+  { id, name: 'Regular', price, stock },
+];
+const item = (id, name, brand, category, variations, images = []) =>
+  product({
+    id,
+    name,
+    description: `${name} (related-products fixture).`,
+    images: images.length ? images : [`IMG_${id.slice(0, 12)}`],
+    brand,
+    categoryIds: [category.id],
+    variations,
+  });
+
+export const SOURCE = item(
+  'RELSOURCE00000000000000DD',
+  'Source Deck',
+  'Acme',
+  DECKS,
+  solo('VAR_SOURCE')
+);
+export const ACME_TRUCKS = item(
+  'RELACMETRUCKS000000000EE1',
+  'Acme Trucks',
+  'Acme',
+  TRUCKS,
+  solo('VAR_ACME_TRUCKS')
+);
+export const ACME_DECK_TWO = item(
+  'RELACMEDECKTWO0000000EE2',
+  'Acme Deck Two',
+  'Acme',
+  DECKS,
+  [
+    { id: 'VAR_ACME_DECK_TWO_8', name: '8.0', price: 6000, stock: 0 },
+    { id: 'VAR_ACME_DECK_TWO_825', name: '8.25', price: 6000, stock: 0 },
+  ]
+);
+export const ZETA_WHEELS = item(
+  'RELZETAWHEELS00000000EE3',
+  'Zeta Wheels',
+  'Zeta',
+  WHEELS,
+  solo('VAR_ZETA_WHEELS')
+);
+export const ZETA_DECK = item(
+  'RELZETADECK0000000000EE4',
+  'Zeta Deck',
+  'Zeta',
+  DECKS,
+  [
+    { id: 'VAR_ZETA_DECK_8', name: '8.0', price: 6000, stock: 0 },
+    { id: 'VAR_ZETA_DECK_825', name: '8.25', price: 6000, stock: 4 },
+  ]
+);
+export const ACME_STICKER = item(
+  'RELACMESTICKER0000000EE5',
+  'Acme Sticker',
+  'Acme',
+  CATEGORY,
+  solo('VAR_ACME_STICKER')
+);
+export const ACME_CAP = item(
+  'RELACMECAP00000000000EE6',
+  'Acme Cap',
+  'Acme',
+  CATEGORY,
+  solo('VAR_ACME_CAP')
+);
+export const UNRELATED_HAT = item(
+  'RELUNRELATEDHAT000000EE7',
+  'Unrelated Hat',
+  'Zeta',
+  CATEGORY,
+  solo('VAR_UNRELATED_HAT')
+);
+
+export const RELATED_CLUSTER = [
+  SOURCE,
+  ACME_TRUCKS,
+  ACME_DECK_TWO,
+  ZETA_WHEELS,
+  ZETA_DECK,
+  ACME_STICKER,
+  ACME_CAP,
+  UNRELATED_HAT,
+];
+
+export const PRODUCTS = [TEE, DECK, PROMO, ...RELATED_CLUSTER];
 
 export { imageUrl };

@@ -54,6 +54,10 @@ vi.mock('@/lib/square/categories', () => ({
 import {
   getRelatedProducts,
   getComplementaryCategories,
+  describeRelatedSection,
+  isProductSoldOut,
+  variationIdsOf,
+  RELATION_SCORE,
 } from '@/lib/product/relatedProducts';
 
 function makeProduct(overrides: Partial<Product> = {}): Product {
@@ -221,6 +225,7 @@ describe('getRelatedProducts', () => {
 
     expect(result).toEqual({
       products: [],
+      scores: [],
       matchType: 'complementary',
       confidence: 'low',
     });
@@ -371,5 +376,236 @@ describe('getComplementaryCategories', () => {
 
   it('returns an empty array for an unknown category slug', () => {
     expect(getComplementaryCategories('not-a-real-category')).toEqual([]);
+  });
+});
+
+describe('getRelatedProducts scores', () => {
+  it("returns each product's score, parallel to products and sorted descending", async () => {
+    const source = makeProduct({
+      id: 'source',
+      brand: 'brand-a',
+      reportingCategoryId: 'cat-decks',
+    });
+    const brandAndCategory = makeProduct({
+      id: 'same-brand-deck',
+      brand: 'brand-a',
+      reportingCategoryId: 'cat-decks',
+    });
+    const categoryOnly = makeProduct({
+      id: 'other-deck',
+      brand: 'brand-b',
+      reportingCategoryId: 'cat-decks',
+    });
+    const brandOnly = makeProduct({ id: 'same-brand-other', brand: 'brand-a' });
+
+    const result = await getRelatedProducts(source, [
+      brandOnly,
+      categoryOnly,
+      brandAndCategory,
+    ]);
+
+    expect(result.products.map((p) => p.id)).toEqual([
+      'same-brand-deck',
+      'other-deck',
+      'same-brand-other',
+    ]);
+    expect(result.scores).toEqual([
+      RELATION_SCORE.BRAND_AND_CATEGORY,
+      RELATION_SCORE.CATEGORY,
+      RELATION_SCORE.BRAND,
+    ]);
+  });
+
+  it('ranks a different-brand product in the same category above a same-brand product in another category', async () => {
+    const source = makeProduct({
+      id: 'source',
+      brand: 'brand-a',
+      reportingCategoryId: 'cat-decks',
+    });
+    const sameCategory = makeProduct({
+      id: 'cat',
+      brand: 'brand-b',
+      reportingCategoryId: 'cat-decks',
+    });
+    const sameBrand = makeProduct({ id: 'brand', brand: 'brand-a' });
+
+    const result = await getRelatedProducts(source, [sameBrand, sameCategory]);
+
+    expect(result.products.map((p) => p.id)).toEqual(['cat', 'brand']);
+  });
+});
+
+describe('describeRelatedSection', () => {
+  const p = (brand?: string) => makeProduct({ brand });
+  const result = (brands: Array<string | undefined>, scores: number[]) => ({
+    products: brands.map(p),
+    scores,
+  });
+  const decks = { name: 'Decks', url: '/category/decks' };
+  const SHOP = { href: '/shop/all', label: 'See all products' };
+
+  it('says "More from <brand>" and links to the brand when every item is that brand', () => {
+    const section = describeRelatedSection(
+      { brand: 'Thrasher' },
+      result(
+        ['Thrasher', 'thrasher'],
+        [RELATION_SCORE.BRAND, RELATION_SCORE.BRAND]
+      ),
+      decks
+    );
+
+    expect(section.title).toBe('More from Thrasher');
+    expect(section.seeAll).toEqual({
+      href: '/shop/all?brands=Thrasher',
+      label: 'See all from Thrasher',
+    });
+  });
+
+  it('url-encodes the brand', () => {
+    const section = describeRelatedSection(
+      { brand: 'Spitfire & Co' },
+      result(['Spitfire & Co'], [RELATION_SCORE.BRAND])
+    );
+    expect(section.seeAll.href).toBe('/shop/all?brands=Spitfire%20%26%20Co');
+  });
+
+  it('says "Complete Your Setup" when every item is a complementary category, and does not link to the source category', () => {
+    const section = describeRelatedSection(
+      { brand: 'Real' },
+      result(
+        ['Independent', 'Real'],
+        [RELATION_SCORE.COMPLEMENTARY, RELATION_SCORE.BRAND_AND_COMPLEMENTARY]
+      ),
+      decks
+    );
+
+    expect(section.title).toBe('Complete Your Setup');
+    expect(section.seeAll).toEqual(SHOP);
+  });
+
+  it('says "More in <category>" and links to it when every item is in the source category', () => {
+    const section = describeRelatedSection(
+      { brand: 'Real' },
+      result(
+        ['Real', 'Girl'],
+        [RELATION_SCORE.BRAND_AND_CATEGORY, RELATION_SCORE.CATEGORY]
+      ),
+      decks
+    );
+
+    expect(section.title).toBe('More in Decks');
+    expect(section.seeAll).toEqual({
+      href: '/category/decks',
+      label: 'See all Decks',
+    });
+  });
+
+  it('is neutral and links to the shop for a mixed result', () => {
+    const section = describeRelatedSection(
+      { brand: 'Real' },
+      result(
+        ['Real', 'Girl', 'Real'],
+        [
+          RELATION_SCORE.BRAND_AND_CATEGORY,
+          RELATION_SCORE.COMPLEMENTARY,
+          RELATION_SCORE.BRAND,
+        ]
+      ),
+      decks
+    );
+
+    expect(section.title).toBe('You Might Also Like');
+    expect(section.seeAll).toEqual(SHOP);
+  });
+
+  it('does not claim a category when the source has none', () => {
+    const section = describeRelatedSection(
+      { brand: 'Real' },
+      result(['Girl'], [RELATION_SCORE.CATEGORY])
+    );
+
+    expect(section.title).toBe('You Might Also Like');
+    expect(section.seeAll).toEqual(SHOP);
+  });
+
+  it('does not claim a brand the source does not have', () => {
+    const section = describeRelatedSection(
+      {},
+      result([undefined], [RELATION_SCORE.CATEGORY]),
+      decks
+    );
+
+    expect(section.title).toBe('More in Decks');
+  });
+
+  it('is neutral for an empty result', () => {
+    const section = describeRelatedSection({ brand: 'Real' }, result([], []));
+    expect(section.title).toBe('You Might Also Like');
+    expect(section.seeAll).toEqual(SHOP);
+  });
+});
+
+describe('isProductSoldOut', () => {
+  const variation = (variationId: string) => ({
+    id: variationId,
+    variationId,
+    name: variationId,
+    price: 10,
+  });
+  const stock = (entries: Record<string, boolean>) =>
+    new Map(
+      Object.entries(entries).map(([id, out]) => [id, { isOutOfStock: out }])
+    );
+  const product = makeProduct({
+    variationId: 'small',
+    variations: [variation('small'), variation('medium'), variation('large')],
+  });
+
+  it('is sold out only when every variation is', () => {
+    expect(
+      isProductSoldOut(
+        product,
+        stock({ small: true, medium: true, large: true })
+      )
+    ).toBe(true);
+  });
+
+  it('is NOT sold out when the default is sold out but another size is in stock', () => {
+    expect(
+      isProductSoldOut(
+        product,
+        stock({ small: true, medium: false, large: true })
+      )
+    ).toBe(false);
+  });
+
+  it('is not sold out when stock could not be looked up', () => {
+    expect(isProductSoldOut(product, stock({ small: true }))).toBe(false);
+    expect(isProductSoldOut(product, new Map())).toBe(false);
+  });
+
+  it('falls back to the default variation for a product that lists none', () => {
+    const bare = makeProduct({ variationId: 'only', variations: undefined });
+    expect(isProductSoldOut(bare, stock({ only: true }))).toBe(true);
+    expect(isProductSoldOut(bare, stock({ only: false }))).toBe(false);
+  });
+});
+
+describe('variationIdsOf', () => {
+  it('lists every variation once, falling back to the default', () => {
+    const v = (variationId: string) => ({
+      id: variationId,
+      variationId,
+      name: variationId,
+      price: 1,
+    });
+    expect(
+      variationIdsOf(
+        makeProduct({ variationId: 'a', variations: [v('a'), v('b'), v('a')] })
+      )
+    ).toEqual(['a', 'b']);
+    expect(
+      variationIdsOf(makeProduct({ variationId: 'solo', variations: [] }))
+    ).toEqual(['solo']);
   });
 });

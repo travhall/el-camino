@@ -5,13 +5,19 @@ import type { Product } from '@/lib/square/types';
 import { MoneyUtils } from '@/lib/square/money';
 import { batchInventoryService } from '@/lib/square/batchInventory';
 import { toNetlifyImageCDN } from '@/lib/image/enhanced-optimizer';
+import {
+  isProductSoldOut,
+  variationIdsOf,
+} from '@/lib/product/relatedProducts';
 
 interface Props {
   products: Product[];
   title?: string;
+  /** Where "See all" goes; omit to show no see-all link or card. */
+  seeAll?: { href: string; label: string };
 }
 
-const { products, title = 'Complete Your Setup' } = Astro.props;
+const { products, title = 'Complete Your Setup', seeAll } = Astro.props;
 
 if (products.length === 0) {
   return null;
@@ -20,18 +26,18 @@ if (products.length === 0) {
 // Cap at 5 — quality over quantity
 const displayProducts = products.slice(0, 5);
 
-// Derive brand for "See All" link from first product
-const brand = displayProducts[0]?.brand;
-const seeAllUrl = brand
-  ? `/shop/all?brands=${encodeURIComponent(brand)}`
-  : '/shop/all';
-
-const variationIds = displayProducts.map((p) => p.variationId).filter(Boolean);
+// Every variation of every card, not just each default: a product whose first
+// size is sold out is still buyable if another size is in stock.
+const variationIds = [
+  ...new Set(displayProducts.flatMap(variationIdsOf)),
+].filter(Boolean);
 const inventoryMap =
   await batchInventoryService.getBatchInventoryStatus(variationIds);
+
+const viewportId = 'related-products-viewport';
 ---
 
-<section class="related-products py-12 lg:py-16">
+<section class="related-products py-12 lg:py-16" data-filmstrip>
   <!-- Header -->
   <div class="flex items-center justify-between mb-6 lg:mb-8">
     <div>
@@ -39,35 +45,93 @@ const inventoryMap =
         From the Catalog
       </p>
       <h2
+        id="related-products-title"
         class="text-2xl lg:text-3xl font-display font-bold text-(--content-heading) leading-none"
       >
         {title}
       </h2>
     </div>
-    {
-      products.length > 4 && (
-        <a
-          href={seeAllUrl}
-          class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 hidden lg:inline-block"
-          aria-label={`See all products${brand ? ` from ${brand}` : ''}`}
+    <div class="flex items-center gap-3">
+      <!-- Scrolling without a scrollbar: the row hides it, so a mouse user has no
+           sign it scrolls. Hidden on touch-width screens (swipe) and whenever
+           everything already fits; filmstrip.ts toggles data-overflow. -->
+      <div
+        data-filmstrip-controls
+        data-overflow="false"
+        class="flex items-center gap-2 max-md:hidden data-[overflow=false]:hidden"
+      >
+        <button
+          type="button"
+          data-filmstrip-prev
+          aria-disabled="true"
+          aria-controls={viewportId}
+          aria-label="Previous products"
+          class="size-11 grid place-items-center rounded-full border border-(--ui-input-border) bg-(--surface-primary) text-(--content-heading) hover:bg-(--surface-secondary) transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-(--ui-button-ring) outline-0 aria-disabled:opacity-40 aria-disabled:cursor-default aria-disabled:hover:bg-(--surface-primary)"
         >
-          See all from {brand}
-        </a>
-      )
-    }
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m15 18-6-6 6-6"></path>
+          </svg>
+        </button>
+        <button
+          type="button"
+          data-filmstrip-next
+          aria-disabled="true"
+          aria-controls={viewportId}
+          aria-label="Next products"
+          class="size-11 grid place-items-center rounded-full border border-(--ui-input-border) bg-(--surface-primary) text-(--content-heading) hover:bg-(--surface-secondary) transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-(--ui-button-ring) outline-0 aria-disabled:opacity-40 aria-disabled:cursor-default aria-disabled:hover:bg-(--surface-primary)"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m9 18 6-6-6-6"></path>
+          </svg>
+        </button>
+      </div>
+      {
+        seeAll && products.length > 4 && (
+          <a
+            href={seeAll.href}
+            class="px-2.5 py-1.5 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 hidden lg:inline-block"
+          >
+            {seeAll.label}
+          </a>
+        )
+      }
+    </div>
   </div>
 
   <!-- Horizontal scroll — bleeds to parent edges -->
   <div
-    class="-mx-4 sm:-mx-6 lg:-mx-8 overflow-x-auto pb-4 scrollbar-hide"
+    id={viewportId}
+    data-filmstrip-viewport
+    class="-mx-4 sm:-mx-6 lg:-mx-8 overflow-x-auto pb-4 scrollbar-hide snap-x snap-proximity scroll-pl-4 sm:scroll-pl-6 lg:scroll-pl-8"
     role="region"
-    aria-label={`More from ${brand ?? 'this brand'}`}
+    aria-label={title}
   >
     <div class="flex gap-3 lg:gap-4 px-4 sm:px-6 lg:px-8">
       {
         displayProducts.map((product, index) => {
-          const inventoryStatus = inventoryMap.get(product.variationId);
-          const isOutOfStock = inventoryStatus?.isOutOfStock ?? false;
+          const isOutOfStock = isProductSoldOut(product, inventoryMap);
           const defaultVariation = product.variations?.[0];
           const saleInfo = defaultVariation?.saleInfo;
           const isOnSale = !!saleInfo && !isOutOfStock;
@@ -88,7 +152,7 @@ const inventoryMap =
               href={productUrl}
               data-astro-prefetch="viewport"
               class:list={[
-                'group relative flex-none w-52 sm:w-60 lg:w-72 overflow-hidden rounded-sm bg-(--surface-secondary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)',
+                'group relative flex-none snap-start w-52 sm:w-60 lg:w-72 overflow-hidden rounded-sm bg-(--surface-secondary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)',
                 isOutOfStock && 'opacity-80',
               ]}
               aria-label={`${product.brand ? product.brand + ' ' : ''}${product.title} — ${formattedPrice}${isOutOfStock ? ' — Sold Out' : ''}${isOnSale ? ' — On Sale' : ''}`}
@@ -162,29 +226,47 @@ const inventoryMap =
       }
 
       {/* "See all" terminal card */}
-      <a
-        href={seeAllUrl}
-        class="group relative flex-none w-32 sm:w-36 overflow-hidden rounded-sm bg-(--surface-secondary) border-2 border-(--border-primary) hover:border-(--color-elco-sweet-tea-300) transition-colors duration-200 flex flex-col items-center justify-center gap-3 p-4 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)"
-      >
-        <svg
-          class="w-8 h-8 text-(--content-meta) group-hover:text-(--color-elco-sweet-tea-400) transition-colors"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          aria-hidden="true"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"></path>
-        </svg>
-        <p
-          class="text-xs font-bold uppercase tracking-widest text-(--content-meta) group-hover:text-(--content-heading) transition-colors leading-snug"
-        >
-          See all{brand ? ` from ${brand}` : ''}
-        </p>
-      </a>
+      {
+        seeAll && (
+          <a
+            href={seeAll.href}
+            class="group relative flex-none snap-start w-32 sm:w-36 overflow-hidden rounded-sm bg-(--surface-secondary) border-2 border-(--border-primary) hover:border-(--color-elco-sweet-tea-300) transition-colors duration-200 flex flex-col items-center justify-center gap-3 p-4 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--content-link)"
+          >
+            <svg
+              class="w-8 h-8 text-(--content-meta) group-hover:text-(--color-elco-sweet-tea-400) transition-colors"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+              />
+            </svg>
+            <p class="text-xs font-bold uppercase tracking-widest text-(--content-meta) group-hover:text-(--content-heading) transition-colors leading-snug">
+              {seeAll.label}
+            </p>
+          </a>
+        )
+      }
     </div>
   </div>
 </section>
+
+<script>
+  import { initFilmstrips } from '@/lib/ui/filmstrip';
+
+  function init() {
+    initFilmstrips();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+  document.addEventListener('astro:page-load', init);
+</script>
