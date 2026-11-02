@@ -1064,6 +1064,7 @@ Astro.response.headers.set(
             availableAttributes: availableAttributes,
             selectedVariationId: defaultVariationId,
             productId: product.id,
+            isGiftCard: isGiftCard || undefined,
           })}
         />
 
@@ -1353,6 +1354,8 @@ Astro.response.headers.set(
       // Only initialize PDP controller if we have interactive elements that need it
       if (hasAttributeButtons || hasVariationButtons || hasQuantityControls) {
         pdpController = new PDPController(productData);
+        // The page is CDN-cached, so its stock can be stale: re-check it now
+        void pdpController.refreshInventory();
         return true;
       } else {
         return true; // No interactive elements, not an error

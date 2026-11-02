@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/square/inventory', () => ({
-  checkBulkInventory: vi.fn(),
+  checkBulkInventoryWithUnknown: vi.fn(),
 }));
 
 import { POST } from '../cart-inventory';
-import { checkBulkInventory } from '@/lib/square/inventory';
+import { checkBulkInventoryWithUnknown } from '@/lib/square/inventory';
 
 function makeContext(body: unknown) {
   return {
@@ -38,16 +38,33 @@ describe('POST /api/cart-inventory', () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body).toEqual({ error: 'Too many variation IDs', success: false });
-    expect(checkBulkInventory).not.toHaveBeenCalled();
+    expect(checkBulkInventoryWithUnknown).not.toHaveBeenCalled();
   });
 
   it('returns inventory data for a valid request', async () => {
-    vi.mocked(checkBulkInventory).mockResolvedValue({ v1: 3 });
+    vi.mocked(checkBulkInventoryWithUnknown).mockResolvedValue({
+      inventory: { v1: 3 },
+      unknown: [],
+    });
     const res = await POST(makeContext({ variationIds: ['v1'] }));
-    expect(checkBulkInventory).toHaveBeenCalledWith(['v1']);
+    expect(checkBulkInventoryWithUnknown).toHaveBeenCalledWith(['v1']);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ success: true, inventory: { v1: 3 } });
+    expect(body).toEqual({ success: true, inventory: { v1: 3 }, unknown: [] });
+  });
+
+  it('reports which IDs could not be determined, still counting them as 0 in `inventory`', async () => {
+    vi.mocked(checkBulkInventoryWithUnknown).mockResolvedValue({
+      inventory: { v1: 3, v2: 0 },
+      unknown: ['v2'],
+    });
+    const res = await POST(makeContext({ variationIds: ['v1', 'v2'] }));
+    const body = await res.json();
+
+    // Cart callers keep reading `inventory` exactly as before
+    expect(body.inventory).toEqual({ v1: 3, v2: 0 });
+    // Display callers can tell v2 is "couldn't check", not "sold out"
+    expect(body.unknown).toEqual(['v2']);
   });
 
   it('returns 500 when the request body is not valid JSON', async () => {
@@ -67,8 +84,10 @@ describe('POST /api/cart-inventory', () => {
     });
   });
 
-  it('returns 500 when checkBulkInventory throws', async () => {
-    vi.mocked(checkBulkInventory).mockRejectedValue(new Error('Square down'));
+  it('returns 500 when the inventory lookup throws', async () => {
+    vi.mocked(checkBulkInventoryWithUnknown).mockRejectedValue(
+      new Error('Square down')
+    );
     const res = await POST(makeContext({ variationIds: ['v1'] }));
     expect(res.status).toBe(500);
   });

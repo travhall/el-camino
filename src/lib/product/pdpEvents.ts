@@ -10,6 +10,8 @@ export interface ProductPageData {
   availableAttributes: Record<string, string[]>;
   selectedVariationId: string;
   productId: string;
+  /** Gift cards have no tracked stock (they render as in stock, quantity 99) */
+  isGiftCard?: boolean;
 }
 
 export class PDPEventManager {

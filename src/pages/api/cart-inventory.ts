@@ -1,6 +1,6 @@
 // src/pages/api/cart-inventory.ts
 import type { APIRoute } from 'astro';
-import { checkBulkInventory } from '@/lib/square/inventory';
+import { checkBulkInventoryWithUnknown } from '@/lib/square/inventory';
 
 const MAX_VARIATION_IDS = 50;
 
@@ -27,13 +27,18 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // Use existing server-side inventory checking (no CORS issues)
-    const inventoryData = await checkBulkInventory(variationIds);
+    // Use existing server-side inventory checking (no CORS issues). `inventory`
+    // counts anything it couldn't determine as 0, which is right for validating
+    // a cart. `unknown` names those IDs for callers that display stock, so they
+    // can tell "couldn't check" from "sold out".
+    const { inventory, unknown } =
+      await checkBulkInventoryWithUnknown(variationIds);
 
     return new Response(
       JSON.stringify({
         success: true,
-        inventory: inventoryData,
+        inventory,
+        unknown,
       }),
       {
         status: 200,

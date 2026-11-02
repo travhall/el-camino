@@ -71,6 +71,7 @@ import {
   checkItemInventory,
   isItemInStock,
   checkBulkInventory,
+  checkBulkInventoryWithUnknown,
   getProductStockStatus,
 } from '../inventory';
 // Real retry client (not mocked) — checkBulkInventory now flows through the
@@ -317,6 +318,96 @@ describe('checkBulkInventory', () => {
 
     const result = await checkBulkInventory(['var-1', 'var-2', 'var-3']);
     expect(result).toEqual({ 'var-1': 7, 'var-2': 4, 'var-3': 0 });
+  });
+});
+
+describe('checkBulkInventoryWithUnknown', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    catalogRetryClient.reset();
+    mockCacheGet.mockResolvedValue(undefined);
+    mockCacheSet.mockResolvedValue(undefined);
+    mockProcessSquareError.mockReturnValue({ message: 'sq-error' });
+    mockHandleError.mockImplementation((_err: unknown, d: unknown) => d);
+  });
+
+  it('reports nothing unknown when every lookup succeeds', async () => {
+    mockBatchRetrieveInventory.mockResolvedValue({
+      data: [makeCount('var-1', '4')],
+    });
+
+    const result = await checkBulkInventoryWithUnknown(['var-1']);
+
+    expect(result).toEqual({ inventory: { 'var-1': 4 }, unknown: [] });
+  });
+
+  it('does not call a genuinely sold-out variation unknown', async () => {
+    // Square answers, and var-2 simply has no IN_STOCK count: sold out, known
+    mockBatchRetrieveInventory.mockResolvedValue({
+      data: [makeCount('var-1', '5')],
+    });
+
+    const result = await checkBulkInventoryWithUnknown(['var-1', 'var-2']);
+
+    expect(result.inventory).toEqual({ 'var-1': 5, 'var-2': 0 });
+    expect(result.unknown).toEqual([]);
+  });
+
+  it('flags every ID as unknown, still counted as 0, when Square cannot be reached', async () => {
+    mockBatchRetrieveInventory.mockRejectedValue(new Error('batch down'));
+    mockRetrieveInventoryCount.mockRejectedValue(new Error('individual down'));
+
+    const result = await checkBulkInventoryWithUnknown(['var-1', 'var-2']);
+
+    // Identical to checkBulkInventory's conservative answer...
+    expect(result.inventory).toEqual({ 'var-1': 0, 'var-2': 0 });
+    // ...but now distinguishable from a real zero
+    expect(result.unknown.sort()).toEqual(['var-1', 'var-2']);
+  });
+
+  it('flags only the IDs that failed when others resolved', async () => {
+    mockBatchRetrieveInventory.mockRejectedValue(new Error('batch timeout'));
+    mockRetrieveInventoryCount.mockImplementation(
+      async ({ catalogObjectId }: { catalogObjectId: string }) => {
+        if (catalogObjectId === 'var-2') throw new Error('this one failed');
+        return { data: [makeCount(catalogObjectId, '6')] };
+      }
+    );
+
+    const result = await checkBulkInventoryWithUnknown(['var-1', 'var-2']);
+
+    expect(result.inventory).toEqual({ 'var-1': 6, 'var-2': 0 });
+    expect(result.unknown).toEqual(['var-2']);
+  });
+
+  it('treats cached values as known', async () => {
+    mockCacheGet.mockResolvedValue(9);
+
+    const result = await checkBulkInventoryWithUnknown(['var-1']);
+
+    expect(result).toEqual({ inventory: { 'var-1': 9 }, unknown: [] });
+    expect(mockBatchRetrieveInventory).not.toHaveBeenCalled();
+  });
+
+  it('flags an ID it never looked up (an empty one) rather than reporting a 0 as fact', async () => {
+    mockBatchRetrieveInventory.mockResolvedValue({
+      data: [makeCount('var-1', '2')],
+    });
+
+    const result = await checkBulkInventoryWithUnknown(['var-1', '']);
+
+    expect(result.inventory).toEqual({ 'var-1': 2, '': 0 });
+    expect(result.unknown).toEqual(['']);
+  });
+
+  it('gives checkBulkInventory exactly its `inventory`', async () => {
+    mockBatchRetrieveInventory.mockResolvedValue({
+      data: [makeCount('var-1', '3')],
+    });
+
+    expect(await checkBulkInventory(['var-1', 'var-2'])).toEqual(
+      (await checkBulkInventoryWithUnknown(['var-1', 'var-2'])).inventory
+    );
   });
 });
 

@@ -11,6 +11,8 @@ import {
   type ProductVariation,
 } from '@/lib/square/types';
 import type { PDPUIManager } from '../pdpUI';
+import { cart } from '@/lib/cart';
+import { fetchFreshInventory } from '../inventoryRefresh';
 
 // Handlers object passed into the (mocked) PDPEventManager constructor —
 // mirrors the callbacks shape PDPController wires up in pdpController.ts.
@@ -64,6 +66,12 @@ vi.mock('@/lib/cart', () => ({
     canAddToCart: vi.fn(() => true),
   },
 }));
+
+// Keep the real applyFreshInventory; only the network call is replaced
+vi.mock('../inventoryRefresh', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../inventoryRefresh')>();
+  return { ...actual, fetchFreshInventory: vi.fn() };
+});
 
 vi.mock('../pdpUI', () => ({
   PDPUIManager: class {
@@ -735,6 +743,188 @@ describe('PDPController Real Implementation Tests', () => {
       select(controller, 'Size', 'L'); // L/Blue doesn't exist; L/Red vs L/Green
 
       expect(internals(controller).currentVariation?.variationId).toBe('c');
+    });
+  });
+  describe('refreshInventory (stock re-checked after the cached page loads)', () => {
+    const freshStock = (
+      inventory: Record<string, number>,
+      unknown: string[] = []
+    ) => ({ inventory, unknown: new Set(unknown) });
+
+    // var-1 Small/Red (current, 10 in stock), var-2 Large/Red (5), var-3 Small/Blue (0)
+    const uiOf = (c: PDPController) => internals(c).uiManager;
+    const availabilityCalls = (c: PDPController) =>
+      uiOf(c).updateAvailabilityDisplay.mock.calls.length;
+
+    beforeEach(() => {
+      vi.mocked(fetchFreshInventory).mockReset();
+    });
+
+    it('asks about every variation', async () => {
+      vi.mocked(fetchFreshInventory).mockResolvedValue(freshStock({}));
+      controller = new PDPController(mockProductData);
+
+      await controller.refreshInventory();
+
+      expect(fetchFreshInventory).toHaveBeenCalledWith([
+        'var-1',
+        'var-2',
+        'var-3',
+      ]);
+    });
+
+    it('redraws the current variation when its stock has changed, from the fresh numbers', async () => {
+      vi.mocked(fetchFreshInventory).mockResolvedValue(
+        freshStock({ 'var-1': 2, 'var-2': 5, 'var-3': 0 })
+      );
+      controller = new PDPController(mockProductData);
+      const before = availabilityCalls(controller);
+
+      await controller.refreshInventory();
+
+      expect(availabilityCalls(controller)).toBe(before + 1);
+      expect(cart.getProductAvailability).toHaveBeenLastCalledWith(
+        'prod-1',
+        'var-1',
+        2
+      );
+      expect(mockProductData.variations[0]).toMatchObject({
+        quantity: 2,
+        inStock: true,
+      });
+    });
+
+    it('treats a current variation that has sold out as sold out', async () => {
+      vi.mocked(fetchFreshInventory).mockResolvedValue(
+        freshStock({ 'var-1': 0, 'var-2': 5, 'var-3': 0 })
+      );
+      controller = new PDPController(mockProductData);
+
+      await controller.refreshInventory();
+
+      expect(cart.getProductAvailability).toHaveBeenLastCalledWith(
+        'prod-1',
+        'var-1',
+        0
+      );
+      expect(mockProductData.variations[0].inStock).toBe(false);
+    });
+
+    it('updates chip states but not the main display when only another variation changed', async () => {
+      vi.mocked(fetchFreshInventory).mockResolvedValue(
+        freshStock({ 'var-1': 10, 'var-2': 0, 'var-3': 0 })
+      );
+      controller = new PDPController(mockProductData);
+      const availabilityBefore = availabilityCalls(controller);
+      const chipsBefore =
+        uiOf(controller).updateAttributeButtonStates.mock.calls.length;
+
+      await controller.refreshInventory();
+
+      expect(availabilityCalls(controller)).toBe(availabilityBefore);
+      expect(
+        uiOf(controller).updateAttributeButtonStates.mock.calls.length
+      ).toBe(chipsBefore + 1);
+      expect(mockProductData.variations[1]).toMatchObject({
+        quantity: 0,
+        inStock: false,
+      });
+    });
+
+    it('does nothing visible when stock is as rendered', async () => {
+      vi.mocked(fetchFreshInventory).mockResolvedValue(
+        freshStock({ 'var-1': 10, 'var-2': 5, 'var-3': 0 })
+      );
+      controller = new PDPController(mockProductData);
+      const availabilityBefore = availabilityCalls(controller);
+      const chipsBefore =
+        uiOf(controller).updateAttributeButtonStates.mock.calls.length;
+
+      await controller.refreshInventory();
+
+      expect(availabilityCalls(controller)).toBe(availabilityBefore);
+      expect(
+        uiOf(controller).updateAttributeButtonStates.mock.calls.length
+      ).toBe(chipsBefore);
+    });
+
+    it('leaves a variation alone when the server could not check it, even though it reports 0', async () => {
+      // The Square-hiccup case: without `unknown`, this would flash "Sold Out"
+      vi.mocked(fetchFreshInventory).mockResolvedValue(
+        freshStock({ 'var-1': 0, 'var-2': 0, 'var-3': 0 }, ['var-1', 'var-2'])
+      );
+      controller = new PDPController(mockProductData);
+      const availabilityBefore = availabilityCalls(controller);
+
+      await controller.refreshInventory();
+
+      expect(mockProductData.variations[0]).toMatchObject({
+        quantity: 10,
+        inStock: true,
+      });
+      expect(mockProductData.variations[1]).toMatchObject({
+        quantity: 5,
+        inStock: true,
+      });
+      expect(availabilityCalls(controller)).toBe(availabilityBefore);
+    });
+
+    it('leaves the page as rendered when the refresh fails', async () => {
+      vi.mocked(fetchFreshInventory).mockResolvedValue(null);
+      controller = new PDPController(mockProductData);
+      const availabilityBefore = availabilityCalls(controller);
+
+      await controller.refreshInventory();
+
+      expect(availabilityCalls(controller)).toBe(availabilityBefore);
+      expect(mockProductData.variations[0].quantity).toBe(10);
+    });
+
+    it("does not rebuild the gallery or reset the image (the shopper's place)", async () => {
+      vi.mocked(fetchFreshInventory).mockResolvedValue(
+        freshStock({ 'var-1': 2, 'var-2': 5, 'var-3': 0 })
+      );
+      controller = new PDPController(mockProductData);
+      const imageBefore = uiOf(controller).updateProductImage.mock.calls.length;
+
+      await controller.refreshInventory();
+
+      expect(uiOf(controller).updateProductImage.mock.calls.length).toBe(
+        imageBefore
+      );
+    });
+
+    it('never asks for a gift card, which has no tracked stock', async () => {
+      controller = new PDPController({ ...mockProductData, isGiftCard: true });
+
+      await controller.refreshInventory();
+
+      expect(fetchFreshInventory).not.toHaveBeenCalled();
+    });
+
+    it('ignores a response that arrives after the controller was cleaned up', async () => {
+      let resolve!: (v: ReturnType<typeof freshStock>) => void;
+      vi.mocked(fetchFreshInventory).mockReturnValue(
+        new Promise((r) => (resolve = r))
+      );
+      controller = new PDPController(mockProductData);
+      const availabilityBefore = availabilityCalls(controller);
+
+      const pending = controller.refreshInventory();
+      controller.cleanup(); // navigated away while it was in flight
+      resolve(freshStock({ 'var-1': 0, 'var-2': 0, 'var-3': 0 }));
+      await pending;
+
+      expect(availabilityCalls(controller)).toBe(availabilityBefore);
+      expect(mockProductData.variations[0].quantity).toBe(10);
+    });
+
+    it('does nothing for a product with no variations', async () => {
+      controller = new PDPController({ ...mockProductData, variations: [] });
+
+      await controller.refreshInventory();
+
+      expect(fetchFreshInventory).not.toHaveBeenCalled();
     });
   });
 });
