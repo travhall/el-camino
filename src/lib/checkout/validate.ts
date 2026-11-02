@@ -3,6 +3,7 @@
 // boundary. Downstream modules (fulfillmentBuilders.ts, lineItems.ts) trust
 // their inputs — this is the only place that should distrust them.
 import type { CartItem } from '@/lib/cart/types';
+import { EMAIL_PATTERN } from '@/lib/emailPattern';
 import type { ShippingAddress, PickupContact } from './types';
 
 // Matches calculate-cart.ts's MAX_CART_ITEMS — keep the two in sync.
@@ -12,8 +13,6 @@ const MAX_STRING_LENGTH = 200;
 const MAX_NOTES_LENGTH = 1000;
 const MAX_EMAIL_LENGTH = 254;
 
-// Same pattern as back-in-stock.ts — loose on purpose, just rejects garbage.
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
