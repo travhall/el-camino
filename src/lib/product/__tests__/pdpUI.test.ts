@@ -511,6 +511,23 @@ describe('PDPUIManager', () => {
       expect(img.getAttribute('srcset')).toBe(srcsetBefore);
     });
 
+    it('records the original URL on the element, including when the swap is a no-op', () => {
+      const img = setupPicture();
+      setHeroImage(img, NEW);
+      expect(img.dataset.heroSrc).toBe(NEW);
+
+      // A load error replaces src with a placeholder; the original survives
+      img.src = 'data:image/svg+xml,logo';
+      expect(img.dataset.heroSrc).toBe(NEW);
+
+      // Re-applying the same image is a no-op for the markup but still records it
+      const proxied = `/.netlify/images?${new URLSearchParams({ url: OLD, w: '800' })}`;
+      img.setAttribute('src', proxied);
+      delete img.dataset.heroSrc;
+      setHeroImage(img, OLD);
+      expect(img.dataset.heroSrc).toBe(OLD);
+    });
+
     it('clears srcset for a non-remote URL so a stale srcset cannot override src', () => {
       const img = setupPicture();
       setHeroImage(img, 'data:image/png;base64,AAAA');

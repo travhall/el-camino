@@ -56,7 +56,7 @@ function buildHeroSrcSet(imageUrl: string): string {
  * The original (Square/WordPress) URL behind a hero src: unwraps the
  * `url` param of a /.netlify/images proxy URL, otherwise returns src as-is.
  */
-function sourceImageUrl(src: string | null): string | null {
+export function sourceImageUrl(src: string | null): string | null {
   if (!src) return null;
   try {
     const parsed = new URL(src, window.location.href);
@@ -83,6 +83,11 @@ function sourceImageUrl(src: string | null): string | null {
  */
 export function setHeroImage(img: HTMLImageElement, imageUrl: string): void {
   if (!img || !imageUrl) return;
+
+  // Remember the original URL on the element. `src` can't be trusted to hold
+  // it: it is usually an image-CDN proxy URL, and a load error swaps it for
+  // the logo placeholder. The gallery's zoom reads this instead.
+  img.dataset.heroSrc = imageUrl;
 
   // The controller re-applies the already-selected variant's image on init.
   // Leave the SSR markup alone in that case: it keeps the AVIF/WebP sources
