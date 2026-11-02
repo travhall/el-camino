@@ -12,6 +12,7 @@ import {
 import { sendBisAdminNotification } from '@/lib/email/sender';
 import { createRateLimiter, clientIp } from '@/lib/rateLimit';
 import { siteConfig } from '@/lib/site-config';
+import { EMAIL_PATTERN } from '@/lib/emailPattern';
 
 // Square catalog object IDs are alphanumeric plus `-`/`_` — no slashes or dots.
 // These values become a Netlify Blobs key prefix, so anything else is rejected.
@@ -45,7 +46,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Sanitize: only accept https:// URLs to prevent javascript:/data: href injection
     const safeProductUrl = productUrl.startsWith('https://') ? productUrl : '';
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email || !EMAIL_PATTERN.test(email)) {
       return new Response(JSON.stringify({ error: 'Invalid email address' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },

@@ -5,6 +5,7 @@ import { createVariantSlug } from '@/lib/square/slugUtils';
 import { logError, createError, ErrorType } from '@/lib/square/errorUtils';
 import type { ProductVariation } from '@/lib/square/types';
 import { PDPUIManager } from './pdpUI';
+import { PDP_BIS_IDS, resetBackInStockForm } from './backInStockForm';
 import { PDPEventManager, type ProductPageData } from './pdpEvents';
 
 export class PDPController {
@@ -167,16 +168,7 @@ export class PDPController {
       if (labelEl) labelEl.textContent = label;
 
       // Reset form state (in case user previously submitted for a different variant)
-      const form = document.getElementById(
-        'back-in-stock-form'
-      ) as HTMLFormElement | null;
-      const emailInput = document.getElementById(
-        'bis-email'
-      ) as HTMLInputElement | null;
-      if (form) form.classList.remove('hidden');
-      if (emailInput) emailInput.value = '';
-      document.getElementById('bis-success')?.classList.add('hidden');
-      document.getElementById('bis-error')?.classList.add('hidden');
+      resetBackInStockForm(PDP_BIS_IDS);
 
       bisSection.classList.remove('hidden');
     } else {

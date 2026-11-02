@@ -28,21 +28,21 @@ const label = variationName
   : productTitle;
 ---
 
-<div
+<section
   id="back-in-stock-section"
+  aria-labelledby="bis-heading"
   data-product-title={productTitle}
   class:list={[
     'mt-6 p-4 border-2 border-(--border-secondary) rounded-sm bg-(--surface-secondary)',
     hidden && 'hidden',
   ]}
 >
-  <p class="text-base font-bold text-(--content-heading) mb-1">
+  <p id="bis-heading" class="text-base font-bold text-(--content-heading) mb-1">
     Get notified when it's back
   </p>
   <p class="text-sm text-(--content-body) mb-4">
-    Enter your email and we'll reach out when <span
-      id="bis-label-product"
-      class="font-medium">{label}</span
+    We'll reach out when <span id="bis-label-product" class="font-medium"
+      >{label}</span
     > is back in stock.
   </p>
 
@@ -51,7 +51,7 @@ const label = variationName
     name="back-in-stock"
     method="POST"
     action="/api/back-in-stock"
-    class="flex flex-col sm:flex-row gap-2"
+    class="flex flex-col gap-2"
     novalidate
   >
     <input type="hidden" name="product_id" value={productId} />
@@ -69,95 +69,70 @@ const label = variationName
       value={label}
     />
 
-    <input
-      type="email"
-      name="email"
-      id="bis-email"
-      placeholder="your@email.com"
-      aria-label="Email address"
-      required
-      autocomplete="email"
-      class="flex-1 h-10 px-3 text-sm border border-(--ui-input-border) rounded-sm bg-(--ui-input-surface) text-(--ui-input-text) placeholder:text-(--content-meta)/50 focus:outline-none focus:ring-2 focus:ring-(--ui-button-ring) transition"
-    />
-    <button
-      type="submit"
-      id="bis-submit"
-      class="h-10 px-4 text-sm font-semibold rounded-sm bg-(--ui-button-surface) text-(--ui-button-text) border-2 border-(--ui-button-border) hover:opacity-80 transition whitespace-nowrap cursor-pointer"
+    <label for="bis-email" class="text-sm font-medium text-(--content-heading)">
+      Email address
+    </label>
+    <div class="flex flex-col sm:flex-row gap-2">
+      <input
+        type="email"
+        name="email"
+        id="bis-email"
+        placeholder="name@example.com"
+        required
+        autocomplete="email"
+        aria-describedby="bis-email-error"
+        class="flex-1 h-10 px-3 text-sm border border-(--ui-input-border) rounded-sm bg-(--ui-input-surface) text-(--ui-input-text) placeholder:text-(--content-meta) focus:outline-none focus:ring-2 focus:ring-(--ui-button-ring) transition"
+      />
+      <button
+        type="submit"
+        id="bis-submit"
+        class="h-10 px-4 text-sm font-semibold rounded-sm bg-(--ui-button-surface) text-(--ui-button-text) border-2 border-(--ui-button-border) hover:opacity-80 transition whitespace-nowrap cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        Notify Me
+      </button>
+    </div>
+    <!-- Validation message for the field (filled by backInStockForm.ts) -->
+    <p
+      id="bis-email-error"
+      class="flex items-start gap-2 text-sm text-(--content-heading) empty:hidden"
     >
-      Notify Me
-    </button>
+    </p>
   </form>
 
+  <!-- Persistent live region for send results: kept in the DOM and filled, since
+       one that appears from display:none is announced unreliably -->
+  <div
+    id="bis-status"
+    role="status"
+    aria-live="polite"
+    data-contact-email={contact.email}
+    class="mt-3 flex items-start gap-2 text-sm text-(--content-heading) empty:hidden"
+  >
+  </div>
+  <!-- Shown, and focused, on success (the form it replaces held focus) -->
   <p
     id="bis-success"
-    class="hidden mt-3 text-sm text-state-success-surface font-semibold"
-    aria-live="polite"
+    tabindex="-1"
+    class="hidden mt-3 flex items-start gap-2 text-sm font-semibold text-(--content-heading) focus:outline-none"
   >
-    ✓ You're on the list! We'll email you when it's available.
+    You're on the list! We'll email you when it's available.
   </p>
-  <p
-    id="bis-error"
-    class="hidden mt-3 text-sm text-state-error-surface"
-    aria-live="polite"
-  >
-    Something went wrong — please try again or <a
-      href={`mailto:${contact.email}`}
-      class="underline hover:no-underline">email us directly</a
-    >.
-  </p>
-</div>
+</section>
 
 <script>
-  function initBackInStock() {
-    const form = document.getElementById(
-      'back-in-stock-form'
-    ) as HTMLFormElement | null;
-    if (!form || form.dataset.initialized) return;
-    form.dataset.initialized = 'true';
+  import {
+    initBackInStockForm,
+    PDP_BIS_IDS,
+  } from '@/lib/product/backInStockForm';
 
-    const submitBtn = document.getElementById(
-      'bis-submit'
-    ) as HTMLButtonElement;
-    const successMsg = document.getElementById('bis-success');
-    const errorMsg = document.getElementById('bis-error');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const email = (
-        document.getElementById('bis-email') as HTMLInputElement
-      )?.value?.trim();
-      if (!email) return;
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Sending…';
-
-      try {
-        const body = new FormData(form);
-        const res = await fetch('/api/back-in-stock', {
-          method: 'POST',
-          body,
-        });
-
-        if (res.ok) {
-          form.classList.add('hidden');
-          successMsg?.classList.remove('hidden');
-          errorMsg?.classList.add('hidden');
-        } else {
-          throw new Error('Non-OK response');
-        }
-      } catch {
-        errorMsg?.classList.remove('hidden');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Notify Me';
-      }
-    });
+  function init() {
+    initBackInStockForm(PDP_BIS_IDS);
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initBackInStock);
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    initBackInStock();
+    init();
   }
-  document.addEventListener('astro:page-load', initBackInStock);
+  document.addEventListener('astro:page-load', init);
 </script>

@@ -208,11 +208,15 @@ const contact = await getContactInfo();
           </div>
 
           <!-- Back-in-stock capture — shown when selected variant is out of stock -->
-          <div
+          <section
             id="qv-bis-section"
+            aria-labelledby="qv-bis-heading"
             class="mt-4 p-4 border-2 border-(--border-secondary) rounded-sm bg-(--surface-secondary) hidden"
           >
-            <p class="text-base font-bold text-(--content-heading) mb-1">
+            <p
+              id="qv-bis-heading"
+              class="text-base font-bold text-(--content-heading) mb-1"
+            >
               Get notified when it's back
             </p>
             <p id="qv-bis-label" class="text-sm text-(--content-body) mb-4">
@@ -251,39 +255,52 @@ const contact = await getContactInfo();
                 name="product_url"
                 value=""
               />
+              <label
+                for="qv-bis-email"
+                class="text-sm font-medium text-(--content-heading)"
+              >
+                Email address
+              </label>
               <input
                 type="email"
                 name="email"
                 id="qv-bis-email"
-                placeholder="your@email.com"
+                placeholder="name@example.com"
                 required
                 autocomplete="email"
-                class="w-full h-10 px-3 text-sm border border-(--ui-input-border) rounded-sm bg-(--ui-input-surface) text-(--ui-input-text) placeholder:text-(--content-meta)/50 focus:outline-none focus:ring-2 focus:ring-(--ui-button-ring) transition"
+                aria-describedby="qv-bis-email-error"
+                class="w-full h-10 px-3 text-sm border border-(--ui-input-border) rounded-sm bg-(--ui-input-surface) text-(--ui-input-text) placeholder:text-(--content-meta) focus:outline-none focus:ring-2 focus:ring-(--ui-button-ring) transition"
               />
+              <p
+                id="qv-bis-email-error"
+                class="flex items-start gap-2 text-sm text-(--content-heading) empty:hidden"
+              >
+              </p>
               <button
                 type="submit"
                 id="qv-bis-submit"
-                class="h-10 px-4 text-sm font-semibold rounded-sm bg-(--ui-button-surface) text-(--ui-button-text) border-2 border-(--ui-button-border) hover:opacity-80 transition whitespace-nowrap cursor-pointer"
+                class="h-10 px-4 text-sm font-semibold rounded-sm bg-(--ui-button-surface) text-(--ui-button-text) border-2 border-(--ui-button-border) hover:opacity-80 transition whitespace-nowrap cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Notify Me
               </button>
             </form>
+            <!-- Persistent live region for send results (see backInStockForm.ts) -->
+            <div
+              id="qv-bis-status"
+              role="status"
+              aria-live="polite"
+              data-contact-email={contact.email}
+              class="mt-3 flex items-start gap-2 text-sm text-(--content-heading) empty:hidden"
+            >
+            </div>
             <p
               id="qv-bis-success"
-              class="hidden mt-3 text-sm text-state-success-surface font-semibold"
+              tabindex="-1"
+              class="hidden mt-3 flex items-start gap-2 text-sm font-semibold text-(--content-heading) focus:outline-none"
             >
-              ✓ You're on the list! We'll email you when it's available.
+              You're on the list! We'll email you when it's available.
             </p>
-            <p
-              id="qv-bis-error"
-              class="hidden mt-3 text-sm text-state-error-surface"
-            >
-              Something went wrong — please try again or <a
-                href={`mailto:${contact.email}`}
-                class="underline hover:no-underline">email us directly</a
-              >.
-            </p>
-          </div>
+          </section>
 
           <div
             id="quick-view-description"
