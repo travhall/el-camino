@@ -128,11 +128,13 @@ function setupDom(): void {
         <input id="qv-bis-variation-id" name="variation_id" />
         <input id="qv-bis-product-title" name="product_title" />
         <input id="qv-bis-product-url" name="product_url" />
-        <input id="qv-bis-email" name="email" />
+        <label for="qv-bis-email">Email address</label>
+        <input id="qv-bis-email" name="email" aria-describedby="qv-bis-email-error" />
+        <p id="qv-bis-email-error"></p>
         <button id="qv-bis-submit" type="submit">Notify Me</button>
       </form>
-      <div id="qv-bis-success" class="hidden"></div>
-      <div id="qv-bis-error" class="hidden"></div>
+      <div id="qv-bis-status" role="status" aria-live="polite" data-contact-email="shop@example.com"></div>
+      <p id="qv-bis-success" class="hidden" tabindex="-1">You're on the list!</p>
     </div>
   `;
 }
@@ -773,9 +775,9 @@ describe('QuickViewController — real implementation', () => {
       await Promise.resolve();
 
       expect(form.classList.contains('hidden')).toBe(false);
-      expect(
-        document.getElementById('qv-bis-error')?.classList.contains('hidden')
-      ).toBe(false);
+      expect(document.getElementById('qv-bis-status')?.textContent).toContain(
+        'Something went wrong'
+      );
       expect(submitBtn.disabled).toBe(false);
       expect(submitBtn.textContent).toBe('Notify Me');
     });
@@ -797,9 +799,9 @@ describe('QuickViewController — real implementation', () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      expect(
-        document.getElementById('qv-bis-error')?.classList.contains('hidden')
-      ).toBe(false);
+      expect(document.getElementById('qv-bis-status')?.textContent).toContain(
+        'Something went wrong'
+      );
     });
 
     it('the submit listener is wired only once across repeated out-of-stock states (no duplicate submissions)', async () => {
@@ -813,7 +815,7 @@ describe('QuickViewController — real implementation', () => {
       attrButton('color', 'Blue').click();
 
       expect(addSpy).not.toHaveBeenCalled();
-      expect(form.dataset.initialized).toBe('true');
+      expect(form.dataset.bisInit).toBe('true');
     });
   });
 

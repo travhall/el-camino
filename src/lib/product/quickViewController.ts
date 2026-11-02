@@ -13,6 +13,11 @@ import { processClientError, logError } from '@/lib/square/errorUtils';
 import type { Product, ProductVariation } from '@/lib/square/types';
 import type { ProductPageData } from '@/lib/product/pdpEvents';
 import { PDPUIManager } from '@/lib/product/pdpUI';
+import {
+  initBackInStockForm,
+  QUICK_VIEW_BIS_IDS,
+  resetBackInStockForm,
+} from '@/lib/product/backInStockForm';
 import { showNotification } from '@/lib/events';
 
 // QuickView Controller - Uses centralized PDPUIManager
@@ -601,71 +606,11 @@ export class QuickViewController {
         labelEl.textContent = `Enter your email and we'll reach out when ${label} is back in stock.`;
 
       // Reset form state when switching to a different sold-out variant (or reopening QuickView)
-      const form = document.getElementById(
-        'qv-bis-form'
-      ) as HTMLFormElement | null;
-      const emailInput = document.getElementById(
-        'qv-bis-email'
-      ) as HTMLInputElement | null;
-      const submitBtn = document.getElementById(
-        'qv-bis-submit'
-      ) as HTMLButtonElement | null;
-      if (form) form.classList.remove('hidden');
-      if (emailInput) emailInput.value = '';
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Notify Me';
-      }
-      document.getElementById('qv-bis-success')?.classList.add('hidden');
-      document.getElementById('qv-bis-error')?.classList.add('hidden');
+      resetBackInStockForm(QUICK_VIEW_BIS_IDS);
 
       // Wire up form submit once
-      this.setupBisForm();
+      initBackInStockForm(QUICK_VIEW_BIS_IDS);
     }
-  }
-
-  private setupBisForm(): void {
-    const form = document.getElementById(
-      'qv-bis-form'
-    ) as HTMLFormElement | null;
-    if (!form || form.dataset.initialized === 'true') return;
-    form.dataset.initialized = 'true';
-
-    const submitBtn = document.getElementById(
-      'qv-bis-submit'
-    ) as HTMLButtonElement | null;
-    const successMsg = document.getElementById('qv-bis-success');
-    const errorMsg = document.getElementById('qv-bis-error');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = (
-        document.getElementById('qv-bis-email') as HTMLInputElement | null
-      )?.value?.trim();
-      if (!email || !submitBtn) return;
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Sending…';
-
-      try {
-        const res = await fetch('/api/back-in-stock', {
-          method: 'POST',
-          body: new FormData(form),
-        });
-
-        if (res.ok) {
-          form.classList.add('hidden');
-          successMsg?.classList.remove('hidden');
-          errorMsg?.classList.add('hidden');
-        } else {
-          throw new Error('Non-OK response');
-        }
-      } catch {
-        errorMsg?.classList.remove('hidden');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Notify Me';
-      }
-    });
   }
 
   private updateAttributeButtonStates(): void {
