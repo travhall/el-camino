@@ -43,6 +43,7 @@ vi.mock('@/lib/product/pdpUI', () => ({
     updateInventoryDisplay = vi.fn();
     updatePriceDisplay = vi.fn();
     updateProductImage = vi.fn();
+    updateProductImageAlt = vi.fn();
     updateAttributeButtonStates = vi.fn();
     announceVariantChange = vi.fn();
     updateButtonProductData = vi.fn((productData: unknown) => {
@@ -531,6 +532,27 @@ describe('QuickViewController — real implementation', () => {
       expect(
         document.getElementById('qv-atc-wrapper')?.classList.contains('hidden')
       ).toBe(true);
+    });
+  });
+
+  describe('hero alt text', () => {
+    it('stores the product title as the base alt and follows the selected color', async () => {
+      await openWith(controller, makeProduct());
+      const image = document.getElementById(
+        'quick-view-image'
+      ) as HTMLImageElement;
+      const uiManager = internals(controller).uiManager;
+
+      expect(image.dataset.baseAlt).toBe('Test Deck');
+      expect(image.alt).toBe('Test Deck');
+
+      attrButton('color', 'Blue').click();
+
+      expect(uiManager.updateProductImageAlt).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          attributes: { size: 'Small', color: 'Blue' },
+        })
+      );
     });
   });
 

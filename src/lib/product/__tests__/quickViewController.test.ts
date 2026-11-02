@@ -25,6 +25,7 @@ vi.mock('@/lib/product/pdpUI', () => ({
     updateAvailabilityDisplay = vi.fn();
     updatePriceDisplay = vi.fn();
     updateProductImage = vi.fn();
+    updateProductImageAlt = vi.fn();
     updateButtonProductData = vi.fn();
     updateAttributeButtonStates = vi.fn();
   },

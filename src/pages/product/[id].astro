@@ -24,6 +24,7 @@ import {
 import { slugResolver } from '@/lib/square/slugResolver';
 import {
   assignProductImagesToVariations,
+  heroAlt,
   heroImageForVariation,
 } from '@/lib/square/variationImages';
 import {
@@ -523,7 +524,8 @@ Astro.response.headers.set(
                     }
                   )}
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
-                  alt={product.title}
+                  alt={heroAlt(product.title, selectedVariation)}
+                  data-base-alt={product.title}
                   class="w-full h-full object-cover transition-opacity duration-300 opacity-0"
                   data-in-stock={selectedVariationInStock ? 'true' : 'false'}
                   width="800"
@@ -537,8 +539,6 @@ Astro.response.headers.set(
                   data-shimmer-stock=""
                   data-shimmer-error-remove="opacity-0"
                   data-shimmer-error-add="opacity-100"
-                  role="img"
-                  aria-label={product.title || 'Product image'}
                 />
               </picture>
             ) : (
@@ -546,12 +546,11 @@ Astro.response.headers.set(
                 id="product-image"
                 src={EL_CAMINO_LOGO_DATA_URI}
                 alt={product.title}
+                data-base-alt={product.title}
                 class={`w-full h-full object-contain opacity-100 ${!selectedVariationInStock ? 'opacity-75' : ''}`}
                 width="800"
                 height="800"
                 loading="eager"
-                role="img"
-                aria-label={product.title || 'Product image'}
               />
             )
           }
@@ -878,8 +877,9 @@ Astro.response.headers.set(
                   id="decrease-quantity"
                   class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
                   disabled={true}
+                  aria-label="Decrease quantity"
                 >
-                  -
+                  <span aria-hidden="true">&minus;</span>
                 </button>
                 <input
                   type="number"
@@ -894,8 +894,9 @@ Astro.response.headers.set(
                   id="increase-quantity"
                   class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
                   disabled={!isGiftCard && selectedVariationQuantity <= 1}
+                  aria-label="Increase quantity"
                 >
-                  +
+                  <span aria-hidden="true">+</span>
                 </button>
               </div>
             </div>

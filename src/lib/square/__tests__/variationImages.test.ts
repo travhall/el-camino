@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   assignProductImagesToVariations,
+  heroAlt,
   heroImageForVariation,
 } from '../variationImages';
 import type { ProductVariation } from '../types';
@@ -174,5 +175,34 @@ describe('heroImageForVariation', () => {
 
     expect(heroImageForVariation('black.jpg', variations[1])).toBe('white.jpg');
     expect(heroImageForVariation('black.jpg', variations[0])).toBe('black.jpg');
+  });
+});
+
+describe('heroAlt', () => {
+  it('adds the selected color to the title', () => {
+    expect(
+      heroAlt('Test Tee', { attributes: { color: 'White', size: 'S' } })
+    ).toBe('Test Tee — White');
+  });
+
+  it('accepts the "colour" spelling, case-insensitively', () => {
+    expect(heroAlt('Test Tee', { attributes: { Colour: 'Navy' } })).toBe(
+      'Test Tee — Navy'
+    );
+  });
+
+  it('leaves size and other non-visual attributes out of the alt text', () => {
+    expect(heroAlt('Test Deck', { attributes: { size: '8.25' } })).toBe(
+      'Test Deck'
+    );
+  });
+
+  it.each([
+    ['no variation', undefined],
+    ['no attributes', {}],
+    ['unparsed attributes', { attributes: undefined }],
+    ['an empty color', { attributes: { color: '' } }],
+  ])('is just the title for %s', (_label, variation) => {
+    expect(heroAlt('Test Tee', variation)).toBe('Test Tee');
   });
 });

@@ -7,9 +7,11 @@ import {
   isQuantityInputDisabled,
   ProductAvailabilityState,
   type ProductAvailabilityInfo,
+  type ProductVariation,
   type SaleInfo,
 } from '@/lib/square/types';
 import { MoneyUtils } from '@/lib/square/money';
+import { heroAlt } from '@/lib/square/variationImages';
 
 export interface ElementIds {
   priceDisplay?: string;
@@ -422,6 +424,19 @@ export class PDPUIManager {
     if (!productImage || !imageUrl) return;
 
     setHeroImage(productImage, imageUrl);
+  }
+
+  /**
+   * Keep the hero's alt text in step with the selected variation (see
+   * heroAlt). The base alt comes from data-base-alt on the image; a hero
+   * without one is left alone.
+   */
+  updateProductImageAlt(variation: Pick<ProductVariation, 'attributes'>): void {
+    const { productImage } = this.elements;
+    const base = productImage?.dataset.baseAlt;
+    if (!productImage || !base) return;
+
+    productImage.alt = heroAlt(base, variation);
   }
 
   updateButtonProductData(productData: unknown): void {

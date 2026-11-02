@@ -254,6 +254,7 @@ export class QuickViewController {
 
       image.src = this.optimizeImageSrc(product.image, 400);
       image.alt = product.title;
+      image.dataset.baseAlt = product.title;
     }
 
     const brand = document.getElementById('quick-view-brand');
@@ -489,6 +490,7 @@ export class QuickViewController {
     if (this.currentVariation.image) {
       this.uiManager.updateProductImage(this.currentVariation.image);
     }
+    this.uiManager.updateProductImageAlt(this.currentVariation);
     this.renderGallery(
       this.currentVariation.images || [],
       this.currentVariation.image || ''

@@ -50,6 +50,31 @@ describe('PDPUIManager', () => {
     manager = new PDPUIManager();
   });
 
+  describe('updateProductImageAlt', () => {
+    it("follows the variation's color, from the image's base alt", () => {
+      const img = document.getElementById('product-image') as HTMLImageElement;
+      img.dataset.baseAlt = 'Test Tee';
+      img.alt = 'Test Tee — Black';
+
+      manager.updateProductImageAlt({
+        attributes: { color: 'White', size: 'S' },
+      });
+      expect(img.alt).toBe('Test Tee — White');
+
+      manager.updateProductImageAlt({ attributes: { size: 'M' } });
+      expect(img.alt).toBe('Test Tee');
+    });
+
+    it('leaves a hero with no base alt alone', () => {
+      const img = document.getElementById('product-image') as HTMLImageElement;
+      img.alt = 'Something else';
+
+      manager.updateProductImageAlt({ attributes: { color: 'White' } });
+
+      expect(img.alt).toBe('Something else');
+    });
+  });
+
   describe('quantity section visibility', () => {
     it('hides #quantity-section for a sold-out variation and shows it again for an in-stock one', () => {
       document.body.insertAdjacentHTML(
