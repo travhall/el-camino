@@ -6,12 +6,14 @@ import { logError, createError, ErrorType } from '@/lib/square/errorUtils';
 import type { ProductVariation } from '@/lib/square/types';
 import { PDPUIManager } from './pdpUI';
 import { PDPEventManager, type ProductPageData } from './pdpEvents';
+import { applyFreshInventory, fetchFreshInventory } from './inventoryRefresh';
 
 export class PDPController {
   private selectedAttributes: Record<string, string> = {};
   private currentVariation: ProductVariation | null = null;
   private uiManager: PDPUIManager;
   private eventManager: PDPEventManager;
+  private cleanedUp = false;
 
   constructor(private productData: ProductPageData) {
     this.uiManager = new PDPUIManager();
@@ -287,7 +289,52 @@ export class PDPController {
     );
   }
 
+  /**
+   * Re-check stock now that the page is up, and correct what the cached page
+   * was rendered with. Separate from the constructor so a page opts in.
+   *
+   * Only stock-dependent UI is redrawn (button, count, stepper, overlay,
+   * back-in-stock form, chip states), and only when something changed. It
+   * deliberately doesn't go through updateProductUI: that would rebuild the
+   * gallery (losing the shopper's place) and reset the back-in-stock form
+   * (wiping an email they may be typing).
+   */
+  public async refreshInventory(): Promise<void> {
+    if (this.productData.isGiftCard || this.cleanedUp) return;
+
+    const ids = this.productData.variations.map((v) => v.variationId);
+    if (ids.length === 0) return;
+
+    const fresh = await fetchFreshInventory(ids);
+    // Failed, or the shopper has navigated away while it was in flight
+    if (!fresh || this.cleanedUp) return;
+
+    const changed = applyFreshInventory(this.productData.variations, fresh);
+    if (changed.length === 0) return;
+
+    const current = this.currentVariation;
+    if (current && changed.includes(current.variationId)) {
+      this.refreshAvailability(current);
+    }
+    // Any variation's stock can flip a chip's out-of-stock styling
+    this.updateAttributeButtonStates();
+  }
+
+  private refreshAvailability(variation: ProductVariation): void {
+    const info = cart.getProductAvailability(
+      this.productData.productId,
+      variation.variationId,
+      variation.quantity || 0
+    );
+    this.uiManager.updateAvailabilityDisplay(info, variation.saleInfo);
+    this.updateBisSection(
+      variation,
+      variation.inStock ?? (variation.quantity || 0) > 0
+    );
+  }
+
   public cleanup(): void {
+    this.cleanedUp = true;
     this.eventManager.cleanup();
     this.currentVariation = null;
     this.selectedAttributes = {};

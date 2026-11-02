@@ -63,17 +63,35 @@ export async function isItemInStock(variationId: string): Promise<boolean> {
 export async function checkBulkInventory(
   variationIds: string[]
 ): Promise<Record<string, number>> {
+  return (await checkBulkInventoryWithUnknown(variationIds)).inventory;
+}
+
+/**
+ * Like checkBulkInventory, but also reports which IDs could not be determined.
+ *
+ * `inventory` is identical to checkBulkInventory's: anything unknown counts as
+ * 0 so checkout never sells stock it cannot confirm. That makes an unknown ID
+ * indistinguishable from a genuinely sold-out one, which is wrong for display:
+ * a page that refreshed from it would flash "Sold Out" on in-stock products
+ * whenever Square hiccuped. `unknown` lets a display caller tell them apart
+ * and leave what it already shows alone.
+ */
+export async function checkBulkInventoryWithUnknown(
+  variationIds: string[]
+): Promise<{ inventory: Record<string, number>; unknown: string[] }> {
   const { counts, failed } = await fetchInventoryCounts(variationIds);
 
-  // Conservative failure policy: anything we could not determine counts as 0 so
-  // checkout never sells stock it cannot confirm. Every requested ID is present
-  // in the result.
-  const result: Record<string, number> = { ...counts };
-  for (const id of failed) result[id] = 0;
+  // Every requested ID is present in the result.
+  const inventory: Record<string, number> = { ...counts };
+  const unknown = new Set<string>(failed);
+  for (const id of failed) inventory[id] = 0;
   for (const id of variationIds) {
-    if (result[id] === undefined) result[id] = 0;
+    if (inventory[id] === undefined) {
+      inventory[id] = 0;
+      unknown.add(id);
+    }
   }
-  return result;
+  return { inventory, unknown: [...unknown] };
 }
 
 /**
