@@ -1,6 +1,6 @@
 // src/lib/product/pdpController.ts
 import { cart } from '@/lib/cart';
-import { findVariationByAttributes } from '@/lib/square/variationParser';
+import { resolveVariationForSelection } from '@/lib/square/variationParser';
 import { createVariantSlug } from '@/lib/square/slugUtils';
 import {
   processClientError,
@@ -51,23 +51,16 @@ export class PDPController {
     this.updateAttributeButtonStates();
   }
 
-  private updateCurrentVariation(): void {
-    try {
-      const matchingVariation = findVariationByAttributes(
-        this.productData.variations,
-        this.selectedAttributes
-      );
-
-      if (matchingVariation) {
-        this.currentVariation = matchingVariation;
-        this.updateProductUI(matchingVariation);
-      } else {
-        this.showOutOfStockState();
-      }
-    } catch (error) {
-      const appError = processClientError(error, 'updateCurrentVariation');
-      logError(appError);
-    }
+  private resolveVariation(
+    attributeType: string,
+    value: string
+  ): ProductVariation | undefined {
+    return resolveVariationForSelection(
+      this.productData.variations,
+      this.selectedAttributes,
+      attributeType,
+      value
+    );
   }
 
   private updateProductUI(variation: ProductVariation): void {
@@ -149,26 +142,6 @@ export class PDPController {
     }
   }
 
-  private showOutOfStockState(): void {
-    if (!this.currentVariation) return;
-
-    this.uiManager.updatePriceDisplay(this.currentVariation.price, {
-      unit: this.currentVariation.unit,
-      saleInfo: this.currentVariation.saleInfo,
-    });
-
-    const outOfStockInfo = cart.getProductAvailability(
-      this.productData.productId,
-      'out-of-stock',
-      0
-    );
-    this.uiManager.updateAvailabilityDisplay(
-      outOfStockInfo,
-      this.currentVariation.saleInfo
-    );
-    this.updateBisSection(this.currentVariation, false);
-  }
-
   private updateBisSection(
     variation: ProductVariation,
     inStock: boolean
@@ -216,14 +189,30 @@ export class PDPController {
   }
 
   private handleAttributeSelection(attributeType: string, value: string): void {
-    this.selectedAttributes[attributeType] = value;
-    this.updateCurrentVariation();
+    const target = this.resolveVariation(attributeType, value);
+    if (!target) return; // value isn't on any variation; nothing to show
+
+    // Adopt the target's full attribute set. When the exact combination
+    // exists this equals the old selection plus the new value; when it
+    // doesn't, the other attributes snap to the nearest real combination so
+    // the chips, price, image, URL and back-in-stock form all describe the
+    // same variation.
+    const previous = this.selectedAttributes;
+    this.selectedAttributes = { ...target.attributes };
+
+    this.updateProductUI(target);
     this.updateAttributeButtonStates();
+
+    const changedOthers = Object.keys(previous)
+      .filter(
+        (k) => k !== attributeType && previous[k] !== this.selectedAttributes[k]
+      )
+      .map((k) => previous[k]);
     this.announceSelection(
-      findVariationByAttributes(
-        this.productData.variations,
-        this.selectedAttributes
-      ) ?? null
+      target,
+      changedOthers.length
+        ? { unavailable: changedOthers, requested: value }
+        : undefined
     );
   }
 
@@ -240,29 +229,27 @@ export class PDPController {
   /**
    * Announce a user-driven selection to screen readers. Deliberately not
    * called from initialize()/handleCartUpdate() so page load and cart syncs
-   * stay silent. A null variation means the chosen combination doesn't exist,
-   * which the UI already renders as out of stock.
+   * stay silent.
    */
-  private announceSelection(variation: ProductVariation | null): void {
-    if (!this.currentVariation) return;
-
-    const shown = variation ?? this.currentVariation;
-    const info = variation
-      ? cart.getProductAvailability(
-          this.productData.productId,
-          variation.variationId,
-          variation.quantity || 0
-        )
-      : cart.getProductAvailability(
-          this.productData.productId,
-          'out-of-stock',
-          0
-        );
+  private announceSelection(
+    variation: ProductVariation,
+    snapped?: { unavailable: string[]; requested: string }
+  ): void {
+    const info = cart.getProductAvailability(
+      this.productData.productId,
+      variation.variationId,
+      variation.quantity || 0
+    );
     const selectedValues = Object.values(this.selectedAttributes).join(' ');
+    const label = selectedValues || variation.name;
 
     this.uiManager.announceVariantChange({
-      label: selectedValues || shown.name,
-      price: shown.saleInfo?.salePrice ?? shown.price,
+      // When the requested combination doesn't exist, say what moved so a
+      // screen-reader user isn't left wondering why another option changed.
+      label: snapped
+        ? `${label} (${snapped.unavailable.join(' ')} isn't offered in ${snapped.requested})`
+        : label,
+      price: variation.saleInfo?.salePrice ?? variation.price,
       info,
     });
   }
@@ -288,21 +275,16 @@ export class PDPController {
       this.productData.availableAttributes,
       this.selectedAttributes,
       (attributeType: string, value: string): boolean => {
-        const testAttributes = {
-          ...this.selectedAttributes,
-          [attributeType]: value,
-        };
-        const matchingVariation = findVariationByAttributes(
-          this.productData.variations,
-          testAttributes
-        );
+        // Same resolution a click uses, so a chip is only styled as out of
+        // stock when selecting it would actually land on something unbuyable.
+        const target = this.resolveVariation(attributeType, value);
 
         return Boolean(
-          matchingVariation?.inStock &&
+          target?.inStock &&
           cart.canAddToCart(
             this.productData.productId,
-            matchingVariation.variationId,
-            matchingVariation.quantity || 0
+            target.variationId,
+            target.quantity || 0
           )
         );
       }

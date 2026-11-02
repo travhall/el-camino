@@ -23,6 +23,10 @@ import {
 } from '@/lib/square/slugUtils';
 import { slugResolver } from '@/lib/square/slugResolver';
 import {
+  assignProductImagesToVariations,
+  heroImageForVariation,
+} from '@/lib/square/variationImages';
+import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
 } from '@/lib/constants/assets';
@@ -102,6 +106,11 @@ if (!product) {
 // persist in the in-memory fallback cache and bleed across unrelated requests.
 product = { ...product };
 
+// A valid ?variant= is an explicit request for that variation (an invalid one
+// redirects below). Remember it so the in-stock promotion further down only
+// applies to the implicit default, never to a variation the link asked for.
+const hasExplicitVariant = Boolean(variantParam && product.variations);
+
 // Handle variant parameter
 if (variantParam && product.variations) {
   const targetVariation = getVariationFromVariantParam(product, variantParam);
@@ -109,9 +118,6 @@ if (variantParam && product.variations) {
   if (targetVariation) {
     product.selectedVariationId = targetVariation.variationId;
     product.price = targetVariation.price;
-    if (targetVariation.image) {
-      product.image = targetVariation.image;
-    }
   } else {
     // Invalid variant parameter - redirect to base product
     return Astro.redirect(`/product/${id}`, 301);
@@ -145,15 +151,17 @@ if (!isGiftCard && variations.length > 0) {
       quantity: inventoryMap[v.variationId] || 0,
     }));
 
-    // If default variation is out of stock, promote first in-stock variation
+    // If the *default* variation is out of stock, promote the first in-stock
+    // one. Skipped when the URL explicitly asked for a variation: swapping it
+    // silently would show a different variant than the link, and the SEO
+    // title/structured data would describe one while the page sells another.
+    // A sold-out requested variant renders as sold out, with the back-in-stock
+    // form and the other options still selectable.
     const defaultIsInStock = (inventoryMap[defaultVariationId] || 0) > 0;
-    if (!defaultIsInStock && variations.length > 0) {
+    if (!defaultIsInStock && variations.length > 0 && !hasExplicitVariant) {
       const firstInStockVariation = variations.find((v) => v.inStock);
       if (firstInStockVariation) {
         defaultVariationId = firstInStockVariation.variationId;
-        if (firstInStockVariation.image) {
-          product.image = firstInStockVariation.image;
-        }
       }
     }
   } catch (err) {
@@ -226,56 +234,28 @@ if (!isGiftCard && variations.length > 0) {
 // run BEFORE any code that reads variation.attributes (e.g. the image assignment below).
 const selectionState = createInitialSelectionState(variations);
 
-// Fallback image assignment — covers the common Square pattern where color variant
-// images are stored at the Item level (itemData.imageIds) rather than on each
-// ItemVariation. After createInitialSelectionState, every variation has attributes
-// parsed, so we can reliably find the color key and map product-level images onto
-// the variations that lack a variation-level image.
-// Mutates in place so all downstream references (selectionState, selectedVariation,
-// the serialized hidden input) all see the updated image values. cSpell:ignore colour
-if (product.images && product.images.length > 1) {
-  const colorKey = Object.keys(variations[0]?.attributes ?? {}).find(
-    (k) => k.toLowerCase() === 'color' || k.toLowerCase() === 'colour'
-  );
-
-  if (colorKey) {
-    // Color variants: map one product image per color value onto variation.image.
-    // Collect unique color values in catalog order (first-seen order)
-    const colorOrder: string[] = [];
-    for (const v of variations) {
-      const c = v.attributes?.[colorKey];
-      if (c && !colorOrder.includes(c)) colorOrder.push(c);
-    }
-
-    // Only map when there are at least as many product images as colors
-    if (product.images.length >= colorOrder.length) {
-      for (const v of variations) {
-        if (v.image) continue; // Variation-level image always wins
-        const colorValue = v.attributes?.[colorKey];
-        const idx = colorOrder.indexOf(colorValue ?? '');
-        if (idx >= 0 && product.images[idx]) {
-          v.image = product.images[idx];
-        }
-      }
-    }
-  } else {
-    // No color attribute — product.images are multi-angle shots shared by all
-    // variations (e.g. a deck in multiple sizes). Assign the full image array to
-    // every variation that doesn't already have variation-level images.
-    for (const v of variations) {
-      if (!v.images || v.images.length === 0) {
-        v.images = product.images;
-        if (!v.image) v.image = product.images[0];
-      }
-    }
-  }
-}
+// Fallback image assignment — covers the common Square pattern where images are
+// stored at the Item level (itemData.imageIds) rather than on each ItemVariation:
+// one image per color, or shared multi-angle shots when there is no color. Needs
+// attributes parsed, which createInitialSelectionState just did. Mutates in place so
+// all downstream references (selectionState, selectedVariation, the serialized
+// hidden input) see the updated image values. Shared with QuickView.
+assignProductImagesToVariations(variations, product.images);
 const availableAttributes = selectionState.availableAttributes;
 const attributeTypes = Object.keys(availableAttributes);
 
 // Find selected variation
 const selectedVariation =
   variations.find((v) => v.variationId === defaultVariationId) || variations[0];
+
+// Hero image for the selected variation. product.image started as the item's
+// primary image, but the selected variation can be another color (a promoted
+// in-stock default, or an explicit ?variant=), and with item-level color
+// images its image only exists after the mapping above. Sync it here, after
+// both, so the preload, <picture>, add-to-cart data, OG tags and JSON-LD all
+// describe the variation that is actually selected.
+product.image = heroImageForVariation(product.image, selectedVariation);
+
 const selectedVariationInStock = selectedVariation?.inStock || false;
 const selectedVariationQuantity = selectedVariation?.quantity || 0;
 
@@ -869,66 +849,70 @@ Astro.response.headers.set(
           )
         }
 
-        <!-- Quantity Input — only shown when more than 1 unit is available (or gift card) -->
-        {
-          selectedVariationInStock && (
-            <div class="mt-6">
-              <div class="flex flex-col space-y-2 items-start">
-                <div
-                  id="quantity-stepper"
-                  class:list={[
-                    !isGiftCard && selectedVariationQuantity <= 1
-                      ? 'hidden'
-                      : '',
-                  ]}
+        <!-- Quantity Input — only shown when more than 1 unit is available (or gift card).
+             Always in the DOM (hidden while the selected variation is sold out) so a
+             shopper who lands on a sold-out variation and switches to an in-stock one
+             gets the stepper and availability text; pdpUI toggles #quantity-section. -->
+        <div
+          id="quantity-section"
+          class:list={['mt-6', !selectedVariationInStock && 'hidden']}
+        >
+          <div class="flex flex-col space-y-2 items-start">
+            <div
+              id="quantity-stepper"
+              class:list={[
+                !isGiftCard && selectedVariationQuantity <= 1 ? 'hidden' : '',
+              ]}
+            >
+              <label
+                for="quantity-input"
+                class="text-sm font-medium mb-2 block"
+              >
+                Quantity
+              </label>
+              <div
+                class="flex border border-(--ui-input-border) rounded-sm overflow-hidden"
+              >
+                <button
+                  type="button"
+                  id="decrease-quantity"
+                  class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
+                  disabled={true}
                 >
-                  <label
-                    for="quantity-input"
-                    class="text-sm font-medium mb-2 block"
-                  >
-                    Quantity
-                  </label>
-                  <div class="flex border border-(--ui-input-border) rounded-sm overflow-hidden">
-                    <button
-                      type="button"
-                      id="decrease-quantity"
-                      class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
-                      disabled={true}
-                    >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      id="quantity-input"
-                      min="1"
-                      max={isGiftCard ? 10 : selectedVariationQuantity}
-                      value="1"
-                      class="w-14 h-10 text-center bg-(--surface-primary) text-(--ui-input-text) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                    <button
-                      type="button"
-                      id="increase-quantity"
-                      class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
-                      disabled={!isGiftCard && selectedVariationQuantity <= 1}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-                <div id="availability-indicator" class="text-sm">
-                  {!isGiftCard && (
-                    <span class="text-(--content-meta)" id="remaining-count">
-                      {selectedVariationQuantity} available
-                    </span>
-                  )}
-                  <span id="cart-quantity" class="ml-1 hidden">
-                    ( 0 in cart )
-                  </span>
-                </div>
+                  -
+                </button>
+                <input
+                  type="number"
+                  id="quantity-input"
+                  min="1"
+                  max={isGiftCard ? 10 : selectedVariationQuantity}
+                  value="1"
+                  class="w-14 h-10 text-center bg-(--surface-primary) text-(--ui-input-text) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <button
+                  type="button"
+                  id="increase-quantity"
+                  class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
+                  disabled={!isGiftCard && selectedVariationQuantity <= 1}
+                >
+                  +
+                </button>
               </div>
             </div>
-          )
-        }
+            <div id="availability-indicator" class="text-sm">
+              {
+                !isGiftCard && (
+                  <span class="text-(--content-meta)" id="remaining-count">
+                    {selectedVariationQuantity} available
+                  </span>
+                )
+              }
+              <span id="cart-quantity" class="ml-1 hidden">
+                ( 0 in cart )
+              </span>
+            </div>
+          </div>
+        </div>
 
         <!-- Hidden data for JavaScript -->
         <input
@@ -1096,6 +1080,7 @@ Astro.response.headers.set(
 
 <script>
   import { PDPController } from '@/lib/product/pdpController';
+  import { setHeroImage } from '@/lib/product/pdpUI';
   import { processClientError, logError } from '@/lib/square/errorUtils';
   import { recentlyViewed } from '@/lib/product/recentlyViewed';
   import type { Product } from '@/lib/square/types';
@@ -1182,9 +1167,9 @@ Astro.response.headers.set(
       // Cross fade the main image
       mainImage.classList.remove('opacity-100');
       mainImage.classList.add('opacity-0');
-      // Clear srcset so <picture> source tags don't override the new src
-      mainImage.removeAttribute('srcset');
-      mainImage.src = src;
+      // Drops the <picture> <source>s and rewrites srcset, otherwise the
+      // original AVIF/WebP source keeps winning over the new src
+      setHeroImage(mainImage, src);
       // Handle cached images where onload won't fire
       if (mainImage.complete && mainImage.naturalWidth > 0) {
         mainImage.classList.remove('opacity-0');
@@ -1251,7 +1236,16 @@ Astro.response.headers.set(
     const variationDataElement = document.getElementById('variation-data');
     const isProductPage = variationDataElement !== null;
 
+    // initializePage runs twice on a fresh load (once directly, once on
+    // astro:page-load, which fires on initial load when ClientRouter is on).
+    // Mark the DOM it initialized so the second call is a no-op instead of
+    // creating a second controller with its own handlers. A Client Router
+    // navigation swaps in new DOM, which carries no flag, so it still inits.
+    if (variationDataElement?.dataset.pdpInitialized === 'true') return;
+
     if (isProductPage) {
+      variationDataElement.dataset.pdpInitialized = 'true';
+
       // Track recently viewed product
       try {
         const productButton = document.getElementById('add-to-cart-button');

@@ -15,6 +15,12 @@ export interface ProductPageData {
 export class PDPEventManager {
   private isProcessing = false;
 
+  // Every listener this manager attaches is bound to this controller's signal,
+  // so cleanup() can actually detach them. Without it, a re-init (or a Client
+  // Router navigation) leaves the old manager's handlers live on the buttons
+  // and on `window`, and they fire alongside the new manager's handlers.
+  private abortController = new AbortController();
+
   constructor(
     private uiManager: PDPUIManager,
     private productData: ProductPageData,
@@ -26,6 +32,10 @@ export class PDPEventManager {
   ) {}
 
   setupAllEventHandlers(): void {
+    // Re-arm in case this manager is set up again after cleanup()
+    this.abortController.abort();
+    this.abortController = new AbortController();
+
     this.setupAttributeButtons();
     this.setupQuantityControls();
     this.setupFallbackVariationButtons();
@@ -37,17 +47,21 @@ export class PDPEventManager {
   private setupAttributeButtons(): void {
     const attributeButtons = document.querySelectorAll('.attribute-button');
     attributeButtons.forEach((button) => {
-      button.addEventListener('click', (e) => {
-        const btn = e.currentTarget as HTMLButtonElement;
-        if (btn.disabled) return;
+      button.addEventListener(
+        'click',
+        (e) => {
+          const btn = e.currentTarget as HTMLButtonElement;
+          if (btn.disabled) return;
 
-        const attributeType = btn.dataset.attributeType;
-        const attributeValue = btn.dataset.attributeValue;
+          const attributeType = btn.dataset.attributeType;
+          const attributeValue = btn.dataset.attributeValue;
 
-        if (attributeType && attributeValue) {
-          this.callbacks.onAttributeSelection(attributeType, attributeValue);
-        }
-      });
+          if (attributeType && attributeValue) {
+            this.callbacks.onAttributeSelection(attributeType, attributeValue);
+          }
+        },
+        { signal: this.abortController.signal }
+      );
     });
   }
 
@@ -73,46 +87,60 @@ export class PDPEventManager {
     increaseButton.parentNode?.replaceChild(newIncreaseBtn, increaseButton);
     quantityInput.parentNode?.replaceChild(newQuantityInput, quantityInput);
 
-    newIncreaseBtn.addEventListener('click', () => {
-      const currentValue = parseInt(newQuantityInput.value, 10) || 0;
-      const maxValue = parseInt(newQuantityInput.max, 10) || 0;
+    const { signal } = this.abortController;
 
-      if (currentValue < maxValue) {
-        newQuantityInput.value = String(currentValue + 1);
+    newIncreaseBtn.addEventListener(
+      'click',
+      () => {
+        const currentValue = parseInt(newQuantityInput.value, 10) || 0;
+        const maxValue = parseInt(newQuantityInput.max, 10) || 0;
+
+        if (currentValue < maxValue) {
+          newQuantityInput.value = String(currentValue + 1);
+          this.updateQuantityButtonStates(
+            newQuantityInput,
+            newDecreaseBtn,
+            newIncreaseBtn
+          );
+        }
+      },
+      { signal }
+    );
+
+    newDecreaseBtn.addEventListener(
+      'click',
+      () => {
+        const currentValue = parseInt(newQuantityInput.value, 10) || 0;
+        if (currentValue > 1) {
+          newQuantityInput.value = String(currentValue - 1);
+          this.updateQuantityButtonStates(
+            newQuantityInput,
+            newDecreaseBtn,
+            newIncreaseBtn
+          );
+        }
+      },
+      { signal }
+    );
+
+    newQuantityInput.addEventListener(
+      'change',
+      () => {
+        let value = parseInt(newQuantityInput.value, 10);
+        const max = parseInt(newQuantityInput.max, 10) || 0;
+
+        if (isNaN(value) || value < 1) value = 1;
+        else if (value > max) value = max;
+
+        newQuantityInput.value = String(value);
         this.updateQuantityButtonStates(
           newQuantityInput,
           newDecreaseBtn,
           newIncreaseBtn
         );
-      }
-    });
-
-    newDecreaseBtn.addEventListener('click', () => {
-      const currentValue = parseInt(newQuantityInput.value, 10) || 0;
-      if (currentValue > 1) {
-        newQuantityInput.value = String(currentValue - 1);
-        this.updateQuantityButtonStates(
-          newQuantityInput,
-          newDecreaseBtn,
-          newIncreaseBtn
-        );
-      }
-    });
-
-    newQuantityInput.addEventListener('change', () => {
-      let value = parseInt(newQuantityInput.value, 10);
-      const max = parseInt(newQuantityInput.max, 10) || 0;
-
-      if (isNaN(value) || value < 1) value = 1;
-      else if (value > max) value = max;
-
-      newQuantityInput.value = String(value);
-      this.updateQuantityButtonStates(
-        newQuantityInput,
-        newDecreaseBtn,
-        newIncreaseBtn
-      );
-    });
+      },
+      { signal }
+    );
   }
 
   private updateQuantityButtonStates(
@@ -130,19 +158,23 @@ export class PDPEventManager {
   private setupFallbackVariationButtons(): void {
     const variationButtons = document.querySelectorAll('[data-variation-id]');
     variationButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const btn = button as HTMLButtonElement;
-        if (btn.disabled) return;
+      button.addEventListener(
+        'click',
+        () => {
+          const btn = button as HTMLButtonElement;
+          if (btn.disabled) return;
 
-        const variationId = btn.dataset.variationId;
-        if (variationId) {
-          this.callbacks.onVariationSelection(variationId);
-          this.uiManager.updateVariationButtonStates(
-            variationButtons,
-            variationId
-          );
-        }
-      });
+          const variationId = btn.dataset.variationId;
+          if (variationId) {
+            this.callbacks.onVariationSelection(variationId);
+            this.uiManager.updateVariationButtonStates(
+              variationButtons,
+              variationId
+            );
+          }
+        },
+        { signal: this.abortController.signal }
+      );
     });
   }
 
@@ -157,9 +189,13 @@ export class PDPEventManager {
     // Refresh UI manager elements since we replaced the button
     this.uiManager.refreshElements();
 
-    newButton.addEventListener('click', async () => {
-      await this.handleAddToCart(newButton as HTMLButtonElement);
-    });
+    newButton.addEventListener(
+      'click',
+      async () => {
+        await this.handleAddToCart(newButton as HTMLButtonElement);
+      },
+      { signal: this.abortController.signal }
+    );
 
     // Marks the point at which the click listener is actually attached, so
     // e2e tests can wait past hydration instead of racing SSR DOM presence.
@@ -307,9 +343,13 @@ export class PDPEventManager {
   }
 
   private setupCartEventListeners(): void {
-    window.addEventListener('cartUpdated', () => {
-      this.callbacks.onCartUpdate();
-    });
+    window.addEventListener(
+      'cartUpdated',
+      () => {
+        this.callbacks.onCartUpdate();
+      },
+      { signal: this.abortController.signal }
+    );
   }
 
   private setupLocationModal(): void {
@@ -327,15 +367,22 @@ export class PDPEventManager {
       trigger.parentNode?.replaceChild(newTrigger, trigger);
       newTrigger.setAttribute('data-modal-initialized', 'true');
 
-      newTrigger.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        showLocationModal();
-      });
+      newTrigger.addEventListener(
+        'click',
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          showLocationModal();
+        },
+        { signal: this.abortController.signal }
+      );
     });
   }
 
   cleanup(): void {
+    // Detach every listener registered by setupAllEventHandlers()
+    this.abortController.abort();
+
     // Reset processing state for next page
     this.isProcessing = false;
 

@@ -25,9 +25,84 @@ export interface ElementIds {
   cartQuantity?: string;
   inventoryStatus?: string;
   liveStatus?: string;
+  /**
+   * Wrapper around the whole quantity block, hidden while sold out. Defaults
+   * to 'quantity-section'; pass null to leave it alone (QuickView manages its
+   * own quantity section, and this id may belong to a PDP behind the modal).
+   */
+  quantitySection?: string | null;
 }
 
 const ANNOUNCE_DEBOUNCE_MS = 250;
+
+const HERO_SRCSET_WIDTHS = [320, 640, 768, 1024];
+
+function buildHeroSrcSet(imageUrl: string): string {
+  return HERO_SRCSET_WIDTHS.map((size) => {
+    const params = new URLSearchParams({
+      url: imageUrl,
+      w: size.toString(),
+      q: '85',
+      fit: 'cover',
+      h: size.toString(),
+    });
+    return `/.netlify/images?${params.toString()} ${size}w`;
+  }).join(', ');
+}
+
+/**
+ * The original (Square/WordPress) URL behind a hero src: unwraps the
+ * `url` param of a /.netlify/images proxy URL, otherwise returns src as-is.
+ */
+function sourceImageUrl(src: string | null): string | null {
+  if (!src) return null;
+  try {
+    const parsed = new URL(src, window.location.href);
+    return parsed.pathname === '/.netlify/images'
+      ? parsed.searchParams.get('url')
+      : src;
+  } catch {
+    return src;
+  }
+}
+
+/**
+ * Point the hero <img> at a new image.
+ *
+ * The SSR hero is a <picture> with AVIF/WebP <source> elements. A matching
+ * <source> outranks the <img>'s own src/srcset, so changing only the <img>
+ * leaves the original image on screen in any browser that supports AVIF or
+ * WebP. Drop the stale <source>s first; the <img> srcset goes through the
+ * Netlify Image CDN, which negotiates AVIF/WebP from the Accept header, so
+ * the format optimization is preserved.
+ *
+ * Used by every path that swaps the hero: variant change, thumbnail rebuild,
+ * and thumbnail click.
+ */
+export function setHeroImage(img: HTMLImageElement, imageUrl: string): void {
+  if (!img || !imageUrl) return;
+
+  // The controller re-applies the already-selected variant's image on init.
+  // Leave the SSR markup alone in that case: it keeps the AVIF/WebP sources
+  // and the exact URL the LCP preload fetched, so nothing is re-downloaded.
+  if (sourceImageUrl(img.getAttribute('src')) === imageUrl) return;
+
+  const picture = img.closest('picture');
+  picture?.querySelectorAll('source').forEach((source) => source.remove());
+
+  // Only route through the image CDN when the hero was already optimized
+  // (SSR gave it a srcset or a <picture>) and the URL is remote. Otherwise
+  // clear srcset so a stale one can't override the new src.
+  const optimize =
+    /^https?:/.test(imageUrl) && (img.hasAttribute('srcset') || !!picture);
+
+  img.src = imageUrl;
+  if (optimize) {
+    img.setAttribute('srcset', buildHeroSrcSet(imageUrl));
+  } else {
+    img.removeAttribute('srcset');
+  }
+}
 
 export class PDPUIManager {
   private elements: {
@@ -44,6 +119,7 @@ export class PDPUIManager {
     cartQuantity?: HTMLElement;
     inventoryStatus?: HTMLElement;
     liveStatus?: HTMLElement;
+    quantitySection?: HTMLElement;
   } = {};
 
   private announceTimer?: ReturnType<typeof setTimeout>;
@@ -71,6 +147,10 @@ export class PDPUIManager {
       cartQuantity: customIds?.cartQuantity || 'cart-quantity',
       inventoryStatus: customIds?.inventoryStatus || 'inventory-status',
       liveStatus: customIds?.liveStatus || 'pdp-live-status',
+      quantitySection:
+        customIds?.quantitySection === undefined
+          ? 'quantity-section'
+          : customIds.quantitySection,
     };
 
     const productImage = document.getElementById(
@@ -102,6 +182,9 @@ export class PDPUIManager {
       inventoryStatus:
         document.getElementById(ids.inventoryStatus) || undefined,
       liveStatus: document.getElementById(ids.liveStatus) || undefined,
+      quantitySection: ids.quantitySection
+        ? document.getElementById(ids.quantitySection) || undefined
+        : undefined,
     };
   }
 
@@ -167,6 +250,14 @@ export class PDPUIManager {
   ): void {
     // Re-cache elements in case they were cloned/replaced
     this.cacheElements(this.elementIds); // Use stored IDs
+
+    // The whole quantity block (stepper + availability text) is always in the
+    // DOM; show it unless the variation is sold out. Done before the input
+    // guard so it also applies on pages without a stepper.
+    this.elements.quantitySection?.classList.toggle(
+      'hidden',
+      info.state === ProductAvailabilityState.OUT_OF_STOCK
+    );
 
     const { quantityInput, decreaseButton, increaseButton } = this.elements;
     if (!quantityInput) return;
@@ -330,24 +421,7 @@ export class PDPUIManager {
 
     if (!productImage || !imageUrl) return;
 
-    productImage.src = imageUrl;
-
-    // Update srcset if present (Netlify Image CDN)
-    if (productImage.hasAttribute('srcset')) {
-      const sizes = [320, 640, 768, 1024];
-      const srcsetParts = sizes.map((size) => {
-        const params = new URLSearchParams({
-          url: imageUrl,
-          w: size.toString(),
-          q: '85',
-          fit: 'cover',
-          h: size.toString(),
-        });
-        return `/.netlify/images?${params.toString()} ${size}w`;
-      });
-
-      productImage.setAttribute('srcset', srcsetParts.join(', '));
-    }
+    setHeroImage(productImage, imageUrl);
   }
 
   updateButtonProductData(productData: unknown): void {
@@ -509,7 +583,7 @@ export class PDPUIManager {
       'product-image'
     ) as HTMLImageElement | null;
     if (mainImage && images[0]) {
-      mainImage.src = images[0];
+      setHeroImage(mainImage, images[0]);
     }
   }
 

@@ -6,8 +6,9 @@ import { cart } from '@/lib/cart';
 import {
   createInitialSelectionState,
   getAttributeDisplayName,
-  findVariationByAttributes,
+  resolveVariationForSelection,
 } from '@/lib/square/variationParser';
+import { assignProductImagesToVariations } from '@/lib/square/variationImages';
 import { processClientError, logError } from '@/lib/square/errorUtils';
 import type { Product, ProductVariation } from '@/lib/square/types';
 import type { ProductPageData } from '@/lib/product/pdpEvents';
@@ -25,6 +26,11 @@ export class QuickViewController {
   private isProcessing: boolean = false;
   private uiManager!: PDPUIManager;
   private triggerElement: HTMLElement | null = null;
+  // Signal for the listeners setupEventHandlers() attaches. It runs on every
+  // initQuickView() (directly, then again on astro:page-load, then on every
+  // Client Router navigation); each call aborts the previous set so document
+  // and window listeners don't stack up for the life of the session.
+  private listenersAbort: AbortController | null = null;
 
   static getInstance(): QuickViewController {
     if (!QuickViewController.instance) {
@@ -48,6 +54,10 @@ export class QuickViewController {
       remainingCount: 'quick-view-remaining-count',
       cartQuantity: 'quick-view-cart-quantity',
       liveStatus: 'quick-view-live-status',
+      // QuickView shows/hides its own quantity section in updateQuantityAndBis.
+      // Opt out so the shared manager never touches a PDP's #quantity-section
+      // when QuickView is opened on a product page.
+      quantitySection: null,
     });
   }
 
@@ -138,22 +148,10 @@ export class QuickViewController {
     // Create initial selection state using PDP parser
     const selectionState = createInitialSelectionState(variations);
 
-    // Mirror PDP fallback image assignment: if product has multiple images and
-    // no color attribute exists, the images are multi-angle shots shared by all
-    // variations (e.g. a deck in multiple sizes) — assign them to variation.images. cSpell:ignore colour
-    if (product.images && product.images.length > 1) {
-      const colorKey = Object.keys(variations[0]?.attributes ?? {}).find(
-        (k) => k.toLowerCase() === 'color' || k.toLowerCase() === 'colour'
-      );
-      if (!colorKey) {
-        for (const v of variations) {
-          if (!v.images || v.images.length === 0) {
-            v.images = product.images;
-            if (!v.image) v.image = product.images[0];
-          }
-        }
-      }
-    }
+    // Same fallback image assignment as the PDP (one image per color, or shared
+    // multi-angle shots when there is no color). Requires attributes parsed,
+    // which createInitialSelectionState above just did.
+    assignProductImagesToVariations(variations, product.images);
 
     // Set up product data structure (matching PDP)
     this.productData = {
@@ -383,113 +381,82 @@ export class QuickViewController {
   }
 
   private handleAttributeSelection(attributeType: string, value: string): void {
-    this.selectedAttributes[attributeType] = value;
-    this.updateCurrentVariation();
+    if (!this.productData) return;
+
+    const target = this.resolveVariation(attributeType, value);
+    if (!target) return; // value isn't on any variation; nothing to show
+
+    // Adopt the target's full attribute set. When the exact combination
+    // exists this equals the old selection plus the new value; when it
+    // doesn't, the other attributes snap to the nearest real combination so
+    // the chips, price, image, gallery and back-in-stock form all describe
+    // the same variation (mirrors PDPController).
+    const previous = this.selectedAttributes;
+    this.selectedAttributes = { ...target.attributes };
+    this.currentVariation = target;
+
+    try {
+      this.updateProductUI();
+    } catch (error) {
+      const appError = processClientError(error, 'handleAttributeSelection');
+      logError(appError);
+    }
     this.updateAttributeButtonStates();
+
+    const changedOthers = Object.keys(previous)
+      .filter(
+        (k) => k !== attributeType && previous[k] !== this.selectedAttributes[k]
+      )
+      .map((k) => previous[k]);
     this.announceSelection(
-      this.productData
-        ? (findVariationByAttributes(
-            this.productData.variations,
-            this.selectedAttributes
-          ) ?? null)
-        : null
+      target,
+      changedOthers.length
+        ? { unavailable: changedOthers, requested: value }
+        : undefined
+    );
+  }
+
+  private resolveVariation(
+    attributeType: string,
+    value: string
+  ): ProductVariation | undefined {
+    if (!this.productData) return undefined;
+    return resolveVariationForSelection(
+      this.productData.variations,
+      this.selectedAttributes,
+      attributeType,
+      value
     );
   }
 
   /**
    * Announce a user-driven selection to screen readers. Deliberately not
    * called from openQuickView()/initializeProduct()/handleCartUpdate() so
-   * opening the panel and cart syncs stay silent. A null variation means the
-   * chosen combination doesn't exist, which the UI already renders as out of
-   * stock.
+   * opening the panel and cart syncs stay silent.
    */
-  private announceSelection(variation: ProductVariation | null): void {
-    if (!this.currentVariation || !this.productData) return;
+  private announceSelection(
+    variation: ProductVariation,
+    snapped?: { unavailable: string[]; requested: string }
+  ): void {
+    if (!this.productData) return;
 
-    const shown = variation ?? this.currentVariation;
-    const info = variation
-      ? cart.getProductAvailability(
-          this.productData.productId,
-          variation.variationId,
-          variation.quantity || 0
-        )
-      : cart.getProductAvailability(
-          this.productData.productId,
-          'out-of-stock',
-          0
-        );
+    const info = cart.getProductAvailability(
+      this.productData.productId,
+      variation.variationId,
+      variation.quantity || 0
+    );
     const selectedValues = Object.values(this.selectedAttributes).join(' ');
+    const label = selectedValues || variation.name;
 
     this.uiManager.announceVariantChange({
-      label: selectedValues || shown.name,
-      price: shown.saleInfo?.salePrice ?? shown.price,
+      // When the requested combination doesn't exist, say what moved so a
+      // screen-reader user isn't left wondering why another option changed.
+      label: snapped
+        ? `${label} (${snapped.unavailable.join(' ')} isn't offered in ${snapped.requested})`
+        : label,
+      price: variation.saleInfo?.salePrice ?? variation.price,
       info,
     });
-  }
-
-  private updateCurrentVariation(): void {
-    if (!this.productData) return;
-    try {
-      const matchingVariation = findVariationByAttributes(
-        this.productData.variations,
-        this.selectedAttributes
-      );
-
-      if (matchingVariation) {
-        this.currentVariation = matchingVariation;
-        this.updateProductUI();
-      } else {
-        // No exact match - find closest variation matching selected color for image
-        const selectedColor = this.selectedAttributes.color;
-        const colorMatchVariation = selectedColor
-          ? this.productData?.variations.find(
-              (v) => v.attributes?.color === selectedColor
-            )
-          : null;
-
-        if (colorMatchVariation?.image) {
-          this.uiManager.updateProductImage(colorMatchVariation.image);
-          this.renderGallery(
-            colorMatchVariation.images || [],
-            colorMatchVariation.image
-          );
-        }
-
-        this.showOutOfStockState();
-      }
-    } catch (error) {
-      const appError = processClientError(error, 'updateCurrentVariation');
-      logError(appError);
-    }
-  }
-
-  private showOutOfStockState(): void {
-    if (!this.currentVariation || !this.productData) return;
-
-    // Update price
-    this.uiManager.updatePriceDisplay(this.currentVariation.price, {
-      saleInfo: this.currentVariation.saleInfo,
-      unit: this.currentVariation.unit || this.currentProduct?.unit,
-    });
-
-    // Get out of stock availability info
-    const outOfStockInfo = cart.getProductAvailability(
-      this.productData.productId,
-      'out-of-stock',
-      0
-    );
-    this.uiManager.updateQuantityControls(outOfStockInfo);
-    this.uiManager.updateAddToCartButton(outOfStockInfo);
-    this.uiManager.updateImageOverlay(outOfStockInfo);
-    this.uiManager.updateInventoryDisplay(outOfStockInfo);
-
-    // Hide quantity stepper, show back-in-stock form
-    this.updateQuantityAndBis(false, 0);
-
-    // Update button product data
-    this.uiManager.updateButtonProductData(
-      this.buildProductData(this.currentVariation)
-    );
   }
 
   private updateProductUI(): void {
@@ -747,23 +714,16 @@ export class QuickViewController {
     value: string
   ): boolean {
     if (!this.productData) return false;
-    // EXACTLY mirror PDP canAddToCartFn pattern
-    const testAttributes = {
-      ...this.selectedAttributes,
-      [attributeType]: value,
-    };
-
-    const matchingVariation = findVariationByAttributes(
-      this.productData.variations,
-      testAttributes
-    );
+    // Same resolution a click uses, so a chip is only styled as out of stock
+    // when selecting it would actually land on something unbuyable.
+    const target = this.resolveVariation(attributeType, value);
 
     return Boolean(
-      matchingVariation?.inStock &&
+      target?.inStock &&
       cart.canAddToCart(
         this.productData.productId,
-        matchingVariation.variationId,
-        matchingVariation.quantity || 0
+        target.variationId,
+        target.quantity || 0
       )
     );
   }
@@ -1053,28 +1013,41 @@ export class QuickViewController {
   }
 
   setupEventHandlers(): void {
+    // Replace, don't accumulate: detach whatever a previous call attached
+    this.listenersAbort?.abort();
+    this.listenersAbort = new AbortController();
+    const { signal } = this.listenersAbort;
+
     // Close button
     const closeButton = document.getElementById('close-quick-view');
-    closeButton?.addEventListener('click', () => this.closeModal());
+    closeButton?.addEventListener('click', () => this.closeModal(), { signal });
 
     // Overlay click
     const overlay = document.getElementById('quick-view-overlay');
-    overlay?.addEventListener('click', (e) => {
-      if (e.target === overlay) this.closeModal();
-    });
+    overlay?.addEventListener(
+      'click',
+      (e) => {
+        if (e.target === overlay) this.closeModal();
+      },
+      { signal }
+    );
 
     // Add to cart
     const addToCartBtn = document.getElementById('quick-view-add-to-cart');
-    addToCartBtn?.addEventListener('click', () => this.addToCart());
+    addToCartBtn?.addEventListener('click', () => this.addToCart(), { signal });
 
     // Retry button
     const retryBtn = document.getElementById('quick-view-retry');
-    retryBtn?.addEventListener('click', () => {
-      const id = this.currentProduct?.id ?? this.lastProductId;
-      if (id) {
-        this.openQuickView(id);
-      }
-    });
+    retryBtn?.addEventListener(
+      'click',
+      () => {
+        const id = this.currentProduct?.id ?? this.lastProductId;
+        if (id) {
+          this.openQuickView(id);
+        }
+      },
+      { signal }
+    );
 
     // Quantity controls
     this.setupQuantityControls();
@@ -1098,90 +1071,102 @@ export class QuickViewController {
           return false;
         }
       },
-      true
+      { capture: true, signal }
     );
 
     // Escape closes the panel; Tab is trapped within it while open
-    document.addEventListener('keydown', (e) => {
-      const panel = document.getElementById('quick-view-panel');
-      if (!panel || panel.classList.contains('-translate-x-full')) return;
+    document.addEventListener(
+      'keydown',
+      (e) => {
+        const panel = document.getElementById('quick-view-panel');
+        if (!panel || panel.classList.contains('-translate-x-full')) return;
 
-      if (e.key === 'Escape') {
-        this.closeModal();
-        return;
-      }
-
-      if (e.key !== 'Tab') return;
-
-      const focusable = Array.from(
-        panel.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )
-      ).filter((el) => el.offsetParent !== null);
-      if (focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
+        if (e.key === 'Escape') {
+          this.closeModal();
+          return;
         }
-      } else if (document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    });
+
+        if (e.key !== 'Tab') return;
+
+        const focusable = Array.from(
+          panel.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => el.offsetParent !== null);
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      },
+      { signal }
+    );
 
     // Thumbnail gallery — event delegation so it survives innerHTML rebuilds
     const thumbnailContainer = document.getElementById('quick-view-thumbnails');
-    thumbnailContainer?.addEventListener('click', (e) => {
-      const thumb = (e.target as Element).closest<HTMLButtonElement>(
-        '.quick-view-thumb'
-      );
-      if (!thumb) return;
+    thumbnailContainer?.addEventListener(
+      'click',
+      (e) => {
+        const thumb = (e.target as Element).closest<HTMLButtonElement>(
+          '.quick-view-thumb'
+        );
+        if (!thumb) return;
 
-      const src = thumb.dataset.gallerySrc;
-      if (!src) return;
+        const src = thumb.dataset.gallerySrc;
+        if (!src) return;
 
-      // Update active thumb styles
-      thumbnailContainer
-        .querySelectorAll<HTMLButtonElement>('.quick-view-thumb')
-        .forEach((t) => {
-          t.classList.remove('border-(--ui-button-border)', 'opacity-100');
-          t.classList.add('border-(--border-secondary)', 'opacity-60');
-          t.setAttribute('aria-pressed', 'false');
-        });
-      thumb.classList.add('border-(--ui-button-border)', 'opacity-100');
-      thumb.classList.remove('border-(--border-secondary)', 'opacity-60');
-      thumb.setAttribute('aria-pressed', 'true');
+        // Update active thumb styles
+        thumbnailContainer
+          .querySelectorAll<HTMLButtonElement>('.quick-view-thumb')
+          .forEach((t) => {
+            t.classList.remove('border-(--ui-button-border)', 'opacity-100');
+            t.classList.add('border-(--border-secondary)', 'opacity-60');
+            t.setAttribute('aria-pressed', 'false');
+          });
+        thumb.classList.add('border-(--ui-button-border)', 'opacity-100');
+        thumb.classList.remove('border-(--border-secondary)', 'opacity-60');
+        thumb.setAttribute('aria-pressed', 'true');
 
-      // Crossfade the main image
-      const mainImage = document.getElementById(
-        'quick-view-image'
-      ) as HTMLImageElement | null;
-      if (mainImage) {
-        mainImage.style.opacity = '0';
-        mainImage.src = this.optimizeImageSrc(src, 400);
-        if (mainImage.complete && mainImage.naturalWidth > 0) {
-          mainImage.style.opacity = '0.9';
-        } else {
-          mainImage.onload = () => {
+        // Crossfade the main image
+        const mainImage = document.getElementById(
+          'quick-view-image'
+        ) as HTMLImageElement | null;
+        if (mainImage) {
+          mainImage.style.opacity = '0';
+          mainImage.src = this.optimizeImageSrc(src, 400);
+          if (mainImage.complete && mainImage.naturalWidth > 0) {
             mainImage.style.opacity = '0.9';
-          };
-          mainImage.onerror = () => {
-            mainImage.style.opacity = '1';
-          };
+          } else {
+            mainImage.onload = () => {
+              mainImage.style.opacity = '0.9';
+            };
+            mainImage.onerror = () => {
+              mainImage.style.opacity = '1';
+            };
+          }
         }
-      }
-    });
+      },
+      { signal }
+    );
 
     // Cart update events (PDP pattern)
-    window.addEventListener('cartUpdated', () => {
-      if (this.currentVariation && this.currentProduct) {
-        this.handleCartUpdate();
-      }
-    });
+    window.addEventListener(
+      'cartUpdated',
+      () => {
+        if (this.currentVariation && this.currentProduct) {
+          this.handleCartUpdate();
+        }
+      },
+      { signal }
+    );
   }
 }

@@ -4,11 +4,13 @@
  * form. Follows pdpController-real.test.ts's pattern: real happy-dom DOM,
  * fixture markup mounted, `cart` and `PDPUIManager` stubbed.
  *
- * These tests document CURRENT behavior. Where behavior looks surprising,
- * the test says so in a comment rather than encoding an aspiration —
- * quickViewController.ts itself is not modified by this suite (plan 179).
+ * These tests document current behavior. The "no matching variation" cases
+ * originally characterized a bug (a non-existent combination left
+ * currentVariation stale, so the back-in-stock form targeted the previous
+ * variant); that was fixed to snap to the nearest real variation, mirroring
+ * PDPController, and the tests below assert the corrected behavior.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('@/lib/cart', () => ({
   cart: {
@@ -252,7 +254,7 @@ describe('QuickViewController — real implementation', () => {
   });
 
   describe('harness sanity', () => {
-    it('updateCurrentVariation resolves the matching variation from selected attributes', async () => {
+    it('a click resolves the matching variation from the selected attributes', async () => {
       await openWith(controller, makeProduct());
 
       attrButton('size', 'Large').click();
@@ -393,16 +395,23 @@ describe('QuickViewController — real implementation', () => {
       expect(current?.inStock).toBe(true);
     });
 
-    it('selecting an attribute combination with no matching variation shows the out-of-stock state without crashing', async () => {
+    it('a combination that does not exist snaps to the nearest real variation instead of leaving a phantom selection', async () => {
       await openWith(controller, makeProduct());
 
       expect(() => {
-        attrButton('size', 'Large').click();
+        attrButton('size', 'Large').click(); // Large/Red
         attrButton('color', 'Blue').click(); // Large/Blue does not exist
       }).not.toThrow();
 
-      // No variation matches Large+Blue, so the out-of-stock DOM state is
-      // driven, not a crash.
+      // Blue only exists as Small/Blue (sold out), so size snaps Large -> Small
+      expect(internals(controller).currentVariation?.variationId).toBe(
+        'var-sm-blue'
+      );
+      expect(internals(controller).selectedAttributes).toEqual({
+        size: 'Small',
+        color: 'Blue',
+      });
+      // ...which is sold out, so the back-in-stock state is shown
       expect(
         document.getElementById('qv-bis-section')?.classList.contains('hidden')
       ).toBe(false);
@@ -413,31 +422,55 @@ describe('QuickViewController — real implementation', () => {
       ).toBe(true);
     });
 
-    it('the color-image fallback: an unmatched combination still updates the image to the selected color, but currentVariation is left stale at the last real match', async () => {
+    it('drives image, price and button data from the snapped variation, not the previous one', async () => {
       await openWith(controller, makeProduct());
       const uiManager = internals(controller).uiManager;
-
-      attrButton('size', 'Large').click(); // matches var-lg-red — a real variation switch
-      expect(internals(controller).currentVariation?.variationId).toBe(
-        'var-lg-red'
-      );
-
+      attrButton('size', 'Large').click();
       uiManager.updateProductImage.mockClear();
-      attrButton('color', 'Blue').click(); // Large+Blue: no match, but a Small/Blue variation exists with an image
+      uiManager.updatePriceDisplay.mockClear();
 
-      // Documents current behavior: updateCurrentVariation's "no exact
-      // match" branch looks up a variation sharing the selected color
-      // *only* to source a fallback image (and gallery) — it does not
-      // reassign `currentVariation`. So the image reflects the selected
-      // color (sm-blue.jpg) while currentVariation and its price/button
-      // data remain whatever the last successful match was (var-lg-red).
-      // This looks like it could surprise a user (image shows blue, price
-      // still shows the red variant's price) — flagging per plan 179's
-      // instruction to characterize, not fix.
+      attrButton('color', 'Blue').click(); // snaps to Small/Blue
+
       expect(uiManager.updateProductImage).toHaveBeenCalledWith('sm-blue.jpg');
+      expect(uiManager.updatePriceDisplay).toHaveBeenLastCalledWith(
+        65,
+        expect.anything()
+      );
+      const btn = document.getElementById(
+        'quick-view-add-to-cart'
+      ) as HTMLButtonElement;
+      expect(JSON.parse(btn.dataset.product!).variationId).toBe('var-sm-blue');
+    });
+
+    it('snaps to an in-stock variation when one carries the requested value', async () => {
+      await openWith(controller, makeProduct());
+      attrButton('color', 'Blue').click(); // Small/Blue exists, sold out
+      expect(internals(controller).currentVariation?.variationId).toBe(
+        'var-sm-blue'
+      );
+
+      // Large/Blue doesn't exist; only Large/Red carries Size=Large
+      attrButton('size', 'Large').click();
+
       expect(internals(controller).currentVariation?.variationId).toBe(
         'var-lg-red'
       );
+      expect(internals(controller).selectedAttributes).toEqual({
+        size: 'Large',
+        color: 'Red',
+      });
+      expect(
+        document.getElementById('qv-bis-section')?.classList.contains('hidden')
+      ).toBe(true);
+    });
+
+    it('ignores a value that is not on any variation', async () => {
+      await openWith(controller, makeProduct());
+      const before = internals(controller).currentVariation;
+
+      internals(controller).handleAttributeSelection('size', 'Huge');
+
+      expect(internals(controller).currentVariation).toBe(before);
     });
 
     it('canAddToCartForAttribute returns true for an available combination', async () => {
@@ -463,38 +496,89 @@ describe('QuickViewController — real implementation', () => {
       expect(isAvailable).toBe(false);
     });
 
-    it('canAddToCartForAttribute returns false when no variation matches at all', async () => {
+    it('canAddToCartForAttribute judges a non-existent combination by the variation a click would snap to', async () => {
       await openWith(controller, makeProduct());
       attrButton('size', 'Large').click();
 
-      // Large + Blue does not exist as a variation
-      const isAvailable = internals(controller).canAddToCartForAttribute(
-        'color',
-        'Blue'
-      );
+      // Large/Blue does not exist; a click snaps to Small/Blue, which is sold out
+      expect(
+        internals(controller).canAddToCartForAttribute('color', 'Blue')
+      ).toBe(false);
 
-      expect(isAvailable).toBe(false);
+      attrButton('color', 'Blue').click(); // now on Small/Blue
+      // Large/Blue does not exist, but a click snaps to buyable Large/Red
+      expect(
+        internals(controller).canAddToCartForAttribute('size', 'Large')
+      ).toBe(true);
     });
 
-    it('showOutOfStockState hides the quantity stepper and shows the back-in-stock form populated with the sold-out variant', async () => {
-      const product = makeProduct();
-      await openWith(controller, product);
+    it('an existing sold-out combination keeps the back-in-stock form on its real variation and hides the stepper and CTA', async () => {
+      await openWith(controller, makeProduct());
 
-      attrButton('size', 'Large').click();
-      attrButton('color', 'Blue').click(); // no match -> showOutOfStockState
+      attrButton('color', 'Blue').click(); // Small/Blue exists, sold out
 
       expect(
         (document.getElementById('qv-bis-product-id') as HTMLInputElement).value
       ).toBe('prod-1');
-      // The stale currentVariation (var-lg-red) is what's used to build the
-      // BIS label/product data, per the fallback behavior documented above.
       expect(
         (document.getElementById('qv-bis-variation-id') as HTMLInputElement)
           .value
-      ).toBe('var-lg-red');
+      ).toBe('var-sm-blue');
+      expect(
+        (document.getElementById('qv-bis-product-title') as HTMLInputElement)
+          .value
+      ).toBe('Test Deck — Small / Blue');
       expect(
         document.getElementById('qv-atc-wrapper')?.classList.contains('hidden')
       ).toBe(true);
+    });
+  });
+
+  describe('color images stored at the item level', () => {
+    // Square often stores one image per color on the Item, not on each
+    // variation. The PDP maps those onto variations; QuickView must too, or
+    // the hero never follows the selected color.
+    const itemLevelProduct = () =>
+      makeProduct({
+        images: ['red.jpg', 'blue.jpg'],
+        variations: makeProduct().variations!.map((v) => ({
+          ...v,
+          image: undefined,
+        })),
+      });
+
+    it('the hero follows the selected color', async () => {
+      await openWith(controller, itemLevelProduct());
+      const uiManager = internals(controller).uiManager;
+
+      // Opens on Small/Red -> the first (Red) image
+      expect(uiManager.updateProductImage).toHaveBeenLastCalledWith('red.jpg');
+
+      attrButton('color', 'Blue').click(); // Small/Blue
+
+      expect(uiManager.updateProductImage).toHaveBeenLastCalledWith('blue.jpg');
+    });
+
+    it('a snapped selection also takes the image of the variation it lands on', async () => {
+      await openWith(controller, itemLevelProduct());
+      const uiManager = internals(controller).uiManager;
+      attrButton('color', 'Blue').click(); // Small/Blue
+
+      attrButton('size', 'Large').click(); // Large/Blue doesn't exist -> Large/Red
+
+      expect(uiManager.updateProductImage).toHaveBeenLastCalledWith('red.jpg');
+    });
+
+    it('still honors a variation-level image over the item-level one', async () => {
+      const product = itemLevelProduct();
+      product.variations![2].image = 'sm-blue-own.jpg'; // Small/Blue
+      await openWith(controller, product);
+
+      attrButton('color', 'Blue').click();
+
+      expect(
+        internals(controller).uiManager.updateProductImage
+      ).toHaveBeenLastCalledWith('sm-blue-own.jpg');
     });
   });
 
@@ -543,34 +627,44 @@ describe('QuickViewController — real implementation', () => {
       );
     });
 
-    it('announces out of stock for a combination that does not exist', async () => {
+    it('announces the snapped variation, naming what moved, for a combination that does not exist', async () => {
       await openWith(controller, makeProduct());
       const uiManager = internals(controller).uiManager;
       attrButton('size', 'Large').click();
       uiManager.announceVariantChange.mockClear();
       vi.mocked(cart.getProductAvailability).mockClear();
 
-      attrButton('color', 'Blue').click(); // Large/Blue does not exist
+      attrButton('color', 'Blue').click(); // Large/Blue does not exist -> Small/Blue
 
       expect(cart.getProductAvailability).toHaveBeenCalledWith(
         'prod-1',
-        'out-of-stock',
+        'var-sm-blue',
         0
       );
       expect(uiManager.announceVariantChange).toHaveBeenCalledTimes(1);
       expect(uiManager.announceVariantChange).toHaveBeenCalledWith(
-        expect.objectContaining({ label: 'Large Blue' })
+        expect.objectContaining({
+          label: "Small Blue (Large isn't offered in Blue)",
+        })
       );
+    });
+
+    it('does not add a "not offered" note when the exact combination exists', async () => {
+      await openWith(controller, makeProduct());
+      const uiManager = internals(controller).uiManager;
+
+      attrButton('size', 'Large').click(); // Large/Red exists
+
+      const { label } = uiManager.announceVariantChange.mock.calls.at(-1)![0];
+      expect(label).not.toContain("isn't offered");
     });
   });
 
   describe('back-in-stock form', () => {
     async function triggerOutOfStock(): Promise<void> {
       await openWith(controller, makeProduct());
-      // Selecting Large then Blue hits the "no matching variation" branch
-      // (Large/Blue doesn't exist), which is what wires up and reveals the
-      // BIS form via updateQuantityAndBis(false, 0) in showOutOfStockState.
-      attrButton('size', 'Large').click();
+      // Small/Blue exists but is sold out, which reveals and wires up the BIS
+      // form via updateQuantityAndBis(false, 0).
       attrButton('color', 'Blue').click();
     }
 
@@ -680,6 +774,80 @@ describe('QuickViewController — real implementation', () => {
 
       expect(addSpy).not.toHaveBeenCalled();
       expect(form.dataset.initialized).toBe('true');
+    });
+  });
+
+  describe('setupEventHandlers() is safe to call repeatedly', () => {
+    // initQuickView() calls it directly, again on astro:page-load, and again
+    // on every Client Router navigation. Each call must replace the previous
+    // set of listeners, not add to it.
+    afterEach(() => {
+      // QuickViewController is a singleton and document/window outlive the DOM
+      // reset in beforeEach, so detach whatever these tests attached.
+      internals(controller).listenersAbort?.abort();
+      vi.restoreAllMocks();
+    });
+
+    it('a click on add-to-cart runs addToCart once, not once per setup call', async () => {
+      await openWith(controller, makeProduct());
+      const addToCart = vi
+        .spyOn(controller, 'addToCart')
+        .mockResolvedValue(undefined);
+
+      controller.setupEventHandlers();
+      controller.setupEventHandlers();
+      controller.setupEventHandlers();
+      document.getElementById('quick-view-add-to-cart')!.click();
+
+      expect(addToCart).toHaveBeenCalledTimes(1);
+    });
+
+    it('cartUpdated triggers handleCartUpdate once per event', async () => {
+      await openWith(controller, makeProduct());
+      const handleCartUpdate = vi
+        .spyOn(internals(controller), 'handleCartUpdate')
+        .mockImplementation(() => {});
+
+      controller.setupEventHandlers();
+      controller.setupEventHandlers();
+      window.dispatchEvent(new CustomEvent('cartUpdated'));
+
+      expect(handleCartUpdate).toHaveBeenCalledTimes(1);
+    });
+
+    it('Escape closes the panel once, not once per setup call', async () => {
+      await openWith(controller, makeProduct());
+      document
+        .getElementById('quick-view-panel')!
+        .classList.remove('-translate-x-full');
+      const closeModal = vi
+        .spyOn(internals(controller), 'closeModal')
+        .mockImplementation(() => {});
+
+      controller.setupEventHandlers();
+      controller.setupEventHandlers();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+      expect(closeModal).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-binds to fresh DOM after a swap, and detaches from the old DOM', async () => {
+      await openWith(controller, makeProduct());
+      controller.setupEventHandlers();
+      const oldButton = document.getElementById('quick-view-add-to-cart')!;
+
+      // Client Router swap: same ids, brand-new elements
+      setupDom();
+      controller.setupEventHandlers();
+      const addToCart = vi
+        .spyOn(controller, 'addToCart')
+        .mockResolvedValue(undefined);
+
+      document.getElementById('quick-view-add-to-cart')!.click();
+      expect(addToCart).toHaveBeenCalledTimes(1);
+
+      oldButton.click();
+      expect(addToCart).toHaveBeenCalledTimes(1);
     });
   });
 

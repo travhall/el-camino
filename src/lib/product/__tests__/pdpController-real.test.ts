@@ -588,4 +588,141 @@ describe('PDPController Real Implementation Tests', () => {
       ).toBeGreaterThanOrEqual(1);
     });
   });
+  describe('Selecting a combination that does not exist (sparse matrix)', () => {
+    // Fixture matrix: Small/Red (in stock), Large/Red (in stock), Small/Blue
+    // (sold out). Large/Blue does not exist.
+    const select = (c: PDPController, type: string, value: string) =>
+      internals(c).eventManager.handlers!.onAttributeSelection(type, value);
+
+    const availabilityFn = (c: PDPController) => {
+      const calls =
+        internals(c).uiManager.updateAttributeButtonStates.mock.calls;
+      return calls[calls.length - 1][2] as (t: string, v: string) => boolean;
+    };
+
+    it('keeps an existing-but-sold-out combination as chosen (back-in-stock needs its real variation)', () => {
+      controller = new PDPController(mockProductData);
+      select(controller, 'Color', 'Blue'); // Small/Blue exists, sold out
+
+      expect(internals(controller).currentVariation?.variationId).toBe('var-3');
+      expect(internals(controller).selectedAttributes).toEqual({
+        Size: 'Small',
+        Color: 'Blue',
+      });
+    });
+
+    it('snaps the other attributes to the nearest real variation instead of leaving a phantom selection', () => {
+      controller = new PDPController(mockProductData);
+      select(controller, 'Color', 'Blue'); // Small/Blue
+      select(controller, 'Size', 'Large'); // Large/Blue does not exist
+
+      // Only Large/Red has Size=Large, so Color snaps Blue -> Red
+      expect(internals(controller).currentVariation?.variationId).toBe('var-2');
+      expect(internals(controller).selectedAttributes).toEqual({
+        Size: 'Large',
+        Color: 'Red',
+      });
+    });
+
+    it('drives price, image and button data from the snapped variation, not the previous one', () => {
+      controller = new PDPController(mockProductData);
+      select(controller, 'Color', 'Blue');
+      select(controller, 'Size', 'Large');
+
+      const ui = internals(controller).uiManager;
+      expect(ui.updateProductImage).toHaveBeenLastCalledWith('large-red.jpg');
+      expect(ui.updatePriceDisplay).toHaveBeenLastCalledWith(
+        3000,
+        expect.anything()
+      );
+    });
+
+    it('reports a snapped selection to screen readers, naming what moved', () => {
+      controller = new PDPController(mockProductData);
+      select(controller, 'Color', 'Blue');
+      select(controller, 'Size', 'Large');
+
+      const ui = internals(controller).uiManager;
+      const label = ui.announceVariantChange.mock.calls.at(-1)![0].label;
+      expect(label).toContain('Large Red');
+      expect(label).toContain("Blue isn't offered in Large");
+    });
+
+    it('does not add a "not offered" note when the exact combination exists', () => {
+      controller = new PDPController(mockProductData);
+      select(controller, 'Size', 'Large'); // Large/Red exists
+
+      const ui = internals(controller).uiManager;
+      const label = ui.announceVariantChange.mock.calls.at(-1)![0].label;
+      expect(label).not.toContain("isn't offered");
+    });
+
+    it('ignores a value that is not on any variation', () => {
+      controller = new PDPController(mockProductData);
+      const before = internals(controller).currentVariation;
+      select(controller, 'Size', 'Huge');
+
+      expect(internals(controller).currentVariation).toBe(before);
+      expect(internals(controller).selectedAttributes).toEqual({
+        Size: 'Small',
+        Color: 'Red',
+      });
+    });
+
+    it('styles a chip by the variation a click would land on', () => {
+      controller = new PDPController(mockProductData);
+      select(controller, 'Color', 'Blue'); // now on Small/Blue (sold out)
+      const isAvailable = availabilityFn(controller);
+
+      // Large/Blue doesn't exist, but a click snaps to buyable Large/Red
+      expect(isAvailable('Size', 'Large')).toBe(true);
+      // Staying on Small/Blue is sold out
+      expect(isAvailable('Color', 'Blue')).toBe(false);
+      expect(isAvailable('Color', 'Red')).toBe(true);
+    });
+
+    it('prefers the in-stock candidate when several share the same number of kept attributes', () => {
+      const sparse: ProductPageData = {
+        productId: 'prod-2',
+        selectedVariationId: 'a',
+        availableAttributes: {
+          Size: ['S', 'L'],
+          Color: ['Blue', 'Red', 'Green'],
+        },
+        variations: [
+          {
+            id: 'a',
+            variationId: 'a',
+            name: 'S, Blue',
+            price: 10,
+            quantity: 3,
+            inStock: true,
+            attributes: { Size: 'S', Color: 'Blue' },
+          },
+          {
+            id: 'b',
+            variationId: 'b',
+            name: 'L, Red',
+            price: 10,
+            quantity: 0,
+            inStock: false,
+            attributes: { Size: 'L', Color: 'Red' },
+          },
+          {
+            id: 'c',
+            variationId: 'c',
+            name: 'L, Green',
+            price: 10,
+            quantity: 2,
+            inStock: true,
+            attributes: { Size: 'L', Color: 'Green' },
+          },
+        ],
+      };
+      controller = new PDPController(sparse);
+      select(controller, 'Size', 'L'); // L/Blue doesn't exist; L/Red vs L/Green
+
+      expect(internals(controller).currentVariation?.variationId).toBe('c');
+    });
+  });
 });
