@@ -421,6 +421,20 @@ Astro.response.headers.set(
     slot="head"
   />
 
+  <!-- Without JavaScript nothing reveals the hero (it starts at opacity-0 and a
+       script removes that on load) or removes the loading skeleton, which is
+       absolutely positioned and so paints above the image. Make both safe. -->
+  <noscript slot="head">
+    <style is:inline>
+      #product-image.opacity-0 {
+        opacity: 1;
+      }
+      #pdp-image-placeholder {
+        display: none;
+      }
+    </style>
+  </noscript>
+
   <!-- Twitter Card Tags (unique only) -->
   <meta name="twitter:image" content={twitterData.image} slot="head" />
 

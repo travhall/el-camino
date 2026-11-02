@@ -92,3 +92,19 @@ test.describe('PDP hero image alt text', () => {
     );
   });
 });
+
+test.describe('PDP hero without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('is visible, and the loading skeleton does not sit over it', async ({
+    page,
+  }) => {
+    await page.goto(pdp(TEE));
+
+    // The hero starts at opacity-0 and a script reveals it; with no script it
+    // must not stay invisible. The skeleton is absolutely positioned (it paints
+    // above the image), and nothing removes it without JS.
+    await expect(page.locator('#product-image')).toHaveCSS('opacity', '1');
+    await expect(page.locator('#pdp-image-placeholder')).toBeHidden();
+  });
+});
