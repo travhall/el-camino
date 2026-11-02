@@ -5,7 +5,8 @@
 //
 // Each product exists to exercise one behavior the PDP/QuickView got wrong:
 //
-//  TEE    Sparse color x size matrix with item-level color images.
+//  TEE    Sparse color x size matrix with item-level color images, in the
+//         "Test Goods" category.
 //         Black/S in stock, Black/M SOLD OUT, White/S in stock, White/L in
 //         stock. Black/L and White/M do not exist.
 //  DECK   No color attribute; three multi-angle images shared by every size.
@@ -16,12 +17,17 @@
 const imageUrl = (name) =>
   `https://items-images-sandbox.s3.amazonaws.com/${name}.jpg`;
 
-function product({ id, name, description, images, variations }) {
+// A category for product pages to hang their breadcrumb/back link on. The name
+// avoids words ("tees", "tops", "apparel", ...) that switch on the size guide.
+export const CATEGORY = { id: 'CAT_TEST_GOODS', name: 'Test Goods' };
+
+function product({ id, name, description, images, variations, categoryIds }) {
   return {
     id,
     name,
     description,
     images,
+    categoryIds: categoryIds ?? [],
     variations: variations.map((v, i) => ({ ...v, ordinal: i + 1 })),
   };
 }
@@ -31,6 +37,7 @@ export const TEE = product({
   name: 'Test Tee',
   description: 'Sparse color/size matrix with item-level color images.',
   images: ['IMG_TEE_BLACK', 'IMG_TEE_WHITE'],
+  categoryIds: [CATEGORY.id],
   variations: [
     { id: 'VAR_TEE_BLACK_S', name: 'Black, S', price: 2500, stock: 5 },
     { id: 'VAR_TEE_BLACK_M', name: 'Black, M', price: 2500, stock: 0 },

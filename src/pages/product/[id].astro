@@ -36,7 +36,7 @@ import {
   generateOGData,
   generateTwitterCardData,
 } from '@/lib/product/structuredData';
-import { generateBreadcrumbs } from '@/lib/product/breadcrumbs';
+import { generateBreadcrumbs, getBackLink } from '@/lib/product/breadcrumbs';
 import { fetchCategories } from '@/lib/square/categories';
 import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
 
@@ -291,6 +291,8 @@ try {
   // Non-critical, continue without breadcrumbs
 }
 
+const backLink = getBackLink(breadcrumbPath);
+
 const productSchema = generateProductSchema(
   product,
   selectedVariation,
@@ -464,6 +466,33 @@ Astro.response.headers.set(
   }
 
   <section class="p-4 sm:p-6 lg:p-8 relative">
+    <!-- Below lg the breadcrumb trail is hidden (it lives in the info column,
+         under the image), so give small screens a way back at the top. The
+         trail also emits the BreadcrumbList JSON-LD, so this link adds none. -->
+    <nav aria-label="Back" class="lg:hidden mb-2">
+      <a
+        href={backLink.url}
+        class="inline-flex items-center gap-1.5 min-h-11 max-w-full text-sm text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+          class="shrink-0"
+        >
+          <path d="M19 12H5"></path>
+          <path d="m12 19-7-7 7-7"></path>
+        </svg>
+        <span class="truncate">Back to {backLink.name}</span>
+      </a>
+    </nav>
     <div
       class="grid md:grid-cols-2 md:gap-x-8 xl:gap-x-12 2xl:gap-x-16 items-start"
     >

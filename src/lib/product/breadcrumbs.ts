@@ -133,3 +133,25 @@ export async function generateBreadcrumbs(
     structuredData,
   };
 }
+
+/**
+ * Where a "back" link on a product page should go: the product's most
+ * specific category, or the full shop when it has none (or the breadcrumb
+ * path couldn't be built).
+ *
+ * The breadcrumb trail is Home > category chain > brand > product, so the last
+ * `/category/...` crumb is the most specific category. Brand is deliberately
+ * skipped: it's a filtered shop view, not where a shopper came from.
+ */
+export function getBackLink(path: BreadcrumbPath | undefined): {
+  name: string;
+  url: string;
+} {
+  const category = path?.items
+    .filter((item) => item.url.startsWith('/category/'))
+    .pop();
+
+  return category
+    ? { name: category.name, url: category.url }
+    : { name: 'Shop', url: '/shop/all' };
+}

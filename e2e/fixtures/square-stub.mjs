@@ -6,14 +6,14 @@
 // intercepted; everything else passes through. Real Square is never reached.
 //
 // Covers just the endpoints the product pages use:
-//   GET  /v2/catalog/list?types=ITEM|CATEGORY
+//   GET  /v2/catalog/list?types=ITEM|CATEGORY   (one category, no hierarchy)
 //   GET  /v2/catalog/object/{id}            (items and images)
 //   POST /v2/catalog/batch-retrieve         (images)
 //   POST /v2/inventory/counts/batch-retrieve
 // Anything else is logged and answered with an empty object.
 //
 // Wire format is Square's REST JSON (snake_case); the SDK deserializes it.
-import { PRODUCTS, imageUrl } from './square-catalog.mjs';
+import { CATEGORY, PRODUCTS, imageUrl } from './square-catalog.mjs';
 
 const LOCATION_ID = process.env.PUBLIC_SQUARE_LOCATION_ID || 'LOC1';
 const money = (amount) => ({ amount, currency: 'USD' });
@@ -27,6 +27,7 @@ function toItem(p) {
       name: p.name,
       description: p.description,
       image_ids: p.images,
+      categories: p.categoryIds.map((id) => ({ id })),
       variations: p.variations.map((v) => ({
         type: 'ITEM_VARIATION',
         id: v.id,
@@ -90,11 +91,21 @@ globalThis.fetch = async (input, init = {}) => {
   const path = url.pathname;
 
   if (path === '/v2/catalog/list') {
-    return json(
-      url.searchParams.get('types') === 'ITEM'
-        ? { objects: [...ITEMS.values()] }
-        : {}
-    );
+    const types = url.searchParams.get('types');
+    if (types === 'ITEM') return json({ objects: [...ITEMS.values()] });
+    if (types === 'CATEGORY') {
+      return json({
+        objects: [
+          {
+            type: 'CATEGORY',
+            id: CATEGORY.id,
+            version: 1,
+            category_data: { name: CATEGORY.name, is_top_level: true },
+          },
+        ],
+      });
+    }
+    return json({});
   }
 
   if (path.startsWith('/v2/catalog/object/')) {

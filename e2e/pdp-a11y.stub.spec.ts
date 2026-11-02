@@ -108,3 +108,66 @@ test.describe('PDP hero without JavaScript', () => {
     await expect(page.locator('#pdp-image-placeholder')).toBeHidden();
   });
 });
+
+test.describe('PDP back link on small screens', () => {
+  test.describe('phone viewport', () => {
+    test.use({ viewport: { width: 375, height: 800 } });
+
+    test('links back to the product category, above the image', async ({
+      page,
+    }) => {
+      await page.goto(pdp(TEE));
+
+      const back = page.getByRole('link', { name: 'Back to Test Goods' });
+      await expect(back).toBeVisible();
+      await expect(back).toHaveAttribute('href', '/category/test-goods');
+
+      // Tall enough to tap, and above the hero rather than buried below it
+      const link = await back.boundingBox();
+      const hero = await page.locator('#product-image-container').boundingBox();
+      expect(link!.height).toBeGreaterThanOrEqual(44);
+      expect(link!.y).toBeLessThan(hero!.y);
+    });
+
+    test('falls back to the shop for a product with no category', async ({
+      page,
+    }) => {
+      await page.goto(pdp(DECK));
+
+      const back = page.getByRole('link', { name: 'Back to Shop' });
+      await expect(back).toBeVisible();
+      await expect(back).toHaveAttribute('href', '/shop/all');
+    });
+
+    test('adds no second BreadcrumbList to the structured data', async ({
+      page,
+    }) => {
+      await page.goto(pdp(TEE));
+
+      const lists = await page
+        .locator('script[type="application/ld+json"]')
+        .evaluateAll(
+          (els) =>
+            els.filter((e) =>
+              (e.textContent ?? '').includes('"BreadcrumbList"')
+            ).length
+        );
+      expect(lists).toBe(1);
+    });
+  });
+
+  test.describe('desktop viewport', () => {
+    test.use({ viewport: { width: 1280, height: 900 } });
+
+    test('keeps the breadcrumb trail and hides the back link', async ({
+      page,
+    }) => {
+      await page.goto(pdp(TEE));
+
+      await expect(
+        page.getByRole('navigation', { name: 'Breadcrumb' })
+      ).toBeVisible();
+      await expect(page.getByRole('link', { name: /^Back to / })).toBeHidden();
+    });
+  });
+});
