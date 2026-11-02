@@ -60,6 +60,27 @@ e2e/
 playwright.config.ts       # Playwright configuration
 ```
 
+## Square-stubbed specs (`*.stub.spec.ts`)
+
+CI has no Square credentials, so the default config can't render product
+pages. Specs named `*.stub.spec.ts` run from `playwright.stub.config.ts`
+instead: it starts a second dev server (port 4322) with
+`e2e/fixtures/square-stub.mjs` preloaded, which answers Square's REST API at
+the `fetch` layer from a small fixed catalog (`e2e/fixtures/square-catalog.mjs`).
+The real PDP and QuickView render against it. No `.env` is loaded and real
+Square is never reached.
+
+```bash
+pnpm test:e2e:stub
+```
+
+The fixture products each exist to exercise one behavior (sparse color/size
+matrix with a sold-out variant, multi-angle images, a sold-out default that
+gets promoted). To cover a new case, add a product to `square-catalog.mjs`
+rather than special-casing the stub. Images don't load under the stub, so
+assert on `currentSrc`/URLs, not pixels. The default config ignores these
+specs, so they never run against a real catalog.
+
 ## Configuration
 
 The `playwright.config.ts` is configured to:

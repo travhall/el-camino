@@ -23,6 +23,10 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
   baselined below 80%, and update that comment (not this file) when the
   numbers change
 - `pnpm test:e2e` — Playwright e2e tests (separate from vitest)
+- `pnpm test:e2e:stub` — Playwright specs (`e2e/*.stub.spec.ts`) that run the
+  real PDP/QuickView against a stubbed Square catalog (`e2e/fixtures/`,
+  `playwright.stub.config.ts`); no credentials needed, runs in CI after the
+  e2e gate. The default config ignores these specs
 - `pnpm build` — production build (`astro check && astro build`)
 - `pnpm lint` — ESLint (flat config in `eslint.config.mjs`, covers
   `.ts`/`.tsx`/`.astro`)
