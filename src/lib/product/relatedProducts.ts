@@ -16,10 +16,25 @@ export interface RelatedProductsConfig {
  */
 export interface RelatedProductsResult {
   products: Product[];
+  /** Each product's relationship score, parallel to `products` (see RELATION_SCORE). */
+  scores: number[];
   matchType:
     'brand-category' | 'category-only' | 'brand-only' | 'complementary';
   confidence: 'high' | 'medium' | 'low';
 }
+
+/**
+ * How strongly a candidate relates to the source product. The tiers are kept
+ * as named constants because callers describe a result by which tiers it
+ * contains (see describeRelatedSection).
+ */
+export const RELATION_SCORE = {
+  BRAND_AND_COMPLEMENTARY: 100,
+  BRAND_AND_CATEGORY: 80,
+  COMPLEMENTARY: 60,
+  CATEGORY: 40,
+  BRAND: 20,
+} as const;
 
 /**
  * Complementary category mapping for skateboard products
@@ -113,15 +128,15 @@ function scoreProduct(
 
   // Calculate score
   if (sameBrand && isComplementary) {
-    score = 100;
+    score = RELATION_SCORE.BRAND_AND_COMPLEMENTARY;
   } else if (sameBrand && sameCategory) {
-    score = 80;
+    score = RELATION_SCORE.BRAND_AND_CATEGORY;
   } else if (isComplementary) {
-    score = 60;
+    score = RELATION_SCORE.COMPLEMENTARY;
   } else if (sameCategory) {
-    score = 40;
+    score = RELATION_SCORE.CATEGORY;
   } else if (sameBrand) {
-    score = 20;
+    score = RELATION_SCORE.BRAND;
   }
 
   return score;
@@ -195,6 +210,7 @@ export async function getRelatedProducts(
 
   return {
     products: scoredProducts.map(({ product }) => product),
+    scores: scoredProducts.map(({ score }) => score),
     matchType,
     confidence,
   };
@@ -206,4 +222,99 @@ export async function getRelatedProducts(
  */
 export function getComplementaryCategories(categorySlug: string): string[] {
   return COMPLEMENTARY_CATEGORIES[categorySlug] || [];
+}
+
+/**
+ * A section heading and "see all" destination that honestly describe a
+ * related-products result.
+ *
+ * The result is a ranked blend (brand + category matches first, then weaker
+ * ones, up to the cap), so a heading can only claim what every item in it
+ * satisfies. Anything mixed gets the neutral heading and the whole shop.
+ */
+export interface RelatedSection {
+  title: string;
+  seeAll: { href: string; label: string };
+}
+
+const COMPLEMENTARY_SCORES: number[] = [
+  RELATION_SCORE.BRAND_AND_COMPLEMENTARY,
+  RELATION_SCORE.COMPLEMENTARY,
+];
+const SAME_CATEGORY_SCORES: number[] = [
+  RELATION_SCORE.BRAND_AND_CATEGORY,
+  RELATION_SCORE.CATEGORY,
+];
+
+/**
+ * @param category The source product's most specific category, if it has one
+ *   (e.g. from the breadcrumb path). Omit it when it has none.
+ */
+export function describeRelatedSection(
+  source: Pick<Product, 'brand'>,
+  result: Pick<RelatedProductsResult, 'products' | 'scores'>,
+  category?: { name: string; url: string }
+): RelatedSection {
+  const { products, scores } = result;
+  const brand = source.brand?.trim();
+  const shop = { href: '/shop/all', label: 'See all products' };
+
+  if (!products.length) return { title: 'You Might Also Like', seeAll: shop };
+
+  // Every item is the source's brand: say so, and link to that brand
+  if (
+    brand &&
+    products.every((p) => p.brand?.toLowerCase() === brand.toLowerCase())
+  ) {
+    return {
+      title: `More from ${brand}`,
+      seeAll: {
+        href: `/shop/all?brands=${encodeURIComponent(brand)}`,
+        label: `See all from ${brand}`,
+      },
+    };
+  }
+
+  // Every item completes a setup (trucks and wheels for a deck, ...). Their
+  // category isn't the source's, so "see all" can't be the source's category.
+  if (scores.every((s) => COMPLEMENTARY_SCORES.includes(s))) {
+    return { title: 'Complete Your Setup', seeAll: shop };
+  }
+
+  // Every item is in the source's own category
+  if (category && scores.every((s) => SAME_CATEGORY_SCORES.includes(s))) {
+    return {
+      title: `More in ${category.name}`,
+      seeAll: { href: category.url, label: `See all ${category.name}` },
+    };
+  }
+
+  return { title: 'You Might Also Like', seeAll: shop };
+}
+
+/** Every variation ID a product can be bought as (its default, if it lists none). */
+export function variationIdsOf(
+  product: Pick<Product, 'variationId' | 'variations'>
+): string[] {
+  const ids = (product.variations ?? []).map((v) => v.variationId);
+  return ids.length ? [...new Set(ids)] : [product.variationId];
+}
+
+/**
+ * Whether a product is sold out: every one of its variations is.
+ *
+ * A product with one sold-out variation (often its default, the first size)
+ * and others in stock is still buyable, so judging by the default alone
+ * mislabels it. Stock that couldn't be looked up counts as not sold out,
+ * matching the inventory service's policy of keeping such products visible.
+ */
+export function isProductSoldOut(
+  product: Pick<Product, 'variationId' | 'variations'>,
+  inventory: Map<string, { isOutOfStock: boolean }>
+): boolean {
+  const ids = variationIdsOf(product);
+  return (
+    ids.length > 0 &&
+    ids.every((id) => inventory.get(id)?.isOutOfStock === true)
+  );
 }

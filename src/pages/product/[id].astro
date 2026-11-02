@@ -37,6 +37,11 @@ import {
   generateTwitterCardData,
 } from '@/lib/product/structuredData';
 import { generateBreadcrumbs, getBackLink } from '@/lib/product/breadcrumbs';
+import {
+  describeRelatedSection,
+  getRelatedProducts,
+  type RelatedSection,
+} from '@/lib/product/relatedProducts';
 import { fetchCategories } from '@/lib/square/categories';
 import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
 
@@ -301,15 +306,26 @@ const productSchema = generateProductSchema(
 const ogData = generateOGData(product, selectedVariation, baseUrl);
 const twitterData = generateTwitterCardData(product, baseUrl);
 
-// Fetch related products (same brand only — capped at 8; section hides itself if none)
+// Related products: ranked by brand and category (same brand + a category that
+// completes a setup first, down to same brand only), capped at the five the
+// filmstrip shows. The section hides itself if nothing relates.
 let relatedProducts: Product[] = [];
+let relatedSection: RelatedSection | undefined;
 try {
   const allProducts = allProductsCache ?? (await fetchProducts());
-  relatedProducts = product.brand
-    ? allProducts
-        .filter((p) => p.id !== product.id && p.brand === product.brand)
-        .slice(0, 8)
-    : [];
+  // Score from the catalog-list entry: the single-product fetch doesn't carry
+  // reportingCategoryId, which the scorer prefers for resolving the category.
+  const source = allProducts.find((p) => p.id === product.id) ?? product;
+  const related = await getRelatedProducts(source, allProducts, {
+    maxResults: 5,
+  });
+  relatedProducts = related.products;
+  // backLink is the source's most specific category, or the shop when it has none
+  relatedSection = describeRelatedSection(
+    product,
+    related,
+    backLink.url.startsWith('/category/') ? backLink : undefined
+  );
 } catch {
   // Non-critical — page renders fine without related products
 }
@@ -1187,9 +1203,8 @@ Astro.response.headers.set(
       <div class="px-4 sm:px-6 lg:px-8">
         <RelatedProducts
           products={relatedProducts}
-          title={
-            product.brand ? `More from ${product.brand}` : 'You Might Also Like'
-          }
+          title={relatedSection?.title}
+          seeAll={relatedSection?.seeAll}
         />
       </div>
     )

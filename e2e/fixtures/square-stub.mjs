@@ -6,20 +6,20 @@
 // intercepted; everything else passes through. Real Square is never reached.
 //
 // Covers just the endpoints the product pages use:
-//   GET  /v2/catalog/list?types=ITEM|CATEGORY   (one category, no hierarchy)
+//   GET  /v2/catalog/list?types=ITEM|CATEGORY   (flat categories, no hierarchy)
 //   GET  /v2/catalog/object/{id}            (items and images)
 //   POST /v2/catalog/batch-retrieve         (images)
 //   POST /v2/inventory/counts/batch-retrieve
 // Anything else is logged and answered with an empty object.
 //
 // Wire format is Square's REST JSON (snake_case); the SDK deserializes it.
-import { CATEGORY, PRODUCTS, imageUrl } from './square-catalog.mjs';
+import { CATEGORIES, PRODUCTS, imageUrl } from './square-catalog.mjs';
 
 const LOCATION_ID = process.env.PUBLIC_SQUARE_LOCATION_ID || 'LOC1';
 const money = (amount) => ({ amount, currency: 'USD' });
 
 function toItem(p) {
-  return {
+  const item = {
     type: 'ITEM',
     id: p.id,
     version: 1,
@@ -28,6 +28,10 @@ function toItem(p) {
       description: p.description,
       image_ids: p.images,
       categories: p.categoryIds.map((id) => ({ id })),
+      // The related-products scorer prefers the reporting category
+      ...(p.categoryIds[0]
+        ? { reporting_category: { id: p.categoryIds[0] } }
+        : {}),
       variations: p.variations.map((v) => ({
         type: 'ITEM_VARIATION',
         id: v.id,
@@ -42,6 +46,18 @@ function toItem(p) {
       })),
     },
   };
+  // Brand is a custom attribute on the item, not part of item_data
+  if (p.brand) {
+    item.custom_attribute_values = {
+      brand: {
+        name: 'Brand',
+        key: 'brand',
+        type: 'STRING',
+        string_value: p.brand,
+      },
+    };
+  }
+  return item;
 }
 
 const ITEMS = new Map(PRODUCTS.map((p) => [p.id, toItem(p)]));
@@ -95,14 +111,12 @@ globalThis.fetch = async (input, init = {}) => {
     if (types === 'ITEM') return json({ objects: [...ITEMS.values()] });
     if (types === 'CATEGORY') {
       return json({
-        objects: [
-          {
-            type: 'CATEGORY',
-            id: CATEGORY.id,
-            version: 1,
-            category_data: { name: CATEGORY.name, is_top_level: true },
-          },
-        ],
+        objects: CATEGORIES.map((c) => ({
+          type: 'CATEGORY',
+          id: c.id,
+          version: 1,
+          category_data: { name: c.name, is_top_level: true },
+        })),
       });
     }
     return json({});
