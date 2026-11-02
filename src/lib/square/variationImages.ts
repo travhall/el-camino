@@ -83,3 +83,20 @@ export function heroImageForVariation(
 ): string {
   return variation?.image || productImage;
 }
+
+/**
+ * Alt text for the hero image. Includes the selected color, because that is
+ * what differs between a product's images; other attributes (size, etc.) don't
+ * change what the picture shows, so they stay out of it.
+ */
+export function heroAlt(
+  title: string,
+  variation: Pick<ProductVariation, 'attributes'> | undefined
+): string {
+  const attributes = variation?.attributes ?? {};
+  const colorKey = Object.keys(attributes).find(
+    (k) => k.toLowerCase() === 'color' || k.toLowerCase() === 'colour'
+  );
+  const color = colorKey ? attributes[colorKey] : undefined;
+  return color ? `${title} — ${color}` : title;
+}

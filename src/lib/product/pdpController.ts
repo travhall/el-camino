@@ -2,12 +2,7 @@
 import { cart } from '@/lib/cart';
 import { resolveVariationForSelection } from '@/lib/square/variationParser';
 import { createVariantSlug } from '@/lib/square/slugUtils';
-import {
-  processClientError,
-  logError,
-  createError,
-  ErrorType,
-} from '@/lib/square/errorUtils';
+import { logError, createError, ErrorType } from '@/lib/square/errorUtils';
 import type { ProductVariation } from '@/lib/square/types';
 import { PDPUIManager } from './pdpUI';
 import { PDPEventManager, type ProductPageData } from './pdpEvents';
@@ -87,6 +82,7 @@ export class PDPController {
     if (variation.image) {
       this.uiManager.updateProductImage(variation.image);
     }
+    this.uiManager.updateProductImageAlt(variation);
 
     // Only rebuild the thumbnail gallery when this variation owns a multi-image set.
     // For products where images live at the Item level (shared across all variants),

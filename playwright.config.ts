@@ -7,6 +7,10 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
 
+  /* *.stub.spec.ts needs the Square stub's catalog and its own dev server;
+     it runs from playwright.stub.config.ts (pnpm test:e2e:stub). */
+  testIgnore: '**/*.stub.spec.ts',
+
   /* Run tests in files in parallel */
   fullyParallel: true,
 

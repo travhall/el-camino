@@ -50,6 +50,31 @@ describe('PDPUIManager', () => {
     manager = new PDPUIManager();
   });
 
+  describe('updateProductImageAlt', () => {
+    it("follows the variation's color, from the image's base alt", () => {
+      const img = document.getElementById('product-image') as HTMLImageElement;
+      img.dataset.baseAlt = 'Test Tee';
+      img.alt = 'Test Tee — Black';
+
+      manager.updateProductImageAlt({
+        attributes: { color: 'White', size: 'S' },
+      });
+      expect(img.alt).toBe('Test Tee — White');
+
+      manager.updateProductImageAlt({ attributes: { size: 'M' } });
+      expect(img.alt).toBe('Test Tee');
+    });
+
+    it('leaves a hero with no base alt alone', () => {
+      const img = document.getElementById('product-image') as HTMLImageElement;
+      img.alt = 'Something else';
+
+      manager.updateProductImageAlt({ attributes: { color: 'White' } });
+
+      expect(img.alt).toBe('Something else');
+    });
+  });
+
   describe('quantity section visibility', () => {
     it('hides #quantity-section for a sold-out variation and shows it again for an in-stock one', () => {
       document.body.insertAdjacentHTML(
@@ -484,6 +509,23 @@ describe('PDPUIManager', () => {
       expect(document.querySelectorAll('picture source').length).toBe(2);
       expect(img.getAttribute('src')).toBe(proxied);
       expect(img.getAttribute('srcset')).toBe(srcsetBefore);
+    });
+
+    it('records the original URL on the element, including when the swap is a no-op', () => {
+      const img = setupPicture();
+      setHeroImage(img, NEW);
+      expect(img.dataset.heroSrc).toBe(NEW);
+
+      // A load error replaces src with a placeholder; the original survives
+      img.src = 'data:image/svg+xml,logo';
+      expect(img.dataset.heroSrc).toBe(NEW);
+
+      // Re-applying the same image is a no-op for the markup but still records it
+      const proxied = `/.netlify/images?${new URLSearchParams({ url: OLD, w: '800' })}`;
+      img.setAttribute('src', proxied);
+      delete img.dataset.heroSrc;
+      setHeroImage(img, OLD);
+      expect(img.dataset.heroSrc).toBe(OLD);
     });
 
     it('clears srcset for a non-remote URL so a stale srcset cannot override src', () => {

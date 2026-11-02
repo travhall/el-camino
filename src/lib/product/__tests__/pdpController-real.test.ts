@@ -26,6 +26,7 @@ interface MockedUIManager {
   updateAvailabilityDisplay: ReturnType<typeof vi.fn>;
   updatePriceDisplay: ReturnType<typeof vi.fn>;
   updateProductImage: ReturnType<typeof vi.fn>;
+  updateProductImageAlt: ReturnType<typeof vi.fn>;
   updateButtonProductData: ReturnType<typeof vi.fn>;
   updateAttributeButtonStates: ReturnType<typeof vi.fn>;
   announceVariantChange: ReturnType<typeof vi.fn>;
@@ -69,6 +70,7 @@ vi.mock('../pdpUI', () => ({
     updateAvailabilityDisplay = vi.fn();
     updatePriceDisplay = vi.fn();
     updateProductImage = vi.fn();
+    updateProductImageAlt = vi.fn();
     updateButtonProductData = vi.fn();
     updateAttributeButtonStates = vi.fn();
     announceVariantChange = vi.fn();
@@ -622,6 +624,16 @@ describe('PDPController Real Implementation Tests', () => {
         Size: 'Large',
         Color: 'Red',
       });
+    });
+
+    it('keeps the hero alt text in step with the selected variation', () => {
+      controller = new PDPController(mockProductData);
+      select(controller, 'Size', 'Large'); // Large/Red
+
+      const ui = internals(controller).uiManager;
+      expect(ui.updateProductImageAlt).toHaveBeenLastCalledWith(
+        expect.objectContaining({ attributes: { Size: 'Large', Color: 'Red' } })
+      );
     });
 
     it('drives price, image and button data from the snapped variation, not the previous one', () => {

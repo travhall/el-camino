@@ -24,6 +24,7 @@ import {
 import { slugResolver } from '@/lib/square/slugResolver';
 import {
   assignProductImagesToVariations,
+  heroAlt,
   heroImageForVariation,
 } from '@/lib/square/variationImages';
 import {
@@ -35,7 +36,7 @@ import {
   generateOGData,
   generateTwitterCardData,
 } from '@/lib/product/structuredData';
-import { generateBreadcrumbs } from '@/lib/product/breadcrumbs';
+import { generateBreadcrumbs, getBackLink } from '@/lib/product/breadcrumbs';
 import { fetchCategories } from '@/lib/square/categories';
 import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
 
@@ -290,6 +291,8 @@ try {
   // Non-critical, continue without breadcrumbs
 }
 
+const backLink = getBackLink(breadcrumbPath);
+
 const productSchema = generateProductSchema(
   product,
   selectedVariation,
@@ -420,6 +423,20 @@ Astro.response.headers.set(
     slot="head"
   />
 
+  <!-- Without JavaScript nothing reveals the hero (it starts at opacity-0 and a
+       script removes that on load) or removes the loading skeleton, which is
+       absolutely positioned and so paints above the image. Make both safe. -->
+  <noscript slot="head">
+    <style is:inline>
+      #product-image.opacity-0 {
+        opacity: 1;
+      }
+      #pdp-image-placeholder {
+        display: none;
+      }
+    </style>
+  </noscript>
+
   <!-- Twitter Card Tags (unique only) -->
   <meta name="twitter:image" content={twitterData.image} slot="head" />
 
@@ -449,6 +466,33 @@ Astro.response.headers.set(
   }
 
   <section class="p-4 sm:p-6 lg:p-8 relative">
+    <!-- Below lg the breadcrumb trail is hidden (it lives in the info column,
+         under the image), so give small screens a way back at the top. The
+         trail also emits the BreadcrumbList JSON-LD, so this link adds none. -->
+    <nav aria-label="Back" class="lg:hidden mb-2">
+      <a
+        href={backLink.url}
+        class="inline-flex items-center gap-1.5 min-h-11 max-w-full text-sm text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+          class="shrink-0"
+        >
+          <path d="M19 12H5"></path>
+          <path d="m12 19-7-7 7-7"></path>
+        </svg>
+        <span class="truncate">Back to {backLink.name}</span>
+      </a>
+    </nav>
     <div
       class="grid md:grid-cols-2 md:gap-x-8 xl:gap-x-12 2xl:gap-x-16 items-start"
     >
@@ -456,7 +500,7 @@ Astro.response.headers.set(
       <div class="flex flex-col gap-3">
         <div
           id="product-image-container"
-          class="aspect-4/3 md:aspect-3/4 lg:aspect-square border-4 border-(--border-primary) overflow-hidden bg-(--surface-secondary) relative"
+          class="aspect-4/3 md:aspect-3/4 lg:aspect-square border-4 border-(--border-primary) overflow-hidden bg-(--surface-secondary) relative touch-pan-y"
         >
           <!-- Loading placeholder with logo -->
           <div
@@ -523,7 +567,9 @@ Astro.response.headers.set(
                     }
                   )}
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 800px"
-                  alt={product.title}
+                  alt={heroAlt(product.title, selectedVariation)}
+                  data-base-alt={product.title}
+                  data-hero-src={product.image}
                   class="w-full h-full object-cover transition-opacity duration-300 opacity-0"
                   data-in-stock={selectedVariationInStock ? 'true' : 'false'}
                   width="800"
@@ -537,8 +583,6 @@ Astro.response.headers.set(
                   data-shimmer-stock=""
                   data-shimmer-error-remove="opacity-0"
                   data-shimmer-error-add="opacity-100"
-                  role="img"
-                  aria-label={product.title || 'Product image'}
                 />
               </picture>
             ) : (
@@ -546,12 +590,11 @@ Astro.response.headers.set(
                 id="product-image"
                 src={EL_CAMINO_LOGO_DATA_URI}
                 alt={product.title}
+                data-base-alt={product.title}
                 class={`w-full h-full object-contain opacity-100 ${!selectedVariationInStock ? 'opacity-75' : ''}`}
                 width="800"
                 height="800"
                 loading="eager"
-                role="img"
-                aria-label={product.title || 'Product image'}
               />
             )
           }
@@ -573,6 +616,86 @@ Astro.response.headers.set(
                 {saleInfo.discountPercent}% Off
               </div>
             ) : null
+          }
+
+          <!-- Gallery controls. Hidden until gallery.ts reveals them (they do
+               nothing without JS); arrows only show with more than one image. -->
+          {
+            imageSet && (
+              <>
+                <button
+                  type="button"
+                  id="gallery-prev"
+                  class="hidden absolute size-11 grid place-items-center rounded-full border border-(--ui-input-border) bg-(--surface-primary)/85 text-(--content-heading) hover:bg-(--surface-primary) transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-(--ui-button-ring) outline-0 top-1/2 -translate-y-1/2 left-2"
+                  aria-label="Previous image"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  id="gallery-next"
+                  class="hidden absolute size-11 grid place-items-center rounded-full border border-(--ui-input-border) bg-(--surface-primary)/85 text-(--content-heading) hover:bg-(--surface-primary) transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-(--ui-button-ring) outline-0 top-1/2 -translate-y-1/2 right-2"
+                  aria-label="Next image"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  id="gallery-zoom"
+                  class="hidden absolute size-11 grid place-items-center rounded-full border border-(--ui-input-border) bg-(--surface-primary)/85 text-(--content-heading) hover:bg-(--surface-primary) transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-(--ui-button-ring) outline-0 bottom-2 right-2"
+                  aria-label="View larger image"
+                  aria-haspopup="dialog"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m21 21-4.3-4.3M11 8v6M8 11h6" />
+                  </svg>
+                </button>
+                <p
+                  id="gallery-status"
+                  class="sr-only"
+                  role="status"
+                  aria-live="polite"
+                />
+              </>
+            )
           }
         </div>
 
@@ -878,8 +1001,9 @@ Astro.response.headers.set(
                   id="decrease-quantity"
                   class="w-10 h-10 flex items-center justify-center border-r border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
                   disabled={true}
+                  aria-label="Decrease quantity"
                 >
-                  -
+                  <span aria-hidden="true">&minus;</span>
                 </button>
                 <input
                   type="number"
@@ -894,8 +1018,9 @@ Astro.response.headers.set(
                   id="increase-quantity"
                   class="w-10 h-10 flex items-center justify-center border-l border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text) disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer"
                   disabled={!isGiftCard && selectedVariationQuantity <= 1}
+                  aria-label="Increase quantity"
                 >
-                  +
+                  <span aria-hidden="true">+</span>
                 </button>
               </div>
             </div>
@@ -1075,12 +1200,103 @@ Astro.response.headers.set(
     <RecentlyViewed currentProductId={product.id} />
   </div>
 
+  <!-- Zoom lightbox (native modal dialog: focus is trapped, Escape closes, and
+       focus returns to the zoom button). Opened and driven by gallery.ts. -->
+  {
+    imageSet && (
+      <dialog
+        id="pdp-lightbox"
+        aria-label="Product image viewer"
+        class="m-0 p-0 w-screen h-screen max-w-none max-h-none bg-transparent backdrop:bg-black/85"
+      >
+        <div
+          data-lightbox-backdrop
+          class="relative w-full h-full flex items-center justify-center p-4 sm:p-12"
+        >
+          <img
+            id="pdp-lightbox-image"
+            src=""
+            alt=""
+            class="max-w-full max-h-full object-contain"
+          />
+          <button
+            type="button"
+            id="pdp-lightbox-close"
+            class="absolute size-11 grid place-items-center rounded-full border border-(--ui-input-border) bg-(--surface-primary)/90 text-(--content-heading) hover:bg-(--surface-primary) transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-(--ui-button-ring) outline-0 top-3 right-3"
+            aria-label="Close image viewer"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            id="pdp-lightbox-prev"
+            class="hidden absolute size-11 grid place-items-center rounded-full border border-(--ui-input-border) bg-(--surface-primary)/90 text-(--content-heading) hover:bg-(--surface-primary) transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-(--ui-button-ring) outline-0 top-1/2 -translate-y-1/2 left-3"
+            aria-label="Previous image"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            id="pdp-lightbox-next"
+            class="hidden absolute size-11 grid place-items-center rounded-full border border-(--ui-input-border) bg-(--surface-primary)/90 text-(--content-heading) hover:bg-(--surface-primary) transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-(--ui-button-ring) outline-0 top-1/2 -translate-y-1/2 right-3"
+            aria-label="Next image"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+          <p
+            id="pdp-lightbox-count"
+            class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-(--surface-primary)/90 text-(--content-heading) text-sm empty:hidden"
+          />
+        </div>
+      </dialog>
+    )
+  }
+
   <Modal />
 </Layout>
 
 <script>
   import { PDPController } from '@/lib/product/pdpController';
-  import { setHeroImage } from '@/lib/product/pdpUI';
+  import { initGallery } from '@/lib/product/gallery';
   import { processClientError, logError } from '@/lib/square/errorUtils';
   import { recentlyViewed } from '@/lib/product/recentlyViewed';
   import type { Product } from '@/lib/square/types';
@@ -1091,6 +1307,7 @@ Astro.response.headers.set(
   } from '@/lib/events';
 
   let pdpController: PDPController | null = null;
+  let cleanupGallery: (() => void) | null = null;
 
   /**
    * Initialize controller from DOM data - with resilient error handling
@@ -1130,61 +1347,6 @@ Astro.response.headers.set(
       logError(appError);
       return true; // Don't fail the whole page for this
     }
-  }
-
-  function setupGallery(): void {
-    const container = document.getElementById('gallery-thumbnails');
-    if (!container) return;
-
-    // Use event delegation so this handler works even after JS rebuilds the thumbs
-    if (container.dataset.galleryReady) return; // only attach once per page load
-    container.dataset.galleryReady = 'true';
-
-    container.addEventListener('click', (e) => {
-      const thumb = (e.target as Element).closest<HTMLButtonElement>(
-        '.gallery-thumb'
-      );
-      if (!thumb) return;
-
-      const src = thumb.dataset.gallerySrc;
-      const mainImage = document.getElementById(
-        'product-image'
-      ) as HTMLImageElement | null;
-      if (!src || !mainImage) return;
-
-      // Update active thumb styles
-      container
-        .querySelectorAll<HTMLButtonElement>('.gallery-thumb')
-        .forEach((t) => {
-          t.classList.remove('border-(--ui-button-border)', 'opacity-100');
-          t.classList.add('border-(--border-secondary)', 'opacity-60');
-          t.setAttribute('aria-pressed', 'false');
-        });
-      thumb.classList.add('border-(--ui-button-border)', 'opacity-100');
-      thumb.classList.remove('border-(--border-secondary)', 'opacity-60');
-      thumb.setAttribute('aria-pressed', 'true');
-
-      // Cross fade the main image
-      mainImage.classList.remove('opacity-100');
-      mainImage.classList.add('opacity-0');
-      // Drops the <picture> <source>s and rewrites srcset, otherwise the
-      // original AVIF/WebP source keeps winning over the new src
-      setHeroImage(mainImage, src);
-      // Handle cached images where onload won't fire
-      if (mainImage.complete && mainImage.naturalWidth > 0) {
-        mainImage.classList.remove('opacity-0');
-        mainImage.classList.add('opacity-100');
-      } else {
-        mainImage.onload = () => {
-          mainImage.classList.remove('opacity-0');
-          mainImage.classList.add('opacity-100');
-        };
-        mainImage.onerror = () => {
-          mainImage.classList.remove('opacity-0');
-          mainImage.classList.add('opacity-100');
-        };
-      }
-    });
   }
 
   function setupPolicyTriggers(): void {
@@ -1287,7 +1449,8 @@ Astro.response.headers.set(
 
       setupLocationModal();
       setupPolicyTriggers();
-      setupGallery();
+      cleanupGallery?.();
+      cleanupGallery = initGallery();
     }
   }
 
@@ -1307,5 +1470,7 @@ Astro.response.headers.set(
   document.addEventListener('astro:after-swap', () => {
     pdpController?.cleanup();
     pdpController = null;
+    cleanupGallery?.();
+    cleanupGallery = null;
   });
 </script>
