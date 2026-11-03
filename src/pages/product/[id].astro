@@ -324,11 +324,16 @@ try {
     maxResults: 5,
   });
   relatedProducts = related.products;
-  // backLink is the source's most specific category, or the shop when it has none
+  // Name the category the scorer matched on, not the breadcrumb leaf: a pant in
+  // Bottoms is matched against everything in Apparel, so "More in Bottoms" would
+  // be wrong.
+  const matched = related.categorySlug
+    ? (await categoriesPromise).find((c) => c.slug === related.categorySlug)
+    : undefined;
   relatedSection = describeRelatedSection(
     product,
     related,
-    backLink.url.startsWith('/category/') ? backLink : undefined
+    matched && { name: matched.name, url: `/category/${matched.slug}` }
   );
 } catch {
   // Non-critical — page renders fine without related products
