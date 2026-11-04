@@ -8,6 +8,7 @@ import {
   parseVariationName,
   resolveVariationForSelection,
   VARIATION_CONFIG,
+  isAttributeValueAvailable,
 } from '../variationParser';
 import type { ProductVariation } from '../types';
 
@@ -151,5 +152,90 @@ describe('resolveVariationForSelection', () => {
     resolveVariationForSelection(variations, selected, 'size', 'L');
     expect(selected).toEqual({ color: 'Black', size: 'S' });
     expect(variations.map((x) => x.id)).toEqual(order);
+  });
+});
+
+describe('isAttributeValueAvailable', () => {
+  const makeVariation = (
+    overrides: Partial<ProductVariation>
+  ): ProductVariation => ({
+    id: overrides.id ?? 'id-default',
+    variationId: overrides.variationId ?? 'var-default',
+    name: overrides.name ?? '',
+    price: overrides.price ?? 0,
+    ...overrides,
+  });
+
+  const variations: ProductVariation[] = [
+    makeVariation({
+      variationId: 'v-30-denim',
+      attributes: { size: '30', color: 'Denim' },
+      inStock: true,
+    }),
+    makeVariation({
+      variationId: 'v-32-denim',
+      attributes: { size: '32', color: 'Denim' },
+      inStock: false,
+    }),
+    makeVariation({
+      variationId: 'v-30-black',
+      attributes: { size: '30', color: 'Black' },
+      inStock: false,
+    }),
+    makeVariation({
+      variationId: 'v-32-black',
+      attributes: { size: '32', color: 'Black' },
+      inStock: true,
+    }),
+  ];
+
+  it('returns true when the combination is in stock', () => {
+    expect(
+      isAttributeValueAvailable(variations, { color: 'Denim' }, 'size', '30')
+    ).toBe(true);
+  });
+
+  it('returns false when the combination exists but is out of stock', () => {
+    expect(
+      isAttributeValueAvailable(variations, { color: 'Denim' }, 'size', '32')
+    ).toBe(false);
+  });
+
+  it('agrees with a click when the combination does not exist: snaps to the nearest variation with that value', () => {
+    // No Green exists, so selecting size 30 lands on 30/Denim (in stock)
+    expect(
+      isAttributeValueAvailable(variations, { color: 'Green' }, 'size', '30')
+    ).toBe(true);
+    expect(
+      resolveVariationForSelection(variations, { color: 'Green' }, 'size', '30')
+        ?.variationId
+    ).toBe('v-30-denim');
+  });
+
+  it('returns false when no variation has the value at all', () => {
+    expect(
+      isAttributeValueAvailable(variations, { color: 'Denim' }, 'size', '34')
+    ).toBe(false);
+  });
+
+  it('returns different results for the same value depending on the current selection (regression: not a bare "any variation" check)', () => {
+    const availableWithBlack = isAttributeValueAvailable(
+      variations,
+      { color: 'Black' },
+      'size',
+      '32'
+    );
+    const availableWithDenim = isAttributeValueAvailable(
+      variations,
+      { color: 'Denim' },
+      'size',
+      '32'
+    );
+    expect(availableWithBlack).toBe(true);
+    expect(availableWithDenim).toBe(false);
+  });
+
+  it('matches any variation with that value in stock when currentAttributes is empty', () => {
+    expect(isAttributeValueAvailable(variations, {}, 'size', '30')).toBe(true);
   });
 });
