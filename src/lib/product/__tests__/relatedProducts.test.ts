@@ -42,7 +42,14 @@ const { CATEGORY_HIERARCHY } = vi.hoisted(() => ({
         slug: 'apparel',
         isTopLevel: true,
       },
-      subcategories: [],
+      subcategories: [
+        {
+          id: 'cat-bottoms',
+          name: 'Bottoms',
+          slug: 'bottoms',
+          isTopLevel: false,
+        },
+      ],
     },
   ] satisfies CategoryHierarchy[],
 }));
@@ -359,6 +366,39 @@ describe('getRelatedProducts', () => {
       'complementary-same-brand',
     ]);
     expect(result.matchType).toBe('brand-category');
+  });
+});
+
+describe('getRelatedProducts categorySlug', () => {
+  it("reports the category the scorer matched on, which can be broader than the source's leaf", async () => {
+    // A pant is listed under Bottoms but reports to Apparel, so a hat in
+    // Apparel scores as "same category" with it
+    const source = makeProduct({
+      id: 'source',
+      brand: 'brand-a',
+      categories: ['cat-bottoms'],
+      reportingCategoryId: 'cat-apparel',
+    });
+    const hat = makeProduct({
+      id: 'hat',
+      brand: 'brand-b',
+      categories: ['cat-apparel'],
+      reportingCategoryId: 'cat-apparel',
+    });
+
+    const result = await getRelatedProducts(source, [source, hat]);
+
+    expect(result.scores).toEqual([RELATION_SCORE.CATEGORY]);
+    expect(result.categorySlug).toBe('apparel');
+  });
+
+  it('is undefined when the source has no resolvable category', async () => {
+    const source = makeProduct({ id: 'source', brand: 'brand-a' });
+    const sameBrand = makeProduct({ id: 'same-brand', brand: 'brand-a' });
+
+    const result = await getRelatedProducts(source, [source, sameBrand]);
+
+    expect(result.categorySlug).toBeUndefined();
   });
 });
 

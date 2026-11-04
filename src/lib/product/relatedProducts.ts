@@ -18,6 +18,13 @@ export interface RelatedProductsResult {
   products: Product[];
   /** Each product's relationship score, parallel to `products` (see RELATION_SCORE). */
   scores: number[];
+  /**
+   * Slug of the source's category as the scorer resolved it. "Same category"
+   * scores mean this category, which can be broader than the source's
+   * breadcrumb leaf (a pant is in Bottoms, but its reporting category is
+   * Apparel), so a heading must name this one.
+   */
+  categorySlug?: string;
   matchType:
     'brand-category' | 'category-only' | 'brand-only' | 'complementary';
   confidence: 'high' | 'medium' | 'low';
@@ -211,6 +218,7 @@ export async function getRelatedProducts(
   return {
     products: scoredProducts.map(({ product }) => product),
     scores: scoredProducts.map(({ score }) => score),
+    categorySlug: sourceCategorySlug,
     matchType,
     confidence,
   };
@@ -247,8 +255,9 @@ const SAME_CATEGORY_SCORES: number[] = [
 ];
 
 /**
- * @param category The source product's most specific category, if it has one
- *   (e.g. from the breadcrumb path). Omit it when it has none.
+ * @param category The category the result was matched on (`result.categorySlug`,
+ *   looked up for its name and url), not the source's breadcrumb leaf: items
+ *   scored as "same category" share the former. Omit it when there is none.
  */
 export function describeRelatedSection(
   source: Pick<Product, 'brand'>,
