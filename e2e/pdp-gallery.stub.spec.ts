@@ -257,8 +257,10 @@ test.describe('PDP zoom lightbox', () => {
     await page.keyboard.press('ArrowLeft');
     await expect.poll(() => lightboxSrc(page)).toContain('IMG_DECK_2');
 
-    // The hero and thumbnail behind the dialog followed along
-    expect(await heroSrc(page)).toContain('IMG_DECK_2');
+    // The hero and thumbnail behind the dialog followed along. The hero's
+    // currentSrc is empty until its new image request settles, which the
+    // lightbox doesn't wait for, so poll it like the arrow test does.
+    await expect.poll(() => heroSrc(page)).toContain('IMG_DECK_2');
     expect(await selectedThumb(page)).toBe(1);
   });
 
