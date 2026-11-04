@@ -283,6 +283,40 @@ export function resolveVariationForSelection(
 }
 
 /**
+ * Whether a chip for `value` should read as available given the currently
+ * selected values of the OTHER attributes: selecting it would land on a
+ * variation that is in stock. Unlike a bare "does any variation with this
+ * value have stock" check, this respects the current selection, e.g. asking
+ * "is size 32 available" while color=Denim is selected is only true if
+ * 32/Denim itself is in stock.
+ *
+ * It resolves the selection exactly as a click does
+ * (resolveVariationForSelection), so the server-rendered chips and the
+ * client's chip states agree, including on a sparse matrix where the exact
+ * combination doesn't exist and a click snaps to the nearest variation.
+ *
+ * @param variations - Full variation list (each must have `.inStock` populated)
+ * @param currentAttributes - The attributes currently selected elsewhere on the page (e.g. color)
+ * @param attributeType - The attribute type being evaluated (e.g. 'size')
+ * @param value - The candidate value for that attribute type
+ */
+export function isAttributeValueAvailable(
+  variations: ProductVariation[],
+  currentAttributes: Record<string, string>,
+  attributeType: string,
+  value: string
+): boolean {
+  return Boolean(
+    resolveVariationForSelection(
+      variations,
+      currentAttributes,
+      attributeType,
+      value
+    )?.inStock
+  );
+}
+
+/**
  * Get all possible values for a specific attribute type
  *
  * @param variations - Array of product variations

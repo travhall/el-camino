@@ -14,6 +14,7 @@ import { checkBulkInventory } from '@/lib/square/inventory';
 import {
   createInitialSelectionState,
   getAttributeDisplayName,
+  isAttributeValueAvailable,
 } from '@/lib/square/variationParser';
 import type { Product } from '@/lib/square/types';
 import {
@@ -878,13 +879,12 @@ Astro.response.headers.set(
                           </span>
                         ))
                       : attributeValues.map((value) => {
-                          const isAvailable = variations.some((variation) => {
-                            if (!variation.attributes || !variation.inStock)
-                              return false;
-                            return (
-                              variation.attributes[attributeType] === value
-                            );
-                          });
+                          const isAvailable = isAttributeValueAvailable(
+                            variations,
+                            selectedVariation?.attributes ?? {},
+                            attributeType,
+                            value
+                          );
                           const isSelected =
                             selectedVariation?.attributes?.[attributeType] ===
                             value;
