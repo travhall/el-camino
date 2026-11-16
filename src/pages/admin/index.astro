@@ -46,9 +46,9 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
       },
     });
     const paid = (searchResult.orders ?? []).filter(
-      (o: any) => o.tenders?.length
+      (o) => o.tenders?.length
     );
-    const totalCents = paid.reduce((sum: number, o: any) => {
+    const totalCents = paid.reduce((sum: number, o) => {
       const v = o.totalMoney?.amount;
       return sum + (v != null ? (typeof v === 'bigint' ? Number(v) : v) : 0);
     }, 0);
@@ -72,7 +72,7 @@ const [shippingResult, pickupResult, bisResult] = await Promise.allSettled([
       },
     });
     const paid = (searchResult.orders ?? []).filter(
-      (o: any) => o.tenders?.length
+      (o) => o.tenders?.length
     );
     const oldest = paid[0]?.createdAt ?? null;
     return { count: paid.length, oldestDate: oldest };

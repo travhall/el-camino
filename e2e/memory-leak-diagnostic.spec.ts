@@ -32,7 +32,7 @@ test.describe('Memory Leak Diagnostics @memory-leak-cdp', () => {
 
     // Check what's attached to window
     const initialWindowProps = await page.evaluate(() => {
-      const props: any = {};
+      const props: Record<string, string> = {};
       for (const key in window) {
         if (
           key.includes('Observer') ||
@@ -40,7 +40,7 @@ test.describe('Memory Leak Diagnostics @memory-leak-cdp', () => {
           key.includes('listener') ||
           key.includes('timeout')
         ) {
-          props[key] = typeof (window as any)[key];
+          props[key] = typeof (window as unknown as Record<string, unknown>)[key];
         }
       }
       return props;
@@ -50,15 +50,6 @@ test.describe('Memory Leak Diagnostics @memory-leak-cdp', () => {
 
     // Count event listeners before navigation
     const initialListeners = await page.evaluate(() => {
-      const counts: any = {};
-
-      // Check various elements for listeners
-      const elementsToCheck = [
-        { name: 'window', element: window },
-        { name: 'document', element: document },
-        { name: 'body', element: document.body },
-      ];
-
       // Note: We can't directly count listeners, but we can check what's registered
       return {
         timestamp: Date.now(),
@@ -96,7 +87,7 @@ test.describe('Memory Leak Diagnostics @memory-leak-cdp', () => {
 
     // Check final state
     const finalWindowProps = await page.evaluate(() => {
-      const props: any = {};
+      const props: Record<string, string> = {};
       for (const key in window) {
         if (
           key.includes('Observer') ||
@@ -104,7 +95,7 @@ test.describe('Memory Leak Diagnostics @memory-leak-cdp', () => {
           key.includes('listener') ||
           key.includes('timeout')
         ) {
-          props[key] = typeof (window as any)[key];
+          props[key] = typeof (window as unknown as Record<string, unknown>)[key];
         }
       }
       return props;
@@ -114,7 +105,7 @@ test.describe('Memory Leak Diagnostics @memory-leak-cdp', () => {
 
     // Take final snapshot and compare
     console.log('\n📸 Taking final heap snapshot...');
-    const snapshot = await client.send('HeapProfiler.takeHeapSnapshot');
+    await client.send('HeapProfiler.takeHeapSnapshot');
 
     // Get detailed node statistics
     const nodeStats = await page.evaluate(() => {
@@ -136,7 +127,7 @@ test.describe('Memory Leak Diagnostics @memory-leak-cdp', () => {
 
     // Check for common leak patterns
     const leakPatterns = await page.evaluate(() => {
-      const patterns: any = {};
+      const patterns: Record<string, unknown> = {};
 
       // Check for accumulated data attributes
       const cards = document.querySelectorAll('.product-card-wrapper');

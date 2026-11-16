@@ -4,7 +4,26 @@ import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 
 export default [
-  { ignores: ['dist/', '.astro/', 'node_modules/'] },
+  {
+    // Build output, generated reports, local-only folders and agent worktrees.
+    ignores: [
+      'dist/',
+      '.astro/',
+      '.netlify/',
+      '.claude/',
+      'node_modules/',
+      'coverage/',
+      'lighthouse/',
+      'docs/',
+      'playwright-report*/',
+      'test-results*/',
+    ],
+  },
+  // Severity stays 'warn' on purpose. `pnpm lint` passes --max-warnings 0, so a
+  // warning blocks CI and the pre-commit hook exactly like an error would, and
+  // the count can only go down (the same baselining idea as the coverage
+  // thresholds in vitest.config.ts). A new rule added at 'warn' is enforced
+  // immediately: clear its violations in the same change.
   {
     files: ['**/*.ts', '**/*.tsx'],
     plugins: { '@typescript-eslint': tseslint },
