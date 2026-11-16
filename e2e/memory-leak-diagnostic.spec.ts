@@ -40,7 +40,9 @@ test.describe('Memory Leak Diagnostics @memory-leak-cdp', () => {
           key.includes('listener') ||
           key.includes('timeout')
         ) {
-          props[key] = typeof (window as unknown as Record<string, unknown>)[key];
+          props[key] = typeof (window as unknown as Record<string, unknown>)[
+            key
+          ];
         }
       }
       return props;
@@ -95,7 +97,9 @@ test.describe('Memory Leak Diagnostics @memory-leak-cdp', () => {
           key.includes('listener') ||
           key.includes('timeout')
         ) {
-          props[key] = typeof (window as unknown as Record<string, unknown>)[key];
+          props[key] = typeof (window as unknown as Record<string, unknown>)[
+            key
+          ];
         }
       }
       return props;
