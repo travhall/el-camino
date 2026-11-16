@@ -230,6 +230,90 @@ describe('PDPUIManager', () => {
     });
   });
 
+  // A stock re-check lands a moment after the page loads. By then the shopper
+  // may already have picked a quantity, and a redraw must not throw it away.
+  describe('updateQuantityControls keeping the chosen quantity', () => {
+    const els = () => ({
+      input: document.getElementById('quantity-input') as HTMLInputElement,
+      decrease: document.getElementById(
+        'decrease-quantity'
+      ) as HTMLButtonElement,
+      increase: document.getElementById(
+        'increase-quantity'
+      ) as HTMLButtonElement,
+    });
+
+    it('keeps the quantity and leaves decrease enabled', () => {
+      manager.updateQuantityControls(availabilityInfo({ remaining: 5 }));
+      els().input.value = '3';
+
+      manager.updateQuantityControls(
+        availabilityInfo({ remaining: 5 }),
+        false,
+        { keepQuantity: true }
+      );
+
+      expect(els().input.value).toBe('3');
+      expect(els().decrease.disabled).toBe(false);
+      expect(els().increase.disabled).toBe(false);
+    });
+
+    it('lowers the quantity to what is left when stock dropped below it', () => {
+      manager.updateQuantityControls(availabilityInfo({ remaining: 5 }));
+      els().input.value = '4';
+
+      manager.updateQuantityControls(
+        availabilityInfo({ remaining: 2 }),
+        false,
+        { keepQuantity: true }
+      );
+
+      expect(els().input.value).toBe('2');
+      expect(els().input.max).toBe('2');
+      expect(els().increase.disabled).toBe(true);
+      expect(els().decrease.disabled).toBe(false);
+    });
+
+    it('falls back to the default when the box holds nonsense', () => {
+      manager.updateQuantityControls(availabilityInfo({ remaining: 5 }));
+      els().input.value = '';
+
+      manager.updateQuantityControls(
+        availabilityInfo({ remaining: 5 }),
+        false,
+        { keepQuantity: true }
+      );
+
+      expect(els().input.value).toBe('1');
+    });
+
+    it('still resets when the variation has sold out', () => {
+      manager.updateQuantityControls(availabilityInfo({ remaining: 5 }));
+      els().input.value = '3';
+
+      manager.updateQuantityControls(
+        availabilityInfo({
+          state: ProductAvailabilityState.OUT_OF_STOCK,
+          remaining: 0,
+        }),
+        false,
+        { keepQuantity: true }
+      );
+
+      expect(els().input.disabled).toBe(true);
+      expect(els().decrease.disabled).toBe(true);
+    });
+
+    it('resets to 1 when not asked to keep it (a new variation was picked)', () => {
+      manager.updateQuantityControls(availabilityInfo({ remaining: 5 }));
+      els().input.value = '3';
+
+      manager.updateQuantityControls(availabilityInfo({ remaining: 5 }));
+
+      expect(els().input.value).toBe('1');
+    });
+  });
+
   describe('updateAddToCartButton', () => {
     it('sets enabled "Add to Cart" text for AVAILABLE', () => {
       manager.updateAddToCartButton(availabilityInfo());

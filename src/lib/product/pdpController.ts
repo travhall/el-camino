@@ -253,9 +253,15 @@ export class PDPController {
       this.currentVariation.quantity || 0
     );
 
+    // The cart changed (here, in the mini cart, in another tab, or just by
+    // loading from storage after the page drew), not the variation: keep the
+    // quantity the shopper has chosen. Add-to-cart resets it to 1 itself
+    // before calling this.
     this.uiManager.updateAvailabilityDisplay(
       availabilityInfo,
-      this.currentVariation.saleInfo
+      this.currentVariation.saleInfo,
+      undefined,
+      { keepQuantity: true }
     );
     this.updateAttributeButtonStates();
   }
@@ -318,7 +324,14 @@ export class PDPController {
       variation.variationId,
       variation.quantity || 0
     );
-    this.uiManager.updateAvailabilityDisplay(info, variation.saleInfo);
+    // Same variation, fresh numbers: the shopper may already have picked a
+    // quantity while this request was in flight, so don't reset it.
+    this.uiManager.updateAvailabilityDisplay(
+      info,
+      variation.saleInfo,
+      undefined,
+      { keepQuantity: true }
+    );
     this.updateBisSection(
       variation,
       variation.inStock ?? (variation.quantity || 0) > 0

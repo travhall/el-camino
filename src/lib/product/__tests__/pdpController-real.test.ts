@@ -794,6 +794,29 @@ describe('PDPController Real Implementation Tests', () => {
       });
     });
 
+    it('a cart update also keeps the chosen quantity', () => {
+      controller = new PDPController(mockProductData);
+
+      internals(controller).eventManager.handlers?.onCartUpdate();
+
+      const lastCall =
+        uiOf(controller).updateAvailabilityDisplay.mock.calls.at(-1);
+      expect(lastCall?.[3]).toEqual({ keepQuantity: true });
+    });
+
+    it('asks the redraw to keep the quantity the shopper already chose', async () => {
+      vi.mocked(fetchFreshInventory).mockResolvedValue(
+        freshStock({ 'var-1': 2, 'var-2': 5, 'var-3': 0 })
+      );
+      controller = new PDPController(mockProductData);
+
+      await controller.refreshInventory();
+
+      const lastCall =
+        uiOf(controller).updateAvailabilityDisplay.mock.calls.at(-1);
+      expect(lastCall?.[3]).toEqual({ keepQuantity: true });
+    });
+
     it('treats a current variation that has sold out as sold out', async () => {
       vi.mocked(fetchFreshInventory).mockResolvedValue(
         freshStock({ 'var-1': 0, 'var-2': 5, 'var-3': 0 })
