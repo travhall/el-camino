@@ -872,7 +872,7 @@ Astro.response.headers.set(
                     {isSingleValue
                       ? attributeValues.map((value) => (
                           <span
-                            class="px-2.5 py-1.5 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default"
+                            class="min-w-11 min-h-11 px-3 py-2 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default inline-flex items-center justify-center"
                             aria-label={`${displayName}: ${value}`}
                           >
                             {value}
@@ -895,12 +895,15 @@ Astro.response.headers.set(
                               data-attribute-type={attributeType}
                               data-attribute-value={value}
                               class:list={[
-                                'px-2.5 py-1.5 rounded-sm attribute-button cursor-pointer relative',
-                                isSelected
-                                  ? 'border border-(--ui-variant-selected-border) bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text)'
-                                  : 'border border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text)',
+                                'min-w-11 min-h-11 px-3 py-2 rounded-sm attribute-button cursor-pointer relative inline-flex items-center justify-center border',
+                                !isAvailable
+                                  ? 'border-(--ui-input-border) bg-(--ui-input-surface) text-(--content-meta)! line-through'
+                                  : isSelected
+                                    ? 'border-(--ui-variant-selected-border) bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text)'
+                                    : 'border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text)',
                                 !isAvailable &&
-                                  'text-(--content-meta) line-through opacity-60',
+                                  isSelected &&
+                                  'ring-2 ring-offset-1 ring-(--ui-variant-selected-border)',
                               ]}
                               aria-pressed={isSelected ? 'true' : 'false'}
                               aria-label={
@@ -938,7 +941,7 @@ Astro.response.headers.set(
                   <div class="flex flex-wrap gap-2">
                     {attributeValues.map((value) => (
                       <span
-                        class="px-2.5 py-1.5 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default"
+                        class="min-w-11 min-h-11 px-3 py-2 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default inline-flex items-center justify-center"
                         aria-label={`${displayName}: ${value}`}
                       >
                         {value}
@@ -965,7 +968,7 @@ Astro.response.headers.set(
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <span
-                    class="px-2.5 py-1.5 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default"
+                    class="min-w-11 min-h-11 px-3 py-2 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default inline-flex items-center justify-center"
                     aria-label={`Option: ${variations[0].name}`}
                   >
                     {variations[0].name}
@@ -994,11 +997,15 @@ Astro.response.headers.set(
                     data-image={variation.image || ''}
                     data-unit={variation.unit || ''}
                     class:list={[
-                      'px-4 py-2 border rounded-sm cursor-pointer',
-                      variation.variationId === defaultVariationId
-                        ? 'bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)'
-                        : 'bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)',
-                      !variation.inStock && 'opacity-60 line-through',
+                      'min-w-11 min-h-11 px-4 py-2 border rounded-sm cursor-pointer inline-flex items-center justify-center',
+                      !variation.inStock
+                        ? 'bg-(--ui-input-surface) text-(--content-meta)! border-(--ui-input-border) line-through'
+                        : variation.variationId === defaultVariationId
+                          ? 'bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)'
+                          : 'bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)',
+                      !variation.inStock &&
+                        variation.variationId === defaultVariationId &&
+                        'ring-2 ring-offset-1 ring-(--ui-variant-selected-border)',
                     ]}
                   >
                     {variation.name}
@@ -1149,7 +1156,7 @@ Astro.response.headers.set(
               type="button"
               id="easy-returns-trigger"
               aria-haspopup="dialog"
-              class="flex items-center gap-1.5 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
+              class="flex items-center gap-1.5 py-3 -my-3 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1173,7 +1180,7 @@ Astro.response.headers.set(
               id="local-pickup-trigger"
               aria-haspopup="dialog"
               type="button"
-              class="flex items-center gap-1.5 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
+              class="flex items-center gap-1.5 py-3 -my-3 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1195,7 +1202,7 @@ Astro.response.headers.set(
               type="button"
               id="secure-checkout-trigger"
               aria-haspopup="dialog"
-              class="flex items-center gap-1.5 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
+              class="flex items-center gap-1.5 py-3 -my-3 text-(--content-emphasis) hover:text-(--content-emphasis) hover:underline underline-offset-0 hover:underline-offset-4 transition-all cursor-pointer"
               aria-label="Learn about our secure checkout"
             >
               <svg
