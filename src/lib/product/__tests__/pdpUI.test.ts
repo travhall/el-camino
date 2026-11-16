@@ -501,18 +501,18 @@ describe('PDPUIManager', () => {
         () => true
       );
       expect(red.classList.contains('line-through')).toBe(false);
-      expect(
-        red.classList.contains('bg-(--ui-variant-selected-surface)')
-      ).toBe(true);
+      expect(red.classList.contains('bg-(--ui-variant-selected-surface)')).toBe(
+        true
+      );
 
       manager.updateAttributeButtonStates(
         { color: ['red', 'blue'] },
         { color: 'red' },
         () => false
       );
-      expect(
-        red.classList.contains('bg-(--ui-variant-selected-surface)')
-      ).toBe(false);
+      expect(red.classList.contains('bg-(--ui-variant-selected-surface)')).toBe(
+        false
+      );
       expect(red.classList.contains('line-through')).toBe(true);
       expect(red.classList.contains('ring-2')).toBe(true);
       expect(red.getAttribute('aria-label')).toBe('red — out of stock');
