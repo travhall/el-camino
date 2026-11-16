@@ -275,17 +275,25 @@ export class PDPUIManager {
   updateAvailabilityDisplay(
     info: ProductAvailabilityInfo,
     saleInfo?: SaleInfo,
-    isGiftCard?: boolean
+    isGiftCard?: boolean,
+    options?: { keepQuantity?: boolean }
   ): void {
-    this.updateQuantityControls(info, isGiftCard);
+    this.updateQuantityControls(info, isGiftCard, options);
     this.updateAddToCartButton(info);
     this.updateImageOverlay(info, saleInfo);
     this.updateInventoryDisplay(info, isGiftCard);
   }
 
+  /**
+   * @param options.keepQuantity Redraw for the variation already on screen
+   *   (a stock re-check), not for a newly picked one: keep the quantity the
+   *   shopper chose, lowered to what is left if stock dropped below it.
+   *   Without it the quantity goes back to the default.
+   */
   updateQuantityControls(
     info: ProductAvailabilityInfo,
-    isGiftCard?: boolean
+    isGiftCard?: boolean,
+    options?: { keepQuantity?: boolean }
   ): void {
     // Re-cache elements in case they were cloned/replaced
     this.cacheElements(this.elementIds); // Use stored IDs
@@ -306,15 +314,21 @@ export class PDPUIManager {
     const defaultQty = isGiftCard ? 1 : getDefaultQuantity(info.state);
     const isDisabled = isGiftCard ? false : isQuantityInputDisabled(info.state);
 
-    quantityInput.value = defaultQty.toString();
+    let quantity = defaultQty;
+    if (options?.keepQuantity && !isDisabled) {
+      const chosen = parseInt(quantityInput.value, 10);
+      if (chosen >= 1) quantity = Math.min(chosen, effectiveMax);
+    }
+
+    quantityInput.value = quantity.toString();
     quantityInput.max = effectiveMax.toString();
     quantityInput.disabled = isDisabled;
 
     if (decreaseButton) {
-      decreaseButton.disabled = isDisabled || defaultQty <= 1;
+      decreaseButton.disabled = isDisabled || quantity <= 1;
     }
     if (increaseButton) {
-      increaseButton.disabled = isDisabled || defaultQty >= effectiveMax;
+      increaseButton.disabled = isDisabled || quantity >= effectiveMax;
     }
 
     // Show stepper: always for gift cards, otherwise only when >1 unit available
