@@ -1,4 +1,5 @@
 ---
+import { safeJsonForScript } from '@/lib/safeJson';
 // src/components/SizeGuide.astro
 // Renders a "Size Guide" trigger button + self-contained modal for apparel PDPs.
 // Usage: <SizeGuide category="tops" /> or <SizeGuide category="bottoms" />
@@ -23,7 +24,7 @@ const nonce = Astro.locals.nonce;
 <script
   type="application/json"
   id="size-guide-config"
-  set:html={JSON.stringify({ category })}
+  set:html={safeJsonForScript({ category })}
 />
 <script is:inline nonce={nonce}>
   var category = JSON.parse(

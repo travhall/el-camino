@@ -2,6 +2,7 @@
 // Enhanced SKU Reference page with improved UX
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { generateSkuReference } from "@/utils/generateSkuReference";
+import { safeJsonForScript } from '@/lib/safeJson';
 
 // Generate SKU reference at build time
 const { success, skus, categorized, error } = await generateSkuReference();
@@ -480,7 +481,7 @@ const nonce = Astro.locals.nonce;
   </Fragment>
 </AdminLayout>
 
-<script type="application/json" id="sku-ref-data" set:html={JSON.stringify({ skus, filterOptions, categorized })} />
+<script type="application/json" id="sku-ref-data" set:html={safeJsonForScript({ skus, filterOptions, categorized })} />
 <script is:inline nonce={nonce}>
   var _skurd = JSON.parse(document.getElementById('sku-ref-data').textContent);
   var skus = _skurd.skus;

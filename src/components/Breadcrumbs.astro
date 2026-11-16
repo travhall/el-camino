@@ -1,6 +1,7 @@
 ---
 // /src/components/Breadcrumbs.astro
 import type { BreadcrumbPath } from '@/lib/product/breadcrumbs';
+import { safeJsonForScript } from '@/lib/safeJson';
 
 interface Props {
   breadcrumbPath: BreadcrumbPath;
@@ -67,7 +68,7 @@ if (!breadcrumbPath || breadcrumbPath.items.length <= 1) {
   is:inline
   nonce={nonce}
   type="application/ld+json"
-  set:html={JSON.stringify(breadcrumbPath.structuredData)}
+  set:html={safeJsonForScript(breadcrumbPath.structuredData)}
 />
 
 <style>

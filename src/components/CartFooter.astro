@@ -5,6 +5,7 @@
 import { getLegalPages } from '@/lib/wordpress/api';
 import type { WordPressPage } from '@/lib/wordpress/types';
 import { siteConfig } from '@/lib/site-config';
+import { safeJsonForScript } from '@/lib/safeJson';
 
 const currentYear = new Date().getFullYear();
 
@@ -20,7 +21,7 @@ try {
 <script
   id="legal-pages-data"
   type="application/json"
-  set:html={JSON.stringify(
+  set:html={safeJsonForScript(
     footerPages.map((p) => ({
       slug: p.slug,
       title: p.title,
