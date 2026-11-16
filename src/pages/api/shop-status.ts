@@ -2,7 +2,7 @@
 // Public endpoint — returns the shop status override config. No auth
 // required; no sensitive data exposed.
 //
-// No longer used by OpenStatusBadge (see plans/189-inline-shop-status-override.md
+// No longer used by OpenStatusBadge (see plans/archive/189-inline-shop-status-override.md
 // — that data is now inlined server-side via Footer.astro's shop-status-data
 // script tag). Kept because src/pages/the-shop/index.astro's
 // hours-override-notice script still fetches this endpoint independently.

@@ -74,7 +74,7 @@ describe('buildShippingFulfillment', () => {
     );
   });
 
-  // FINDING (reported, not fixed — see plans/165 STOP conditions):
+  // FINDING (reported, not fixed — see plans/archive/165 STOP conditions):
   // fulfillmentBuilders.ts:29 is `shippingAddress.street2 || undefined`. When
   // street2 is absent, this sets the object KEY `addressLine2` to the value
   // `undefined` rather than omitting the key. `toHaveProperty` (and `in`)
