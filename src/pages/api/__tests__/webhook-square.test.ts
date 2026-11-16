@@ -29,6 +29,9 @@ vi.mock('@/lib/cache/cdnPurge', () => ({
 vi.mock('@/lib/email/pendingOrders', () => ({
   getPendingOrder: vi.fn(),
   deletePendingOrder: vi.fn().mockResolvedValue(undefined),
+  claimOrderEmail: vi.fn(),
+  completeOrderEmailClaim: vi.fn().mockResolvedValue(undefined),
+  releaseOrderEmailClaim: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/email/sender', () => ({
@@ -47,7 +50,13 @@ import { purgeProductPages } from '@/lib/cache/cdnPurge';
 import { inventoryCache, productCache } from '@/lib/cache/blobCache';
 import { verifySquareWebhookSignature } from '@/lib/square/verifyWebhookSignature';
 import { squareClient } from '@/lib/square/client';
-import { getPendingOrder, deletePendingOrder } from '@/lib/email/pendingOrders';
+import {
+  getPendingOrder,
+  deletePendingOrder,
+  claimOrderEmail,
+  completeOrderEmailClaim,
+  releaseOrderEmailClaim,
+} from '@/lib/email/pendingOrders';
 import {
   sendOrderConfirmation,
   sendPickupNotification,
@@ -133,7 +142,23 @@ beforeEach(() => {
   // Default: no pending order (idempotency)
   vi.mocked(getPendingOrder).mockResolvedValue(null);
   vi.mocked(deletePendingOrder).mockResolvedValue(undefined);
+  // Default: a stateful stand-in for the real claim store. The first caller
+  // for an order wins; everyone after loses until the claim is released.
+  claimed.clear();
+  vi.mocked(claimOrderEmail).mockImplementation(async (orderId: string) => {
+    if (claimed.has(orderId)) return false;
+    claimed.add(orderId);
+    return true;
+  });
+  vi.mocked(releaseOrderEmailClaim).mockImplementation(
+    async (orderId: string) => {
+      claimed.delete(orderId);
+    }
+  );
+  vi.mocked(completeOrderEmailClaim).mockResolvedValue(undefined);
 });
+
+const claimed = new Set<string>();
 
 describe('POST /api/webhooks/square', () => {
   // ── Env / config guard ────────────────────────────────────────────────────
@@ -311,6 +336,98 @@ describe('POST /api/webhooks/square', () => {
     it('still calls sendOrderConfirmation even when blob cleanup will fail', async () => {
       await POST(makeContext(paymentUpdatedCompleted));
       expect(sendOrderConfirmation).toHaveBeenCalledOnce();
+    });
+  });
+
+  // ── payment.updated / COMPLETED — duplicate delivery ─────────────────────
+  //
+  // Square gives up on a delivery after a few seconds and sends it again. If
+  // the first delivery is still working (slow email provider, cold start), the
+  // retry runs alongside it and must not email the customer a second time.
+
+  describe('payment.updated COMPLETED — duplicate delivery', () => {
+    beforeEach(() => {
+      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup);
+    });
+
+    it('sends one confirmation when the same event arrives twice at once', async () => {
+      vi.mocked(sendOrderConfirmation).mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 20))
+      );
+
+      const [first, second] = await Promise.all([
+        POST(makeContext(paymentUpdatedCompleted)),
+        POST(makeContext(paymentUpdatedCompleted)),
+      ]);
+
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(200);
+      expect(sendOrderConfirmation).toHaveBeenCalledTimes(1);
+      expect(sendPickupNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends nothing on a retry that arrives after the emails went out, even if cleanup failed', async () => {
+      // Cleanup failure leaves the pending record behind, so the retry finds it.
+      vi.mocked(deletePendingOrder).mockRejectedValue(new Error('blob down'));
+
+      await POST(makeContext(paymentUpdatedCompleted));
+      await POST(makeContext(paymentUpdatedCompleted));
+
+      expect(sendOrderConfirmation).toHaveBeenCalledTimes(1);
+      expect(completeOrderEmailClaim).toHaveBeenCalledWith('ORDER123456789012');
+    });
+
+    it('releases the claim when sending fails so a later retry can send', async () => {
+      vi.mocked(sendOrderConfirmation).mockRejectedValueOnce(
+        new Error('resend down')
+      );
+
+      await POST(makeContext(paymentUpdatedCompleted));
+      expect(releaseOrderEmailClaim).toHaveBeenCalledWith('ORDER123456789012');
+
+      await POST(makeContext(paymentUpdatedCompleted));
+      expect(sendOrderConfirmation).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // ── Answering Square before the slow work ────────────────────────────────
+
+  describe('acknowledging before the work is done', () => {
+    it('responds before the confirmation email finishes when the platform can keep working', async () => {
+      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup);
+      let emailFinished = false;
+      vi.mocked(sendOrderConfirmation).mockImplementation(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        emailFinished = true;
+      });
+      const background: Promise<unknown>[] = [];
+      const ctx = {
+        request: makeRequest(paymentUpdatedCompleted),
+        locals: {
+          netlify: {
+            context: {
+              waitUntil: (p: Promise<unknown>) => {
+                background.push(p);
+              },
+            },
+          },
+        },
+      } as unknown as Parameters<typeof POST>[0];
+
+      const res = await POST(ctx);
+
+      expect(res.status).toBe(200);
+      expect(emailFinished).toBe(false);
+      expect(background).toHaveLength(1);
+      await background[0];
+      expect(emailFinished).toBe(true);
+      expect(sendOrderConfirmation).toHaveBeenCalledTimes(1);
+    });
+
+    it('does the work before responding when there is nothing to keep it alive', async () => {
+      vi.mocked(getPendingOrder).mockResolvedValue(mockContactPickup);
+      await POST(makeContext(paymentUpdatedCompleted));
+      expect(sendOrderConfirmation).toHaveBeenCalledTimes(1);
     });
   });
 
