@@ -30,7 +30,13 @@ import {
   filterCache,
 } from '@/lib/cache/blobCache';
 import { purgeProductPages } from '@/lib/cache/cdnPurge';
-import { getPendingOrder, deletePendingOrder } from '@/lib/email/pendingOrders';
+import {
+  getPendingOrder,
+  deletePendingOrder,
+  claimOrderEmail,
+  completeOrderEmailClaim,
+  releaseOrderEmailClaim,
+} from '@/lib/email/pendingOrders';
 import { storeFailedEmail } from '@/lib/email/failedEmails';
 import {
   sendOrderConfirmation,
@@ -60,7 +66,7 @@ interface SquareWebhookEvent {
   };
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   // Read raw body as text — must not be pre-parsed; signature verification
   // requires the exact bytes Square sent.
   const rawBody = await request.text();
@@ -111,6 +117,33 @@ export const POST: APIRoute = async ({ request }) => {
 
   console.info(`[Webhook/Square] Processing event: ${eventType}`);
 
+  // Square abandons a delivery after a few seconds and sends it again, and the
+  // work below (Square order fetch, up to two emails, cache purge) can take
+  // longer than that on a cold start. Where the platform can keep the function
+  // alive after the response, answer first and work after. Otherwise (local
+  // dev, tests) do the work before answering, as before: a promise nobody
+  // awaits could be frozen mid-send.
+  const work = handleEvent(event, eventType);
+  const waitUntil = (
+    locals as { netlify?: { context?: { waitUntil?: unknown } } } | undefined
+  )?.netlify?.context?.waitUntil;
+  if (typeof waitUntil === 'function') {
+    waitUntil(work);
+  } else {
+    await work;
+  }
+
+  return new Response(JSON.stringify({ received: true }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+};
+
+/** Does the event's work. Never rejects: failures are logged, not retried. */
+async function handleEvent(
+  event: SquareWebhookEvent,
+  eventType: string
+): Promise<void> {
   try {
     switch (eventType) {
       case 'inventory.count.updated': {
@@ -220,6 +253,14 @@ export const POST: APIRoute = async ({ request }) => {
           `[Webhook/Square] Found pending order for ${contact.email} (${contact.fulfillmentMethod})`
         );
 
+        // Only one delivery per order may send. See pendingOrders.ts.
+        if (!(await claimOrderEmail(orderId))) {
+          console.info(
+            `[Webhook/Square] Emails for order ${orderId} already sent or in progress — skipping duplicate delivery`
+          );
+          break;
+        }
+
         // Fetch the full order for rich line-item details in the email.
         // If the fetch fails for any reason (bad credentials, network, etc.)
         // fall back to a minimal order built from the payment payload so the
@@ -279,9 +320,26 @@ export const POST: APIRoute = async ({ request }) => {
               );
             }
           );
-          // Pending order blob intentionally NOT deleted — idempotency guard stays intact
+          // Give the claim back so a later delivery (or Square's own retry)
+          // can try again. The pending order blob is intentionally NOT deleted.
+          await releaseOrderEmailClaim(orderId).catch((releaseErr) => {
+            console.error(
+              `[Webhook/Square] Failed to release email claim for ${orderId}:`,
+              releaseErr
+            );
+          });
           break;
         }
+
+        // Emails are out: make the claim permanent before cleanup, so a retry
+        // sends nothing even if the delete below fails and leaves the pending
+        // record behind.
+        await completeOrderEmailClaim(orderId).catch((claimErr) => {
+          console.warn(
+            `[Webhook/Square] Failed to mark emails sent for ${orderId}:`,
+            claimErr
+          );
+        });
 
         // Try 2: blob cleanup — independent of email success; non-fatal if it fails
         // Only reached when all emails sent successfully (we didn't break above)
@@ -304,12 +362,8 @@ export const POST: APIRoute = async ({ request }) => {
     }
   } catch (err) {
     console.error(`[Webhook/Square] Error handling event "${eventType}":`, err);
-    // Still return 200: Square treats non-2xx as a delivery failure and
-    // retries with exponential backoff, which would flood the endpoint.
+    // Swallowed on purpose. The caller answers 200 either way: Square treats
+    // non-2xx as a delivery failure and retries with exponential backoff,
+    // which would flood the endpoint.
   }
-
-  return new Response(JSON.stringify({ received: true }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
-};
+}
