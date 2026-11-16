@@ -6,16 +6,28 @@ import netlify from "@astrojs/netlify";
 import node from "@astrojs/node";
 import path from "path";
 import { buildSitemapPages } from "./src/lib/sitemapPages.ts";
+import { shouldFetchSitemapPages, sitemapFailureIsFatal } from "./src/lib/sitemapGate.ts";
 
 // Check if we're in preview mode
 const isPreview = process.env.PREVIEW === "true";
 
-// Falls back to [] if Square/WordPress are unreachable (e.g. during `astro check`).
-// Production builds with valid SQUARE_ACCESS_TOKEN get the full page list.
-const sitemapPages = await buildSitemapPages().catch((err) => {
-  console.warn("[sitemap] buildSitemapPages failed, using empty list:", err?.message ?? err);
-  return [];
-});
+// Only a build writes a sitemap, so only a build fetches its pages: this file
+// is also loaded by `astro check`, `astro dev` and Vitest. See sitemapGate.ts.
+// A failed fetch falls back to [] except on a Netlify production deploy, where
+// it fails the build rather than publish an empty sitemap.
+const sitemapPages = shouldFetchSitemapPages(process.argv, process.env)
+  ? await buildSitemapPages().catch((err) => {
+      if (sitemapFailureIsFatal(process.env)) {
+        throw new Error(
+          `[sitemap] could not build the page list for a production deploy: ${err?.message ?? err}. ` +
+            "Set SITEMAP_ALLOW_EMPTY=true to deploy without it.",
+          { cause: err },
+        );
+      }
+      console.warn("[sitemap] buildSitemapPages failed, using empty list:", err?.message ?? err);
+      return [];
+    })
+  : [];
 
 export default defineConfig({
   site: "https://elcaminoskateshop.com",

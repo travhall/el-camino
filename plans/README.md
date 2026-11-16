@@ -350,7 +350,7 @@ your row when done.
 | 215  | Clear the 74 dependency advisories by refreshing overrides and patch versions | P2 | S | LOW-MED | — | security | TODO |
 | 216  | Serialize every inline JSON script tag through one function that escapes `<` | P3 | S | LOW | — | security | TODO |
 | 217  | **Investigation**: content security policy violations when navigating to /news | P2 | S | LOW | — | bug | TODO |
-| 218  | Stop the unit tests and type check from calling Square and WordPress | P2 | S | LOW | — | dx | TODO |
+| 218  | Stop the unit tests and type check from calling Square and WordPress | P2 | S | LOW | — | dx | DONE — `astro.config.mjs` only calls `buildSitemapPages()` for `astro build` (`src/lib/sitemapGate.ts`, unit-tested). `pnpm test:run` and `pnpm check` now print no `[sitemap]` line and make no Square/WordPress calls. On a Netlify production deploy (`CONTEXT=production`) a failed fetch fails the build; `SITEMAP_ALLOW_EMPTY=true` overrides. Verified locally: production-context build fails with the 401, local build warns and completes. The 401 itself is the local `.env` Square token being rejected, which is separate. |
 | 219  | Raise the coverage gate to match real coverage and stop it sliding | P3 | S | LOW | 184 (soft) | dx | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
