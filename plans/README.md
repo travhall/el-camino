@@ -315,7 +315,7 @@ your row when done.
 | 180  | Add the `.env.example` that `.gitignore` already assumes | P3 | S | LOW | — | dx | DONE — drift check found `ci.yml`/README had already changed since the plan was written; re-derived the list live rather than trusting the plan's "current state" section. Authoritative list from `grep -rn "import.meta.env\.\|process\.env\." src/` cross-referenced against `src/lib/square/squareInstance.ts`, `.github/workflows/ci.yml`, and (missed by the plan's suggested grep, since it uses bracket access) `src/lib/square/apiRetry.ts`'s `process.env[name]` reads. **Required** (module-load throw): `SQUARE_ACCESS_TOKEN`, `PUBLIC_SQUARE_LOCATION_ID`. **Required for a feature** (throws/breaks at runtime, not module load): `RESEND_API_KEY`, `EMAIL_FROM`, `TYLER_EMAIL` (email sending), `ADMIN_PASSWORD`, `ADMIN_SECRET` (admin login/session). **Optional, graceful degradation**: `SQUARE_WEBHOOK_SIGNATURE_KEY`, `PUBLIC_SQUARE_ENVIRONMENT`, `PUBLIC_WORDPRESS_API_URL`, `CRUX_API_KEY`, `WARMUP_SECRET`, `ASTRO_NODE_ENV`, and the 8 `SQUARE_*` retry/circuit-breaker tuning vars — **plan 162 had already landed by the time this ran, contrary to this plan's out-of-scope note assuming they might still be unread**; `apiRetry.ts` reads all 8 with numeric fallbacks. **Discrepancy found**: `PUBLIC_SQUARE_APP_ID` is declared in `src/env.d.ts` and stubbed in CI but read by no code in `src/` — documented in `.env.example` as reserved/currently-unread rather than guessed at. Wrote `.env.example` (23 vars, one-line comment + obviously-fake placeholder each, e.g. `your-square-access-token-here` / `changeme`; reviewed line-by-line, no real value); confirmed trackable via `git add -f` despite `.gitignore`. Replaced README's inline list with a pointer to the file plus prose on obtaining Square/Resend/CrUX credentials (kept per Step 3 — that doesn't belong in the template). `.gitignore` untouched. `pnpm check` / `pnpm lint` / `pnpm test:run` (1040/1040) all exit 0. Executed in the session's own `claude/relaxed-lumiere-14bcda` worktree branch rather than a new `advisor/180-...` branch — the worktree is already scoped to one branch. |
 | 181  | **Spike**: seam for extracting ~5,900 lines of inline `.astro` script | P3 | M | LOW | — | tech-debt | TODO — a `Modal.astro` PoC was built 2026-09-06 but never committed; diff and findings saved in `docs/salvage-2026-11-16/dreamy-shamir-34a87f.uncommitted.patch` (gitignored, local only). |
 | 182  | **Spike**: seam in `product/[id].astro`'s 419-line frontmatter | P3 | M | LOW | — | tech-debt | TODO |
-| 183  | **Spike**: collapse QuickView's duplicate PDP state machine | P3 | M | LOW | 179 (hard) | tech-debt | TODO |
+| 183  | **Spike**: collapse QuickView's duplicate PDP state machine | P2 | M | LOW | 179 (hard) | tech-debt | TODO — raised to P2 on 2026-11-16: fixes #21 and #36 each had to change the PDP and QuickView copies. |
 | 184  | Delete the dead exported surface + re-baseline coverage | P3 | M | LOW/MED | 160 (hard) | tech-debt | TODO |
 | 185  | Paginate the slug map | P2 | S | LOW | — | perf | DONE (code+tests), branch `advisor/185-paginate-slug-map`, not pushed — drift check clean (no diff on `slugResolver.ts`/`catalogFetch.ts`/`[id].astro` since `ad2999d`). Step 1: this sandboxed worktree has no `SQUARE_ACCESS_TOKEN`/live Square dashboard access, so the real catalog item/page count could **not** be recorded here — operator confirmed proceeding with the code fix and deferring that number; **TODO: fill in real item/page count from the Square dashboard or a credentialed environment**. Step 2: `buildSlugMap()` in `slugResolver.ts` now delegates to the existing `fetchAllCatalogItems()` (from `catalogFetch.ts`) instead of a single un-cursored `squareClient.catalog.list()` call — reused rather than hand-rolled a second cursor loop, per the plan's preference, so it inherits `MAX_CATALOG_PAGES` and its warning with one pagination implementation instead of two. Step 3: **not run** — same missing-credentials blocker prevents `pnpm dev` from resolving real PDPs; **TODO: once credentialed, pick a late-catalog product slug and confirm the resolver hits it directly (no `fetchProducts()` fallback), recording before/after render time**. Added `src/lib/square/__tests__/slugResolver.test.ts` (new file — no prior test existed) with the 5 cases the plan's Test plan section calls for: two-page catalog yields a complete map (asserts both pages' items land in the cached map and the second `catalog.list` call carries the first page's cursor), single-page catalog unchanged, `MAX_CATALOG_PAGES` guard stops at 20 calls and warns, an item without `itemData.name` is skipped, and a Square error mid-pagination returns an empty map without throwing — all by mocking `squareInstance`'s `catalog.list` so the real `fetchAllCatalogItems` pagination logic is exercised, not re-mocked. `pnpm check` (0 errors) / `pnpm lint` (0 errors, 24 pre-existing warnings) / `pnpm test:run` (88 files, 1045/1045 tests) / `pnpm test:coverage` (exit 0, no threshold regression; `slugResolver.ts` new coverage 81.81%/80%/60%/81.81%) all exit 0. `git status` shows only `slugResolver.ts` modified and the new test file added — `src/pages/product/[id].astro` untouched, no leftover instrumentation. Mid-task correction: an early edit accidentally landed on the main checkout's `slugResolver.ts` (a different in-progress branch, `advisor/175-trim-news-page-payload`) instead of this worktree; caught before running any verification, reverted with a scoped `git checkout --` touching only that one file, then redone correctly here. |
 | 186  | Upgrade `@netlify/blobs` 10 → 11 | P3 | M | MED | 166 (soft) | migration | MERGED, smoke test pending — `@netlify/blobs` 11 is on master (11.1.7 installed). Step 6's four deploy smoke tests (admin write, pending-order round trip, cache round trip, back-in-stock) were never recorded. |
@@ -342,8 +342,54 @@ your row when done.
 | 207  | Detect color for single-token variation names in `variationParser.ts` (fixes generic "Option" label on e.g. Lil Jawns' color picker; existing `detectAttributeType` heuristic already exists but is only called for 2-part comma names) | P2 | S | LOW | — | tech-debt | DONE, branch `advisor/207-variation-name-color-detection` (`b1a7455`), not merged/pushed. Added the single-token `detectAttributeType` check before the positional fallback in `parseVariationName`. Gates: `pnpm check` 0 errors, lint 0 errors, **full** `test:run` 96 files/1186 tests pass. `'28'`→`size` reclassification confirmed safe (no failures repo-wide); one ripple found and fixed in-scope: `parseVariationName('Large')` was asserted `{variant:'Large'}`, now correctly `{size:'Large'}` — updated that assertion (same reasoning, not a STOP). |
 | 208  | Fix h1→h3 heading-level skip in the PDP's unstructured-variation fallback block (markup-only — confirmed no CSS depends on the `h3` tag specifically) | P3 | S | LOW | — | tech-debt (a11y) | DONE, branch `advisor/208-fix-fallback-heading-hierarchy` (synced at `ca453c0`), not merged/pushed. `h3`→`h2` only, +2/-2 diff. Gates: `pnpm check`/`lint`/`test:run` all pass. |
 | 209  | Ship the chip touch-target + selected-OOS contrast fix — production build of plan 205's Option 1 (44px chips, ring instead of fill for selected+OOS, `!important` fixes the Tailwind cascade bug that caused 1.54:1) | P2 | S | LOW | 203 (soft) | bug (a11y) | TODO — still needed as of 2026-11-16: master chips have no 44px minimum and no selected+OOS ring. Branch `advisor/209-productionize-chip-touch-targets` (2 commits, local) now conflicts in `src/pages/product/[id].astro` after #36; rebase required. |
+| 210  | Launch readiness: switch production from Square Sandbox to real orders (checklist split into "Tyler does" / "Travis does") | P1 | M | HIGH | 211 (soft) | launch | TODO |
+| 211  | Replace the hand-synced fork with one repository and a `production` branch (implements `docs/adr/0001`) | P1 | M | MED | — | infrastructure | TODO |
+| 212  | Make the Square webhook send each order email once and answer inside Square's timeout | P1 | M | MED | — | bug | TODO |
+| 213  | Keep staging out of search results and give every page one canonical host | P2 | S | LOW | — | seo | TODO |
+| 214  | **Investigation**: why the product page takes 5.4 s to show its main image on mobile | P1 | M | LOW | 176 (soft) | perf | TODO |
+| 215  | Clear the 74 dependency advisories by refreshing overrides and patch versions | P2 | S | LOW-MED | — | security | TODO |
+| 216  | Serialize every inline JSON script tag through one function that escapes `<` | P3 | S | LOW | — | security | TODO |
+| 217  | **Investigation**: content security policy violations when navigating to /news | P2 | S | LOW | — | bug | TODO |
+| 218  | Stop the unit tests and type check from calling Square and WordPress | P2 | S | LOW | — | dx | TODO |
+| 219  | Raise the coverage gate to match real coverage and stop it sliding | P3 | S | LOW | 184 (soft) | dx | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
+
+## 2026-11-16 audit: reconciliation and launch focus
+
+Grilling-style audit against `master` at `2ba4b13`. Findings that shaped it:
+
+- Production (`www.elcaminoskateshop.com`) is a **separate Netlify site built
+  from a fork**, `ElCaminoBoardShop/el-camino`, which sat at `ad2999d`
+  (2026-09-05), 147 commits behind. It is public but still on Square Sandbox
+  data. Staging is `elcaminoskateshop.netlify.app`. Decision recorded in
+  `docs/adr/0001-one-repo-client-owned-production.md`.
+- The 2026-11-03 "CDN purge does not reach www" result is explained by that:
+  nothing on the staging site can purge a different site. No code defect was
+  shown. Verification moved into plan 210 Step 5.
+- Plans 153 and 155 were already fixed on master and are now DONE.
+- 11 stale worktrees, 11 local branches and 3 stashes were removed. Their
+  unmerged commits and uncommitted changes are kept locally (gitignored) in
+  `docs/salvage-2026-11-16/`: one git bundle plus patches. That includes an
+  uncommitted plan 181 proof of concept (`Modal.astro` script extraction with
+  7 tests), a half-started plan 146 (`/cdn-img` rewrite) and plan 151 notes.
+- Vocabulary: see `GLOSSARY.md` (Item, Product, Variation).
+
+**Agreed order of work:**
+
+1. 210 launch readiness (211 first if the fork is to be retired before launch)
+2. 212 webhook: one email per order, fast acknowledgement
+3. 209 chip touch targets (rebase needed)
+4. 214 + 176 product page speed investigation, then 146 / 151 if still justified
+5. 215 dependency advisories
+6. 159 finish making lint able to fail, then 188
+7. 213 staging indexing and canonical host; 218 no network at config load; 217 /news lead
+8. 183 QuickView and PDP state machine
+9. 181 inline script extraction, one file per plan, starting from the salvaged Modal patch
+10. 216 inline JSON escaping, 161 image URL builders, 219 coverage ratchet, 170, 184
+
+Still deferred and not to be bundled into anything: the Square v45 SDK upgrade.
+
 
 ## Dependency notes
 
