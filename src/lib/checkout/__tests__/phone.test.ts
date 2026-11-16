@@ -33,7 +33,7 @@ describe('normalizePhoneE164', () => {
   // phone.ts:22 fallback — the code's own comment calls this "hope for the
   // best". A digit count that isn't 10 or 11 (leading 1) falls through to a
   // bare "+" + digits with no validation. Characterizing current behavior,
-  // not endorsing it — see STOP condition in plans/165.
+  // not endorsing it — see STOP condition in plans/archive/165.
   it("falls back to '+' plus digits for a non-US digit count (characterizes the 'hope for the best' path)", () => {
     expect(normalizePhoneE164('123')).toBe('+123');
   });

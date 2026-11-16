@@ -1,5 +1,5 @@
 // Spike proof-of-concept for plan 121 — see
-// plans/121-spike-wordpress-webhook-cache-invalidation.md.
+// plans/archive/121-spike-wordpress-webhook-cache-invalidation.md.
 //
 // Proves receive+verify is feasible for a WordPress.com native webhook
 // (publish_post/publish_page), given what Step 1/2 of that spike confirmed:

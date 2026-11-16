@@ -14,7 +14,7 @@ import {
  * `mockCartApis`). Deliberately not tagged for the catalog-dependent CI
  * exclusion, since it needs no catalog data. This does not
  * replace a real Square-sandbox check — see the manual checklist in
- * plans/195-catalog-free-money-path-e2e.md.
+ * plans/archive/195-catalog-free-money-path-e2e.md.
  */
 
 const DECK: SeedItem = {

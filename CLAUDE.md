@@ -44,6 +44,17 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
 - `src/pages/api/` — route handlers
 - `src/pages/admin/` — admin UI (protected by `src/middleware.ts`)
 
+## Deployment and vocabulary
+
+- Staging is `elcaminoskateshop.netlify.app`; production is
+  `www.elcaminoskateshop.com`. They are separate Netlify sites with separate
+  environment variables, Blobs data and Square webhooks. Production currently
+  builds from a fork (`ElCaminoBoardShop/el-camino`) synced by hand; see
+  `docs/adr/0001-one-repo-client-owned-production.md` and plan 211.
+- `GLOSSARY.md` defines Item, Product and Variation. Use those words.
+- `plans/README.md` indexes every plan; open plans are in `plans/`, finished
+  ones in `plans/archive/`.
+
 ## Gotchas
 
 - `square-legacy` in `package.json` is an npm alias pointing at
@@ -53,7 +64,8 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
 - Admin routes (`/admin/*`) are protected by `src/middleware.ts`, which
   verifies an HMAC session cookie via `src/lib/admin/auth.ts`. Login is at
   `src/pages/api/admin-auth.ts`.
-- `docs/` is gitignored and contains many historical implementation-plan
+- `docs/` is gitignored except `docs/adr/` (architecture decision records,
+  tracked). The ignored part contains many historical implementation-plan
   files — they are not a maintained index and may describe pre-implementation
   state. Verify against the actual code before trusting one, especially
   anything claiming a feature is "not yet built."
