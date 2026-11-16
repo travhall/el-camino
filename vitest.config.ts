@@ -39,15 +39,17 @@ export default defineConfig(
         // part of vitest's threshold schema and is silently ignored (treated
         // as an unmatched per-file glob), which let this gate no-op for a long
         // time while actual coverage drifted well below the originally-intended
-        // 80%. Baselined just under real coverage as of 2026-09-04 (59.86%
-        // statements / 50.25% branches / 61.58% functions / 60.94% lines) so the
-        // gate is honest and passes today — ratchet these up as coverage improves,
-        // don't restore 80% without first getting real coverage there.
+        // 80%. Re-baselined 2 points under real coverage as of 2026-11-16
+        // (79.55% statements / 69.51% branches / 79.93% functions / 80.9%
+        // lines; it was 59.86 / 50.25 / 61.58 / 60.94 on 2026-09-04). Set
+        // each number 2 points under the measured value, rounded down, and
+        // raise them again whenever real coverage has moved up: the gate is
+        // only useful while it sits close to reality.
         thresholds: {
-          branches: 47,
-          functions: 59,
-          lines: 58,
-          statements: 57,
+          branches: 67,
+          functions: 77,
+          lines: 78,
+          statements: 77,
           // Per-file thresholds for critical modules
           // cart/index.ts: branch ceiling is ~84% — the remaining gap is 2-3
           // branches from `if (import.meta.hot)` HMR guards (always false in
