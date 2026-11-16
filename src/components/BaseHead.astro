@@ -2,6 +2,7 @@
 // src/components/BaseHead.astro
 import { ClientRouter } from 'astro:transitions';
 import { siteConfig } from '@/lib/site-config';
+import { safeJsonForScript } from '@/lib/safeJson';
 import '@/styles/global.css';
 
 interface Props {
@@ -232,7 +233,7 @@ const image = imageProp ?? seoData.defaultImage;
   is:inline
   nonce={nonce}
   type="application/ld+json"
-  set:html={JSON.stringify(orgSchema)}
+  set:html={safeJsonForScript(orgSchema)}
 />
 {
   structuredData && (
@@ -240,7 +241,7 @@ const image = imageProp ?? seoData.defaultImage;
       is:inline
       nonce={nonce}
       type="application/ld+json"
-      set:html={JSON.stringify(structuredData)}
+      set:html={safeJsonForScript(structuredData)}
     />
   )
 }

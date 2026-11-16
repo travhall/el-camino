@@ -6,6 +6,7 @@ import {
   EL_CAMINO_LOGO_DATA_URI,
   EL_CAMINO_LOADER_DATA_URI,
 } from '@/lib/constants/assets';
+import { safeJsonForScript } from '@/lib/safeJson';
 
 interface Props {
   title: string;
@@ -156,7 +157,7 @@ const nonce = Astro.locals.nonce;
     is:inline
     nonce={nonce}
     type="application/ld+json"
-    set:html={JSON.stringify(eventStructuredData)}
+    set:html={safeJsonForScript(eventStructuredData)}
   />
 
   <div class="flex flex-col lg:flex-row gap-6">

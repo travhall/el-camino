@@ -10,6 +10,7 @@ import Tag from '@/components/Tag.astro';
 import WordPressBlockParser from '@/components/wordpress/WordPressBlockParser.astro';
 import { EnhancedImageOptimizer } from '@/lib/image/enhanced-optimizer';
 import { EL_CAMINO_LOADER_DATA_URI } from '@/lib/constants/assets';
+import { safeJsonForScript } from '@/lib/safeJson';
 
 const { slug } = Astro.params;
 
@@ -166,7 +167,7 @@ const nonce = Astro.locals.nonce;
     is:inline
     nonce={nonce}
     type="application/ld+json"
-    set:html={JSON.stringify(structuredData)}
+    set:html={safeJsonForScript(structuredData)}
   />
 
   <article class="p-1 pb-0 flex flex-col gap-1">
