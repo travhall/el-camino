@@ -1,12 +1,11 @@
 [build]
 command = "pnpm run build"
 publish = "dist"
-# Skip the build when nothing that ships changed: only plans/, docs/ or markdown
-# files differ from the last commit Netlify built (CACHED_COMMIT_REF). Exit 0
-# means "skip", any other exit (including git failing because there is no cached
-# commit yet) means "build", so a doubt always builds. Netlify's [skip netlify]
-# commit-message tag does not stop PR deploy previews.
-ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude)plans' ':(exclude)docs' ':(exclude,glob)**/*.md'"
+# Whether to build is decided by scripts/netlify-ignore.sh (exit 0 skips): PR
+# previews and branch deploys build only for a head commit whose message contains
+# [preview], and any deploy is skipped when only plans/, docs/ or markdown changed
+# since the last built commit. It fails safe: a doubt always builds.
+ignore = "sh scripts/netlify-ignore.sh"
 # functions = "netlify/functions"  # Not currently using serverless functions
 
 # === PHASE 4: ENHANCED NETLIFY IMAGE CDN CONFIGURATION ===
