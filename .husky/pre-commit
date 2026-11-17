@@ -1,7 +1,40 @@
 #!/bin/sh
-STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|astro|tsx)$' || true)
-if [ -n "$STAGED" ]; then
-  pnpm check
-  pnpm lint
+# Fast, local checks on what is staged. CI is the real gate: it runs the whole
+# lint, format check, type check, coverage-enforced unit tests, build and e2e.
+# This hook only has to catch the obvious breakage before it leaves the machine.
+#
+# `vitest related` follows imports from the staged files to the tests that load
+# them. That is a heuristic: it can miss a test that reaches a file only
+# indirectly (a string-built path, a DOM event, a data file). A hook that
+# passes is therefore not proof the suite passes; CI runs everything.
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR || true)
+
+# Nothing staged that is not a deletion: nothing to check.
+[ -z "$STAGED" ] && exit 0
+
+CODE=$(printf '%s\n' "$STAGED" | grep -E '\.(ts|tsx|astro|mjs|js)$' || true)
+TS=$(printf '%s\n' "$STAGED" | grep -E '\.(ts|tsx|astro)$' || true)
+
+# Config that changes how every test or build behaves: run the whole suite.
+if printf '%s\n' "$STAGED" | grep -qE '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|vitest\.config\.ts|tsconfig\.json|astro\.config\.mjs|eslint\.config\.mjs)$'; then
+  pnpm test:run || exit 1
+  RAN_ALL=1
 fi
-pnpm test:run
+
+# Format: only the staged files (ignored paths such as plans/ and *.md are
+# skipped by .prettierignore).
+printf '%s\n' "$STAGED" | tr '\n' '\0' | xargs -0 pnpm exec prettier --check --ignore-unknown || exit 1
+
+if [ -n "$CODE" ]; then
+  printf '%s\n' "$CODE" | tr '\n' '\0' | xargs -0 pnpm exec eslint --max-warnings 0 --no-warn-ignored || exit 1
+fi
+
+if [ -n "$TS" ]; then
+  # astro check is whole-project by design: it catches cross-file type breakage
+  # that a staged-files-only check would miss.
+  pnpm check || exit 1
+  if [ -z "$RAN_ALL" ]; then
+    printf '%s\n' "$TS" | tr '\n' '\0' | xargs -0 pnpm exec vitest related --run --passWithNoTests || exit 1
+  fi
+fi
