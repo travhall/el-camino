@@ -164,14 +164,15 @@ const image = imageProp ?? seoData.defaultImage;
   type="font/woff2"
   crossorigin="anonymous"
 />
-<!-- Cabin: Body font - standard priority -->
-<link
-  rel="preload"
-  href="/fonts/Cabin.woff2"
-  as="font"
-  type="font/woff2"
-  crossorigin="anonymous"
-/>
+<!-- Cabin (body) is deliberately NOT preloaded (plan 220). On the product page
+     it shares the link with the hero image, the LCP element: dropping this
+     preload moved LCP from 3,335 ms to ~3,000 ms on staging (mobile, throttled,
+     two batches of three) with CLS 0.0001. Cabin still loads as soon as the CSS
+     asks for it. Alumni stays preloaded: dropping its preload too gained more
+     but raised CLS to 0.019 as headings reflowed when it arrived. A
+     fetchpriority="low" hint on the preloads changed nothing (3,359 ms), and
+     Latin-only subsets of both files (119 KB to 51 KB) added no measurable LCP
+     gain on top (3,111 ms), so neither shipped. -->
 
 <!-- Critical font styling to prevent FOUT on h1 elements cSpell:ignore Segoe -->
 <style>
