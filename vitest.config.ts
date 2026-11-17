@@ -31,8 +31,14 @@ export default defineConfig(
           'src/env.d.ts',
           'e2e/**',
         ],
-        // Include source files for coverage
-        include: ['src/lib/**/*.{js,ts}', 'src/pages/api/**/*.ts'],
+        // Include source files for coverage. src/scripts holds client code that
+        // used to live inline in .astro files (plans 181, 225); it counts so that
+        // extracting more of it keeps the gate honest.
+        include: [
+          'src/lib/**/*.{js,ts}',
+          'src/pages/api/**/*.ts',
+          'src/scripts/**/*.ts',
+        ],
         // Enforce coverage thresholds - FAIL build if not met.
         // NOTE: global keys must be flat (statements/branches/functions/lines)
         // directly under `thresholds` — a nested `global: {...}` object is not
