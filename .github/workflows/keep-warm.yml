@@ -6,8 +6,8 @@
 name: Keep Functions Warm
 on:
   schedule:
-    - cron: '*/2 * * * *'  # Every 2 minutes
-  workflow_dispatch:  # Manual trigger for testing
+    - cron: '*/2 * * * *' # Every 2 minutes
+  workflow_dispatch: # Manual trigger for testing
 
 jobs:
   warmup:
@@ -16,13 +16,13 @@ jobs:
       - name: Ping production endpoints
         run: |
           echo "Warming up functions..."
-          
+
           # Warmup endpoint
           curl -s -H "X-Warmup-Secret: ${{ secrets.WARMUP_SECRET }}" https://elcaminoskateshop.netlify.app/api/warmup || true
-          
+
           # Key category pages that trigger SSR functions
           curl -s https://elcaminoskateshop.netlify.app/ || true
           curl -s https://elcaminoskateshop.netlify.app/category/skateboards || true
           curl -s https://elcaminoskateshop.netlify.app/category/apparel || true
-          
+
           echo "✅ Warmup complete"

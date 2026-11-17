@@ -99,7 +99,7 @@ function emailHeader(): string {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td style="vertical-align:middle;">
-            <img src="https://www.elcaminoskateshop.com/Icon.png"
+            <img src="${siteConfig.url}/Icon.png"
                  width="54" height="48"
                  alt="El Camino Skate Shop"
                  style="display:block;border:0;outline:none;text-decoration:none;">

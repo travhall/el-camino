@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from '@playwright/test';
 
 /**
  * Mini Cart Accessibility E2E Tests
@@ -28,99 +28,95 @@ import { test, expect } from "@playwright/test";
  * page). Assertions that depend on either are skipped for webkit below.
  */
 
-test.describe("Mini Cart Accessibility", () => {
+test.describe('Mini Cart Accessibility', () => {
   test.beforeEach(async ({ page, context, isMobile }) => {
     // Mobile uses CartButtonMobile, a plain link to /cart with no mini-cart
     // panel — this whole dialog doesn't exist on mobile viewports.
-    test.skip(isMobile, "Mobile cart button links to /cart directly");
+    test.skip(isMobile, 'Mobile cart button links to /cart directly');
 
     // Clear cart state before each test
     await context.clearCookies();
-    await page.goto("/");
+    await page.goto('/');
     await page.evaluate(() => {
       localStorage.clear();
       sessionStorage.clear();
     });
   });
 
-  test("opens on click and moves focus to the close button", async ({
+  test('opens on click and moves focus to the close button', async ({
     page,
   }) => {
-    await page.getByRole("button", { name: "Shopping Cart" }).click();
+    await page.getByRole('button', { name: 'Shopping Cart' }).click();
 
-    await expect(page.locator("#mini-cart-overlay")).not.toHaveClass(
+    await expect(page.locator('#mini-cart-overlay')).not.toHaveClass(
       /\bhidden\b/
     );
-    await expect(page.locator("#close-mini-cart")).toBeFocused();
+    await expect(page.locator('#close-mini-cart')).toBeFocused();
   });
 
-  test("traps Tab focus inside the panel while open", async ({
+  test('traps Tab focus inside the panel while open', async ({
     page,
     browserName,
   }) => {
     test.skip(
-      browserName === "webkit",
+      browserName === 'webkit',
       "Safari's default Tab order excludes buttons entirely"
     );
 
-    await page.getByRole("button", { name: "Shopping Cart" }).click();
-    await expect(page.locator("#close-mini-cart")).toBeFocused();
+    await page.getByRole('button', { name: 'Shopping Cart' }).click();
+    await expect(page.locator('#close-mini-cart')).toBeFocused();
 
     // Empty-cart state has exactly two focusable elements: the close button
     // and the "Continue Shopping" link. Forward Tab should cycle between
     // them rather than escaping to page content behind the panel.
-    await page.keyboard.press("Tab");
-    await expect(page.locator("#continue-shopping")).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.locator('#continue-shopping')).toBeFocused();
 
-    await page.keyboard.press("Tab");
-    await expect(page.locator("#close-mini-cart")).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.locator('#close-mini-cart')).toBeFocused();
 
     // Shift+Tab from the first element should wrap to the last.
-    await page.keyboard.press("Shift+Tab");
-    await expect(page.locator("#continue-shopping")).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.locator('#continue-shopping')).toBeFocused();
   });
 
-  test("closes on Escape and restores focus to the cart trigger button", async ({
+  test('closes on Escape and restores focus to the cart trigger button', async ({
     page,
     browserName,
   }) => {
     test.skip(
-      browserName === "webkit",
-      "Safari does not focus a button on mouse click, so there is nothing to restore"
+      browserName === 'webkit',
+      'Safari does not focus a button on mouse click, so there is nothing to restore'
     );
 
-    const cartTrigger = page.getByRole("button", { name: "Shopping Cart" });
+    const cartTrigger = page.getByRole('button', { name: 'Shopping Cart' });
 
     await cartTrigger.click();
-    await expect(page.locator("#close-mini-cart")).toBeFocused();
+    await expect(page.locator('#close-mini-cart')).toBeFocused();
 
-    await page.keyboard.press("Escape");
+    await page.keyboard.press('Escape');
 
     // Restoring focus is deferred until after the ~300ms close transition —
     // toBeFocused() auto-retries, so no manual wait is needed here.
     await expect(cartTrigger).toBeFocused();
-    await expect(page.locator("#mini-cart-overlay")).toHaveClass(
-      /\bhidden\b/
-    );
+    await expect(page.locator('#mini-cart-overlay')).toHaveClass(/\bhidden\b/);
   });
 
-  test("closing via the close button also restores focus to the trigger", async ({
+  test('closing via the close button also restores focus to the trigger', async ({
     page,
     browserName,
   }) => {
     test.skip(
-      browserName === "webkit",
-      "Safari does not focus a button on mouse click, so there is nothing to restore"
+      browserName === 'webkit',
+      'Safari does not focus a button on mouse click, so there is nothing to restore'
     );
 
-    const cartTrigger = page.getByRole("button", { name: "Shopping Cart" });
+    const cartTrigger = page.getByRole('button', { name: 'Shopping Cart' });
 
     await cartTrigger.click();
-    await page.locator("#close-mini-cart").click();
+    await page.locator('#close-mini-cart').click();
 
     await expect(cartTrigger).toBeFocused();
-    await expect(page.locator("#mini-cart-overlay")).toHaveClass(
-      /\bhidden\b/
-    );
+    await expect(page.locator('#mini-cart-overlay')).toHaveClass(/\bhidden\b/);
   });
 });
