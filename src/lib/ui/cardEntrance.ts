@@ -3,7 +3,10 @@
 // ready, so the CSS entrance animation carries content instead of firing at
 // parse time against an empty box. See plans/archive/148.
 
-const WRAPPER_SELECTOR = '.article-grid .article-card-wrapper';
+// `.article-grid` is the home masonry. `.news-entrance` marks the first cards of
+// the news grid (plan 230), which is not inside `.article-grid`.
+const WRAPPER_SELECTOR =
+  '.article-grid .article-card-wrapper, .article-card-wrapper.news-entrance';
 
 function arm(wrapper: HTMLElement): void {
   wrapper.classList.add('entrance-armed');

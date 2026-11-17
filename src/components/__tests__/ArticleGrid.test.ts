@@ -74,7 +74,7 @@ describe('ArticleGrid', () => {
   // cards that start hidden make LCP wait for the script that reveals them
   // (2.0 s of /news's 4.1 s on throttled mobile). Cards in the first viewport
   // must be visible in the server HTML; the rest keep the scroll-in reveal.
-  describe('filterable news grid: first cards are visible without JS (plan 230)', () => {
+  describe('filterable news grid: first cards are not hidden behind JS (plan 230)', () => {
     const posts: WordPressPost[] = Array.from({ length: 8 }, (_, i) => ({
       ...post,
       id: i + 1,
@@ -85,7 +85,7 @@ describe('ArticleGrid', () => {
     const wrapperClasses = (html: string): string[] =>
       [
         ...html.matchAll(
-          /<div class="([^"]*\barticle-card-wrapper\b[^"]*)" role="article"/g
+          /<div class="([^"]*\barticle-card-wrapper\b[^"]*)"[^>]*\brole="article"/g
         ),
       ].map((m) => m[1]);
 
@@ -95,7 +95,9 @@ describe('ArticleGrid', () => {
 
       expect(classes).toHaveLength(8);
       classes.forEach((c, i) => {
-        expect(c.split(/\s+/).includes('opacity-0'), `card ${i}`).toBe(i >= 4);
+        const tokens = c.split(/\s+/);
+        expect(tokens.includes('opacity-0'), `card ${i}`).toBe(i >= 4);
+        expect(tokens.includes('news-entrance'), `card ${i}`).toBe(i < 4);
       });
     });
 
@@ -105,7 +107,9 @@ describe('ArticleGrid', () => {
 
       expect(classes).toHaveLength(8);
       classes.forEach((c, i) => {
-        expect(c.split(/\s+/).includes('opacity-0'), `card ${i}`).toBe(i >= 2);
+        const tokens = c.split(/\s+/);
+        expect(tokens.includes('opacity-0'), `card ${i}`).toBe(i >= 2);
+        expect(tokens.includes('news-entrance'), `card ${i}`).toBe(i < 2);
       });
     });
 
@@ -127,6 +131,57 @@ describe('ArticleGrid', () => {
       expect(noscript).toContain('.article-card-wrapper.opacity-0');
       expect(noscript).toMatch(/opacity:\s*1/);
       expect(noscript).toMatch(/transform:\s*none/);
+    });
+
+    // The first cards use the home page's entrance (a CSS animation that starts
+    // at opacity 0.001, so Chrome counts the card as an LCP candidate as soon
+    // as its image paints) instead of a true opacity 0.
+    describe('news-entrance reuses the home page entrance (plan 230)', () => {
+      const source = readFileSync(
+        resolve(__dirname, '../ArticleGrid.astro'),
+        'utf8'
+      );
+
+      it('animates with cardEntrance, paused until armed', () => {
+        expect(source).toMatch(
+          /\.article-card-wrapper\.news-entrance\s*\{[^}]*animation:\s*cardEntrance[^}]*animation-play-state:\s*paused/s
+        );
+        expect(source).toMatch(
+          /\.article-card-wrapper\.news-entrance\.entrance-armed\s*\{[^}]*animation-play-state:\s*running/s
+        );
+      });
+
+      it('leaves no forwards fill, so the filter exit can still fade the card', () => {
+        const rule =
+          /\.article-card-wrapper\.news-entrance\s*\{([^}]*)\}/s.exec(
+            source
+          )?.[1] ?? '';
+        expect(rule).toMatch(/animation:[^;]*\bbackwards\b/s);
+        expect(rule).not.toMatch(/animation:[^;]*\b(both|forwards)\b/s);
+      });
+
+      it('is shown without animation when scripting is off or motion is reduced', () => {
+        for (const query of [
+          '@media (scripting: none)',
+          '@media (prefers-reduced-motion: reduce)',
+        ]) {
+          const block = source.slice(source.indexOf(query));
+          expect(block.slice(0, 500), query).toContain('news-entrance');
+        }
+      });
+
+      it('is covered by the inline 2.5 s safety net that arms every card', () => {
+        const net =
+          /<script is:inline[\s\S]*?<\/script>/.exec(source)?.[0] ?? '';
+        expect(net).toContain('news-entrance');
+        expect(net).toContain('2500');
+      });
+
+      it('gives each first card its stagger order', async () => {
+        const html = await render({ posts, filterable: true, view: 'grid' });
+        expect(html).toMatch(/news-entrance[^>]*style="--animation-order: ?0/);
+        expect(html).toMatch(/news-entrance[^>]*style="--animation-order: ?3/);
+      });
     });
   });
 });
