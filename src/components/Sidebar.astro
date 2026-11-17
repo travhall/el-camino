@@ -79,7 +79,10 @@ const prodCats = categoriesWithImages.map((item) => ({
               />
             </div>
 
-            {/* Netlify Image CDN handles AVIF/WebP negotiation via Accept header */}
+            {/* Netlify Image CDN handles AVIF/WebP negotiation via Accept header.
+                Always lazy / auto priority (plan 231): the sidebar sits below the
+                article grid, off screen, and eager + high-priority images here
+                competed with the LCP hero for the link. */}
             <img
               id={imageId}
               src={e.src}
@@ -87,9 +90,9 @@ const prodCats = categoriesWithImages.map((item) => ({
               width="600"
               height="338"
               class="category-img object-cover w-full h-full will-change-transform opacity-0 translate-y-1 transition-all duration-300 ease-in-out [&.loaded]:opacity-30 [&.loaded]:sepia-50 [&.loaded]:translate-y-0 group-hover:scale-105 group-hover:[&.loaded]:opacity-80 group-hover:[&.loaded]:sepia-10"
-              loading={index < 2 ? 'eager' : 'lazy'}
-              decoding={index < 2 ? 'sync' : 'async'}
-              fetchpriority={index < 2 ? 'high' : 'auto'}
+              loading="lazy"
+              decoding="async"
+              fetchpriority="auto"
               data-placeholder-id={placeholderId}
               data-shimmer-placeholder={placeholderId}
               data-shimmer-load-add="loaded"
