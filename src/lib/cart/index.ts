@@ -1,6 +1,6 @@
 // src/lib/cart/index.ts - COMPLETE FIXED VERSION
 import type { CartItem, CartEvent, CartState } from './types';
-import type { ProductAvailabilityInfo } from '../square/types';
+import type { ProductAvailabilityInfo, SaleInfo } from '../square/types';
 import { ProductAvailabilityState, getAvailabilityInfo } from '../square/types';
 import { logger } from '@/lib/logger';
 
@@ -34,6 +34,27 @@ const DOM_READY_DELAY = 50;
 //   environment: Environment.Sandbox,
 //   squareVersion: "2024-02-28",
 // });
+
+/**
+ * What `/api/sale-info` said about one variation: a SaleInfo, `null` for "not on
+ * sale", or `undefined` when there is no answer (request failed, or the response
+ * did not mention the variation). Only a real answer may change what the cart
+ * holds; no answer keeps what is there.
+ */
+type FetchedSaleInfo = SaleInfo | null | undefined;
+
+function resolveSaleInfo(
+  fetched: FetchedSaleInfo,
+  held: SaleInfo | undefined
+): SaleInfo | undefined {
+  return fetched === undefined ? held : (fetched ?? undefined);
+}
+
+function applyFetchedSaleInfo(item: CartItem, fetched: FetchedSaleInfo): void {
+  const next = resolveSaleInfo(fetched, item.saleInfo);
+  if (next) item.saleInfo = next;
+  else delete item.saleInfo;
+}
 
 class CartManager {
   private static instance: CartManager;
@@ -196,9 +217,16 @@ class CartManager {
         // Update cart items with sale info
         let updated = false;
         for (const [itemKey, item] of this.items.entries()) {
-          const saleInfo = data.saleInfo[item.variationId];
+          // Only an entry for this variation is an answer. `null` means the
+          // server says it is not on sale, so a saleInfo held here is stale.
+          if (!(item.variationId in data.saleInfo)) continue;
+          const saleInfo: SaleInfo | null = data.saleInfo[item.variationId];
           if (saleInfo) {
             item.saleInfo = saleInfo;
+            this.items.set(itemKey, item);
+            updated = true;
+          } else if (item.saleInfo) {
+            delete item.saleInfo;
             this.items.set(itemKey, item);
             updated = true;
           }
@@ -441,15 +469,21 @@ class CartManager {
           body: JSON.stringify({ variationIds: [item.variationId] }),
         })
           .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-          .then((data) =>
-            data.success ? (data.saleInfo?.[item.variationId] ?? null) : null
+          // undefined = the server gave no answer for this variation;
+          // null = it answered "not on sale".
+          .then((data): FetchedSaleInfo =>
+            data.success && data.saleInfo && item.variationId in data.saleInfo
+              ? data.saleInfo[item.variationId]
+              : undefined
           ),
       ]);
 
       const availableQuantity =
         inventoryResult.status === 'fulfilled' ? inventoryResult.value : 0;
-      const fetchedSaleInfo =
-        saleInfoResult.status === 'fulfilled' ? saleInfoResult.value : null;
+      const fetchedSaleInfo: FetchedSaleInfo =
+        saleInfoResult.status === 'fulfilled'
+          ? saleInfoResult.value
+          : undefined;
 
       if (inventoryResult.status === 'rejected') {
         console.warn(
@@ -492,13 +526,13 @@ class CartManager {
 
         if (existingItem) {
           existingItem.quantity = availableQuantity;
-          if (fetchedSaleInfo) existingItem.saleInfo = fetchedSaleInfo;
+          applyFetchedSaleInfo(existingItem, fetchedSaleInfo);
           this.items.set(itemKey, existingItem);
         } else {
           const newItem = {
             ...item,
             quantity: possibleToAdd,
-            saleInfo: fetchedSaleInfo ?? item.saleInfo,
+            saleInfo: resolveSaleInfo(fetchedSaleInfo, item.saleInfo),
           };
           this.items.set(itemKey, newItem);
         }
@@ -516,14 +550,14 @@ class CartManager {
       // Normal flow - add or update with requested quantity
       if (existingItem) {
         existingItem.quantity = newTotalQty;
-        if (fetchedSaleInfo) existingItem.saleInfo = fetchedSaleInfo;
+        applyFetchedSaleInfo(existingItem, fetchedSaleInfo);
         this.items.set(itemKey, existingItem);
       } else {
         const newItem = {
           ...item,
           catalogObjectId: item.catalogObjectId || item.id,
           quantity: requestedQuantity,
-          saleInfo: fetchedSaleInfo ?? item.saleInfo,
+          saleInfo: resolveSaleInfo(fetchedSaleInfo, item.saleInfo),
         };
         this.items.set(itemKey, newItem);
       }

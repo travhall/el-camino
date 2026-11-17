@@ -1862,4 +1862,117 @@ describe('CartManager Real Implementation Tests', () => {
       expect(item?.catalogObjectId).toBe('prod-nocatalog');
     });
   });
+  // The server answers `null` for a variation that is not on sale. That is an
+  // answer, not a failure: a saleInfo the cart still holds for it is stale and
+  // must go, or the cart total shows a price the shopper will not be charged.
+  describe('stale saleInfo is cleared when the server says "not on sale"', () => {
+    const STALE = { salePrice: 2000, originalPrice: 3000, discountPercent: 33 };
+    const staleItem = (): CartItem => ({
+      id: 'prod-stale',
+      variationId: 'var-stale',
+      catalogObjectId: 'cat-stale',
+      title: 'Stale Sale Item',
+      price: 3000,
+      quantity: 1,
+      saleInfo: { ...STALE },
+    });
+
+    const mockSaleInfo = (respond: () => Promise<unknown> | unknown): void => {
+      (global.fetch as Mock).mockImplementation((url: string) => {
+        if (url.includes('/api/check-inventory')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true, quantity: 10 }),
+          });
+        }
+        if (url.includes('/api/sale-info')) return respond();
+        return Promise.reject(new Error(`Unexpected: ${url}`));
+      });
+    };
+
+    const answers = (saleInfo: Record<string, unknown>) => () =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, saleInfo }),
+      });
+
+    it('addItem drops a stale item.saleInfo when the server answers null', async () => {
+      mockSaleInfo(answers({ 'var-stale': null }));
+
+      const result = await cart.addItem(staleItem());
+
+      expect(result.success).toBe(true);
+      const added = cart.getItems().find((i) => i.variationId === 'var-stale');
+      expect(added?.saleInfo).toBeUndefined();
+      expect(cart.getTotal()).toBe(3000);
+    });
+
+    it('addItem clears a stale saleInfo already on the cart line', async () => {
+      mockSaleInfo(answers({ 'var-stale': STALE }));
+      await cart.addItem(staleItem());
+      expect(cart.getTotal()).toBe(2000);
+
+      // The sale ended between the two adds.
+      mockSaleInfo(answers({ 'var-stale': null }));
+      await cart.addItem({ ...staleItem(), saleInfo: undefined });
+
+      const line = cart.getItems().find((i) => i.variationId === 'var-stale');
+      expect(line?.quantity).toBe(2);
+      expect(line?.saleInfo).toBeUndefined();
+      expect(cart.getTotal()).toBe(6000);
+    });
+
+    it('addItem keeps the sale price the server confirms', async () => {
+      mockSaleInfo(answers({ 'var-stale': STALE }));
+
+      await cart.addItem({ ...staleItem(), saleInfo: undefined });
+
+      expect(cart.getTotal()).toBe(2000);
+    });
+
+    it('loading a saved cart clears stale saleInfo and saves the correction', async () => {
+      mockLocalStorage['cart'] = JSON.stringify([staleItem()]);
+      mockSaleInfo(answers({ 'var-stale': null }));
+      const updates: unknown[] = [];
+      window.addEventListener('cartUpdated', (e) => updates.push(e));
+
+      cart.forceRefresh();
+      await new Promise((r) => setTimeout(r, 200));
+
+      const line = cart.getItems().find((i) => i.variationId === 'var-stale');
+      expect(line?.saleInfo).toBeUndefined();
+      expect(cart.getTotal()).toBe(3000);
+      const saved = JSON.parse(mockLocalStorage['cart']);
+      expect(saved[0].saleInfo).toBeUndefined();
+      expect(updates.length).toBeGreaterThan(0);
+    });
+
+    it('does not clear saleInfo when the server did not answer for the item', async () => {
+      // Non-ok, a rejected fetch and a map without the key are all "unknown".
+      for (const respond of [
+        () => Promise.resolve({ ok: false, status: 503 }),
+        () => Promise.reject(new Error('offline')),
+        answers({ 'some-other-var': null }),
+      ]) {
+        cart.clear();
+        mockSaleInfo(respond);
+
+        await cart.addItem(staleItem());
+
+        const line = cart.getItems().find((i) => i.variationId === 'var-stale');
+        expect(line?.saleInfo?.salePrice).toBe(2000);
+      }
+    });
+
+    it('loading a saved cart leaves saleInfo alone when the server did not answer', async () => {
+      mockLocalStorage['cart'] = JSON.stringify([staleItem()]);
+      mockSaleInfo(() => Promise.resolve({ ok: false, status: 500 }));
+
+      cart.forceRefresh();
+      await new Promise((r) => setTimeout(r, 200));
+
+      const line = cart.getItems().find((i) => i.variationId === 'var-stale');
+      expect(line?.saleInfo?.salePrice).toBe(2000);
+    });
+  });
 });
