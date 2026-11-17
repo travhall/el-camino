@@ -156,4 +156,61 @@ describe('processRawWordPressHTML', () => {
     const result = processRawWordPressHTML(input);
     expect(result).not.toContain('<script>');
   });
+
+  // Plan 170: processRawWordPressHTML is the single gate for CMS body HTML.
+  describe('sanitization (single gate for CMS body HTML)', () => {
+    it('strips a <script> block', () => {
+      const result = processRawWordPressHTML(
+        '<p>hi</p><script>alert(1)</script><p>bye</p>'
+      );
+      expect(result).not.toMatch(/<script/i);
+      expect(result).toContain('<p>hi</p>');
+      expect(result).toContain('<p>bye</p>');
+    });
+
+    it('strips an inline onerror handler from an <img>', () => {
+      const result = processRawWordPressHTML(
+        '<img src="https://example.com/a.jpg" onerror="alert(1)">'
+      );
+      expect(result).not.toMatch(/onerror/i);
+      expect(result).toContain('src=');
+    });
+
+    it('neutralizes a javascript: href', () => {
+      const result = processRawWordPressHTML(
+        '<a href="javascript:alert(1)">click</a>'
+      );
+      expect(result).not.toMatch(/javascript:/i);
+      expect(result).toContain('href="#"');
+    });
+
+    it('preserves a non-YouTube iframe embed', () => {
+      const result = processRawWordPressHTML(
+        '<iframe src="https://calendly.com/el-camino/demo" title="Book"></iframe>'
+      );
+      expect(result).toContain('<iframe');
+      expect(result).toContain('https://calendly.com/el-camino/demo');
+    });
+
+    it('still turns a YouTube iframe into the facade', () => {
+      const result = processRawWordPressHTML(
+        '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>'
+      );
+      expect(result).toContain('class="youtube-facade"');
+    });
+
+    it('preserves ordinary formatting', () => {
+      const input =
+        '<p><strong>bold</strong> and <em>italic</em></p><ul><li>one</li></ul><blockquote>quote</blockquote>';
+      expect(processRawWordPressHTML(input)).toBe(input);
+    });
+
+    it('is idempotent with stripUnsafeHtml (double sanitizing is harmless)', () => {
+      const input =
+        '<p onclick="x()">a</p><img src="https://example.com/a.jpg" onerror="y()"><script>z()</script>';
+      const once = processRawWordPressHTML(input);
+      expect(processRawWordPressHTML(stripUnsafeHtml(input))).toBe(once);
+      expect(stripUnsafeHtml(once)).toBe(once);
+    });
+  });
 });

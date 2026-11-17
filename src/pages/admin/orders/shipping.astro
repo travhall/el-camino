@@ -55,7 +55,7 @@ try {
   for (const order of searchResult.orders ?? []) {
     if (!order.tenders?.length) continue;
 
-    const f = order.fulfillments?.find((f: any) => f.type === "SHIPMENT");
+    const f = order.fulfillments?.find((f) => f.type === "SHIPMENT");
     if (!f) continue;
     const r = f.shipmentDetails?.recipient;
     const a = r?.address;
@@ -63,8 +63,8 @@ try {
       a ? `${a.locality}, ${a.administrativeDistrictLevel1} ${a.postalCode}` : null,
     ].filter(Boolean).join(", ");
     const items = (order.lineItems ?? [])
-      .filter((li: any) => li.catalogObjectId)
-      .map((li: any) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
+      .filter((li) => li.catalogObjectId)
+      .map((li) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
     const rawNote = f.shipmentDetails?.shippingNote ?? "";
     const deliveryInstructionsMatch = rawNote.match(/^Delivery Instructions:\s*(.+)$/s);
     const note = deliveryInstructionsMatch?.[1]?.trim() ?? "";

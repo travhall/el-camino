@@ -9,6 +9,7 @@
 
 import { SquareClient, SquareEnvironment } from 'square-legacy';
 import type { CatalogObject } from 'square-legacy';
+import { SITE_ORIGIN } from './siteOrigin.ts';
 
 interface WPTag {
   slug?: string;
@@ -19,7 +20,7 @@ interface WPPost {
   tags?: Record<string, WPTag>;
 }
 
-const SITE = 'https://elcaminoskateshop.com'; // must match astro.config.mjs `site` exactly
+const SITE = SITE_ORIGIN; // same constant astro.config.mjs passes as `site`
 
 const WP_BASE =
   'https://public-api.wordpress.com/rest/v1.1/sites/elcaminoskateshop.wordpress.com';

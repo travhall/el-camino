@@ -24,6 +24,7 @@ const { content, enhanceBlocks = true, groupImages = true } = Astro.props;
 function parseWordPressBlocks(htmlContent: string): Array<{
   type: string;
   html: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- per-block-type payload spread into different WP* component props; needs a discriminated union, not a lint fix
   data: any;
   originalIndex: number;
 }> {
@@ -113,6 +114,7 @@ function parseWordPressBlocks(htmlContent: string): Array<{
     match: string;
     start: number;
     end: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- per-block-type payload spread into different WP* component props; needs a discriminated union, not a lint fix
     data: any;
   }> = [];
 
@@ -203,6 +205,7 @@ function parseWordPressBlocks(htmlContent: string): Array<{
   const processedBlocks: Array<{
     type: string;
     html: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- per-block-type payload spread into different WP* component props; needs a discriminated union, not a lint fix
     data: any;
     originalIndex: number;
   }> = [];
@@ -664,7 +667,7 @@ function parseProductShowcaseFallback(html: string) {
     /skus:\s*([^,\n]+)/i,
   ];
 
-  let productSkus: any = [];
+  let productSkus: string[] = [];
   for (const pattern of skuPatterns) {
     const match = html.match(pattern);
     if (match) {
