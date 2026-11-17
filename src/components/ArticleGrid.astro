@@ -42,6 +42,18 @@ const getCardVariant = () => {
 // Home page: first image only (LCP critical)
 // News grid: first 2 images (reduce eager loading for mobile)
 // News list: first image only (large cards)
+// Plan 230: cards in the first viewport must not start at a true `opacity: 0`.
+// Chrome ignores such an element as an LCP candidate, so LCP waited for the
+// script that reveals the cards (2.0 s of /news's 4.1 s on throttled mobile).
+// They use the home page's mechanism instead (`news-entrance`): a CSS animation
+// whose `from` keyframe is opacity 0.001 (fade only, no scale), armed by the
+// inline script below once the card's image has loaded, with the same 2.5 s
+// safety net. Grid: the first two rows of the 2-column mobile layout (and the
+// first row of 3-6 columns). List: one card is above the fold on mobile, two
+// cover tablets.
+// Later cards keep the scroll-in reveal below.
+const initiallyVisibleCount = view === 'list' ? 2 : 4;
+
 const shouldPrioritize = (index: number) => {
   if (!filterable) return index < 2; // Home page: first two (second card is actual LCP on mobile)
   return view === 'grid' ? index < 2 : index === 0; // News - more conservative
@@ -127,7 +139,12 @@ const nonce = Astro.locals.nonce;
           if (filterable) {
             return (
               <div
-                class="article-card-wrapper opacity-0 w-full max-w-full"
+                class={`article-card-wrapper ${index < initiallyVisibleCount ? 'news-entrance' : 'opacity-0'} w-full max-w-full`}
+                style={
+                  index < initiallyVisibleCount
+                    ? `--animation-order: ${index};`
+                    : undefined
+                }
                 role="article"
                 data-initial-index={index}
                 data-variant={getCardVariant()}
@@ -187,9 +204,30 @@ const nonce = Astro.locals.nonce;
   // every masonry card after 2500ms so the homepage can never stay blank.
   setTimeout(() => {
     document
-      .querySelectorAll('.article-grid .article-card-wrapper')
+      .querySelectorAll(
+        '.article-grid .article-card-wrapper, .article-card-wrapper.news-entrance'
+      )
       .forEach((wrapper) => wrapper.classList.add('entrance-armed'));
   }, 2500);
+
+  // News grid, first viewport (plan 230): arm each card the moment its own image
+  // has loaded. This must be inline. armCardsOnImageReady (the hoisted module
+  // script) runs only after the page's ~39 script requests; measured on
+  // throttled mobile the cards then fell back to the 2.5 s timer above and
+  // appeared as late as before the fix (Speed Index 3.5 s). Inline, the card
+  // fades in as soon as its image paints.
+  document
+    .querySelectorAll('.article-card-wrapper.news-entrance')
+    .forEach((wrapper) => {
+      const arm = () => wrapper.classList.add('entrance-armed');
+      const img = wrapper.querySelector('img');
+      if (!img || img.complete) {
+        arm();
+        return;
+      }
+      img.addEventListener('load', arm, { once: true });
+      img.addEventListener('error', arm, { once: true });
+    });
 </script>
 
 <style is:global>
@@ -226,6 +264,20 @@ const nonce = Astro.locals.nonce;
     to {
       opacity: 1;
       transform: scale(1) translate3d(0, 0, 0);
+    }
+  }
+
+  /* News grid, first viewport (plan 230): opacity only. The masonry keyframes
+     above also scale to 0.95, which shrinks the card's painted area; measured on
+     a deploy preview, a later full-size card then replaced it as the LCP element
+     (3.6 s, against 2.25 s). Opacity from 0.001 still makes the card an LCP
+     candidate from first paint and leaves its area intact. */
+  @keyframes newsCardEntrance {
+    from {
+      opacity: 0.001;
+    }
+    to {
+      opacity: 1;
     }
   }
 
@@ -301,11 +353,33 @@ const nonce = Astro.locals.nonce;
     animation-play-state: running;
   }
 
+  /* News grid, first viewport only (plan 230): the masonry's mechanism (paused at
+     opacity 0.001, armed when the card's image is ready) with an opacity-only
+     fade, so the card is an LCP candidate from first paint. The remaining news cards use the
+     .opacity-0 scroll-in reveal above. */
+  .article-card-wrapper.news-entrance {
+    /* `backwards`, not `both`: holds the 0.001 `from` keyframe until the card is
+       armed, but leaves no fill once it ends. A forwards fill would pin
+       opacity 1 and override the `.opacity-0` class the filter exit adds to
+       fade every card out (filterCoordinator). */
+    animation: newsCardEntrance var(--card-transition-duration, 0.5s) ease-out
+      backwards;
+    animation-delay: calc(
+      var(--animation-order, 0) * var(--card-stagger-delay)
+    );
+    animation-play-state: paused;
+  }
+
+  .article-card-wrapper.news-entrance.entrance-armed {
+    animation-play-state: running;
+  }
+
   /* If JS never arms the cards (script error, JS disabled), reveal them.
      Without this, a paused `both`-filled animation would hold opacity 0.001
      forever and the page would look empty. */
   @media (scripting: none) {
-    .article-grid .article-card-wrapper {
+    .article-grid .article-card-wrapper,
+    .article-card-wrapper.news-entrance {
       animation: none;
       opacity: 1;
       transform: none;
@@ -314,7 +388,8 @@ const nonce = Astro.locals.nonce;
 
   @media (prefers-reduced-motion: reduce) {
     .article-grid .article-card-wrapper,
-    .article-grid .article-card-wrapper.card-entrance-ready {
+    .article-grid .article-card-wrapper.card-entrance-ready,
+    .article-card-wrapper.news-entrance {
       animation: none;
       opacity: 1;
       transform: none;

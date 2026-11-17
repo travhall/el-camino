@@ -107,4 +107,23 @@ describe('armCardsOnImageReady', () => {
       wrapper.className.split(' ').filter((c) => c === 'entrance-armed').length
     ).toBe(1);
   });
+
+  // Plan 230: the first cards of the news grid (not inside .article-grid) reuse
+  // the same arming, marked with .news-entrance. Cards that start hidden
+  // (.opacity-0) are revealed by the news page's own observer, not armed here.
+  it('arms .news-entrance cards that are outside .article-grid', () => {
+    const grid = document.createElement('div');
+    grid.id = 'filterable-article-grid';
+    const first = document.createElement('div');
+    first.className = 'article-card-wrapper news-entrance';
+    const hidden = document.createElement('div');
+    hidden.className = 'article-card-wrapper opacity-0';
+    grid.append(first, hidden);
+    document.body.appendChild(grid);
+
+    armCardsOnImageReady(document, 1200);
+
+    expect(first.classList.contains('entrance-armed')).toBe(true);
+    expect(hidden.classList.contains('entrance-armed')).toBe(false);
+  });
 });
