@@ -81,10 +81,3 @@ export async function batchGetImageUrls(
 
   return resultMap;
 }
-
-/**
- * Clear image cache
- */
-export function clearImageCache(): void {
-  imageCache.clear();
-}

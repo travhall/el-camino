@@ -1,5 +1,6 @@
 // src/lib/site-config.ts
 import type { SocialLink } from '@/lib/socialLinks';
+import { SITE_ORIGIN } from './siteOrigin';
 
 export interface BusinessHours {
   day: string;
@@ -41,7 +42,7 @@ export const siteConfig: SiteConfig = {
   name: 'El Camino Skate Shop',
   description:
     'El Camino Skate Shop is a skater owned and operated skateboard shop, located in Eau Claire, WI',
-  url: 'https://elcaminoskateshop.com',
+  url: SITE_ORIGIN,
   logo: '/logo.png',
   contact: {
     address: {

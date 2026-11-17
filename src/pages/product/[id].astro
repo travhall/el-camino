@@ -1,4 +1,5 @@
 ---
+import { siteConfig } from '@/lib/site-config';
 import Layout from '@/layouts/Layout.astro';
 import { productCacheTags } from '@/lib/cache/cdnPurge';
 import Button from '@/components/Button.astro';
@@ -289,7 +290,9 @@ const formattedOriginalPrice = saleInfo
 const hasMultipleVariations = variations.length > 1;
 
 // Generate structured data and social meta tags
-const baseUrl = Astro.url.origin;
+// Configured origin, not the request host: og:url and structured-data URLs
+// must agree with the canonical link (see src/lib/canonical.ts).
+const baseUrl = siteConfig.url;
 
 // Generate breadcrumbs (categories were fetched in parallel, above)
 let breadcrumbPath;

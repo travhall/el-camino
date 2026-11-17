@@ -251,55 +251,6 @@ export function parseFiltersFromURL(
 }
 
 /**
- * Convert filters to URL search params
- */
-export function filtersToURLParams(filters: ProductFilters): URLSearchParams {
-  const params = new URLSearchParams();
-
-  // Use append() to create multiple parameters: ?brands=A&brands=B
-  if (filters.brands.length > 0) {
-    filters.brands.forEach((brand) => {
-      params.append('brands', brand);
-    });
-  }
-
-  if (filters.categories.length > 0) {
-    filters.categories.forEach((id) => params.append('categories', id));
-  }
-
-  if (filters.availability === true) {
-    params.set('availability', 'true');
-  }
-
-  if (filters.onSale === true) {
-    params.set('onSale', 'true');
-  }
-
-  return params;
-}
-
-export function updateURLWithFilters(filters: ProductFilters): void {
-  const params = filtersToURLParams(filters);
-  const newURL = `${window.location.pathname}${
-    params.toString() ? '?' + params.toString() : ''
-  }`;
-  window.history.pushState({}, '', newURL);
-}
-
-/**
- * Get active filters count for UI badges
- * ENHANCED: Now includes categories and availability filter
- */
-export function getActiveFiltersCount(filters: ProductFilters): number {
-  return (
-    filters.brands.length +
-    filters.categories.length +
-    (filters.availability ? 1 : 0) +
-    (filters.onSale ? 1 : 0)
-  );
-}
-
-/**
  * Check if any filters are active
  * ENHANCED: Now includes categories and availability filter
  */

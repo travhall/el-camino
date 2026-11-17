@@ -9,6 +9,7 @@ import {
   resolveVariationForSelection,
 } from '@/lib/square/variationParser';
 import { assignProductImagesToVariations } from '@/lib/square/variationImages';
+import { createVariantSlug } from '@/lib/square/slugUtils';
 import { initGallery } from './gallery';
 import { processClientError, logError } from '@/lib/square/errorUtils';
 import type { Product, ProductVariation } from '@/lib/square/types';
@@ -717,12 +718,7 @@ export class QuickViewController {
         const baseUrl = product.url.split('?')[0];
         const variationName = this.currentVariation?.name;
         const variantSlug = variationName
-          ? variationName
-              .toLowerCase()
-              .replace(/[^a-z0-9\s]/g, '')
-              .replace(/\s+/g, '-')
-              .replace(/-+/g, '-')
-              .replace(/^-|-$/g, '')
+          ? createVariantSlug(variationName)
           : null;
         const url = variantSlug ? `${baseUrl}?variant=${variantSlug}` : baseUrl;
 

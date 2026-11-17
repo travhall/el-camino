@@ -185,6 +185,68 @@ describe('PDPController Real Implementation Tests', () => {
     });
   });
 
+  describe('sale info on the add-to-cart data (plan 223)', () => {
+    const SALE = { salePrice: 2000, originalPrice: 2500, discountPercent: 20 };
+
+    function setUp() {
+      document.body.innerHTML = `<button id="add-to-cart-button" data-product='${JSON.stringify(
+        { id: 'prod-1', price: 2000, saleInfo: SALE }
+      )}'>Add</button>`;
+      const data = {
+        productId: 'prod-1',
+        selectedVariationId: 'var-1',
+        variations: [
+          {
+            id: 'var-1',
+            variationId: 'var-1',
+            name: 'Small',
+            price: 2000,
+            quantity: 5,
+            inStock: true,
+            attributes: { Size: 'Small' },
+            saleInfo: SALE,
+          },
+          {
+            id: 'var-2',
+            variationId: 'var-2',
+            name: 'Large',
+            price: 3000,
+            quantity: 5,
+            inStock: true,
+            attributes: { Size: 'Large' },
+          },
+        ],
+        availableAttributes: { Size: ['Small', 'Large'] },
+      } as unknown as ProductPageData;
+      const c = new PDPController(data);
+      const ui = internals(c).uiManager;
+      const select = (size: string) =>
+        internals(c).eventManager.handlers?.onAttributeSelection('Size', size);
+      const lastData = () =>
+        ui.updateButtonProductData.mock.calls.at(-1)?.[0] as Record<
+          string,
+          unknown
+        >;
+      return { select, lastData };
+    }
+
+    it("drops the previous variation's sale info when the new one is not on sale", () => {
+      const { select, lastData } = setUp();
+      select('Large');
+      expect(lastData().variationId).toBe('var-2');
+      expect(lastData().price).toBe(3000);
+      expect(lastData().saleInfo).toBeUndefined();
+    });
+
+    it("sets the new variation's sale info when it is on sale", () => {
+      const { select, lastData } = setUp();
+      select('Large');
+      select('Small');
+      expect(lastData().variationId).toBe('var-1');
+      expect(lastData().saleInfo).toEqual(SALE);
+    });
+  });
+
   describe('Attribute Selection', () => {
     it('should update variation when attribute is selected', () => {
       controller = new PDPController(mockProductData);

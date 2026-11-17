@@ -115,6 +115,15 @@ export class PDPController {
       productData.price = variation.price;
       if (variation.image) productData.image = variation.image;
       if (variation.unit) productData.unit = variation.unit;
+      // Sale info belongs to a variation, like price. The button starts with the
+      // initially selected variation's; keeping it after a swap leaves a stale
+      // sale price on an item that is not on sale (cart.addItem only replaces it
+      // when the server reports one).
+      if (variation.saleInfo) {
+        productData.saleInfo = variation.saleInfo;
+      } else {
+        delete productData.saleInfo;
+      }
 
       this.uiManager.updateButtonProductData(productData);
     } catch (error) {

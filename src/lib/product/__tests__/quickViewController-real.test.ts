@@ -78,6 +78,7 @@ vi.mock('astro:transitions/client', () => ({
 
 import { cart } from '@/lib/cart';
 import { showNotification } from '@/lib/events';
+import { navigate } from 'astro:transitions/client';
 import { QuickViewController } from '../quickViewController';
 import { initGallery } from '../gallery';
 import type { Product, ProductVariation } from '@/lib/square/types';
@@ -897,6 +898,26 @@ describe('QuickViewController — real implementation', () => {
 
       oldButton.click();
       expect(addToCart).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('"View Full Details" link', () => {
+    it('carries the selected variation as a slug (same slug the PDP writes)', async () => {
+      await openWith(controller, makeProduct());
+      // Default variation is "Small / Red"
+      document.getElementById('quick-view-full-details')?.click();
+      expect(navigate).toHaveBeenCalledWith(
+        '/product/test-deck?variant=small-red'
+      );
+    });
+
+    it('uses the slug of a variation picked after opening', async () => {
+      await openWith(controller, makeProduct());
+      attrButton('size', 'Large').click();
+      document.getElementById('quick-view-full-details')?.click();
+      expect(navigate).toHaveBeenCalledWith(
+        '/product/test-deck?variant=large-red'
+      );
     });
   });
 
