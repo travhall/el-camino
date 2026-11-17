@@ -40,11 +40,51 @@ export interface ElementIds {
    * each manager must only touch its own.
    */
   attributeRoot?: string;
+  /** Give chips the PDP's `attribute-button` marker class (default true). */
+  attributeChipMarker?: boolean;
 }
 
 const ANNOUNCE_DEBOUNCE_MS = 250;
 
 const HERO_SRCSET_WIDTHS = [320, 640, 768, 1024];
+
+// Variant chips: one definition for the product page's server render, the
+// manager's updates, and QuickView, so a fix to one reaches all three (plans
+// 183, 224). Chips are 44px touch targets; a sold-out chip wins the cascade
+// outright (`!important` on the text colour) and a selected sold-out chip shows
+// a ring rather than the low-contrast selected fill.
+//
+// `attribute-button` is a marker, not styling: the PDP's event wiring selects on
+// it (and so do the e2e specs), which is also how a PDP's chips are told apart
+// from QuickView's when QuickView opens on a product page. Only the PDP's own
+// chips carry it; QuickView passes `withMarker: false`.
+export function attributeChipClass(
+  isAvailable: boolean,
+  isSelected: boolean,
+  withMarker = true
+): string {
+  const base = [
+    'min-w-11 min-h-11 px-3 py-2 rounded-sm',
+    withMarker ? 'attribute-button' : '',
+    'cursor-pointer relative inline-flex items-center justify-center border',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const state = !isAvailable
+    ? 'border-(--ui-input-border) bg-(--ui-input-surface) text-(--content-meta)! line-through'
+    : isSelected
+      ? 'border-(--ui-variant-selected-border) bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text)'
+      : 'border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text)';
+  const ring =
+    !isAvailable && isSelected
+      ? 'ring-2 ring-offset-1 ring-(--ui-variant-selected-border)'
+      : '';
+  return [base, state, ring].filter(Boolean).join(' ');
+}
+
+// An attribute with a single value is shown as a non-interactive span.
+export const ATTRIBUTE_VALUE_SPAN_CLASS =
+  'min-w-11 min-h-11 px-3 py-2 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default inline-flex items-center justify-center';
 
 /**
  * A gallery thumbnail is shown at 64px; load a 128px version (2x, for dense
@@ -166,10 +206,12 @@ export class PDPUIManager {
 
   private elementIds?: ElementIds; // Store for re-caching
   private attributeRoot: string;
+  private attributeChipMarker: boolean;
 
   constructor(elementIds?: ElementIds) {
     this.elementIds = elementIds;
     this.attributeRoot = elementIds?.attributeRoot ?? '.product-info';
+    this.attributeChipMarker = elementIds?.attributeChipMarker ?? true;
     this.cacheElements(elementIds);
   }
 
@@ -513,26 +555,11 @@ export class PDPUIManager {
         const isAvailable = canAddToCartFn(attributeType, value);
         const isSelected = selectedAttributes[attributeType] === value;
 
-        // Base sizing/shape + state classes rebuilt as one string, mirroring the
-        // SSR branch in src/pages/product/[id].astro exactly — OOS now wins the
-        // cascade outright (via `!important`) instead of losing to the
-        // selected-surface classes, and a ring stands in for the fill when both
-        // selected and OOS so the low-contrast filled-OOS state never renders.
-        const base =
-          'min-w-11 min-h-11 px-3 py-2 rounded-sm attribute-button cursor-pointer relative inline-flex items-center justify-center border';
-        const stateClasses = !isAvailable
-          ? 'border-(--ui-input-border) bg-(--ui-input-surface) text-(--content-meta)! line-through'
-          : isSelected
-            ? 'border-(--ui-variant-selected-border) bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text)'
-            : 'border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text)';
-        const ringClasses =
-          !isAvailable && isSelected
-            ? 'ring-2 ring-offset-1 ring-(--ui-variant-selected-border)'
-            : '';
-
-        btn.className = [base, stateClasses, ringClasses]
-          .filter(Boolean)
-          .join(' ');
+        btn.className = attributeChipClass(
+          isAvailable,
+          isSelected,
+          this.attributeChipMarker
+        );
 
         if (!isAvailable) {
           btn.setAttribute('aria-label', `${value} — out of stock`);

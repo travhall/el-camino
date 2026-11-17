@@ -30,12 +30,12 @@ const chip = (page: Page, type: string, value: string) =>
     `#quick-view-attributes button[data-attribute-type="${type}"][data-attribute-value="${value}"]`
   );
 
-// QuickView marks the selected chip with the variant-selected tokens
+// QuickView marks the selected chip with aria-pressed, like the PDP. (It used to
+// be read from the selected fill class, which a selected sold-out chip no
+// longer has: it shows a ring instead.)
 const selected = (page: Page) =>
   page
-    .locator(
-      '#quick-view-attributes button[class*="ui-variant-selected-surface"]'
-    )
+    .locator('#quick-view-attributes button[aria-pressed="true"]')
     .evaluateAll((els) =>
       els.map((e) => (e as HTMLElement).dataset.attributeValue)
     );

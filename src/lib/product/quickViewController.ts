@@ -14,7 +14,11 @@ import { initGallery } from './gallery';
 import { processClientError, logError } from '@/lib/square/errorUtils';
 import type { Product, ProductVariation } from '@/lib/square/types';
 import type { ProductPageData } from '@/lib/product/pdpEvents';
-import { PDPUIManager } from '@/lib/product/pdpUI';
+import {
+  PDPUIManager,
+  attributeChipClass,
+  ATTRIBUTE_VALUE_SPAN_CLASS,
+} from '@/lib/product/pdpUI';
 import {
   initBackInStockForm,
   QUICK_VIEW_BIS_IDS,
@@ -67,6 +71,9 @@ export class QuickViewController {
       quantitySection: null,
       // ...and keep to its own chips, not a PDP's behind it
       attributeRoot: '#quick-view-attributes',
+      // ...and not the PDP's `attribute-button` marker, which a product page's
+      // own handlers select on
+      attributeChipMarker: false,
     });
   }
 
@@ -346,8 +353,7 @@ export class QuickViewController {
 
         if (isSingleValue) {
           const span = document.createElement('span');
-          span.className =
-            'px-2.5 py-1.5 border rounded-sm text-sm cursor-default bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)';
+          span.className = ATTRIBUTE_VALUE_SPAN_CLASS;
           span.setAttribute(
             'aria-label',
             `${displayName}: ${attributeValues[0]}`
@@ -361,8 +367,9 @@ export class QuickViewController {
             button.dataset.attributeType = attributeType;
             button.dataset.attributeValue = value;
             button.textContent = value;
-            button.className =
-              'px-2.5 py-1.5 border rounded-sm text-sm cursor-pointer bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)';
+            // Final state (selected, sold out, aria-pressed) is applied by
+            // updateAttributeButtonStates() right after this render.
+            button.className = attributeChipClass(true, false, false);
 
             button.addEventListener('click', () => {
               this.handleAttributeSelection(attributeType, value);
@@ -396,8 +403,7 @@ export class QuickViewController {
         buttonContainer.className = 'flex flex-wrap gap-2';
 
         const span = document.createElement('span');
-        span.className =
-          'px-2.5 py-1.5 border rounded-sm text-sm cursor-default bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)';
+        span.className = ATTRIBUTE_VALUE_SPAN_CLASS;
         span.setAttribute(
           'aria-label',
           `${displayName}: ${attributeValues[0]}`
@@ -640,50 +646,14 @@ export class QuickViewController {
   private updateAttributeButtonStates(): void {
     if (!this.productData?.variations) return;
 
-    // Only QuickView's own chips: on a product page the PDP's chips share the
-    // [data-attribute-type] attribute, and this overwrites className
-    const root = document.getElementById('quick-view-attributes');
-    if (!root) return;
-
-    // EXACTLY mirror PDP updateAttributeButtonStates pattern
-    Object.keys(this.productData.availableAttributes).forEach(
-      (attributeType) => {
-        const buttons = root.querySelectorAll(
-          `[data-attribute-type="${attributeType}"]`
-        );
-
-        buttons.forEach((btn) => {
-          const button = btn as HTMLButtonElement;
-          const value = button.dataset.attributeValue;
-          if (!value) return;
-
-          const isSelected = this.selectedAttributes[attributeType] === value;
-
-          // Test availability using PDP pattern
-          const isAvailable = this.canAddToCartForAttribute(
-            attributeType,
-            value
-          );
-
-          // Update selected state styling (PDP pattern)
-          if (isSelected) {
-            button.className =
-              'px-2.5 py-1.5 border rounded-sm text-sm cursor-pointer bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border)';
-          } else {
-            button.className =
-              'px-2.5 py-1.5 border rounded-sm text-sm cursor-pointer bg-(--ui-input-surface) text-(--ui-input-text) border-(--ui-input-border)';
-          }
-
-          // Apply opacity for availability (but keep clickable)
-          if (!isAvailable) {
-            button.classList.add('opacity-60');
-            button.classList.add('line-through');
-          } else {
-            button.classList.remove('opacity-60');
-            button.classList.remove('line-through');
-          }
-        });
-      }
+    // The manager was built with attributeRoot '#quick-view-attributes', so it
+    // only touches QuickView's own chips even when a product page's chips share
+    // [data-attribute-type] behind the modal.
+    this.uiManager.updateAttributeButtonStates(
+      this.productData.availableAttributes,
+      this.selectedAttributes,
+      (attributeType, value) =>
+        this.canAddToCartForAttribute(attributeType, value)
     );
   }
 
@@ -827,9 +797,13 @@ export class QuickViewController {
     // updateAvailabilityDisplay covers all four sub-updates:
     //   updateQuantityControls + updateAddToCartButton +
     //   updateImageOverlay + updateInventoryDisplay (the "N in cart" text)
+    // The cart changed, not the variation: keep the quantity the shopper has
+    // chosen, as the PDP does.
     this.uiManager.updateAvailabilityDisplay(
       availabilityInfo,
-      this.currentVariation.saleInfo
+      this.currentVariation.saleInfo,
+      undefined,
+      { keepQuantity: true }
     );
     this.updateAttributeButtonStates();
   }

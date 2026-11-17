@@ -41,6 +41,10 @@ import {
 } from '@/lib/product/structuredData';
 import { generateBreadcrumbs, getBackLink } from '@/lib/product/breadcrumbs';
 import {
+  attributeChipClass,
+  ATTRIBUTE_VALUE_SPAN_CLASS,
+} from '@/lib/product/pdpUI';
+import {
   describeRelatedSection,
   getRelatedProducts,
   type RelatedSection,
@@ -875,7 +879,7 @@ Astro.response.headers.set(
                     {isSingleValue
                       ? attributeValues.map((value) => (
                           <span
-                            class="min-w-11 min-h-11 px-3 py-2 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default inline-flex items-center justify-center"
+                            class={ATTRIBUTE_VALUE_SPAN_CLASS}
                             aria-label={`${displayName}: ${value}`}
                           >
                             {value}
@@ -897,17 +901,10 @@ Astro.response.headers.set(
                               type="button"
                               data-attribute-type={attributeType}
                               data-attribute-value={value}
-                              class:list={[
-                                'min-w-11 min-h-11 px-3 py-2 rounded-sm attribute-button cursor-pointer relative inline-flex items-center justify-center border',
-                                !isAvailable
-                                  ? 'border-(--ui-input-border) bg-(--ui-input-surface) text-(--content-meta)! line-through'
-                                  : isSelected
-                                    ? 'border-(--ui-variant-selected-border) bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text)'
-                                    : 'border-(--ui-input-border) bg-(--ui-input-surface) text-(--ui-input-text)',
-                                !isAvailable &&
-                                  isSelected &&
-                                  'ring-2 ring-offset-1 ring-(--ui-variant-selected-border)',
-                              ]}
+                              class={attributeChipClass(
+                                isAvailable,
+                                isSelected
+                              )}
                               aria-pressed={isSelected ? 'true' : 'false'}
                               aria-label={
                                 !isAvailable
@@ -944,7 +941,7 @@ Astro.response.headers.set(
                   <div class="flex flex-wrap gap-2">
                     {attributeValues.map((value) => (
                       <span
-                        class="min-w-11 min-h-11 px-3 py-2 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default inline-flex items-center justify-center"
+                        class={ATTRIBUTE_VALUE_SPAN_CLASS}
                         aria-label={`${displayName}: ${value}`}
                       >
                         {value}
@@ -971,7 +968,7 @@ Astro.response.headers.set(
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <span
-                    class="min-w-11 min-h-11 px-3 py-2 border rounded-sm bg-(--ui-variant-selected-surface) text-(--ui-variant-selected-text) border-(--ui-variant-selected-border) cursor-default inline-flex items-center justify-center"
+                    class={ATTRIBUTE_VALUE_SPAN_CLASS}
                     aria-label={`Option: ${variations[0].name}`}
                   >
                     {variations[0].name}
