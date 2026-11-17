@@ -1,6 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { ADMIN_COOKIE_NAME, verifySessionToken } from '@/lib/admin/auth';
 import { randomBytes } from 'node:crypto';
+import { robotsTagFor } from '@/lib/canonical';
 
 // Matches /admin and /admin/* but NOT /admin/login or /admin/login/*
 const ADMIN_PATH = /^\/admin($|\/(?!login($|\/))).*/;
@@ -33,6 +34,10 @@ export const onRequest = defineMiddleware(
       'Content-Security-Policy',
       `default-src 'self'; img-src 'self' https: data: *.wordpress.com; script-src 'self' 'nonce-${nonce}' https://sandbox.web.squarecdn.com https://web.squarecdn.com; style-src 'self' 'unsafe-inline'; font-src 'self' https:; connect-src 'self' https: wss:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; object-src 'none'; base-uri 'self'; form-action 'self'`
     );
+
+    // Only the production host may be indexed; staging and previews are not.
+    const robots = robotsTagFor(url.hostname);
+    if (robots) response.headers.set('X-Robots-Tag', robots);
 
     return response;
   }

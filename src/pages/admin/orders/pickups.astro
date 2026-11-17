@@ -54,7 +54,7 @@ try {
   for (const order of searchResult.orders ?? []) {
     if (!order.tenders?.length) continue;
 
-    const f = order.fulfillments?.find((f: any) => f.type === "PICKUP");
+    const f = order.fulfillments?.find((f) => f.type === "PICKUP");
     if (!f) continue;
     const pd = f.pickupDetails;
     const recipient = pd?.recipient;
@@ -70,8 +70,8 @@ try {
         })
       : "";
     const items = (order.lineItems ?? [])
-      .filter((li: any) => li.catalogObjectId)
-      .map((li: any) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
+      .filter((li) => li.catalogObjectId)
+      .map((li) => ({ name: li.name ?? "Item", qty: li.quantity ?? "1" }));
 
     orders.push({
       orderId: order.id ?? "", shortId: shortId(order.id ?? ""),

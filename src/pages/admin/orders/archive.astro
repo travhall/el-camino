@@ -45,7 +45,7 @@ try {
 
   for (const order of searchResult.orders ?? []) {
     const f = order.fulfillments?.find(
-      (f: any) => f.type === "SHIPMENT" || f.type === "PICKUP"
+      (f) => f.type === "SHIPMENT" || f.type === "PICKUP"
     );
     if (!f) continue;
 
@@ -55,8 +55,8 @@ try {
         : f.pickupDetails?.recipient?.displayName;
 
     const items = (order.lineItems ?? [])
-      .filter((li: any) => li.catalogObjectId)
-      .map((li: any) => `${Number(li.quantity ?? 1) > 1 ? li.quantity + "× " : ""}${li.name ?? "Item"}`)
+      .filter((li) => li.catalogObjectId)
+      .map((li) => `${Number(li.quantity ?? 1) > 1 ? li.quantity + "× " : ""}${li.name ?? "Item"}`)
       .join(" · ");
 
     orders.push({
