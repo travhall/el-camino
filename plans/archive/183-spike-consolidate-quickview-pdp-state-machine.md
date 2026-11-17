@@ -213,3 +213,96 @@ Stop and report if:
 - The color-image fallback is QuickView's one genuine behavioral difference. Any
   shared abstraction must accommodate it rather than dropping it.
 - A reviewer should confirm this spike changed nothing except the slug import.
+
+
+---
+
+## Findings (executed 2026-11-16 at `051257c`)
+
+**Drift check**: `quickViewController.ts` changed by 436 lines, `pdpController.ts`
+203, `pdpUI.ts` 364 since `ad2999d`. Every line number in the plan was stale, so
+the map below is re-derived from the current files. Several of the plan's claims
+no longer hold (see the table).
+
+**Step 1: 179 landed.** `quickViewController-real.test.ts` (44 tests with this
+spike's two) is on master. Coverage of `quickViewController.ts`: 70.97% statements
+/ 58.36% branches / 69.84% functions / 75.22% lines, up from ~30%.
+
+**Method map** (QuickView at left, line numbers current):
+
+| QuickView | PDP counterpart | Verdict |
+|---|---|---|
+| `resolveVariation` `:450` | `pdpController.ts:54` | Identical wrappers over the shared `resolveVariationForSelection` |
+| `handleAttributeSelection` `:414` | `pdpController.ts:181` | Identical logic (snap to nearest real variation, announce); only the UI calls differ |
+| `announceSelection` `:468` | `pdpController.ts:221` | Byte-for-byte duplicate |
+| `canAddToCartForAttribute` `:689` | closure in `pdpController.ts:269` | Identical predicate |
+| `updateAttributeButtonStates` `:639` | `PDPUIManager.updateAttributeButtonStates` `pdpUI.ts:495` | **Drifted** (list below). `pdpUI` already takes an `attributeRoot`, and QuickView already passes `#quick-view-attributes`, so it could delegate |
+| `renderVariations` `:315` | SSR markup in `product/[id].astro:870-1000` | **Drifted**: hand-written class strings |
+| `buildProductData` `:540` | `pdpController.updateButtonProductData` `:105` | **Drifted**: PDP bug below |
+| `updateProductUI` `:493` | `pdpController.updateProductUI` `:64` | Mostly shared (same `uiManager` calls). Different by design: QuickView redraws its own gallery each time; PDP only when a variation has more than one image and also rewrites the URL |
+| `updateQuantityAndBis` `:563` | `pdpController.updateBisSection` `:143` | Parallel, with different IDs and QuickView's gift-card and stepper handling; both already use `backInStockForm.ts` |
+| `handleCartUpdate` `:818` | `pdpController.ts:247` | **Drifted**: PDP passes `keepQuantity: true`, QuickView does not |
+| `initializeProduct` `:124` | server render of the PDP | Genuinely different: QuickView picks the default variation client-side |
+| `updateViewDetailsButton` `:708` | none | QuickView only. Its inlined slug equals `createVariantSlug` |
+| modal lifecycle, focus, color-image fallback, own gallery | none | Genuinely different |
+
+**Step 2: drift list.** None fixed here.
+1. **Bug in PDP, wrong price (STOP condition: reported).** On a variant swap
+   `pdpController.updateButtonProductData` (`:105-121`) rewrites
+   `variationId`, `variationName`, `price`, `image`, `unit` but never `saleInfo`,
+   so the add-to-cart button keeps the **first variation's** `saleInfo`.
+   QuickView's `buildProductData` sets it per variation. Reproduced with a
+   throwaway test (not committed): swapping a $20 sale variation for a $30
+   non-sale one leaves `saleInfo.salePrice = 2000` on the button data. In
+   `cart.addItem` (`cart/index.ts:490-526`) the server value only wins when the
+   variation is on sale (`fetchedSaleInfo ?? item.saleInfo`), so a non-sale
+   variation inherits the stale sale price, and `getTotal()` then uses
+   `saleInfo.salePrice ?? price`. The cart path was read from code, not run end
+   to end. Plan 223.
+2. **Bug in QuickView, touch targets.** PDP chips are `min-w-11 min-h-11 px-3 py-2`
+   (44 px, plan 205 / #41); QuickView's are `px-2.5 py-1.5` (about 30 px), for
+   chips and the single-value spans.
+3. **Bug in QuickView, out-of-stock state.** PDP: out of stock wins the style
+   cascade, and a selected sold-out chip gets a ring instead of a low-contrast
+   fill (#41). QuickView: `opacity-60 line-through` on top of the selected fill,
+   which is the state #41 fixed on the PDP.
+4. **Bug in QuickView, accessibility.** PDP sets `aria-pressed` and
+   `aria-label="<value> — out of stock"`; QuickView sets neither, so stock is
+   conveyed by styling only.
+5. **Bug in QuickView, quantity reset.** `handleCartUpdate` omits
+   `keepQuantity: true`, so a cart refresh resets the quantity the shopper chose
+   (the bug #42 fixed on the PDP).
+6. **Stale in the plan: the `cursor-default` / `cursor-pointer` drift is gone.**
+   Selected buttons use `cursor-pointer` on both sides; `cursor-default` is only
+   on non-interactive single-value spans on both. No design decision needed.
+Items 2-5 are plan 224. Nothing needs a design call beyond what #41 already
+decided for the PDP.
+
+**Step 3: three buckets.**
+- *Pure logic, already or trivially shared*: variation resolution (shared),
+  `announceSelection` (move to one place), the availability predicate.
+- *DOM, shareable through `PDPUIManager`*: chip rendering and state (QuickView
+  should delegate; the manager already takes the root), `updateButtonProductData`
+  payload building, `keepQuantity` on cart refresh.
+- *Divergent, keep separate*: modal lifecycle and focus, the item-level
+  color-image fallback, QuickView's own gallery, default-variation selection,
+  BIS/stepper wiring.
+
+**Step 4: PoC.** `updateViewDetailsButton` now calls `createVariantSlug`
+instead of re-inlining it. The inline copy was identical, character for
+character, so behavior is unchanged: two new tests
+(`"View Full Details" link`) pass both with the old inline code and the import,
+which is the evidence. Real QuickView was not opened in a browser.
+
+**Step 5: recommendation, and whether it is worth it.** Merging the two
+controllers is **not** worth it: the real differences (modal lifecycle, own
+gallery, color fallback, BIS and stepper wiring) are most of what is left, and
+much of the original duplication has already gone (shared `PDPUIManager`,
+shared resolver, shared BIS form). What is worth doing is small and targeted,
+and it has already paid for itself in user-visible drift: delegate chip
+rendering and state to `PDPUIManager` and pass `keepQuantity`. That is plan 224
+(size S to M, risk LOW-MED, and each drift item can be checked against the PDP's
+existing tests). Order: 223 first (a price bug beats any refactor), then 224;
+after that, moving `announceSelection` and the payload builder into shared code
+is a separate small cleanup and not needed to stop the drift. No new tests are
+prerequisites beyond the failing tests named in each plan.
