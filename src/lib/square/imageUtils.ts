@@ -1,6 +1,7 @@
 // src/lib/square/imageUtils.ts
 import { squareClient } from './client';
 import { imageCache } from '@/lib/cache/blobCache';
+import { batchGetCatalogObjects } from './batchCatalog';
 
 /**
  * Get image URL with caching
@@ -32,7 +33,7 @@ export async function getImageUrl(imageId: string): Promise<string | null> {
 }
 
 /**
- * Batch fetch multiple image URLs in parallel
+ * Batch fetch multiple image URLs (cache first, then `catalog.batchGet`)
  * @param imageIds Array of Square image IDs
  * @returns Map of image IDs to their URLs
  */
@@ -65,19 +66,28 @@ export async function batchGetImageUrls(
     return resultMap;
   }
 
-  // Fetch all uncached images in parallel
-  const imagePromises = uncachedIds.map((id) => getImageUrl(id));
-  const results = await Promise.all(imagePromises);
+  // Resolve every uncached id through batched `catalog.batchGet` calls (one
+  // for a typical catalog) instead of one `catalog.object.get` per image.
+  const { objects, failedIds } = await batchGetCatalogObjects(uncachedIds);
 
-  // Process results
-  uncachedIds.forEach((id, index) => {
-    const url = results[index];
+  const writes: Promise<unknown>[] = [];
+  for (const [id, object] of objects) {
+    const url = object.type === 'IMAGE' ? object.imageData?.url : undefined;
     if (url) {
       resultMap[id] = url;
-      // Update cache
-      imageCache.set(id, url);
+      writes.push(imageCache.set(id, url));
     }
-  });
+  }
 
+  // A failed batch call must not lose images: retry just those ids one by one.
+  if (failedIds.length > 0) {
+    const urls = await Promise.all(failedIds.map((id) => getImageUrl(id)));
+    failedIds.forEach((id, index) => {
+      const url = urls[index];
+      if (url) resultMap[id] = url;
+    });
+  }
+
+  await Promise.all(writes);
   return resultMap;
 }

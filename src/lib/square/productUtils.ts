@@ -2,6 +2,8 @@
 // Shared utilities used by both client.ts and categories.ts
 import { squareClient } from './client';
 import { measurementUnitCache } from '@/lib/cache/blobCache';
+import type { CatalogObject } from 'square-legacy';
+import { batchGetCatalogObjects } from './batchCatalog';
 
 /**
  * Batch-fetch measurement unit names from Square, cached via BlobCache to
@@ -18,43 +20,36 @@ export async function fetchMeasurementUnits(
   const cacheKey = uniqueIds.sort().join(',');
 
   return measurementUnitCache.getOrCompute(cacheKey, async () => {
-    const results = await Promise.allSettled(
-      uniqueIds.map(async (unitId) => {
+    const { objects, failedIds } = await batchGetCatalogObjects(uniqueIds);
+
+    // A failed batch call must not lose units: retry just those ids one by one.
+    await Promise.all(
+      failedIds.map(async (unitId) => {
         try {
           const result = await squareClient.catalog.object.get({
             objectId: unitId,
           });
-
-          if (result.object?.type === 'MEASUREMENT_UNIT') {
-            const unitData = result.object.measurementUnitData;
-            let unitName = '';
-
-            if (unitData?.measurementUnit?.customUnit?.name) {
-              unitName = unitData.measurementUnit.customUnit.name;
-            } else if (unitData?.measurementUnit?.customUnit?.abbreviation) {
-              unitName = unitData.measurementUnit.customUnit.abbreviation;
-            } else if (unitData?.measurementUnit?.type) {
-              unitName = unitData.measurementUnit.type
-                .toLowerCase()
-                .replace(/_/g, ' ');
-            }
-
-            return { unitId, unitName };
-          }
-          return { unitId, unitName: '' };
+          if (result.object) objects.set(unitId, result.object);
         } catch {
-          return { unitId, unitName: '' };
+          // Unit stays unresolved; the caller renders without it.
         }
       })
     );
 
     const unitMap: Record<string, string> = {};
-    results.forEach((result) => {
-      if (result.status === 'fulfilled' && result.value.unitName) {
-        unitMap[result.value.unitId] = result.value.unitName;
-      }
-    });
-
+    for (const [unitId, object] of objects) {
+      const unitName = measurementUnitName(object);
+      if (unitName) unitMap[unitId] = unitName;
+    }
     return unitMap;
   });
+}
+
+function measurementUnitName(object: CatalogObject): string {
+  if (object.type !== 'MEASUREMENT_UNIT') return '';
+  const unit = object.measurementUnitData?.measurementUnit;
+  if (unit?.customUnit?.name) return unit.customUnit.name;
+  if (unit?.customUnit?.abbreviation) return unit.customUnit.abbreviation;
+  if (unit?.type) return unit.type.toLowerCase().replace(/_/g, ' ');
+  return '';
 }
