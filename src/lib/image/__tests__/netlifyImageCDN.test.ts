@@ -107,3 +107,75 @@ describe('only one place builds image CDN URLs', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// Plan 146: images are requested at /cdn-img, which netlify.toml rewrites to the
+// image service. A plain rewrite drops the query string, so each URL shape needs
+// a rule that captures and forwards its parameters. A rule matches when every
+// parameter it lists is present (extra ones are ignored), so the first matching
+// rule must list exactly the request's parameters or one would be silently
+// dropped. This checks that for every shape the helper can emit.
+describe('netlify.toml /cdn-img rules cover every URL shape', () => {
+  const toml = readFileSync(
+    join(__dirname, '../../../../netlify.toml'),
+    'utf8'
+  );
+  const rules = [
+    ...toml.matchAll(/\[\[redirects\]\]\n([\s\S]*?)(?=\n\[\[|\n\[[a-z]|$)/g),
+  ]
+    .map((m) => m[1])
+    .filter((b) => /from = "\/cdn-img"/.test(b))
+    .map((b) => {
+      const q = b.match(/query = \{([^}]*)\}/)?.[1] ?? '';
+      const to = b.match(/to = "([^"]*)"/)?.[1] ?? '';
+      return {
+        names: [...q.matchAll(/(\w+) = ":\1"/g)].map((m) => m[1]).sort(),
+        to,
+        force: /force = true/.test(b),
+        status: b.match(/status = (\d+)/)?.[1],
+      };
+    });
+
+  it('has rules, all rewriting (status 200, forced) to the image service', () => {
+    expect(rules.length).toBeGreaterThan(0);
+    for (const r of rules) {
+      expect(r.status).toBe('200');
+      expect(r.force).toBe(true);
+      expect(r.to.startsWith('/.netlify/images?')).toBe(true);
+    }
+  });
+
+  it('forwards exactly the parameters each rule captures', () => {
+    for (const r of rules) {
+      const sent = [...r.to.matchAll(/(\w+)=:(\w+)/g)].map((m) => m[1]).sort();
+      expect(sent).toEqual(r.names);
+    }
+  });
+
+  const shapes: Array<{
+    fit?: string | null;
+    height?: number;
+    format?: string;
+  }> = [];
+  for (const fit of [undefined, null]) {
+    for (const height of [undefined, 100]) {
+      for (const format of [undefined, 'avif'])
+        shapes.push({ fit, height, format });
+    }
+  }
+
+  it.each(shapes)('a request shaped %j loses no parameter', (shape) => {
+    const emitted = new URLSearchParams(
+      toNetlifyImageCDN(SRC, 100, shape).split('?')[1]
+    );
+    const request = [...emitted.keys()].sort();
+    const hit = rules.find((r) => r.names.every((n) => request.includes(n)));
+    expect(hit, `no rule matches ${request.join(',')}`).toBeDefined();
+    expect(hit!.names).toEqual(request);
+  });
+
+  it('covers the static shape used by the-shop (url, fm, w, q)', () => {
+    const request = ['fm', 'q', 'url', 'w'];
+    const hit = rules.find((r) => r.names.every((n) => request.includes(n)));
+    expect(hit?.names).toEqual(request);
+  });
+});

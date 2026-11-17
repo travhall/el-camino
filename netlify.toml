@@ -19,11 +19,69 @@ remote_images = [
 
 # Netlify Image CDN is addressed as /.netlify/images?url=... (a query string, not
 # a path), and custom headers from this file do not reach that internal endpoint
-# at all. Rewriting through a path we own is Netlify's documented workaround:
-# the headers below apply to /cdn-img and cascade to the transform. (Plan 146.)
+# at all. Rewriting through a path we own is Netlify's documented workaround: the
+# [[headers]] rule for /cdn-img below applies to the rewritten response.
+#
+# A plain rewrite drops the query string ("must provide the url param"), so each
+# parameter is captured and passed on explicitly. A rule matches when every
+# parameter it lists is present and extra parameters are ignored, so the rules
+# run from the most specific shape to the least. src/lib/image/netlifyImageCDN.ts
+# is the one place that builds these URLs: url, w and q are always sent, plus any
+# of fit, h and fm. A new parameter there needs rules here, and a test checks it.
+# (Plan 146.)
 [[redirects]]
 from = "/cdn-img"
-to = "/.netlify/images"
+query = { url = ":url", w = ":w", q = ":q", fit = ":fit", h = ":h", fm = ":fm" }
+to = "/.netlify/images?url=:url&w=:w&q=:q&fit=:fit&h=:h&fm=:fm"
+status = 200
+force = true
+
+[[redirects]]
+from = "/cdn-img"
+query = { url = ":url", w = ":w", q = ":q", fit = ":fit", h = ":h" }
+to = "/.netlify/images?url=:url&w=:w&q=:q&fit=:fit&h=:h"
+status = 200
+force = true
+
+[[redirects]]
+from = "/cdn-img"
+query = { url = ":url", w = ":w", q = ":q", fit = ":fit", fm = ":fm" }
+to = "/.netlify/images?url=:url&w=:w&q=:q&fit=:fit&fm=:fm"
+status = 200
+force = true
+
+[[redirects]]
+from = "/cdn-img"
+query = { url = ":url", w = ":w", q = ":q", h = ":h", fm = ":fm" }
+to = "/.netlify/images?url=:url&w=:w&q=:q&h=:h&fm=:fm"
+status = 200
+force = true
+
+[[redirects]]
+from = "/cdn-img"
+query = { url = ":url", w = ":w", q = ":q", fit = ":fit" }
+to = "/.netlify/images?url=:url&w=:w&q=:q&fit=:fit"
+status = 200
+force = true
+
+[[redirects]]
+from = "/cdn-img"
+query = { url = ":url", w = ":w", q = ":q", h = ":h" }
+to = "/.netlify/images?url=:url&w=:w&q=:q&h=:h"
+status = 200
+force = true
+
+[[redirects]]
+from = "/cdn-img"
+query = { url = ":url", w = ":w", q = ":q", fm = ":fm" }
+to = "/.netlify/images?url=:url&w=:w&q=:q&fm=:fm"
+status = 200
+force = true
+
+[[redirects]]
+from = "/cdn-img"
+query = { url = ":url", w = ":w", q = ":q" }
+to = "/.netlify/images?url=:url&w=:w&q=:q"
 status = 200
 force = true
 
