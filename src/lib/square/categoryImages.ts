@@ -4,6 +4,9 @@
 // and CategoryStrip.astro used to run serially.
 import { squareClient } from './client';
 import { imageCache } from '@/lib/cache/blobCache';
+import type { CatalogObject } from 'square-legacy';
+
+type CatalogImage = Extract<CatalogObject, { type: 'IMAGE' }>;
 
 // Square's batchGet has an upper bound on objectIds per call.
 const BATCH_CHUNK_SIZE = 200;
@@ -49,14 +52,15 @@ export async function getCategoryImageUrls(
         includeRelatedObjects: true,
       });
 
-      const imagesById: Record<string, any> = {};
-      (batchResult.relatedObjects ?? []).forEach((obj: any) => {
-        if (obj.type === 'IMAGE') {
+      const imagesById: Record<string, CatalogImage> = {};
+      (batchResult.relatedObjects ?? []).forEach((obj) => {
+        if (obj.type === 'IMAGE' && obj.id) {
           imagesById[obj.id] = obj;
         }
       });
 
-      (batchResult.objects ?? []).forEach((catObject: any) => {
+      (batchResult.objects ?? []).forEach((catObject) => {
+        if (catObject.type !== 'CATEGORY' || !catObject.id) return;
         // Each category names its own image IDs — required in batch mode
         // since relatedObjects is shared across every requested category,
         // unlike the per-ID catalog.object.get response.

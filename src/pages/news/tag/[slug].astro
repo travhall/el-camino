@@ -1,10 +1,13 @@
 ---
 // src/pages/news/tag/[slug].astro
-import Layout from "@/layouts/Layout.astro";
-import ArticleGrid from "@/components/ArticleGrid.astro";
-import EmptyState from "@/components/EmptyState.astro";
-import NewsPaginationControls from "@/components/NewsPaginationControls.astro";
-import { getPostsByTag } from "@/lib/wordpress/api";
+import Layout from '@/layouts/Layout.astro';
+import ArticleGrid from '@/components/ArticleGrid.astro';
+import EmptyState from '@/components/EmptyState.astro';
+import NewsPaginationControls from '@/components/NewsPaginationControls.astro';
+import { getPostsByTag } from '@/lib/wordpress/api';
+import { siteConfig } from '@/lib/site-config';
+import { safeJsonForScript } from '@/lib/safeJson';
+import { canonicalUrl as pageCanonical } from '@/lib/canonical';
 
 const { slug = '' } = Astro.params;
 
@@ -18,9 +21,9 @@ if (!displayTagName && posts.length > 0) {
   // Extract tagName from first post's tags
   const firstPost = posts[0];
   const embeddedData = firstPost._embedded;
-  if (embeddedData?.["wp:term"]?.[0]) {
-    const matchingTag = embeddedData["wp:term"][0].find(
-      (term) => term.taxonomy === "post_tag" && term.slug === slug
+  if (embeddedData?.['wp:term']?.[0]) {
+    const matchingTag = embeddedData['wp:term'][0].find(
+      (term) => term.taxonomy === 'post_tag' && term.slug === slug
     );
     displayTagName = matchingTag?.name || slug;
   }
@@ -34,7 +37,7 @@ const actualPostCount = posts.length;
 
 // Pagination configuration
 const POSTS_PER_PAGE = 12;
-const currentPage = Number(Astro.url.searchParams.get("page")) || 1;
+const currentPage = Number(Astro.url.searchParams.get('page')) || 1;
 const totalPages = Math.ceil(posts.length / POSTS_PER_PAGE);
 
 const paginatedPosts = posts.slice(
@@ -43,107 +46,128 @@ const paginatedPosts = posts.slice(
 );
 
 // SEO data
-const siteUrl = Astro.site?.origin || "https://elcaminoskate.com";
-const canonicalUrl = `${siteUrl}/news/tag/${slug}`;
+const siteUrl = siteConfig.url;
+const canonicalUrl = pageCanonical(Astro.url);
 const description = `Browse ${actualPostCount} articles tagged with ${tagName} from El Camino Skate Shop.`;
 ---
 
 <Layout title={`${tagName} Articles | El Camino News`}>
   <Fragment slot="head">
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonicalUrl} />
-    
+
     <!-- Pagination SEO -->
-    {currentPage > 1 && (
-      <link rel="prev" href={`/news/tag/${slug}${currentPage === 2 ? '' : `?page=${currentPage - 1}`}`} />
-    )}
-    {currentPage < totalPages && (
-      <link rel="next" href={`/news/tag/${slug}?page=${currentPage + 1}`} />
-    )}
-    
+    {
+      currentPage > 1 && (
+        <link
+          rel="prev"
+          href={`/news/tag/${slug}${currentPage === 2 ? '' : `?page=${currentPage - 1}`}`}
+        />
+      )
+    }
+    {
+      currentPage < totalPages && (
+        <link rel="next" href={`/news/tag/${slug}?page=${currentPage + 1}`} />
+      )
+    }
+
     <!-- Structured Data -->
-    <script type="application/ld+json">
-      {JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "CollectionPage",
-        "name": `${tagName} Articles`,
-        "description": description,
-        "url": canonicalUrl,
-        "mainEntity": {
-          "@type": "ItemList",
-          "numberOfItems": posts.length,
-          "itemListElement": posts.map((post, index) => ({
-            "@type": "ListItem",
-            "position": index + 1,
-            "item": {
-              "@type": "Article",
-              "headline": post.title.rendered,
-              "url": `${siteUrl}/news/${post.slug}`,
-              "datePublished": post.date,
-            }
-          }))
-        }
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={safeJsonForScript({
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: `${tagName} Articles`,
+        description: description,
+        url: canonicalUrl,
+        mainEntity: {
+          '@type': 'ItemList',
+          numberOfItems: posts.length,
+          itemListElement: posts.map((post, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            item: {
+              '@type': 'Article',
+              headline: post.title.rendered,
+              url: `${siteUrl}/news/${post.slug}`,
+              datePublished: post.date,
+            },
+          })),
+        },
       })}
-    </script>
+    />
   </Fragment>
 
   <div class="min-h-screen bg-(--surface-primary)">
     <!-- Tag Archive Header -->
     <div class="p-4 pb-0">
-
       <!-- Tag Header -->
       <div class="flex flex-row justify-between items-baseline gap-4">
         <div>
-          <h1 class="font-display font-black text-6xl lg:text-7xl xl:text-8xl leading-[0.8] text-(--content-heading)">
+          <h1
+            class="font-display font-black text-6xl lg:text-7xl xl:text-8xl leading-[0.8] text-(--content-heading)"
+          >
             #{tagName}
           </h1>
           <p class="text-(--content-meta) mt-2 text-lg">
-            {actualPostCount} {actualPostCount === 1 ? 'article' : 'articles'}
+            {actualPostCount}
+            {actualPostCount === 1 ? 'article' : 'articles'}
           </p>
         </div>
 
-          <a 
-            href="/news"
-            class="px-2.5 py-1.5 mb-2 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 flex items-center place-self-end gap-1"
+        <a
+          href="/news"
+          class="px-2.5 py-1.5 mb-2 text-sm border rounded-sm bg-(--surface-primary) hover:bg-(--surface-tertiary) transition-colors text-(--ui-input-text) border-(--ui-input-border)/50 flex items-center place-self-end gap-1"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-            </svg>
-            Back to News
-          </a>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"></path>
+          </svg>
+          Back to News
+        </a>
       </div>
     </div>
 
     <!-- Articles Grid -->
     <div class="p-1">
-      {posts.length > 0 ? (
-        <>
-          <ArticleGrid 
-            posts={paginatedPosts} 
-            showSidebar={false}
-            filterable={true}
-            view="grid"
-          />
-          
-          {totalPages > 1 && (
-            <NewsPaginationControls 
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalPosts={posts.length}
-              postsPerPage={POSTS_PER_PAGE}
-              baseURL={`/news/tag/${slug}`}
+      {
+        posts.length > 0 ? (
+          <>
+            <ArticleGrid
+              posts={paginatedPosts}
+              showSidebar={false}
+              filterable={true}
+              view="grid"
             />
-          )}
-        </>
-      ) : (
-        <EmptyState
-          emoji="🏷️"
-          heading={`No articles found for #${tagName}`}
-          body="This tag doesn't have any articles yet. Check back later!"
-          ctaLabel="Browse All Articles"
-          ctaHref="/news"
-        />
-      )}
+
+            {totalPages > 1 && (
+              <NewsPaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalPosts={posts.length}
+                postsPerPage={POSTS_PER_PAGE}
+                baseURL={`/news/tag/${slug}`}
+              />
+            )}
+          </>
+        ) : (
+          <EmptyState
+            emoji="🏷️"
+            heading={`No articles found for #${tagName}`}
+            body="This tag doesn't have any articles yet. Check back later!"
+            ctaLabel="Browse All Articles"
+            ctaHref="/news"
+          />
+        )
+      }
     </div>
   </div>
 </Layout>
