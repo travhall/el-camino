@@ -92,6 +92,12 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
   feature commits with no explanatory message, so the original motivating bug
   isn't recorded — treat it as a deliberate cache-freshness safeguard rather
   than dead cruft, but confirm with the maintainer before removing it.
-- `.husky/pre-commit` runs `pnpm check` and `pnpm lint` on staged
-  `.ts`/`.tsx`/`.astro` files, then runs `pnpm test:run` unconditionally on
-  every commit.
+- `.husky/pre-commit` checks only what is staged: Prettier on the staged files,
+  ESLint (`--max-warnings 0`) on staged code, then, if any `.ts`/`.tsx`/`.astro`
+  is staged, `pnpm check` (whole-project) and `vitest related --run` on those
+  files. A docs-only commit runs only the format check. A change to
+  `package.json`, the lockfile, `pnpm-workspace.yaml`, `vitest.config.ts`,
+  `tsconfig.json`, `astro.config.mjs` or `eslint.config.mjs` runs the whole
+  suite. `vitest related` is a heuristic and can miss a test that reaches a file
+  only indirectly, so CI (which runs everything) is the real gate; do not read a
+  passing hook as a passing suite.

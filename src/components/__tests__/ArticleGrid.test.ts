@@ -5,10 +5,15 @@
  * skeletons — that made the homepage show permanent skeletons whenever
  * WordPress returned nothing.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import ArticleGrid from '../ArticleGrid.astro';
 import type { WordPressPost } from '@/lib/wordpress/types';
+
+// The first render compiles ArticleGrid and its card components through Vite,
+// which took 3.7 s alone and timed out (5 s default) under full-suite load,
+// failing the pre-commit hook on clean code. A slow cold start is not a bug.
+vi.setConfig({ testTimeout: 20_000 });
 
 const post: WordPressPost = {
   id: 1,
