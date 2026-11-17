@@ -12,11 +12,7 @@ import {
   filterSaleProducts,
   extractFilterOptions,
 } from '../filterUtils';
-import type {
-  Product,
-  ProductVariation,
-  SaleInfo,
-} from '../types';
+import type { Product, ProductVariation, SaleInfo } from '../types';
 
 describe('parseFiltersFromURL', () => {
   it('parses brands, categories, availability, and onSale from search params', () => {

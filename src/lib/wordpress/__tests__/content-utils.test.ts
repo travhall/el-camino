@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  stripUnsafeHtml,
-  processRawWordPressHTML,
-} from '../content-utils';
+import { stripUnsafeHtml, processRawWordPressHTML } from '../content-utils';
 
 describe('stripUnsafeHtml', () => {
   it('neutralizes data:text/html URIs', () => {
