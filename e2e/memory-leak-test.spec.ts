@@ -31,12 +31,13 @@ test.describe('ProductGrid Memory Leak Test @memory-leak-cdp', () => {
     async function forceGC() {
       try {
         await page.evaluate(() => {
-          if (typeof (window as any).gc === 'function') {
-            (window as any).gc();
+          const gc = (window as unknown as { gc?: () => void }).gc;
+          if (typeof gc === 'function') {
+            gc();
           }
         });
         await page.waitForTimeout(100);
-      } catch (e) {
+      } catch {
         // GC not available, skip
       }
     }
@@ -176,12 +177,13 @@ test.describe('ProductGrid Memory Leak Test @memory-leak-cdp', () => {
     async function forceGC() {
       try {
         await page.evaluate(() => {
-          if (typeof (window as any).gc === 'function') {
-            (window as any).gc();
+          const gc = (window as unknown as { gc?: () => void }).gc;
+          if (typeof gc === 'function') {
+            gc();
           }
         });
         await page.waitForTimeout(100);
-      } catch (e) {
+      } catch {
         // GC not available, skip
       }
     }

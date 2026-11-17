@@ -3,6 +3,7 @@
 import { ClientRouter } from 'astro:transitions';
 import { siteConfig } from '@/lib/site-config';
 import { safeJsonForScript } from '@/lib/safeJson';
+import { canonicalUrl } from '@/lib/canonical';
 import '@/styles/global.css';
 
 interface Props {
@@ -212,7 +213,7 @@ const image = imageProp ?? seoData.defaultImage;
 <link rel="dns-prefetch" href="https://squarecdn.com" />
 <link rel="dns-prefetch" href="https://api.elcaminoskateshop.com" />
 
-<link rel="canonical" href={Astro.url.toString()} />
+<link rel="canonical" href={canonicalUrl(Astro.url)} />
 <meta property="og:type" content={ogType} />
 <meta name="apple-mobile-web-app-title" content={siteConfig.name} />
 <meta property="og:site_name" content={siteConfig.name} />

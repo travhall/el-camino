@@ -254,3 +254,98 @@ Stop and report if:
   and record them in `plans/README.md`.
 - If the answer turns out to be "the catalog is small, this does not matter",
   that is worth writing down permanently so nobody re-audits it in six months.
+
+
+---
+
+## Findings (executed 2026-11-16 at `051257c`, against the Square Sandbox account)
+
+Method for every number: production bundle built with `PREVIEW=true astro build`
+(Node adapter), started fresh per route with a temporary preload that wraps
+`globalThis.fetch` and logs each outbound call (kept in the scratchpad, never in
+the repo), `.env` Sandbox token, one cold hit then one warm hit by `curl`.
+Local machine to Square Sandbox, so latencies are Sandbox-from-a-laptop, not
+Netlify-region-to-live-Square. **Netlify Blobs is disabled in local dev
+(`blobCache.ts:66-70`), so Blobs round trips were counted from code, not
+timed.**
+
+**Step 1, catalog size** (read-only `catalog/list`): 1 page, **95 items, 140
+variations, 120 distinct image ids, 3 measurement units, 12 categories**
+(max 14 variations on one item, mean 1.5). Under the plan's 100-item threshold,
+so finding 2 (serial pagination) costs one request today. Production is
+planned to be modelled on this account; re-check the live count at launch
+(plan 210).
+
+**Step 2, cold render per route** (5 cold runs; `/` three times):
+
+| Route | Cold first byte | Cold total | Warm total | Outbound calls | Of which `catalog/object/{id}` |
+|---|---|---|---|---|---|
+| `/` | 0.68-0.73 s | 1.85-1.89 s | 0.009 s | 120 | 114 |
+| `/the-shop` | 0.64 s | 1.87 s | 0.17 s | 120 | 114 |
+| `/category/apparel` | 1.48 s | 1.66 s | 0.011 s | 119 | 114 |
+| `/shop/all` | 1.39 s | 1.68 s | 0.016 s | 119 | 114 |
+| `/product/baker-825-rowan-kill-deck` | 1.99 s | 2.16 s | 0.008 s | 121 | 115 |
+
+Every route pays the same ~114 per-id catalog GETs, because Nav reaches
+`fetchProducts()` on a cold cache (finding 1 confirmed). On the cold `/` run the
+timeline was: WordPress x2 serial 0-480 ms; three `catalog/list` calls 338-820
+ms (the third waits for the first two); **all 114 object GETs fired at once**
+(max concurrency 114, average call 378 ms, window 863-1377 ms, sum of call time
+about 43 s); one `batch-retrieve` 1388-1547 ms. Critical path about 1.55 s. No
+retries or timeouts occurred in any run.
+
+**Step 3, does Nav's 5 s budget trip?** Not at this size. Cold totals were at
+most 2.2 s, and all 6 nav items were present in every cold response. The 3.5 s
+(staging) and 7.4 s (production) cold first bytes seen by plan 214 are **not
+reproduced here**, so they come from something this setup cannot see: function
+cold start, region latency to Square, or Blobs. Unresolved; the next step is
+function-side timing logs on a deployed site, not more local measurement.
+
+**Step 4, sizing the fixes**
+- Findings 3 and 4 (per-id GETs, 114 per cold render): because they run fully
+  in parallel, the wall cost is the 514 ms window, not the 43 s sum. One
+  `batch-retrieve` took 159-164 ms in these runs, so replacing 114 GETs with
+  one or two batch calls saves about **350 ms of a ~1.9 s cold render (~19%)**.
+  The larger win is not latency: it is going from 114 simultaneous requests per
+  cold instance to 1-2. Concurrency scales with catalog size and instance count;
+  at several hundred items and several cold instances this is where Square rate
+  limiting would appear. Not measured.
+- Finding 5 (per-entity Blobs reads): by code about 140 inventory + 120 image
+  keys per cold listing, each a separate Blobs GET, all `Promise.all`. Cannot be
+  sized without a deployed measurement; if each is a few tens of ms in parallel
+  it is noise at this size. Held.
+- Finding 2 (serial pagination): zero cost at 95 items (1 page). Each extra
+  page is about 300 ms serial (the observed `catalog/list` call time), so 500
+  items would add about 1.2 s. Matters only if the live catalog passes 100
+  items.
+- Finding 6 (retry wraps the composite): no retry fired in any run; irrelevant
+  until a timeout actually occurs.
+
+**Step 5, stampede and `stale-while-revalidate=0`.** No traffic data is
+available, so the stampede cost is unestimated. On `swr=0`: only
+`category/[...slug].astro:58-62` uses it, on the stated ground that stale HTML
+would show out-of-date stock. `shop/all`, `/shop/sale` and `/` already serve
+stale for 900-1800 s and also show stock, so the category page is the
+inconsistent one. At TTL expiry a visitor waits a full cold render (about
+1.7 s here; unknown on a cold function). Recommendation: give category pages a
+short window (60 s) rather than 0, which keeps the staleness bound tighter than
+the other listings and removes the user-facing wait. Plan 221.
+
+**Step 6, sequence and why in this order**
+1. **Plan 221 (swr on category pages).** One header value, no data-path change,
+   removes the visible wait at expiry. First because it does not move any
+   measurement the later plans depend on.
+2. **Plan 222 (batch the per-id image and unit lookups).** About -350 ms cold
+   and 114 concurrent calls become 1-2. Before any retry work: it shrinks
+   what a retry would re-run (finding 6), and it reduces what a stampede costs
+   (finding 7).
+3. **Deferred, with triggers:** retry scope (6) until a timeout is observed;
+   per-entity Blobs reads (5) after plan 166 settles Blobs write volume and a
+   deployed measurement exists; serial pagination (2) if the live catalog
+   exceeds 100 items. Nav blocking (1) stays as is while cold renders are under
+   the 5 s budget; revisit if function-side timing shows the 3.5-7.4 s cold
+   first bytes include a Nav timeout.
+4. **Open question, not a plan:** what the 3.5-7.4 s cold first bytes consist
+   of. Needs timing logs from the deployed function; see Step 3.
+
+No production file was modified. Instrumentation lived only in the scratchpad.

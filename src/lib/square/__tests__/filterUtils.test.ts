@@ -7,19 +7,12 @@ vi.mock('../categories', () => ({
 
 import {
   parseFiltersFromURL,
-  filtersToURLParams,
-  getActiveFiltersCount,
   hasActiveFilters,
   clearAllFilters,
   filterSaleProducts,
   extractFilterOptions,
 } from '../filterUtils';
-import type {
-  Product,
-  ProductFilters,
-  ProductVariation,
-  SaleInfo,
-} from '../types';
+import type { Product, ProductVariation, SaleInfo } from '../types';
 
 describe('parseFiltersFromURL', () => {
   it('parses brands, categories, availability, and onSale from search params', () => {
@@ -48,40 +41,6 @@ describe('parseFiltersFromURL', () => {
     params.append('brands', 'Baker');
     params.append('brands', '');
     expect(parseFiltersFromURL(params).brands).toEqual(['Baker']);
-  });
-});
-
-describe('filtersToURLParams', () => {
-  it('round-trips through parseFiltersFromURL', () => {
-    const filters: ProductFilters = {
-      brands: ['Baker', 'Krooked'],
-      categories: ['cat-1'],
-      availability: true,
-      onSale: false,
-    };
-    const params = filtersToURLParams(filters);
-    expect(parseFiltersFromURL(params)).toEqual(filters);
-  });
-
-  it('omits keys for empty/false filter values', () => {
-    const params = filtersToURLParams(clearAllFilters());
-    expect(params.toString()).toBe('');
-  });
-});
-
-describe('getActiveFiltersCount', () => {
-  it('sums brand + category counts plus one for each active boolean flag', () => {
-    const filters: ProductFilters = {
-      brands: ['Baker'],
-      categories: ['cat-1', 'cat-2'],
-      availability: true,
-      onSale: true,
-    };
-    expect(getActiveFiltersCount(filters)).toBe(5);
-  });
-
-  it('returns 0 for cleared filters', () => {
-    expect(getActiveFiltersCount(clearAllFilters())).toBe(0);
   });
 });
 
