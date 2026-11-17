@@ -208,6 +208,25 @@ const nonce = Astro.locals.nonce;
       )
       .forEach((wrapper) => wrapper.classList.add('entrance-armed'));
   }, 2500);
+
+  // News grid, first viewport (plan 230): arm each card the moment its own image
+  // has loaded. This must be inline. armCardsOnImageReady (the hoisted module
+  // script) runs only after the page's ~39 script requests; measured on
+  // throttled mobile the cards then fell back to the 2.5 s timer above and
+  // appeared as late as before the fix (Speed Index 3.5 s). Inline, the card
+  // fades in as soon as its image paints.
+  document
+    .querySelectorAll('.article-card-wrapper.news-entrance')
+    .forEach((wrapper) => {
+      const arm = () => wrapper.classList.add('entrance-armed');
+      const img = wrapper.querySelector('img');
+      if (!img || img.complete) {
+        arm();
+        return;
+      }
+      img.addEventListener('load', arm, { once: true });
+      img.addEventListener('error', arm, { once: true });
+    });
 </script>
 
 <style is:global>
