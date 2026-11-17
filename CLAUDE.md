@@ -99,6 +99,11 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
   died with `Cannot find package '@tybys/wasm-util'` (exit code 2) even though
   the same lockfile built fine locally and on GitHub Actions. Do not drop them
   as unused, and re-check them when `astro` or `@astrojs/check` is bumped.
+- `netlify.toml` has a `[build] ignore` command: a deploy is skipped when only
+  `plans/`, `docs/` or markdown files changed since the last built commit. It
+  fails safe (any error builds). `[skip netlify]` in a commit message does not
+  stop PR deploy previews. Netlify build minutes are limited, so don't push
+  throwaway commits to a PR branch.
 - `.husky/pre-commit` checks only what is staged: Prettier on the staged files,
   ESLint (`--max-warnings 0`) on staged code, then, if any `.ts`/`.tsx`/`.astro`
   is staged, `pnpm check` (whole-project) and `vitest related --run` on those
