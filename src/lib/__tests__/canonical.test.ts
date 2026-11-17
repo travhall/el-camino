@@ -54,7 +54,9 @@ describe('canonicalUrl', () => {
   });
 
   it('keeps ?page=N on paginated news listings, only for N > 1', () => {
-    expect(c('https://x.test/news?page=2')).toBe(`${siteConfig.url}/news?page=2`);
+    expect(c('https://x.test/news?page=2')).toBe(
+      `${siteConfig.url}/news?page=2`
+    );
     expect(c('https://x.test/news/tag/events?page=3&utm=x')).toBe(
       `${siteConfig.url}/news/tag/events?page=3`
     );
@@ -73,13 +75,17 @@ describe('isCanonicalHost / robotsTagFor', () => {
   it('treats only the configured host as canonical', () => {
     expect(isCanonicalHost('www.elcaminoskateshop.com')).toBe(true);
     expect(isCanonicalHost('elcaminoskateshop.netlify.app')).toBe(false);
-    expect(isCanonicalHost('deploy-preview-3--elcaminoskateshop.netlify.app')).toBe(false);
+    expect(
+      isCanonicalHost('deploy-preview-3--elcaminoskateshop.netlify.app')
+    ).toBe(false);
     expect(isCanonicalHost('localhost')).toBe(false);
     expect(isCanonicalHost('elcaminoskateshop.com')).toBe(false);
   });
 
   it('asks for noindex everywhere except the canonical host', () => {
     expect(robotsTagFor('www.elcaminoskateshop.com')).toBeNull();
-    expect(robotsTagFor('elcaminoskateshop.netlify.app')).toBe('noindex, nofollow');
+    expect(robotsTagFor('elcaminoskateshop.netlify.app')).toBe(
+      'noindex, nofollow'
+    );
   });
 });
