@@ -231,3 +231,119 @@ Stop and report if:
   `ProductGrid` as the PoC.
 - The output of this spike should be new numbered plans, one per file worth
   extracting.
+
+
+---
+
+## Findings (executed 2026-11-16 at `051257c`)
+
+**Drift**: `Modal.astro` and `Nav.astro` each changed by 250-300 lines since the
+plan, so the line counts below are re-measured.
+
+**Step 1: inventory** (inline `<script>` lines, excluding JSON data blocks;
+files with 150 or more; 18 files, 6,615 lines in total):
+
+| Inline lines | File | `astro:page-load` | `before-swap` | Cart | Money | Filter/URL |
+|---|---|---|---|---|---|---|
+| 954 | `pages/cart.astro` | yes | no | yes | yes | yes |
+| 763 | `ProductGrid.astro` | yes | yes | no | no | yes |
+| 580 | `Modal.astro` (**extracted**) | yes | yes | no | no | no |
+| 542 | `FulfillmentSelector.astro` | yes | no | yes | yes | yes |
+| 512 | `Nav.astro` | no | yes | no | no | no |
+| 407 | `NewsFilters.astro` | yes | no | no | no | yes |
+| 384 | `ProductFilters.astro` | yes | yes | no | no | yes |
+| 373 | `admin/AdminNav.astro` | no | yes | no | no | no |
+| 332 | `AppliedFilters.astro` | yes | no | no | no | yes |
+| 286 | `wordpress/blocks/JetpackSlideshow.astro` | yes | no | no | no | no |
+| 271 | `ArticleGrid.astro` (2 scripts) | yes | no | no | no | yes |
+| 222 | `RecentlyViewed.astro` | yes | yes | yes | yes | yes |
+| 184 | `pages/product/[id].astro` | yes | yes | yes | no | no |
+| 178 | `wordpress/blocks/WPGallery.astro` | yes | yes | no | no | no |
+| 175 | `NewsPaginationControls.astro` | yes | no | no | no | yes |
+| 151 | `admin/notifications/back-in-stock.astro` | no | no | no | no | no |
+| 151 | `BaseHead.astro` (5 scripts) | yes | no | no | no | yes |
+| 150 | `OpenStatusBadge.astro` | yes | no | no | no | no |
+
+The five files the plan names total 3,351 inline lines (not ~5,900); the rest
+of the 6,615 is the other thirteen. `src/scripts/` already holds
+`mini-cart-client.ts` (779 lines), `imageShimmer.ts` and `initDeviceDetection.ts`.
+
+**Step 2: PoC choice: `Modal.astro`.** Self-contained, no cart or money, loaded
+on every page (so any breakage shows immediately), and it has both lifecycle
+hooks (`astro:page-load`, `astro:before-swap`). A working extraction made on
+2026-09-06 was salvaged from the local backup; it no longer applied to
+`Modal.astro` (the file changed), so the module was regenerated from the current
+inline script. Diffing the old module against the current script showed the old
+one was also stale by a closing `</div>` in the location modal's markup, so the
+salvaged module was not reused as-is.
+
+**Step 3: extraction.** `src/scripts/modal-client.ts` exports `init()` (guarded
+so it runs once); `Modal.astro`'s script is now `import { init } ...; init();`.
+Verified in a real browser on the dev server **and** on a production-mode Node
+bundle: the location, secure-checkout and `window.showModal` dialogs open and
+close (Escape, confirm button) before and after a same-document client-side
+navigation to `/news`, one `#modal-backdrop` throughout, **no
+`securitypolicyviolation` events and no console errors**. In the production
+build the script is served as an external file
+(`/_astro/Modal.astro_astro_type_script_index_0_lang.*.js`), covered by
+`script-src 'self'`; no nonce is needed and `middleware.ts` is untouched. The
+policy-page modal and the checkout/cart triggers were not clicked through.
+
+**Step 4: tests.** `src/scripts/__tests__/modal-client.test.ts`, 8 tests
+(`init` registers `window.showModal`, location and secure-checkout content,
+confirm callback, Escape closes after the animation, `astro:before-swap` tears
+listeners down, `astro:page-load` re-registers them, and `init()` twice does not
+stack a second listener). Each test does `vi.resetModules()` because the module
+keeps singleton state. `modal-client.ts` coverage: 63% statements, 42% branches.
+
+**Step 5: coverage (STOP condition hit; not shipped).** Adding
+`src/scripts/**/*.ts` to the coverage `include`:
+
+| | Statements | Branches | Functions | Lines |
+|---|---|---|---|---|
+| Now (`lib` + `pages/api`) | 79.60 | 69.58 | 79.95 | 80.95 |
+| With `src/scripts` | 73.50 | 64.45 | 75.31 | 74.68 |
+| Thresholds | 77 | 67 | 77 | 78 |
+
+All four would fail the gate. `scripts/` alone is 23.6% statements; the cause is
+mostly `mini-cart-client.ts`, already extracted but at **0% over 779 lines**,
+plus `imageShimmer.ts` and `initDeviceDetection.ts` at 0%. The `include` change
+was reverted and thresholds were not touched. The operator decides: either test
+`mini-cart-client.ts` first (plan 225) and then add the `include`, or re-baseline
+deliberately.
+
+**Step 6: recommendation.**
+*Hazards met and handled.* Hoisting: a hoisted `<script>` that imports is
+already bundled to an external module, so extracting changes nothing about
+delivery or CSP. Lifecycle: the module does not re-execute on swap, so
+`init()` keeps the `astro:page-load` registration and the module keeps its
+`astro:before-swap` cleanup and `import.meta.hot.dispose`. Singletons: module
+state needs `vi.resetModules()` in tests. Listener cleanup: unchanged, moved
+as written.
+
+*What the PoC cost.* Small, because a salvaged version existed; the real cost
+was verification (two environments, navigation, CSP), not the move.
+
+*Ordered list, with effort and risk (estimates):*
+1. **`mini-cart-client.ts` tests** (plan 225): not an extraction, but the
+   prerequisite for putting `src/scripts` under the gate. M, LOW risk.
+2. **Filter files** (plan 226): `AppliedFilters`, `ProductFilters`,
+   `NewsFilters`, `NewsPaginationControls`, `ArticleGrid`, 1,569 inline lines of
+   URL-param handling that `filterUtils.ts` already partly implements. One shared
+   module plus thin per-file `init()`s. M, MED (view transitions).
+3. **`Nav.astro`** (plan 227): 512 lines, `before-swap` wiring on every page.
+   M, MED.
+4. **`FulfillmentSelector.astro`** (plan 228) and **`cart.astro`** (plan 229):
+   the value is highest (shipping and cart maths) and so is the risk; do them
+   last, with `e2e/money-path.spec.ts` and the stub e2e green before and after.
+   L each, HIGH.
+5. **`ProductGrid.astro`** (763 lines): wait for plan 177.
+*Not worth extracting:* `BaseHead.astro` (its inline scripts must run before
+paint; extracting would break the theme-flash guard), `OpenStatusBadge`,
+`WPGallery`/`JetpackSlideshow` (low-risk UI sugar), the admin pages
+(`AdminNav`, `back-in-stock`; low traffic, low risk).
+*Coverage `include`:* wait. Ship it with plan 225, not before.
+*Honest estimate for the full set:* on the order of 2-3 weeks of focused work
+for the 14 files recommended, most of it verification; one of those weeks is
+`cart.astro` and `FulfillmentSelector.astro` alone. That is an estimate from one
+file, not a measurement.
