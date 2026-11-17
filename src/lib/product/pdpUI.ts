@@ -12,7 +12,10 @@ import {
 } from '@/lib/square/types';
 import { MoneyUtils } from '@/lib/square/money';
 import { heroAlt } from '@/lib/square/variationImages';
-import { toNetlifyImageCDN } from '@/lib/image/enhanced-optimizer';
+import {
+  toNetlifyImageCDN,
+  IMAGE_CDN_PREFIX,
+} from '@/lib/image/netlifyImageCDN';
 
 export interface ElementIds {
   priceDisplay?: string;
@@ -97,27 +100,24 @@ export function thumbnailSrc(imageUrl: string): string {
 }
 
 function buildHeroSrcSet(imageUrl: string): string {
-  return HERO_SRCSET_WIDTHS.map((size) => {
-    const params = new URLSearchParams({
-      url: imageUrl,
-      w: size.toString(),
-      q: '85',
-      fit: 'cover',
-      h: size.toString(),
-    });
-    return `/.netlify/images?${params.toString()} ${size}w`;
-  }).join(', ');
+  // Same widths and quality as the server render (generateResponsiveSrcSet in
+  // product/[id].astro). The server also adds fm=avif; a variant swap lets the
+  // browser negotiate the format instead.
+  return HERO_SRCSET_WIDTHS.map(
+    (size) =>
+      `${toNetlifyImageCDN(imageUrl, size, { height: size, quality: 85 })} ${size}w`
+  ).join(', ');
 }
 
 /**
  * The original (Square/WordPress) URL behind a hero src: unwraps the
- * `url` param of a /.netlify/images proxy URL, otherwise returns src as-is.
+ * `url` param of an image CDN proxy URL, otherwise returns src as-is.
  */
 export function sourceImageUrl(src: string | null): string | null {
   if (!src) return null;
   try {
     const parsed = new URL(src, window.location.href);
-    return parsed.pathname === '/.netlify/images'
+    return parsed.pathname === IMAGE_CDN_PREFIX
       ? parsed.searchParams.get('url')
       : src;
   } catch {

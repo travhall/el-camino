@@ -645,6 +645,33 @@ describe('QuickViewController — real implementation', () => {
     });
   });
 
+  describe('image URLs (plan 161)', () => {
+    it('routes a remote hero image through the shared CDN builder, square, at quality 80', async () => {
+      const url = 'https://items-images-sandbox.s3.amazonaws.com/deck.jpg';
+      await openWith(controller, makeProduct({ image: url }));
+
+      const src = (
+        document.getElementById('quick-view-image') as HTMLImageElement
+      ).getAttribute('src')!;
+      expect(src.startsWith('/.netlify/images?')).toBe(true);
+      const p = new URLSearchParams(src.split('?')[1]);
+      expect(p.get('url')).toBe(url);
+      expect(p.get('q')).toBe('80');
+      expect(p.get('fit')).toBe('cover');
+      expect(p.get('h')).toBe(p.get('w'));
+    });
+
+    it('leaves a local image path alone', async () => {
+      await openWith(controller, makeProduct({ image: '/local/deck.png' }));
+
+      expect(
+        (
+          document.getElementById('quick-view-image') as HTMLImageElement
+        ).getAttribute('src')
+      ).toBe('/local/deck.png');
+    });
+  });
+
   describe('hero alt text', () => {
     it('stores the product title as the base alt and follows the selected color', async () => {
       await openWith(controller, makeProduct());

@@ -6,6 +6,7 @@ import {
   EL_CAMINO_LOADER_DATA_URI,
 } from '@/lib/constants/assets';
 import { cart as cartInstance } from '@/lib/cart';
+import { toNetlifyImageCDN } from '@/lib/image/netlifyImageCDN';
 
 let inventoryData: Record<string, number> = {};
 
@@ -126,20 +127,10 @@ async function loadCart() {
   return cartInstance;
 }
 
-// Route any external image URL through Netlify Image CDN for compression,
-// format negotiation (AVIF/WebP), and edge caching — covers squarecdn.com,
-// s3.amazonaws.com, and any other Square storage backend.
-// Cart thumbnails: 100×100 is sufficient; CDN handles retina via format negotiation.
+// Cart thumbnails: 100x100 is sufficient; the CDN handles retina via format
+// negotiation. Non-remote sources (local paths, data URIs) pass through.
 function optimizeCartImage(src: string): string {
-  if (!src || src.startsWith('/') || src.startsWith('data:')) return src;
-  const p = new URLSearchParams({
-    url: src,
-    w: '100',
-    h: '100',
-    fit: 'cover',
-    q: '80',
-  });
-  return `/.netlify/images?${p.toString()}`;
+  return toNetlifyImageCDN(src, 100, { height: 100 });
 }
 
 function formatPrice(price: number): string {

@@ -4,6 +4,7 @@
  */
 
 import { SHIMMER_PLACEHOLDER_DATA_URI } from '@/lib/constants/assets';
+import { toNetlifyImageCDN } from './netlifyImageCDN';
 
 export interface ModernImageOptions {
   width?: number;
@@ -178,32 +179,22 @@ export class EnhancedImageOptimizer {
           : options.quality || 85; // Keep 85 for Square product images
 
         // Proxy ALL supported images through Netlify Image CDN
-        // Enables automatic AVIF/WebP conversion + edge caching
-        const netlifyParams = new URLSearchParams({
-          url: src,
-          w: (options.width || 600).toString(),
-          q: optimizedQuality.toString(),
+        // Enables automatic AVIF/WebP conversion + edge caching.
+        // Square product images: fit=cover with the height. WordPress content
+        // images: width only (fit null), so the aspect ratio is preserved.
+        // Format: an explicit one wins; otherwise WordPress asks for AVIF
+        // (falls back automatically if the browser can't).
+        return toNetlifyImageCDN(src, options.width || 600, {
+          quality: optimizedQuality,
+          fit: isSquareImage && options.height ? 'cover' : null,
+          height: isSquareImage ? options.height : undefined,
+          format:
+            options.format && options.format !== 'auto'
+              ? options.format
+              : isWordPressImage
+                ? 'avif'
+                : undefined,
         });
-
-        // For WordPress content images: preserve aspect ratio by only setting width
-        // For Square product images: use fit=cover for consistent product displays
-        if (isSquareImage && options.height) {
-          netlifyParams.set('fit', 'cover');
-          netlifyParams.set('h', options.height.toString());
-        }
-        // WordPress images: only width set, aspect ratio preserved
-
-        // PHASE 4 TRACK B: Explicit format prioritization for faster negotiation
-        // Prefer AVIF > WebP > auto, reducing negotiation overhead
-        if (options.format && options.format !== 'auto') {
-          netlifyParams.set('fm', options.format);
-        } else if (isWordPressImage) {
-          // For WordPress images, explicitly request AVIF for best compression
-          // Falls back automatically if browser doesn't support
-          netlifyParams.set('fm', 'avif');
-        }
-
-        return `/.netlify/images?${netlifyParams.toString()}`;
       }
 
       // Non-supported images pass through unchanged
@@ -271,30 +262,5 @@ export class EnhancedImageOptimizer {
 
 export default EnhancedImageOptimizer;
 
-/**
- * Route any external image URL through Netlify Image CDN.
- *
- * Single canonical helper for all components — server-side and client-side alike.
- * Handles squarecdn.com, s3.amazonaws.com, wordpress.com, and any other HTTP URL
- * uniformly, so no component needs to know which domain it's dealing with.
- *
- * @param src    Source URL (must be an absolute http/https URL)
- * @param width  Desired output width in pixels
- * @param opts   Optional height, quality (default 80), and fit (default "cover")
- */
-export function toNetlifyImageCDN(
-  src: string,
-  width: number,
-  opts: { height?: number; quality?: number; fit?: string } = {}
-): string {
-  if (!src?.startsWith('http')) return src ?? '';
-  const { height, quality = 80, fit = 'cover' } = opts;
-  const params = new URLSearchParams({
-    url: src,
-    w: String(width),
-    q: String(quality),
-    fit,
-  });
-  if (height) params.set('h', String(height));
-  return `/.netlify/images?${params.toString()}`;
-}
+// Kept here so existing imports keep working; the builder lives in its own module.
+export { toNetlifyImageCDN } from './netlifyImageCDN';
