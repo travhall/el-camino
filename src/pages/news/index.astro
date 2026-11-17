@@ -176,6 +176,17 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
        pathname-guarded) so its content is byte-identical across navigations
        and never gets caught by ClientRouter's per-page nonce mismatch. */}
 
+    {/* No-JS fallback (plan 230): cards below the first viewport are rendered
+       `opacity-0` and revealed by script; without JS they would stay invisible. */}
+    <noscript>
+      <style is:inline>
+        .article-card-wrapper.opacity-0 {
+          opacity: 1;
+          transform: none;
+        }
+      </style>
+    </noscript>
+
     {/* Preconnect to WordPress CDN for faster image loading */}
     <link rel="preconnect" href="https://elcaminoskateshop.wordpress.com" crossorigin />
     <link rel="dns-prefetch" href="https://elcaminoskateshop.wordpress.com" />

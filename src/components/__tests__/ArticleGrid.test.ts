@@ -5,6 +5,8 @@
  * skeletons — that made the homepage show permanent skeletons whenever
  * WordPress returned nothing.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import ArticleGrid from '../ArticleGrid.astro';
@@ -66,5 +68,65 @@ describe('ArticleGrid', () => {
     expect(html).toContain('Test Post Title');
     expect(html).not.toContain('Nothing new on the wall yet');
     expect(html).not.toContain('loading-article-card');
+  });
+
+  // Plan 230. Chrome ignores an `opacity: 0` element as an LCP candidate, so
+  // cards that start hidden make LCP wait for the script that reveals them
+  // (2.0 s of /news's 4.1 s on throttled mobile). Cards in the first viewport
+  // must be visible in the server HTML; the rest keep the scroll-in reveal.
+  describe('filterable news grid: first cards are visible without JS (plan 230)', () => {
+    const posts: WordPressPost[] = Array.from({ length: 8 }, (_, i) => ({
+      ...post,
+      id: i + 1,
+      slug: `post-${i + 1}`,
+      title: { rendered: `Post ${i + 1}` },
+    }));
+
+    const wrapperClasses = (html: string): string[] =>
+      [
+        ...html.matchAll(
+          /<div class="([^"]*\barticle-card-wrapper\b[^"]*)" role="article"/g
+        ),
+      ].map((m) => m[1]);
+
+    it('grid view: the first four cards are not hidden, the rest are', async () => {
+      const html = await render({ posts, filterable: true, view: 'grid' });
+      const classes = wrapperClasses(html);
+
+      expect(classes).toHaveLength(8);
+      classes.forEach((c, i) => {
+        expect(c.split(/\s+/).includes('opacity-0'), `card ${i}`).toBe(i >= 4);
+      });
+    });
+
+    it('list view: the first two cards are not hidden, the rest are', async () => {
+      const html = await render({ posts, filterable: true, view: 'list' });
+      const classes = wrapperClasses(html);
+
+      expect(classes).toHaveLength(8);
+      classes.forEach((c, i) => {
+        expect(c.split(/\s+/).includes('opacity-0'), `card ${i}`).toBe(i >= 2);
+      });
+    });
+
+    it('still marks every card for the filter and reveal scripts', async () => {
+      const html = await render({ posts, filterable: true, view: 'grid' });
+
+      expect(html.match(/data-initial-index="\d+"/g)).toHaveLength(8);
+      expect(html.match(/data-variant="grid"/g)).toHaveLength(8);
+    });
+
+    it('the news page ships a noscript rule that shows the hidden cards', () => {
+      // Without JS nothing reveals the cards that start `opacity-0`.
+      const page = readFileSync(
+        resolve(__dirname, '../../pages/news/index.astro'),
+        'utf8'
+      );
+      const noscript = /<noscript>([\s\S]*?)<\/noscript>/.exec(page)?.[1] ?? '';
+
+      expect(noscript).toContain('.article-card-wrapper.opacity-0');
+      expect(noscript).toMatch(/opacity:\s*1/);
+      expect(noscript).toMatch(/transform:\s*none/);
+    });
   });
 });

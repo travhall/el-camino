@@ -42,6 +42,14 @@ const getCardVariant = () => {
 // Home page: first image only (LCP critical)
 // News grid: first 2 images (reduce eager loading for mobile)
 // News list: first image only (large cards)
+// Plan 230: cards in the first viewport are rendered visible. Chrome ignores an
+// `opacity: 0` element as an LCP candidate, so cards that start hidden make
+// LCP wait for the script that reveals them (2.0 s of /news's 4.1 s LCP on
+// throttled mobile). Grid: the first two rows of the 2-column mobile layout (and
+// the first row of 3-6 columns). List: one card is above the fold on mobile,
+// two cover tablets. Later cards keep the scroll-in reveal below.
+const initiallyVisibleCount = view === 'list' ? 2 : 4;
+
 const shouldPrioritize = (index: number) => {
   if (!filterable) return index < 2; // Home page: first two (second card is actual LCP on mobile)
   return view === 'grid' ? index < 2 : index === 0; // News - more conservative
@@ -127,7 +135,7 @@ const nonce = Astro.locals.nonce;
           if (filterable) {
             return (
               <div
-                class="article-card-wrapper opacity-0 w-full max-w-full"
+                class={`article-card-wrapper ${index < initiallyVisibleCount ? '' : 'opacity-0 '}w-full max-w-full`}
                 role="article"
                 data-initial-index={index}
                 data-variant={getCardVariant()}
