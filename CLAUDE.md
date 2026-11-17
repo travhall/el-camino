@@ -92,6 +92,13 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
   feature commits with no explanatory message, so the original motivating bug
   isn't recorded — treat it as a deliberate cache-freshness safeguard rather
   than dead cruft, but confirm with the maintainer before removing it.
+- `@emnapi/core`, `@emnapi/runtime` and `@tybys/wasm-util` are pinned as
+  devDependencies on purpose. `astro check` loads `@astrojs/astro2tsx`, a
+  WebAssembly module that needs them resolvable from the project root. Without
+  the `@tybys/wasm-util` pin the first Netlify build after the astro 7.4.12 bump
+  died with `Cannot find package '@tybys/wasm-util'` (exit code 2) even though
+  the same lockfile built fine locally and on GitHub Actions. Do not drop them
+  as unused, and re-check them when `astro` or `@astrojs/check` is bumped.
 - `.husky/pre-commit` checks only what is staged: Prettier on the staged files,
   ESLint (`--max-warnings 0`) on staged code, then, if any `.ts`/`.tsx`/`.astro`
   is staged, `pnpm check` (whole-project) and `vitest related --run` on those
