@@ -99,11 +99,16 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
   died with `Cannot find package '@tybys/wasm-util'` (exit code 2) even though
   the same lockfile built fine locally and on GitHub Actions. Do not drop them
   as unused, and re-check them when `astro` or `@astrojs/check` is bumped.
-- `netlify.toml` has a `[build] ignore` command: a deploy is skipped when only
-  `plans/`, `docs/` or markdown files changed since the last built commit. It
-  fails safe (any error builds). `[skip netlify]` in a commit message does not
-  stop PR deploy previews. Netlify build minutes are limited, so don't push
-  throwaway commits to a PR branch.
+- Netlify builds are limited, so `[build] ignore` runs `scripts/netlify-ignore.sh`
+  (exit 0 skips; tested by `src/__tests__/netlifyIgnore.test.ts`): a **PR deploy
+  preview or branch deploy builds only when the head commit's message contains
+  `[preview]`**, and any deploy is skipped when only `plans/`, `docs/` or markdown
+  changed since the last built commit. Production (the staging site's master)
+  builds on any change that ships. It fails safe: a doubt always builds. Add
+  `[preview]` to the commit message only when a real Netlify deploy is needed (CDN,
+  Image CDN, Lighthouse); verify everything else locally (`pnpm build`, the
+  Lighthouse-through-a-proxy method in `plans/README.md` row 220). `[skip netlify]`
+  does not stop PR previews. Don't push throwaway commits to a PR branch.
 - `.husky/pre-commit` checks only what is staged: Prettier on the staged files,
   ESLint (`--max-warnings 0`) on staged code, then, if any `.ts`/`.tsx`/`.astro`
   is staged, `pnpm check` (whole-project) and `vitest related --run` on those
