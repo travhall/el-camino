@@ -19,8 +19,10 @@ beforeAll(async () => {
   container = await AstroContainer.create();
 });
 
-const render = (c: Parameters<AstroContainer['renderToString']>[0], props: Record<string, unknown>) =>
-  container.renderToString(c, { props });
+const render = (
+  c: Parameters<AstroContainer['renderToString']>[0],
+  props: Record<string, unknown>
+) => container.renderToString(c, { props });
 
 // Unclosed tag with a handler, an embedded script, and a javascript: link.
 const HOSTILE =
@@ -52,7 +54,9 @@ describe('WordPress block components sanitize CMS text', () => {
 
   it('WPGallery caption', async () => {
     const html = await render(WPGallery, {
-      images: [{ src: 'https://example.com/a.jpg', alt: 'a', caption: HOSTILE }],
+      images: [
+        { src: 'https://example.com/a.jpg', alt: 'a', caption: HOSTILE },
+      ],
     });
     expectClean(html);
     expect(html).toContain('nice');
@@ -60,7 +64,9 @@ describe('WordPress block components sanitize CMS text', () => {
 
   it('JetpackSlideshow caption', async () => {
     const html = await render(JetpackSlideshow, {
-      images: [{ src: 'https://example.com/a.jpg', alt: 'a', caption: HOSTILE }],
+      images: [
+        { src: 'https://example.com/a.jpg', alt: 'a', caption: HOSTILE },
+      ],
     });
     expectClean(html);
     expect(html).toContain('nice');
