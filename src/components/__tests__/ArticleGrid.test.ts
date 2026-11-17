@@ -142,13 +142,26 @@ describe('ArticleGrid', () => {
         'utf8'
       );
 
-      it('animates with cardEntrance, paused until armed', () => {
+      it('animates with a fade-only keyframe, paused until armed', () => {
         expect(source).toMatch(
-          /\.article-card-wrapper\.news-entrance\s*\{[^}]*animation:\s*cardEntrance[^}]*animation-play-state:\s*paused/s
+          /\.article-card-wrapper\.news-entrance\s*\{[^}]*animation:\s*newsCardEntrance[^}]*animation-play-state:\s*paused/s
         );
         expect(source).toMatch(
           /\.article-card-wrapper\.news-entrance\.entrance-armed\s*\{[^}]*animation-play-state:\s*running/s
         );
+      });
+
+      it('the keyframe only animates opacity, from 0.001', () => {
+        // A scale/translate in the entrance shrinks the card's painted area, and
+        // measured on the preview a later full-size card then took over as the
+        // LCP element (3.6 s vs 2.25 s). Opacity alone leaves the area intact.
+        const frames =
+          /@keyframes newsCardEntrance\s*\{([\s\S]*?)\n  \}/.exec(
+            source
+          )?.[1] ?? '';
+        expect(frames).toMatch(/from\s*\{[^}]*opacity:\s*0\.001/);
+        expect(frames).toMatch(/to\s*\{[^}]*opacity:\s*1/);
+        expect(frames).not.toMatch(/transform|scale|translate/);
       });
 
       it('leaves no forwards fill, so the filter exit can still fade the card', () => {

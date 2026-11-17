@@ -45,11 +45,12 @@ const getCardVariant = () => {
 // Plan 230: cards in the first viewport must not start at a true `opacity: 0`.
 // Chrome ignores such an element as an LCP candidate, so LCP waited for the
 // script that reveals the cards (2.0 s of /news's 4.1 s on throttled mobile).
-// They use the home page's entrance instead (`news-entrance`): a CSS animation
-// whose `from` keyframe is opacity 0.001, armed once the card's image is ready
-// (src/lib/ui/cardEntrance.ts), with the same 2.5 s inline safety net. Grid: the
-// first two rows of the 2-column mobile layout (and the first row of 3-6
-// columns). List: one card is above the fold on mobile, two cover tablets.
+// They use the home page's mechanism instead (`news-entrance`): a CSS animation
+// whose `from` keyframe is opacity 0.001 (fade only, no scale), armed by the
+// inline script below once the card's image has loaded, with the same 2.5 s
+// safety net. Grid: the first two rows of the 2-column mobile layout (and the
+// first row of 3-6 columns). List: one card is above the fold on mobile, two
+// cover tablets.
 // Later cards keep the scroll-in reveal below.
 const initiallyVisibleCount = view === 'list' ? 2 : 4;
 
@@ -266,6 +267,20 @@ const nonce = Astro.locals.nonce;
     }
   }
 
+  /* News grid, first viewport (plan 230): opacity only. The masonry keyframes
+     above also scale to 0.95, which shrinks the card's painted area; measured on
+     a deploy preview, a later full-size card then replaced it as the LCP element
+     (3.6 s, against 2.25 s). Opacity from 0.001 still makes the card an LCP
+     candidate from first paint and leaves its area intact. */
+  @keyframes newsCardEntrance {
+    from {
+      opacity: 0.001;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
   /* ─── Base wrapper (shared by masonry + filterable grid) ─────────────────── */
 
   .article-card-wrapper {
@@ -338,16 +353,16 @@ const nonce = Astro.locals.nonce;
     animation-play-state: running;
   }
 
-  /* News grid, first viewport only (plan 230): the same entrance as the masonry
-     above, so the card is an LCP candidate (opacity 0.001) from first paint and
-     fades in once its image is ready. The remaining news cards use the
+  /* News grid, first viewport only (plan 230): the masonry's mechanism (paused at
+     opacity 0.001, armed when the card's image is ready) with an opacity-only
+     fade, so the card is an LCP candidate from first paint. The remaining news cards use the
      .opacity-0 scroll-in reveal above. */
   .article-card-wrapper.news-entrance {
     /* `backwards`, not `both`: holds the 0.001 `from` keyframe until the card is
        armed, but leaves no fill once it ends. A forwards fill would pin
        opacity 1 and override the `.opacity-0` class the filter exit adds to
        fade every card out (filterCoordinator). */
-    animation: cardEntrance var(--card-transition-duration, 0.5s) ease-out
+    animation: newsCardEntrance var(--card-transition-duration, 0.5s) ease-out
       backwards;
     animation-delay: calc(
       var(--animation-order, 0) * var(--card-stagger-delay)
