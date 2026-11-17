@@ -17,6 +17,16 @@ remote_images = [
   "https://secure\\.gravatar\\.com/.*"  # Gravatar avatars
 ]
 
+# Netlify Image CDN is addressed as /.netlify/images?url=... (a query string, not
+# a path), and custom headers from this file do not reach that internal endpoint
+# at all. Rewriting through a path we own is Netlify's documented workaround:
+# the headers below apply to /cdn-img and cascade to the transform. (Plan 146.)
+[[redirects]]
+from = "/cdn-img"
+to = "/.netlify/images"
+status = 200
+force = true
+
 # Root page. Cache-Control here is superseded at runtime by the value
 # src/pages/index.astro sets on Astro.response; kept for the static case.
 # The font `Link: rel=preload` header that used to live here was removed:
@@ -84,6 +94,14 @@ Cache-Control = "public, max-age=31536000, immutable"
 for = "*.@(jpg|jpeg|png|gif|ico|svg|webp|avif)"
 [headers.values]
 Cache-Control = "public, max-age=604800, s-maxage=2592000, stale-while-revalidate=86400, immutable"
+
+# Transformed images: long browser cache. See the /cdn-img rewrite above. The
+# source origins (wordpress.com, Square's S3) send no usable Cache-Control, so
+# without this every image costs a network round-trip on every page view.
+[[headers]]
+for = "/cdn-img"
+[headers.values]
+Cache-Control = "public, max-age=2592000, s-maxage=31536000, stale-while-revalidate=86400, immutable"
 
 # Netlify Image CDN - Aggressive caching for transformed images
 [[headers]]
