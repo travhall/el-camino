@@ -1,0 +1,583 @@
+import { EVENTS, type ShowPolicyModalDetail } from '@/lib/events';
+
+// Import types for use in script
+interface SiteConfig {
+  name: string;
+  tagline?: string;
+  contact: {
+    address: {
+      street: string;
+      city: string;
+      state: string;
+      zip: string;
+    };
+    phone: {
+      number: string;
+      display: string;
+    };
+    email: string;
+  };
+  hours: Array<{
+    day: string;
+    hours: string;
+    isOpen: boolean;
+  }>;
+  social?: Array<{
+    platform: string;
+    url: string;
+    icon: string;
+  }>;
+}
+
+// Parse the site config from the data attribute when DOM is ready
+let clientSiteConfig: SiteConfig | null = null;
+
+function initializeSiteConfig() {
+  const siteConfigElement = document.querySelector('[data-site-config]');
+  if (siteConfigElement) {
+    const configData = siteConfigElement.getAttribute('data-site-config');
+    if (configData) {
+      try {
+        clientSiteConfig = JSON.parse(configData);
+      } catch (error) {
+        console.error('Failed to parse site config:', error);
+      }
+    }
+  }
+}
+// Add TypeScript declaration for modal functions
+declare global {
+  interface Window {
+    showModal(
+      title: string,
+      message: string,
+      onConfirm: () => void,
+      confirmText?: string,
+      cancelText?: string
+    ): void;
+  }
+}
+
+// Modal manager — uses a single pre-rendered shell (backdrop + panel) that is
+// shown/hidden rather than created/destroyed on every open. This eliminates
+// repeated createElement / appendChild / remove calls and the associated
+// style recalculations. Content is injected via innerHTML once per open;
+// the shell DOM nodes are reused across all open/close cycles.
+const modalManager = {
+  activeModal: null as HTMLElement | null,
+  isAnimating: false,
+  _currentCleanup: null as (() => void) | null,
+  _triggerElement: null as HTMLElement | null,
+
+  // Shared open helper: shows the shell, animates it in, registers listeners.
+  // panelClasses: full className string for the inner panel (controls width, height, layout).
+  // ariaLabelledBy: id of the heading element inside the injected HTML.
+  // focusSelector: CSS selector for the element to focus after open.
+  // setupListeners: callback that wires up close/confirm/etc. after innerHTML is set.
+  _open(
+    panelClasses: string,
+    ariaLabelledBy: string,
+    focusSelector: string,
+    setupListeners: (backdrop: HTMLElement, panel: HTMLElement) => () => void
+  ): void {
+    this.closeModal();
+
+    const backdrop = document.getElementById('modal-backdrop') as HTMLElement;
+    const panel = document.getElementById('modal-panel') as HTMLElement;
+    if (!backdrop || !panel) return;
+
+    // Remember what had focus so it can be restored when the modal closes
+    this._triggerElement = document.activeElement as HTMLElement | null;
+
+    // Reset panel classes for this modal type
+    panel.className = panelClasses;
+    backdrop.setAttribute('aria-labelledby', ariaLabelledBy);
+
+    document.body.style.overflow = 'hidden';
+    // Move to end of <body> so it stacks above all other positioned elements
+    // (matches original portalRoot.appendChild behavior)
+    document.body.appendChild(backdrop);
+    backdrop.style.display = '';
+    this.activeModal = backdrop;
+
+    // Register listeners (returns cleanup fn)
+    const listenersCleanup = setupListeners(backdrop, panel);
+
+    // Generic Tab trap — keeps focus cycling within the panel regardless of
+    // how many focusable elements a given modal type renders.
+    const handleTabTrap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleTabTrap);
+
+    this._currentCleanup = () => {
+      listenersCleanup();
+      document.removeEventListener('keydown', handleTabTrap);
+    };
+
+    // Focus first interactive element
+    const focusTarget = panel.querySelector(focusSelector) as HTMLElement;
+
+    // Force reflow to commit display:flex + opacity:0 state before removing
+    // the opacity classes. Without this, the browser can batch the display
+    // change and class removal into the same frame, skipping the transition.
+    // This mirrors the SizeGuide approach and gives CSS a real starting state.
+    void backdrop.offsetHeight;
+    backdrop.classList.remove('opacity-0');
+    panel.classList.remove('scale-95', 'opacity-0');
+    panel.classList.add('scale-100', 'opacity-100');
+    focusTarget?.focus();
+  },
+
+  showModal(
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    confirmText: string = 'Confirm',
+    cancelText: string = 'Cancel'
+  ): void {
+    const panel = document.getElementById('modal-panel') as HTMLElement;
+    if (!panel) return;
+
+    panel.innerHTML = `
+      <div>
+        <div class="p-5 border-b-2 border-(--border-secondary)">
+          <h2 id="modal-title" class="font-display text-2xl text-(--content-heading)">${title}</h2>
+        </div>
+        <div class="p-5">
+          <p class="text-base text-(--content-body)">${message}</p>
+        </div>
+        <div class="flex gap-3 justify-end p-5 pt-0">
+          <button id="modal-cancel" class="font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-sm text-(--ui-button-outline-text) bg-transparent border-(--ui-button-outline-border) hover:bg-(--ui-button-outline-surface)/10 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300">${cancelText}</button>
+          <button id="modal-confirm" class="font-sans font-semibold text-sm lg:text-base py-2 px-3 lg:py-2 lg:px-4 border-2 rounded-sm text-(--ui-button-text) bg-(--ui-button-surface) border-(--ui-button-border) hover:bg-(--ui-button-surface)/75 outline-0 focus-visible:ring focus-visible:ring-offset-2 focus-visible:ring-(--ui-button-ring) transition-all ease-in-out duration-300">${confirmText}</button>
+        </div>
+      </div>`;
+
+    this._open(
+      'bg-(--ui-modal-surface) text-(--ui-modal-text) border-2 border-(--ui-modal-border) rounded panel-shadow max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out',
+      'modal-title',
+      '#modal-confirm',
+      (backdrop, panel) => {
+        const confirmButton = panel.querySelector(
+          '#modal-confirm'
+        ) as HTMLButtonElement;
+        const cancelButton = panel.querySelector(
+          '#modal-cancel'
+        ) as HTMLButtonElement;
+
+        const handleConfirm = () => {
+          onConfirm();
+          this.closeModal();
+        };
+        const handleCancel = () => {
+          this.closeModal();
+        };
+        const handleKeydown = (e: KeyboardEvent) => {
+          if (e.key === 'Escape') {
+            this.closeModal();
+          }
+        };
+        const handleBackdropClick = (e: MouseEvent) => {
+          if (e.target === backdrop) this.closeModal();
+        };
+
+        confirmButton?.addEventListener('click', handleConfirm);
+        cancelButton?.addEventListener('click', handleCancel);
+        document.addEventListener('keydown', handleKeydown);
+        backdrop.addEventListener('click', handleBackdropClick);
+
+        return () => {
+          confirmButton?.removeEventListener('click', handleConfirm);
+          cancelButton?.removeEventListener('click', handleCancel);
+          document.removeEventListener('keydown', handleKeydown);
+          backdrop.removeEventListener('click', handleBackdropClick);
+        };
+      }
+    );
+  },
+
+  showLocationModal: function () {
+    if (this.activeModal || this.isAnimating) return;
+
+    const config: SiteConfig | null =
+      clientSiteConfig ||
+      (() => {
+        const el = document.querySelector('[data-site-config]');
+        try {
+          return el
+            ? JSON.parse(el.getAttribute('data-site-config') || '{}')
+            : null;
+        } catch {
+          return null;
+        }
+      })();
+
+    if (!config) {
+      console.error('Site config not available!');
+      return;
+    }
+
+    const panel = document.getElementById('modal-panel') as HTMLElement;
+    if (!panel) return;
+
+    const todayName = new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+    }).format(new Date());
+    const hoursHTML = config.hours
+      .map((hour) => {
+        const isToday = hour.day === todayName;
+        const dayColor = isToday
+          ? 'text-(--content-emphasis) font-semibold'
+          : hour.isOpen
+            ? 'text-(--content-body)'
+            : 'text-(--content-meta)';
+        const hoursColor = isToday
+          ? 'text-(--content-emphasis) font-semibold'
+          : hour.isOpen
+            ? 'text-(--content-body)'
+            : 'text-(--content-meta)';
+        const dot = isToday
+          ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-(--ui-accent) mr-2 mb-0.5 align-middle" aria-hidden="true"></span>`
+          : `<span class="inline-block w-1.5 h-1.5 mr-2" aria-hidden="true"></span>`;
+        return `<div class="flex justify-between items-center py-0.5${isToday ? ' bg-(--surface-tertiary)/30 -mx-2 px-2 rounded-sm' : ''}"><span class="${dayColor} text-sm flex items-center">${dot}${hour.day}${isToday ? ' <span class="ml-1.5 text-xs font-normal text-(--content-meta)">(today)</span>' : ''}</span><span class="${hoursColor} text-sm">${hour.hours}</span></div>`;
+      })
+      .join('');
+
+    const socialHTML = config.social?.length
+      ? `<div class="flex gap-3 mt-1">${config.social
+          .map((s) => {
+            const label =
+              s.platform.charAt(0).toUpperCase() + s.platform.slice(1);
+            const icon =
+              s.platform === 'instagram'
+                ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`
+                : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>`;
+            const anchor = document.createElement('a');
+            anchor.href = s.url;
+            anchor.target = '_blank';
+            anchor.rel = 'noopener noreferrer';
+            anchor.setAttribute('aria-label', label);
+            anchor.className =
+              'p-2 border-2 border-(--border-primary) rounded-sm text-(--content-meta) hover:text-(--content-emphasis) hover:border-(--ui-nav-border) transition-all';
+            anchor.innerHTML = icon;
+            return anchor.outerHTML;
+          })
+          .join('')}</div>`
+      : '';
+
+    const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(`${config.contact.address.street}, ${config.contact.address.city}, ${config.contact.address.state} ${config.contact.address.zip}`)}`;
+
+    panel.innerHTML = `
+      <div>
+        <div class="flex items-start justify-between p-5 border-b-2 border-(--border-secondary)">
+          <div>
+            <h2 id="location-modal-title" class="font-display text-3xl text-(--content-heading) leading-tight">${config.name}</h2>
+            ${config.tagline ? `<p class="text-xs uppercase tracking-widest text-(--content-meta) mt-1">${config.tagline}</p>` : ''}
+          </div>
+          <button id="modal-close" class="p-2 border-2 border-(--border-primary) rounded-sm text-(--content-meta) hover:text-(--content-heading) hover:border-(--ui-nav-border) transition-all ml-4 shrink-0" aria-label="Close modal">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="p-5 space-y-5">
+          <div class="space-y-3">
+            <div>
+              <p class="text-xs uppercase tracking-widest text-(--content-meta) mb-1">Location</p>
+              <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="text-sm text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-2 transition-all block">${config.contact.address.street}<br>${config.contact.address.city}, ${config.contact.address.state} ${config.contact.address.zip}</a>
+            </div>
+            <div class="flex flex-col gap-1">
+              <p class="text-xs uppercase tracking-widest text-(--content-meta) mb-0">Contact</p>
+              <a href="tel:${config.contact.phone.number}" class="text-sm font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-2 transition-all">${config.contact.phone.display}</a>
+              <a href="mailto:${config.contact.email}" class="text-sm font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-2 transition-all">${config.contact.email}</a>
+            </div>
+          </div>
+          <div class="border-t-2 border-(--border-secondary)"></div>
+          <div>
+            <p class="text-xs uppercase tracking-widest text-(--content-meta) mb-3">Hours of operation</p>
+            <div class="space-y-0.5">${hoursHTML}</div>
+          </div>
+          ${socialHTML ? `<div class="border-t-2 border-(--border-secondary)"></div><div><p class="text-xs uppercase tracking-widest text-(--content-meta) mb-3">Follow us</p>${socialHTML}</div>` : ''}
+        </div>
+      </div>`;
+
+    this._open(
+      'bg-(--ui-modal-surface) text-(--ui-modal-text) border-2 border-(--ui-modal-border) rounded panel-shadow max-w-md w-full max-h-[90vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out',
+      'location-modal-title',
+      '#modal-close',
+      (backdrop, panel) => {
+        const closeButton = panel.querySelector(
+          '#modal-close'
+        ) as HTMLButtonElement;
+        const handleClose = (e: Event) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.closeModal();
+        };
+        const handleKeydown = (e: KeyboardEvent) => {
+          if (e.key === 'Escape') this.closeModal();
+        };
+        const handleBackdropClick = (e: MouseEvent) => {
+          if (e.target === backdrop) this.closeModal();
+        };
+
+        closeButton?.addEventListener('click', handleClose);
+        document.addEventListener('keydown', handleKeydown);
+        backdrop.addEventListener('click', handleBackdropClick);
+
+        return () => {
+          closeButton?.removeEventListener('click', handleClose);
+          document.removeEventListener('keydown', handleKeydown);
+          backdrop.removeEventListener('click', handleBackdropClick);
+        };
+      }
+    );
+  },
+
+  showPolicyModal: function (slug: string) {
+    if (this.activeModal || this.isAnimating) return;
+
+    const dataEl = document.getElementById('legal-pages-data');
+    const pages: Array<{
+      slug: string;
+      title: { rendered: string };
+      content: { rendered: string };
+    }> = dataEl ? JSON.parse(dataEl.textContent || '[]') : [];
+    const page = pages.find((p) => p.slug === slug);
+
+    if (!page) {
+      window.location.href = `/legal/${slug}`;
+      return;
+    }
+
+    const panel = document.getElementById('modal-panel') as HTMLElement;
+    if (!panel) return;
+
+    panel.innerHTML = `
+      <div class="flex items-start justify-between p-5 border-b-2 border-(--border-secondary) shrink-0">
+        <h2 id="policy-modal-title" class="font-display text-3xl text-(--content-heading) leading-tight">${page.title.rendered}</h2>
+        <button id="policy-modal-close" class="p-2 border-2 border-(--border-primary) rounded-sm text-(--content-meta) hover:text-(--content-heading) hover:border-(--ui-nav-border) transition-all ml-4 shrink-0" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="overflow-y-auto p-5 wp-content-block text-sm">${page.content.rendered}</div>`;
+
+    this._open(
+      'bg-(--ui-modal-surface) text-(--ui-modal-text) border-2 border-(--ui-modal-border) rounded panel-shadow max-w-2xl w-full max-h-[85vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 ease-out',
+      'policy-modal-title',
+      '#policy-modal-close',
+      (backdrop, panel) => {
+        const closeButton = panel.querySelector(
+          '#policy-modal-close'
+        ) as HTMLButtonElement;
+        const handleClose = (e: Event) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.closeModal();
+        };
+        const handleKeydown = (e: KeyboardEvent) => {
+          if (e.key === 'Escape') this.closeModal();
+        };
+        const handleBackdropClick = (e: MouseEvent) => {
+          if (e.target === backdrop) this.closeModal();
+        };
+
+        closeButton?.addEventListener('click', handleClose);
+        document.addEventListener('keydown', handleKeydown);
+        backdrop.addEventListener('click', handleBackdropClick);
+
+        return () => {
+          closeButton?.removeEventListener('click', handleClose);
+          document.removeEventListener('keydown', handleKeydown);
+          backdrop.removeEventListener('click', handleBackdropClick);
+        };
+      }
+    );
+  },
+
+  showSecureCheckoutModal: function () {
+    if (this.activeModal || this.isAnimating) return;
+
+    const config =
+      clientSiteConfig ||
+      (() => {
+        const el = document.querySelector('[data-site-config]');
+        try {
+          return el
+            ? JSON.parse(el.getAttribute('data-site-config') || '{}')
+            : null;
+        } catch {
+          return null;
+        }
+      })();
+    const email = config?.contact?.email || '';
+    const phone = config?.contact?.phone?.display || '';
+
+    const panel = document.getElementById('modal-panel') as HTMLElement;
+    if (!panel) return;
+
+    panel.innerHTML = `
+      <div class="flex items-start justify-between p-5 border-b-2 border-(--border-secondary)">
+        <div>
+          <h2 id="secure-checkout-modal-title" class="font-display text-3xl text-(--content-heading) leading-tight">Secure Checkout</h2>
+          <p class="text-xs uppercase tracking-widest text-(--content-meta) mt-1">Your information is always protected</p>
+        </div>
+        <button id="secure-checkout-modal-close" class="p-2 border-2 border-(--border-primary) rounded-sm text-(--content-meta) hover:text-(--content-heading) hover:border-(--ui-nav-border) transition-all ml-4 shrink-0" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="p-5 space-y-5">
+        <div class="space-y-4">
+          <div class="flex gap-3"><div class="shrink-0 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-(--ui-accent)" aria-hidden="true"><rect x="1" y="11" width="22" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div><p class="text-sm font-semibold text-(--content-heading)">SSL Encrypted</p><p class="text-sm text-(--content-body) mt-0.5">Every page on this site uses 256-bit SSL encryption. Your personal and payment data is protected in transit.</p></div></div>
+          <div class="flex gap-3"><div class="shrink-0 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-(--ui-accent)" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><p class="text-sm font-semibold text-(--content-heading)">Powered by Square</p><p class="text-sm text-(--content-body) mt-0.5">Payments are processed by Square — a PCI-DSS compliant payment provider. We never store your card details.</p></div></div>
+          <div class="flex gap-3"><div class="shrink-0 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-(--ui-accent)" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><p class="text-sm font-semibold text-(--content-heading)">100% Skater Owned</p><p class="text-sm text-(--content-body) mt-0.5">We're a small local skate shop. If anything goes wrong with your order, we'll make it right — no runaround.</p></div></div>
+        </div>
+        ${email || phone ? `<div class="border-t-2 border-(--border-secondary) pt-4"><p class="text-xs uppercase tracking-widest text-(--content-meta) mb-2">Need help?</p><div class="flex flex-col gap-1">${phone ? `<a href="tel:${phone.replace(/\D/g, '')}" class="text-sm font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-2 transition-all">${phone}</a>` : ''}${email ? `<a href="mailto:${email}" class="text-sm font-semibold text-(--content-body) hover:text-(--content-emphasis) hover:underline underline-offset-2 transition-all">${email}</a>` : ''}</div></div>` : ''}
+      </div>`;
+
+    this._open(
+      'bg-(--ui-modal-surface) text-(--ui-modal-text) border-2 border-(--ui-modal-border) rounded panel-shadow max-w-md w-full max-h-[85vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 ease-out',
+      'secure-checkout-modal-title',
+      '#secure-checkout-modal-close',
+      (backdrop, panel) => {
+        const closeButton = panel.querySelector(
+          '#secure-checkout-modal-close'
+        ) as HTMLButtonElement;
+        const handleClose = (e: Event) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.closeModal();
+        };
+        const handleKeydown = (e: KeyboardEvent) => {
+          if (e.key === 'Escape') this.closeModal();
+        };
+        const handleBackdropClick = (e: MouseEvent) => {
+          if (e.target === backdrop) this.closeModal();
+        };
+
+        closeButton?.addEventListener('click', handleClose);
+        document.addEventListener('keydown', handleKeydown);
+        backdrop.addEventListener('click', handleBackdropClick);
+
+        return () => {
+          closeButton?.removeEventListener('click', handleClose);
+          document.removeEventListener('keydown', handleKeydown);
+          backdrop.removeEventListener('click', handleBackdropClick);
+        };
+      }
+    );
+  },
+
+  closeModal(): void {
+    if (this.activeModal && !this.isAnimating) {
+      this.isAnimating = true;
+
+      const backdrop = this.activeModal;
+      const panel = document.getElementById('modal-panel') as HTMLElement;
+
+      // Trigger exit animation
+      backdrop.classList.add('opacity-0');
+      if (panel) {
+        panel.classList.remove('scale-100', 'opacity-100');
+        panel.classList.add('scale-95', 'opacity-0');
+      }
+
+      setTimeout(() => {
+        // Remove event listeners
+        if (this._currentCleanup) {
+          this._currentCleanup();
+          this._currentCleanup = null;
+        }
+        // Hide shell (don't remove — it will be reused)
+        backdrop.style.display = 'none';
+        if (panel) panel.innerHTML = '';
+        this.activeModal = null;
+        this.isAnimating = false;
+        document.body.style.overflow = 'unset';
+        this._triggerElement?.focus();
+        this._triggerElement = null;
+      }, 300);
+    }
+  },
+};
+
+const handleShowLocationModal = () => modalManager.showLocationModal();
+const handleShowPolicyModal = (e: Event) => {
+  const { slug } = (e as CustomEvent<ShowPolicyModalDetail>).detail;
+  modalManager.showPolicyModal(slug);
+};
+const handleShowSecureCheckoutModal = () =>
+  modalManager.showSecureCheckoutModal();
+
+// Function to initialize modal functions
+function initializeModalFunctions() {
+  initializeSiteConfig();
+
+  // Still window-assigned: showModal isn't part of plan 052's scope (no
+  // callers reference it yet) and is left as-is for a future migration pass.
+  window.showModal = modalManager.showModal.bind(modalManager);
+
+  document.addEventListener(
+    EVENTS.SHOW_LOCATION_MODAL,
+    handleShowLocationModal
+  );
+  document.addEventListener(EVENTS.SHOW_POLICY_MODAL, handleShowPolicyModal);
+  document.addEventListener(
+    EVENTS.SHOW_SECURE_CHECKOUT_MODAL,
+    handleShowSecureCheckoutModal
+  );
+}
+
+// Cleanup on page navigation — prevents duplicate listeners from piling
+// up when astro:page-load re-registers them on the next navigation.
+const cleanup = () => {
+  modalManager.closeModal();
+  document.removeEventListener(
+    EVENTS.SHOW_LOCATION_MODAL,
+    handleShowLocationModal
+  );
+  document.removeEventListener(EVENTS.SHOW_POLICY_MODAL, handleShowPolicyModal);
+  document.removeEventListener(
+    EVENTS.SHOW_SECURE_CHECKOUT_MODAL,
+    handleShowSecureCheckoutModal
+  );
+};
+
+document.addEventListener('astro:before-swap', cleanup);
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(cleanup);
+}
+
+let initialized = false;
+
+// Called once from Modal.astro's inline script tag. Initializes on first load,
+// then on every subsequent view-transition navigation. This module does NOT
+// re-execute on swap, so listeners removed in `cleanup` above must be re-added
+// here via astro:page-load rather than relying on a re-import.
+export function init(): void {
+  if (initialized) return;
+  initialized = true;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeModalFunctions);
+  } else {
+    initializeModalFunctions();
+  }
+  document.addEventListener('astro:page-load', initializeModalFunctions);
+}
