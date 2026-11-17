@@ -6,6 +6,7 @@ import netlify from '@astrojs/netlify';
 import node from '@astrojs/node';
 import path from 'path';
 import { buildSitemapPages } from './src/lib/sitemapPages.ts';
+import { SITE_ORIGIN } from './src/lib/siteOrigin.ts';
 import {
   shouldFetchSitemapPages,
   sitemapFailureIsFatal,
@@ -36,7 +37,7 @@ const sitemapPages = shouldFetchSitemapPages(process.argv, process.env)
   : [];
 
 export default defineConfig({
-  site: 'https://elcaminoskateshop.com',
+  site: SITE_ORIGIN,
   integrations: [
     icon({ iconDir: 'src/assets/icons' }),
     sitemap({
