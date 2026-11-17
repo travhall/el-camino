@@ -132,6 +132,7 @@ describe('netlify.toml /cdn-img rules cover every URL shape', () => {
         to,
         force: /force = true/.test(b),
         status: b.match(/status = (\d+)/)?.[1],
+        cacheControl: b.match(/headers = \{ Cache-Control = "([^"]*)" \}/)?.[1],
       };
     });
 
@@ -141,6 +142,13 @@ describe('netlify.toml /cdn-img rules cover every URL shape', () => {
       expect(r.status).toBe('200');
       expect(r.force).toBe(true);
       expect(r.to.startsWith('/.netlify/images?')).toBe(true);
+    }
+  });
+
+  it('puts the long cache lifetime on the rewrite itself', () => {
+    for (const r of rules) {
+      expect(r.cacheControl).toContain('max-age=2592000');
+      expect(r.cacheControl).toContain('immutable');
     }
   });
 
