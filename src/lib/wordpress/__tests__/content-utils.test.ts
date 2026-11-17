@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  stripUnsafeHtml,
-  sanitizeWordPressContent,
-  optimizeWordPressImage,
-  generateWordPressSrcSet,
-  processRawWordPressHTML,
-} from '../content-utils';
+import { stripUnsafeHtml, processRawWordPressHTML } from '../content-utils';
 
 describe('stripUnsafeHtml', () => {
   it('neutralizes data:text/html URIs', () => {
@@ -35,126 +29,6 @@ describe('stripUnsafeHtml', () => {
   it('still strips <script> tags', () => {
     const result = stripUnsafeHtml('<script>alert(1)</script>');
     expect(result).not.toContain('<script>');
-  });
-});
-
-describe('sanitizeWordPressContent', () => {
-  it('unwraps a <p><img ...></p> to bare <img ...>', () => {
-    const result = sanitizeWordPressContent('<p><img src="a.jpg"></p>');
-    expect(result).toBe('<img src="a.jpg">');
-  });
-
-  it('unwraps a <p><figure>...</figure></p> to bare <figure>...</figure>', () => {
-    const result = sanitizeWordPressContent(
-      '<p><figure><img src="a.jpg"><figcaption>Cap</figcaption></figure></p>'
-    );
-    expect(result).toBe(
-      '<figure><img src="a.jpg"><figcaption>Cap</figcaption></figure>'
-    );
-  });
-
-  it('unwraps a <p><iframe>...</iframe></p> to bare <iframe>...</iframe>', () => {
-    const result = sanitizeWordPressContent(
-      '<p><iframe src="https://example.com"></iframe></p>'
-    );
-    expect(result).toBe('<iframe src="https://example.com"></iframe>');
-  });
-
-  it('rewrites <figcaption class="wp-element-caption"> to <figcaption>', () => {
-    const result = sanitizeWordPressContent(
-      '<figcaption class="wp-element-caption">Caption text</figcaption>'
-    );
-    expect(result).toBe('<figcaption>Caption text</figcaption>');
-  });
-
-  it('collapses 3 consecutive newlines to exactly 2', () => {
-    const result = sanitizeWordPressContent('line one\n\n\nline two');
-    expect(result).toBe('line one\n\nline two');
-  });
-
-  it('trims leading/trailing whitespace', () => {
-    const result = sanitizeWordPressContent('   \n<p>Hi</p>\n   ');
-    expect(result).toBe('<p>Hi</p>');
-  });
-
-  it("returns '' for empty/falsy input", () => {
-    expect(sanitizeWordPressContent('')).toBe('');
-  });
-});
-
-describe('optimizeWordPressImage', () => {
-  it('returns the URL unchanged for a non-wordpress.com URL', () => {
-    const url = 'https://example.com/foo.jpg';
-    expect(optimizeWordPressImage(url)).toBe(url);
-  });
-
-  it('returns the URL unchanged for empty/falsy input', () => {
-    expect(optimizeWordPressImage('')).toBe('');
-  });
-
-  it('appends w, h, quality, crop params when all options are given', () => {
-    const result = optimizeWordPressImage(
-      'https://example.wordpress.com/img.jpg',
-      { width: 100, height: 200, quality: 50, crop: true }
-    );
-    expect(result).toContain('w=100');
-    expect(result).toContain('h=200');
-    expect(result).toContain('quality=50');
-    expect(result).toContain('crop=1');
-  });
-
-  it('defaults quality to 85 when not specified', () => {
-    const result = optimizeWordPressImage(
-      'https://example.wordpress.com/img.jpg',
-      { width: 100 }
-    );
-    expect(result).toContain('quality=85');
-  });
-
-  it('does not overwrite an explicitly-specified quality with the default', () => {
-    const result = optimizeWordPressImage(
-      'https://example.wordpress.com/img.jpg',
-      { quality: 60 }
-    );
-    expect(result).toContain('quality=60');
-    expect(result).not.toContain('quality=85');
-  });
-});
-
-describe('generateWordPressSrcSet', () => {
-  it("returns '' for a non-wordpress.com URL", () => {
-    expect(generateWordPressSrcSet('https://example.com/foo.jpg')).toBe('');
-  });
-
-  it("returns '' for empty/falsy input", () => {
-    expect(generateWordPressSrcSet('')).toBe('');
-  });
-
-  it('returns 5 entries at widths 400, 600, 800, 1200, 1600 for the default baseWidth', () => {
-    const result = generateWordPressSrcSet(
-      'https://example.wordpress.com/img.jpg'
-    );
-    const parts = result.split(', ');
-    expect(parts).toHaveLength(5);
-    expect(parts[0]).toMatch(/ 400w$/);
-    expect(parts[1]).toMatch(/ 600w$/);
-    expect(parts[2]).toMatch(/ 800w$/);
-    expect(parts[3]).toMatch(/ 1200w$/);
-    expect(parts[4]).toMatch(/ 1600w$/);
-  });
-
-  it('scales all 5 entries proportionally for a custom baseWidth', () => {
-    const result = generateWordPressSrcSet(
-      'https://example.wordpress.com/img.jpg',
-      1000
-    );
-    const parts = result.split(', ');
-    expect(parts).toHaveLength(5);
-    expect(parts[0]).toMatch(/ 500w$/);
-    expect(parts[1]).toMatch(/ 750w$/);
-    expect(parts[2]).toMatch(/ 1000w$/);
-    expect(parts[3]).toMatch(/ 1500w$/);
-    expect(parts[4]).toMatch(/ 2000w$/);
   });
 });
 
@@ -278,5 +152,62 @@ describe('processRawWordPressHTML', () => {
       '<script>alert(1)</script><img src="https://example.com/foo.jpg">';
     const result = processRawWordPressHTML(input);
     expect(result).not.toContain('<script>');
+  });
+
+  // Plan 170: processRawWordPressHTML is the single gate for CMS body HTML.
+  describe('sanitization (single gate for CMS body HTML)', () => {
+    it('strips a <script> block', () => {
+      const result = processRawWordPressHTML(
+        '<p>hi</p><script>alert(1)</script><p>bye</p>'
+      );
+      expect(result).not.toMatch(/<script/i);
+      expect(result).toContain('<p>hi</p>');
+      expect(result).toContain('<p>bye</p>');
+    });
+
+    it('strips an inline onerror handler from an <img>', () => {
+      const result = processRawWordPressHTML(
+        '<img src="https://example.com/a.jpg" onerror="alert(1)">'
+      );
+      expect(result).not.toMatch(/onerror/i);
+      expect(result).toContain('src=');
+    });
+
+    it('neutralizes a javascript: href', () => {
+      const result = processRawWordPressHTML(
+        '<a href="javascript:alert(1)">click</a>'
+      );
+      expect(result).not.toMatch(/javascript:/i);
+      expect(result).toContain('href="#"');
+    });
+
+    it('preserves a non-YouTube iframe embed', () => {
+      const result = processRawWordPressHTML(
+        '<iframe src="https://calendly.com/el-camino/demo" title="Book"></iframe>'
+      );
+      expect(result).toContain('<iframe');
+      expect(result).toContain('https://calendly.com/el-camino/demo');
+    });
+
+    it('still turns a YouTube iframe into the facade', () => {
+      const result = processRawWordPressHTML(
+        '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>'
+      );
+      expect(result).toContain('class="youtube-facade"');
+    });
+
+    it('preserves ordinary formatting', () => {
+      const input =
+        '<p><strong>bold</strong> and <em>italic</em></p><ul><li>one</li></ul><blockquote>quote</blockquote>';
+      expect(processRawWordPressHTML(input)).toBe(input);
+    });
+
+    it('is idempotent with stripUnsafeHtml (double sanitizing is harmless)', () => {
+      const input =
+        '<p onclick="x()">a</p><img src="https://example.com/a.jpg" onerror="y()"><script>z()</script>';
+      const once = processRawWordPressHTML(input);
+      expect(processRawWordPressHTML(stripUnsafeHtml(input))).toBe(once);
+      expect(stripUnsafeHtml(once)).toBe(once);
+    });
   });
 });

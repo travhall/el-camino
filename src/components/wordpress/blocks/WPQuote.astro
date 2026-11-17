@@ -1,4 +1,5 @@
 ---
+import { stripUnsafeHtml } from '@/lib/wordpress/content-utils';
 // src/components/wordpress/blocks/WPQuote.astro
 
 interface Props {
@@ -12,14 +13,14 @@ const { quote, cite, style = 'default' } = Astro.props;
 
 <blockquote class={`wp-quote-enhanced ${style === 'large' ? 'is-large' : ''}`}>
   <!-- Quote Content -->
-  <div class="quote-content" set:html={quote} />
+  <div class="quote-content" set:html={stripUnsafeHtml(quote)} />
 
   <!-- Citation -->
   {
     cite && (
       <footer class="quote-citation">
         <cite>
-          ~ <span set:html={cite} />
+          ~ <span set:html={stripUnsafeHtml(cite)} />
         </cite>
       </footer>
     )

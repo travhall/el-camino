@@ -1,4 +1,4 @@
-import { Page, expect } from "@playwright/test";
+import { Page, expect } from '@playwright/test';
 
 /**
  * Test Helpers for El Camino E2E Tests
@@ -35,11 +35,11 @@ export interface SeedItem {
  * and clears any stored fulfillment form from a previous test.
  */
 export async function seedCart(page: Page, items: SeedItem[]) {
-  await page.goto("/");
+  await page.goto('/');
   await page.evaluate((cartItems) => {
     sessionStorage.clear();
     localStorage.clear();
-    localStorage.setItem("cart", JSON.stringify(cartItems));
+    localStorage.setItem('cart', JSON.stringify(cartItems));
   }, items);
 }
 
@@ -61,17 +61,17 @@ export interface MockCartApiOptions {
 export async function mockCartApis(page: Page, opts: MockCartApiOptions = {}) {
   const json = (body: unknown, status = 200) => ({
     status,
-    contentType: "application/json",
+    contentType: 'application/json',
     body: JSON.stringify(body),
   });
 
-  await page.route("**/api/sale-info", (route) =>
+  await page.route('**/api/sale-info', (route) =>
     route.fulfill(json({ success: true, saleInfo: {} }))
   );
 
-  await page.route("**/api/cart-inventory", (route) => {
+  await page.route('**/api/cart-inventory', (route) => {
     if (opts.inventory === false) {
-      return route.fulfill(json({ success: false, error: "boom" }, 500));
+      return route.fulfill(json({ success: false, error: 'boom' }, 500));
     }
     const { variationIds = [] } = route.request().postDataJSON() as {
       variationIds?: string[];
@@ -81,7 +81,7 @@ export async function mockCartApis(page: Page, opts: MockCartApiOptions = {}) {
     return route.fulfill(json({ success: true, inventory }));
   });
 
-  await page.route("**/api/calculate-cart", (route) => {
+  await page.route('**/api/calculate-cart', (route) => {
     const { items = [] } = route.request().postDataJSON() as {
       items?: Array<{ price: number; quantity: number }>;
     };
@@ -97,20 +97,20 @@ export async function mockCartApis(page: Page, opts: MockCartApiOptions = {}) {
     );
   });
 
-  await page.route("**/api/create-checkout", (route) => {
+  await page.route('**/api/create-checkout', (route) => {
     const checkout = opts.checkout ?? {
       body: {
         success: true,
-        checkoutUrl: "http://localhost:4321/",
-        orderId: "e2e-order",
+        checkoutUrl: 'http://localhost:4321/',
+        orderId: 'e2e-order',
       },
     };
     return route.fulfill(json(checkout.body, checkout.status ?? 200));
   });
 
   // Optional ZIP → city/state autofill hits a public third-party API
-  await page.route("https://api.zippopotam.us/**", (route) =>
-    route.fulfill({ status: 404, body: "" })
+  await page.route('https://api.zippopotam.us/**', (route) =>
+    route.fulfill({ status: 404, body: '' })
   );
 }
 
@@ -119,7 +119,7 @@ export async function mockCartApis(page: Page, opts: MockCartApiOptions = {}) {
  * @returns Product name that was added
  */
 export async function addFirstProductToCart(page: Page): Promise<string> {
-  await page.goto("/shop/all");
+  await page.goto('/shop/all');
   await page.waitForSelector('article[role="article"]', { timeout: 10000 });
 
   const firstProduct = page.locator('article[role="article"]').first();
@@ -128,12 +128,12 @@ export async function addFirstProductToCart(page: Page): Promise<string> {
   await page.waitForURL(/\/product\/.+/);
   await page.waitForSelector('button:has-text("Add to Cart")');
 
-  const productName = (await page.locator("h1").textContent()) || "";
+  const productName = (await page.locator('h1').textContent()) || '';
 
   await page.click('button:has-text("Add to Cart")');
 
   // Wait for cart to update
-  await page.getByRole("button", { name: "Shopping Cart" }).waitFor();
+  await page.getByRole('button', { name: 'Shopping Cart' }).waitFor();
 
   return productName;
 }
@@ -148,14 +148,14 @@ export async function addProductToCart(
   await page.goto(`/product/${productSlug}`);
   await page.waitForSelector('button:has-text("Add to Cart")');
   await page.click('button:has-text("Add to Cart")');
-  await page.waitForSelector("#mini-cart-overlay:not(.hidden)");
+  await page.waitForSelector('#mini-cart-overlay:not(.hidden)');
 }
 
 /**
  * Get current cart count from badge
  */
 export async function getCartCount(page: Page): Promise<number> {
-  const text = await page.locator("#cart-count").textContent();
+  const text = await page.locator('#cart-count').textContent();
   const match = text?.match(/\d+/);
   return match ? parseInt(match[0]) : 0;
 }
@@ -169,9 +169,9 @@ export async function verifyCartCount(
 ): Promise<void> {
   if (expectedCount === 0) {
     // Badge is present but visually hidden via the "hidden" class when count is 0
-    await expect(page.locator("#cart-count")).toHaveClass(/\bhidden\b/);
+    await expect(page.locator('#cart-count')).toHaveClass(/\bhidden\b/);
   } else {
-    await expect(page.locator("#cart-count")).toContainText(
+    await expect(page.locator('#cart-count')).toContainText(
       expectedCount.toString()
     );
   }
@@ -181,23 +181,23 @@ export async function verifyCartCount(
  * Open mini-cart from header
  */
 export async function openMiniCart(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Shopping Cart" }).click();
-  await page.waitForSelector("#mini-cart-overlay:not(.hidden)");
+  await page.getByRole('button', { name: 'Shopping Cart' }).click();
+  await page.waitForSelector('#mini-cart-overlay:not(.hidden)');
 }
 
 /**
  * Close mini-cart
  */
 export async function closeMiniCart(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Close cart" }).click();
-  await page.waitForSelector("#mini-cart-overlay.hidden");
+  await page.getByRole('button', { name: 'Close cart' }).click();
+  await page.waitForSelector('#mini-cart-overlay.hidden');
 }
 
 /**
  * Navigate to cart page
  */
 export async function goToCartPage(page: Page): Promise<void> {
-  await page.goto("/cart");
+  await page.goto('/cart');
   await page.waitForSelector('h1:has-text("Cart")');
 }
 
@@ -207,7 +207,7 @@ export async function goToCartPage(page: Page): Promise<void> {
 export async function clearCartViaButton(page: Page): Promise<void> {
   await goToCartPage(page);
   await page.click('button:has-text("Clear Cart")');
-  await page.waitForSelector("text=Your cart is empty");
+  await page.waitForSelector('text=Your cart is empty');
 }
 
 /**
@@ -215,9 +215,9 @@ export async function clearCartViaButton(page: Page): Promise<void> {
  */
 export async function getProductAvailability(page: Page): Promise<number> {
   const availabilityText = await page
-    .locator("text=/\\d+ available/")
+    .locator('text=/\\d+ available/')
     .textContent();
-  return parseInt(availabilityText?.match(/\d+/)?.[0] || "0");
+  return parseInt(availabilityText?.match(/\d+/)?.[0] || '0');
 }
 
 /**
@@ -227,7 +227,7 @@ export async function verifyProductInCart(
   page: Page,
   productName: string
 ): Promise<void> {
-  await expect(page.locator("#mini-cart-panel")).toContainText(productName);
+  await expect(page.locator('#mini-cart-panel')).toContainText(productName);
 }
 
 /**
@@ -237,7 +237,7 @@ export async function waitForPageLoad(
   page: Page,
   selector: string
 ): Promise<void> {
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState('networkidle');
   await page.waitForSelector(selector, { timeout: 10000 });
 }
 
@@ -246,10 +246,10 @@ export async function waitForPageLoad(
  */
 export async function getSubtotal(page: Page): Promise<string> {
   const subtotalElement = page
-    .locator("text=/Subtotal:?/")
-    .locator("..")
-    .locator("text=/\\$[\\d.]+/");
-  return (await subtotalElement.textContent()) || "$0.00";
+    .locator('text=/Subtotal:?/')
+    .locator('..')
+    .locator('text=/\\$[\\d.]+/');
+  return (await subtotalElement.textContent()) || '$0.00';
 }
 
 /**
@@ -259,7 +259,7 @@ export async function filterByBrand(
   page: Page,
   brandName: string
 ): Promise<void> {
-  await page.goto("/shop/all");
+  await page.goto('/shop/all');
   await page.waitForSelector('h3:has-text("Brand")');
 
   // Find and click the brand checkbox
@@ -284,7 +284,7 @@ export async function isProductInStock(page: Page): Promise<boolean> {
  * Navigate to admin dashboard
  */
 export async function goToAdminDashboard(page: Page): Promise<void> {
-  await page.goto("/admin");
+  await page.goto('/admin');
   await page.waitForSelector('h1:has-text("Dashboard")');
 }
 
@@ -294,12 +294,12 @@ export async function goToAdminDashboard(page: Page): Promise<void> {
 export async function getPerformanceScore(page: Page): Promise<number> {
   await goToAdminDashboard(page);
   const scoreElement = page
-    .locator("text=Performance Score")
-    .locator("..")
+    .locator('text=Performance Score')
+    .locator('..')
     .locator('[class*="text-"]')
     .first();
   const scoreText = await scoreElement.textContent();
-  return parseInt(scoreText || "0");
+  return parseInt(scoreText || '0');
 }
 
 /**
@@ -309,7 +309,7 @@ export async function takeTimestampedScreenshot(
   page: Page,
   name: string
 ): Promise<void> {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   await page.screenshot({
     path: `screenshots/${name}-${timestamp}.png`,
     fullPage: true,
@@ -322,8 +322,8 @@ export async function takeTimestampedScreenshot(
 export async function verifyNoConsoleErrors(page: Page): Promise<void> {
   const errors: string[] = [];
 
-  page.on("console", (msg) => {
-    if (msg.type() === "error") {
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
       errors.push(msg.text());
     }
   });
@@ -339,7 +339,7 @@ export async function verifyNoConsoleErrors(page: Page): Promise<void> {
  */
 export async function waitForCartUpdate(page: Page): Promise<void> {
   await page.waitForTimeout(500); // Wait for state to settle
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState('networkidle');
 }
 
 /**
