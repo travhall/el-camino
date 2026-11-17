@@ -10,6 +10,7 @@ import {
 } from '@/lib/square/variationParser';
 import { assignProductImagesToVariations } from '@/lib/square/variationImages';
 import { createVariantSlug } from '@/lib/square/slugUtils';
+import { toNetlifyImageCDN } from '@/lib/image/netlifyImageCDN';
 import { initGallery } from './gallery';
 import { processClientError, logError } from '@/lib/square/errorUtils';
 import type { Product, ProductVariation } from '@/lib/square/types';
@@ -197,19 +198,9 @@ export class QuickViewController {
     this.updateAttributeButtonStates();
   }
 
-  // Route any external image URL through Netlify Image CDN for compression,
-  // format negotiation (AVIF/WebP), and edge caching — covers squarecdn.com,
-  // s3.amazonaws.com, and any other Square storage backend.
+  // Non-remote sources (local paths, data URIs) pass through unchanged.
   private optimizeImageSrc(src: string, size: number): string {
-    if (!src || src.startsWith('/') || src.startsWith('data:')) return src;
-    const p = new URLSearchParams({
-      url: src,
-      w: String(size),
-      h: String(size),
-      fit: 'cover',
-      q: '80',
-    });
-    return `/.netlify/images?${p.toString()}`;
+    return toNetlifyImageCDN(src, size, { height: size });
   }
 
   // Swap the hero to another image of the gallery, fading it in.

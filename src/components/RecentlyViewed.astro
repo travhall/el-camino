@@ -40,21 +40,12 @@ const { title = 'Recently Viewed', currentProductId } = Astro.props;
   import { recentlyViewed } from '@/lib/product/recentlyViewed';
   import type { RecentlyViewedItem } from '@/lib/product/recentlyViewed';
   import { MoneyUtils } from '@/lib/square/money';
+  import { toNetlifyImageCDN } from '@/lib/image/netlifyImageCDN';
   import type { SaleInfo } from '@/lib/square/types';
 
-  // Route any external image URL through Netlify Image CDN for compression,
-  // format negotiation (AVIF/WebP), and edge caching — covers squarecdn.com,
-  // s3.amazonaws.com, and any other Square storage backend.
+  // Non-remote sources (local paths, data URIs) pass through unchanged.
   function optimizeProductImage(src: string): string {
-    if (!src || src.startsWith('/') || src.startsWith('data:')) return src;
-    const p = new URLSearchParams({
-      url: src,
-      w: '400',
-      h: '400',
-      fit: 'cover',
-      q: '80',
-    });
-    return `/.netlify/images?${p.toString()}`;
+    return toNetlifyImageCDN(src, 400, { height: 400 });
   }
 
   async function renderRecentlyViewed() {

@@ -15,7 +15,7 @@
 - **Priority**: P2
 - **Effort**: S
 - **Risk**: LOW-MED
-- **Depends on**: 146 (hard — see Dependency notes)
+- **Depends on**: 146 (was hard; made soft 2026-11-17 at Travis's request, so 161 ran first)
 - **Category**: tech-debt
 - **Planned at**: commit `ad2999d`, 2026-09-05
 
