@@ -1,4 +1,5 @@
 ---
+import { stripUnsafeHtml } from '@/lib/wordpress/content-utils';
 // src/components/wordpress/blocks/WPGallery.astro
 // Custom gallery component for wp-block-gallery with optimized loading
 
@@ -151,7 +152,7 @@ const imageClasses = cropImages
 
           {image.caption && (
             <figcaption class="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent text-white p-3 text-sm leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <p set:html={image.caption} />
+              <p set:html={stripUnsafeHtml(image.caption)} />
             </figcaption>
           )}
         </figure>
