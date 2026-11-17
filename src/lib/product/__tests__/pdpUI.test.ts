@@ -4,7 +4,13 @@
  * so these tests exercise real DOM via happy-dom.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { PDPUIManager, setHeroImage, thumbnailSrc } from '../pdpUI';
+import {
+  PDPUIManager,
+  setHeroImage,
+  thumbnailSrc,
+  attributeChipClass,
+  ATTRIBUTE_VALUE_SPAN_CLASS,
+} from '../pdpUI';
 import {
   ProductAvailabilityState,
   type ProductAvailabilityInfo,
@@ -935,6 +941,75 @@ describe('PDPUIManager', () => {
       });
       vi.advanceTimersByTime(250);
       expect(liveText()).toBe('Small, $10.00, all in cart');
+    });
+  });
+
+  // Plan 224: the product page, the manager and QuickView share one chip style.
+  describe('shared chip classes', () => {
+    it('every chip is at least 44px', () => {
+      for (const [a, sel] of [
+        [true, false],
+        [true, true],
+        [false, false],
+        [false, true],
+      ] as const) {
+        const c = attributeChipClass(a, sel);
+        expect(c).toContain('min-w-11');
+        expect(c).toContain('min-h-11');
+      }
+      expect(ATTRIBUTE_VALUE_SPAN_CLASS).toContain('min-h-11');
+    });
+
+    it('a sold-out chip never carries the selected fill; selected and sold out gets a ring', () => {
+      const soldOutSelected = attributeChipClass(false, true);
+      expect(soldOutSelected).not.toContain(
+        'bg-(--ui-variant-selected-surface)'
+      );
+      expect(soldOutSelected).toContain('ring-2');
+      expect(soldOutSelected).toContain('line-through');
+      expect(attributeChipClass(false, false)).not.toContain('ring-2');
+    });
+
+    it('selected and in stock uses the selected surface, unselected the input surface', () => {
+      expect(attributeChipClass(true, true)).toContain(
+        'bg-(--ui-variant-selected-surface)'
+      );
+      expect(attributeChipClass(true, false)).toContain(
+        'bg-(--ui-input-surface)'
+      );
+    });
+
+    it('only the PDP carries the attribute-button marker', () => {
+      expect(attributeChipClass(true, false)).toContain('attribute-button');
+      expect(attributeChipClass(true, false, false)).not.toContain(
+        'attribute-button'
+      );
+      expect(attributeChipClass(true, false, false)).toContain('min-h-11');
+    });
+
+    it('a manager built with attributeChipMarker: false leaves the marker off', () => {
+      const own = new PDPUIManager({
+        attributeRoot: '#own',
+        attributeChipMarker: false,
+      } as never);
+      document.body.innerHTML += `<div id="own"><button data-attribute-type="c" data-attribute-value="x"></button></div>`;
+      own.updateAttributeButtonStates({ c: ['x'] }, { c: 'x' }, () => true);
+      expect(
+        (document.querySelector('#own button') as HTMLElement).className
+      ).toBe(attributeChipClass(true, true, false));
+    });
+
+    it('the manager applies the same strings', () => {
+      document.body.innerHTML += `<div class="product-info"><button data-attribute-type="c" data-attribute-value="x"></button></div>`;
+      manager.updateAttributeButtonStates(
+        { c: ['x'] },
+        { c: 'x' },
+        () => false
+      );
+      expect(
+        (document.querySelector('[data-attribute-value="x"]') as HTMLElement)
+          .className
+      ).toBe(attributeChipClass(false, true));
     });
   });
 });

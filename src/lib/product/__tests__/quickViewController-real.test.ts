@@ -28,7 +28,9 @@ vi.mock('@/lib/cart', () => ({
   },
 }));
 
-vi.mock('@/lib/product/pdpUI', () => ({
+vi.mock('@/lib/product/pdpUI', async (importOriginal) => ({
+  // Keep the real chip-class helpers; only the manager is stubbed
+  ...(await importOriginal<typeof import('@/lib/product/pdpUI')>()),
   // Real PDPUIManager does DOM work through cached elements; mocking it
   // (as pdpController-real.test.ts does) isolates QuickViewController's own
   // logic. updateButtonProductData is the one method reimplemented for real
@@ -560,6 +562,86 @@ describe('QuickViewController — real implementation', () => {
       const pdpChip = document.getElementById('pdp-chip')!;
       // QuickView overwrites className on its chips; the PDP's must keep its own
       expect(pdpChip.className).toBe('attribute-button');
+    });
+  });
+
+  describe("chips and cart refresh match the PDP's (plan 224)", () => {
+    it('renders every chip as a 44px target, with the shared class', async () => {
+      await openWith(controller, makeProduct());
+
+      const chips = document.querySelectorAll<HTMLButtonElement>(
+        '#quick-view-attributes button[data-attribute-type]'
+      );
+      expect(chips.length).toBeGreaterThan(0);
+      chips.forEach((chip) => {
+        expect(chip.className).toContain('min-h-11');
+        expect(chip.className).toContain('min-w-11');
+        // The PDP's own handlers and tests select on this; QuickView's chips must not carry it
+        expect(chip.className).not.toContain('attribute-button');
+      });
+    });
+
+    it('renders a single-value attribute as a 44px non-interactive span', async () => {
+      await openWith(
+        controller,
+        makeProduct({
+          variations: [
+            makeVariation({
+              variationId: 'only',
+              name: 'Small, Red',
+              attributes: { size: 'Small', color: 'Red' },
+            }),
+          ],
+        })
+      );
+
+      const span = document.querySelector<HTMLElement>(
+        '#quick-view-attributes span[aria-label]'
+      )!;
+      expect(span.className).toContain('min-h-11');
+      expect(span.className).toContain('cursor-default');
+    });
+
+    it('hands chip state to the UI manager, with a predicate that treats a sold-out target as unavailable', async () => {
+      await openWith(controller, makeProduct());
+      const ui = internals(controller).uiManager;
+
+      expect(ui.updateAttributeButtonStates).toHaveBeenCalled();
+      const [available, selected, isAvailable] =
+        ui.updateAttributeButtonStates.mock.calls.at(-1)!;
+      expect(available).toEqual(
+        expect.objectContaining({ size: expect.any(Array) })
+      );
+      expect(selected).toEqual({ size: 'Small', color: 'Red' });
+      // Small / Blue is sold out; Small / Red is in stock
+      expect(isAvailable('color', 'Blue')).toBe(false);
+      expect(isAvailable('color', 'Red')).toBe(true);
+    });
+
+    it('re-applies chip state when a chip is picked', async () => {
+      await openWith(controller, makeProduct());
+      const ui = internals(controller).uiManager;
+      ui.updateAttributeButtonStates.mockClear();
+
+      attrButton('size', 'Large').click();
+
+      expect(ui.updateAttributeButtonStates).toHaveBeenCalledTimes(1);
+      expect(ui.updateAttributeButtonStates.mock.calls[0][1]).toEqual({
+        size: 'Large',
+        color: 'Red',
+      });
+    });
+
+    it('a cart refresh keeps the quantity the shopper chose', async () => {
+      await openWith(controller, makeProduct());
+      const ui = internals(controller).uiManager;
+      ui.updateAvailabilityDisplay.mockClear();
+
+      internals(controller).handleCartUpdate();
+
+      expect(ui.updateAvailabilityDisplay.mock.calls.at(-1)![3]).toEqual({
+        keepQuantity: true,
+      });
     });
   });
 
