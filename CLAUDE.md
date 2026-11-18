@@ -83,6 +83,18 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
   are not tagged and expire on their TTL (category stock can lag by about 6
   minutes, by design). The PDP also re-checks stock on load
   (`refreshInventory`) as a backstop.
+- No page-only `<script is:inline>`. Every response gets its own CSP nonce
+  (`src/middleware.ts`). On a client-side navigation Astro's router skips an
+  inline script only if that exact script already ran in this document;
+  otherwise it re-creates it with the *destination's* nonce, which the browser
+  (still enforcing the first page load's nonce) blocks, so the script is dead
+  whenever its page is reached by soft navigation, which is the normal way. This
+  broke the Size Guide button on apparel product pages (plan 235). Put page
+  logic in a hoisted `<script>` (bundled to an external file, allowed by
+  `script-src 'self'`) that exports `init()`, as in `src/scripts/`; JSON-LD
+  data blocks are fine. An inline script is only safe if it is rendered,
+  byte-identical, on every page (`BaseHead.astro`). `src/__tests__/inlineScripts.test.ts`
+  enforces this with an allowlist that says why each exception is safe.
 - Every cacheable `Netlify-CDN-Cache-Control` (one with `s-maxage`) must include
   `durable`. Without it Netlify stores the response at one edge node and, measured
   on production, never reuses it, so the page renders at the origin on every
