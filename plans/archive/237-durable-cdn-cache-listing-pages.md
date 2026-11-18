@@ -1,7 +1,6 @@
 # Plan 237: Make home, news, category and shop pages actually CDN-cached (`durable`)
 
-> **Executor instructions**: Implemented; **not yet verified on the real CDN**.
-> The verification step at the end needs one deploy preview and has not been run.
+> **Executor instructions**: Implemented, merged (PR 83) and verified on staging.
 
 ## Status
 
@@ -11,7 +10,7 @@
 - **Depends on**: 236 (the investigation that found the cause), 235
 - **Category**: perf
 - **Planned at**: commit `bc62fd9`, 2026-11-18
-- **Outcome**: Code changed and guarded; CDN behaviour unverified
+- **Outcome**: Code changed and guarded; CDN behaviour verified on staging after merge (2026-11-18)
 
 ## Why
 
@@ -69,17 +68,19 @@ else would ever notice. Without it the next route would repeat this for months.
   header with no `s-maxage`.
 - Gate: see the PR.
 
-## NOT verified: the real CDN
+## Verified on staging (2026-11-18, after PR 83 merged)
 
-Netlify's CDN is not reproducible on the dev server, so the effect itself is
-unverified. To verify, ship one deploy preview (put `[preview]` in the commit
-message; builds are limited) and run, against the preview URL, for each of `/`,
-`/news`, `/category/skateboards`, `/shop/all`:
+No preview build was possible (auto-deploy was off, so the `[preview]` push built
+nothing); checked on `elcaminoskateshop.netlify.app` once master deployed. Five
+`curl -sD-` requests, about 3 s apart, per route:
 
-    for i in 1 2 3 4 5; do curl -s -D- -o /dev/null URL | grep -iE '^age|^cache-status'; sleep 3; done
+| Route | Result |
+| --- | --- |
+| `/`, `/news` | `Netlify Durable; hit` (ttl about 250-260), `age` growing, one nonce |
+| `/category/skateboards`, `/shop/all`, `/shop/sale` | first `fwd=uri-miss; stored`, then `hit` every time, one nonce |
+| a product page | `hit` from the second request (unchanged behaviour) |
+| `/the-shop`, `/cart` | `fwd=bypass`, a different nonce each request (unchanged) |
 
-Expect `cache-status: "Netlify Durable"; hit` from the second request, a growing
-`age`, and the same CSP nonce each time (before the change: `fwd=bypass`, `age` 0,
-a different nonce every time). Then confirm `/cart`, `/the-shop` and the product page
-are unchanged. Also check that a category page behind a stock change shows the new
-state within the expected window.
+Before the change the same routes showed `fwd=bypass`, `age` 0 and a new nonce each
+time. Not checked: that a category page picks up a stock change within about 6
+minutes (design bound, untested), and production (`www`), which is a separate site.
