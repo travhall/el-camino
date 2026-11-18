@@ -82,6 +82,18 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
   logged, never thrown. Listing pages (`/shop/*`, sale, home) are not tagged and
   still expire on their TTL. The PDP also re-checks stock on load
   (`refreshInventory`) as a backstop.
+- No page-only `<script is:inline>`. Every response gets its own CSP nonce
+  (`src/middleware.ts`). On a client-side navigation Astro's router skips an
+  inline script only if that exact script already ran in this document;
+  otherwise it re-creates it with the *destination's* nonce, which the browser
+  (still enforcing the first page load's nonce) blocks, so the script is dead
+  whenever its page is reached by soft navigation, which is the normal way. This
+  broke the Size Guide button on apparel product pages (plan 235). Put page
+  logic in a hoisted `<script>` (bundled to an external file, allowed by
+  `script-src 'self'`) that exports `init()`, as in `src/scripts/`; JSON-LD
+  data blocks are fine. An inline script is only safe if it is rendered,
+  byte-identical, on every page (`BaseHead.astro`). `src/__tests__/inlineScripts.test.ts`
+  enforces this with an allowlist that says why each exception is safe.
 - WordPress content routing: posts in the `shop-news` category appear on The
   Shop page (`/the-shop`); posts with only `news` appear on the News page.
   Posts tagged `event` are filterable on the News page. This is a WordPress
