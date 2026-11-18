@@ -172,7 +172,11 @@ const nonce = Astro.locals.nonce;
       <div class="min-w-fit mt-2 mb-3">
         <div class="lg:hidden p-3 bg-(--surface-tertiary) rounded-sm">
           <p class="text-sm text-(--content-meta)" data-result-count>
-            {filteredCount} of {totalProducts} products
+            {
+              filteredCount === totalProducts
+                ? `${totalProducts} products`
+                : `${filteredCount} of ${totalProducts} products`
+            }
           </p>
         </div>
         <div class="hidden lg:flex justify-between items-baseline h-8">

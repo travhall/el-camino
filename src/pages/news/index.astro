@@ -240,9 +240,10 @@ const lcpImage = firstPostData?.featuredMedia?.source_url
       NOTE (plan 175): window.newsData (allPosts + a full-body search index +
       a duplicate of filterOptions) used to be serialized here, but no client
       script ever read it — search/sort/filter/pagination all reload the page
-      via GET params (see NewsSearchSort.astro), and NewsFilters.astro
-      serializes its own window.newsFilterOptions independently. Removed
-      rather than trimmed since there were zero consumers.
+      via GET params (see NewsSearchSort.astro). Removed rather than trimmed
+      since there were zero consumers. NewsFilters.astro's own copy of the
+      filter options (window.newsFilterOptions) went the same way in plan 234:
+      its only reader wrote a map that was never read.
     */}
     {hasFilters && <meta name="robots" content="noindex, follow" />}
     <link

@@ -123,6 +123,9 @@ class ProductFilters {
   private container: HTMLElement | null = null;
   private overlay: HTMLElement | null = null;
   private abortController = new AbortController();
+  // Timers that act on this instance's form, cancelled by destroy() so they
+  // cannot fire after the router has started leaving the page.
+  private pendingTimers = new Set<number>();
 
   constructor() {
     this.form = document.getElementById('filter-form') as HTMLFormElement;
@@ -250,7 +253,7 @@ class ProductFilters {
         event.preventDefault();
         if (!isDesktop()) {
           this.closeMobileDrawer();
-          setTimeout(() => this.submitForm(), 300);
+          this.later(() => this.submitForm(), 300);
         } else {
           this.submitForm();
         }
@@ -360,7 +363,7 @@ class ProductFilters {
       'click',
       () => {
         this.closeMobileDrawer();
-        setTimeout(() => this.clearAllFilters(), 100);
+        this.later(() => this.clearAllFilters(), 100);
       },
       { signal }
     );
@@ -406,8 +409,18 @@ class ProductFilters {
     );
   }
 
+  private later(callback: () => void, delayMs: number): void {
+    const id = window.setTimeout(() => {
+      this.pendingTimers.delete(id);
+      callback();
+    }, delayMs);
+    this.pendingTimers.add(id);
+  }
+
   public destroy(): void {
     this.abortController.abort();
+    this.pendingTimers.forEach((id) => clearTimeout(id));
+    this.pendingTimers.clear();
     document.body.style.overflow = '';
     const header = document.getElementById('site-header');
     if (header) header.style.zIndex = '';

@@ -22,19 +22,6 @@ function getAnimationTiming() {
   const staggerStr = style.getPropertyValue('--card-stagger-delay').trim();
   const staggerDelay = parseInt(staggerStr.replace('ms', '')) || 0;
 
-  const rowStaggerStr = style.getPropertyValue('--row-stagger-delay').trim();
-  const rowStaggerDelay = parseInt(rowStaggerStr.replace('ms', '')) || 0;
-
-  const priorityDurStr = style
-    .getPropertyValue('--card-entrance-priority-duration')
-    .trim();
-  let priorityDuration = 800;
-  if (priorityDurStr.includes('ms')) {
-    priorityDuration = parseInt(priorityDurStr.replace('ms', ''));
-  } else if (priorityDurStr.includes('s')) {
-    priorityDuration = parseFloat(priorityDurStr.replace('s', '')) * 1000;
-  }
-
   // Parse grid entrance delay (mobile: 250ms, desktop: 0ms)
   const entranceDelayStr = style
     .getPropertyValue('--grid-entrance-delay')
@@ -44,26 +31,17 @@ function getAnimationTiming() {
   return {
     duration,
     staggerDelay,
-    rowStaggerDelay,
-    priorityDuration,
     entranceDelay,
   };
 }
 
 const ANIMATION_CONFIG = getAnimationTiming();
 
-// Calculate cards per row based on viewport and view
-function getCardsPerRow(view: string) {
-  if (view === 'list') return 1; // List view is always single column
-
+// Cards per row of the news grid for the current viewport. Only the grid view
+// uses it: list is one column and ordered by index, and the masonry entrance is
+// CSS-only and never reaches the observer.
+function getCardsPerRow() {
   const width = window.innerWidth;
-
-  // Masonry layout (home page) - use grid column count
-  if (view === 'masonry') {
-    if (width >= 1536) return 8; // 3xl:grid-cols-8
-    if (width >= 640) return 6; // sm:grid-cols-6
-    return 1; // mobile - single column
-  }
 
   // Grid view (news page) - matches xs/sm/xl/2xl breakpoints
   if (width >= 1536) return 6; // 2xl:grid-cols-6
@@ -100,7 +78,7 @@ function initializeArticleAnimations() {
     (card) => !(card as HTMLElement).dataset.variant?.includes('sidebar')
   ) as HTMLElement;
   const view = firstCard?.dataset.variant || 'grid';
-  const cardsPerRow = getCardsPerRow(view);
+  const cardsPerRow = getCardsPerRow();
 
   // For masonry (home page), animate all cards immediately without intersection observer
   // For grid/list (news page), use intersection observer to animate on scroll
@@ -214,23 +192,23 @@ export function init(): void {
     // SIMPLIFIED: Basic lazy loading without heavy intersection observer
     const lazyImages = document.querySelectorAll('img[data-src]');
     if (lazyImages.length > 0 && 'IntersectionObserver' in window) {
-      const imageObserver = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              const img = entry.target as HTMLImageElement;
-              if (img.dataset.src) {
-                img.src = img.dataset.src;
-                img.removeAttribute('data-src');
-                imageObserver.unobserve(img);
-              }
-            }
-          });
-        },
-        { rootMargin: '100px' }
-      );
-
       if (lazyImages.length > 6) {
+        const imageObserver = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                const img = entry.target as HTMLImageElement;
+                if (img.dataset.src) {
+                  img.src = img.dataset.src;
+                  img.removeAttribute('data-src');
+                  imageObserver.unobserve(img);
+                }
+              }
+            });
+          },
+          { rootMargin: '100px' }
+        );
+
         lazyImages.forEach((img) => imageObserver.observe(img));
       } else {
         lazyImages.forEach((img: Element) => {

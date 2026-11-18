@@ -434,8 +434,8 @@ describe('article-grid-client', () => {
         expect(img.getAttribute('src')).toBe(`/img-${i}.jpg`);
         expect(img.hasAttribute('data-src')).toBe(false);
       }
-      // An observer is still constructed (and left unused) for six or fewer.
-      expect(lazyObserver().observed).toHaveLength(0);
+      // No observer is needed for six or fewer.
+      expect(instances()).toHaveLength(0);
     });
 
     it('with more than six, observes them and loads each as it nears the viewport', async () => {

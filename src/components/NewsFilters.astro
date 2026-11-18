@@ -2,7 +2,6 @@
 // src/components/NewsFilters.astro
 import type { NewsFilterOptions } from "@/lib/wordpress/types";
 import Tag from "./Tag.astro";
-import { safeJsonForScript } from '@/lib/safeJson';
 
 interface Props {
   filterOptions: NewsFilterOptions;
@@ -394,15 +393,6 @@ const nonce = Astro.locals.nonce;
     </form>
   </div>
 </div>
-
-<!-- Server-side data for JavaScript -->
-<script type="application/json" id="news-filter-options" set:html={safeJsonForScript(filterOptions)} />
-<script>
-  const newsFilterOptionsEl = document.getElementById('news-filter-options');
-  if (newsFilterOptionsEl) {
-    window.newsFilterOptions = JSON.parse(newsFilterOptionsEl.textContent!);
-  }
-</script>
 
 <script>
   import { init } from '@/scripts/news-filters-client';
