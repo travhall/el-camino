@@ -79,9 +79,21 @@ Square SDK for catalog/inventory/checkout, Resend for email, WordPress
   caches and then purges those tags with `purgeProductPages`, so stock and
   catalog edits show up without waiting out the TTL. `purgeCache` only has
   credentials inside a deployed function: in dev and tests it fails and is
-  logged, never thrown. Listing pages (`/shop/*`, sale, home) are not tagged and
-  still expire on their TTL. The PDP also re-checks stock on load
+  logged, never thrown. Listing pages (`/shop/*`, sale, home, category, news)
+  are not tagged and expire on their TTL (category stock can lag by about 6
+  minutes, by design). The PDP also re-checks stock on load
   (`refreshInventory`) as a backstop.
+- Every cacheable `Netlify-CDN-Cache-Control` (one with `s-maxage`) must include
+  `durable`. Without it Netlify stores the response at one edge node and, measured
+  on production, never reuses it, so the page renders at the origin on every
+  request whatever its headers say (plan 236; home, news, category and the shop
+  pages were in that state until plan 237). The header is valid either way, so
+  nothing fails: `src/__tests__/cdnCacheHeaders.test.ts` enforces it, with an
+  allowlist for responses that cannot be cached (a POST). Check a deployed route
+  with `curl -sD- URL` twice and read `cache-status` (`Netlify Durable; hit` and a
+  growing `age` mean it is cached). A cached page is served with its one nonce to
+  every visitor for the cache window, so the CSP nonce is not secret there
+  (accepted, plan 235).
 - WordPress content routing: posts in the `shop-news` category appear on The
   Shop page (`/the-shop`); posts with only `news` appear on the News page.
   Posts tagged `event` are filterable on the News page. This is a WordPress
