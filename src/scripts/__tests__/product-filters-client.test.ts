@@ -748,6 +748,43 @@ describe('product-filters-client', () => {
       expect($('#filter-container').className).toBe('');
     });
 
+    it('navigating away cancels a phone submit that is still waiting for the drawer to close', async () => {
+      vi.useFakeTimers();
+      setViewport(500);
+      await freshInit();
+      pageLoad();
+      const changes = filterChanges();
+      tick(checkbox('brands', 'Baker'), true);
+      $('#mobile-filter-toggle').click();
+      $('#filter-form').dispatchEvent(
+        new Event('submit', { cancelable: true })
+      );
+
+      // The router starts leaving the page inside the 300 ms window.
+      document.dispatchEvent(new Event('astro:before-preparation'));
+      vi.advanceTimersByTime(300);
+
+      expect(changes).toHaveLength(0);
+      expect(window.location.search).toBe('');
+    });
+
+    it('navigating away cancels a mobile Clear Filters that is still waiting for the drawer to close', async () => {
+      vi.useFakeTimers();
+      window.history.pushState({}, '', '/category/decks?brands=Baker');
+      setViewport(500);
+      await freshInit();
+      pageLoad();
+      $('#mobile-filter-toggle').click();
+      const changes = filterChanges();
+      $('[data-clear-filters-mobile]').click();
+
+      document.dispatchEvent(new Event('astro:before-preparation'));
+      vi.advanceTimersByTime(100);
+
+      expect(changes).toHaveLength(0);
+      expect(window.location.search).toBe('?brands=Baker');
+    });
+
     it('astro:before-preparation destroys the instance and resets the coordinator', async () => {
       await freshInit();
       pageLoad();

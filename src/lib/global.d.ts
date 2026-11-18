@@ -20,7 +20,6 @@ declare global {
       duration?: number,
       action?: { label: string; href: string }
     ) => void;
-    newsFilterOptions?: any;
     responsiveFiltersInitialized?: boolean;
     dismissRecommendation?: (button: HTMLButtonElement) => void;
     applyRecommendation?: (button: HTMLButtonElement) => void;

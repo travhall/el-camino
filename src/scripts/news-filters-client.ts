@@ -1,6 +1,5 @@
 import { FilterCoordinator, GRID_CONFIGS } from '@/lib/filterCoordinator';
 import { navigate } from 'astro:transitions/client';
-import type { NewsFilterOptions } from '@/lib/wordpress/types';
 
 // Section state keys in sessionStorage
 const SECTION_KEYS: Record<string, string> = {
@@ -17,7 +16,6 @@ class NewsFiltersManager {
   // Simple state
   private pendingTags: Set<string> = new Set();
   private isMobile: boolean = false;
-  private tagCounts: Map<string, number> = new Map();
 
   // Simple debouncing
   private submitTimeout: number | null = null;
@@ -30,7 +28,6 @@ class NewsFiltersManager {
     if (!this.form) return;
 
     this.checkMobileState();
-    this.storeTagCountsFromServerData();
     this.setupMobileDrawer();
     this.setupAccordions();
     this.setupDesktopFiltering();
@@ -52,17 +49,6 @@ class NewsFiltersManager {
       },
       { signal: this.abortController.signal }
     );
-  }
-
-  private storeTagCountsFromServerData(): void {
-    const filterOptions = (
-      window as unknown as { newsFilterOptions?: NewsFilterOptions }
-    ).newsFilterOptions;
-    if (filterOptions?.tags) {
-      filterOptions.tags.forEach((tag) => {
-        this.tagCounts.set(tag.slug, tag.count);
-      });
-    }
   }
 
   // Mobile (< 768px): bottom drawer / Tablet (768–1023px): right panel
@@ -411,7 +397,13 @@ class NewsFiltersManager {
   }
 
   private removeTag(tagSlug: string): void {
-    document.querySelector(`[data-tag-input="${tagSlug}"]`)?.remove();
+    // Compare the attribute value instead of building a selector from the slug:
+    // a quote or backslash in a slug would make the selector invalid.
+    document
+      .querySelectorAll<HTMLElement>('[data-tag-input]')
+      .forEach((input) => {
+        if (input.dataset.tagInput === tagSlug) input.remove();
+      });
   }
 
   private applyPendingChanges(): void {
@@ -493,6 +485,9 @@ class NewsFiltersManager {
 
   public destroy(): void {
     this.abortController.abort();
+    // A change still inside its 150 ms debounce must not navigate after the
+    // router has started leaving the page.
+    if (this.submitTimeout) clearTimeout(this.submitTimeout);
     document.body.style.overflow = '';
     const header = document.getElementById('site-header');
     if (header) header.style.zIndex = '';
