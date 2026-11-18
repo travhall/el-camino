@@ -760,6 +760,74 @@ describe('cart-page-client', () => {
     });
   });
 
+  describe("a line's own subtotal after its quantity changes (plan 238)", () => {
+    const row = () => $('[data-item-container]').textContent ?? '';
+
+    it('follows the + button', async () => {
+      await load([item({ price: 60, quantity: 1 })]);
+      expect(row()).toContain('$60.00');
+      $<HTMLButtonElement>('[data-action="increase"]').click();
+      await flush();
+      expect(row()).toContain('$120.00');
+      expect(text('subtotal')).toBe('$120.00');
+    });
+
+    it('follows the - button', async () => {
+      await load([item({ price: 60, quantity: 3 })]);
+      expect(row()).toContain('$180.00');
+      $<HTMLButtonElement>('[data-action="decrease"]').click();
+      await flush();
+      expect(row()).toContain('$120.00');
+      expect(row()).not.toContain('$180.00');
+    });
+
+    it('follows a typed quantity', async () => {
+      await load([item({ price: 60, quantity: 1 })]);
+      vi.useFakeTimers();
+      const input = $('input.quantity-input') as HTMLInputElement;
+      input.value = '4';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(500);
+      expect(row()).toContain('$240.00');
+    });
+
+    it('uses the sale price', async () => {
+      await load([
+        item({
+          price: 100,
+          quantity: 1,
+          saleInfo: {
+            salePrice: 80,
+            originalPrice: 100,
+            discountPercent: 20,
+          } as CartItem['saleInfo'],
+        }),
+      ]);
+      $<HTMLButtonElement>('[data-action="increase"]').click();
+      await flush();
+      expect(row()).toContain('$160.00');
+    });
+
+    it('changes only the line that was edited', async () => {
+      await load([
+        item({ price: 60, quantity: 1 }),
+        item({
+          id: 'B',
+          variationId: 'VB',
+          title: 'Grip',
+          price: 7,
+          quantity: 1,
+        }),
+      ]);
+      $<HTMLButtonElement>('[data-action="increase"]').click();
+      await flush();
+      const rows = document.querySelectorAll('[data-item-container]');
+      expect(rows[0].textContent).toContain('$120.00');
+      expect(rows[1].textContent).toContain('$7.00');
+      expect(rows[1].textContent).not.toContain('$14.00');
+    });
+  });
+
   describe('typing a quantity', () => {
     async function type(value: string) {
       const input = $('input.quantity-input') as HTMLInputElement;

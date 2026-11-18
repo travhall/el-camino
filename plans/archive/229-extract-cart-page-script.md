@@ -88,7 +88,7 @@ the home page's `ArticleGrid` inline script, the known, harmless exception in pl
 
 ## Recorded, not fixed (STOP condition: do not clean up in the same change)
 
-- **Bug: a line's subtotal does not update when its quantity changes.**
+- **Bug (fixed afterwards in plan 238, same branch): a line's subtotal did not update when its quantity changes.**
   `updateCartItemQuantity` looks for `.font-display.font-bold.text-2xl`, but the
   markup is `text-xl md:text-2xl`, so nothing matches and the line keeps its old
   total while the order summary is right. Measured in a test: after one increase the

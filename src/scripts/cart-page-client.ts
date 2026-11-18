@@ -257,7 +257,7 @@ function createCartItem(item: CartItem): string {
                   ? `<div class="hidden md:block text-(--content-meta) text-xs line-through">${MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))} each</div>`
                   : `<div class="hidden md:block text-(--content-meta) text-sm">${MoneyUtils.format(MoneyUtils.fromFloat(item.price))} each</div>`
               }
-              <div class="font-display font-bold text-xl md:text-2xl text-(--content-emphasis)">
+              <div data-line-subtotal class="font-display font-bold text-xl md:text-2xl text-(--content-emphasis)">
                 ${MoneyUtils.format(MoneyUtils.fromFloat(itemSubtotal))}
               </div>
             </div>
@@ -722,9 +722,7 @@ async function updateCartItemQuantity(itemKey: string): Promise<void> {
     `[data-item-container="${itemKey}"]`
   );
   if (itemContainer) {
-    const subtotalEl = itemContainer.querySelector(
-      '.font-display.font-bold.text-2xl'
-    );
+    const subtotalEl = itemContainer.querySelector('[data-line-subtotal]');
     if (subtotalEl)
       subtotalEl.textContent = MoneyUtils.format(
         MoneyUtils.fromFloat(itemSubtotal)
