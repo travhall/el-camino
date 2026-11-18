@@ -61,7 +61,9 @@ Astro.response.headers.set(
 );
 Astro.response.headers.set(
   'Netlify-CDN-Cache-Control',
-  'public, s-maxage=300, stale-while-revalidate=60'
+  // `durable` is what makes the CDN actually reuse the page: without it Netlify
+  // stores it at one edge node and, measured on production, never hits (plan 236).
+  'public, s-maxage=300, stale-while-revalidate=60, durable'
 );
 
 import type { Product, FilterOptions } from '@/lib/square/types';

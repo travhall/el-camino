@@ -152,7 +152,9 @@ const paginatedPosts = displayPosts.slice(
 // Cache for 10 min, serve stale for 7 days while revalidating
 // Aggressive caching for news index (5min server, 30min stale)
 Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
-Astro.response.headers.set('Netlify-CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
+// `durable` is what makes the CDN actually reuse the page: without it Netlify
+// stores it at one edge node and, measured on production, never hits (plan 236).
+Astro.response.headers.set('Netlify-CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800, durable');
 
 // === LCP OPTIMIZATION: Preload first article image ===
 import { EnhancedImageOptimizer } from "@/lib/image/enhanced-optimizer";
