@@ -513,6 +513,33 @@ describe('news-filters-client', () => {
       expect(navigate).toHaveBeenCalledWith(formAction());
     });
 
+    it('desktop: removes a tag whose slug contains a quote, without breaking the selector', async () => {
+      vi.useFakeTimers();
+      const slug = 'say"hi';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'tag-filter-button';
+      button.dataset.tagChip = slug;
+      button.dataset.applied = 'true';
+      button.dataset.pending = 'false';
+      button.innerHTML = `<span class="${TAG_CLASSES}">x</span>`;
+      $('#news-tags-content').appendChild(button);
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'tags';
+      input.value = slug;
+      input.setAttribute('data-tag-input', slug);
+      $('.hidden').appendChild(input);
+      await freshInit();
+      pageLoad();
+
+      button.click();
+
+      expect(tagInputs()).toEqual(['skate']);
+      vi.advanceTimersByTime(150);
+      expect(navigate).toHaveBeenCalledWith(`${formAction()}?tags=skate`);
+    });
+
     describe('on a phone, changes are pending until Apply', () => {
       beforeEach(async () => {
         setViewport(500);
@@ -719,6 +746,19 @@ describe('news-filters-client', () => {
       setViewport(1280);
       tick(category('news'), true);
       vi.advanceTimersByTime(500);
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('navigating away cancels a filter change that is still inside its debounce', async () => {
+      vi.useFakeTimers();
+      await freshInit();
+      pageLoad();
+
+      tick(category('news'), true);
+      vi.advanceTimersByTime(100);
+      document.dispatchEvent(new Event('astro:before-preparation'));
+      vi.advanceTimersByTime(500);
+
       expect(navigate).not.toHaveBeenCalled();
     });
 

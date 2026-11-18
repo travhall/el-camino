@@ -86,8 +86,10 @@ export const GET: APIRoute = async ({ request }) => {
           'Content-Type': 'application/json',
           'Cache-Control':
             'public, max-age=120, s-maxage=300, stale-while-revalidate=600',
+          // `durable` is what makes the CDN actually reuse the response: without
+          // it Netlify stores it at one edge node and never hits (plan 236).
           'Netlify-CDN-Cache-Control':
-            'public, s-maxage=300, stale-while-revalidate=1800',
+            'public, s-maxage=300, stale-while-revalidate=1800, durable',
           Vary: 'Accept-Encoding',
           'X-Response-Time': responseTime.toString(),
         },

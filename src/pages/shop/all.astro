@@ -40,9 +40,11 @@ const cacheControl = hasFilters
 Astro.response.headers.set('Cache-Control', cacheControl);
 Astro.response.headers.set(
   'Netlify-CDN-Cache-Control',
+  // `durable` is what makes the CDN actually reuse the page: without it Netlify
+  // stores it at one edge node and, measured on production, never hits (plan 236).
   hasFilters
-    ? 'public, s-maxage=180, stale-while-revalidate=900'
-    : 'public, s-maxage=300, stale-while-revalidate=1800'
+    ? 'public, s-maxage=180, stale-while-revalidate=900, durable'
+    : 'public, s-maxage=300, stale-while-revalidate=1800, durable'
 );
 
 // Add cache debugging header
