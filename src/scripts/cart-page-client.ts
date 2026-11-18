@@ -1,0 +1,933 @@
+// src/scripts/cart-page-client.ts
+// Cart page logic, moved unchanged from the hoisted <script> in
+// src/pages/cart.astro (plan 229). Only the registration at the bottom is wrapped
+// in a guarded init() so tests can control when it runs.
+import { cart } from '@/lib/cart';
+import type { CartItem } from '@/lib/cart/types';
+import { MoneyUtils } from '@/lib/square/money';
+import { createSlug } from '@/lib/square/slugUtils';
+import {
+  EL_CAMINO_LOGO_DATA_URI,
+  EL_CAMINO_LOADER_DATA_URI,
+} from '@/lib/constants/assets';
+import { showNotification } from '@/lib/events';
+
+interface CartWindow {
+  showModal?: (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => void;
+  elco_expandFulfillmentForm?: () => void;
+  updateOrderSummaryOnFulfillmentChange?: (
+    method: string,
+    formData?: Record<string, string>,
+    formIsValid?: boolean,
+    shouldRecalculate?: boolean
+  ) => void;
+}
+
+interface CheckoutRequestBody {
+  items: CartItem[];
+  fulfillmentMethod: 'shipping' | 'pickup';
+  shippingAddress?: {
+    name: string;
+    email: string;
+    phone: string;
+    street1: string;
+    street2?: string;
+    city: string;
+    state: string;
+    zip: string;
+    instructions?: string;
+  };
+  pickupContact?: {
+    name: string;
+    email: string;
+    phone: string;
+    notes?: string;
+  };
+  checkoutKey?: string;
+}
+
+let isUpdating = false;
+let inventoryData: Record<string, number> = {};
+let summaryUpdateTimeout: number;
+let fulfillmentFormIsValid = false;
+
+/** Escape HTML special characters to prevent XSS */
+function sanitize(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+function getCartWindow(): CartWindow | null {
+  if (typeof window === 'undefined') return null;
+  return window as CartWindow;
+}
+
+function setLoading(show: boolean): void {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) {
+    overlay.classList.toggle('hidden', !show);
+    overlay.classList.toggle('flex', show);
+  }
+}
+
+// Controls the "Continue to Payment" CTA enabled state
+function setFulfillmentValid(isValid: boolean): void {
+  fulfillmentFormIsValid = isValid;
+
+  const checkoutBtn = document.getElementById(
+    'checkout-button'
+  ) as HTMLButtonElement | null;
+  const mobileCheckoutBtn = document.getElementById(
+    'mobile-checkout-button'
+  ) as HTMLButtonElement | null;
+  const hint = document.getElementById('checkout-hint');
+  const mobileHint = document.getElementById('mobile-checkout-hint');
+
+  if (checkoutBtn) {
+    checkoutBtn.disabled = !isValid;
+    checkoutBtn.classList.toggle('opacity-50', !isValid);
+    checkoutBtn.classList.toggle('cursor-not-allowed', !isValid);
+  }
+  if (mobileCheckoutBtn) {
+    mobileCheckoutBtn.disabled = !isValid;
+    mobileCheckoutBtn.classList.toggle('opacity-50', !isValid);
+    mobileCheckoutBtn.classList.toggle('cursor-not-allowed', !isValid);
+  }
+  if (hint) hint.classList.toggle('hidden', isValid);
+  if (mobileHint) mobileHint.classList.toggle('hidden', isValid);
+
+  // Update step indicator to reflect confirmed state
+  const indicator = document.getElementById('cart-step-indicator');
+  const subtitle = document.getElementById('cart-step-subtitle');
+  if (indicator)
+    indicator.textContent = isValid ? 'Step 2 of 2' : 'Step 1 of 2';
+  if (subtitle) {
+    subtitle.innerHTML = isValid
+      ? '<strong>Step Two:</strong> Review your order and proceed to payment.'
+      : '<strong>Step One:</strong> Choose your fulfillment option, <strong>Ship it</strong> or <strong>Pick it up</strong>, your call.';
+  }
+}
+
+function showConfirmModal(
+  title: string,
+  message: string,
+  onConfirm: () => void
+): void {
+  const cartWindow = getCartWindow();
+  if (cartWindow?.showModal) {
+    cartWindow.showModal(title, message, onConfirm, 'Remove', 'Cancel');
+    return;
+  }
+  if (confirm(`${title}\n\n${message}`)) onConfirm();
+}
+
+async function restoreCartItem(
+  item: CartItem
+): Promise<{ success: boolean; message?: string }> {
+  const key = `${item.id}:${item.variationId}`;
+  const alreadyInCart = cart
+    .getItems()
+    .some((i: CartItem) => `${i.id}:${i.variationId}` === key);
+  if (alreadyInCart) {
+    cart.updateQuantity(key, item.quantity);
+    return { success: true };
+  }
+  return await cart.addItem(item);
+}
+
+async function loadInventoryData(items: CartItem[]): Promise<void> {
+  if (items.length === 0) {
+    inventoryData = {};
+    return;
+  }
+  try {
+    const variationIds = items
+      .filter((item: CartItem) => !item.isGiftCard)
+      .map((item: CartItem) => item.variationId);
+    const response = await fetch('/api/cart-inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ variationIds }),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result = await response.json();
+    if (result.success && result.inventory) {
+      inventoryData = result.inventory;
+    } else {
+      throw new Error(result.error || 'Failed to load inventory');
+    }
+  } catch (error) {
+    console.error('Error loading inventory data:', error);
+    inventoryData = {};
+    items.forEach((item) => {
+      inventoryData[item.variationId] = 99;
+    });
+  }
+}
+
+function createCartItem(item: CartItem): string {
+  const itemKey = `${item.id}:${item.variationId}`;
+  const saleInfo = item.saleInfo;
+  const displayPrice = saleInfo?.salePrice || item.price;
+  const itemSubtotal = displayPrice * item.quantity;
+  const inventory = inventoryData[item.variationId] ?? 999;
+  const isOutOfStock = !item.isGiftCard && inventory <= 0;
+  const canIncrement = item.isGiftCard
+    ? item.quantity < 10
+    : !isOutOfStock && item.quantity < inventory;
+
+  let stockDisplay = '';
+  if (!item.isGiftCard) {
+    if (inventory === 0) {
+      stockDisplay = `<div class="text-xs text-red-600">Out of stock</div>`;
+    } else if (inventory > 0 && inventory < 10) {
+      stockDisplay = `<div class="text-xs text-(--content-meta)">Only ${inventory} left</div>`;
+    }
+  }
+
+  const productSlug = createSlug(item.title);
+  const productUrl = `/product/${productSlug}`;
+  const safeTitle = sanitize(item.title);
+  const safeVariationName = item.variationName
+    ? sanitize(item.variationName)
+    : '';
+  const safeImage = sanitize(item.image || '');
+  const safeProductUrl = sanitize(productUrl);
+  const safeItemKey = sanitize(itemKey);
+
+  const imageSection = safeImage
+    ? `<div
+          class="loading-skeleton absolute inset-0 w-full h-full rounded transition-opacity duration-300"
+          id="cart-placeholder-${safeItemKey}"
+          aria-hidden="true"
+        >
+          <div
+            class="absolute inset-0 flex items-center justify-center rounded"
+            style="background-image: url('${EL_CAMINO_LOADER_DATA_URI}'); background-size: auto; background-position: center; background-repeat: no-repeat; opacity: 0.7;"
+          ></div>
+        </div>
+        <img
+          src="${safeImage}"
+          alt="${safeTitle}"
+          class="absolute inset-0 w-full h-full object-cover rounded border border-(--border-secondary) opacity-0 transition-opacity duration-300"
+          loading="eager"
+          data-shimmer-placeholder="cart-placeholder-${safeItemKey}"
+          data-shimmer-load-opacity="1"
+        />`
+    : `<img
+          src="${EL_CAMINO_LOGO_DATA_URI}"
+          alt="${safeTitle}"
+          class="absolute inset-0 w-full h-full object-contain p-1 rounded border border-(--border-secondary)"
+        />`;
+
+  const saleLabel = saleInfo
+    ? `${saleInfo.discountPercent ?? Math.round((1 - saleInfo.salePrice / saleInfo.originalPrice) * 100)}% Off`
+    : null;
+
+  return `
+    <div class="bg-(--surface-secondary) p-3 flex gap-3 self-start" data-item-container="${safeItemKey}">
+      <div class="shrink-0 relative w-16 h-16 lg:w-24 lg:h-24">
+        ${imageSection}
+        ${saleLabel ? `<div class="absolute top-0 left-0 z-10 bg-state-success-surface text-state-success-text px-1.5 py-0.5 text-[10px] lg:text-xs font-bold leading-tight rounded-br-sm">${saleLabel}</div>` : ''}
+      </div>
+      <div class="grow flex flex-col justify-between min-w-0">
+        <div class="flex flex-row justify-between">
+          <div class="flex flex-col mb-2 lg:mb-0">
+            <h3 class="font-display text-xl md:text-2xl text-(--content-heading) leading-tight">
+              <a href="${safeProductUrl}" data-astro-prefetch="viewport" class="hover:text-(--content-emphasis) underline underline-offset-1 decoration-(--content-emphasis)/0 hover:decoration-(--content-emphasis)/80 hover:underline-offset-4 transition-all ease-in-out duration-300">
+                ${safeTitle}
+              </a>
+            </h3>
+            ${safeVariationName ? `<p class="text-(--content-meta) text-sm mt-0.5 mb-1">${safeVariationName}</p>` : ''}
+          </div>
+          <div>
+            <div class="text-right">
+              ${
+                saleInfo
+                  ? `<div class="hidden md:block text-(--content-meta) text-xs line-through">${MoneyUtils.format(MoneyUtils.fromFloat(saleInfo.originalPrice))} each</div>`
+                  : `<div class="hidden md:block text-(--content-meta) text-sm">${MoneyUtils.format(MoneyUtils.fromFloat(item.price))} each</div>`
+              }
+              <div data-line-subtotal class="font-display font-bold text-xl md:text-2xl text-(--content-emphasis)">
+                ${MoneyUtils.format(MoneyUtils.fromFloat(itemSubtotal))}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-between items-end gap-4">
+          <div class="flex items-center gap-2">
+            <label for="quantity-${safeItemKey}" class="text-sm text-(--content-body) hidden lg:block">Qty:</label>
+            <div class="flex items-center border-2 border-(--border-primary) rounded-sm divide-x-2 divide-(--border-primary)">
+              <button
+                type="button"
+                class="px-3 py-2 transition-all ease-in-out duration-300 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) text-(--content-body) hover:bg-(--surface-primary) flex items-center justify-center ${item.quantity <= 1 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
+                data-item-key="${safeItemKey}"
+                data-action="decrease"
+                ${item.quantity <= 1 ? 'disabled' : ''}
+                aria-label="Decrease quantity"
+              >
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg>
+              </button>
+              <input
+                type="number"
+                id="quantity-${safeItemKey}"
+                class="quantity-input w-10 md:w-16 text-center py-2 border-0 bg-(--surface-primary) text-(--content-body) focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                value="${item.quantity}"
+                min="1"
+                max="${inventory}"
+                data-item-key="${safeItemKey}"
+                aria-label="Quantity for ${safeTitle}"
+              />
+              <button
+                type="button"
+                class="px-3 py-2 transition-all ease-in-out duration-300 focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) text-(--content-body) hover:bg-(--surface-primary) flex items-center justify-center ${!canIncrement ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
+                data-item-key="${safeItemKey}"
+                data-action="increase"
+                ${!canIncrement ? 'disabled' : ''}
+                aria-label="Increase quantity"
+              >
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
+              </button>
+            </div>
+            ${stockDisplay}
+          </div>
+          <div class="flex items-center gap-4">
+            <button
+              type="button"
+              class="font-sans font-semibold text-xs lg:text-sm focus-visible:ring-2 outline-0 focus-visible:ring-offset-2 focus-visible:ring-offset-(--surface-primary) inline-flex items-center justify-center py-1 px-2 text-(--content-body) bg-none border-none focus-visible:ring-(--ui-button-ring) underline underline-offset-1 decoration-(--content-body)/0 hover:decoration-(--content-body)/80 hover:underline-offset-4 transition-all ease-in-out duration-300"
+              data-item-key="${safeItemKey}"
+              data-item-title="${safeTitle}"
+              data-action="remove"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Checkout ──────────────────────────────────────────────────────────────
+
+async function handleCheckout(): Promise<void> {
+  try {
+    const items = cart.getItems();
+    if (items.length === 0) {
+      showNotification('Your cart is empty', 'error');
+      return;
+    }
+
+    const fulfillmentRadio = document.querySelector(
+      'input[name="fulfillment"]:checked'
+    ) as HTMLInputElement;
+
+    if (!fulfillmentRadio) {
+      showNotification('Please choose a fulfillment method', 'error');
+      getCartWindow()?.elco_expandFulfillmentForm?.();
+      return;
+    }
+
+    const fulfillmentMethod = fulfillmentRadio.value as 'shipping' | 'pickup';
+    const requestBody: CheckoutRequestBody = { items, fulfillmentMethod };
+
+    if (fulfillmentMethod === 'shipping') {
+      const form = document.querySelector(
+        '[data-shipping-form]'
+      ) as HTMLElement;
+      if (!form) {
+        showNotification('Shipping form not found', 'error');
+        return;
+      }
+      const shippingRequiredIds = [
+        'shipping-first-name',
+        'shipping-last-name',
+        'shipping-email',
+        'shipping-phone',
+        'shipping-address',
+        'shipping-city',
+        'shipping-state',
+        'shipping-zip',
+      ];
+      let isValid = true;
+      shippingRequiredIds.forEach((id) => {
+        const input = form.querySelector(`#${id}`) as
+          HTMLInputElement | HTMLSelectElement | null;
+        if (!input || !input.value.trim()) {
+          isValid = false;
+        }
+      });
+      if (!isValid) {
+        showNotification(
+          'Please fill in all required shipping fields',
+          'error'
+        );
+        getCartWindow()?.elco_expandFulfillmentForm?.();
+        return;
+      }
+      requestBody.shippingAddress = {
+        name: `${(form.querySelector('#shipping-first-name') as HTMLInputElement).value} ${(form.querySelector('#shipping-last-name') as HTMLInputElement).value}`.trim(),
+        email: (form.querySelector('#shipping-email') as HTMLInputElement)
+          .value,
+        phone: (form.querySelector('#shipping-phone') as HTMLInputElement)
+          .value,
+        street1: (form.querySelector('#shipping-address') as HTMLInputElement)
+          .value,
+        street2:
+          (form.querySelector('#shipping-address2') as HTMLInputElement)
+            .value || undefined,
+        city: (form.querySelector('#shipping-city') as HTMLInputElement).value,
+        state: (form.querySelector('#shipping-state') as HTMLSelectElement)
+          .value,
+        zip: (form.querySelector('#shipping-zip') as HTMLInputElement).value,
+        instructions:
+          (form.querySelector('#shipping-instructions') as HTMLTextAreaElement)
+            .value || undefined,
+      };
+    } else if (fulfillmentMethod === 'pickup') {
+      const form = document.querySelector('[data-pickup-form]') as HTMLElement;
+      if (!form) {
+        showNotification('Pick up form not found', 'error');
+        return;
+      }
+      const pickupRequiredIds = ['pickup-name', 'pickup-email', 'pickup-phone'];
+      let isValid = true;
+      pickupRequiredIds.forEach((id) => {
+        const input = form.querySelector(`#${id}`) as HTMLInputElement | null;
+        if (!input || !input.value.trim()) isValid = false;
+      });
+      if (!isValid) {
+        showNotification('Please fill in all required pickup fields', 'error');
+        getCartWindow()?.elco_expandFulfillmentForm?.();
+        return;
+      }
+      requestBody.pickupContact = {
+        name: (form.querySelector('#pickup-name') as HTMLInputElement).value,
+        email: (form.querySelector('#pickup-email') as HTMLInputElement).value,
+        phone: (form.querySelector('#pickup-phone') as HTMLInputElement).value,
+        notes:
+          (form.querySelector('#pickup-notes') as HTMLTextAreaElement)?.value ||
+          undefined,
+      };
+    }
+
+    setLoading(true);
+    requestBody.checkoutKey = crypto.randomUUID();
+
+    const response = await fetch('/api/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Checkout failed');
+    if (!data.checkoutUrl) throw new Error('No checkout URL returned');
+
+    if (data.cartUpdated) {
+      cart.reconcileWithServerCart(data.adjustedCart || []);
+    }
+
+    if (data.stockMessage) {
+      showNotification(data.stockMessage, 'error');
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+
+    if (data.orderId) {
+      sessionStorage.setItem('square-pending-orderId', data.orderId);
+    }
+
+    showNotification('Redirecting to checkout...', 'success');
+    window.location.href = data.checkoutUrl;
+  } catch (error) {
+    showNotification(
+      error instanceof Error
+        ? error.message
+        : 'Checkout failed. Please try again.',
+      'error'
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+function handleClearCart(): void {
+  const itemCount = cart.getItemCount();
+  if (itemCount === 0) {
+    showNotification('Cart is already empty', 'error');
+    return;
+  }
+
+  const items = cart.getItems();
+  const snapshot = items.map((item: CartItem) => ({ ...item }));
+  const isSingle = items.length === 1;
+
+  showConfirmModal(
+    isSingle ? 'Remove Item' : 'Clear Cart',
+    isSingle
+      ? `Are you sure you want to remove "${items[0].title}" from your cart?`
+      : `Are you sure you want to remove all ${itemCount} item${itemCount > 1 ? 's' : ''} from your cart?`,
+    async () => {
+      cart.clear();
+      // Reset to step 1 when cart is cleared
+      getCartWindow()?.elco_expandFulfillmentForm?.();
+      await updateDisplay();
+      showNotification(
+        isSingle ? `"${snapshot[0].title}" removed` : 'Cart cleared',
+        'success',
+        10000,
+        {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              for (const item of snapshot) await restoreCartItem(item);
+              await updateDisplay();
+              showNotification(
+                snapshot.length === 1
+                  ? `"${snapshot[0].title}" restored`
+                  : `${snapshot.length} items restored`,
+                'success'
+              );
+            } catch {
+              showNotification('Could not restore cart items', 'error');
+            }
+          },
+        }
+      );
+    }
+  );
+}
+
+function updateMobileBar(): void {
+  const bar = document.getElementById('mobile-checkout-bar');
+  if (!bar) return;
+
+  const items = cart.getItems();
+  if (items.length === 0) {
+    bar.classList.add('hidden');
+    return;
+  }
+
+  bar.classList.remove('hidden');
+
+  const mobileSubtotal = document.getElementById('mobile-subtotal');
+  if (mobileSubtotal)
+    mobileSubtotal.textContent = MoneyUtils.format(
+      MoneyUtils.fromFloat(cart.getTotal())
+    );
+}
+
+function attachEventListeners(): void {
+  const checkoutButton = document.getElementById(
+    'checkout-button'
+  ) as HTMLButtonElement | null;
+  const mobileCheckoutButton = document.getElementById(
+    'mobile-checkout-button'
+  ) as HTMLButtonElement | null;
+  const clearCartButton = document.getElementById('clear-cart-button');
+
+  checkoutButton?.addEventListener('click', () => {
+    if (fulfillmentFormIsValid) handleCheckout();
+  });
+  mobileCheckoutButton?.addEventListener('click', () => {
+    if (fulfillmentFormIsValid) handleCheckout();
+  });
+  clearCartButton?.addEventListener('click', handleClearCart);
+}
+
+function setupCartItemEventListeners() {
+  const cartItemsList = document.getElementById('cart-items-list');
+  if (!cartItemsList) return;
+
+  const newCartItemsList = cartItemsList.cloneNode(true) as HTMLElement;
+  const parent = cartItemsList.parentNode;
+  if (parent) parent.replaceChild(newCartItemsList, cartItemsList);
+
+  newCartItemsList.addEventListener('click', async (e) => {
+    const target = e.target as HTMLElement;
+    const button = target.closest('button[data-action]') as HTMLButtonElement;
+    if (!button || button.disabled) return;
+    e.preventDefault();
+
+    const action = button.dataset.action;
+    const itemKey = button.dataset.itemKey;
+    if (!itemKey) return;
+
+    try {
+      switch (action) {
+        case 'increase': {
+          const items = cart.getItems();
+          const item = items.find(
+            (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+          );
+          if (item) {
+            const newQty = item.quantity + 1;
+            const inventory = inventoryData[item.variationId] ?? 999;
+            if (newQty <= inventory) {
+              await cart.updateQuantity(itemKey, newQty);
+              await updateCartItemQuantity(itemKey);
+            } else {
+              showNotification(`Only ${inventory} available`, 'error');
+            }
+          }
+          break;
+        }
+        case 'decrease': {
+          const currentItems = cart.getItems();
+          const currentItem = currentItems.find(
+            (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+          );
+          if (currentItem) {
+            if (currentItem.quantity === 1) {
+              const snapshot = { ...currentItem };
+              cart.removeItem(itemKey);
+              await updateDisplay();
+              showNotification(`"${snapshot.title}" removed`, 'success', 6000, {
+                label: 'Undo',
+                onClick: async () => {
+                  try {
+                    const result = await restoreCartItem(snapshot);
+                    if (result.success) {
+                      await updateDisplay();
+                      showNotification(
+                        `"${snapshot.title}" restored`,
+                        'success'
+                      );
+                    } else {
+                      showNotification(
+                        result.message || 'Could not restore item',
+                        'error'
+                      );
+                    }
+                  } catch {
+                    showNotification('Could not restore item', 'error');
+                  }
+                },
+              });
+            } else {
+              await cart.updateQuantity(itemKey, currentItem.quantity - 1);
+              await updateCartItemQuantity(itemKey);
+            }
+          }
+          break;
+        }
+        case 'remove': {
+          const allItems = cart.getItems();
+          const itemToRemove = allItems.find(
+            (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+          );
+          if (itemToRemove) {
+            const snapshot = { ...itemToRemove };
+            cart.removeItem(itemKey);
+            await updateDisplay();
+            showNotification(`"${snapshot.title}" removed`, 'success', 6000, {
+              label: 'Undo',
+              onClick: async () => {
+                try {
+                  const result = await restoreCartItem(snapshot);
+                  if (result.success) {
+                    await updateDisplay();
+                    showNotification(`"${snapshot.title}" restored`, 'success');
+                  } else {
+                    showNotification(
+                      result.message || 'Could not restore item',
+                      'error'
+                    );
+                  }
+                } catch {
+                  showNotification('Could not restore item', 'error');
+                }
+              },
+            });
+          }
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('Error handling cart action:', error);
+      showNotification('Error updating cart', 'error');
+    }
+  });
+
+  let inputTimeout: number;
+  newCartItemsList.addEventListener('input', (e) => {
+    const target = e.target as HTMLInputElement;
+    if (!target.classList.contains('quantity-input')) return;
+    const itemKey = target.dataset.itemKey;
+    if (!itemKey) return;
+
+    clearTimeout(inputTimeout);
+    inputTimeout = window.setTimeout(async () => {
+      const newQuantity = parseInt(target.value, 10);
+      if (newQuantity < 1) {
+        target.value = '1';
+        return;
+      }
+
+      const inventory = (() => {
+        const cartItem = cart
+          .getItems()
+          .find((i: CartItem) => `${i.id}:${i.variationId}` === itemKey);
+        return cartItem ? (inventoryData[cartItem.variationId] ?? 999) : 999;
+      })();
+      if (newQuantity > inventory) {
+        target.value = inventory.toString();
+        showNotification(`Only ${inventory} available`, 'error');
+        return;
+      }
+
+      try {
+        await cart.updateQuantity(itemKey, newQuantity);
+        await updateCartItemQuantity(itemKey);
+      } catch (error) {
+        console.error('Error updating quantity:', error);
+        showNotification('Error updating quantity', 'error');
+      }
+    }, 500);
+  });
+}
+
+async function updateCartItemQuantity(itemKey: string): Promise<void> {
+  const items = cart.getItems();
+  const item = items.find(
+    (i: CartItem) => `${i.id}:${i.variationId}` === itemKey
+  );
+
+  if (!item) {
+    await updateDisplay();
+    return;
+  }
+
+  const inventory = inventoryData[item.variationId] ?? 999;
+  const saleInfo = item.saleInfo;
+  const displayPrice = saleInfo?.salePrice || item.price;
+  const itemSubtotal = displayPrice * item.quantity;
+  const total = cart.getTotal();
+
+  const quantityInput = document.querySelector(
+    `input[data-item-key="${itemKey}"]`
+  ) as HTMLInputElement;
+  if (quantityInput) quantityInput.value = item.quantity.toString();
+
+  const itemContainer = document.querySelector(
+    `[data-item-container="${itemKey}"]`
+  );
+  if (itemContainer) {
+    const subtotalEl = itemContainer.querySelector('[data-line-subtotal]');
+    if (subtotalEl)
+      subtotalEl.textContent = MoneyUtils.format(
+        MoneyUtils.fromFloat(itemSubtotal)
+      );
+
+    const decreaseBtn = itemContainer.querySelector(
+      '[data-action="decrease"]'
+    ) as HTMLButtonElement;
+    const increaseBtn = itemContainer.querySelector(
+      '[data-action="increase"]'
+    ) as HTMLButtonElement;
+
+    if (decreaseBtn) {
+      decreaseBtn.disabled = item.quantity <= 1;
+      decreaseBtn.classList.toggle('opacity-50', item.quantity <= 1);
+      decreaseBtn.classList.toggle('cursor-not-allowed', item.quantity <= 1);
+    }
+    if (increaseBtn) {
+      const canIncrement = item.quantity < inventory;
+      increaseBtn.disabled = !canIncrement;
+      increaseBtn.classList.toggle('opacity-50', !canIncrement);
+      increaseBtn.classList.toggle('cursor-not-allowed', !canIncrement);
+    }
+  }
+
+  const subtotalEl = document.getElementById('subtotal');
+  if (subtotalEl)
+    subtotalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(total));
+
+  debouncedUpdateOrderSummary(total);
+}
+
+function debouncedUpdateOrderSummary(subtotal: number): void {
+  clearTimeout(summaryUpdateTimeout);
+  summaryUpdateTimeout = window.setTimeout(() => {
+    updateOrderSummary(subtotal);
+  }, 400);
+}
+
+async function updateOrderSummary(subtotal: number): Promise<void> {
+  const fulfillmentRadio = document.querySelector(
+    'input[name="fulfillment"]:checked'
+  ) as HTMLInputElement;
+
+  const subtotalEl = document.getElementById('subtotal');
+  const taxEl = document.getElementById('tax-amount');
+  const shippingEl = document.getElementById('shipping-cost');
+  const totalEl = document.getElementById('order-total');
+  const labelEl = document.getElementById('order-total-label');
+
+  if (subtotalEl)
+    subtotalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
+
+  if (!fulfillmentRadio) {
+    if (taxEl) taxEl.textContent = '—';
+    if (shippingEl) shippingEl.textContent = '—';
+    if (labelEl) labelEl.textContent = 'Estimated Total';
+    if (totalEl)
+      totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
+    return;
+  }
+
+  const fulfillmentMethod = fulfillmentRadio.value as 'shipping' | 'pickup';
+  if (shippingEl) shippingEl.textContent = 'Calculating…';
+
+  try {
+    const response = await fetch('/api/calculate-cart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: cart.getItems(), fulfillmentMethod }),
+    });
+
+    const data = await response.json();
+    if (!data.success) throw new Error(data.error || 'Calculation failed');
+
+    const shippingCost = data.shipping;
+    const taxAmount = data.tax;
+    const orderTotal = data.total;
+    const shippingDisplay =
+      shippingCost === 0
+        ? 'FREE'
+        : MoneyUtils.format(MoneyUtils.fromFloat(shippingCost));
+
+    if (taxEl)
+      taxEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(taxAmount));
+    if (shippingEl) shippingEl.textContent = shippingDisplay;
+    if (labelEl) labelEl.textContent = 'Order Total';
+    if (totalEl)
+      totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(orderTotal));
+
+    updateMobileBar();
+  } catch (error) {
+    console.error('Error calculating order summary:', error);
+    if (shippingEl) shippingEl.textContent = '—';
+    if (labelEl) labelEl.textContent = 'Estimated Total';
+    if (totalEl)
+      totalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(subtotal));
+  }
+}
+
+async function updateDisplay(): Promise<void> {
+  if (isUpdating) return;
+  isUpdating = true;
+
+  try {
+    const items = cart.getItems();
+    const total = cart.getTotal();
+
+    await loadInventoryData(items);
+
+    const cartLoading = document.getElementById('cart-loading');
+    const emptyCart = document.getElementById('empty-cart');
+    const cartContent = document.getElementById('cart-content');
+    const cartItemsList = document.getElementById('cart-items-list');
+    const subtotalEl = document.getElementById('subtotal');
+
+    if (!emptyCart || !cartContent || !cartItemsList || !subtotalEl) return;
+
+    if (cartLoading) cartLoading.classList.add('hidden');
+
+    if (items.length === 0) {
+      emptyCart.classList.remove('hidden');
+      cartContent.classList.add('hidden');
+      document.getElementById('clear-cart-wrapper')?.classList.add('hidden');
+      setFulfillmentValid(false);
+      updateMobileBar();
+    } else {
+      emptyCart.classList.add('hidden');
+      cartContent.classList.remove('hidden');
+      document.getElementById('clear-cart-wrapper')?.classList.remove('hidden');
+
+      const hasGiftCard = items.some((item: CartItem) => item.isGiftCard);
+      const wrapper = document.getElementById('fulfillment-selector-wrapper');
+      if (wrapper) wrapper.dataset.hasGiftCard = String(hasGiftCard);
+      document.dispatchEvent(
+        new CustomEvent('cart:giftcard', { detail: { hasGiftCard } })
+      );
+
+      // Update items list (always render, even if hidden on Step 1 — needed for checkout)
+      const cartItemsHtml = items.map(createCartItem).join('');
+      cartItemsList.innerHTML = cartItemsHtml;
+
+      subtotalEl.textContent = MoneyUtils.format(MoneyUtils.fromFloat(total));
+      setupCartItemEventListeners();
+      updateMobileBar();
+
+      updateOrderSummary(total);
+    }
+  } catch (error) {
+    console.error('Error updating cart display:', error);
+  } finally {
+    isUpdating = false;
+  }
+}
+
+function setupFulfillmentListeners(): void {
+  const cartWindow = getCartWindow();
+  if (cartWindow) {
+    cartWindow.updateOrderSummaryOnFulfillmentChange = (
+      _method: string,
+      _formData?: Record<string, string>,
+      formIsValid?: boolean,
+      shouldRecalculate?: boolean
+    ) => {
+      setFulfillmentValid(formIsValid === true);
+      if (shouldRecalculate) {
+        updateOrderSummary(cart.getTotal());
+      }
+    };
+  }
+
+  // FulfillmentSelector's restoreForm() may have already collapsed (confirmed) before
+  // this handler was registered — catch up by checking chip visibility now.
+  const chip = document.getElementById('fulfillment-summary-chip');
+  const checkedRadio = document.querySelector<HTMLInputElement>(
+    'input[name="fulfillment"]:checked'
+  );
+  if (chip && !chip.classList.contains('hidden') && checkedRadio) {
+    setFulfillmentValid(true);
+    updateOrderSummary(cart.getTotal());
+  }
+}
+
+function handlePageLoad() {
+  // Reset per-page-load state — View Transitions keeps module scope alive across
+  // navigations, so stale values from a previous visit would otherwise persist. cSpell:ignore giftcard navigations
+  fulfillmentFormIsValid = false;
+
+  attachEventListeners();
+  updateDisplay();
+  setupFulfillmentListeners();
+  updateMobileBar();
+}
+
+let initialized = false;
+
+export function init(): void {
+  if (initialized) return;
+  initialized = true;
+
+  document.addEventListener('astro:page-load', handlePageLoad);
+
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      document.removeEventListener('astro:page-load', handlePageLoad);
+    });
+  }
+}
