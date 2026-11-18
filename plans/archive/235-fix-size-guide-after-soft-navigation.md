@@ -107,14 +107,50 @@ it; not pursued.)
   Waist, Hips; first row XS 31-33" 23-25" 33-35"), scroll locks and unlocks, Escape
   closes it, and there are no CSP violations and no page errors.
 
+## Checked afterwards: do CDN-cached pages share a nonce? (2026-11-18)
+
+Read-only GETs with `curl` against staging and production (generic and browser
+user agents, another `Accept-Language`, a cookie).
+
+- **Product pages share one nonce.** `/product/...` is served from Netlify's
+  durable cache (`public,max-age=60,must-revalidate`, `cache-status: "Netlify
+  Durable"; hit`, about 5 minutes of TTL). Six different clients all received the
+  same nonce, identical in the HTML and the CSP header, on production and on
+  staging. There is no `Set-Cookie`, `Vary` is only `Accept-Encoding`, and
+  `netlify-vary: query` makes the query string part of the cache key. The cached
+  HTML holds nothing per visitor: the one email/phone match is the shop's own
+  public business contact in its JSON-LD block.
+- **So on product pages the nonce is not a secret for up to about 5 minutes**; one
+  request reads it. A nonce-based CSP assumes an injected script cannot know the
+  nonce, and that does not hold there.
+- **Exploitability is low, so this is a defense-in-depth gap, not an open hole.**
+  It would need an injection vector into a product page's HTML. The cache key
+  includes the query string and the nonce changes at each refresh, so a payload
+  cannot hard-code the nonce of a response that does not exist yet, and
+  `script-src 'self'` plus the Square hosts still apply. No change was made.
+- **Every other route tested returned a different nonce on each of two requests
+  1.2 s apart** (`/`, `/news`, `/category/skateboards`, `/shop/all`, `/the-shop`,
+  `/cart`), so they are rendered per request.
+- **Side finding (performance, not security): `/`, `/news` and `/category/*` are
+  not being served from the CDN cache.** They send `public,s-maxage=300,
+  stale-while-revalidate=1800` but report `cache-status: "Netlify Durable";
+  fwd=bypass` and a fresh render with `age: 0` every time, although `CLAUDE.md`
+  describes them as CDN-cached. Only product pages hit the durable cache. Not
+  investigated; it may explain the cold TTFB figures noted in plan 231, and it bears on
+  the open question whether the product-page tag purge (`purgeProductPages` in
+  `src/lib/cache/cdnPurge.ts`) works on the deployed site.
+- **An option that would fix both the router mismatch and the shared nonce:** a
+  hash-based CSP (`'sha256-...'` for each inline script) in place of per-request
+  nonces. A hash depends only on the script's content, so it is stable across
+  pages, cache entries and visitors. The inline scripts are static, so it is
+  feasible (build-time hashing, or Astro's own CSP support), but it is a policy
+  change with its own risks and is not part of this plan.
+
 ## Not verified
 
-- A production-mode server. The nonce and router behaviour are the same code, but
-  product pages are served with CDN caching (`s-maxage=300`); how the cached HTML and
-  its CSP header interact with the nonce was not examined.
-- Related, worth checking: if the CDN serves cached HTML together with its CSP
-  header, every visitor inside the 5-minute window shares one nonce, which a
-  nonce-based CSP assumes is unguessable. Not verified either way.
+- A production-mode build of this change: the nonce and router behaviour are the
+  same code, and the production product page was observed above, but the size guide
+  fix itself was only exercised on the dev server.
 - The `ArticleGrid` violation still occurs by design (see above).
 - A Playwright regression test: the stub catalog deliberately avoids every word that
   enables the size guide, so the static guard was used instead of reshaping the
