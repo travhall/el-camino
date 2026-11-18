@@ -7,9 +7,14 @@ import { DECKS } from './fixtures/square-catalog.mjs';
  * entry does not wait for a cold render (plan 221). The window is short because
  * the pages are not cache-tagged: the Square webhook purge does not reach them,
  * so the window is the only bound on how stale a stock badge can be.
+ *
+ * The CDN header must say `durable` (plan 236/237): without it Netlify stores the
+ * page at one edge node and, measured on production, never reuses it, so the
+ * 5-minute cache and the stale window above did nothing and every visit rendered
+ * at the origin.
  */
 test.describe('category page cache headers', () => {
-  test('allows 60 s of stale-while-revalidate on both CDN headers', async ({
+  test('allows 60 s of stale-while-revalidate on both CDN headers, and shares the cache durably', async ({
     request,
   }) => {
     const res = await request.get(`/category/${DECKS.name.toLowerCase()}`);
@@ -20,7 +25,7 @@ test.describe('category page cache headers', () => {
     expect(headers['cache-control']).toContain('stale-while-revalidate=60');
     expect(headers['cache-control']).toContain('no-cache');
     expect(headers['netlify-cdn-cache-control']).toBe(
-      'public, s-maxage=300, stale-while-revalidate=60'
+      'public, s-maxage=300, stale-while-revalidate=60, durable'
     );
   });
 

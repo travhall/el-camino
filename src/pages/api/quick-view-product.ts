@@ -68,8 +68,11 @@ export const GET: APIRoute = async ({ url }) => {
         // Netlify CDN: Fresh for 5 minutes, no stale serving.
         // stale-while-revalidate=0 ensures sold-out items are never served
         // from an expired edge cache entry with outdated inventory data.
+        // `durable` is what makes the CDN actually reuse the response: without
+        // it Netlify stores it at one edge node and never hits (plan 236). The
+        // cache tags below mean the webhook purge reaches it either way.
         'Netlify-CDN-Cache-Control':
-          'public, s-maxage=300, stale-while-revalidate=0',
+          'public, s-maxage=300, stale-while-revalidate=0, durable',
         // Cache tags: purged by the Square webhook (lib/cache/cdnPurge.ts)
         'Netlify-Cache-Tag': productCacheTags(
           productId,
